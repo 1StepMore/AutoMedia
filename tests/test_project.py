@@ -191,6 +191,13 @@ class TestProjectInit:
         with pytest.raises(ValueError, match="empty slug"):
             Project.init("!!! @@ @@@", "acme", base_dir=str(tmp_path))
 
+    def test_cjk_only_topic_raises_with_clear_message(self, tmp_path):
+        """Bug 3: pure-CJK topic raises with a clear error message."""
+        with pytest.raises(ValueError) as exc_info:
+            Project.init("壹目贯维投资策略分析", "acme", base_dir=str(tmp_path))
+        assert "empty slug" in str(exc_info.value)
+        assert "壹目贯维投资策略分析" in str(exc_info.value)
+
     def test_invalid_brand_path_rejected(self):
         """A brand containing path traversal is rejected."""
         with pytest.raises(ValueError, match=r"\.\."):
