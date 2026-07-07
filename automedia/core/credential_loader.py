@@ -4,6 +4,10 @@ Public API
 ----------
 - ``load_credential(key_name, *, provider=None)``
 - ``resolve_api_key(provider_name, role='default')``
+
+On import, this module automatically loads ``.env`` from the current working
+directory (if present) so that ``AUTOMEDIA_*`` variables are available for
+lookup.
 """
 
 from __future__ import annotations
@@ -12,6 +16,19 @@ import os
 from pathlib import Path
 
 import yaml
+
+# ---------------------------------------------------------------------------
+# Load .env on import — makes AUTOMEDIA_* vars available immediately
+# ---------------------------------------------------------------------------
+
+try:
+    from dotenv import load_dotenv
+
+    _env_path = Path.cwd() / ".env"
+    if _env_path.is_file():
+        load_dotenv(_env_path, override=False)
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Optional dependency: keyring
