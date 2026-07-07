@@ -54,7 +54,16 @@ def archive_cmd(
         )
         raise typer.Exit(code=1)
 
-    # Perform archive — rename directory with _archived suffix
+    if project_dir.name.endswith("_archived"):
+        typer.secho(
+            f"Refused: project directory {project_dir.name!r} is already archived. "
+            f"Double-archive would create nested _archived_archived. "
+            f"Use 'archive' on the original (non-_archived) directory instead.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
     archive_dir = project_dir.parent / f"{project_dir.name}_archived"
     if archive_dir.exists():
         typer.secho(f"Archive target already exists: {archive_dir}", fg=typer.colors.RED, err=True)

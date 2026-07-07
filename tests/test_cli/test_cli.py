@@ -189,6 +189,22 @@ class TestArchiveCommand:
         assert result.exit_code == 1
         assert "not found" in result.output
 
+    def test_archive_already_archived_refuses(self, tmp_project: dict[str, Any]) -> None:
+        """Bug 2 fix: archiving an already-archived project must refuse, not create _archived_archived."""
+        result1 = runner.invoke(
+            app,
+            ["archive", tmp_project["project_id"], "--force", "--base-dir", tmp_project["base_dir"]],
+        )
+        assert result1.exit_code == 0
+        assert "Archived" in result1.output
+
+        result2 = runner.invoke(
+            app,
+            ["archive", tmp_project["project_id"], "--force", "--base-dir", tmp_project["base_dir"]],
+        )
+        assert result2.exit_code != 0, f"second archive should refuse, got {result2.exit_code}: {result2.output}"
+        assert "already" in result2.output.lower() or "exists" in result2.output.lower(), f"error msg: {result2.output}"
+
 
 # =========================================================================
 # 6. automedia adapter

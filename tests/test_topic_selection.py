@@ -156,6 +156,20 @@ class TestTopicSelectionForbidden:
         ent = next(c for c in result["checks"] if c["name"] == "topic_not_entertainment")
         assert ent["passed"] is False
 
+    def test_concert_event_blocked(self) -> None:
+        """Bug 1 fix: 演唱会 (concert) is blocked as entertainment."""
+        ctx = _make_context(topic="演唱会现场精彩回顾")
+        result = TopicSelectionGate().execute(ctx)
+        assert result["passed"] is False, f"got passed={result['passed']}"
+        ent = next(c for c in result["checks"] if c["name"] == "topic_not_entertainment")
+        assert ent["passed"] is False, f"entertainment check passed: {ent}"
+
+    def test_sports_event_blocked(self) -> None:
+        """Bug 1: 体育 (sports) is blocked as entertainment."""
+        ctx = _make_context(topic="足球比赛精彩瞬间")
+        result = TopicSelectionGate().execute(ctx)
+        assert result["passed"] is False, f"got passed={result['passed']}"
+
     def test_english_charity_blocked(self) -> None:
         """English charity keyword is blocked."""
         ctx = _make_context(topic="Top 10 charity organizations to donate to")

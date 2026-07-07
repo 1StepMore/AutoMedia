@@ -54,6 +54,9 @@ _FORBIDDEN_PATTERNS: list[dict[str, Any]] = [
         "patterns": [
             r"娱乐", r"entertainment", r"celebrity", r"gossip",
             r"明星", r"艺人", r"actor", r"actress", r"网红",
+            r"演唱会", r"concert", r"concert tour",
+            r"体育", r"sports", r"比赛", r"match", r"tournament",
+            r"球赛", r"足球", r"soccer", r"basketball", r"NBA",
         ],
     },
 ]
