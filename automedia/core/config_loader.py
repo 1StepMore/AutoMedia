@@ -106,16 +106,53 @@ def _env_to_config() -> dict:
     * The remaining key is split on ``_`` and each segment is lowercased.
     * Each segment becomes a level of nesting in the resulting dict.
 
-    Example::
+    Special LLM keys are remapped to the correct ``llm.text_generation.*``
+    path for compatibility with the LLM client:
 
-        AUTOMEDIA_LLM_API_KEY=sk-xxx
-        → {"llm": {"api": {"key": "sk-xxx"}}}
+        AUTOMEDIA_LLM_PROVIDER  → llm.text_generation.provider
+        AUTOMEDIA_LLM_MODEL     → llm.text_generation.model
+        AUTOMEDIA_LLM_BASE_URL  → llm.text_generation.base_url
+        AUTOMEDIA_LLM_API_KEY   → llm.text_generation.api_key
+        AUTOMEDIA_LLM_TEMPERATURE → llm.text_generation.temperature
+        AUTOMEDIA_LLM_MAX_TOKENS → llm.text_generation.max_tokens
+
+    Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
+    remain the fallback.
     """
     result: dict = {}
+
+    # Special LLM key remapping
+    _LLM_KEY_MAP: dict[str, list[str]] = {
+        "llm_provider": ["llm", "text_generation", "provider"],
+        "llm_model": ["llm", "text_generation", "model"],
+        "llm_base_url": ["llm", "text_generation", "base_url"],
+        "llm_api_key": ["llm", "text_generation", "api_key"],
+        "llm_temperature": ["llm", "text_generation", "temperature"],
+        "llm_max_tokens": ["llm", "text_generation", "max_tokens"],
+    }
+
     for key, value in os.environ.items():
         if not key.startswith(_ENV_PREFIX):
             continue
-        parts = key[len(_ENV_PREFIX) :].lower().split("_")
+        suffix = key[len(_ENV_PREFIX):]
+        # Check for special remapped keys first
+        mapped = _LLM_KEY_MAP.get(suffix.lower())
+        if mapped is not None:
+            node = result
+            for part in mapped[:-1]:
+                node = node.setdefault(part, {})
+            # Convert numeric fields to proper types
+            last_key = mapped[-1]
+            if last_key in ("max_tokens", "temperature"):
+                try:
+                    value = int(value) if last_key == "max_tokens" else float(value)
+                except ValueError:
+                    pass
+            node[last_key] = value
+            continue
+
+        # Generic split-key fallback
+        parts = suffix.lower().split("_")
         if not parts or not parts[0]:
             continue
         node = result
