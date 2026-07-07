@@ -1,6 +1,6 @@
-"""Allow `python -m automedia`."""
+"""Allow ``python -m automedia``."""
 
-from automedia._version import __version__
+from automedia.cli.app import app
 
 if __name__ == "__main__":
-    print(f"AutoMedia v{__version__}")
+    app()
