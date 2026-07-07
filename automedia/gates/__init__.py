@@ -12,3 +12,11 @@ from automedia.gates.tts_brand_asset import V4TTSBrandAsset  # noqa: F401
 from automedia.gates.mp3_vs_srt import V5Mp3VsSrt  # noqa: F401
 from automedia.gates.subtitle_render import V6SubtitleRender  # noqa: F401
 from automedia.gates.six_step_hard import V7SixStepHard  # noqa: F401
+
+# Lifecycle gates (L1-L3)
+from automedia.gates.publish_log_schema import L1PublishLogSchema  # noqa: F401
+from automedia.gates.archive_validation import L2ArchiveValidation  # noqa: F401
+from automedia.gates.platform_integrity import L3PlatformIntegrity  # noqa: F401
+
+# Pre-gates
+from automedia.gates.topic_selection import TopicSelectionGate  # noqa: F401
