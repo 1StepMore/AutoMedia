@@ -3,6 +3,8 @@
 /automedia-infrastructure-*.zip
 /solution-wise/
 /projects/
+/test-*/
+20260707_*/
 /Production/
 /Pool/pool.db
 /Assets/

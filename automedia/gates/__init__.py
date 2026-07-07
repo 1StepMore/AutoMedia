@@ -1,7 +1,12 @@
 # AutoMedia gates
 
-from automedia.gates.brand_cta import G3BrandCTA  # noqa: F401
+# Text-track gates (G0-G5)
+from automedia.gates.fact_check import G0FactCheck  # noqa: F401
+from automedia.gates.humanizer import G1Humanizer  # noqa: F401
 from automedia.gates.copy_review import G2CopyReview  # noqa: F401
+from automedia.gates.brand_cta import G3BrandCTA  # noqa: F401
+from automedia.gates.wechat_checklist import G4WechatChecklist  # noqa: F401
+from automedia.gates.html_hard import G5HtmlHard  # noqa: F401
 
 # Video-track gates (V0-V7)
 from automedia.gates.lint import V0Lint  # noqa: F401
