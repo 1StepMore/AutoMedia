@@ -1,0 +1,12 @@
+# MCP Server path allowlist configuration.
+#
+# Only paths under directories listed here may be accessed by MCP tools.
+# Each entry must be an absolute directory path.  The check uses
+# ``os.path.realpath`` to resolve symlinks before comparison.
+#
+# Example:
+#   allowed_directories:
+#     - /home/user/projects
+#     - /data/automedia
+
+allowed_directories: []

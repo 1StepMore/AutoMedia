@@ -19,6 +19,7 @@ openai = ["openai>=1"]
 anthropic = ["anthropic>=0.30"]
 httpx = ["httpx>=0.27"]
 rich = ["rich>=13"]
+mcp = ["mcp"]
 
 [project.entry-points.console_scripts]
 automedia = "automedia.cli.app:app"
