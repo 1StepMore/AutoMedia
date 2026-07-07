@@ -13,6 +13,10 @@
 /.hermes/
 /home-renanzai/
 
+# ===== Local config & tooling =====
+.automedia/
+.omo/
+
 # ===== Credentials & Secrets =====
 .env
 .env.*.local
