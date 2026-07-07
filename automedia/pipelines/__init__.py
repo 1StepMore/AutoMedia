@@ -5,6 +5,7 @@ from automedia.pipelines.gate_engine import (
     Pipeline,
     PipelineResult,
 )
+from automedia.pipelines.audio_pipeline import AudioPipeline
 from automedia.pipelines.image_pipeline import (
     ImagePipeline,
     ImageValidator,
@@ -14,6 +15,7 @@ from automedia.pipelines.runner import run_full_pipeline
 
 __all__ = [
     "AssetInfo",
+    "AudioPipeline",
     "GateEngine",
     "GateLogEntry",
     "ImagePipeline",
