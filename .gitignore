@@ -1,0 +1,72 @@
+# ===== Production / Real Data =====
+/automedia-package/
+/automedia-infrastructure-*.zip
+/solution-wise/
+/projects/
+/Production/
+/Pool/pool.db
+/Assets/
+/handoff/
+/env_pack/
+/.hermes/
+/home-renanzai/
+
+# ===== Credentials & Secrets =====
+.env
+.env.*.local
+*.pem
+*.key
+*_credentials.yaml
+*_credentials.json
+oscreds.yaml
+api_key
+secret
+*.token
+
+# ===== Python Bytecode & Build =====
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# ===== Node / JS =====
+node_modules/
+.bun/
+
+# ===== Logs / Temp =====
+*.log
+*.tmp
+nohup.out
+
+# ===== Metrics / Reports =====
+pipeline_md5.json
+production_metrics.json
+
+# ===== IDE / Editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===== Test Fixtures (exempt / ignore) =====
+tests/fixtures/synth/
+tests/fixtures/synth/**/real_*
+
+# ===== Binary / Model Files =====
+*.bin
+*.safetensors
+*.gguf
+*.h5
+*.parquet
