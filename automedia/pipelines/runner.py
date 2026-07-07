@@ -28,12 +28,14 @@ from automedia.pipelines.gate_engine import (
 
 _AUTO_GATE_NAMES: list[str] = [
     "pre-gate",
+    "CW",
     "G0", "G1", "G2", "G3", "G4", "G5",
     "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
     "L1", "L2", "L3",
 ]
 
 _TEXT_ONLY_GATE_NAMES: list[str] = [
+    "CW",
     "G0", "G1", "G2", "G3", "G4", "G5",
     "L1", "L2", "L3",
 ]
