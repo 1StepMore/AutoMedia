@@ -21,11 +21,14 @@ jobs:
       - name: Ruff
         run: ruff check . --exit-zero
       - name: Mypy
-        run: mypy automedia/ --ignore-missing-imports --exit-zero
+        continue-on-error: true
+        run: mypy automedia/ --ignore-missing-imports
       - name: Pytest
         run: python3 -m pytest -q --tb=short
   gitleaks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
