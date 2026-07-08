@@ -44,7 +44,7 @@
 
 #### MCP Server
 
-- 8 个 MCP tool: select_topic, run_pipeline, get_pipeline_status, list_projects, get_project_assets, archive_project, list_topic_pool, register_omni_adapter
+- 8 个 MCP tool: select_topic, run_pipeline, get_pipeline_status, list_projects, get_project_assets, archive_project, list_topic_pool, register_platform_adapter
 - 路径 allowlist 安全机制
 - stdio 传输, 兼容 Claude Desktop / OpenCode / Cline
 
