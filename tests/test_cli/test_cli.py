@@ -263,9 +263,14 @@ class TestInitCommand:
 
     def test_init_template_minimal(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        import automedia.cli.commands.init_cmd as init_mod
+
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", tmp_path / ".automedia" / "model_config.yaml")
         result = runner.invoke(app, ["init", "--template", "minimal"])
         assert result.exit_code == 0
-        config = tmp_path / ".automedia" / "config.yaml"
+        config = tmp_path / ".automedia" / "model_config.yaml"
         assert config.is_file()
         content = config.read_text()
         assert "openai" in content
