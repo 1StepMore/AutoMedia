@@ -25,11 +25,6 @@ def run_cmd(
         "--resume-from",
         help="Gate name to resume from (skip preceding gates).",
     ),
-    timeout: int = typer.Option(
-        300,
-        "--timeout",
-        help="Pipeline timeout in seconds.",
-    ),
 ) -> None:
     """Run the full AutoMedia pipeline for a given topic and brand."""
     if not _MODEL_CONFIG_PATH.is_file():

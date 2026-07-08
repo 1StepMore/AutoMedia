@@ -10,7 +10,7 @@ AutoMedia 每日按以下节奏执行:
 |------|------|------|
 | 08:00 | 热点采集 (4 平台 + Tavily + AIHOT) | `automedia cron run pool-collect` |
 | 08:05 | 语义审核 + 黑名单过滤 | `automedia cron run pool-score` |
-| 08:30 | 推送 TOP6 话题到飞书 | `automedia cron run topic-push` |
+| 08:30 | 检查待发布内容 | `automedia cron run publish-check` |
 | 09:00 | 运营选话题, 启动生产 | `automedia run --topic "..." --brand ...` |
 | 09:30 | 全系统健康检查 | `automedia cron check-health` |
 | 全天 | 发布确认 + 归档 | `automedia archive <project-id>` |

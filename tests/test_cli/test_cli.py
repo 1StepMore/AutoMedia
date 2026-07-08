@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 
 from automedia.cli.app import app
 from automedia.pipelines.gate_engine import PipelineResult
+from automedia.pool.db import PoolDB
 
 runner = CliRunner()
 
@@ -293,7 +294,12 @@ class TestAdapterCommand:
 class TestCronCommand:
     """Tests for ``automedia cron``."""
 
-    def test_cron_run_known_job(self) -> None:
+    def test_cron_run_known_job(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        am_dir = tmp_path / ".automedia"
+        am_dir.mkdir()
+        db_path = am_dir / "pool.db"
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr("automedia.cli.commands.cron._DEFAULT_DB", db_path)
         result = runner.invoke(app, ["cron", "run", "pool-collect"])
         assert result.exit_code == 0
         assert "completed" in result.output
@@ -303,9 +309,14 @@ class TestCronCommand:
         assert result.exit_code == 1
         assert "Unknown job" in result.output
 
-    def test_cron_check_health(self) -> None:
+    def test_cron_check_health(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        am_dir = tmp_path / ".automedia"
+        am_dir.mkdir()
+        db_path = am_dir / "pool.db"
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr("automedia.cli.commands.cron._DEFAULT_DB", db_path)
+        PoolDB(db_path).close()  # ensure db exists so check passes for pool item
         result = runner.invoke(app, ["cron", "check-health"])
-        # May pass or fail depending on environment, but should not crash
         assert "Health Check" in result.output
 
 

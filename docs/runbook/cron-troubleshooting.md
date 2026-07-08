@@ -50,7 +50,7 @@ crontab -l
 # AutoMedia 每日定时任务
 0 8 * * * cd /mnt/d/AutoMedia && automedia cron run hot-collection >> /var/log/automedia/cron.log 2>&1
 5 8 * * * cd /mnt/d/AutoMedia && automedia cron run semantic-audit >> /var/log/automedia/cron.log 2>&1
-30 8 * * * cd /mnt/d/AutoMedia && automedia cron run topic-push >> /var/log/automedia/cron.log 2>&1
+30 8 * * * cd /mnt/d/AutoMedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
 30 9 * * * cd /mnt/d/AutoMedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
 ```
 
@@ -167,6 +167,6 @@ crontab /path/to/backup/crontab.txt
 # AutoMedia 每日定时任务
 0 8 * * * cd /mnt/d/AutoMedia && automedia cron run pool-collect >> /var/log/automedia/cron.log 2>&1
 5 8 * * * cd /mnt/d/AutoMedia && automedia cron run pool-score >> /var/log/automedia/cron.log 2>&1
-30 8 * * * cd /mnt/d/AutoMedia && automedia cron run topic-push >> /var/log/automedia/cron.log 2>&1
+30 8 * * * cd /mnt/d/AutoMedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
 30 9 * * * cd /mnt/d/AutoMedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
 ```

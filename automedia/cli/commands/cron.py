@@ -26,6 +26,7 @@ _KNOWN_JOBS: dict[str, str] = {
     "pool-score": "Score and rank pool topics.",
     "pool-prune": "Prune stale pool entries.",
     "publish-check": "Check for unpublished ready content.",
+    "watchdog": "Run the 4-step system health check (alias for check-health).",
 }
 
 _DEFAULT_DB = Path(".automedia") / "pool.db"
@@ -57,6 +58,7 @@ def cron_run(
         "pool-score": _job_pool_score,
         "pool-prune": _job_pool_prune,
         "publish-check": _job_publish_check,
+        "watchdog": _job_watchdog,
     }
 
     try:
@@ -195,6 +197,11 @@ def _job_publish_check() -> None:
             typer.echo("  [publish-check] No projects pending publish.")
     finally:
         db.close()
+
+
+def _job_watchdog() -> None:
+    """Delegate to the check-health command handler."""
+    cron_check_health()
 
 
 # ---------------------------------------------------------------------------
