@@ -453,45 +453,97 @@ def register_platform_adapter(
     platform_name: str,
     adapter_class: str = "",
 ) -> dict[str, Any]:
-    """Register a platform adapter (stub).
+    """Register a platform adapter (stub — PRD-1 NG6).
 
-    This is a placeholder that records the intent to register an
-    adapter.  Full implementation requires the adapter class to be
-    importable at runtime.
+    ------------------------------------------------------------------
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  STUB NOTICE: Per PRD-1 NG6, no new content production          ║
+    ║  platforms are added in this phase.  This function serves as    ║
+    ║  a **validated placeholder** that records the intent to         ║
+    ║  register an adapter, but does *not* wire up real platform      ║
+    ║  connectivity.                                                  ║
+    ║                                                                ║
+    ║  Future implementation path:                                     ║
+    ║  1. Create a concrete adapter class in a new module under        ║
+    ║     ``automedia/adapters/`` (e.g. ``wechat.py``).               ║
+    ║  2. The class should inherit from a base adapter protocol        ║
+    ║     (defined elsewhere) and implement ``publish()``.             ║
+    ║  3. Call this function with the dotted path to that class.       ║
+    ║  4. The dynamic import below will register it with               ║
+    ║     ``AdapterRegistry`` for downstream use.                     ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    ------------------------------------------------------------------
 
     Parameters
     ----------
     platform_name:
         Platform identifier (e.g. ``"wechat"``, ``"weibo"``).
+        Must be non-empty and match ``[a-zA-Z0-9_-]+``.
     adapter_class:
-        Dotted Python path to the adapter class (optional stub).
+        Dotted Python path to the adapter class (e.g.
+        ``"automedia.adapters.wechat.WeChatAdapter"``).
+        When empty the function acts as a pure stub.
 
     Returns
     -------
     dict
-        ``{"registered": True, "platform": str}`` or stub notice.
+        With ``adapter_class``: ``{"registered": True, "platform": str,
+        "class": str}`` on success.
+        Without ``adapter_class``: ``{"registered": False, "stub": True,
+        "platform": str, "message": str, "instructions": str}``.
+        On error: ``{"registered": False, "error": str}``.
     """
+    import re
+
+    if not platform_name or not isinstance(platform_name, str):
+        return {
+            "registered": False,
+            "error": "platform_name must be a non-empty string.",
+        }
+    if not re.match(r"^[a-zA-Z0-9_-]+$", platform_name):
+        return {
+            "registered": False,
+            "error": (
+                f"Invalid platform_name {platform_name!r}. "
+                f"Use only letters, digits, underscores, and hyphens."
+            ),
+        }
+
     try:
         from automedia.adapters.registry import AdapterRegistry
 
         if adapter_class:
-            # Attempt dynamic import
             module_path, _, class_name = adapter_class.rpartition(".")
             if not module_path:
-                return {"registered": False, "error": f"Invalid adapter_class: {adapter_class!r}"}
+                return {
+                    "registered": False,
+                    "error": (
+                        f"Invalid adapter_class {adapter_class!r}: "
+                        f"must be a dotted path (e.g. 'pkg.mod.ClassName')."
+                    ),
+                }
             mod = importlib.import_module(module_path)
             cls = getattr(mod, class_name)
             AdapterRegistry.register(cls)
             return {"registered": True, "platform": platform_name, "class": adapter_class}
 
-        # Stub mode — just acknowledge
         return {
             "registered": False,
             "platform": platform_name,
             "stub": True,
             "message": (
                 f"Stub: adapter for {platform_name!r} acknowledged. "
-                f"Provide adapter_class to fully register."
+                f"Provide a dotted ``adapter_class`` path to fully register."
+            ),
+            "instructions": (
+                f"To implement the {platform_name!r} adapter:\n"
+                f"  1. Create automedia/adapters/{platform_name}.py with a class\n"
+                f"     that implements the adapter protocol.\n"
+                f"  2. Call register_platform_adapter(\n"
+                f"       platform_name={platform_name!r},\n"
+                f"       adapter_class='automedia.adapters.{platform_name}.<ClassName>',\n"
+                f"     )\n"
+                f"  3. The adapter will be registered with AdapterRegistry."
             ),
         }
 
