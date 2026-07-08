@@ -1,0 +1,13 @@
+# Regression test: Layer 3 — user-level brand profile
+# Adds brand configuration not present in defaults or project config.
+# All values are sanitized — no real brand data.
+brand:
+  name: RegressionBrand
+  industry: AI content production
+  tone: professional
+  cta_principles:
+    - Include clear call-to-action in every piece
+    - Use action verbs: 立即体验, 免费试用
+  blocked_words:
+    - competitor_x
+    - competitor_y
