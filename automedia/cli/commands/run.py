@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from automedia.pipelines.runner import run_full_pipeline
+
+_MODEL_CONFIG_PATH = Path.home() / ".automedia" / "model_config.yaml"
 
 
 def run_cmd(
@@ -28,6 +32,15 @@ def run_cmd(
     ),
 ) -> None:
     """Run the full AutoMedia pipeline for a given topic and brand."""
+    if not _MODEL_CONFIG_PATH.is_file():
+        typer.secho(
+            f"Model config not found: {_MODEL_CONFIG_PATH}\n"
+            "Run 'automedia init' first to create it.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
     typer.echo(f"Starting pipeline: topic={topic!r}  brand={brand!r}  mode={mode}")
     if resume_from:
         typer.echo(f"Resuming from gate: {resume_from}")

@@ -52,3 +52,40 @@ def tmp_project(tmp_path: Path) -> dict[str, Any]:
         "project_dir": str(project_dir),
         "project_id": project_id,
     }
+
+
+@pytest.fixture()
+def tmp_project_with_assets(tmp_path: Path) -> dict[str, Any]:
+    """Create a project with asset files in standard subdirs."""
+    project_id = "assets123test"
+    slug = "asset-topic"
+    project_dir = tmp_path / f"20260708_{slug}"
+    project_dir.mkdir(parents=True)
+
+    info = {
+        "project_id": project_id,
+        "topic": "Asset Topic",
+        "brand": "AssetBrand",
+        "tenant_id": "default",
+        "created_at": "2026-07-08T00:00:00+00:00",
+    }
+    (project_dir / "00_project_info.json").write_text(
+        json.dumps(info, indent=2), encoding="utf-8"
+    )
+
+    (project_dir / "01_content" / "drafts").mkdir(parents=True)
+    (project_dir / "01_content" / "drafts" / "article.md").write_text("# Draft")
+    (project_dir / "02_images" / "cover").mkdir(parents=True)
+    (project_dir / "02_images" / "cover" / "cover.png").write_bytes(b"\x89PNG")
+    (project_dir / "03_video").mkdir(parents=True)
+    (project_dir / "03_video" / "final.mp4").write_bytes(b"\x00\x00mp4")
+    (project_dir / "04_subtitle").mkdir(parents=True)
+    (project_dir / "04_subtitle" / "subs.srt").write_text("1\n00:00:00 --> 00:00:05\nHi\n")
+    (project_dir / "05_review").mkdir(parents=True)
+    (project_dir / "06_publish").mkdir(parents=True)
+
+    return {
+        "base_dir": str(tmp_path),
+        "project_dir": str(project_dir),
+        "project_id": project_id,
+    }

@@ -12,6 +12,15 @@ app = typer.Typer(name="projects", help="List and inspect media projects.")
 
 _PROJECT_GLOB = "*/00_project_info.json"
 
+_ASSET_SUBDIRS = (
+    "01_content",
+    "02_images",
+    "03_video",
+    "04_subtitle",
+    "05_review",
+    "06_publish",
+)
+
 
 def _discover_projects(base_dir: str) -> list[dict[str, str]]:
     """Scan *base_dir* for project info JSON files and return their contents."""
@@ -86,3 +95,50 @@ def projects_get(
 
     proj = match[0]
     typer.echo(json.dumps(proj, indent=2, ensure_ascii=False))
+
+
+# ---------------------------------------------------------------------------
+# projects get-assets
+# ---------------------------------------------------------------------------
+
+
+def _collect_assets(project_dir: Path) -> list[dict[str, str]]:
+    assets: list[dict[str, str]] = []
+    for subdir_name in _ASSET_SUBDIRS:
+        subdir = project_dir / subdir_name
+        if not subdir.is_dir():
+            continue
+        for fpath in sorted(subdir.rglob("*")):
+            if fpath.is_file():
+                assets.append({
+                    "path": str(fpath),
+                    "name": fpath.name,
+                    "subdir": subdir_name,
+                    "size": str(fpath.stat().st_size),
+                })
+    return assets
+
+
+@app.command("get-assets")
+def projects_get_assets(
+    project_id: str = typer.Argument(..., help="Project ID to list assets for."),
+    base_dir: str = typer.Option(
+        ".", "--base-dir", "-d", help="Base directory to scan for projects."
+    ),
+) -> None:
+    """Return a JSON list of asset files for a project."""
+    try:
+        projects = _discover_projects(base_dir)
+    except Exception as exc:
+        typer.secho(f"Error scanning projects: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    match = [p for p in projects if p.get("project_id") == project_id]
+    if not match:
+        typer.secho(f"Project {project_id!r} not found.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    proj = match[0]
+    project_dir = Path(proj["_dir"])
+    assets = _collect_assets(project_dir)
+    typer.echo(json.dumps(assets, indent=2, ensure_ascii=False))
