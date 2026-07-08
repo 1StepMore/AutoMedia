@@ -1,0 +1,46 @@
+# AutoMedia MCP Server — systemd service unit
+#
+# Installation:
+#   sudo cp deploy/systemd/automedia-mcp.service /etc/systemd/system/
+#   sudo cp deploy/systemd/automedia-mcp.env  /etc/automedia/automedia-mcp.env
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable automedia-mcp
+#   sudo systemctl start  automedia-mcp
+#
+# See docs/mcp-systemd-setup.md for full instructions.
+
+[Unit]
+Description=AutoMedia MCP Server — Model Context Protocol stdio server
+Documentation=https://github.com/your-org/automedia
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Path to the Python environment where AutoMedia is installed.
+# Adjust to match your deployment — examples:
+#   /usr/local/bin/python          (system pip install)
+#   /home/automedia/.venv/bin/python   (virtualenv)
+#   /opt/automedia/.venv/bin/python
+ExecStart=python -m automedia.mcp.server
+
+# Working directory — used for relative-path resolution (allowlist, etc.).
+# Set this to the AutoMedia project root or the CWD you want the server to run in.
+WorkingDirectory=/opt/automedia
+
+# Environment variables are loaded from the companion env file.
+EnvironmentFile=/etc/automedia/automedia-mcp.env
+
+# Restart behaviour — the server should be kept alive.
+Restart=on-failure
+RestartSec=5
+
+# Security hardening (recommended, adjust as needed).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
