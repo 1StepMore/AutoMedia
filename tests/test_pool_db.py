@@ -32,6 +32,12 @@ def pool(db_path: str) -> PoolDB:
     return PoolDB(db_path)
 
 
+@pytest.fixture
+def tmp_pool_db(pool: PoolDB) -> PoolDB:
+    """Alias for pool fixture — used in update/delete/count tests."""
+    return pool
+
+
 # ===================================================================
 # Tests
 # ===================================================================
@@ -158,3 +164,72 @@ class TestPoolDBContextManager:
             assert row is not None
         # After exit the internal connection is closed
         assert pool._conn is None
+
+
+class TestPoolDBUpdateScore:
+    """update_score() — set score on a topic."""
+
+    def test_update_score_changes_value(self, tmp_pool_db: PoolDB) -> None:
+        tid = tmp_pool_db.add_topic({"title": "Score Me", "score": 0.0})
+        tmp_pool_db.update_score(tid, 9.5)
+        row = tmp_pool_db.get_topic(tid)
+        assert row is not None
+        assert row["score"] == 9.5
+
+    def test_update_score_returns_none_for_invalid_id(self, tmp_pool_db: PoolDB) -> None:
+        tmp_pool_db.update_score(99999, 5.0)
+
+
+class TestPoolDBDeleteTopics:
+    """delete_topics() — remove topics by ID list."""
+
+    def test_delete_single_topic(self, tmp_pool_db: PoolDB) -> None:
+        tid = tmp_pool_db.add_topic({"title": "Delete Me"})
+        assert tmp_pool_db.get_topic(tid) is not None
+        deleted = tmp_pool_db.delete_topics([tid])
+        assert deleted == 1
+        assert tmp_pool_db.get_topic(tid) is None
+
+    def test_delete_multiple_topics(self, tmp_pool_db: PoolDB) -> None:
+        ids = [
+            tmp_pool_db.add_topic({"title": f"Item {i}"})
+            for i in range(5)
+        ]
+        to_delete = ids[:3]
+        deleted = tmp_pool_db.delete_topics(to_delete)
+        assert deleted == 3
+        remaining = tmp_pool_db.list_topics()
+        assert len(remaining) == 2
+
+    def test_delete_empty_list_returns_zero(self, tmp_pool_db: PoolDB) -> None:
+        assert tmp_pool_db.delete_topics([]) == 0
+
+    def test_delete_nonexistent_id_returns_zero(self, tmp_pool_db: PoolDB) -> None:
+        assert tmp_pool_db.delete_topics([9999]) == 0
+
+
+class TestPoolDBCountTopics:
+    """count_topics() — total or filtered count."""
+
+    def test_count_all_topics(self, tmp_pool_db: PoolDB) -> None:
+        tmp_pool_db.add_topic({"title": "A"})
+        tmp_pool_db.add_topic({"title": "B"})
+        tmp_pool_db.add_topic({"title": "C"})
+        assert tmp_pool_db.count_topics() == 3
+
+    def test_count_by_status(self, tmp_pool_db: PoolDB) -> None:
+        tmp_pool_db.add_topic({"title": "P1", "status": "pending"})
+        tmp_pool_db.add_topic({"title": "P2", "status": "pending"})
+        tmp_pool_db.add_topic({"title": "S1", "status": "selected"})
+        assert tmp_pool_db.count_topics(status="pending") == 2
+        assert tmp_pool_db.count_topics(status="selected") == 1
+
+    def test_count_empty_db_returns_zero(self, tmp_pool_db: PoolDB) -> None:
+        assert tmp_pool_db.count_topics() == 0
+        assert tmp_pool_db.count_topics(status="pending") == 0
+
+    def test_count_with_topic_after_delete(self, tmp_pool_db: PoolDB) -> None:
+        tid = tmp_pool_db.add_topic({"title": "Temporary"})
+        assert tmp_pool_db.count_topics() == 1
+        tmp_pool_db.delete_topics([tid])
+        assert tmp_pool_db.count_topics() == 0

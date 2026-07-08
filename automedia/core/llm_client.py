@@ -28,16 +28,22 @@ class LLMError(Exception):
 # ---------------------------------------------------------------------------
 
 
-def _build_client(config: dict[str, Any]) -> OpenAI:
+def _build_client(
+    config: dict[str, Any],
+    task_type: str = "text_generation",
+) -> OpenAI:
     """Build an ``openai.OpenAI`` client from *config*.
 
-    Reads ``llm.text_generation`` from *config* and resolves the API key
+    Reads ``llm.<task_type>`` from *config* and resolves the API key
     via :func:`~automedia.core.credential_loader.resolve_api_key`.
 
     Parameters
     ----------
     config:
         The merged AutoMedia configuration dict.
+    task_type:
+        Config section to read (e.g. ``text_generation``, ``vision``,
+        ``subtitle_proofread``).  Defaults to ``text_generation``.
 
     Returns
     -------
@@ -58,7 +64,7 @@ def _build_client(config: dict[str, Any]) -> OpenAI:
             "Install it with: pip install automedia[openai]"
         ) from None
 
-    llm_cfg: dict[str, Any] = config.get("llm", {}).get("text_generation", {})
+    llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
     provider: str = llm_cfg.get("provider", "") or ""
     api_key: str = llm_cfg.get("api_key", "") or ""
 
@@ -97,6 +103,7 @@ def llm_complete(
     model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    task_type: str = "text_generation",
 ) -> str:
     """Send a chat-completion request and return the response text.
 
@@ -115,6 +122,10 @@ def llm_complete(
         Sampling temperature override (default: read from config).
     max_tokens:
         Max output token override (default: read from config).
+    task_type:
+        Config section under ``llm`` to read (e.g. ``text_generation``,
+        ``vision``, ``subtitle_proofread``).  Defaults to
+        ``text_generation``.
 
     Returns
     -------
@@ -132,10 +143,15 @@ def llm_complete(
 
         config = load_config()
 
-    llm_cfg: dict[str, Any] = config.get("llm", {}).get("text_generation", {})
-    client = _build_client(config)
+    llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
+    client = _build_client(config, task_type=task_type)
 
-    resolved_model: str = model or llm_cfg.get("model", "") or "gpt-4o"
+    resolved_model: str = model or llm_cfg.get("model", "")
+    if not resolved_model:
+        raise LLMError(
+            f"No model configured in llm.{task_type}.model. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+        )
     resolved_temp: float = temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
     resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 2048)
 
@@ -168,6 +184,7 @@ def llm_complete_structured(
     model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    task_type: str = "text_generation",
 ) -> Any:
     """Send a chat-completion request with structured output (JSON schema).
 
@@ -191,6 +208,10 @@ def llm_complete_structured(
         Sampling temperature override.
     max_tokens:
         Max output token override.
+    task_type:
+        Config section under ``llm`` to read (e.g. ``text_generation``,
+        ``vision``, ``subtitle_proofread``).  Defaults to
+        ``text_generation``.
 
     Returns
     -------
@@ -207,10 +228,15 @@ def llm_complete_structured(
 
         config = load_config()
 
-    llm_cfg = config.get("llm", {}).get("text_generation", {})
-    client = _build_client(config)
+    llm_cfg = config.get("llm", {}).get(task_type, {})
+    client = _build_client(config, task_type=task_type)
 
-    resolved_model: str = model or llm_cfg.get("model", "") or "gpt-4o-mini"
+    resolved_model: str = model or llm_cfg.get("model", "")
+    if not resolved_model:
+        raise LLMError(
+            f"No model configured for structured output in llm.{task_type}.model. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+        )
     resolved_temp: float = temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
     resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
 
