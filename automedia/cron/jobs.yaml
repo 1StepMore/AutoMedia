@@ -21,43 +21,43 @@ jobs:
   # ---------------------------------------------------------------------------
   - name: hot-collection
     schedule: "0 8 * * *"
-    command: "automedia collect hot"
+    command: "automedia cron run pool-collect"
     depends_on: ~
-    on_failure: retry
+    on_failure: log
     timeout_s: 600
-    description: "每日 08:00 采集各平台热点数据, 包括微博热搜、知乎热榜、百度风云榜等"
+    description: "每日 08:00 采集各平台热点数据进 pool.db"
 
   # ---------------------------------------------------------------------------
-  # Job 2: 语义审核
+  # Job 2: 语义审核/评分
   # ---------------------------------------------------------------------------
   - name: semantic-audit
     schedule: "5 8 * * *"
-    command: "automedia audit semantic"
+    command: "automedia cron run pool-score"
     depends_on:
       - hot-collection
-    on_failure: stop
+    on_failure: log
     timeout_s: 300
-    description: "每日 08:05 对采集的热点进行语义审核与敏感内容过滤, 依赖 hot-collection"
+    description: "每日 08:05 对 pool 中的话题评分排序, 依赖 hot-collection"
 
   # ---------------------------------------------------------------------------
-  # Job 3: 话题推送
+  # Job 3: 发布检查
   # ---------------------------------------------------------------------------
-  - name: topic-push
+  - name: publish-check
     schedule: "30 8 * * *"
-    command: "automedia push topic --top 6"
+    command: "automedia cron run publish-check"
     depends_on:
       - semantic-audit
-    on_failure: skip
+    on_failure: log
     timeout_s: 120
-    description: "每日 08:30 推送 TOP6 精选话题到各分发平台, 依赖 semantic-audit"
+    description: "每日 08:30 检查是否有待发布内容, 依赖 semantic-audit"
 
   # ---------------------------------------------------------------------------
   # Job 4: 健康检查
   # ---------------------------------------------------------------------------
   - name: watchdog
     schedule: "30 9 * * *"
-    command: "automedia health --check all"
+    command: "automedia cron check-health"
     depends_on: ~
-    on_failure: retry
+    on_failure: log
     timeout_s: 60
-    description: "每日 09:30 执行全系统健康检查, 包括各服务状态、磁盘用量、日志告警等"
+    description: "每日 09:30 执行全系统健康检查"

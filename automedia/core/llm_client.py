@@ -6,11 +6,12 @@ Config is read from the merged AutoMedia config dict at call time.
 
 from __future__ import annotations
 
-from typing import Any
-
-from openai import OpenAI
+from typing import TYPE_CHECKING, Any
 
 from automedia.core.credential_loader import resolve_api_key
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +49,15 @@ def _build_client(config: dict[str, Any]) -> OpenAI:
     LLMError
         If no API key can be resolved.
     """
+    # Lazy import: openai is an optional dependency
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError(
+            "The 'openai' extra is required to use the OpenAI provider. "
+            "Install it with: pip install automedia[openai]"
+        ) from None
+
     llm_cfg: dict[str, Any] = config.get("llm", {}).get("text_generation", {})
     provider: str = llm_cfg.get("provider", "") or ""
     api_key: str = llm_cfg.get("api_key", "") or ""

@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -200,7 +198,7 @@ class TestServerCreation:
             "get_project_assets",
             "archive_project",
             "list_topic_pool",
-            "register_omni_adapter",
+            "register_platform_adapter",
         ])
         assert tool_names == expected
 
@@ -215,7 +213,7 @@ class TestSelectTopic:
 
     def test_select_topic_empty_pool(self) -> None:
         """Returns error when no pending topics exist."""
-        server = create_server()
+        create_server()
         # Call the underlying function directly
         from automedia.mcp.server import select_topic
         result = select_topic()
@@ -456,25 +454,25 @@ class TestListTopicPool:
 
 
 # ---------------------------------------------------------------------------
-# Tool: register_omni_adapter
+# Tool: register_platform_adapter
 # ---------------------------------------------------------------------------
 
 
-class TestRegisterOmniAdapter:
-    """Tests for the register_omni_adapter tool."""
+class TestRegisterPlatformAdapter:
+    """Tests for the register_platform_adapter tool."""
 
     def test_stub_mode(self) -> None:
         """Without adapter_class returns stub notice."""
-        from automedia.mcp.server import register_omni_adapter
-        result = register_omni_adapter(platform_name="test_platform")
+        from automedia.mcp.server import register_platform_adapter
+        result = register_platform_adapter(platform_name="test_platform")
         assert result["registered"] is False
         assert result["stub"] is True
         assert "test_platform" in result["message"]
 
     def test_invalid_class_path(self) -> None:
         """Invalid adapter_class returns error."""
-        from automedia.mcp.server import register_omni_adapter
-        result = register_omni_adapter(
+        from automedia.mcp.server import register_platform_adapter
+        result = register_platform_adapter(
             platform_name="bad_platform",
             adapter_class="not.a.valid.path",
         )

@@ -62,7 +62,6 @@
 #### 文档
 
 - **开发者指南** (`docs/developer-guide.md`)
-- **迁移指南** (`docs/migration-guide.md`)
 - **API 参考** (`docs/api-reference.md`)
 - **CLI 参考** (`docs/cli-reference.md`)
 - **MCP 设置指南** (`docs/mcp-setup.md`)
