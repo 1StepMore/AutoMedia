@@ -7,7 +7,9 @@ each pipeline mode.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -19,6 +21,16 @@ from automedia.pipelines.runner import (
     _TEXT_ONLY_GATE_NAMES,
     _VIDEO_ONLY_GATE_NAMES,
 )
+
+
+@pytest.fixture(autouse=True)
+def _mock_llm_for_content_writer():
+    """ContentWriterGate calls llm_complete; patch it so E2E tests stay offline."""
+    with patch(
+        "automedia.gates.content_writer.llm_complete",
+        return_value="# Mock Article\n\nSynthetic content for testing.",
+    ):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +102,7 @@ def _build_full_context(
     sample_topic: str,
     sample_brand_profile: dict[str, Any],
     mock_results: dict[str, dict[str, Any]] | None = None,
+    project_dir: str = "/tmp/test_project",
 ) -> dict[str, Any]:
     """Build a mega-context that satisfies every gate's expected keys."""
     if mock_results is None:
@@ -97,6 +110,7 @@ def _build_full_context(
     return {
         # Shared
         "topic": sample_topic,
+        "project_dir": project_dir,
         "content": (
             "TestBrand delivers AI内容生产 solutions. "
             "立即体验 our platform for free. "
@@ -211,11 +225,14 @@ class TestFullPipeline:
         self,
         sample_topic: str,
         sample_brand_profile: dict[str, Any],
+        tmp_path: Path,
     ) -> None:
         """GateEngine runs all 18 gates in auto mode with mock → success."""
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(sample_topic, sample_brand_profile)
+        ctx = _build_full_context(
+            sample_topic, sample_brand_profile, project_dir=str(tmp_path)
+        )
 
         success, results = engine.run(ctx)
 
@@ -233,6 +250,7 @@ class TestFullPipeline:
         self,
         sample_topic: str,
         sample_brand_profile: dict[str, Any],
+        tmp_path: Path,
     ) -> None:
         """G3 (failure_mode='stop') fails → pipeline stops immediately."""
         mock_results = _build_mock_results()
@@ -241,7 +259,9 @@ class TestFullPipeline:
 
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(sample_topic, sample_brand_profile, mock_results)
+        ctx = _build_full_context(
+            sample_topic, sample_brand_profile, mock_results, project_dir=str(tmp_path)
+        )
 
         success, results = engine.run(ctx)
 
@@ -260,6 +280,7 @@ class TestFullPipeline:
         self,
         sample_topic: str,
         sample_brand_profile: dict[str, Any],
+        tmp_path: Path,
     ) -> None:
         """G1 (failure_mode='rewrite') fails → pipeline continues to next gate."""
         mock_results = _build_mock_results()
@@ -268,7 +289,9 @@ class TestFullPipeline:
 
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(sample_topic, sample_brand_profile, mock_results)
+        ctx = _build_full_context(
+            sample_topic, sample_brand_profile, mock_results, project_dir=str(tmp_path)
+        )
 
         success, results = engine.run(ctx)
 
@@ -290,11 +313,14 @@ class TestFullPipeline:
         self,
         sample_topic: str,
         sample_brand_profile: dict[str, Any],
+        tmp_path: Path,
     ) -> None:
         """text_only mode runs only G0-G5 + L1-L3 (9 gates)."""
         gates = _build_gates(_TEXT_ONLY_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(sample_topic, sample_brand_profile)
+        ctx = _build_full_context(
+            sample_topic, sample_brand_profile, project_dir=str(tmp_path)
+        )
 
         success, results = engine.run(ctx)
 

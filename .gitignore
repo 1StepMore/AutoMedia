@@ -66,9 +66,11 @@ production_metrics.json
 .DS_Store
 Thumbs.db
 
-# ===== Test Fixtures (exempt / ignore) =====
-tests/fixtures/synth/
+# ===== Test Fixtures (synth allowed; real data blocked) =====
+!tests/fixtures/synth/
 tests/fixtures/synth/**/real_*
+tests/fixtures/synth/**/credential*
+tests/fixtures/synth/**/api_key*
 
 # ===== Binary / Model Files =====
 *.bin

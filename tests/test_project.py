@@ -123,9 +123,9 @@ class TestProjectInit:
             "01_content/drafts",
             "02_images/cover",
             "03_video",
-            "03_subtitle",
-            "04_review",
-            "05_publish",
+            "04_subtitle",
+            "05_review",
+            "06_publish",
         ]
         for sub in expected:
             assert (root / sub).is_dir(), f"Missing subdirectory: {sub}"

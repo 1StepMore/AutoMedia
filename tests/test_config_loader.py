@@ -17,6 +17,15 @@ from automedia.core.config_loader import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _clear_automedia_env_vars(monkeypatch):
+    """Remove AUTOMEDIA_* env vars loaded from .env so config tests are isolated."""
+    original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
+    for k in original:
+        monkeypatch.delenv(k, raising=False)
+    yield
+
+
 # ---------------------------------------------------------------------------
 # deep_merge
 # ---------------------------------------------------------------------------
@@ -158,6 +167,14 @@ class TestLoadJ2Dir:
 
 
 class TestEnvToConfig:
+    @pytest.fixture(autouse=True)
+    def _clear_automedia_env(self, monkeypatch):
+        """Clear existing AUTOMEDIA_* env vars so tests run in a clean environment."""
+        original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
+        for k in original:
+            monkeypatch.delenv(k, raising=False)
+        yield
+
     def test_basic_mapping(self, monkeypatch):
         monkeypatch.setenv("AUTOMEDIA_FOO", "bar")
         result = _env_to_config()
@@ -166,7 +183,7 @@ class TestEnvToConfig:
     def test_nested_mapping(self, monkeypatch):
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-test")
         result = _env_to_config()
-        assert result == {"llm": {"api": {"key": "sk-test"}}}
+        assert result == {"llm": {"text_generation": {"api_key": "sk-test"}}}
 
     def test_ignores_non_prefix_vars(self, monkeypatch):
         monkeypatch.setenv("HOME", "/tmp")
@@ -327,14 +344,14 @@ class TestLoadConfig:
     # -- Env var mapping tests ------------------------------------------------
 
     def test_env_var_nested_mapping(self, tmp_path, monkeypatch):
-        """AUTOMEDIA_LLM_API_KEY maps to config["llm"]["api"]["key"]."""
+        """AUTOMEDIA_LLM_API_KEY maps to config["llm"]["text_generation"]["api_key"]."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(
             os.path, "expanduser", lambda p: str(home) if p == "~" else p
         )
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-secret")
         config = load_config(config_dir=str(project))
-        assert config["llm"]["api"]["key"] == "sk-secret"
+        assert config["llm"]["text_generation"]["api_key"] == "sk-secret"
 
     def test_env_var_adds_nested_key(self, tmp_path, monkeypatch):
         """Env var creates new nested keys that coexist with defaults."""
@@ -344,7 +361,7 @@ class TestLoadConfig:
         )
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-new")
         config = load_config(config_dir=str(project))
-        assert config["llm"]["api"]["key"] == "sk-new"
+        assert config["llm"]["text_generation"]["api_key"] == "sk-new"
         assert config["llm"]["text_generation"]["model"] == ""
 
     # -- Full 6-layer merge ---------------------------------------------------
