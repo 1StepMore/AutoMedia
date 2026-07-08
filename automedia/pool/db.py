@@ -168,6 +168,39 @@ class PoolDB:
         )
         self.conn.commit()
 
+    def update_score(self, topic_id: int, score: float) -> None:
+        """Update a topic's score."""
+        self.conn.execute(
+            "UPDATE topics SET score = ?, updated_at = datetime('now') WHERE id = ?",
+            (score, topic_id),
+        )
+        self.conn.commit()
+
+    def delete_topics(self, topic_ids: list[int]) -> int:
+        """Delete topics by their IDs.  Returns the number of rows removed."""
+        if not topic_ids:
+            return 0
+        placeholders = ",".join("?" for _ in topic_ids)
+        cur = self.conn.execute(
+            f"DELETE FROM topics WHERE id IN ({placeholders})",  # noqa: S608
+            topic_ids,
+        )
+        self.conn.commit()
+        assert cur.rowcount is not None
+        return cur.rowcount
+
+    def count_topics(self, status: str | None = None) -> int:
+        """Return the number of topics, optionally filtered by *status*."""
+        if status:
+            cur = self.conn.execute(
+                "SELECT COUNT(*) FROM topics WHERE status = ?", (status,)
+            )
+        else:
+            cur = self.conn.execute("SELECT COUNT(*) FROM topics")
+        row = cur.fetchone()
+        assert row is not None
+        return row[0]
+
     # -- Context manager ------------------------------------------------------
 
     def __enter__(self) -> "PoolDB":

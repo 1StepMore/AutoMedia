@@ -97,6 +97,16 @@ class TestRunCommand:
         result = runner.invoke(app, ["run"])
         assert result.exit_code != 0
 
+    def test_run_missing_model_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        import automedia.cli.commands.run as run_mod
+
+        monkeypatch.setattr(run_mod, "_MODEL_CONFIG_PATH", tmp_path / ".automedia" / "model_config.yaml")
+
+        result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b"])
+        assert result.exit_code == 1
+        assert "automedia init" in result.output
+
 
 # =========================================================================
 # 3. automedia pool
@@ -136,6 +146,30 @@ class TestPoolCommand:
         assert result.exit_code == 0
         assert "Pruned" in result.output
 
+    def test_pool_prune_by_status(self, tmp_pool_db: Path) -> None:
+        runner.invoke(app, ["pool", "add", "--topic", "Rej1", "--db", str(tmp_pool_db)])
+        runner.invoke(app, ["pool", "add", "--topic", "Pend1", "--db", str(tmp_pool_db)])
+
+        from automedia.pool.db import PoolDB
+
+        db = PoolDB(tmp_pool_db)
+        db.conn.execute(
+            "UPDATE topics SET status = 'rejected' WHERE title = 'Rej1'"
+        )
+        db.conn.commit()
+        db.close()
+
+        result = runner.invoke(app, [
+            "pool", "prune", "--status", "rejected", "--days", "0", "--db", str(tmp_pool_db),
+        ])
+        assert result.exit_code == 0
+        assert "Pruned 1" in result.output
+        assert "(rejected)" in result.output
+
+        remaining = runner.invoke(app, ["pool", "list", "--db", str(tmp_pool_db)])
+        assert "Pend1" in remaining.output
+        assert "Rej1" not in remaining.output
+
 
 # =========================================================================
 # 4. automedia projects
@@ -162,6 +196,27 @@ class TestProjectsCommand:
 
     def test_projects_get_not_found(self, tmp_project: dict[str, Any]) -> None:
         result = runner.invoke(app, ["projects", "get", "nonexistent", "--base-dir", tmp_project["base_dir"]])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_projects_get_assets(self, tmp_project_with_assets: dict[str, Any]) -> None:
+        result = runner.invoke(app, [
+            "projects", "get-assets", tmp_project_with_assets["project_id"],
+            "--base-dir", tmp_project_with_assets["base_dir"],
+        ])
+        assert result.exit_code == 0
+        assets = json.loads(result.output)
+        assert isinstance(assets, list)
+        names = {a["name"] for a in assets}
+        assert "article.md" in names
+        assert "cover.png" in names
+        assert "final.mp4" in names
+        assert "subs.srt" in names
+
+    def test_projects_get_assets_not_found(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, [
+            "projects", "get-assets", "nonexistent", "--base-dir", str(tmp_path),
+        ])
         assert result.exit_code == 1
         assert "not found" in result.output
 

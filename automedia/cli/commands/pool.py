@@ -83,17 +83,30 @@ def pool_add(
 
 @app.command("prune")
 def pool_prune(
+    status: str | None = typer.Option(
+        None,
+        "--status",
+        "-s",
+        help="Only prune topics with this status (e.g. rejected, pending). "
+        "Omit to prune all statuses.",
+    ),
     days: int = typer.Option(7, "--days", "-d", help="Remove topics older than N days."),
     db_path: str | None = typer.Option(None, "--db", help="Path to pool SQLite file."),
 ) -> None:
-    """Remove stale topics older than *days* days."""
+    """Remove stale topics older than *days* days, optionally filtered by status."""
     try:
         db = _get_db(db_path)
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-        cur = db.conn.execute(
-            "DELETE FROM topics WHERE created_at < ? AND status = 'pending'",
-            (cutoff,),
-        )
+        if status:
+            cur = db.conn.execute(
+                "DELETE FROM topics WHERE created_at < ? AND status = ?",
+                (cutoff, status),
+            )
+        else:
+            cur = db.conn.execute(
+                "DELETE FROM topics WHERE created_at < ?",
+                (cutoff,),
+            )
         db.conn.commit()
         removed = cur.rowcount
         db.close()
@@ -101,4 +114,5 @@ def pool_prune(
         typer.secho(f"Error pruning pool: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
-    typer.echo(f"Pruned {removed} pending topic(s) older than {days} day(s).")
+    status_label = f" ({status})" if status else ""
+    typer.echo(f"Pruned {removed} topic(s){status_label} older than {days} day(s).")

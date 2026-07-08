@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Callable
 
 import typer
+
+from automedia.pool.collector import HotCollector
+from automedia.pool.db import PoolDB
+from automedia.pool.dedup import TopicDeduplicator
+from automedia.pool.scorer import TopicScorer
 
 app = typer.Typer(name="cron", help="Run scheduled jobs and health checks.")
 
@@ -19,6 +27,8 @@ _KNOWN_JOBS: dict[str, str] = {
     "pool-prune": "Prune stale pool entries.",
     "publish-check": "Check for unpublished ready content.",
 }
+
+_DEFAULT_DB = Path(".automedia") / "pool.db"
 
 
 # ---------------------------------------------------------------------------
@@ -58,28 +68,133 @@ def cron_run(
     typer.secho(f"Job {job_name!r} completed.", fg=typer.colors.GREEN)
 
 
-def _job_pool_collect() -> None:
-    """Stub: collect topics from external sources."""
-    typer.echo("  [pool-collect] No collectors configured — skipping.")
+# ---------------------------------------------------------------------------
+# Job: pool-collect
+# ---------------------------------------------------------------------------
 
+def _job_pool_collect() -> None:
+    """Collect hot topics from HotCollector and persist them into pool.db.
+
+    Uses :class:`TopicDeduplicator` to avoid inserting titles that already
+    exist in the pool.
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        collector = HotCollector()
+        topics = collector.collect_all()
+
+        dedup = TopicDeduplicator()
+        existing = db.list_topics()
+        existing_titles = [t["title"] for t in existing]
+
+        inserted = 0
+        skipped = 0
+        for t in topics:
+            if dedup.is_duplicate(t["title"], existing_titles):
+                skipped += 1
+                continue
+            db.add_topic({
+                "title": t["title"],
+                "url": t.get("url", ""),
+                "source": t.get("source", ""),
+                "score": t.get("heat_score", 0.0),
+                "status": "pending",
+            })
+            existing_titles.append(t["title"])
+            inserted += 1
+
+        typer.echo(f"  [pool-collect] Collected {len(topics)} topics: "
+                    f"{inserted} inserted, {skipped} dedup-skipped.")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: pool-score
+# ---------------------------------------------------------------------------
 
 def _job_pool_score() -> None:
-    """Stub: score pool topics."""
-    typer.echo("  [pool-score] Scoring not yet implemented — skipping.")
+    """Score all pending topics using :class:`TopicScorer` and update pool.db.
 
+    Growth score is stored as the primary ``score`` column value.
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        scorer = TopicScorer()
+        pending = db.list_topics(status="pending")
+
+        scored = 0
+        for t in pending:
+            # Build the topic dict expected by TopicScorer
+            score_input = {
+                "title": t["title"],
+                "heat_score": t.get("score", 0.0),
+                "collected_at": t.get("created_at", ""),
+            }
+            growth = scorer.score_growth(score_input)
+            db.update_score(t["id"], round(growth, 4))
+            scored += 1
+
+        typer.echo(f"  [pool-score] Scored {scored} pending topic(s).")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: pool-prune
+# ---------------------------------------------------------------------------
 
 def _job_pool_prune() -> None:
-    """Stub: prune old pool entries."""
-    typer.echo("  [pool-prune] Pruning not yet implemented — skipping.")
+    """Remove stale pending topics older than 7 days from pool.db."""
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        # Collect IDs of topics to prune
+        cur = db.conn.execute(
+            "SELECT id FROM topics WHERE status = 'pending' AND created_at < ?",
+            (cutoff,),
+        )
+        ids = [row[0] for row in cur.fetchall()]
+        removed = db.delete_topics(ids)
 
+        typer.echo(f"  [pool-prune] Removed {removed} stale pending topic(s).")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: publish-check
+# ---------------------------------------------------------------------------
 
 def _job_publish_check() -> None:
-    """Stub: check for content ready to publish."""
-    typer.echo("  [publish-check] No publish queue — skipping.")
+    """Scan for projects that have ``selected`` topics awaiting publish.
 
+    Reports the count of selected topics in pool.db and any project
+    directories with a ``06_publish`` sub-directory that is empty
+    (i.e. content produced but not yet published).
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        selected = db.list_topics(status="selected")
+        typer.echo(f"  [publish-check] {len(selected)} topic(s) in 'selected' status awaiting publish.")
 
-# Allow typing for handler dict
-from typing import Callable  # noqa: E402
+        # Scan for project dirs with empty 06_publish (content ready, not published)
+        ready_projects: list[str] = []
+        base = Path(".")
+        for info_file in sorted(base.glob("*/00_project_info.json")):
+            proj_dir = info_file.parent
+            publish_dir = proj_dir / "06_publish"
+            if publish_dir.is_dir() and not any(publish_dir.iterdir()):
+                ready_projects.append(proj_dir.name)
+
+        if ready_projects:
+            typer.echo(f"  [publish-check] {len(ready_projects)} project(s) with empty publish dir:")
+            for name in ready_projects:
+                typer.echo(f"    - {name}")
+        else:
+            typer.echo("  [publish-check] No projects pending publish.")
+    finally:
+        db.close()
 
 
 # ---------------------------------------------------------------------------
@@ -91,25 +206,61 @@ def cron_check_health() -> None:
     """Run a 4-step health check of the AutoMedia system."""
     checks: list[tuple[str, bool, str]] = []
 
-    # 1. Python version
-    import sys
+    # 1. Config directory exists
+    config_dir = Path(".automedia")
+    config_ok = config_dir.is_dir()
+    checks.append((".automedia/ config directory", config_ok,
+                    "exists" if config_ok else "missing"))
+
+    # 2. Pool DB accessible
+    pool_db_path = _DEFAULT_DB
+    pool_ok = False
+    pool_detail = str(pool_db_path)
+    if pool_db_path.is_file():
+        try:
+            db = PoolDB(pool_db_path)
+            db.conn.execute("SELECT COUNT(*) FROM topics")
+            pool_ok = True
+            pool_detail = f"{pool_db_path} (queryable)"
+            db.close()
+        except Exception as exc:
+            pool_detail = f"{pool_db_path} (error: {exc})"
+    checks.append(("pool.db accessible", pool_ok, pool_detail))
+
+    # 3. Core dependencies installed (python + ffmpeg minimum)
+    dep_details: list[str] = []
+    dep_ok = True
     py_ok = sys.version_info >= (3, 11)
-    checks.append(("Python >= 3.11", py_ok, f"{sys.version_info.major}.{sys.version_info.minor}"))
-
-    # 2. ffmpeg available
+    if not py_ok:
+        dep_ok = False
+    dep_details.append(f"python {sys.version_info.major}.{sys.version_info.minor}")
     ffmpeg_path = shutil.which("ffmpeg")
-    ffmpeg_ok = ffmpeg_path is not None
-    checks.append(("ffmpeg available", ffmpeg_ok, ffmpeg_path or "not found"))
+    if not ffmpeg_path:
+        dep_ok = False
+    dep_details.append(f"ffmpeg={'yes' if ffmpeg_path else 'no'}")
+    checks.append(("core dependencies", dep_ok, ", ".join(dep_details)))
 
-    # 3. Config directory exists
-    from pathlib import Path
-    config_ok = Path(".automedia").is_dir()
-    checks.append((".automedia/ directory", config_ok, "exists" if config_ok else "missing"))
-
-    # 4. Pool DB accessible
-    pool_db_path = Path(".automedia") / "pool.db"
-    pool_ok = pool_db_path.is_file()
-    checks.append(("pool.db accessible", pool_ok, str(pool_db_path)))
+    # 4. jobs.yaml valid
+    yaml_ok = False
+    yaml_detail = "not found"
+    import automedia as _am_pkg
+    _pkg_root = Path(_am_pkg.__file__).resolve().parent
+    jobs_yaml = _pkg_root / "cron" / "jobs.yaml"
+    if not jobs_yaml.is_file():
+        jobs_yaml = Path("automedia") / "cron" / "jobs.yaml"
+    if jobs_yaml.is_file():
+        try:
+            import yaml
+            with open(jobs_yaml, encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            if isinstance(data, dict) and "jobs" in data and isinstance(data["jobs"], list):
+                yaml_ok = True
+                yaml_detail = f"{len(data['jobs'])} jobs defined"
+            else:
+                yaml_detail = "missing 'jobs' key"
+        except Exception as exc:
+            yaml_detail = f"parse error: {exc}"
+    checks.append(("jobs.yaml valid", yaml_ok, yaml_detail))
 
     # Print results
     typer.echo("Health Check:")
