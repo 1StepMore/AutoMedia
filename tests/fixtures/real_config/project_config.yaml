@@ -1,0 +1,20 @@
+# Regression test: Layer 2 — project-level configuration
+# Overrides built-in defaults (Layer 1).
+# All values are sanitized — no real project data, API keys, or credentials.
+project:
+  name: RegressionTestProject
+  version: 2.0.0-test
+  description: Project-level config for regression testing
+
+llm:
+  text_generation:
+    model: gpt-4
+    temperature: 0.5
+    max_tokens: 2048
+
+paths:
+  data_dir: /tmp/regression-data
+  output_dir: /tmp/regression-output
+  cache_dir: /tmp/regression-cache
+  log_dir: /tmp/regression-logs
+  pool_db: /tmp/regression-pool.db
