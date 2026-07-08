@@ -1,8 +1,73 @@
 # AutoMedia default configuration
+# Built-in defaults — lowest priority, overridden by .automedia/, ~/.automedia/, env, and CLI flags.
+
+project:
+  name: AutoMedia
+  version: 1.0.0
+  description: Automated multi-platform content publishing system
+
+paths:
+  data_dir: ./data
+  output_dir: ./output
+  cache_dir: ./cache
+  log_dir: ./logs
+  pool_db: ./data/pool.db
+
 llm:
   text_generation:
-    provider: ""       # e.g. openai, anthropic
-    model: ""
+    provider: openai
+    model: gpt-4o-mini
     api_key: ""
     temperature: 0.7
     max_tokens: 2048
+    timeout: 60
+
+content:
+  default_tone: neutral
+  default_language: zh
+  min_title_length: 10
+  max_title_length: 100
+
+platforms:
+  wechat:
+    enabled: false
+    adapter: wechat
+    default_style: article
+  zhihu:
+    enabled: false
+    adapter: zhihu
+    default_style: answer
+  xiaohongshu:
+    enabled: false
+    adapter: xiaohongshu
+    default_style: note
+  youtube:
+    enabled: false
+    adapter: youtube
+    default_style: video
+  tiktok:
+    enabled: false
+    adapter: tiktok
+    default_style: short_video
+  twitter:
+    enabled: false
+    adapter: twitter
+    default_style: tweet
+
+cron:
+  enabled: true
+  jobs_dir: automedia/cron/jobs.yaml
+
+pool:
+  retention_days: 7
+  max_pending_topics: 1000
+
+pipeline:
+  video:
+    enabled: true
+  audio:
+    enabled: true
+  image:
+    enabled: true
+  text:
+    enabled: true

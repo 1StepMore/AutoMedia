@@ -6,7 +6,7 @@ from automedia.mcp.server import (
     get_project_assets,
     list_projects,
     list_topic_pool,
-    register_omni_adapter,
+    register_platform_adapter,
     run_pipeline,
     select_topic,
 )
@@ -20,5 +20,5 @@ __all__ = [
     "get_project_assets",
     "archive_project",
     "list_topic_pool",
-    "register_omni_adapter",
+    "register_platform_adapter",
 ]

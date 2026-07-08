@@ -449,11 +449,11 @@ def list_topic_pool(
         return {"topics": [], "error": str(exc)}
 
 
-def register_omni_adapter(
+def register_platform_adapter(
     platform_name: str,
     adapter_class: str = "",
 ) -> dict[str, Any]:
-    """Register an Omni adapter (stub).
+    """Register a platform adapter (stub).
 
     This is a placeholder that records the intent to register an
     adapter.  Full implementation requires the adapter class to be
@@ -573,10 +573,10 @@ def create_server() -> Any:
 
     mcp.tool(
         description=(
-            "Register an Omni adapter (stub). Provide platform_name "
+            "Register a platform adapter (stub). Provide platform_name "
             "and optional adapter_class dotted path."
         ),
-    )(register_omni_adapter)
+    )(register_platform_adapter)
 
     return mcp
 

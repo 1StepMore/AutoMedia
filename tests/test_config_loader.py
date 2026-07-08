@@ -362,7 +362,7 @@ class TestLoadConfig:
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-new")
         config = load_config(config_dir=str(project))
         assert config["llm"]["text_generation"]["api_key"] == "sk-new"
-        assert config["llm"]["text_generation"]["model"] == ""
+        assert config["llm"]["text_generation"]["model"] == "gpt-4o-mini"
 
     # -- Full 6-layer merge ---------------------------------------------------
 

@@ -31,7 +31,7 @@ Registered MCP tools:
   - get_project_assets
   - list_projects
   - list_topic_pool
-  - register_omni_adapter
+  - register_platform_adapter
   - run_pipeline
   - select_topic
 ```
@@ -47,7 +47,7 @@ Registered MCP tools:
 | `get_project_assets` | 获取项目资产清单 |
 | `archive_project` | 归档项目 (红线 8 约束) |
 | `list_topic_pool` | 查看话题池 |
-| `register_omni_adapter` | 注册平台适配器 |
+| `register_platform_adapter` | 注册平台适配器 |
 
 ## MCP Client 配置
 

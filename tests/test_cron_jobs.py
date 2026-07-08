@@ -16,11 +16,11 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 JOBS_YAML = PROJECT_ROOT / "automedia" / "cron" / "jobs.yaml"
 
-EXPECTED_JOBS = ["hot-collection", "semantic-audit", "topic-push", "watchdog"]
+EXPECTED_JOBS = ["hot-collection", "semantic-audit", "publish-check", "watchdog"]
 
 REQUIRED_FIELDS = {"name", "schedule", "command", "on_failure", "timeout_s", "description"}
 
-VALID_ON_FAILURE = {"stop", "skip", "retry"}
+VALID_ON_FAILURE = {"stop", "skip", "retry", "log"}
 
 
 def _load_jobs():
@@ -102,7 +102,7 @@ def test_depends_on_refer_to_existing_jobs():
                 )
         else:
             # depends_on 是单个字符串 (应为 None/~)
-            assert dep is None, (
+            assert deps is None, (
                 f"job '{job['name']}' depends_on={deps!r} should be None or list"
             )
 
