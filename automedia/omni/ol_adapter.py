@@ -1,0 +1,150 @@
+"""OL adapter — wraps omni-localizer for document translation."""
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from typing import override
+
+from automedia.omni.base import BaseOmniAdapter
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class TranslationResult:
+    """Result of an OL document translation."""
+    translated_md: str
+    xliff_path: str | None = None
+    warnings: list[str] = field(default_factory=list)
+
+
+class OLAdapter(BaseOmniAdapter):
+    config_path: str
+
+    def __init__(self, config_path: str = "ol_config.yaml") -> None:
+        super().__init__()
+        self.config_path = config_path
+
+    @property
+    @override
+    def name(self) -> str:
+        return "ol"
+
+    @override
+    def validate_env(self) -> bool:
+        # fail-CLOSED: require MCP_ALLOWED_DIRECTORIES to be set so the
+        # OL pipeline's security validator has a path allowlist to check.
+        import os
+        return "MCP_ALLOWED_DIRECTORIES" in os.environ
+
+    def translate(
+        self,
+        md_content: str,
+        source_lang: str = "auto",
+        target_lang: str = "auto",
+        config_path: str | None = None,
+    ) -> TranslationResult:
+        """Translate *md_content* from *source_lang* to *target_lang*.
+
+        Uses OL's shield → LLM-translate → repair → unshield pipeline.
+
+        Parameters
+        ----------
+        md_content : str
+            Markdown content to translate.
+        source_lang : str
+            Source language code (default: ``"auto"``).
+        target_lang : str
+            Target language code (default: ``"auto"``).
+        config_path : str | None
+            Path to the OL configuration YAML. If ``None``,
+            falls back to ``self.config_path``.
+
+        Returns
+        -------
+        TranslationResult
+            Translated markdown, optional XLIFF path, and warnings.
+
+        Raises
+        ------
+        ValueError
+            If no ``config_path`` is provided and ``self.config_path``
+            is also not set.
+        """
+        # Lazy imports — the full OL dependency tree is heavy and should
+        # not be pulled in at module load time.
+        from ol_mcp.translate_md import _translate_single
+
+        resolved = config_path or self.config_path
+        if not resolved:
+            raise ValueError(
+                "No config_path provided to translate() and no config_path "
+                + "set on OLAdapter instance."
+            )
+
+        try:
+            async def _run() -> tuple[str, list[str]]:
+                translated, warnings = await _translate_single(
+                    content=md_content,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    glossary=None,
+                    config_path=resolved,
+                )
+                return translated, warnings
+
+            translated, warnings = asyncio.run(_run())
+        except FileNotFoundError:
+            return TranslationResult(
+                translated_md="",
+                warnings=[f"Config not found at {resolved}. Check the path or set config_path explicitly."],
+            )
+        except Exception as e:
+            return TranslationResult(
+                translated_md="",
+                warnings=[f"Translation failed: {e}"],
+            )
+        return TranslationResult(
+            translated_md=translated,
+            xliff_path=None,
+            warnings=warnings if warnings else [],
+        )
+
+    def translate_batch(
+        self,
+        file_list: list[str],
+        source_lang: str = "auto",
+        target_lang: str = "auto",
+    ) -> list[TranslationResult]:
+        """Translate a batch of files, returning one :class:`TranslationResult` per file.
+
+        Files that cannot be read are skipped with a warning entry.
+        """
+        results: list[TranslationResult] = []
+        for path in file_list:
+            try:
+                content = Path(path).read_text(encoding="utf-8")
+            except FileNotFoundError:
+                results.append(
+                    TranslationResult(
+                        translated_md="",
+                        xliff_path=None,
+                        warnings=[f"File not found: {path}"],
+                    )
+                )
+                continue
+            result = self.translate(
+                md_content=content,
+                source_lang=source_lang,
+                target_lang=target_lang,
+            )
+            results.append(result)
+        return results
+
+    def judge(self, translated_md: str) -> dict[str, float | str]:
+        """Evaluate translated markdown quality.
+
+        Stub implementation — always returns an auto-approved score.
+        Replace with a real LLM-as-judge call when available.
+        """
+        return {"score": 1.0, "feedback": "Auto-approved (stub)"}

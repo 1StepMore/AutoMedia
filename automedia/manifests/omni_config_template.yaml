@@ -1,0 +1,21 @@
+# omni_config.yaml — AutoMedia Omni Triad integration configuration
+# Reference template. Actual config lives at ~/.automedia/omni_config.yaml
+
+integration_mode: sdk  # proxy | parallel | sdk
+max_auto_extract_mb: 50
+
+# OPP — Omni-PostProcessor
+opp:
+  enabled: true
+  target_format: md
+  timeout: 300
+
+# OL — Omni-Localizer
+ol:
+  enabled: true
+  source_lang: en
+  target_lang: zh
+
+# ORF — Omni-Refiner
+orf:
+  enabled: true
