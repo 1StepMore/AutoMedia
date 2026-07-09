@@ -9,17 +9,21 @@ from __future__ import annotations
 import time
 from typing import Any
 
+import os
+
 from automedia.core.config_loader import load_config
 from automedia.core.project import Project
 from automedia.gates.base import BaseGate, GateRegistry, _registry
 from automedia.hooks.md5_tracker import record_md5
 from automedia.hooks.protocol import GateHook
+from automedia.manifests.brand_profile_schema import BrandProfile, load_brand_profile
 from automedia.pipelines.gate_engine import (
     AssetInfo,
     GateEngine,
     GateLogEntry,
     PipelineResult,
 )
+from automedia.pipelines.language_config import resolve_language_config
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +31,7 @@ from automedia.pipelines.gate_engine import (
 # ---------------------------------------------------------------------------
 
 _AUTO_GATE_NAMES: list[str] = [
+    "D0",
     "pre-gate",
     "CW",
     "G0", "G1", "G2", "G3", "G4", "G5",
@@ -35,17 +40,20 @@ _AUTO_GATE_NAMES: list[str] = [
 ]
 
 _TEXT_ONLY_GATE_NAMES: list[str] = [
+    "D0",
     "CW",
     "G0", "G1", "G2", "G3", "G4", "G5",
     "L1", "L2", "L3",
 ]
 
 _VIDEO_ONLY_GATE_NAMES: list[str] = [
+    "D0",
     "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
     "L1", "L2", "L3",
 ]
 
 _QA_ONLY_GATE_NAMES: list[str] = [
+    "D0",
     "G0", "G2", "G3", "V1", "V6",
 ]
 
@@ -113,6 +121,8 @@ def run_full_pipeline(
     resume_from: str | None = None,
     config_dir: str | None = None,
     tenant_id: str = "default",
+    default_lang: str | None = None,
+    force_provenance: bool = False,
 ) -> PipelineResult:
     """Execute the full AutoMedia production pipeline.
 
@@ -135,6 +145,13 @@ def run_full_pipeline(
         directory.
     tenant_id:
         Tenant / namespace identifier.
+    default_lang:
+        Default language for the pipeline (e.g. ``"zh"``, ``"en"``).
+        ``None`` resolves to ``"zh"``.  The value is injected into
+        ``gate_context["lang_config"]`` for downstream gates.
+    force_provenance:
+        When ``True`` bypass the D0 Decision-Layer provenance check
+        (Red Line 9).  Requires ``--confirm-bypass-rl9`` on the CLI.
 
     Returns
     -------
@@ -179,6 +196,19 @@ def run_full_pipeline(
         # 4. Instantiate engine
         engine = GateEngine(gates, hooks=hooks)
 
+        # 4.5 Resolve language configuration
+        brand_profile: BrandProfile | None = None
+        brand_profile_path = os.path.join(project.project_dir, "brand-profile.yaml")
+        try:
+            brand_profile = load_brand_profile(brand_profile_path)
+        except (FileNotFoundError, ValueError):
+            brand_profile = None
+
+        lang_config = resolve_language_config(
+            brand_profile=brand_profile,
+            default_lang=default_lang,
+        )
+
         # 5. Build initial context
         gate_context: dict[str, Any] = {
             "topic": topic,
@@ -187,10 +217,19 @@ def run_full_pipeline(
             "project_dir": project.project_dir,
             "config": config,
             "tenant_id": tenant_id,
+            "lang_config": lang_config,
+            "mode": config.get("mode", "auto"),
+            "force_provenance": force_provenance,
         }
 
         # 6. Execute
         success, results = engine.run(gate_context)
+
+        # 6.5 Check for RL9 violation
+        rl9_failure = False
+        if results and results[0].get("gate") == "D0" and not results[0].get("passed", True):
+            if results[0].get("status") == "rl9_violation":
+                rl9_failure = True
 
         # 7. Collect assets
         assets = _collect_assets(gate_context)
@@ -203,7 +242,10 @@ def run_full_pipeline(
 
         end = time.monotonic()
 
-        status: str = "success" if success else "partial"
+        if rl9_failure:
+            status = "rl9_violation"
+        else:
+            status = "success" if success else "partial"
 
         return PipelineResult(
             status=status,

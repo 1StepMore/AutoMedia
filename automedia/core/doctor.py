@@ -47,6 +47,7 @@ class Doctor:
 
         Special-cases common alternative binary names:
         - ``chrome`` → ``google-chrome``, ``chromium``, ``chromium-browser``, …
+        - ``python`` → ``python3`` (for distros that ship only ``python3``)
         """
         candidates = [name]
         if name == "chrome":
@@ -55,6 +56,8 @@ class Doctor:
                 "chromium", "chromium-browser",
                 "chrome", "msedge",
             ]
+        elif name == "python":
+            candidates = ["python", "python3"]
         for c in candidates:
             path = shutil.which(c)
             if path:

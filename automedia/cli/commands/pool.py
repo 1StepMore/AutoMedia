@@ -116,3 +116,60 @@ def pool_prune(
 
     status_label = f" ({status})" if status else ""
     typer.echo(f"Pruned {removed} topic(s){status_label} older than {days} day(s).")
+
+
+# ---------------------------------------------------------------------------
+# pool attach-brief
+# ---------------------------------------------------------------------------
+
+
+@app.command("attach-brief")
+def pool_attach_brief(
+    topic: int = typer.Option(..., "--topic", "-t", help="Topic ID (primary key)."),
+    md_file: str = typer.Option(..., "--md-file", "-m", help="Path to Markdown brief file."),
+    db_path: str | None = typer.Option(None, "--db", help="Path to pool SQLite file."),
+) -> None:
+    """Attach a Markdown brief to an existing topic.
+
+    Reads the Markdown file and stores its content in the topic's
+    ``research_data`` field.  This is the manual fallback when
+    OPP extraction fails.
+    """
+    try:
+        # Validate md_file path
+        md_path = Path(md_file)
+        if not md_path.is_file():
+            typer.secho(
+                f"Error: file not found: {md_file}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        md_content = md_path.read_text(encoding="utf-8")
+
+        db = _get_db(db_path)
+
+        # Verify topic exists
+        topic_row = db.get_topic(topic)
+        if topic_row is None:
+            typer.secho(
+                f"Error: topic {topic} not found in pool.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        db.update_brief(topic, md_content)
+        db.close()
+
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        typer.secho(f"Error attaching brief: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    typer.secho(
+        f"Brief attached to topic {topic} ({md_path.name}, {len(md_content)} bytes).",
+        fg=typer.colors.GREEN,
+    )

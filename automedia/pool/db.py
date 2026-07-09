@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_topics_category ON topics(category);
 _MIGRATIONS: list[str] = [
     "ALTER TABLE topics ADD COLUMN tenant_id TEXT DEFAULT 'default'",
     "CREATE INDEX IF NOT EXISTS idx_topics_tenant ON topics(tenant_id)",
+    "ALTER TABLE topics ADD COLUMN research_data TEXT DEFAULT ''",
 ]
 
 
@@ -188,6 +189,13 @@ class PoolDB:
         self.conn.commit()
         assert cur.rowcount is not None
         return cur.rowcount
+
+    def update_brief(self, topic_id: int, md_content: str) -> None:
+        self.conn.execute(
+            "UPDATE topics SET research_data = ?, updated_at = datetime('now') WHERE id = ?",
+            (md_content, topic_id),
+        )
+        self.conn.commit()
 
     def count_topics(self, status: str | None = None) -> int:
         """Return the number of topics, optionally filtered by *status*."""

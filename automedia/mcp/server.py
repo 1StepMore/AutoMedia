@@ -1,8 +1,18 @@
-"""AutoMedia MCP Server — stdio transport with 8 tools.
+"""AutoMedia MCP Server — stdio transport with 12 tools.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
 path allowlist loaded from ``mcp_allowlist.yaml``.
+
+.. note::
+
+   **Dual-allowlist architecture:** This module implements the *MCP server*
+   allowlist (``mcp_allowlist.yaml`` — ``allowed_directories`` schema).
+   There is a separate *Omni adapter* allowlist at ``~/.automedia/omni_allowlist.yaml``
+   (``allowed_paths`` / ``write_paths`` schema) consumed by
+   :mod:`automedia.omni.allowlist`.  The two serve different layers — MCP
+   file-access gating vs. Omni adapter file operations — and should not be
+   confused.
 
 Usage::
 
@@ -20,9 +30,12 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import yaml
 
@@ -59,7 +72,7 @@ def _load_allowlist(*, allowlist_path: Path | None = None) -> list[str]:
     with open(path, encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
     raw: list[str] = data.get("allowed_directories", []) or []
-    resolved = [os.path.realpath(d) for d in raw]
+    resolved = [os.path.realpath(os.path.expanduser(d)) for d in raw]
     _cached_allowlist = resolved
     return resolved
 
@@ -73,8 +86,7 @@ def _reset_allowlist_cache() -> None:
 def check_path_allowed(path: str, *, allowlist: list[str] | None = None) -> bool:
     """Return *True* if *path* falls under an allowed directory.
 
-    When the allowlist is empty **all paths are allowed** (permissive
-    default — the operator must explicitly configure restrictions).
+    When the allowlist is empty **all paths are blocked** (fail‑closed).
 
     Parameters
     ----------
@@ -87,9 +99,16 @@ def check_path_allowed(path: str, *, allowlist: list[str] | None = None) -> bool
     if allowlist is None:
         allowlist = _cached_allowlist if _cached_allowlist is not None else _load_allowlist()
     if not allowlist:
-        return True  # empty allowlist → permissive
-    real = os.path.realpath(path)
-    return any(real.startswith(d) for d in allowlist)
+        return False  # fail‑closed: empty allowlist → deny all
+    from pathlib import Path
+    real = Path(path).resolve()
+    for d in allowlist:
+        try:
+            real.relative_to(Path(d).resolve())
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
@@ -551,6 +570,242 @@ def register_platform_adapter(
         return {"registered": False, "error": str(exc)}
 
 
+def extract_brief(
+    file_path: str,
+    source_lang: str = "auto",
+    target_lang: str = "en",
+) -> dict[str, Any]:
+    """Extract a content brief from a document file using OPP.
+
+    Processes the document through OPPAdapter.extract() to extract
+    structured markdown content, a manifest JSON with segment metadata,
+    and any warnings encountered during extraction.
+
+    Parameters
+    ----------
+    file_path:
+        Path to the source document file.
+    source_lang:
+        Source language code (``"auto"`` for auto-detection).
+    target_lang:
+        Target language code for extraction (default ``"en"``).
+
+    Returns
+    -------
+    dict
+        ``{"md_content": str, "manifest_json": dict, "warnings": list[str]}``
+        or an error dict on failure.
+    """
+    try:
+        _require_allowed(file_path, tool_name="extract_brief")
+        from automedia.omni.opp_adapter import OPPAdapter
+
+        adapter = OPPAdapter()
+        result = adapter.extract(file_path, source_lang, target_lang)
+        return {
+            "md_content": result.md_content,
+            "manifest_json": result.manifest,
+            "warnings": result.warnings,
+        }
+    except Exception as exc:
+        return {"md_content": "", "manifest_json": {}, "warnings": [str(exc)]}
+
+
+def localize_content(
+    md_content: str,
+    source_lang: str,
+    target_lang: str,
+) -> dict[str, Any]:
+    """Translate markdown content from source to target language.
+
+    Delegates to OLAdapter.translate() which uses the OL shield →
+    LLM-translate → repair → unshield pipeline.  Returns the translated
+    markdown, optional XLIFF path, and any warnings collected.
+
+    Parameters
+    ----------
+    md_content:
+        Source markdown content to translate.
+    source_lang:
+        Source language code (e.g. ``"zh"``, ``"ja"``).
+    target_lang:
+        Target language code (e.g. ``"en"``).
+
+    Returns
+    -------
+    dict
+        ``{"translated_md": str, "xliff_path": str | None, "warnings": list[str]}``
+        or an error dict on failure.
+    """
+    try:
+        from automedia.omni.ol_adapter import OLAdapter
+
+        adapter = OLAdapter()
+        result = adapter.translate(md_content, source_lang, target_lang)
+        return {
+            "translated_md": result.translated_md,
+            "xliff_path": result.xliff_path,
+            "warnings": result.warnings,
+        }
+    except Exception as exc:
+        return {"translated_md": "", "xliff_path": None, "warnings": [str(exc)]}
+
+
+def localize_output(
+    project_dir: str,
+    target_langs: str,
+) -> dict[str, Any]:
+    """Translate all project drafts into multiple target languages.
+
+    Reads markdown files from ``01_content/drafts/``, translates each into
+    every target language via OLAdapter, writes to ``05_publish/{lang}/``,
+    and returns a mapping of language → output file paths.
+
+    Parameters
+    ----------
+    project_dir:
+        Path to the project root directory.
+    target_langs:
+        Comma-separated language codes (e.g. ``"en,ja"``).
+
+    Returns
+    -------
+    dict
+        ``{"project_dir": str, "results": {lang: [file_path, ...]}, "warnings": [...]}``
+        or error dict.
+    """
+    try:
+        _require_allowed(project_dir, tool_name="localize_output")
+        from automedia.omni.ol_adapter import OLAdapter
+        from pathlib import Path
+
+        proj = Path(project_dir)
+        drafts_dir = proj / "01_content" / "drafts"
+
+        results: dict[str, list[str]] = {}
+        warnings: list[str] = []
+
+        if not drafts_dir.is_dir():
+            return {
+                "project_dir": project_dir,
+                "results": results,
+                "warnings": [f"Drafts directory not found: {drafts_dir}"],
+            }
+
+        langs = [l.strip() for l in target_langs.split(",") if l.strip()]
+        if not langs:
+            return {
+                "project_dir": project_dir,
+                "results": results,
+                "warnings": ["No target languages specified"],
+            }
+
+        md_files = sorted(drafts_dir.glob("*.md"))
+        if not md_files:
+            return {
+                "project_dir": project_dir,
+                "results": results,
+                "warnings": [f"No markdown files found in {drafts_dir}"],
+            }
+
+        adapter = OLAdapter()
+
+        for md_file in md_files:
+            content = md_file.read_text(encoding="utf-8")
+            for lang in langs:
+                try:
+                    trans_result = adapter.translate(
+                        md_content=content,
+                        source_lang="auto",
+                        target_lang=lang,
+                    )
+                    publish_dir = proj / "05_publish" / lang
+                    publish_dir.mkdir(parents=True, exist_ok=True)
+                    output_file = publish_dir / md_file.name
+                    output_file.write_text(trans_result.translated_md, encoding="utf-8")
+                    results.setdefault(lang, []).append(str(output_file))
+                except Exception as exc:
+                    warnings.append(
+                        f"Translation failed for {md_file.name} → {lang}: {exc}"
+                    )
+
+        return {
+            "project_dir": project_dir,
+            "results": results,
+            "warnings": warnings,
+        }
+    except Exception as exc:
+        return {
+            "project_dir": project_dir,
+            "results": {},
+            "warnings": [str(exc)],
+        }
+
+
+def format_output(
+    content: str,
+    target_format: str,
+    **options: Any,
+) -> dict[str, Any]:
+    """Convert content to the specified output format.
+
+    Delegates to ORFAdapter.convert() to transform content into the
+    requested output format.  Returns the output path, format identifier,
+    and any warnings or errors encountered during conversion.
+
+    Parameters
+    ----------
+    content:
+        Source content to convert (markdown text).
+    target_format:
+        Desired output format identifier (e.g. ``"html"``, ``"pdf"``).
+    **options:
+        Additional keyword arguments forwarded to the converter.
+
+    Returns
+    -------
+    dict
+        ``{"output_path": str, "output_format": str, "warnings": list[str]}``
+        or an error dict on failure.
+    """
+    import tempfile
+
+    temp_path: str | None = None
+    try:
+        from automedia.omni.orf_adapter import ORFAdapter
+
+        # Compute the output path explicitly based on the target format.
+        # ORFAdapter.convert expects a file path; write content to a
+        # temporary file, then delete it after conversion completes.
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as fh:
+            fh.write(content)
+            temp_path = fh.name
+
+        output_path = temp_path + "." + target_format
+        adapter = ORFAdapter()
+        result = adapter.convert(
+            file_path=temp_path,
+            output_path=output_path,
+            **options,
+        )
+        errors = result.get("errors", [])
+        return {
+            "output_path": output_path,
+            "output_format": target_format,
+            "warnings": errors if errors else [],
+        }
+    except Exception as exc:
+        return {"output_path": "", "output_format": target_format, "warnings": [str(exc)]}
+    finally:
+        if temp_path is not None:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                logger.warning("Failed to clean up temp file %s", temp_path)
+
+
 # ---------------------------------------------------------------------------
 # MCP Server construction
 # ---------------------------------------------------------------------------
@@ -561,7 +816,7 @@ def create_server() -> Any:
     Returns
     -------
     FastMCP
-        A fully configured server with all 8 tools registered.
+        A fully configured server with all 12 tools registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -574,7 +829,7 @@ def create_server() -> Any:
         ),
     )
 
-    # Register all 8 tools
+    # Register all 12 tools
     mcp.tool(
         description=(
             "Select the highest-scored pending topic from the pool. "
@@ -630,6 +885,46 @@ def create_server() -> Any:
         ),
     )(register_platform_adapter)
 
+    # ------------------------------------------------------------------
+    # Omni tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Extract a content brief from a document file using OPP. "
+            "Processes the document through OPPAdapter.extract() and "
+            "returns structured markdown content, a manifest JSON with "
+            "segment metadata, and any warnings encountered."
+        ),
+    )(extract_brief)
+
+    mcp.tool(
+        description=(
+            "Translate markdown content from source to target language. "
+            "Delegates to OLAdapter.translate() which uses the OL shield "
+            "→ LLM-translate → repair → unshield pipeline. Returns the "
+            "translated markdown, optional XLIFF path, and warnings."
+        ),
+    )(localize_content)
+
+    mcp.tool(
+        description=(
+            "Convert content to the specified output format. "
+            "Delegates to ORFAdapter.convert() to transform content "
+            "into the requested format. Returns the output path, "
+            "format identifier, and any warnings or errors."
+        ),
+    )(format_output)
+
+    mcp.tool(
+        description=(
+            "Translate all project drafts into multiple target languages. "
+            "Reads markdown from 01_content/drafts/, translates via OLAdapter, "
+            "writes translated files to 05_publish/{lang}/. "
+            "Returns a mapping of language code to list of output file paths."
+        ),
+    )(localize_output)
+
     return mcp
 
 
@@ -643,7 +938,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 8 tools.",
+        description="AutoMedia MCP Server — stdio transport with 12 tools.",
     )
     parser.add_argument(
         "--show-tools",

@@ -1,12 +1,11 @@
-# MCP Server path allowlist configuration.
+# Path allowlist for the AutoMedia MCP server.
 #
-# Only paths under directories listed here may be accessed by MCP tools.
-# Each entry must be an absolute directory path.  The check uses
-# ``os.path.realpath`` to resolve symlinks before comparison.
+# All file system operations through the MCP server are restricted to
+# directories listed here. An empty list blocks all paths (fail-closed).
 #
-# Example:
-#   allowed_directories:
-#     - /home/user/projects
-#     - /data/automedia
-
-allowed_directories: []
+# Examples:
+#   - /mnt/d/AutoMedia/projects/
+#   - /mnt/d/AutoMedia/briefs/
+#   - /tmp/automedia/
+allowed_directories:
+  - /tmp/automedia/

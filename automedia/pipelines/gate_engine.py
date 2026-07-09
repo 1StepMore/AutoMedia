@@ -43,7 +43,7 @@ class GateLogEntry:
 class PipelineResult:
     """Result of a full pipeline execution."""
 
-    status: Literal["success", "failed", "partial"] = "success"
+    status: Literal["success", "failed", "partial", "rl9_violation"] = "success"
     project_id: str = ""
     project_dir: str = ""
     topic: str = ""
