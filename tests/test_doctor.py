@@ -150,3 +150,36 @@ class TestDoctorCheckDependencies:
             assert "version" in dep or dep.get("version") is None
             assert "path" in dep or dep.get("path") is None
             assert isinstance(dep["installed"], bool)
+
+
+class TestDoctorPythonResolution:
+    """Regression: doctor must detect python3 when only python3 is on PATH.
+
+    Many Linux distros ship only ``python3`` (not ``python``). The Doctor's
+    dep table lists ``name="python"`` with ``check_cmd=["python3", ...]``,
+    so the version-fetch works, but existence-check uses
+    ``shutil.which("python")`` which returns None. This test exercises
+    the REAL (unmocked) resolver to catch the bug.
+    """
+
+    def test_resolve_path_python_finds_python3(self, doctor: Doctor):
+        """_resolve_path("python") should also try "python3" as a fallback."""
+        # Real call (no mock) — depends on python3 being on PATH.
+        path = doctor._resolve_path("python")
+        assert path is not None, (
+            "doctor._resolve_path('python') returned None even though "
+            "python3 is on PATH — the resolver must also try 'python3' "
+            "as a fallback for systems that ship only python3."
+        )
+        assert "python" in path.lower(), f"unexpected path: {path}"
+
+    def test_check_dependencies_reports_python_installed(self, doctor: Doctor):
+        """When python3 is on PATH, the 'python' dep must show installed=True."""
+        results = doctor.check_dependencies()
+        python_dep = next((r for r in results if r["name"] == "python"), None)
+        assert python_dep is not None, "no 'python' dep in results"
+        assert python_dep["installed"] is True, (
+            f"python dep reported installed=False even though python3 is on PATH: {python_dep}"
+        )
+        assert python_dep["path"] is not None
+        assert "python" in python_dep["path"].lower()

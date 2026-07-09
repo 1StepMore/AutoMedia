@@ -383,3 +383,59 @@ class TestRedLine8AgentArchive:
 
         # L2 must pass — --force overrides non-published status
         assert result["passed"] is True
+
+
+class TestRedLine9:
+    """RL9 — Decision Layer output must go through Production Layer Gate."""
+
+    def test_decision_agent_artifact_no_filesystem_path(self) -> None:
+        """DecisionAgent artifact_type must not contain filesystem paths."""
+        from automedia.decision.base import DecisionArtifact
+
+        rogue = DecisionArtifact(
+            artifact_type="strategy_doc",
+            content={"output_path": "/projects/abc/05_publish/en/report.md"},
+        )
+        assert "05_publish" not in rogue.artifact_type, (
+            "RL9: artifact_type must not contain filesystem paths"
+        )
+
+    def test_missing_solution_state_triggers_rl9(self, tmp_path) -> None:
+        """D0Gate returns rl9_violation when .solution-state.yaml missing."""
+        from automedia.decision.gates.d0_gate import D0Gate
+
+        gate = D0Gate()
+        result = gate.execute({
+            "mode": "build", "project_dir": str(tmp_path),
+            "force_provenance": False,
+        })
+        assert result["passed"] is False
+        assert result.get("status") == "rl9_violation"
+
+    def test_complete_solution_state_passes_d0(self, tmp_path) -> None:
+        """D0Gate passes when all required nodes are completed."""
+        import yaml
+        from automedia.decision import dependency
+        from automedia.decision.gates.d0_gate import D0Gate
+
+        required = dependency.get_required_nodes_for_mode("build")
+        state = {"mode": "build", "completed_nodes": sorted(required)}
+        with open(tmp_path / ".solution-state.yaml", "w", encoding="utf-8") as fh:
+            yaml.dump(state, fh)
+
+        gate = D0Gate()
+        result = gate.execute({"mode": "build", "project_dir": str(tmp_path)})
+        assert result["passed"] is True
+        assert result.get("status") == "rl9_compliant"
+
+    def test_force_provenance_bypasses_rl9(self) -> None:
+        """--force-provenance bypasses D0Gate."""
+        from automedia.decision.gates.d0_gate import D0Gate
+
+        gate = D0Gate()
+        result = gate.execute({
+            "mode": "build", "project_dir": "/nonexistent",
+            "force_provenance": True,
+        })
+        assert result["passed"] is True
+        assert result.get("status") == "bypassed"
