@@ -111,6 +111,7 @@ def _build_full_context(
         # Shared
         "topic": sample_topic,
         "project_dir": project_dir,
+        "force_provenance": True,
         "content": (
             "TestBrand delivers AI内容生产 solutions. "
             "立即体验 our platform for free. "

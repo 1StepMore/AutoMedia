@@ -118,9 +118,12 @@ def draft_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def _reset_cache():
-    """Reset allowlist cache before each test."""
+def _reset_cache(tmp_path: Path) -> None:
+    """Reset allowlist cache before each test and populate with tmp_path."""
     _reset_allowlist_cache()
+    # Pre-populate cache with tmp_path so tool functions don't reject test paths
+    import automedia.mcp.server as _server_mod
+    _server_mod._cached_allowlist = [str(Path(tmp_path).resolve())]
     yield
     _reset_allowlist_cache()
 
@@ -133,9 +136,9 @@ def _reset_cache():
 class TestAllowlist:
     """Tests for path allowlist loading and checking."""
 
-    def test_empty_allowlist_allows_all(self) -> None:
-        """Empty allowlist → all paths allowed."""
-        assert check_path_allowed("/any/path", allowlist=[]) is True
+    def test_empty_allowlist_blocks_all(self) -> None:
+        """Empty allowlist → all paths blocked (fail‑closed)."""
+        assert check_path_allowed("/any/path", allowlist=[]) is False
 
     def test_path_under_allowed_dir(self, tmp_path: Path) -> None:
         """Path under an allowed directory is permitted."""
@@ -154,6 +157,18 @@ class TestAllowlist:
         """Exact match of allowed directory is permitted."""
         allowed = os.path.realpath(str(tmp_path))
         assert check_path_allowed(str(tmp_path), allowlist=[allowed]) is True
+
+    def test_startswith_bypass_prevented(self, tmp_path: Path) -> None:
+        """/data/allowed does NOT match /data/allowed_evil."""
+        allowed_dir = tmp_path / "allowed"
+        allowed_dir.mkdir()
+        evil = tmp_path / "allowed_evil"  # sibling, not subdirectory
+        assert not check_path_allowed(
+            str(evil), allowlist=[os.path.realpath(str(allowed_dir))]
+        )
+        assert check_path_allowed(
+            str(allowed_dir / "file.md"), allowlist=[os.path.realpath(str(allowed_dir))]
+        )
 
     def test_load_allowlist_from_yaml(self, allowlist_yaml: Path) -> None:
         """_load_allowlist reads from YAML file."""
@@ -186,8 +201,8 @@ class TestServerCreation:
         assert server is not None
         assert hasattr(server, "run")
 
-    def test_server_has_all_8_tools(self) -> None:
-        """All 8 tools are registered."""
+    def test_server_has_all_12_tools(self) -> None:
+        """All 12 tools are registered (8 original + 3 Omni + 1 localize_output)."""
         server = create_server()
         tool_names = sorted(server._tool_manager._tools.keys())
         expected = sorted([
@@ -199,6 +214,10 @@ class TestServerCreation:
             "archive_project",
             "list_topic_pool",
             "register_platform_adapter",
+            "extract_brief",
+            "localize_content",
+            "localize_output",
+            "format_output",
         ])
         assert tool_names == expected
 

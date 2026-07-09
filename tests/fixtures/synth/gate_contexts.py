@@ -479,6 +479,7 @@ def build_full_pipeline_context(
         # Shared
         "topic": topic,
         "project_dir": project_dir,
+        "force_provenance": True,
         "content": content,
         "brand_profile": brand_profile,
         "source_data": {

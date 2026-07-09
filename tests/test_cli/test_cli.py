@@ -46,8 +46,24 @@ class TestMainApp:
 class TestRunCommand:
     """Tests for ``automedia run``."""
 
+    @pytest.fixture
+    def _model_config_present(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Create a dummy model_config.yaml so the pre-flight check passes.
+
+        The run command checks ``~/.automedia/model_config.yaml`` *before*
+        the mocked pipeline function is ever called.  Without this fixture
+        run tests hit ``Model config not found`` before reaching the mock.
+        """
+        import automedia.cli.commands.run as run_mod
+
+        cfg_dir = tmp_path / ".automedia"
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        cfg_file = cfg_dir / "model_config.yaml"
+        cfg_file.write_text("test: true\n")
+        monkeypatch.setattr(run_mod, "_MODEL_CONFIG_PATH", cfg_file)
+
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_success(self, mock_runner: MagicMock) -> None:
+    def test_run_success(self, mock_runner: MagicMock, _model_config_present: None) -> None:
         mock_runner.return_value = PipelineResult(
             status="success",
             project_id="abc123",
@@ -62,7 +78,7 @@ class TestRunCommand:
         mock_runner.assert_called_once_with("test", "test", mode="auto", resume_from=None)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_with_mode(self, mock_runner: MagicMock) -> None:
+    def test_run_with_mode(self, mock_runner: MagicMock, _model_config_present: None) -> None:
         mock_runner.return_value = PipelineResult(
             status="success", total_duration_s=0.5,
         )
@@ -71,7 +87,7 @@ class TestRunCommand:
         mock_runner.assert_called_once_with("t", "b", mode="text_only", resume_from=None)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_with_resume_from(self, mock_runner: MagicMock) -> None:
+    def test_run_with_resume_from(self, mock_runner: MagicMock, _model_config_present: None) -> None:
         mock_runner.return_value = PipelineResult(
             status="success", total_duration_s=0.5,
         )
@@ -80,7 +96,7 @@ class TestRunCommand:
         mock_runner.assert_called_once_with("t", "b", mode="auto", resume_from="G3")
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_failure_exits_1(self, mock_runner: MagicMock) -> None:
+    def test_run_failure_exits_1(self, mock_runner: MagicMock, _model_config_present: None) -> None:
         mock_runner.return_value = PipelineResult(
             status="failed", topic="t", brand="b", error="boom", total_duration_s=0.1,
         )
@@ -88,7 +104,7 @@ class TestRunCommand:
         assert result.exit_code == 1
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_exception_exits_1(self, mock_runner: MagicMock) -> None:
+    def test_run_exception_exits_1(self, mock_runner: MagicMock, _model_config_present: None) -> None:
         mock_runner.side_effect = RuntimeError("kaboom")
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b"])
         assert result.exit_code == 1
