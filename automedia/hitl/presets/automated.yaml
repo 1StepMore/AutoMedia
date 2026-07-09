@@ -1,0 +1,84 @@
+preset_name: automated
+description: "Fully automated: only brand_questionnaire is human, all other nodes are agent"
+nodes:
+  brand_questionnaire:
+    type: decision
+    autoset: human
+  build_scale_routing:
+    type: decision
+    autoset: agent
+  mode_confirmation:
+    type: decision
+    autoset: agent
+  brand_positioning:
+    type: decision
+    autoset: agent
+  market_research:
+    type: execution
+    autoset: agent
+  audience_segmentation:
+    type: preference
+    autoset: agent
+  competitor_analysis:
+    type: execution
+    autoset: agent
+  brand_health_diagnosis:
+    type: decision
+    autoset: agent
+  market_revalidation:
+    type: preference
+    autoset: agent
+  audience_deepening:
+    type: preference
+    autoset: agent
+  competitor_tracking:
+    type: preference
+    autoset: agent
+  content_asset_audit:
+    type: decision
+    autoset: agent
+  product_optimization:
+    type: decision
+    autoset: agent
+  content_marketing_strategy:
+    type: decision
+    autoset: agent
+  asset_library_planning:
+    type: decision
+    autoset: agent
+  tagging_and_ingestion:
+    type: execution
+    autoset: agent
+  content_calendar:
+    type: preference
+    autoset: agent
+  script_generation:
+    type: execution
+    autoset: agent
+  pipeline_execution:
+    type: execution
+    autoset: agent
+  quality_review:
+    type: decision
+    autoset: agent
+  execution_handbook:
+    type: execution
+    autoset: agent
+  ab_test_setup:
+    type: execution
+    autoset: agent
+  progress_report:
+    type: execution
+    autoset: agent
+  publishing:
+    type: execution
+    autoset: agent
+  monitoring:
+    type: execution
+    autoset: agent
+  brand_dna_refresh:
+    type: decision
+    autoset: agent
+  next_cycle_planning:
+    type: decision
+    autoset: agent
