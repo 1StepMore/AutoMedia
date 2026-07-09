@@ -33,6 +33,7 @@ from automedia.cli.commands.license import app as license_app  # noqa: E402
 from automedia.cli.commands.sop import app as sop_app  # noqa: E402
 from automedia.cli.commands.tenant import app as tenant_app  # noqa: E402
 from automedia.decision.cli.solution import app as solution_app  # noqa: E402
+from automedia.cli.commands.onboard import app as onboard_app  # noqa: E402
 
 app.add_typer(pool_app, name="pool")
 app.add_typer(projects_app, name="projects")
@@ -44,6 +45,7 @@ app.add_typer(license_app, name="license")
 app.add_typer(sop_app, name="sop")
 app.add_typer(tenant_app, name="tenant")
 app.add_typer(solution_app, name="solution")
+app.add_typer(onboard_app, name="onboard")
 
 from automedia.cli.commands.run import run_cmd  # noqa: E402
 from automedia.cli.commands.archive import archive_cmd  # noqa: E402
