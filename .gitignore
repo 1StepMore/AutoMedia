@@ -78,3 +78,5 @@ tests/fixtures/synth/**/api_key*
 *.gguf
 *.h5
 *.parquet
+20260708_*
+20260709_*
