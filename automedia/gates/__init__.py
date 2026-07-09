@@ -22,9 +22,13 @@ from automedia.gates.six_step_hard import V7SixStepHard  # noqa: F401
 from automedia.gates.publish_log_schema import L1PublishLogSchema  # noqa: F401
 from automedia.gates.archive_validation import L2ArchiveValidation  # noqa: F401
 from automedia.gates.platform_integrity import L3PlatformIntegrity  # noqa: F401
+from automedia.gates.translation_quality import L4TranslationQuality  # noqa: F401
 
 # Content writer gate (between pre-gate and G0)
 from automedia.gates.content_writer import ContentWriterGate  # noqa: F401
 
 # Pre-gates
 from automedia.gates.topic_selection import TopicSelectionGate  # noqa: F401
+
+# Decision-Layer gate (PRD-3)
+from automedia.decision.gates.d0_gate import D0Gate  # noqa: F401

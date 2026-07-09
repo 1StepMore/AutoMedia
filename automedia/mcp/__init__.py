@@ -10,6 +10,7 @@ from automedia.mcp.server import (
     run_pipeline,
     select_topic,
 )
+from automedia.mcp.parallel import start_parallel_servers, stop_parallel_servers
 
 __all__ = [
     "create_server",
@@ -21,4 +22,6 @@ __all__ = [
     "archive_project",
     "list_topic_pool",
     "register_platform_adapter",
+    "start_parallel_servers",
+    "stop_parallel_servers",
 ]
