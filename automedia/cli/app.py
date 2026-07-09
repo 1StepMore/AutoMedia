@@ -27,11 +27,23 @@ from automedia.cli.commands.pool import app as pool_app  # noqa: E402
 from automedia.cli.commands.projects import app as projects_app  # noqa: E402
 from automedia.cli.commands.adapter import app as adapter_app  # noqa: E402
 from automedia.cli.commands.cron import app as cron_app  # noqa: E402
+from automedia.cli.commands.omni import app as omni_app  # noqa: E402
+from automedia.cli.commands.hitl import app as hitl_app  # noqa: E402
+from automedia.cli.commands.license import app as license_app  # noqa: E402
+from automedia.cli.commands.sop import app as sop_app  # noqa: E402
+from automedia.cli.commands.tenant import app as tenant_app  # noqa: E402
+from automedia.decision.cli.solution import app as solution_app  # noqa: E402
 
 app.add_typer(pool_app, name="pool")
 app.add_typer(projects_app, name="projects")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(cron_app, name="cron")
+app.add_typer(omni_app, name="omni")
+app.add_typer(hitl_app, name="hitl")
+app.add_typer(license_app, name="license")
+app.add_typer(sop_app, name="sop")
+app.add_typer(tenant_app, name="tenant")
+app.add_typer(solution_app, name="solution")
 
 from automedia.cli.commands.run import run_cmd  # noqa: E402
 from automedia.cli.commands.archive import archive_cmd  # noqa: E402
