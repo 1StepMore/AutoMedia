@@ -9,6 +9,7 @@ All data is synthetic — zero real API calls.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 
@@ -66,6 +67,45 @@ class HotCollector:
                 unique.append(t)
 
         return unique
+
+    def ingest_file(self, file_path: str) -> "ExtractionResult | None":
+        """Extract content from a document file via OPPAdapter.
+
+        Supported formats: ``.docx``, ``.pptx``, ``.pdf``, ``.xlsx``,
+        ``.csv``, ``.json``, ``.xml``, ``.html``, ``.epub``, ``.eml``,
+        ``.msg``.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the document file to ingest.
+
+        Returns
+        -------
+        ExtractionResult | None
+            The extraction result for supported formats (or on OPP failure),
+            or ``None`` for unsupported formats.
+        """
+        _, ext = os.path.splitext(file_path)
+        if ext.lower() not in {
+            ".docx", ".pptx", ".pdf", ".xlsx", ".csv",
+            ".json", ".xml", ".html", ".epub", ".eml", ".msg",
+        }:
+            return None
+
+        from automedia.omni.opp_adapter import OPPAdapter
+
+        try:
+            adapter = OPPAdapter()
+            return adapter.extract(file_path)
+        except Exception as exc:
+            from automedia.omni.opp_adapter import ExtractionResult
+
+            return ExtractionResult(
+                md_content="",
+                manifest={"source_file": file_path, "error": str(exc)},
+                warnings=[f"Extraction failed: {exc}"],
+            )
 
     # ------------------------------------------------------------------
     # Layer 1 — platform hot-search APIs (simulated)
