@@ -1,3 +1,8 @@
+---
+title: HITL Framework
+description: Human-In-The-Loop framework — control which decision nodes require human approval vs. AI execution.
+---
+
 # HITL Framework
 
 Human-In-The-Loop (HITL) lets operators control which decision nodes are

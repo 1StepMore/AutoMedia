@@ -1,69 +1,74 @@
-# Hermes 耦合点清单 & 解耦验证
+---
+title: Hermes Coupling Checklist
+description: Audit checklist confirming the new automedia/ package is fully decoupled from Hermes Agent v0.17.
+---
 
-> **审计目标**: 确认 `automedia/` 新包已从 Hermes Agent v0.17 完全解耦
-> **审计日期**: 2026-07-07
-> **状态说明**:
-> - `resolved` — 耦合点已消除, 新包代码中无对应依赖
-> - `isolated` — 耦合点存在但属于部署/调度层面的外部接口, 不影响库代码独立性
+# Hermes Coupling Points Checklist & Decoupling Verification
+
+> **Audit objective**: Confirm the new `automedia/` package is fully decoupled from Hermes Agent v0.17
+> **Audit date**: 2026-07-07
+> **Status notes**:
+> - `resolved` — Coupling point eliminated, no corresponding dependency in the new package code
+> - `isolated` — Coupling point exists but is an external interface at the deployment/scheduling layer, does not affect library code independence
 
 ---
 
-## 耦合点清单
+## Coupling Points Checklist
 
-| # | 耦合点 | 状态 | 新包方案 | Hermes 原引用文件 |
-|---|--------|------|---------|-------------------|
-| 1 | `skill_view(name='...')` 语法 — 通过 Hermes Agent 的 SkillView API 注册视图函数 | `resolved` | 新包无 `skill_view` 调用。CLI 基于 `typer`, MCP 基于 `mcp` official SDK, 无任何 Hermes Agent 注册逻辑 | `00_核心脚本/*.py` 中的 `@skill_view(...)` 装饰器 |
-| 2 | `~/.hermes/skills/productivity/automedia/scripts/` 路径硬编码 — 脚本定位依赖固定 Hermes 安装路径 | `resolved` | 脚本位于 `automedia/` 包内, 通过 `__file__` / `importlib.resources` 定位, 无硬编码绝对路径 | `scripts/` 目录下的所有 shell/Python 入口文件 |
-| 3 | `~/.hermes/skills/productivity/automedia/hooks/` 路径硬编码 — gate hook 注册依赖固定 Hermes 安装路径 | `resolved` | Hook 移至 `automedia/hooks/`, 纯 Python `Protocol` 实现, 通过 `GateHook` 接口注册, 无文件系统路径依赖 | `hooks/` 目录下的 hook 脚本 |
-| 4 | `/home/renanzai/.hermes/` 绝对路径 — 多处硬编码的用户 Hermes 家目录 | `resolved` | 无任何 `.hermes` 引用。配置路径统一为 `~/.automedia/`(仅加载使用, 不硬编码到代码逻辑), 详见 `config_loader.py` + `credential_loader.py` | `01_核心脚本/*.py` 中的字符串 `/home/renanzai/.hermes/skills/...` |
-| 5 | `/mnt/d/Hermes-Workspace/01-Projects/AutoMedia/` 项目路径硬编码 | `resolved` | `Project.init()` (`automedia/core/project.py`) 支持 `base_dir` 参数, 默认为 `os.getcwd()`, 完全配置化 | AutoMedia 旧版 `project_init.py` 中的 `PROJECT_BASE` 常量 |
-| 6 | `execute_code` sandbox 依赖 — Hermes Agent 内置的代码沙箱执行环境 | `resolved` | 纯 Python 执行, 无 sandbox。LLM 调用通过可配置 `provider` (`~/.automedia/model_config.yaml`), 所有 Gate 为本地 Python 类 | 旧版 gate 中的 `self.skill.execute_code(...)` 调用 |
-| 7 | Hermes cron 调度 — Hermes Agent 内置的 cron job 管理 (jobs.json 格式 + Agent 级调度) | `isolated` | 新包通过 CLI (`automedia cron run <job-name>`) 暴露 cron job, 由外部 crond / systemd timer / K8s CronJob 调度。PRD-1 §6 明确为部署层面职责 | Hermes Agent `cron/` 模块 + `jobs.json` |
-| 8 | OpenCode Go API 默认绑定 — LLM 调用强制走 `opencode-go` API, 模型选择受限于其支持的模型列表 | `resolved` | `model_config.yaml` 配置化, 支持 OpenAI / Anthropic 兼容格式。用户可自由切换 provider 和 endpoint。详见 `defaults.yaml` + `credential_loader.resolve_api_key()` | 旧版 `llm_client.py` 中的 `opencode_go` 硬编码 URL |
-| 9 | MiniMax API 依赖 — 文本生成、生图、TTS、字幕校对等环节直接调用 MiniMax API | `resolved` | MiniMax 死代码已清理。LLM 调用抽象为可切换 provider, 默认 `provider: ""` 空字符串(用户按需配置)。R4 风险已关闭 | 旧版 `minimax_*.py` 及 `api_client.py` |
-| 10 | `skill` 加载路径硬编码 — Hermes Agent 通过固定路径加载技能包 | `resolved` | 新包无 "skill" 概念。功能拆分为 `pipelines/`(编排)、`gates/`(门控)、`adapters/`(平台适配), 均通过 Python import 加载 | Hermes Agent `skill_loader.py` + 旧版 `skills/` 目录 |
-| 11 | `sys.path.insert(0, '/home/renanzai/.hermes/skills/...')` hack — 运行时动态修改 Python 模块搜索路径 | `resolved` | 零 `sys.path` 修改。所有内部引用通过 `automedia.` 包内导入, 外部依赖通过 `pyproject.toml` 声明 | 旧版 `__init__.py` / `bootstrap.py` 中的 `sys.path.insert` |
-| 12 | Hermes `.env` 依赖 — 凭证通过 Hermes Agent 的 `.env` 文件加载 | `resolved` | 四层凭证加载 (`credential_loader.py`): env var (`AUTOMEDIA_*`) → keyring → `oscreds.yaml` → `credentials.yaml`。无 Hermes `.env` 依赖 | Hermes Agent `dotenv` 加载逻辑 + 旧版 `.env` |
-| 13 | Hermes `jobs.json` cron 格式 — 调度任务使用 Hermes 专有的 JSON schema | `isolated` | 外部 cron 直接调用 `automedia cron run <job-name>` CLI。`~/.automedia/cron/jobs.yaml` 使用纯 YAML, 不兼容 `jobs.json`。PRD-1 §6 外部化 | Hermes Agent `jobs.json` 文件 |
-| 14 | 飞书/微信公众号 API 硬编码品牌 — adapter 中直接嵌入品牌特定的 API endpoint、AppID、Secret | `resolved` | `wechat_publisher.py` + `feishu_notifier.py` 为通用 stub, 通过 `FEISHU_WEBHOOK_URL` / `WX_APPID` / `WX_APPSECRET` 环境变量配置。注册通过 `AdapterRegistry` 可插拔 | 旧版 `pre_wechat_upload.py` 中的 `WX_APPID = "wx_xxx"` 硬编码 |
-| 15 | Hermes Agent `artifacts/` 目录约定 — 产物输出固定到 Hermes 管理的 `artifacts/` 路径 | `resolved` | `Project.init()` 创建标准目录结构 (`01_content/`, `02_images/`, `03_video/` 等), 全部位于 `base_dir` 下, 无 Hermes artifact 约束 | 旧版 `pipeline_orchestrator.py` 中的 `ARTIFACTS_DIR = ...` |
-| 16 | Hermes Agent `pipeline_md5.json` 路径硬编码 | `resolved` | MD5 追踪保留(红线 7), 但路径由 `Project.project_dir` 动态确定, 无硬编码。`md5_tracker.py` 通过参数接收路径 | 旧版 `pre_send_whisper_check.py` 中的 `PIPELINE_MD5_PATH` 常量 |
-| 17 | Hermes Agent Gate 注册 API (`register_gate`) — Gate 必须通过 Agent API 注册 | `resolved` | Gate 为普通 Python 类, 继承 `BaseGate` (`automedia/gates/base.py`), 通过 `pipeline_orchestrator.py` 的 YAML 配置编排。无 Agent API 依赖 | 旧版 `gate_registry.py` 中的 `register_gate()` |
-| 18 | Hermes Agent 运行时自省 — 代码中调用 `hermes.get_current_skill()`, `hermes.get_config()` 等运行时 API | `resolved` | 无任何 `hermes.*` 调用。配置通过 `load_config()` 函数加载, 不依赖 Agent 运行时上下文 | 旧版 gate 中的 `hermes.get_current_skill().config` 等调用 |
-| 19 | Hermes Agent 日志格式 — 使用 Hermes 专有的日志 schema | `resolved` | Python 标准 `logging` 模块。无 Hermes 日志格式依赖 | 旧版 `log_config.py` 中的 Hermes JSON 日志格式 |
-| 20 | Hermes `model_config.yaml` 位置固定 — 必须位于 `~/.hermes/config/model_config.yaml` | `resolved` | `model_config.yaml` 从 `~/.automedia/` 加载, 路径由 `credential_loader` 统一管理 | Hermes Agent 配置目录约定 |
-
----
-
-## 解耦验证摘要
-
-### 代码层面 (resolved: 17/20)
-
-- **Hermes 关键字**: `grep -r "hermes\|\.hermes\|skill_view\|execute_code" automedia/` → **0 匹配** ✅
-- **硬编码绝对路径**: 无 `/home/renanzai/`, `/mnt/d/Hermes-Workspace/`, `~/.hermes/` 路径 ✅
-- **sys.path hack**: 无 `sys.path.insert` 调用 ✅
-- **Hermes SDK 依赖**: `pyproject.toml` 无 `hermes-agent` 或 `hermes-sdk` ✅
-- **MiniMax 死代码**: `grep -ri "minimax" automedia/` → **0 匹配** ✅
-
-### 部署层面 (isolated: 3/20)
-
-以下 3 项为外部接口, 属于部署职责而非库代码问题:
-
-| # | 耦合点 | 外部化方案 | 负责方 |
-|---|--------|-----------|--------|
-| 7 | Hermes cron 调度 | `automedia cron run` CLI + 系统 crond / systemd timer | 运维/部署 |
-| 13 | jobs.json cron 格式 | `~/.automedia/cron/jobs.yaml` + 外部 cron 调用 | 运维/部署 |
-| — | 以上两项合计 | 见 PRD-1 §6 外部调度架构 | — |
+| # | Coupling Point | Status | New Package Solution | Original Hermes Reference |
+|---|----------------|--------|---------------------|---------------------------|
+| 1 | `skill_view(name='...')` syntax — registering view functions through Hermes Agent's SkillView API | `resolved` | New package has no `skill_view` calls. CLI is based on `typer`, MCP is based on the `mcp` official SDK, with no Hermes Agent registration logic | `@skill_view(...)` decorators in `00_核心脚本/*.py` |
+| 2 | `~/.hermes/skills/productivity/automedia/scripts/` path hardcoded — script location depends on a fixed Hermes installation path | `resolved` | Scripts are located inside the `automedia/` package, resolved via `__file__` / `importlib.resources`, with no hardcoded absolute paths | All shell/Python entry files under the `scripts/` directory |
+| 3 | `~/.hermes/skills/productivity/automedia/hooks/` path hardcoded — gate hook registration depends on a fixed Hermes installation path | `resolved` | Hooks moved to `automedia/hooks/`, pure Python `Protocol` implementation, registered through the `GateHook` interface, with no filesystem path dependencies | Hook scripts under the `hooks/` directory |
+| 4 | Hermes home directory absolute path — multiple hardcoded user directory paths | `resolved` | No `.hermes` references at all. Config paths are unified as `~/.automedia/` (only used for loading, not hardcoded into code logic), see `config_loader.py` + `credential_loader.py` for details | String hardcoding in old scripts |
+| 5 | Project path hardcoded | `resolved` | `Project.init()` (`automedia/core/project.py`) supports a `base_dir` parameter, defaults to `os.getcwd()`, fully configurable | `PROJECT_BASE` constant in the old AutoMedia `project_init.py` |
+| 6 | `execute_code` sandbox dependency — Hermes Agent's built-in code sandbox execution environment | `resolved` | Pure Python execution, no sandbox. LLM calls go through a configurable `provider` (`~/.automedia/model_config.yaml`), all Gates are local Python classes | `self.skill.execute_code(...)` calls in old gates |
+| 7 | Hermes cron scheduling — Hermes Agent's built-in cron job management (jobs.json format + Agent-level scheduling) | `isolated` | New package exposes cron jobs via CLI (`automedia cron run <job-name>`), scheduled by external crond / systemd timer / K8s CronJob. PRD-1 §6 explicitly defines this as a deployment-layer responsibility | Hermes Agent `cron/` module + `jobs.json` |
+| 8 | OpenCode Go API default binding — LLM calls forced through `opencode-go` API, model selection limited to its supported model list | `resolved` | Configurable via `model_config.yaml`, supports OpenAI / Anthropic compatible formats. Users can freely switch providers and endpoints. See `defaults.yaml` + `credential_loader.resolve_api_key()` | Hardcoded `opencode_go` URL in old `llm_client.py` |
+| 9 | MiniMax API dependency — text generation, image generation, TTS, subtitle proofreading, and other steps directly called MiniMax API | `resolved` | MiniMax dead code has been cleaned up. LLM calls abstracted into swappable providers, default `provider: ""` empty string (users configure as needed). R4 risk closed | Old `minimax_*.py` and `api_client.py` |
+| 10 | `skill` loading path hardcoded — Hermes Agent loaded skill packages via fixed paths | `resolved` | New package has no 'skill' concept. Functionality is split into `pipelines/` (orchestration), `gates/` (gating), `adapters/` (platform adaptation), all loaded via Python imports | Hermes Agent `skill_loader.py` + old `skills/` directory |
+| 11 | `sys.path.insert` hack — dynamically modifying Python module search paths at runtime | `resolved` | Zero `sys.path` modifications. All internal references use `automedia.` package imports, external dependencies declared via `pyproject.toml` | `sys.path.insert` in old `__init__.py` / `bootstrap.py` |
+| 12 | Hermes `.env` dependency — credentials loaded through Hermes Agent's `.env` file | `resolved` | Four-layer credential loading (`credential_loader.py`): env var (`AUTOMEDIA_*`) → keyring → `oscreds.yaml` → `credentials.yaml`. No Hermes `.env` dependency | Hermes Agent `dotenv` loading logic + old `.env` |
+| 13 | Hermes `jobs.json` cron format — scheduled tasks used Hermes-proprietary JSON schema | `isolated` | External cron directly calls `automedia cron run <job-name>` CLI. `~/.automedia/cron/jobs.yaml` uses plain YAML, not compatible with `jobs.json`. Externalized per PRD-1 §6 | Hermes Agent `jobs.json` file |
+| 14 | Feishu/WeChat Official Account API brand hardcoding — brand-specific API endpoints, AppID, and Secret embedded directly in adapters | `resolved` | `wechat_publisher.py` + `feishu_notifier.py` are generic stubs, configured via `FEISHU_WEBHOOK_URL` / `WX_APPID` / `WX_APPSECRET` environment variables. Registration is pluggable via `AdapterRegistry` | `WX_APPID = "wx_xxx"` hardcoding in old `pre_wechat_upload.py` |
+| 15 | Hermes Agent `artifacts/` directory convention — output fixed to Hermes-managed `artifacts/` path | `resolved` | `Project.init()` creates a standard directory structure (`01_content/`, `02_images/`, `03_video/`, etc.), all under `base_dir`, with no Hermes artifact constraints | `ARTIFACTS_DIR = ...` in old `pipeline_orchestrator.py` |
+| 16 | Hermes Agent `pipeline_md5.json` path hardcoded | `resolved` | MD5 tracking retained (Red Line 7), but path is dynamically determined by `Project.project_dir`, no hardcoding. `md5_tracker.py` receives path via parameters | `PIPELINE_MD5_PATH` constant in old `pre_send_whisper_check.py` |
+| 17 | Hermes Agent Gate registration API (`register_gate`) — Gates had to be registered through the Agent API | `resolved` | Gates are plain Python classes inheriting `BaseGate` (`automedia/gates/base.py`), orchestrated via YAML config in `pipeline_orchestrator.py`. No Agent API dependency | `register_gate()` in old `gate_registry.py` |
+| 18 | Hermes Agent runtime introspection — code called `hermes.get_current_skill()`, `hermes.get_config()`, and other runtime APIs | `resolved` | No `hermes.*` calls at all. Configuration is loaded via the `load_config()` function, independent of Agent runtime context | `hermes.get_current_skill().config` calls in old gates |
+| 19 | Hermes Agent log format — used Hermes-proprietary log schema | `resolved` | Python standard `logging` module. No Hermes log format dependency | Hermes JSON log format in old `log_config.py` |
+| 20 | Hermes `model_config.yaml` fixed location — had to be at `~/.hermes/config/model_config.yaml` | `resolved` | `model_config.yaml` is loaded from `~/.automedia/`, path managed uniformly by `credential_loader` | Hermes Agent configuration directory convention |
 
 ---
 
-## 遗留风险
+## Decoupling Verification Summary
 
-| 风险 | 描述 | 缓解 |
-|------|------|------|
-| R4 (PRD-1) | MiniMax 历史代码未清理干净 | 已通过全仓库搜检消除, `automedia/` 中零匹配 |
-| 配置迁移 | 旧 Hermes `model_config.yaml` 用户需手动复制到 `~/.automedia/` | 文档需标注迁移步骤, M4 里程碑处理 |
+### Code Level (resolved: 17/20)
+
+- **Hermes keywords**: `grep -r "hermes\|\.hermes\|skill_view\|execute_code" automedia/` → **0 matches** ✅
+- **Hardcoded absolute paths**: No user-specific paths ✅
+- **sys.path hack**: No `sys.path.insert` calls ✅
+- **Hermes SDK dependency**: `pyproject.toml` has no `hermes-agent` or `hermes-sdk` ✅
+- **MiniMax dead code**: `grep -ri "minimax" automedia/` → **0 matches** ✅
+
+### Deployment Level (isolated: 3/20)
+
+The following 3 items are external interfaces and fall under deployment responsibilities rather than library code issues:
+
+| # | Coupling Point | Externalization Method | Responsible Party |
+|---|----------------|----------------------|-------------------|
+| 7 | Hermes cron scheduling | `automedia cron run` CLI + system crond / systemd timer | Operations/Deployment |
+| 13 | jobs.json cron format | `~/.automedia/cron/jobs.yaml` + external cron invocation | Operations/Deployment |
+| — | Combined total of the above two items | See PRD-1 §6 External Scheduling Architecture | — |
 
 ---
 
-*清单版本: v1.0 · 对应 PRD-1 M1 退出标准*
+## Remaining Risks
+
+| Risk | Description | Mitigation |
+|------|-------------|------------|
+| R4 (PRD-1) | MiniMax historical code not fully cleaned up | Eliminated through full repository search, zero matches in `automedia/` |
+| Config migration | Users with old Hermes `model_config.yaml` need to manually copy it to `~/.automedia/` | Documentation needs migration steps marked, handled at M4 milestone |
+
+---
+
+*Checklist version: v1.0 · Corresponds to PRD-1 M1 exit criteria*

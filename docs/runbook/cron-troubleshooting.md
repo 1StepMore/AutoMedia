@@ -1,60 +1,67 @@
-# Cron Job 调试指南
+---
+title: Cron Troubleshooting
+description: Cron job debugging guide — troubleshooting AutoMedia scheduled tasks triggered by external crond or systemd timers.
+---
 
-AutoMedia 将调度职责完全外部化: 不内置调度器, 由系统 crond 或 systemd timer 调用 `automedia cron run <job>`。
+# Cron Job Debugging Guide
 
-## 架构
+AutoMedia fully externalizes scheduling responsibilities: it has no built-in
+scheduler. System crond or systemd timers call `automedia cron run <job>`.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[系统 crond] -->|"0 8 * * * automedia cron run hot-collection"| B[CLI]
+    A[System crond] -->|"0 8 * * * automedia cron run hot-collection"| B[CLI]
     B --> C[automedia cron run]
     C --> D[Job handler]
-    D --> E[Return code 0/非0]
+    D --> E[Return code 0/non-zero]
 ```
 
-每个 cron job:
+Each cron job:
 
-- 由外部 crond 按 schedule 触发
-- 单次执行, 超时后由 cron 自行终止
-- 执行结果通过 cron 的 MAILTO 机制或系统日志 (`/var/log/syslog`) 获取
-- 无内置持久化, 依赖外部 cron 的日志
+- Triggered by external crond on schedule
+- Single execution, terminated by cron if it times out
+- Execution results obtained via cron's MAILTO mechanism or system log
+  (`/var/log/syslog`)
+- No built-in persistence, relies on external cron logging
 
-## 调试步骤
+## Debugging Steps
 
-### 1. 确认 cron 服务运行中
+### 1. Confirm Cron Service is Running
 
 ```bash
 systemctl status cron    # Debian/Ubuntu
 systemctl status crond   # CentOS/RHEL
 ```
 
-### 2. 测试 CLI 命令本身
+### 2. Test the CLI Command Directly
 
 ```bash
-# 直接运行, 观察输出
+# Run directly and observe output
 automedia cron run pool-collect
 automedia cron run pool-score
 automedia cron run pool-prune
 automedia cron run publish-check
 ```
 
-### 3. 检查 crontab 配置
+### 3. Check Crontab Configuration
 
 ```bash
 crontab -l
 ```
 
-预期条目示例:
+Expected entries example:
 
 ```cron
-# AutoMedia 每日定时任务
-0 8 * * * cd /mnt/d/AutoMedia && automedia cron run hot-collection >> /var/log/automedia/cron.log 2>&1
-5 8 * * * cd /mnt/d/AutoMedia && automedia cron run semantic-audit >> /var/log/automedia/cron.log 2>&1
-30 8 * * * cd /mnt/d/AutoMedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
-30 9 * * * cd /mnt/d/AutoMedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
+# AutoMedia daily scheduled tasks
+0 8 * * * cd /var/automedia && automedia cron run hot-collection >> /var/log/automedia/cron.log 2>&1
+5 8 * * * cd /var/automedia && automedia cron run semantic-audit >> /var/log/automedia/cron.log 2>&1
+30 8 * * * cd /var/automedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
+30 9 * * * cd /var/automedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
 ```
 
-### 4. 检查系统 cron 日志
+### 4. Check System Cron Logs
 
 ```bash
 # Debian/Ubuntu
@@ -64,52 +71,59 @@ grep -i "automedia" /var/log/syslog
 grep -i "automedia" /var/log/cron
 ```
 
-### 5. 检查应用日志
+### 5. Check Application Logs
 
 ```bash
 cat /var/log/automedia/cron.log
 ```
 
-如果日志目录不存在, 创建它:
+If the log directory does not exist, create it:
 
 ```bash
 mkdir -p /var/log/automedia
 ```
 
-### 6. 运行健康检查
+### 6. Run Health Check
 
 ```bash
 automedia cron check-health
 ```
 
-执行 4 步检查:
+Performs a 4-step check:
 
 1. Python >= 3.11
-2. ffmpeg 可用
-3. `.automedia/` 配置目录存在
-4. pool.db 可访问
+2. ffmpeg available
+3. `.automedia/` config directory exists
+4. pool.db accessible
 
-## 常见问题
+## Common Issues
 
-### Job 未按时执行
+### Job Did Not Execute on Time
 
-- 确认 crond 服务运行中: `systemctl status cron`
-- 确认 crontab 中的 schedule 表达式正确 (注意 cron 使用系统时区)
-- 检查 `/var/log/syslog` 中的 cron 条目, 看系统是否尝试执行但失败了
-- 确认命令中的 `cd` 路径正确, AutoMedia 依赖工作目录
+- Confirm crond service is running: `systemctl status cron`
+- Confirm the schedule expression in crontab is correct (note that cron uses
+  the system timezone)
+- Check `/var/log/syslog` for cron entries to see if the system attempted
+  execution but failed
+- Confirm the `cd` path in the command is correct — AutoMedia depends on the
+  working directory
 
-### Job 执行超时
+### Job Execution Timeout
 
-- `automedia cron run` 默认超时 120 秒, 通过 `--timeout` 调整
-- 但外部 cron 超时是独立的, 需要确认 cron 配置
-- 在命令中增加 `timeout` 前缀: `timeout 600 automedia cron run pool-collect`
+- `automedia cron run` defaults to a 120 second timeout, adjustable via
+  `--timeout`
+- But the external cron timeout is independent, you need to check the cron
+  configuration
+- Add a `timeout` prefix to the command:
+  `timeout 600 automedia cron run pool-collect`
 
-### Grace Period 处理
+### Grace Period Handling
 
-Hermes cron 原来的 grace period 机制在外部化方案中不再存在。Grace period 语义需要自行实现:
+The Hermes cron grace period mechanism no longer exists in the externalized
+approach. You need to implement grace period semantics yourself:
 
 ```bash
-# 包装脚本示例: 检测上一次执行是否还在运行
+# Wrapper script example: detect if the previous execution is still running
 LOCKFILE=/tmp/automedia-cron-${JOB_NAME}.lock
 if [ -f "$LOCKFILE" ] && [ -d /proc/$(cat $LOCKFILE) ]; then
     echo "Previous job still running, skipping"
@@ -121,52 +135,53 @@ trap 'rm -f "$LOCKFILE"' EXIT
 automedia cron run "$JOB_NAME"
 ```
 
-### 飞书通知不触发
+### Feishu Notification Not Triggering
 
-- 确认 `FEISHU_WEBHOOK_URL` 环境变量已设置
-- 测试 webhook: `curl -X POST -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"test"}}' $FEISHU_WEBHOOK_URL`
-- 如果使用 systemd timer, 需要在 service 文件中配置 `Environment=`
+- Confirm the `FEISHU_WEBHOOK_URL` environment variable is set
+- Test the webhook:
+  `curl -X POST -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"test"}}' $FEISHU_WEBHOOK_URL`
+- If using systemd timer, configure `Environment=` in the service file
 
-### 多环境一致性
+### Multi-Environment Consistency
 
-不同环境的 crontab 语法一致。跨平台注意事项:
+The crontab syntax is consistent across environments. Cross-platform notes:
 
-- macOS crontab 路径与 Linux 不同, 需要 `PATH=/usr/local/bin:$PATH`
-- WSL 中 cron 服务默认未启用, 需 `sudo service cron start`
-- Docker 容器中通常使用 `supervisord` 替代 crond
+- macOS crontab path differs from Linux, requires `PATH=/usr/local/bin:$PATH`
+- Cron service is not enabled by default in WSL, use `sudo service cron start`
+- Docker containers typically use `supervisord` instead of crond
 
-## 故障恢复
+## Failure Recovery
 
 ```bash
-# 1. 检查 cron 服务
+# 1. Check cron service
 systemctl is-active cron
 
-# 2. 查看最近 20 条 cron 日志
+# 2. View the last 20 cron log entries
 grep "automedia" /var/log/syslog | tail -20
 
-# 3. 手动执行 job 确认
+# 3. Manually execute the job to confirm
 automedia cron run hot-collection
-echo $?  # 确认返回码
+echo $?  # Confirm return code
 
-# 4. 恢复 crontab (从备份)
+# 4. Restore crontab (from backup)
 crontab /path/to/backup/crontab.txt
 ```
 
-## 推荐 crontab 模板
+## Recommended Crontab Template
 
 ```cron
-# ┌───────────── 分 (0-59)
-# │ ┌───────────── 时 (0-23)
-# │ │ ┌───────────── 日 (1-31)
-# │ │ │ ┌───────────── 月 (1-12)
-# │ │ │ │ ┌───────────── 周 (0-7, 0=周日)
+# ┌───────────── minute (0-59)
+# │ ┌───────────── hour (0-23)
+# │ │ ┌───────────── day of month (1-31)
+# │ │ │ ┌───────────── month (1-12)
+# │ │ │ │ ┌───────────── day of week (0-7, 0=Sunday)
 # │ │ │ │ │
 # MAILTO="admin@example.com"
 # PATH="/usr/local/bin:/usr/bin:/bin"
 #
-# AutoMedia 每日定时任务
-0 8 * * * cd /mnt/d/AutoMedia && automedia cron run pool-collect >> /var/log/automedia/cron.log 2>&1
-5 8 * * * cd /mnt/d/AutoMedia && automedia cron run pool-score >> /var/log/automedia/cron.log 2>&1
-30 8 * * * cd /mnt/d/AutoMedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
-30 9 * * * cd /mnt/d/AutoMedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
+# AutoMedia daily scheduled tasks
+0 8 * * * cd /var/automedia && automedia cron run pool-collect >> /var/log/automedia/cron.log 2>&1
+5 8 * * * cd /var/automedia && automedia cron run pool-score >> /var/log/automedia/cron.log 2>&1
+30 8 * * * cd /var/automedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
+30 9 * * * cd /var/automedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
 ```

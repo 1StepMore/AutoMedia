@@ -1,3 +1,8 @@
+---
+title: PRD-1 Verification Summary
+description: AutoMedia PRD-1 implementation verification results after W3 (MCP Server) and W4 (Config + Documentation).
+---
+
 # PRD-1 Verification Summary
 
 AutoMedia PRD-1 implementation was verified after completing W3 (MCP Server) and W4 (Config + Documentation).
@@ -58,5 +63,5 @@ python3 -m automedia.mcp.server --show-tools
 
 ## Remaining Known Items
 
-- `register_platform_adapter` remains a documented stub per PRD-1 NG6 ("不新增内容生产平台"). The function validates input, returns clear instructions, and can dynamically register a class when `adapter_class` is provided.
+- `register_platform_adapter` remains a documented stub per PRD-1 NG6 ("no new content production platforms"). The function validates input, returns clear instructions, and can dynamically register a class when `adapter_class` is provided.
 - Untracked working-tree artifacts (`20260708_test-topic/`, `20260708_test/`, `PRD/`, `automedia/platform/`, `AutoMedia-技术栈与架构提取.md`) were intentionally excluded from commits.

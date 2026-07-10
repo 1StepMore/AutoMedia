@@ -1,3 +1,8 @@
+---
+title: SOP Runner
+description: Generates operational playbooks and daily task lists from Decision Layer outputs.
+---
+
 # SOP Runner
 
 The SOP Runner generates operational playbooks and daily task lists from

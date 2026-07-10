@@ -1,3 +1,8 @@
+---
+title: Enforcement Mechanisms
+description: Six enforcement mechanisms ensuring Decision Layer outputs are complete, verified, and properly routed.
+---
+
 # Enforcement Mechanisms
 
 Six enforcement mechanisms ensure that Decision Layer outputs are complete,

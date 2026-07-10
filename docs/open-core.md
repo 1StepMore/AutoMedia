@@ -1,3 +1,8 @@
+---
+title: Open-Core Model
+description: AutoMedia open-core licensing model — free core engine with commercial enterprise features.
+---
+
 # Open-Core Model
 
 AutoMedia follows an **open-core** licensing model: the core automation engine
@@ -13,7 +18,7 @@ The Community Edition is available under the license in `LICENSE` and includes:
 | Feature | Available |
 |---------|-----------|
 | Production Pipeline (`pipeline.run_full_pipeline`) | Yes |
-| All 14+ Production Gates | Yes |
+| All 20 Production Gates | Yes |
 | 4-track media production (text/image/video/audio) | Yes |
 | CLI and MCP interface | Yes |
 | Decision Layer (Diagnostic, Build, Scale, Strategy) | Yes |

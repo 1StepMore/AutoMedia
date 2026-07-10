@@ -1,73 +1,85 @@
-# Gate 失败模式与修复
+---
+title: Gate Failure Modes
+description: Failure modes, diagnostics, and remediation for each Gate — based on production experience with AutoMedia.
+---
 
-本文档记录每个 Gate 的失败模式、诊断方法和修复步骤。内容源自 AutoMedia 生产环境中积累的踩坑经验。
+# Gate Failure Modes and Remediation
 
-## pre-gate: 话题选择
+This document records each Gate's failure modes, diagnostic methods, and
+remediation steps. The content draws on experience accumulated from running
+AutoMedia in production.
 
-话题评分低于阈值或与最近已发布内容重复。
+## pre-gate: Topic Selection
 
-**常见失败原因:**
+Topic score falls below threshold or duplicates recently published content.
 
-- 话题分数低于最低阈值 (通常 < 0.3)
-- 内容与最近 N 篇已发布文章语义相似度 > 0.85
-- 话题领域不在频道范围内 (非 AI/媒体相关)
-- 来源 URL 不可达或返回 404
+**Common failure causes:**
 
-**修复:**
+- Topic score below minimum threshold (typically < 0.3)
+- Semantic similarity with recent N published articles > 0.85
+- Topic domain outside channel scope (not AI/media related)
+- Source URL unreachable or returns 404
 
-- 调整评分权重或重新采集更新数据
-- 检查语义去重库的最近 N 篇范围, 必要时缩小
-- 确认频道领域关键词配置是否正确
-- 重试 URL 获取或标记为死链跳过
+**Remediation:**
 
-**快速诊断:**
+- Adjust scoring weights or re-collect updated data
+- Check the recent N range in the semantic dedup library, narrow if needed
+- Verify channel domain keywords are configured correctly
+- Retry URL fetch or mark as dead link to skip
+
+**Quick diagnosis:**
 
 ```bash
-# 查看话题池中话题的评分
+# View topic scores in the topic pool
 automedia pool list --status pending
 ```
 
-## G0: 事实核查
+## G0: Fact Check
 
-5 步验证内容与源数据的一致性: 来源追溯、数据验证、时间线、引文、实体。
+Five-step verification of content consistency with source data: source tracing,
+data verification, timeline, citations, entities.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 来源 URL 域名未出现在生成内容中
-- 关键数字与源数据不匹配
-- 事件日期晚于源发布时间 (时间倒挂)
-- 引文未逐字出现在内容中
-- 关键实体名称拼写错误或缺失
+- Source URL domain not present in generated content
+- Key numbers do not match source data
+- Event date after source publication date (time reversal)
+- Citation not present verbatim in content
+- Key entity names misspelled or missing
 
-**修复:**
+**Remediation:**
 
-- 确保内容中包含了来源 URL 域名 (不仅是链接)
-- 核对 `source_data` 中的 `key_numbers` 是否全部在内容中出现
-- 检查所有提及的日期是否早于源的 `published_date`
-- 引文需要从 `source_data.quotes[]` 逐字提取
-- 实体名称需要交叉核对 `source_data.entities[]`
+- Ensure content includes the source URL domain (not just a link)
+- Verify all `key_numbers` from `source_data` appear in the content
+- Check that all mentioned dates are before the source's `published_date`
+- Citations must be extracted verbatim from `source_data.quotes[]`
+- Entity names must be cross-checked against `source_data.entities[]`
 
-**典型踩坑:** LLM 有时会"重写"数据产生近似但不精确的数字。例如"3.2%"写成"约 3%", 这会被 Gate 判定失败。修复: 强制使用原始精确值。
+**Common pitfall:** The LLM sometimes "rewrites" data to produce approximate
+but imprecise numbers. For example, writing "about 3%" instead of "3.2%".
+The Gate flags this as a failure. Fix: force the use of exact original values.
 
-## G1: 去 AI 味 (Humanizer)
+## G1: Humanizer
 
-移除 AI 生成痕迹, 使文本呈现自然的人类写作风格。
+Remove AI-generated traces, making the text read in a natural human writing
+style.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 输出仍包含"furthermore", "in summary", "in the realm of" 等 AI 标志词
-- 句子结构过于均匀 (相同长度、相同开头)
-- 情感基调平淡或机械
-- 段落间过渡语公式化
+- Output still contains AI marker words like "furthermore", "in summary",
+  "in the realm of"
+- Sentence structure too uniform (same length, same beginnings)
+- Emotional tone flat or mechanical
+- Transition phrases between paragraphs are formulaic
 
-**修复:**
+**Remediation:**
 
-- 替换 AI 过渡短语为自然口语化表达
-- 变化句子长度和开头词选择
-- 注入适当的情感标记 (感叹、反问)
-- 用上下文相关的钩子替换公式化段落开头
+- Replace AI transition phrases with natural spoken expressions
+- Vary sentence length and word choice at sentence starts
+- Inject appropriate emotional markers (exclamations, rhetorical questions)
+- Replace formulaic paragraph openings with context-relevant hooks
 
-**快速检查清单:**
+**Quick checklist:**
 
 ```
 是否还有 "此外" / "值得注意的是" / "总的来说" 开头段落?
@@ -75,274 +87,278 @@ automedia pool list --status pending
 情感是否中性得像百科? 需要一些态度。
 ```
 
-## G2: 文案审查 (Copy Review)
+## G2: Copy Review
 
-文案结构和风格审查, 确保可读性和流畅度。
+Copy structure and style review, ensuring readability and flow.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 段落过长或过短, 缺乏视觉节奏
-- 各节之间的语气不一致
-- 开头缺乏有效的钩子
-- CTA 弱或缺失
+- Paragraphs too long or too short, lacking visual rhythm
+- Inconsistent tone between sections
+- Opening lacks an effective hook
+- CTA weak or missing
 
-**修复:**
+**Remediation:**
 
-- 平衡段落长度 (3-5 句为宜)
-- 统一全文字调 (正式 vs 口语化)
-- 用大胆断言或问题强化开头钩子
-- 确保 CTA 具体、可操作、可见
+- Balance paragraph length (3-5 sentences is ideal)
+- Unify tone across the entire piece (formal vs conversational)
+- Strengthen the opening hook with a bold assertion or question
+- Ensure the CTA is specific, actionable, and visible
 
-## G3: 品牌 CTA
+## G3: Brand CTA
 
-品牌名称完整性和 CTA 合规性。
+Brand name integrity and CTA compliance.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 品牌名称"壹目贯维"出现同音错别字
-- CTA 链接或二维码引用缺失
-- 品牌提及频率低于最低阈值
-- CTA 位置不够突出 (未出现在开头或结尾)
+- Brand name appears with homophone typos
+- CTA link or QR code reference missing
+- Brand mention frequency below minimum threshold
+- CTA placement not prominent enough (not at beginning or end)
 
-**修复:**
+**Remediation:**
 
-- 逐字核对品牌名: 壹-目-贯-维
-- 确保 CTA 包含可操作文字和链接/二维码引用
-- 增加品牌提及次数到至少要求的频率
-- 将 CTA 移到高可见位置 (靠近开头或结尾)
+- Verify the brand name character by character
+- Ensure CTA includes actionable text and link/QR code reference
+- Increase brand mentions to at least the required frequency
+- Move CTA to high-visibility positions (near beginning or end)
 
-**典型踩坑:** "壹目贯维"经常被 LLM 写成"一目贯维"或"壹目惯维"。必须在 prompt 中强调并做字符级验证。
+**Common pitfall:** "壹目贯维" is often written by the LLM as "一目贯维" or
+"壹目惯维". You must emphasize this in the prompt and do character-level
+validation.
 
-## G4: 微信公众号检查清单
+## G4: WeChat Checklist
 
-特定于微信公众号平台的发布前检查。
+Pre-publish checks specific to the WeChat Official Accounts platform.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 封面图缺失或宽高比不对
-- 原创作者声明未设置
-- 微信特有格式问题 (行距、字号)
-- 预览模式渲染异常
+- Cover image missing or wrong aspect ratio
+- Original author declaration not set
+- WeChat-specific formatting issues (line spacing, font size)
+- Preview mode rendering anomalies
 
-**修复:**
+**Remediation:**
 
-- 上传 900x500 px 的封面图且匹配文章主题
-- 发布前设置原创作者字段
-- 使用微信编辑器重新应用格式
-- 发布前务必在手机上预览
+- Upload a 900x500 px cover image that matches the article topic
+- Set the original author field before publishing
+- Reapply formatting using the WeChat editor
+- Always preview on mobile before publishing
 
-## G5: HTML 硬门控
+## G5: HTML Hard Gate
 
-HTML 输出结构和无障碍标准验证。
+HTML output structure and accessibility standard validation.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- HTML 未通过 W3C 验证
-- 图片缺少 alt 属性
-- 内联样式与站点 CSS 冲突
-- 响应式布局在 768px 以下断点处断裂
+- HTML fails W3C validation
+- Images missing alt attributes
+- Inline styles conflicting with site CSS
+- Responsive layout breaks at the 768px breakpoint
 
-**修复:**
+**Remediation:**
 
-- 用 W3C 验证器检查 HTML 并修复错误
-- 每个 `<img>` 元素添加描述性 alt 文本
-- 限定内联样式范围避免级联冲突
-- 在 375px、768px、1920px 三个断点测试布局
+- Check HTML with W3C validator and fix errors
+- Add descriptive alt text to every `<img>` element
+- Scope inline styles to avoid cascade conflicts
+- Test layout at 375px, 768px, and 1920px breakpoints
 
 ## V0: Lint
 
-HyperFrames HTML/JS 输出的代码质量检查。
+Code quality check for HyperFrames HTML/JS output.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- JavaScript 语法错误
-- 模板中存在未使用的变量或导入
-- 模板包含硬编码测试数据而非动态绑定
-- GSAP 动画指向不存在的 DOM 元素
+- JavaScript syntax errors
+- Unused variables or imports in templates
+- Templates contain hardcoded test data instead of dynamic bindings
+- GSAP animations target non-existent DOM elements
 
-**修复:**
+**Remediation:**
 
-- 修复 lint 错误后重新渲染
-- 移除未使用的导入和变量
-- 将硬编码测试数据替换为模板变量引用
-- 检查 GSAP 选择器是否匹配实际 DOM 元素 ID
+- Fix lint errors then re-render
+- Remove unused imports and variables
+- Replace hardcoded test data with template variable references
+- Check GSAP selectors match actual DOM element IDs
 
 ## V1: Vision QA
 
-生成视频帧和图片的视觉质量保证。
+Visual quality assurance for generated video frames and images.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 图片存在不需要的伪影 (噪点、变形、裁剪)
-- 品牌名称或关键文字在渲染帧中难以辨认
-- 各帧色彩不一致
-- 宽高比不匹配目标平台 (竖版视频 9:16)
+- Images have unwanted artifacts (noise, distortion, cropping)
+- Brand name or key text illegible in rendered frames
+- Inconsistent color grading across frames
+- Aspect ratio does not match target platform (vertical video 9:16)
 
-**修复:**
+**Remediation:**
 
-- 用修改后的提示重新生成图片 (避免已知伪影)
-- 确保品牌文字足够大且对比度高
-- 遵循合成时定义的统一色板
-- 检查 aspect_ratio 参数是否匹配目标格式
+- Regenerate images with modified prompts (avoid known artifacts)
+- Ensure brand text is large enough with sufficient contrast
+- Follow the unified color palette defined during composition
+- Check the `aspect_ratio` parameter matches the target format
 
-**典型踩坑:** Vision API 限流时触发降级到像素亮度法, QA 报告会标注"降级"字样。此时精度下降但不会阻塞流程。
+**Common pitfall:** When the Vision API is rate limited, it degrades to pixel
+luminance analysis. The QA report will note "degraded" in the output. Accuracy
+drops but the flow is not blocked.
 
 ## V2: Pre-Send Whisper
 
-验证 Whisper ASR 输出的质量。
+Verify the quality of Whisper ASR output.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- Whisper 转录文本 WER (词错误率) 过高
-- 品牌名称和专有名词的同音错误
-- 时间戳与音频严重偏移
-- Whisper 模型太小不适应音频质量
+- Whisper transcription WER (Word Error Rate) too high
+- Homophone errors for brand names and proper nouns
+- Timestamps significantly misaligned with audio
+- Whisper model too small for the audio quality
 
-**修复:**
+**Remediation:**
 
-- 使用更大的 Whisper 模型 (large-v3) 提高准确率
-- 用已知正确的脚本文本交叉核对品牌名称
-- 加 `--word_timestamps True` 重新运行 Whisper 精细对齐
-- 音频质量差时先用降噪预处理
+- Use a larger Whisper model (large-v3) for better accuracy
+- Cross-check brand names against the known correct script text
+- Re-run Whisper with `--word_timestamps True` for fine alignment
+- Apply noise reduction preprocessing when audio quality is poor
 
-## V3: 内容语义
+## V3: Content Semantic
 
-检查生成内容的语义一致性和话题对齐度。
+Check semantic consistency and topic alignment of generated content.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 内容偏离原始话题大纲
-- 关键声明无源材料支撑
-- 章节顺序不符合叙事流程
-- 不同章节出现重复或矛盾陈述
+- Content deviates from the original topic outline
+- Key claims lack supporting source material
+- Section order does not follow the narrative flow
+- Duplicate or contradictory statements across sections
 
-**修复:**
+**Remediation:**
 
-- 逐一将内容对齐到已批准的话题大纲
-- 每个关键声明引用源材料
-- 按规划阶段定义的故事弧重新排序章节
-- 跨章节合并或移除矛盾陈述
+- Align content point by point to the approved topic outline
+- Cite source material for every key claim
+- Reorder sections according to the story arc defined in planning
+- Merge or remove contradictory statements across sections
 
-## V4: TTS 品牌资产
+## V4: TTS Brand Asset
 
-验证品牌音频 (TTS) 质量和正确性。
+Verify brand audio (TTS) quality and correctness.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- TTS 音频将品牌名"壹目贯维"读错
-- 语速过快或过慢
-- 音频时长不匹配目标槽位
-- 使用了错误的声音 ID 或口音
+- TTS audio mispronounces the brand name
+- Speaking rate too fast or too slow
+- Audio duration does not match the target slot
+- Wrong voice ID or accent used
 
-**修复:**
+**Remediation:**
 
-- 使用 SSML 音素标签强制正确品牌发音
-- 通过 `<prosody rate="...">` 或 TTS API 速度参数调节语速
-- 裁剪或延长脚本来匹配目标时长窗口
-- 从声音库中选择合适的 voice_id
+- Use SSML phoneme tags to force correct brand pronunciation
+- Adjust speaking rate via `<prosody rate="...">` or TTS API speed parameters
+- Trim or extend the script to fit the target duration window
+- Select the appropriate voice_id from the voice library
 
 ## V5: MP3 vs SRT
 
-交叉验证音频时长与字幕时序。
+Cross-validate audio duration against subtitle timing.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- MP3 总时长明显短于/长于 SRT 时间线
-- 单个字幕段重叠或间隔过大
-- WPM 超过可读阈值 (> 300)
-- 音频文件损坏或截断
+- MP3 total duration significantly shorter/longer than SRT timeline
+- Individual subtitle segments overlap or have excessive gaps
+- WPM exceeds readability threshold (> 300)
+- Audio file corrupted or truncated
 
-**修复:**
+**Remediation:**
 
-- 调整语速重新生成 TTS 音频以匹配 SRT 时间线
-- 合并重叠段并重新分配时间预算
-- 重写密集段减少字数
-- 用 `ffprobe` 验证 MP3 完整性
+- Adjust speaking rate and regenerate TTS audio to match SRT timeline
+- Merge overlapping segments and redistribute time budget
+- Rewrite dense segments to reduce word count
+- Verify MP3 integrity with `ffprobe`
 
-## V6: 字幕渲染
+## V6: Subtitle Rendering
 
-确保字幕正确渲染到视频中。
+Ensure subtitles are correctly rendered into the video.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 字幕文字在视频边缘被截断或裁剪
-- 字体大小太小, 移动端无法阅读
-- ASS style PlayRes 与视频分辨率不匹配
-- 字幕时序与渲染帧不同步
+- Subtitle text clipped or cropped at video edges
+- Font size too small to read on mobile devices
+- ASS style PlayRes does not match video resolution
+- Subtitle timing out of sync with rendered frames
 
-**修复:**
+**Remediation:**
 
-- 设置 ASS PlayResX/Y 匹配视频分辨率 (如 1080x1920)
-- 字号至少 28 (竖版 9:16 视频)
-- 底部边距 (MarginV) 设为 120
-- 用校正后的时序值重新渲染
+- Set ASS PlayResX/Y to match video resolution (e.g. 1080x1920)
+- Font size at least 28 (for vertical 9:16 video)
+- Set bottom margin (MarginV) to 120
+- Re-render with corrected timing values
 
-## V7: 六步硬门控
+## V7: Six-Step Hard Gate
 
-发布前最终综合质量门控 (6 项检查)。
+Final comprehensive quality gate before publishing (6 checks).
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 6 步检查中的一项或多项失败
-- 生成的资产缺失或路径错误
-- 元数据 (标题、描述、标签) 不完整
-- 跨平台格式转换引入伪影
+- One or more of the 6 checks fail
+- Generated assets missing or wrong path
+- Metadata (title, description, tags) incomplete
+- Cross-platform format conversion introduces artifacts
 
-**修复:**
+**Remediation:**
 
-- 分别运行子检查来定位失败步骤
-- 确认所有资产文件存在于预期路径
-- 按平台要求填写缺失的元数据字段
-- 检查转换后输出的分辨率和格式
+- Run sub-checks individually to locate the failing step
+- Confirm all asset files exist at expected paths
+- Fill in missing metadata fields per platform requirements
+- Check converted output resolution and format
 
-## L1: 发布日志 Schema
+## L1: Publish Log Schema
 
-验证发布日志条目符合要求的 schema。
+Verify publish log entries conform to the required schema.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 日志条目缺少必填字段 (platform, url, timestamp)
-- 字段值类型错误 (如 timestamp 是字符串而非 datetime)
-- 发布日志 schema 版本与数据库不匹配
+- Log entry missing required fields (platform, url, timestamp)
+- Field value type mismatch (e.g. timestamp is string instead of datetime)
+- Publish log schema version does not match the database
 
-**修复:**
+**Remediation:**
 
-- 写入日志条目前填写所有必填字段
-- 类型强制转换值以匹配 schema 定义
-- 迁移发布日志表到最新 schema 版本
+- Fill all required fields before writing log entries
+- Type-cast values to match schema definitions
+- Migrate the publish log table to the latest schema version
 
-## L2: 归档验证
+## L2: Archive Validation
 
-验证项目归档完整且未损坏。
+Verify the project archive is complete and not corrupted.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 归档 ZIP 文件缺失或截断
-- 归档中缺失预期文件 (MP4, SRT, 封面图)
-- 文件校验和与记录值不匹配
-- 归档中包含过期或不相关文件
+- Archive ZIP file missing or truncated
+- Expected files missing from archive (MP4, SRT, cover image)
+- File checksum does not match recorded value
+- Archive contains expired or irrelevant files
 
-**修复:**
+**Remediation:**
 
-- 确保包含所有输出资产的条件下重新创建归档
-- 对照预期文件路径清单验证归档
-- 重新计算校验和并与记录值比较
-- 重新打包前清理归档目录
+- Recreate the archive ensuring all output assets are included
+- Validate the archive against the expected file path manifest
+- Recompute checksums and compare against recorded values
+- Clean the archive directory before repackaging
 
-## L3: 平台完整性
+## L3: Platform Integrity
 
-确保每个目标发布平台的资产集完整。
+Ensure the asset set for each target publishing platform is complete.
 
-**常见失败原因:**
+**Common failure causes:**
 
-- 平台特定格式转换失败 (如 MP4 编解码器不支持)
-- 缺少所需分辨率变体
-- 视频平台缩略图未生成
-- 目标平台缺少字幕文件
+- Platform-specific format conversion fails (e.g. MP4 codec not supported)
+- Required resolution variants missing
+- Video platform thumbnail not generated
+- Subtitle files missing for target platform
 
-**修复:**
+**Remediation:**
 
-- 使用目标平台推荐的编解码器/设置重新转换
-- 生成所有所需分辨率变体 (1080p, 720p, 480p)
-- 生成平台兼容的缩略图 (尺寸、格式、宽高比)
-- 生成平台特定的字幕文件 (SRT, VTT, SCC)
+- Re-convert using the target platform's recommended codec/settings
+- Generate all required resolution variants (1080p, 720p, 480p)
+- Generate platform-compatible thumbnails (size, format, aspect ratio)
+- Generate platform-specific subtitle files (SRT, VTT, SCC)
