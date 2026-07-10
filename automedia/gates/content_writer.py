@@ -17,6 +17,20 @@ from typing import Any
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates.base import BaseGate
 
+_EXPECTED_MAP: dict[str, str] = {
+    "topic_present": "Topic is provided in gate_context",
+    "project_dir_present": "Project directory is provided in gate_context",
+    "llm_success": "LLM call completes without error",
+    "content_not_empty": "LLM returns non-empty content",
+    "file_write_success": "Draft file is written to disk",
+    "content_generated": "Article content is generated and saved",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
 # ---------------------------------------------------------------------------
 # Default system prompt used when no override is provided in config
 # ---------------------------------------------------------------------------
@@ -80,12 +94,24 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: 'topic' is required in gate_context",
+                "expected_vs_actual": {
+                    "check": "topic_present",
+                    "expected": _derive_expected("topic_present"),
+                    "actual": "topic is empty or missing",
+                    "context": {},
+                },
             }
         if not project_dir:
             return {
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: 'project_dir' is required in gate_context",
+                "expected_vs_actual": {
+                    "check": "project_dir_present",
+                    "expected": _derive_expected("project_dir_present"),
+                    "actual": "project_dir is empty or missing",
+                    "context": {},
+                },
             }
 
         # --- Build the writer prompt ------------------------------------------------
@@ -116,6 +142,12 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": f"ContentWriterGate: LLM call failed — {exc}",
+                "expected_vs_actual": {
+                    "check": "llm_success",
+                    "expected": _derive_expected("llm_success"),
+                    "actual": f"LLM call failed: {exc}",
+                    "context": {},
+                },
             }
 
         if not content.strip():
@@ -123,6 +155,12 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: LLM returned empty content",
+                "expected_vs_actual": {
+                    "check": "content_not_empty",
+                    "expected": _derive_expected("content_not_empty"),
+                    "actual": "LLM returned empty or whitespace-only content",
+                    "context": {},
+                },
             }
 
         # --- Write to disk ----------------------------------------------------------
@@ -141,6 +179,12 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": f"ContentWriterGate: failed to write file — {exc}",
+                "expected_vs_actual": {
+                    "check": "file_write_success",
+                    "expected": _derive_expected("file_write_success"),
+                    "actual": f"File write failed: {exc}",
+                    "context": {},
+                },
             }
 
         # --- Update gate_context for downstream gates -------------------------------
@@ -154,4 +198,10 @@ class ContentWriterGate(BaseGate):
             "gate": "CW",
             "content": content,
             "output_path": output_path,
+            "expected_vs_actual": {
+                "check": "content_generated",
+                "expected": _derive_expected("content_generated"),
+                "actual": f"Article written to {output_path}",
+                "context": {},
+            },
         }
