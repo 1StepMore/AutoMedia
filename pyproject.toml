@@ -29,6 +29,14 @@ omni-pdf = ["pymupdf>=1.24"]
 omni-ml = ["sentence-transformers>=3", "torch>=2"]
 omni = ["automedia[omni-core]", "automedia[omni-pdf]", "automedia[omni-ml]",
         "omni-pre-processor>=0.9,<1.0", "omni-localizer>=0.7,<1.0", "omni-re-formatter>=0.4,<1.0"]
+dev = [
+    "automedia[openai]",
+    "automedia[anthropic]",
+    "automedia[httpx]",
+    "automedia[rich]",
+    "automedia[mcp]",
+    "cryptography>=41",
+]
 
 [project.entry-points.console_scripts]
 automedia = "automedia.cli.app:app"
