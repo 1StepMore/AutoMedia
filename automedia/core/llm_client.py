@@ -8,10 +8,38 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
 from automedia.core.credential_loader import resolve_api_key
 
 if TYPE_CHECKING:
     from openai import OpenAI
+
+
+# ---------------------------------------------------------------------------
+# Retryable error types (lazily resolved — openai is optional)
+# ---------------------------------------------------------------------------
+
+def _get_retryable_errors() -> tuple[type[BaseException], ...]:
+    """Return the OpenAI exception types that are safe to retry."""
+    try:
+        import openai
+
+        return (
+            openai.RateLimitError,
+            openai.APITimeoutError,
+            openai.APIConnectionError,
+        )
+    except ImportError:
+        return ()
+
+
+_RETRYABLE_ERRORS: tuple[type[BaseException], ...] = _get_retryable_errors()
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +119,73 @@ def _build_client(
 
 
 # ---------------------------------------------------------------------------
+# Retryable wrappers (private)
+# ---------------------------------------------------------------------------
+
+
+def _llm_chat_completion_with_retry(
+    client: OpenAI,
+    model: str,
+    messages: list[dict[str, str]],
+    temperature: float,
+    max_tokens: int,
+) -> Any:
+    """Call ``client.chat.completions.create`` with exponential-backoff retry.
+
+    Retries on transient OpenAI errors (rate-limit, timeout, connection).
+    Non-retryable errors propagate immediately.
+    """
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
+        reraise=True,
+    )
+    def _call() -> Any:
+        return client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+    return _call()
+
+
+def _llm_structured_completion_with_retry(
+    client: OpenAI,
+    model: str,
+    messages: list[dict[str, str]],
+    response_format: type,
+    temperature: float,
+    max_tokens: int,
+) -> Any:
+    """Call ``client.beta.chat.completions.parse`` with exponential-backoff retry.
+
+    Retries on transient OpenAI errors (rate-limit, timeout, connection).
+    Non-retryable errors propagate immediately.
+    """
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
+        reraise=True,
+    )
+    def _call() -> Any:
+        return client.beta.chat.completions.parse(
+            model=model,
+            messages=messages,
+            response_format=response_format,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+    return _call()
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -161,7 +256,8 @@ def llm_complete(
     messages.append({"role": "user", "content": prompt})
 
     try:
-        response = client.chat.completions.create(
+        response = _llm_chat_completion_with_retry(
+            client,
             model=resolved_model,
             messages=messages,
             temperature=resolved_temp,
@@ -246,7 +342,8 @@ def llm_complete_structured(
     messages.append({"role": "user", "content": prompt})
 
     try:
-        response = client.beta.chat.completions.parse(
+        response = _llm_structured_completion_with_retry(
+            client,
             model=resolved_model,
             messages=messages,
             response_format=response_format,
