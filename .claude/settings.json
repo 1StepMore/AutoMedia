@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "automedia": {
+      "command": "python",
+      "args": ["-m", "automedia.mcp.server"],
+      "env": {}
+    }
+  },
+  "projectRules": true
+}

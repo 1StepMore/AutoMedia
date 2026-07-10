@@ -5,17 +5,22 @@
 /projects/
 /test-*/
 20260707_*/
+PRD/
+
+# ===== Internal / Developer-Only Docs =====
+AutoMedia-*.md
+docs/production-e2e-test-design.md
 /Production/
 /Pool/pool.db
 /Assets/
 /handoff/
 /env_pack/
-/.hermes/
 /home-renanzai/
 
 # ===== Local config & tooling =====
 .automedia/
 .omo/
+/.hermes/
 
 # ===== Credentials & Secrets =====
 .env
@@ -26,7 +31,7 @@
 *_credentials.json
 oscreds.yaml
 api_key
-secret
+*secret*
 *.token
 
 # ===== Python Bytecode & Build =====

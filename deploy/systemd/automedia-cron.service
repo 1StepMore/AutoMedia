@@ -1,0 +1,46 @@
+# AutoMedia Cron Job — systemd service unit
+#
+# Installation:
+#   sudo cp deploy/systemd/automedia-cron.service /etc/systemd/system/
+#   sudo cp deploy/systemd/automedia-cron.timer    /etc/systemd/system/
+#   sudo cp deploy/systemd/automedia-mcp.env       /etc/automedia/automedia.conf
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now automedia-cron.timer
+#
+# The timer triggers this service once per hour.  Run manually with:
+#   sudo systemctl start automedia-cron.service
+
+[Unit]
+Description=AutoMedia Cron Job
+Documentation=https://github.com/your-org/automedia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# Path to the Python environment where AutoMedia is installed.
+# Adjust to match your deployment — examples:
+#   /usr/local/bin/python          (system pip install)
+#   /home/automedia/.venv/bin/python   (virtualenv)
+#   /opt/automedia/.venv/bin/python
+ExecStart=python -m automedia cron run
+
+# Working directory — used for relative-path resolution.
+WorkingDirectory=/opt/automedia
+
+# Environment variables are loaded from the shared config file.
+EnvironmentFile=/etc/automedia/automedia.conf
+
+# Cron jobs run once and exit.
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening (matching automedia-mcp.service).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
