@@ -63,6 +63,21 @@ _BRAND_IDENTITY_PHRASES: list[str] = [
     "AI驱动的内容生产",
 ]
 
+_EXPECTED_MAP: dict[str, str] = {
+    "brand_name_present": "Brand name appears in content",
+    "cta_present": "Call-to-action is present in content",
+    "brand_identity": "Brand identity 'AI内容生产' is present in content",
+    "blocked_words_absent": "No blocked/forbidden words appear in content",
+    "cta_direction_sync": "Video and article CTA directions are synchronized",
+    "bridge_sentence": "Bridge/transition sentence appears before CTA",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
+
 # Bridge / transition sentence patterns before CTA
 _BRIDGE_PATTERNS: list[str] = [
     r"(?:如果|若您|如果您|如您).*(?:感兴趣|想|需要|希望|愿意)",
@@ -357,11 +372,24 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    # Build expected_vs_actual from first failing check, or first check if all pass
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "G3",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 

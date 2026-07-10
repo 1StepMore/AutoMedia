@@ -25,6 +25,17 @@ _CHECK_NAMES: list[str] = [
 
 _MIN_COVERAGE: float = 0.80
 
+_EXPECTED_MAP: dict[str, str] = {
+    "keyword_coverage": f"Keyword coverage ≥ {_MIN_COVERAGE:.0%}",
+    "source_alignment": "At least 2 of 3 sources are present",
+    "no_hallucination": "No excessive hallucinated keywords outside source overlap",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
 
 # ---------------------------------------------------------------------------
 # Individual check functions
@@ -106,11 +117,23 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "V3",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
