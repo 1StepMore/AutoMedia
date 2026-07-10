@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2",
     "pyyaml>=6",
     "tenacity>=8",
+    "Pillow>=10",
 ]
 
 [project.optional-dependencies]
