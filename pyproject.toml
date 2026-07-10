@@ -30,7 +30,7 @@ dependencies = [
     "tenacity>=8",
     "Pillow>=10",
     "typing_extensions>=4.12",
-    "cryptography>=41",
+    "cryptography>=49.0.0",
     "structlog>=24",
 ]
 
