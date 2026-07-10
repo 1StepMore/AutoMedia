@@ -73,7 +73,13 @@ class OLAdapter(BaseOmniAdapter):
         """
         # Lazy imports — the full OL dependency tree is heavy and should
         # not be pulled in at module load time.
-        from ol_mcp.translate_md import _translate_single
+        try:
+            from ol_mcp.translate_md import _translate_single
+        except ImportError:
+            return TranslationResult(
+                translated_md="",
+                warnings=["ol_mcp package not available. Install omni-localizer to enable OL translation."],
+            )
 
         resolved = config_path or self.config_path
         if not resolved:
