@@ -147,8 +147,9 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
 
     Priority
     --------
-    1. ``~/.automedia/model_config.yaml`` → ``providers.{provider_name}.api_key``
-    2. :func:`load_credential(provider_name)``
+    1. Environment variable ``AUTOMEDIA_{PROVIDER_NAME}``
+    2. ``~/.automedia/model_config.yaml`` → ``providers.{provider_name}.api_key``
+    3. :func:`load_credential(provider_name)``
 
     Parameters
     ----------
@@ -162,6 +163,11 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
     str | None
         The resolved API key, or ``None`` if not found (never raises).
     """
+    # Highest priority: environment variable (e.g. AUTOMEDIA_OPENAI)
+    env_value = os.environ.get(_env_var_name(provider_name))
+    if env_value:
+        return env_value
+
     config_path = _cred_dir() / "model_config.yaml"
     try:
         if config_path.is_file():
