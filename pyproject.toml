@@ -48,7 +48,7 @@ mcp = ["mcp>=1.0"]
 
 omni-core = ["lxml>=6", "python-docx>=1.2", "python-pptx>=1.0", "openpyxl>=3.1", "pandas>=2"]
 omni-pdf = ["pymupdf>=1.24"]
-omni-ml = ["sentence-transformers>=3", "torch>=2"]
+omni-ml = ["sentence-transformers>=3", "torch>=2.13.0"]
 omni = ["automedia[omni-core]", "automedia[omni-pdf]", "automedia[omni-ml]",
         "omni-pre-processor>=0.9,<1.0", "omni-localizer>=0.7,<1.0", "omni-re-formatter>=0.4,<1.0"]
 dev = [
