@@ -1,0 +1,32 @@
+# AutoMedia — Development Docker image
+# Build: docker build -t automedia .
+# Run:   docker run --rm automedia automedia --help
+
+FROM python:3.11-slim
+
+# Install system-level runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency manifest first for Docker layer caching
+COPY pyproject.toml README.md ./
+COPY src/automedia/_version.py src/automedia/_version.py
+
+# Install dependencies first (cached layer — only invalidated on pyproject.toml changes)
+RUN pip install --no-cache-dir ".[dev,mcp]"
+
+# Then copy source code and overwrite with editable install
+COPY . .
+RUN pip install --no-cache-dir -e ".[dev,mcp]"
+
+# Smoke-test: verify the package imports correctly
+RUN python -c "from automedia import __version__; print(f'AutoMedia {__version__} installed')"
+
+# Default command
+CMD ["automedia", "--help"]

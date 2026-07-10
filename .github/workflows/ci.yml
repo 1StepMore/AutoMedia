@@ -9,22 +9,62 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('pyproject.toml') }}
+      - name: Cache pytest
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pytest
+          key: pytest-${{ runner.os }}
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
-          pip install ruff mypy pytest
-      - name: Ruff
-        run: ruff check . --exit-zero
-      - name: Mypy
+      - name: Security scan (pip-audit)
         continue-on-error: true
-        run: mypy automedia/ --ignore-missing-imports
+        run: |
+          pip install pip-audit
+          pip-audit
+      - name: Security scan (bandit)
+        continue-on-error: true
+        run: |
+          pip install bandit
+          bandit -r src/automedia/ -ll
+      - name: Ruff
+        if: matrix.python-version == '3.11'
+        run: ruff check src/automedia/ --ignore E501,E402,N806,E741
+      - name: Dead code detection (vulture)
+        continue-on-error: true
+        run: |
+          pip install vulture
+          vulture src/automedia/ --min-confidence 80
+      - name: Mypy
+        if: matrix.python-version == '3.11'
+        run: mypy src/automedia/ --ignore-missing-imports
+      - name: Actionlint (workflow validation)
+        if: matrix.python-version == '3.11'
+        uses: reviewdog/action-actionlint@v1
+        with:
+          level: warning
+      - name: Check unused dependencies
+        continue-on-error: true
+        run: |
+          pip install deptry
+          deptry src/automedia/
       - name: Pytest
-        run: python3 -m pytest -q --tb=short
+        continue-on-error: ${{ matrix.python-version != '3.11' }}
+        run: python3 -m pytest --cov=src/automedia --cov-branch --cov-report=xml --cov-report=term-missing -q --tb=short
   gitleaks:
     runs-on: ubuntu-latest
     steps:
@@ -32,3 +72,26 @@ jobs:
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          quiet: true
+          soft_fail: true
+          skip_check: CKV_DOCKER_2
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image for scanning
+        run: docker build -t automedia:scan .
+      - name: Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: automedia:scan
+          format: table
+          exit-code: 0
+          severity: CRITICAL,HIGH

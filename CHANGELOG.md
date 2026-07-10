@@ -16,7 +16,7 @@
 
 - **GateEngine**: 顺序执行 Gate 引擎, 支持 "stop" 和 "rewrite" 两种失败模式
 - **`run_full_pipeline()`**: 完整流水线执行函数, 支持 mode/resume_from/config_dir/tenant_id 参数
-- **三种运行模式**: auto (全链路), text_only (仅文案), video_only (仅视频), qa_only (仅 QA)
+- **四种运行模式**: auto (全链路), text_only (仅文案), video_only (仅视频), qa_only (仅 QA)
 
 #### Gate 系统
 
@@ -34,19 +34,28 @@
 #### CLI
 
 - `automedia run`: 执行流水线, 支持 --mode, --resume-from, --timeout
-- `automedia pool`: 话题池管理 (list/add/prune)
-- `automedia projects`: 项目列表和详情 (list/get)
+- `automedia pool`: 话题池管理 (list/add/prune/attach-brief)
+- `automedia projects`: 项目列表和详情 (list/get/get-assets)
 - `automedia archive`: 项目归档 (红线 8 强制约束)
 - `automedia adapter`: 平台适配器管理 (list/create)
 - `automedia cron`: 定时任务执行和健康检查 (run/check-health)
 - `automedia init`: 交互式/最小配置初始化
 - `automedia doctor`: 依赖和运行环境健康检查
+- `automedia omni`: Omni Triad 操作 (extract/translate/convert)
+- `automedia hitl`: 人工审核流 (config/preset)
+- `automedia license`: 许可管理 (check/features)
+- `automedia sop`: SOP 流程执行 (generate)
+- `automedia tenant`: 多租户管理 (create/list/delete/invite/members/audit-log)
+- `automedia solution`: 决策层解决方案 (next-node/approve-node/complete-node/preflight-check/validate-artifact)
+- `automedia onboard`: 引导式配置向导 (list)
+
+共计 15 个顶级命令, 50+ 子命令。
 
 #### MCP Server
 
-- 8 个 MCP tool: select_topic, run_pipeline, get_pipeline_status, list_projects, get_project_assets, archive_project, list_topic_pool, register_platform_adapter
+- 13 个 MCP tool: select_topic, run_pipeline, get_pipeline_progress, get_pipeline_status, list_projects, get_project_assets, archive_project, list_topic_pool, register_platform_adapter, extract_brief, localize_content, localize_output, format_output
 - 路径 allowlist 安全机制
-- stdio 传输, 兼容 Claude Desktop / OpenCode / Cline
+- stdio 传输, 兼容 Claude Desktop / OpenCode / Cline / Codex CLI / Hermes Agent
 
 #### Adapter 系统
 
@@ -82,7 +91,7 @@
 
 - Hermes Agent 运行时依赖
 - `sys.path.insert` hack
-- 所有 `/home/renanzai/` 和 `/mnt/d/Hermes-Workspace/` 硬编码路径
+- 所有用户主目录和工作区硬编码路径均已移除
 - `hermes.*` 运行时 API 调用
 - Hermes 专有日志格式和 cron jobs.json
 

@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    image: automedia:latest
+    command: automedia doctor
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./projects:/app/projects
+    env_file:
+      - .env
+  mcp-server:
+    build: .
+    image: automedia:latest
+    command: python -m automedia.mcp.server
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./projects:/app/projects
+    env_file:
+      - .env

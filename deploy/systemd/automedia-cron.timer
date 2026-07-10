@@ -1,0 +1,29 @@
+# AutoMedia Cron Timer — systemd timer unit
+#
+# Triggers automedia-cron.service once per hour with a randomised delay
+# to avoid thundering-herd effects on shared resources.
+#
+# Installation:
+#   sudo cp deploy/systemd/automedia-cron.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now automedia-cron.timer
+#
+# Check timer status:
+#   systemctl list-timers automedia-cron.timer
+
+[Unit]
+Description=AutoMedia Cron Timer (hourly)
+
+[Timer]
+# Run once per hour.
+OnCalendar=hourly
+
+# If the machine was off when the timer should have fired, run it
+# once on boot (within the next 5 minutes).
+Persistent=true
+
+# Spread execution by up to 5 minutes to avoid load spikes.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

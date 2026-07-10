@@ -1,0 +1,7 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include AGENTS.md
+recursive-include src/automedia *.j2
+recursive-include src/automedia *.yaml
+recursive-include src/automedia *.typed

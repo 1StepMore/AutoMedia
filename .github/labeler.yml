@@ -1,0 +1,55 @@
+core:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/**
+gates:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/gates/**
+adapters:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/adapters/**
+cli:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/cli/**
+mcp:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/mcp/**
+omni:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/omni/**
+decision:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/decision/**
+hitl:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/hitl/**
+pool:
+  - changed-files:
+    - any-glob-to-any-file: src/automedia/pool/**
+tests:
+  - changed-files:
+    - any-glob-to-any-file: tests/**
+docs:
+  - changed-files:
+    - any-glob-to-any-file: docs/**
+ci:
+  - changed-files:
+    - any-glob-to-any-file: .github/**
+docker:
+  - changed-files:
+    - any-glob-to-any-file:
+      - Dockerfile
+      - Dockerfile.dev
+      - docker-compose.yml
+      - docker-compose.yaml
+build:
+  - changed-files:
+    - any-glob-to-any-file:
+      - pyproject.toml
+      - setup.cfg
+      - MANIFEST*
+tooling:
+  - changed-files:
+    - any-glob-to-any-file: scripts/**
+deploy:
+  - changed-files:
+    - any-glob-to-any-file: deploy/**

@@ -1,0 +1,11 @@
+# Default owner
+* @1stepmore
+
+# Core package
+/automedia/ @1stepmore
+
+# Documentation
+/docs/ @1stepmore
+
+# CI/CD configuration
+/.github/ @1stepmore

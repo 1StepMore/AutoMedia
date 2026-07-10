@@ -1,0 +1,55 @@
+# AutoMedia Pipeline — systemd service unit
+#
+# Runs a single AutoMedia production pipeline.  Topic and brand are
+# configured via the companion environment file so you can trigger
+# different pipelines without editing the unit.
+#
+# Installation:
+#   sudo cp deploy/systemd/automedia-pipeline.service /etc/systemd/system/
+#   sudo cp deploy/systemd/automedia-pipeline.env     /etc/automedia/automedia-pipeline.env
+#   sudo systemctl daemon-reload
+#
+# Run manually:
+#   sudo systemctl start automedia-pipeline.service
+#
+# Combine with a timer for scheduled pipelines:
+#   sudo cp deploy/systemd/automedia-pipeline.timer /etc/systemd/system/
+#   sudo systemctl enable --now automedia-pipeline.timer
+
+[Unit]
+Description=AutoMedia Production Pipeline
+Documentation=https://github.com/your-org/automedia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# Path to the Python environment where AutoMedia is installed.
+# Adjust to match your deployment — examples:
+#   /usr/local/bin/python          (system pip install)
+#   /home/automedia/.venv/bin/python   (virtualenv)
+#   /opt/automedia/.venv/bin/python
+ExecStart=/bin/sh -c 'python -m automedia run --topic "${AUTOMEDIA_TOPIC}" --brand "${AUTOMEDIA_BRAND}" --mode "${AUTOMEDIA_MODE:-auto}"'
+
+# Working directory — used for relative-path resolution.
+WorkingDirectory=/opt/automedia
+
+# Pipeline parameters (topic, brand, mode) are read from this file.
+# Edit /etc/automedia/automedia-pipeline.env to change what gets produced.
+EnvironmentFile=/etc/automedia/automedia-pipeline.env
+
+# Pipelines can take a long time; no restart on failure.
+Restart=no
+
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening (matching automedia-mcp.service).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

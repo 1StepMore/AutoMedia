@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "automedia": {
+      "command": "python",
+      "args": ["-m", "automedia.mcp.server"],
+      "env": {}
+    }
+  },
+  "instructions": "You are working on AutoMedia — an automated media production pipeline in Python.\n\nKey constraints:\n- For archiving, always use the `automedia archive` command\n- Do NOT use --force to archive (Red Line 8 — only the user may force-archive)\n- Tests use synthetic data in tests/fixtures/synth/ — do not commit real project data\n- Follow architecture patterns documented in AGENTS.md and docs/developer-guide.md\n- Gate naming convention: G0-G5 (copy), V0-V7 (video), L1-L3 (lifecycle)\n\nAvailable scripts:\n- `make install` — development installation\n- `make test` — run test suite\n- `make lint` — code linting\n- `make mcp` — start MCP server",
+  "tools": {
+    "enabled": true
+  },
+  "format": {
+    "lineWidth": 100
+  }
+}

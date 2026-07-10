@@ -1,22 +1,28 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.0
+    rev: v0.9.0
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v1.13.0
     hooks:
       - id: mypy
         additional_dependencies: [types-all]
         args: [--ignore-missing-imports]
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.2
+    rev: v8.22.0
     hooks:
       - id: gitleaks
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v1.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
 
   - repo: local
     hooks:
@@ -26,3 +32,9 @@ repos:
         language: python
         types: [python]
         pass_filenames: false
+
+ci:
+  autofix_prs: true
+  autoupdate_schedule: weekly
+  autofix_commit_msg: "chore: auto-fix pre-commit issues"
+  autoupdate_commit_msg: "chore: auto-update pre-commit hooks"

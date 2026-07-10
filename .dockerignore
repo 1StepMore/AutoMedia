@@ -1,0 +1,46 @@
+# ===== Python =====
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ===== Build cache =====
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# ===== Environment =====
+.env
+.env.*.local
+
+# ===== Data / outputs =====
+data/
+output/
+cache/
+logs/
+*.log
+
+# ===== Test projects =====
+2026*/
+
+# ===== IDE / Editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Git =====
+.git/
+
+# ===== Deploy config (not in image) =====
+deploy/
