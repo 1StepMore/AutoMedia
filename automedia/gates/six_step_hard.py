@@ -132,6 +132,11 @@ def _check_duration_valid(
 # ---------------------------------------------------------------------------
 
 
+def _derive_expected(check_name: str) -> str:
+    """Convert a snake_case check name to a human-readable expected statement."""
+    return check_name.replace("_", " ").capitalize() + "."
+
+
 def _build_result(
     checks: list[dict[str, Any]],
     *,
@@ -139,11 +144,20 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+    first_fail = next((c for c in checks if not c["passed"]), None)
+    target = first_fail if first_fail is not None else checks[0]
+    expected_vs_actual = {
+        "check": target["name"],
+        "expected": _derive_expected(target["name"]),
+        "actual": target.get("detail", ""),
+        "context": {},
+    }
     return {
         "passed": all_passed,
         "gate": "V7",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
