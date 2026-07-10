@@ -24,7 +24,7 @@ classifiers = [
 readme = "README.md"
 
 dependencies = [
-    "typer>=0.9",
+    "typer>=0.26.8",
     "pydantic>=2",
     "pyyaml>=6.0.2",
     "tenacity>=8",
