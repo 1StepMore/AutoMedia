@@ -136,7 +136,7 @@ class TestMultilingualEnglishPipeline:
 
         captured_context: dict[str, Any] = {}
 
-        def _capturing_run(ctx: dict[str, Any]) -> tuple[bool, list[dict]]:
+        def _capturing_run(ctx: dict[str, Any], **kwargs: Any) -> tuple[bool, list[dict]]:
             captured_context.update(ctx)
             return True, [{"passed": True, "gate": "CW", "duration_s": 0.1}]
 
@@ -228,7 +228,7 @@ class TestMultilingualEnglishPipeline:
 
         captured_context: dict[str, Any] = {}
 
-        def _capturing_run(ctx: dict[str, Any]) -> tuple[bool, list[dict]]:
+        def _capturing_run(ctx: dict[str, Any], **kwargs: Any) -> tuple[bool, list[dict]]:
             captured_context.update(ctx)
             return True, [{"passed": True, "gate": "CW", "duration_s": 0.1}]
 
@@ -363,6 +363,7 @@ class TestMultilingualEnglishPipeline:
         def _capturing_run(
             engine_self: GateEngine,
             gate_context: dict[str, Any],
+            **kwargs: Any,
         ) -> tuple[bool, list[dict]]:
             captured_context.update(gate_context)
             return True, [{"passed": True, "gate": "CW", "duration_s": 0.1}]

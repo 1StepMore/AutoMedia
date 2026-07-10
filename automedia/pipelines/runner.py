@@ -21,6 +21,7 @@ from automedia.pipelines.gate_engine import (
     AssetInfo,
     GateEngine,
     GateLogEntry,
+    PipelineProgress,
     PipelineResult,
 )
 from automedia.pipelines.language_config import resolve_language_config
@@ -123,6 +124,7 @@ def run_full_pipeline(
     tenant_id: str = "default",
     default_lang: str | None = None,
     force_provenance: bool = False,
+    progress: PipelineProgress | None = None,
 ) -> PipelineResult:
     """Execute the full AutoMedia production pipeline.
 
@@ -152,6 +154,10 @@ def run_full_pipeline(
     force_provenance:
         When ``True`` bypass the D0 Decision-Layer provenance check
         (Red Line 9).  Requires ``--confirm-bypass-rl9`` on the CLI.
+    progress:
+        Optional progress tracker.  When provided, ``GateEngine.run()``
+        emits ``GateProgressEvent`` entries for each gate so agents
+        polling via MCP can observe execution in real time.
 
     Returns
     -------
@@ -223,7 +229,7 @@ def run_full_pipeline(
         }
 
         # 6. Execute
-        success, results = engine.run(gate_context)
+        success, results = engine.run(gate_context, progress=progress)
 
         # 6.5 Check for RL9 violation
         rl9_failure = False
