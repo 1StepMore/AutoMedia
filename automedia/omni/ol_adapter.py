@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import override
+from typing_extensions import override
 
 from automedia.omni.base import BaseOmniAdapter
 
