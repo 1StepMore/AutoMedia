@@ -18,7 +18,7 @@ class TestInitOmniCommand:
 
     def test_omni_flag_in_help(self) -> None:
         """``--help`` output includes the ``--omni`` flag."""
-        result = runner.invoke(app, ["init", "--help"])
+        result = runner.invoke(app, ["init", "--help"], color=False)
         assert result.exit_code == 0
         assert "--omni" in result.output
 
