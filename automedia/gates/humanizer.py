@@ -189,6 +189,24 @@ _ABSOLUTE_RE = re.compile(
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 
+_EXPECTED_MAP: dict[str, str] = {
+    "overused_adverbs": "No overused adverbs in content",
+    "hollow_intros": "No hollow introductory phrases",
+    "vague_subjects": "No vague/generic subject constructions",
+    "filler_connectors": "No filler connectors at sentence starts",
+    "long_conjunctions": "No overly long conjunction chains",
+    "template_conclusions": "No template-style conclusion phrases",
+    "overacademic_vocabulary": "No over-academic vocabulary",
+    "absolute_assertions": "No absolute assertion patterns",
+    "repetitive_structures": "No repetitive sentence-opening structures",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
+
 # ---------------------------------------------------------------------------
 # Individual check functions
 # ---------------------------------------------------------------------------
@@ -455,12 +473,24 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "G1",
         "checks": checks,
         "modified_content": modified_content,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
