@@ -7,7 +7,10 @@ STOP the pipeline or continue on failure.
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Literal
 
 from automedia.gates.base import BaseGate
@@ -54,6 +57,85 @@ class PipelineResult:
     end_time: float = 0.0
     total_duration_s: float = 0.0
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Pipeline progress tracking (P0-04)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GateProgressEvent:
+    """Event emitted when a gate starts, passes, fails, or is skipped."""
+
+    gate_name: str
+    status: Literal["running", "passed", "failed", "skipped"]
+    duration_s: float = 0.0
+    detail: str = ""
+    timestamp: str = ""
+
+
+class PipelineProgress:
+    """Thread-safe observable progress tracker for pipeline execution.
+
+    Agents can poll progress via ``get_progress()`` while the pipeline
+    runs in a background thread.  All mutations are protected by a
+    ``threading.Lock`` so the MCP query thread never sees torn state.
+    """
+
+    def __init__(self, project_id: str = "") -> None:
+        self.project_id = project_id
+        self.current_gate: str | None = None
+        self._events: list[GateProgressEvent] = []
+        self.error: str | None = None
+        self._lock = threading.Lock()
+
+    # -- Mutators (called by GateEngine.run) --------------------------------
+
+    def on_gate_start(self, gate_name: str) -> None:
+        """Record that *gate_name* has started execution."""
+        with self._lock:
+            self.current_gate = gate_name
+            self._events.append(
+                GateProgressEvent(
+                    gate_name=gate_name,
+                    status="running",
+                    timestamp=datetime.now().isoformat(),
+                )
+            )
+
+    def on_gate_end(
+        self, gate_name: str, passed: bool, duration: float
+    ) -> None:
+        """Record that *gate_name* completed with *passed*/duration."""
+        with self._lock:
+            self.current_gate = None
+            status: Literal["passed", "failed"] = "passed" if passed else "failed"
+            self._events.append(
+                GateProgressEvent(
+                    gate_name=gate_name,
+                    status=status,
+                    duration_s=duration,
+                    timestamp=datetime.now().isoformat(),
+                )
+            )
+
+    # -- Accessors (called by MCP get_pipeline_progress) --------------------
+
+    def get_progress(self) -> dict[str, Any]:
+        """Return current progress as a JSON-compatible dict."""
+        with self._lock:
+            return {
+                "project_id": self.project_id,
+                "current_gate": self.current_gate,
+                "events": [e.__dict__ for e in self._events],
+                "error": self.error,
+            }
+
+    def get_current_gate(self) -> str | None:
+        """Return name of the currently-running gate, or *None*."""
+        with self._lock:
+            return self.current_gate
 
 
 # ---------------------------------------------------------------------------
@@ -105,12 +187,29 @@ class GateEngine:
     # Public API
     # ------------------------------------------------------------------
 
-    def run(self, gate_context: dict[str, Any]) -> tuple[bool, list[dict[str, Any]]]:
+    def run(
+        self,
+        gate_context: dict[str, Any],
+        *,
+        progress: PipelineProgress | None = None,
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """Execute all gates sequentially.
 
-        Returns ``(success, results)`` where *success* is ``True`` when
-        every gate passed (or no ``failure_mode="stop"`` gate failed), and
-        *results* is the list of per-gate result dicts.
+        Parameters
+        ----------
+        gate_context:
+            Pipeline context passed from gate to gate.
+        progress:
+            Optional progress tracker.  When provided, ``GateProgressEvent``
+            entries are emitted for each gate (start / end) so that agents
+            polling via ``get_pipeline_progress`` can observe execution.
+
+        Returns
+        -------
+        tuple[bool, list[dict]]
+            ``(success, results)`` where *success* is ``True`` when
+            every gate passed (or no ``failure_mode="stop"`` gate failed),
+            and *results* is the list of per-gate result dicts.
         """
         results: list[dict[str, Any]] = []
         all_ok = True
@@ -119,13 +218,21 @@ class GateEngine:
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
 
+            if progress:
+                progress.on_gate_start(gate_name)
+
             self._dispatch_before(gate_name, gate_context)
+            start = time.monotonic()
 
             try:
                 result = gate.execute(gate_context)
                 results.append(result)
+                duration = time.monotonic() - start
 
                 passed = result.get("passed", True)
+                if progress:
+                    progress.on_gate_end(gate_name, passed, duration)
+
                 if passed:
                     self._dispatch_after(gate_name, gate_context, result)
                 else:
@@ -136,6 +243,7 @@ class GateEngine:
                     self._dispatch_after(gate_name, gate_context, result)
 
             except Exception as exc:
+                duration = time.monotonic() - start
                 all_ok = False
                 error_result: dict[str, Any] = {
                     "passed": False,
@@ -143,6 +251,8 @@ class GateEngine:
                     "error": str(exc),
                 }
                 results.append(error_result)
+                if progress:
+                    progress.on_gate_end(gate_name, False, duration)
                 self._dispatch_failed(gate_name, gate_context, exc)
                 if gate.failure_mode == "stop":
                     return False, results
@@ -150,7 +260,10 @@ class GateEngine:
         return all_ok, results
 
     def run_with_results(
-        self, gate_context: dict[str, Any]
+        self,
+        gate_context: dict[str, Any],
+        *,
+        progress: PipelineProgress | None = None,
     ) -> list[dict[str, Any]]:
         """Execute all gates and return per-gate result dicts.
 
@@ -163,13 +276,21 @@ class GateEngine:
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
 
+            if progress:
+                progress.on_gate_start(gate_name)
+
             self._dispatch_before(gate_name, gate_context)
+            start = time.monotonic()
 
             try:
                 result = gate.execute(gate_context)
                 results.append(result)
+                duration = time.monotonic() - start
 
                 passed = result.get("passed", True)
+                if progress:
+                    progress.on_gate_end(gate_name, passed, duration)
+
                 if passed:
                     self._dispatch_after(gate_name, gate_context, result)
                 else:
@@ -179,12 +300,15 @@ class GateEngine:
                     self._dispatch_after(gate_name, gate_context, result)
 
             except Exception as exc:
+                duration = time.monotonic() - start
                 error_result: dict[str, Any] = {
                     "passed": False,
                     "gate": gate_name,
                     "error": str(exc),
                 }
                 results.append(error_result)
+                if progress:
+                    progress.on_gate_end(gate_name, False, duration)
                 self._dispatch_failed(gate_name, gate_context, exc)
                 if gate.failure_mode == "stop":
                     return results
