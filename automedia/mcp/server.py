@@ -32,6 +32,8 @@ import importlib
 import json
 import logging
 import os
+import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -177,6 +179,18 @@ def _pipeline_result_to_dict(result: Any) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Pipeline progress tracker
+# ---------------------------------------------------------------------------
+
+from automedia.pipelines.gate_engine import PipelineProgress
+
+# Global tracker: project_id → PipelineProgress for agent polling.
+# Thread-safe via _lock (background pipeline thread vs. MCP query thread).
+_pipeline_tracker: dict[str, PipelineProgress] = {}
+_lock = threading.Lock()
+
+
+# ---------------------------------------------------------------------------
 # Tool handler functions (module-level for testability)
 # ---------------------------------------------------------------------------
 
@@ -239,7 +253,11 @@ def run_pipeline(
     tenant_id: str = "default",
     resume_from: str = "",
 ) -> dict[str, Any]:
-    """Execute the full AutoMedia production pipeline.
+    """Execute the full AutoMedia production pipeline in a background thread.
+
+    Launches the pipeline asynchronously and returns immediately with a
+    ``project_id`` that can be used with ``get_pipeline_progress`` to
+    poll execution status.
 
     Parameters
     ----------
@@ -259,22 +277,68 @@ def run_pipeline(
     Returns
     -------
     dict
-        PipelineResult serialised as a JSON-compatible dict.
+        ``{"project_id": str, "status": "started"}`` on success, or
+        ``{"status": "failed", "error": str}`` on immediate failure.
     """
-    try:
-        from automedia.pipelines.runner import run_full_pipeline
+    # Pre-validate mode to fail fast
+    VALID_MODES = ("auto", "text_only", "video_only", "qa_only")
+    if mode not in VALID_MODES:
+        return {
+            "status": "failed",
+            "error": f"Unknown pipeline mode {mode!r}. Choose from: {list(VALID_MODES)}",
+        }
 
-        result = run_full_pipeline(
-            topic=topic,
-            brand=brand,
-            mode=mode,
-            tenant_id=tenant_id,
-            resume_from=resume_from or None,
-        )
-        return _pipeline_result_to_dict(result)
+    project_id = str(uuid.uuid4())[:12]
+    progress = PipelineProgress(project_id=project_id)
+    with _lock:
+        _pipeline_tracker[project_id] = progress
 
-    except Exception as exc:
-        return {"status": "failed", "error": str(exc)}
+    def _run() -> None:
+        """Background thread — wraps pipeline execution in try/except."""
+        try:
+            from automedia.pipelines.runner import run_full_pipeline
+
+            result = run_full_pipeline(
+                topic=topic,
+                brand=brand,
+                mode=mode,
+                tenant_id=tenant_id,
+                resume_from=resume_from or None,
+            )
+            progress.project_id = result.project_id
+        except Exception as exc:
+            progress.error = str(exc)
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+    return {"project_id": project_id, "status": "started"}
+
+
+def get_pipeline_progress(project_id: str) -> dict[str, Any]:
+    """Get current progress of a running pipeline by project_id.
+
+    Poll this after ``run_pipeline`` to observe gate execution in real
+    time.  Returns the current gate, a list of gate progress events
+    (start / passed / failed), and any error captured from the background
+    thread.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+
+    Returns
+    -------
+    dict
+        ``{"project_id", "current_gate", "events", "error"}`` or
+        ``{"error": "not found"}``.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return {"error": f"No active pipeline found for project_id {project_id!r}"}
+    return progress.get_progress()
 
 
 def get_pipeline_status(
@@ -816,7 +880,7 @@ def create_server() -> Any:
     Returns
     -------
     FastMCP
-        A fully configured server with all 12 tools registered.
+        A fully configured server with all 13 tools registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -843,6 +907,15 @@ def create_server() -> Any:
             "Returns PipelineResult as JSON."
         ),
     )(run_pipeline)
+
+    mcp.tool(
+        description=(
+            "Get the current progress of a running pipeline by project_id. "
+            "Returns the current gate, all gate progress events (start / "
+            "passed / failed), and any errors captured from the background "
+            "thread. Poll this after run_pipeline to observe execution."
+        ),
+    )(get_pipeline_progress)
 
     mcp.tool(
         description=(
