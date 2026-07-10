@@ -29,7 +29,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "tenacity>=8",
     "Pillow>=10",
-    "typing_extensions>=4.12",
+    "typing_extensions>=4.16.0",
     "cryptography>=49.0.0",
     "structlog>=24",
 ]
