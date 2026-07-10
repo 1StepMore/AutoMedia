@@ -1,4 +1,5 @@
 """Tests for OPPAdapter."""
+
 from __future__ import annotations
 
 from automedia.omni.opp_adapter import ExtractionResult, OPPAdapter, _parse_md_to_segments

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from automedia.pool.scorer import TopicScorer, _default_tier_keywords
-
 
 # ===================================================================
 # Fixtures
@@ -21,13 +20,13 @@ def scorer() -> TopicScorer:
 
 @pytest.fixture
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @pytest.fixture
 def hours_ago_iso() -> str:
     """Return ISO timestamp from 6 hours ago."""
-    dt = datetime.now(timezone.utc) - timedelta(hours=6)
+    dt = datetime.now(UTC) - timedelta(hours=6)
     return dt.isoformat()
 
 
@@ -116,12 +115,18 @@ class TestScoreGrowth:
 
     def test_higher_heat_higher_score(self, scorer: TopicScorer, now_iso: str):
         low = scorer.score_growth({"heat_score": 1.0, "title": "无关内容", "collected_at": now_iso})
-        high = scorer.score_growth({"heat_score": 9.0, "title": "无关内容", "collected_at": now_iso})
+        high = scorer.score_growth(
+            {"heat_score": 9.0, "title": "无关内容", "collected_at": now_iso}
+        )
         assert high > low
 
     def test_higher_correlation_higher_score(self, scorer: TopicScorer, now_iso: str):
-        low_corr = scorer.score_growth({"heat_score": 5.0, "title": "无关内容", "collected_at": now_iso})
-        high_corr = scorer.score_growth({"heat_score": 5.0, "title": "AIGC内容创作指南", "collected_at": now_iso})
+        low_corr = scorer.score_growth(
+            {"heat_score": 5.0, "title": "无关内容", "collected_at": now_iso}
+        )
+        high_corr = scorer.score_growth(
+            {"heat_score": 5.0, "title": "AIGC内容创作指南", "collected_at": now_iso}
+        )
         assert high_corr > low_corr
 
     def test_missing_fields_default(self, scorer: TopicScorer):
@@ -175,17 +180,17 @@ class TestFreshness:
     """Freshness scoring decays over 24 hours."""
 
     def test_just_collected_is_1(self):
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         score = TopicScorer._freshness_score(now)
         assert score >= 0.99
 
     def test_twelve_hours_ago_is_half(self):
-        dt = datetime.now(timezone.utc) - timedelta(hours=12)
+        dt = datetime.now(UTC) - timedelta(hours=12)
         score = TopicScorer._freshness_score(dt.isoformat())
         assert 0.4 <= score <= 0.6
 
     def test_twenty_four_hours_ago_is_zero(self):
-        dt = datetime.now(timezone.utc) - timedelta(hours=24)
+        dt = datetime.now(UTC) - timedelta(hours=24)
         score = TopicScorer._freshness_score(dt.isoformat())
         assert score == pytest.approx(0.0, abs=0.05)
 

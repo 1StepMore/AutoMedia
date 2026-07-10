@@ -8,13 +8,13 @@ from typing import Any
 import pytest
 
 from automedia.adapters.base import BasePlatformAdapter
-from automedia.adapters.registry import AdapterRegistry
 from automedia.adapters.publish_engine import PublishEngine
-
+from automedia.adapters.registry import AdapterRegistry
 
 # ---------------------------------------------------------------------------
 # Stub adapters for testing
 # ---------------------------------------------------------------------------
+
 
 class _OkAdapter(BasePlatformAdapter):
     """Always succeeds."""
@@ -90,6 +90,7 @@ def _reset_registry() -> None:
 # Basic happy path
 # ---------------------------------------------------------------------------
 
+
 class TestPublishAll:
     def test_single_ok_adapter(self) -> None:
         AdapterRegistry.register(_OkAdapter)
@@ -126,6 +127,7 @@ class TestPublishAll:
 # Disabled / validation-skipped adapters
 # ---------------------------------------------------------------------------
 
+
 class TestSkipping:
     def test_disabled_adapter_skipped(self) -> None:
         AdapterRegistry.register(_DisabledAdapter)
@@ -146,6 +148,7 @@ class TestSkipping:
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 class TestErrors:
     def test_crashing_adapter_reports_error(self) -> None:
         AdapterRegistry.register(_CrashAdapter)
@@ -158,6 +161,7 @@ class TestErrors:
 # ---------------------------------------------------------------------------
 # Real adapter integration (requires env vars to fully exercise)
 # ---------------------------------------------------------------------------
+
 
 class TestRealAdapters:
     def test_wechat_publisher_disabled_without_env(self) -> None:

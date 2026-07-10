@@ -10,10 +10,10 @@ import pytest
 
 from automedia.core.project import Project, _slugify, sanitize_path
 
-
 # ===================================================================
 # _slugify
 # ===================================================================
+
 
 class TestSlugify:
     """Unit tests for :func:`_slugify`."""
@@ -59,6 +59,7 @@ class TestSlugify:
 # ===================================================================
 # sanitize_path
 # ===================================================================
+
 
 class TestSanitizePath:
     """Unit tests for :func:`sanitize_path`."""
@@ -108,6 +109,7 @@ class TestSanitizePath:
 # ===================================================================
 # Project.init — directory creation & metadata
 # ===================================================================
+
 
 class TestProjectInit:
     """Integration tests for :meth:`Project.init`."""
@@ -165,7 +167,9 @@ class TestProjectInit:
 
     def test_custom_tenant_id(self, tmp_path):
         """tenant_id can be overridden."""
-        project = Project.init("custom-tenant", "acme", tenant_id="workspace-42", base_dir=str(tmp_path))
+        project = Project.init(
+            "custom-tenant", "acme", tenant_id="workspace-42", base_dir=str(tmp_path)
+        )
         assert project.tenant_id == "workspace-42"
 
     def test_slug_used_as_dirname(self, tmp_path):

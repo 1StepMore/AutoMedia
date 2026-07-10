@@ -6,7 +6,6 @@ import pytest
 
 from automedia.pool.dedup import TopicDeduplicator, _normalize
 
-
 # ===================================================================
 # Fixtures
 # ===================================================================

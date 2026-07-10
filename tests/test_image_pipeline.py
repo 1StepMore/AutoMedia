@@ -16,13 +16,14 @@ from automedia.pipelines.image_pipeline import (
     _run_comfyui,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_image(path: str, width: int, height: int, color: tuple[int, int, int] = (100, 150, 200)) -> str:
+def _make_image(
+    path: str, width: int, height: int, color: tuple[int, int, int] = (100, 150, 200)
+) -> str:
     """Create a minimal PNG image at *path* with given dimensions."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img = Image.new("RGB", (width, height), color=color)
@@ -254,8 +255,15 @@ class TestVisionQADegradation:
     def test_degrade_returns_all_keys(self, tmp_path: Any) -> None:
         path = _make_image(str(tmp_path / "test.png"), 100, 100, color=(128, 128, 128))
         result = VisionQADegradation.degrade_to_pixel_luminance(path)
-        for key in ("path", "mean_luminance", "min_luminance", "max_luminance",
-                     "std_luminance", "degraded", "error"):
+        for key in (
+            "path",
+            "mean_luminance",
+            "min_luminance",
+            "max_luminance",
+            "std_luminance",
+            "degraded",
+            "error",
+        ):
             assert key in result
 
     def test_degraded_flag_is_true(self, tmp_path: Any) -> None:

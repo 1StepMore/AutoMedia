@@ -1,4 +1,5 @@
 """Tests for automedia.omni.artifact_mapping."""
+
 from __future__ import annotations
 
 from pathlib import Path

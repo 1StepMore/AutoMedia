@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 import yaml
 
@@ -13,7 +11,6 @@ from automedia.manifests.model_config_schema import (
     _parse_provider,
     load_model_config,
 )
-
 
 # ---------------------------------------------------------------------------
 # ProviderConfig dataclass
@@ -93,7 +90,6 @@ class TestParseProvider:
 
     def test_missing_api_key_resolves_from_credential_loader(self, monkeypatch):
         """When api_key is missing, credential_loader is used."""
-        import automedia.manifests.model_config_schema as mcs
 
         monkeypatch.setenv("AUTOMEDIA_OPENAI", "sk-from-env")
         raw = {"provider": "openai", "model": "gpt-4"}
@@ -102,7 +98,6 @@ class TestParseProvider:
 
     def test_empty_api_key_resolves_from_credential_loader(self, monkeypatch):
         """Empty string api_key is treated as missing."""
-        import automedia.manifests.model_config_schema as mcs
 
         monkeypatch.setenv("AUTOMEDIA_ANTHROPIC", "sk-ant-env")
         raw = {"provider": "anthropic", "model": "claude-3", "api_key": ""}

@@ -1,4 +1,5 @@
 """E2E mock-mode pipeline test — OPP → OL → ORF via OmniToolRegistry."""
+
 from __future__ import annotations
 
 import pytest
@@ -29,7 +30,9 @@ class _MockOLAdapter(BaseOmniAdapter):
     def validate_env(self) -> bool:
         return True
 
-    def translate(self, md_content: str, source_lang: str = "en", target_lang: str = "zh") -> TranslationResult:
+    def translate(
+        self, md_content: str, source_lang: str = "en", target_lang: str = "zh"
+    ) -> TranslationResult:
         return TranslationResult(translated_md=f"[{source_lang}→{target_lang}] {md_content}")
 
 
@@ -41,7 +44,9 @@ class _MockORFAdapter(BaseOmniAdapter):
     def validate_env(self) -> bool:
         return True
 
-    def convert(self, file_path: str, output_path: str | None = None, **options: object) -> dict[str, str]:
+    def convert(
+        self, file_path: str, output_path: str | None = None, **options: object
+    ) -> dict[str, str]:
         return {"status": "ok", "output_path": output_path or file_path + ".out"}
 
 

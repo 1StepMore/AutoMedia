@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.fact_check import G0FactCheck, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.fact_check import _CHECK_NAMES, G0FactCheck
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_context(
     *,
@@ -25,7 +23,9 @@ def _make_context(
     ctx: dict[str, Any] = {
         "topic": topic,
         "content": content,
-        "source_data": source_data if source_data is not None else {
+        "source_data": source_data
+        if source_data is not None
+        else {
             "url": "https://example.com/article",
             "published_date": "2024-06-01T00:00:00",
             "key_numbers": {"revenue": "42"},

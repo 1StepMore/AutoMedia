@@ -6,7 +6,6 @@ import pytest
 
 from automedia.pool.collector import HotCollector
 
-
 # ===================================================================
 # Fixtures
 # ===================================================================
@@ -22,8 +21,13 @@ def collector() -> HotCollector:
 def collector_with_seed() -> HotCollector:
     """HotCollector with pre-seeded topics."""
     seed = [
-        {"source": "seed", "title": "AIGC内容创作指南",
-         "url": "https://seed.com/aigc", "heat_score": 9.0, "collected_at": "2025-01-01T00:00:00+00:00"},
+        {
+            "source": "seed",
+            "title": "AIGC内容创作指南",
+            "url": "https://seed.com/aigc",
+            "heat_score": 9.0,
+            "collected_at": "2025-01-01T00:00:00+00:00",
+        },
     ]
     return HotCollector(seed_topics=seed)
 

@@ -23,6 +23,7 @@ from automedia.core.config_loader import load_config
 from automedia.core.llm_client import LLMError, _build_client
 from automedia.manifests.model_config_schema import load_model_config
 
+pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
 # Auto-clean AUTOMEDIA_* env vars so load_config tests are isolated
@@ -57,7 +58,9 @@ def _isolate_user_automedia(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 # ---------------------------------------------------------------------------
 
 
-def _write_model_config(tmp_path: Path, data: dict[str, Any], name: str = "model_config.yaml") -> str:
+def _write_model_config(
+    tmp_path: Path, data: dict[str, Any], name: str = "model_config.yaml"
+) -> str:
     """Write *data* as YAML to *tmp_path*/*name* and return the absolute path."""
     p = tmp_path / name
     p.write_text(yaml.dump(data), encoding="utf-8")
@@ -229,7 +232,8 @@ class TestLLMClientEndpointResolution:
             )
 
     def test_base_url_omitted_when_empty(self) -> None:
-        """When base_url is empty, ``OpenAI()`` is called without ``base_url`` (uses library default)."""
+        """When base_url is empty, ``OpenAI()`` is called
+        without ``base_url`` (uses library default)."""
         config = {
             "llm": {
                 "text_generation": {
@@ -245,7 +249,8 @@ class TestLLMClientEndpointResolution:
             mock_openai.assert_called_once_with(api_key="sk-test")
 
     def test_api_key_resolved_from_env_when_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """When api_key is absent in config, ``resolve_api_key`` supplies it from ``AUTOMEDIA_*``."""
+        """When api_key is absent in config, ``resolve_api_key``
+        supplies it from ``AUTOMEDIA_*``."""
         monkeypatch.setenv("AUTOMEDIA_OPENAI", "sk-from-env")
         config = {
             "llm": {
@@ -305,7 +310,8 @@ class TestLoadConfigProviderMerge:
         return str(config_dir)
 
     def test_openai_provider(self, tmp_path: Path) -> None:
-        """``load_config`` returns ``llm.text_generation.provider == 'openai'`` from project config."""
+        """``load_config`` returns
+        ``llm.text_generation.provider == 'openai'`` from project config."""
         config_dir = self._create_project_config(tmp_path, "openai")
         config = load_config(config_dir=config_dir)
 
@@ -315,7 +321,8 @@ class TestLoadConfigProviderMerge:
         assert llm_tg.get("base_url") == "https://api.openai.com/v1"
 
     def test_anthropic_provider(self, tmp_path: Path) -> None:
-        """``load_config`` returns ``llm.text_generation.provider == 'anthropic'`` after switching."""
+        """``load_config`` returns
+        ``llm.text_generation.provider == 'anthropic'`` after switching."""
         config_dir = self._create_project_config(tmp_path, "anthropic")
         config = load_config(config_dir=config_dir)
 

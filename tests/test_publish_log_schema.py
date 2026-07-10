@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.publish_log_schema import L1PublishLogSchema, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.publish_log_schema import _CHECK_NAMES, L1PublishLogSchema
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_context(
     *,
@@ -137,95 +135,111 @@ class TestL1RealLogic:
 
     def test_missing_topic_fails(self) -> None:
         """Missing topic field fails topic_present check."""
-        ctx = _make_context(publish_log={
-            "content": "some content",
-            "media_paths": [],
-            "platform": "wechat",
-        })
+        ctx = _make_context(
+            publish_log={
+                "content": "some content",
+                "media_paths": [],
+                "platform": "wechat",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         tp = next(c for c in result["checks"] if c["name"] == "topic_present")
         assert tp["passed"] is False
 
     def test_empty_topic_fails(self) -> None:
         """Empty topic string fails topic_present check."""
-        ctx = _make_context(publish_log={
-            "topic": "   ",
-            "content": "some content",
-            "media_paths": [],
-            "platform": "wechat",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "   ",
+                "content": "some content",
+                "media_paths": [],
+                "platform": "wechat",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         tp = next(c for c in result["checks"] if c["name"] == "topic_present")
         assert tp["passed"] is False
 
     def test_missing_content_fails(self) -> None:
         """Missing content field fails content_present check."""
-        ctx = _make_context(publish_log={
-            "topic": "Valid Topic",
-            "media_paths": [],
-            "platform": "weibo",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Valid Topic",
+                "media_paths": [],
+                "platform": "weibo",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         cp = next(c for c in result["checks"] if c["name"] == "content_present")
         assert cp["passed"] is False
 
     def test_invalid_platform_fails(self) -> None:
         """Platform not in allowed list fails platform_valid check."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": [],
-            "platform": "linkedin",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "linkedin",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
         assert pv["passed"] is False
 
     def test_media_paths_not_a_list_fails(self) -> None:
         """media_paths being a non-list fails media_paths_valid."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": "not-a-list",
-            "platform": "wechat",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": "not-a-list",
+                "platform": "wechat",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         mv = next(c for c in result["checks"] if c["name"] == "media_paths_valid")
         assert mv["passed"] is False
 
     def test_media_paths_invalid_item_fails(self) -> None:
         """A media_paths entry that is an empty string fails."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": ["valid.mp4", ""],
-            "platform": "wechat",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": ["valid.mp4", ""],
+                "platform": "wechat",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         mv = next(c for c in result["checks"] if c["name"] == "media_paths_valid")
         assert mv["passed"] is False
 
     def test_empty_version_present_fails(self) -> None:
         """version present but empty fails version_valid."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": [],
-            "platform": "wechat",
-            "version": "",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "wechat",
+                "version": "",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         vv = next(c for c in result["checks"] if c["name"] == "version_valid")
         assert vv["passed"] is False
 
     def test_valid_youtube_platform_passes(self) -> None:
         """youtube is a valid platform."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": [],
-            "platform": "youtube",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "youtube",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
         assert pv["passed"] is True
@@ -291,12 +305,14 @@ class TestL1EdgeCases:
 
     def test_empty_media_paths_allowed(self) -> None:
         """Empty media_paths list is allowed."""
-        ctx = _make_context(publish_log={
-            "topic": "Topic",
-            "content": "Content",
-            "media_paths": [],
-            "platform": "wechat",
-        })
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "wechat",
+            }
+        )
         result = L1PublishLogSchema().execute(ctx)
         mv = next(c for c in result["checks"] if c["name"] == "media_paths_valid")
         assert mv["passed"] is True

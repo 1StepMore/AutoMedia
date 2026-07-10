@@ -4,22 +4,24 @@ Verifies that all 3 integration modes (SDK direct adapter calls, proxy MCP tools
 and parallel server mode) work correctly and independently.  Each mode is tested
 in isolated test functions with all adapters mocked at their source modules.
 """
+
 from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from automedia.omni.config import OmniConfig
 from automedia.mcp.parallel import (
     _SUBSET_MODES,
     get_server_commands,
     start_parallel_servers,
     stop_parallel_servers,
 )
+from automedia.omni.config import OmniConfig
 
+pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,7 +101,9 @@ class TestSDKMode:
         assert result.manifest["segments"][0]["text"] == "# Extracted Title"
         assert result.warnings == []
         mock_adapter.extract.assert_called_once_with(
-            str(tmp_path / "doc.md"), "auto", "en",
+            str(tmp_path / "doc.md"),
+            "auto",
+            "en",
         )
 
     @patch("automedia.omni.OLAdapter")
@@ -124,7 +128,9 @@ class TestSDKMode:
         assert result.xliff_path is None
         assert result.warnings == []
         mock_adapter.translate.assert_called_once_with(
-            "# Hello\n\nBody.", "en", "zh",
+            "# Hello\n\nBody.",
+            "en",
+            "zh",
         )
 
     @patch("automedia.omni.ORFAdapter")
@@ -242,7 +248,9 @@ class TestProxyMode:
         assert result["manifest_json"]["segments"][0]["text"] == "# Extracted"
         assert result["warnings"] == []
         mock_adapter.extract.assert_called_once_with(
-            str(tmp_path / "doc.md"), "en", "zh",
+            str(tmp_path / "doc.md"),
+            "en",
+            "zh",
         )
 
     @patch("automedia.omni.ol_adapter.OLAdapter")
@@ -270,7 +278,9 @@ class TestProxyMode:
         assert result["xliff_path"] is None
         assert result["warnings"] == []
         mock_adapter.translate.assert_called_once_with(
-            "# Hello\n\nBody.", "en", "zh",
+            "# Hello\n\nBody.",
+            "en",
+            "zh",
         )
 
     @patch("automedia.omni.orf_adapter.ORFAdapter")
@@ -460,7 +470,10 @@ class TestModeSwitching:
         assert set(_SUBSET_MODES["parallel"]) == {"AutoMedia", "OPP", "OL", "ORF"}
         # Unknown mode falls back to "all" (all 4)
         assert set(_SUBSET_MODES.get("unknown", _SUBSET_MODES["all"])) == {
-            "AutoMedia", "OPP", "OL", "ORF",
+            "AutoMedia",
+            "OPP",
+            "OL",
+            "ORF",
         }
 
     def test_get_server_commands_structure(self) -> None:

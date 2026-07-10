@@ -22,7 +22,6 @@ from automedia.asset_library import AssetLibrary, search_assets
 from automedia.asset_library.db import AssetDatabase, AssetDoc
 from automedia.decision.base import DecisionArtifact
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -423,9 +422,7 @@ class TestAssetLibrarySearch:
         )
         library.close()
 
-        assert len(results) >= 2, (
-            f"Expected at least 2 assets with 'ai' tag, got {len(results)}"
-        )
+        assert len(results) >= 2, f"Expected at least 2 assets with 'ai' tag, got {len(results)}"
         for r in results:
             tags_lower = {t.lower() for t in (r.get("tags") or [])}
             assert "ai" in tags_lower, (
@@ -446,8 +443,7 @@ class TestAssetLibrarySearch:
         library.close()
 
         assert len(results) == 2, (
-            f"Expected 2 zh assets, got {len(results)}: "
-            f"{[r['title'] for r in results]}"
+            f"Expected 2 zh assets, got {len(results)}: {[r['title'] for r in results]}"
         )
         for r in results:
             assert r.get("lang") == "zh"
@@ -462,8 +458,7 @@ class TestAssetLibrarySearch:
         library.close()
 
         assert len(results) == 6, (
-            f"Expected 6 en assets, got {len(results)}: "
-            f"{[r['title'] for r in results]}"
+            f"Expected 6 en assets, got {len(results)}: {[r['title'] for r in results]}"
         )
 
     # ------------------------------------------------------------------
@@ -479,9 +474,7 @@ class TestAssetLibrarySearch:
         )
         library.close()
 
-        assert len(results) >= 4, (
-            f"Expected at least 4 phase-2 assets, got {len(results)}"
-        )
+        assert len(results) >= 4, f"Expected at least 4 phase-2 assets, got {len(results)}"
         for r in results:
             assert r.get("source_phase") == "2"
 
@@ -608,9 +601,7 @@ class TestAssetLibraryEdgeCases:
     ) -> None:
         """Assets can be deleted from the database."""
         db = AssetDatabase(brand="DeleteBrand")
-        db.add_asset(
-            AssetDoc(doc_id="del_001", type="strategy", title="To Delete", tags=[])
-        )
+        db.add_asset(AssetDoc(doc_id="del_001", type="strategy", title="To Delete", tags=[]))
         assert db.count() == 1
 
         db.delete_asset("del_001")

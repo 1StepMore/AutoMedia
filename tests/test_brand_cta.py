@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.brand_cta import (
-    G3BrandCTA,
-    _CHECK_NAMES,
-    _build_result,
-)
+from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.brand_cta import (
+    _CHECK_NAMES,
+    G3BrandCTA,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -284,9 +281,7 @@ class TestG3RealBridgeSentence:
 
     def test_bridge_before_cta_passes(self) -> None:
         """Transition phrase before CTA → pass."""
-        ctx = _make_context(
-            content="壹目贯维是AI内容生产公司。如果您想了解我们的服务，立即咨询。"
-        )
+        ctx = _make_context(content="壹目贯维是AI内容生产公司。如果您想了解我们的服务，立即咨询。")
         result = G3BrandCTA().execute(ctx)
         bs = next(c for c in result["checks"] if c["name"] == "bridge_sentence")
         assert bs["passed"] is True
@@ -404,20 +399,16 @@ class TestG3EdgeCases:
         assert result["passed"] is False
 
     def test_build_result_all_pass(self) -> None:
-        """_build_result returns passed=True when all checks pass."""
-        checks = [
-            {"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES
-        ]
-        result = _build_result(checks)
+        """build_gate_result returns passed=True when all checks pass."""
+        checks = [{"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES]
+        result = build_gate_result(checks, gate="G3")
         assert result["passed"] is True
         assert result["gate"] == "G3"
         assert result["error"] is None
 
     def test_build_result_one_fail(self) -> None:
-        """_build_result returns passed=False when any check fails."""
-        checks = [
-            {"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES
-        ]
+        """build_gate_result returns passed=False when any check fails."""
+        checks = [{"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES]
         checks[2] = {"name": "brand_identity", "passed": False, "detail": "bad"}
-        result = _build_result(checks)
+        result = build_gate_result(checks, gate="G3")
         assert result["passed"] is False

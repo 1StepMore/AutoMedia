@@ -14,11 +14,9 @@ These tests validate the core enforcement mechanisms defined in PRD-3 W5:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
-import pytest
 import yaml
 
 from automedia.decision import dependency
@@ -35,10 +33,12 @@ class TestEnforcementE2E:
     def test_missing_state_triggers_rl9_violation(self, tmp_path: Path) -> None:
         """When .solution-state.yaml is missing, D0Gate returns rl9_violation."""
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(tmp_path),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(tmp_path),
+            }
+        )
         assert result["passed"] is False
         assert result["status"] == "rl9_violation"
         assert "error" in result
@@ -59,10 +59,12 @@ class TestEnforcementE2E:
             yaml.dump(state, f)
 
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(tmp_path),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(tmp_path),
+            }
+        )
         assert result["passed"] is True
         assert result["status"] == "rl9_compliant"
         assert "provenance" in result
@@ -79,11 +81,13 @@ class TestEnforcementE2E:
 
         # Bypass — no .solution-state.yaml needed
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(tmp_path),
-            "force_provenance": True,
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(tmp_path),
+                "force_provenance": True,
+            }
+        )
         assert result["passed"] is True
         assert result["status"] == "bypassed"
         assert "force-provenance" in result.get("detail", "")
@@ -112,10 +116,12 @@ class TestEnforcementE2E:
             yaml.dump(state, f)
 
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(tmp_path),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(tmp_path),
+            }
+        )
         assert result["passed"] is False
         assert result["status"] == "rl9_violation"
         assert "missing_nodes" in result
@@ -138,10 +144,12 @@ class TestEnforcementE2E:
             yaml.dump(state, f)
 
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "scale",
-            "project_dir": str(tmp_path),
-        })
+        result = gate.execute(
+            {
+                "mode": "scale",
+                "project_dir": str(tmp_path),
+            }
+        )
         assert result["passed"] is False
         assert result["status"] == "rl9_violation"
         assert result.get("missing_nodes") is not None

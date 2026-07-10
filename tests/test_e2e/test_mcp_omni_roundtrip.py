@@ -3,6 +3,7 @@
 Verifies the full round-trip with all 3 Omni adapters mocked at the module
 level where the tool functions import them (``automedia.omni.*_adapter``).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,10 +18,12 @@ from automedia.mcp.server import (
     localize_content,
 )
 
+pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_extraction_result(
     md_content: str = "",
@@ -135,7 +138,9 @@ class TestMCPOmniRoundtrip:
         assert extract_result["manifest_json"]["segments"][0]["text"] == "# Extracted"
         assert extract_result["warnings"] == []
         mock_opp.extract.assert_called_once_with(
-            str(tmp_path / "input.md"), "en", "zh",
+            str(tmp_path / "input.md"),
+            "en",
+            "zh",
         )
 
         # Stage 2
@@ -293,6 +298,7 @@ class TestLocalizeOutput:
     def test_tool_registered(self) -> None:
         """localize_output should be registered as a tool."""
         from automedia.mcp.server import create_server
+
         server = create_server()
         tool_names = server._tool_manager._tools.keys()
         assert "localize_output" in tool_names
@@ -301,6 +307,7 @@ class TestLocalizeOutput:
     def test_calls_require_allowed(self, mock_require: MagicMock) -> None:
         """Should call _require_allowed with project_dir."""
         from automedia.mcp.server import localize_output
+
         localize_output("/tmp/test_project", "en")
         mock_require.assert_called_once()
 
@@ -316,10 +323,13 @@ class TestLocalizeOutput:
             xliff_path=None,
             warnings=[],
         )
-        from automedia.mcp.server import localize_output
         import tempfile
+
+        from automedia.mcp.server import localize_output
+
         with tempfile.TemporaryDirectory() as tmp:
             from pathlib import Path
+
             # Create drafts dir with one file
             drafts = Path(tmp) / "01_content" / "drafts"
             drafts.mkdir(parents=True)

@@ -20,7 +20,6 @@ import pytest
 
 from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -96,11 +95,12 @@ class TestNodeExecutorAgentMode:
         executor = NodeExecutor(config)
         agent = _StubAgent(name="test_node")
 
-        mock_lib = type(
-            "MockLib", (), {"search": lambda self, **kw: ["a1"]}
-        )()
+        mock_lib = type("MockLib", (), {"search": lambda self, **kw: ["a1"]})()
         result = executor.execute(
-            "test_node", agent, {"idea": "test"}, mock_lib,
+            "test_node",
+            agent,
+            {"idea": "test"},
+            mock_lib,
         )
 
         assert isinstance(result, DecisionArtifact)
@@ -298,8 +298,8 @@ class TestNodeExecutorIntegration:
 
     def test_with_diagnostic_agent(self) -> None:
         """Executor runs DiagnosticAgent in agent mode."""
-        from automedia.hitl.executor import NodeExecutor
         from automedia.decision.diagnostic import DiagnosticAgent
+        from automedia.hitl.executor import NodeExecutor
 
         config = _build_config({"diagnosis": "agent"})
         executor = NodeExecutor(config)
@@ -316,8 +316,8 @@ class TestNodeExecutorIntegration:
 
     def test_with_brand_positioning_agent(self) -> None:
         """Executor runs BrandPositioningAgent in agent mode."""
-        from automedia.hitl.executor import NodeExecutor
         from automedia.decision.build import BrandPositioningAgent
+        from automedia.hitl.executor import NodeExecutor
 
         config = _build_config({"brand_positioning": "agent"})
         executor = NodeExecutor(config)
@@ -334,8 +334,8 @@ class TestNodeExecutorIntegration:
 
     def test_human_mode_with_real_agent(self) -> None:
         """Executor runs a real agent in human mode -- stores pending."""
-        from automedia.hitl.executor import NodeExecutor
         from automedia.decision.diagnostic import DiagnosticAgent
+        from automedia.hitl.executor import NodeExecutor
 
         config = _build_config({"diagnosis": "human"})
         executor = NodeExecutor(config)
@@ -357,8 +357,8 @@ class TestNodeExecutorIntegration:
 
     def test_human_skip_with_real_agent(self) -> None:
         """Skip a real agent's pending suggestion."""
-        from automedia.hitl.executor import NodeExecutor
         from automedia.decision.diagnostic import DiagnosticAgent
+        from automedia.hitl.executor import NodeExecutor
 
         config = _build_config({"diagnosis": "human"})
         executor = NodeExecutor(config)
@@ -376,15 +376,17 @@ class TestNodeExecutorIntegration:
 
     def test_orchestrator_collaboration_pattern(self) -> None:
         """Simulates how DecisionOrchestrator would use NodeExecutor."""
-        from automedia.hitl.executor import NodeExecutor
-        from automedia.decision.diagnostic import DiagnosticAgent
         from automedia.decision.build import BrandPositioningAgent
+        from automedia.decision.diagnostic import DiagnosticAgent
+        from automedia.hitl.executor import NodeExecutor
 
-        config = _build_config({
-            "diagnosis": "agent",
-            "brand_positioning": "agent",
-            "market_research": "agent",
-        })
+        config = _build_config(
+            {
+                "diagnosis": "agent",
+                "brand_positioning": "agent",
+                "market_research": "agent",
+            }
+        )
         executor = NodeExecutor(config)
         diag_agent = DiagnosticAgent()
         bp_agent = BrandPositioningAgent()
@@ -417,10 +419,12 @@ class TestNodeExecutorIntegration:
         """A node can be approved then a new node executed and approved."""
         from automedia.hitl.executor import NodeExecutor
 
-        config = _build_config({
-            "first": "human",
-            "second": "human",
-        })
+        config = _build_config(
+            {
+                "first": "human",
+                "second": "human",
+            }
+        )
         executor = NodeExecutor(config)
         agent = _StubAgent()
 

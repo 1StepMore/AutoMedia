@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.subtitle_render import V6SubtitleRender, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.subtitle_render import _CHECK_NAMES, V6SubtitleRender
 
 
 def _make_context(
@@ -63,19 +61,27 @@ class TestV6MockDriven:
         assert len(result["checks"]) == 4
 
     def test_brightness_failure(self) -> None:
-        result = V6SubtitleRender().execute(_make_context(mock_results=_fail_check("subtitle_region_brightness")))
+        result = V6SubtitleRender().execute(
+            _make_context(mock_results=_fail_check("subtitle_region_brightness"))
+        )
         assert result["passed"] is False
 
     def test_contrast_failure(self) -> None:
-        result = V6SubtitleRender().execute(_make_context(mock_results=_fail_check("subtitle_region_contrast")))
+        result = V6SubtitleRender().execute(
+            _make_context(mock_results=_fail_check("subtitle_region_contrast"))
+        )
         assert result["passed"] is False
 
     def test_visible_failure(self) -> None:
-        result = V6SubtitleRender().execute(_make_context(mock_results=_fail_check("subtitle_visible")))
+        result = V6SubtitleRender().execute(
+            _make_context(mock_results=_fail_check("subtitle_visible"))
+        )
         assert result["passed"] is False
 
     def test_red_line_5_failure(self) -> None:
-        result = V6SubtitleRender().execute(_make_context(mock_results=_fail_check("red_line_5", "pixel check failed")))
+        result = V6SubtitleRender().execute(
+            _make_context(mock_results=_fail_check("red_line_5", "pixel check failed"))
+        )
         assert result["passed"] is False
 
     def test_all_checks_fail(self) -> None:

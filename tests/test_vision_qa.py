@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.vision_qa import V1VisionQA, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.vision_qa import _CHECK_NAMES, V1VisionQA
 
 
 def _good_entry(idx: int = 0) -> dict[str, Any]:
@@ -78,7 +76,9 @@ class TestV1MockDriven:
         assert result["passed"] is False
 
     def test_red_line_6_failure(self) -> None:
-        result = V1VisionQA().execute(_make_context(mock_results=_fail_check("red_line_6", "sampling detected")))
+        result = V1VisionQA().execute(
+            _make_context(mock_results=_fail_check("red_line_6", "sampling detected"))
+        )
         assert result["passed"] is False
 
     def test_all_checks_fail(self) -> None:

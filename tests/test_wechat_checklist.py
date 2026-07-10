@@ -4,21 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.wechat_checklist import (
-    G4WechatChecklist,
-    _build_result,
-    _CHECK_NAMES,
-)
+from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.wechat_checklist import (
+    _CHECK_NAMES,
+    G4WechatChecklist,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-_GOOD_HTML = """<div><p>Hello world.</p><img src="https://example.com/img1.jpg"><img src="img2.jpg"></div>"""
+_GOOD_HTML = (
+    """<div><p>Hello world.</p><img src="https://example.com/img1.jpg"><img src="img2.jpg"></div>"""
+)
 
 
 def _make_context(
@@ -219,7 +218,7 @@ class TestG4RealLogic:
         assert chk["passed"] is True  # still within limit
 
     def test_digest_length_fails_over_limit(self) -> None:
-        ctx = _make_context(digest="这是超过二十个字符的摘要信息测试用例。")  # len 16 → still fine
+        _make_context(digest="这是超过二十个字符的摘要信息测试用例。")  # len 16 → still fine
         # Let's just use a known >20
         digest_too_long = "A" * 21
         ctx2 = _make_context(digest=digest_too_long)
@@ -294,7 +293,9 @@ class TestG4RealLogic:
         assert chk["passed"] is False
 
     def test_body_image_count_fails_too_many(self) -> None:
-        ctx = _make_context(body_images=["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg", "g.jpg"])
+        ctx = _make_context(
+            body_images=["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg", "g.jpg"]
+        )
         result = G4WechatChecklist().execute(ctx)
         chk = next(c for c in result["checks"] if c["name"] == "body_image_count")
         assert chk["passed"] is False
@@ -314,9 +315,7 @@ class TestG4RealLogic:
         assert chk["passed"] is False
 
     def test_body_images_extracted_from_html_three(self) -> None:
-        html = '<p>Text</p>' + ''.join(
-            f'<img src="https://a.com/{i}.jpg">' for i in range(3)
-        )
+        html = "<p>Text</p>" + "".join(f'<img src="https://a.com/{i}.jpg">' for i in range(3))
         ctx = _make_context(content=html)
         result = G4WechatChecklist().execute(ctx)
         chk = next(c for c in result["checks"] if c["name"] == "body_image_count")
@@ -391,7 +390,7 @@ class TestG4ResultStructure:
 
     def test_build_result_structure(self) -> None:
         checks = [{"name": "test", "passed": True, "detail": "ok"}]
-        result = _build_result(checks)
+        result = build_gate_result(checks, gate="G4")
         assert result["passed"] is True
         assert result["gate"] == "G4"
         assert result["checks"] == checks
@@ -399,7 +398,7 @@ class TestG4ResultStructure:
 
     def test_build_result_with_error(self) -> None:
         checks = [{"name": "test", "passed": False, "detail": "fail"}]
-        result = _build_result(checks, error="something broke")
+        result = build_gate_result(checks, gate="G4", error="something broke")
         assert result["passed"] is False
         assert result["error"] == "something broke"
 

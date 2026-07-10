@@ -6,19 +6,17 @@ import json
 import os
 import subprocess
 from typing import Any
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from automedia.pipelines.audio_pipeline import (
-    AudioPipeline,
-    DEFAULT_LANGUAGE,
     DEFAULT_VOICE,
     DEFAULT_WHISPER_MODEL,
-    _levenshtein_distance,
+    AudioPipeline,
     _is_similar,
+    _levenshtein_distance,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -232,7 +230,7 @@ class TestGenerateSrt:
         result = pipeline.generate_srt(transcription, output_path)
 
         assert os.path.isfile(result)
-        with open(result, "r", encoding="utf-8") as fh:
+        with open(result, encoding="utf-8") as fh:
             content = fh.read()
 
         assert "1\n" in content
@@ -249,7 +247,7 @@ class TestGenerateSrt:
         result = pipeline.generate_srt(transcription, output_path)
 
         assert os.path.isfile(result)
-        with open(result, "r", encoding="utf-8") as fh:
+        with open(result, encoding="utf-8") as fh:
             content = fh.read()
         assert content == ""
 
@@ -263,7 +261,7 @@ class TestGenerateSrt:
         pipeline = AudioPipeline()
         pipeline.generate_srt(transcription, output_path)
 
-        with open(output_path, "r", encoding="utf-8") as fh:
+        with open(output_path, encoding="utf-8") as fh:
             content = fh.read()
 
         assert "00:01:01,123 --> 00:02:05,456" in content
@@ -304,10 +302,7 @@ class TestProofreadSrt:
         assert pipeline.proofread_srt(srt_path, "AutoMedia") is True
 
     def test_misspelled_brand_name_fails(self, tmp_path: Any) -> None:
-        srt_content = (
-            "1\n00:00:01,000 --> 00:00:03,000\n"
-            "Welcome to AutoMedai\n"
-        )
+        srt_content = "1\n00:00:01,000 --> 00:00:03,000\nWelcome to AutoMedai\n"
         srt_path = str(tmp_path / "test.srt")
         _write_srt(srt_path, srt_content)
 
@@ -315,10 +310,7 @@ class TestProofreadSrt:
         assert pipeline.proofread_srt(srt_path, "AutoMedia") is False
 
     def test_no_brand_mention_passes(self, tmp_path: Any) -> None:
-        srt_content = (
-            "1\n00:00:01,000 --> 00:00:03,000\n"
-            "Hello world\n"
-        )
+        srt_content = "1\n00:00:01,000 --> 00:00:03,000\nHello world\n"
         srt_path = str(tmp_path / "test.srt")
         _write_srt(srt_path, srt_content)
 
@@ -380,7 +372,9 @@ class TestGenerateAll:
         mock_run.side_effect = side_effect
         output_dir = str(tmp_path / "output")
         pipeline = AudioPipeline()
-        results = pipeline.generate_all("Hello world", voice="en-US-GuyNeural", output_dir=output_dir)
+        results = pipeline.generate_all(
+            "Hello world", voice="en-US-GuyNeural", output_dir=output_dir
+        )
 
         assert "mp3" in results
         assert "json" in results
@@ -422,7 +416,7 @@ class TestGenerateAll:
         pipeline = AudioPipeline()
         results = pipeline.generate_all("Test", output_dir=output_dir)
 
-        with open(results["srt"], "r", encoding="utf-8") as fh:
+        with open(results["srt"], encoding="utf-8") as fh:
             srt_content = fh.read()
         assert "Hello" in srt_content
         assert "World" in srt_content

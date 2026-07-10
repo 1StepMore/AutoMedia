@@ -3,10 +3,8 @@
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-
-import pytest
 
 from automedia.hooks.md5_tracker import (
     PIPELINE_MD5_FILENAME,
@@ -14,7 +12,6 @@ from automedia.hooks.md5_tracker import (
     record_md5,
     verify_md5,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -135,9 +132,10 @@ class TestRecordMd5:
 
         data = get_pipeline_md5(str(tmp_path))
         assert data["gates"]["my_gate"]["md5"] == digest_v2
-        assert data["gates"]["my_gate"]["recorded_at"] > data["gates"]["my_gate"][
-            "recorded_at"
-        ] or True  # at minimum the md5 updated
+        assert (
+            data["gates"]["my_gate"]["recorded_at"] > data["gates"]["my_gate"]["recorded_at"]
+            or True
+        )  # at minimum the md5 updated
 
     def test_recorded_at_is_isoformat(self, tmp_path: Path) -> None:
         """record_md5 should store a valid ISO-8601 timestamp in recorded_at."""

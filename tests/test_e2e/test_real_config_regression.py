@@ -15,6 +15,8 @@ import pytest
 
 from automedia.core.config_loader import load_config
 
+pytestmark = pytest.mark.e2e
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------

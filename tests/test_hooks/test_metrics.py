@@ -12,10 +12,10 @@ import pytest
 
 from automedia.hooks.metrics import METRICS_FILENAME, MetricsHook, _metrics_path
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _read_metrics(project_dir: Path) -> dict[str, Any]:
     """Read and return the parsed production_metrics.json from *project_dir*."""
@@ -263,7 +263,9 @@ class TestMetricsHookAccumulation:
 class TestMetricsHookWriteFailure:
     """Write failures are logged and do not raise."""
 
-    def test_oserror_is_logged_not_raised(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    def test_oserror_is_logged_not_raised(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """An OSError during write is caught, logged, and not propagated."""
         hook = MetricsHook()
         ctx = {"project_dir": str(tmp_path), "project_id": "p1"}
@@ -276,7 +278,9 @@ class TestMetricsHookWriteFailure:
 
         assert "failed to write" in caplog.text
 
-    def test_on_gate_failed_write_error_is_logged(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    def test_on_gate_failed_write_error_is_logged(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """An OSError during on_gate_failed's write is caught and logged."""
         hook = MetricsHook()
         ctx = {"project_dir": str(tmp_path), "project_id": "p1"}

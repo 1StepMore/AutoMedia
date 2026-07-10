@@ -81,4 +81,5 @@ class TestLicenseCheck:
 def _generate_test_key(days_valid: int = 365) -> str:
     """Generate a test license key valid for *days_valid* days from now."""
     from automedia.license.verifier import LicenseGenerator
+
     return LicenseGenerator.generate(tenant_id="e2e_test_tenant", days_valid=days_valid)

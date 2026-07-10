@@ -12,9 +12,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from automedia.mcp.parallel import (
-    _SUBSET_MODES,
-    _SERVER_DEFS,
-    _children,
     _signal_handler,
     _terminate_all_children,
     get_server_commands,
@@ -52,6 +49,7 @@ def mock_popen():
         proc.returncode = None
         proc.wait.return_value = 0
         return proc
+
     return _make
 
 
@@ -392,11 +390,13 @@ class TestImports:
     def test_import_start_parallel_servers(self) -> None:
         """start_parallel_servers is importable from parallel module."""
         from automedia.mcp.parallel import start_parallel_servers as fn
+
         assert callable(fn)
 
     def test_import_from_mcp_package(self) -> None:
         """start_parallel_servers is re-exported from automedia.mcp."""
         from automedia.mcp import start_parallel_servers, stop_parallel_servers
+
         assert callable(start_parallel_servers)
         assert callable(stop_parallel_servers)
 

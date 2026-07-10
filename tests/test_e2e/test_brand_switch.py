@@ -18,7 +18,6 @@ import pytest
 from automedia.gates.base import _registry
 from automedia.pipelines.gate_engine import GateEngine
 
-
 # ---------------------------------------------------------------------------
 # Brand profile helpers
 # ---------------------------------------------------------------------------
@@ -191,9 +190,7 @@ class TestBrandSwitch:
             success, results = engine.run(ctx)
 
         # --- Pipeline outcome ---
-        assert success is True, (
-            f"BrandA pipeline failed. Results: {results}"
-        )
+        assert success is True, f"BrandA pipeline failed. Results: {results}"
 
         # --- ContentWriterGate produced content ---
         content: str = ctx.get("content", "")
@@ -201,14 +198,10 @@ class TestBrandSwitch:
 
         # BrandA content should contain BrandA markers
         assert "BrandA" in content, "BrandA content should mention 'BrandA'"
-        assert "立即下载A" in content, (
-            "BrandA content should contain BrandA CTA '立即下载A'"
-        )
+        assert "立即下载A" in content, "BrandA content should contain BrandA CTA '立即下载A'"
 
         # BrandA content must NOT contain BrandB markers
-        assert "BrandB" not in content, (
-            "BrandA content should NOT mention 'BrandB'"
-        )
+        assert "BrandB" not in content, "BrandA content should NOT mention 'BrandB'"
         assert "立即下载B" not in content, (
             "BrandA content should NOT contain BrandB CTA '立即下载B'"
         )
@@ -261,17 +254,14 @@ class TestBrandSwitch:
         # G3 should fail because forbiddenA appears in content
         g3_result = results[-1] if results else {}
         assert g3_result.get("passed") is False, (
-            "G3 should fail when content contains blocked word 'forbiddenA'. "
-            f"Result: {g3_result}"
+            f"G3 should fail when content contains blocked word 'forbiddenA'. Result: {g3_result}"
         )
         # Verify the failing check is blocked_words_absent specifically
         blocked_check = next(
             (c for c in g3_result.get("checks", []) if c["name"] == "blocked_words_absent"),
             None,
         )
-        assert blocked_check is not None, (
-            "Expected blocked_words_absent check in G3 results"
-        )
+        assert blocked_check is not None, "Expected blocked_words_absent check in G3 results"
         assert blocked_check["passed"] is False, (
             "blocked_words_absent should fail for BrandA with 'forbiddenA' in content"
         )
@@ -301,23 +291,17 @@ class TestBrandSwitch:
         ):
             success, results = engine.run(ctx)
 
-        assert success is True, (
-            f"BrandB pipeline failed. Results: {results}"
-        )
+        assert success is True, f"BrandB pipeline failed. Results: {results}"
 
         content: str = ctx.get("content", "")
         assert content, "ContentWriterGate should have set gate_context['content']"
 
         # BrandB content should contain BrandB markers
         assert "BrandB" in content, "BrandB content should mention 'BrandB'"
-        assert "立即下载B" in content, (
-            "BrandB content should contain BrandB CTA '立即下载B'"
-        )
+        assert "立即下载B" in content, "BrandB content should contain BrandB CTA '立即下载B'"
 
         # BrandB content must NOT contain BrandA markers
-        assert "BrandA" not in content, (
-            "BrandB content should NOT mention 'BrandA'"
-        )
+        assert "BrandA" not in content, "BrandB content should NOT mention 'BrandA'"
         assert "立即下载A" not in content, (
             "BrandB content should NOT contain BrandA CTA '立即下载A'"
         )
@@ -369,8 +353,7 @@ class TestBrandSwitch:
 
         g3_result = results[-1] if results else {}
         assert g3_result.get("passed") is False, (
-            "G3 should fail when content contains blocked word 'forbiddenB'. "
-            f"Result: {g3_result}"
+            f"G3 should fail when content contains blocked word 'forbiddenB'. Result: {g3_result}"
         )
         blocked_check = next(
             (c for c in g3_result.get("checks", []) if c["name"] == "blocked_words_absent"),

@@ -6,10 +6,8 @@ import os
 import tempfile
 from typing import Any
 
-import pytest
-
-from automedia.gates.six_step_hard import V7SixStepHard, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.six_step_hard import _CHECK_NAMES, V7SixStepHard
 
 
 def _make_context(
@@ -131,16 +129,24 @@ class TestV7RealLogic:
         assert chk["passed"] is False
 
     def test_md5_match_passes(self) -> None:
-        result = V7SixStepHard().execute(_make_context(md5_records={
-            "/tmp/a.mp3": {"expected": "abc123", "actual": "abc123"},
-        }))
+        result = V7SixStepHard().execute(
+            _make_context(
+                md5_records={
+                    "/tmp/a.mp3": {"expected": "abc123", "actual": "abc123"},
+                }
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
         assert chk["passed"] is True
 
     def test_md5_mismatch_fails(self) -> None:
-        result = V7SixStepHard().execute(_make_context(md5_records={
-            "/tmp/a.mp3": {"expected": "abc123", "actual": "def456"},
-        }))
+        result = V7SixStepHard().execute(
+            _make_context(
+                md5_records={
+                    "/tmp/a.mp3": {"expected": "abc123", "actual": "def456"},
+                }
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
         assert chk["passed"] is False
 
@@ -165,12 +171,20 @@ class TestV7RealLogic:
         assert chk["passed"] is False
 
     def test_duration_in_range_passes(self) -> None:
-        result = V7SixStepHard().execute(_make_context(actual_duration=60.0, expected_duration_min=30.0, expected_duration_max=120.0))
+        result = V7SixStepHard().execute(
+            _make_context(
+                actual_duration=60.0, expected_duration_min=30.0, expected_duration_max=120.0
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "duration_valid")
         assert chk["passed"] is True
 
     def test_duration_out_of_range_fails(self) -> None:
-        result = V7SixStepHard().execute(_make_context(actual_duration=200.0, expected_duration_min=30.0, expected_duration_max=120.0))
+        result = V7SixStepHard().execute(
+            _make_context(
+                actual_duration=200.0, expected_duration_min=30.0, expected_duration_max=120.0
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "duration_valid")
         assert chk["passed"] is False
 

@@ -11,7 +11,6 @@ from automedia.manifests.brand_profile_schema import (
     validate_brand_profile,
 )
 
-
 # ---------------------------------------------------------------------------
 # validate_brand_profile
 # ---------------------------------------------------------------------------

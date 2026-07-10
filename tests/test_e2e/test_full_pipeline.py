@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from automedia.gates.base import _registry
-from automedia.pipelines.gate_engine import GateEngine, PipelineResult
+from automedia.pipelines.gate_engine import GateEngine
 from automedia.pipelines.runner import (
     _AUTO_GATE_NAMES,
     _QA_ONLY_GATE_NAMES,
@@ -41,6 +41,7 @@ def _mock_llm_for_content_writer():
 def _build_gates(names: list[str]) -> list:
     """Instantiate registered gates by name in order."""
     import automedia.gates  # noqa: F401 — ensure all gates are registered
+
     return [_registry.get(n)() for n in names]
 
 
@@ -49,51 +50,112 @@ def _build_mock_results() -> dict[str, dict[str, Any]]:
     _p = {"passed": True, "detail": "mock-pass"}
     all_checks = [
         # pre-gate
-        "topic_not_charity", "topic_not_gov_tool", "topic_not_investment",
-        "topic_not_finance", "topic_not_entertainment", "topic_length_valid",
+        "topic_not_charity",
+        "topic_not_gov_tool",
+        "topic_not_investment",
+        "topic_not_finance",
+        "topic_not_entertainment",
+        "topic_length_valid",
         # G0
-        "source_trace", "number_verification", "timeline", "quotes", "entities",
+        "source_trace",
+        "number_verification",
+        "timeline",
+        "quotes",
+        "entities",
         # G1
-        "overused_adverbs", "hollow_intros", "vague_subjects",
-        "filler_connectors", "long_conjunctions", "template_conclusions",
-        "overacademic_vocabulary", "absolute_assertions", "repetitive_structures",
+        "overused_adverbs",
+        "hollow_intros",
+        "vague_subjects",
+        "filler_connectors",
+        "long_conjunctions",
+        "template_conclusions",
+        "overacademic_vocabulary",
+        "absolute_assertions",
+        "repetitive_structures",
         # G2
-        "clarity", "tone", "so_what", "evidence", "specificity",
+        "clarity",
+        "tone",
+        "so_what",
+        "evidence",
+        "specificity",
         # G3
-        "brand_name_present", "cta_present", "brand_identity",
-        "blocked_words_absent", "cta_direction_sync", "bridge_sentence",
+        "brand_name_present",
+        "cta_present",
+        "brand_identity",
+        "blocked_words_absent",
+        "cta_direction_sync",
+        "bridge_sentence",
         # G4
-        "title_length", "digest_length", "no_markdown", "cover_exists",
-        "tag_count", "body_image_count", "sensitive_words",
+        "title_length",
+        "digest_length",
+        "no_markdown",
+        "cover_exists",
+        "tag_count",
+        "body_image_count",
+        "sensitive_words",
         # G5
-        "tag_integrity", "no_markdown", "tag_count",
+        "tag_integrity",
+        "no_markdown",
+        "tag_count",
         # V0
-        "lint_errors", "lint_warnings", "syntax_valid",
+        "lint_errors",
+        "lint_warnings",
+        "syntax_valid",
         # V1
-        "mid_frame_valid", "end_silence_valid", "all_entries_passed", "red_line_6",
+        "mid_frame_valid",
+        "end_silence_valid",
+        "all_entries_passed",
+        "red_line_6",
         # V2
-        "whisper_transcription", "transcription_length", "md5_integrity", "red_line_7",
+        "whisper_transcription",
+        "transcription_length",
+        "md5_integrity",
+        "red_line_7",
         # V3
-        "keyword_coverage", "source_alignment", "no_hallucination",
+        "keyword_coverage",
+        "source_alignment",
+        "no_hallucination",
         # V4
-        "voice_id_match", "speaking_rate", "voice_consistency",
+        "voice_id_match",
+        "speaking_rate",
+        "voice_consistency",
         # V5
-        "whisper_vs_srt_diff", "srt_not_empty", "whisper_not_empty",
+        "whisper_vs_srt_diff",
+        "srt_not_empty",
+        "whisper_not_empty",
         # V6
-        "subtitle_region_brightness", "subtitle_region_contrast",
-        "subtitle_visible", "red_line_5",
+        "subtitle_region_brightness",
+        "subtitle_region_contrast",
+        "subtitle_visible",
+        "red_line_5",
         # V7
-        "file_exists", "file_size_valid", "md5_verified",
-        "whisper_full", "format_valid", "duration_valid",
+        "file_exists",
+        "file_size_valid",
+        "md5_verified",
+        "whisper_full",
+        "format_valid",
+        "duration_valid",
         # L1
-        "topic_present", "content_present", "media_paths_valid",
-        "platform_valid", "version_valid", "timestamp_valid",
+        "topic_present",
+        "content_present",
+        "media_paths_valid",
+        "platform_valid",
+        "version_valid",
+        "timestamp_valid",
         # L2
-        "archive_status", "force_flag", "archive_path_exists",
-        "archive_metadata_complete", "archive_version_valid", "output_directory_exists",
+        "archive_status",
+        "force_flag",
+        "archive_path_exists",
+        "archive_metadata_complete",
+        "archive_version_valid",
+        "output_directory_exists",
         # L3
-        "all_platforms_present", "no_platform_splitting", "material_integrity",
-        "cross_platform_consistency", "format_completeness", "metadata_integrity",
+        "all_platforms_present",
+        "no_platform_splitting",
+        "material_integrity",
+        "cross_platform_consistency",
+        "format_completeness",
+        "metadata_integrity",
     ]
     return {name: _p for name in all_checks}
 
@@ -132,8 +194,10 @@ def _build_full_context(
         "cover_image": "https://example.com/cover.jpg",
         "tags": ["AI", "tech", "trends", "2025", "innovation"],
         "body_images": [
-            "<img src='a.jpg'>", "<img src='b.jpg'>",
-            "<img src='c.jpg'>", "<img src='d.jpg'>",
+            "<img src='a.jpg'>",
+            "<img src='b.jpg'>",
+            "<img src='c.jpg'>",
+            "<img src='d.jpg'>",
         ],
         # V0
         "lint_result": {"errors": 0, "warnings": 0, "syntax_ok": True},
@@ -166,7 +230,9 @@ def _build_full_context(
         ],
         # V5
         "whisper_text": "Hello world, this is a test transcription.",
-        "srt_text": "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n",
+        "srt_text": (
+            "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n"
+        ),
         # V6
         "avg_brightness": 128,
         "contrast": 150,
@@ -210,6 +276,12 @@ def _build_full_context(
         "file_paths": [],
         "formats": ["mp4", "txt", "json"],
         "required_formats": ["mp4", "txt", "json"],
+        # L4
+        "translation_result": {
+            "translated_md": "---\nsource_lang: zh\ntarget_lang: en\n---\nTranslated content here."
+        },
+        "source_lang": "zh",
+        "target_lang": "en",
     }
 
 
@@ -231,9 +303,7 @@ class TestFullPipeline:
         """GateEngine runs all 18 gates in auto mode with mock → success."""
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(
-            sample_topic, sample_brand_profile, project_dir=str(tmp_path)
-        )
+        ctx = _build_full_context(sample_topic, sample_brand_profile, project_dir=str(tmp_path))
 
         success, results = engine.run(ctx)
 
@@ -243,9 +313,7 @@ class TestFullPipeline:
         )
         for i, result in enumerate(results):
             gate_name = _AUTO_GATE_NAMES[i]
-            assert result.get("passed") is True, (
-                f"Gate {gate_name} failed: {result}"
-            )
+            assert result.get("passed") is True, f"Gate {gate_name} failed: {result}"
 
     def test_pipeline_stops_on_gate_failure(
         self,
@@ -319,9 +387,7 @@ class TestFullPipeline:
         """text_only mode runs only G0-G5 + L1-L3 (9 gates)."""
         gates = _build_gates(_TEXT_ONLY_GATE_NAMES)
         engine = GateEngine(gates)
-        ctx = _build_full_context(
-            sample_topic, sample_brand_profile, project_dir=str(tmp_path)
-        )
+        ctx = _build_full_context(sample_topic, sample_brand_profile, project_dir=str(tmp_path))
 
         success, results = engine.run(ctx)
 

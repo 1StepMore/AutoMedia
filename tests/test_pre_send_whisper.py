@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import tempfile
-import hashlib
 from typing import Any
 
-import pytest
-
-from automedia.gates.pre_send_whisper import V2PreSendWhisper, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.pre_send_whisper import _CHECK_NAMES, V2PreSendWhisper
 
 
 def _make_context(
@@ -66,19 +64,27 @@ class TestV2MockDriven:
         assert len(result["checks"]) == 4
 
     def test_whisper_transcription_failure(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(mock_results=_fail_check("whisper_transcription")))
+        result = V2PreSendWhisper().execute(
+            _make_context(mock_results=_fail_check("whisper_transcription"))
+        )
         assert result["passed"] is False
 
     def test_transcription_length_failure(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(mock_results=_fail_check("transcription_length")))
+        result = V2PreSendWhisper().execute(
+            _make_context(mock_results=_fail_check("transcription_length"))
+        )
         assert result["passed"] is False
 
     def test_md5_integrity_failure(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(mock_results=_fail_check("md5_integrity")))
+        result = V2PreSendWhisper().execute(
+            _make_context(mock_results=_fail_check("md5_integrity"))
+        )
         assert result["passed"] is False
 
     def test_red_line_7_failure(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(mock_results=_fail_check("red_line_7", "partial only")))
+        result = V2PreSendWhisper().execute(
+            _make_context(mock_results=_fail_check("red_line_7", "partial only"))
+        )
         assert result["passed"] is False
 
     def test_all_checks_fail(self) -> None:
@@ -89,7 +95,9 @@ class TestV2MockDriven:
 
 class TestV2RealLogic:
     def test_valid_transcription_passes(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(transcription="This is a valid transcription."))
+        result = V2PreSendWhisper().execute(
+            _make_context(transcription="This is a valid transcription.")
+        )
         assert result["passed"] is True
 
     def test_empty_transcription_fails(self) -> None:
@@ -118,7 +126,9 @@ class TestV2RealLogic:
             path = f.name
         try:
             expected = hashlib.md5(b"test audio content").hexdigest()
-            result = V2PreSendWhisper().execute(_make_context(audio_path=path, expected_md5=expected))
+            result = V2PreSendWhisper().execute(
+                _make_context(audio_path=path, expected_md5=expected)
+            )
             chk = next(c for c in result["checks"] if c["name"] == "md5_integrity")
             assert chk["passed"] is True
         finally:
@@ -129,14 +139,18 @@ class TestV2RealLogic:
             f.write(b"test audio content")
             path = f.name
         try:
-            result = V2PreSendWhisper().execute(_make_context(audio_path=path, expected_md5="bad_md5"))
+            result = V2PreSendWhisper().execute(
+                _make_context(audio_path=path, expected_md5="bad_md5")
+            )
             chk = next(c for c in result["checks"] if c["name"] == "md5_integrity")
             assert chk["passed"] is False
         finally:
             os.unlink(path)
 
     def test_missing_audio_file_fails_md5(self) -> None:
-        result = V2PreSendWhisper().execute(_make_context(audio_path="/nonexistent.mp3", expected_md5="abc"))
+        result = V2PreSendWhisper().execute(
+            _make_context(audio_path="/nonexistent.mp3", expected_md5="abc")
+        )
         chk = next(c for c in result["checks"] if c["name"] == "md5_integrity")
         assert chk["passed"] is False
 

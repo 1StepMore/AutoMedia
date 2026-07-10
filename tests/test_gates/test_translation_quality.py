@@ -8,11 +8,10 @@ import pytest
 
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.translation_quality import (
-    L4TranslationQuality,
     _CHECK_NAMES,
-    _GARBLED_RE,
-    _parse_frontmatter,
     GateResult,
+    L4TranslationQuality,
+    _parse_frontmatter,
 )
 
 # =========================================================================
@@ -73,9 +72,7 @@ def _make_context(
     """
     return {
         "translation_result": {
-            "translated_md": translated_md
-            if translated_md is not None
-            else VALID_FRONTMATTER,
+            "translated_md": translated_md if translated_md is not None else VALID_FRONTMATTER,
             "xliff_path": "/tmp/test.xliff",
             "warnings": [],
             "source_lang": source_lang,
@@ -412,9 +409,7 @@ class TestEdgeCases:
         assert "check_results" in result
 
     def test_missing_translation_result(self) -> None:
-        result = L4TranslationQuality().execute(
-            {"source_lang": "en", "target_lang": "zh"}
-        )
+        result = L4TranslationQuality().execute({"source_lang": "en", "target_lang": "zh"})
         assert result["passed"] is False
         assert result["check_results"]["non_empty"] is False
 

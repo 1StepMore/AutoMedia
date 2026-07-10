@@ -12,8 +12,6 @@ Scenarios
 
 from __future__ import annotations
 
-import pytest
-
 from automedia.decision.base import DecisionArtifact
 
 
@@ -22,16 +20,19 @@ class TestAssignMode:
 
     def test_from_scratch_returns_build(self) -> None:
         from automedia.decision.diagnostic import assign_mode
+
         result = assign_mode("I want to create a new brand from scratch")
         assert result == "build"
 
     def test_existing_brand_returns_scale(self) -> None:
         from automedia.decision.diagnostic import assign_mode
+
         result = assign_mode("I already have a running brand")
         assert result == "scale"
 
     def test_empty_input_returns_build(self) -> None:
         from automedia.decision.diagnostic import assign_mode
+
         result = assign_mode("")
         assert result == "build"  # default
 
@@ -41,6 +42,7 @@ class TestDiagnosticAgent:
 
     def test_execute_returns_decision_artifact(self) -> None:
         from automedia.decision.diagnostic import DiagnosticAgent
+
         agent = DiagnosticAgent()
         result = agent.execute({"idea": "eco-friendly water bottle"}, None)
         assert isinstance(result, DecisionArtifact)
@@ -48,6 +50,7 @@ class TestDiagnosticAgent:
 
     def test_artifact_contains_required_brief_fields(self) -> None:
         from automedia.decision.diagnostic import DiagnosticAgent
+
         agent = DiagnosticAgent()
         result = agent.execute({"idea": "AI fitness app for SEA market"}, None)
         assert "idea" in result.content
@@ -57,9 +60,12 @@ class TestDiagnosticAgent:
     def test_mock_asset_scan_returns_count(self) -> None:
         """When asset_library is provided, scan counts existing assets."""
         from automedia.decision.diagnostic import DiagnosticAgent
+
         agent = DiagnosticAgent()
         # Mock asset_library with known assets
-        mock_lib = type("MockLib", (), {"search": lambda self, query="", filters=None: ["a1", "a2"]})()
+        mock_lib = type(
+            "MockLib", (), {"search": lambda self, query="", filters=None: ["a1", "a2"]}
+        )()
         result = agent.execute({"idea": "test"}, mock_lib)
         assert result.content.get("existing_assets", 0) == 2
 
@@ -69,6 +75,7 @@ class TestQuestionnaireOutput:
 
     def test_questionnaire_returns_structured_brief(self) -> None:
         from automedia.decision.diagnostic import questionnaire
+
         answers = {"idea": "AI video tool", "market": "US", "stage": "new"}
         brief = questionnaire(answers)
         assert brief["idea"] == "AI video tool"
@@ -78,5 +85,6 @@ class TestQuestionnaireOutput:
 
     def test_questionnaire_defaults(self) -> None:
         from automedia.decision.diagnostic import questionnaire
+
         brief = questionnaire({})
         assert brief["mode"] == "build"

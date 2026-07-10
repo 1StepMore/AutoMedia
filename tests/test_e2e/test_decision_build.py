@@ -17,10 +17,10 @@ import pytest
 from automedia.decision.base import DecisionArtifact
 from automedia.decision.orchestrator import DecisionOrchestrator
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _assert_artifact_types(
     artifacts: list[DecisionArtifact],
@@ -33,8 +33,7 @@ def _assert_artifact_types(
     actual_types = {a.artifact_type for a in artifacts}
     missing = expected_types - actual_types
     assert not missing, (
-        f"Missing artifact type(s): {sorted(missing)}. "
-        f"Actual types: {sorted(actual_types)}"
+        f"Missing artifact type(s): {sorted(missing)}. Actual types: {sorted(actual_types)}"
     )
 
 
@@ -65,9 +64,7 @@ class TestDecisionBuildMode:
             brand="FitBrand",
         )
 
-        assert isinstance(artifacts, list), (
-            f"Expected list, got {type(artifacts).__name__}"
-        )
+        assert isinstance(artifacts, list), f"Expected list, got {type(artifacts).__name__}"
         assert len(artifacts) > 0, "Expected at least one artifact"
         for art in artifacts:
             assert isinstance(art, DecisionArtifact), (
@@ -131,9 +128,7 @@ class TestDecisionBuildMode:
                 f"Artifact '{art.artifact_type}'.content should be a dict, "
                 f"got {type(art.content).__name__}"
             )
-            assert len(art.content) > 0, (
-                f"Artifact '{art.artifact_type}'.content is empty"
-            )
+            assert len(art.content) > 0, f"Artifact '{art.artifact_type}'.content is empty"
 
     def test_build_mode_brief_content(self) -> None:
         """The brief artifact contains the original idea and inferred mode."""
@@ -177,9 +172,7 @@ class TestDecisionBuildMode:
             brand="FitBrand",
         )
 
-        market_report = next(
-            a for a in artifacts if a.artifact_type == "market_report"
-        )
+        market_report = next(a for a in artifacts if a.artifact_type == "market_report")
 
         assert "market_size" in market_report.content
         assert "consumer_profile" in market_report.content
@@ -194,9 +187,7 @@ class TestDecisionBuildMode:
             brand="FitBrand",
         )
 
-        persona_map = next(
-            a for a in artifacts if a.artifact_type == "persona_map"
-        )
+        persona_map = next(a for a in artifacts if a.artifact_type == "persona_map")
 
         assert "personas" in persona_map.content
         assert isinstance(persona_map.content["personas"], list)
@@ -213,9 +204,7 @@ class TestDecisionBuildMode:
             brand="FitBrand",
         )
 
-        competitor_matrix = next(
-            a for a in artifacts if a.artifact_type == "competitor_matrix"
-        )
+        competitor_matrix = next(a for a in artifacts if a.artifact_type == "competitor_matrix")
 
         assert "competitors" in competitor_matrix.content
         assert isinstance(competitor_matrix.content["competitors"], list)
@@ -231,9 +220,7 @@ class TestDecisionBuildMode:
             brand="FitBrand",
         )
 
-        strategy_docs = [
-            a for a in artifacts if a.artifact_type == "strategy_doc"
-        ]
+        strategy_docs = [a for a in artifacts if a.artifact_type == "strategy_doc"]
         assert len(strategy_docs) == 2
 
         # ProductOptimization strategy
@@ -321,9 +308,7 @@ class TestDecisionBuildMode:
 
         pipeline_input = orch.convert_to_pipeline_input(artifacts)
 
-        brand_dna = next(
-            a for a in artifacts if a.artifact_type == "brand_dna"
-        )
+        brand_dna = next(a for a in artifacts if a.artifact_type == "brand_dna")
         expected_brand = brand_dna.content.get("brand_name", "")
         assert pipeline_input["brand"] == expected_brand, (
             f"Pipeline brand '{pipeline_input['brand']}' should match "
@@ -382,8 +367,14 @@ class TestDecisionBuildMode:
         assert brief.content["idea"] == ""
         _assert_artifact_types(
             artifacts,
-            {"brief", "brand_dna", "market_report", "persona_map",
-             "competitor_matrix", "strategy_doc"},
+            {
+                "brief",
+                "brand_dna",
+                "market_report",
+                "persona_map",
+                "competitor_matrix",
+                "strategy_doc",
+            },
         )
 
     def test_build_mode_empty_brand(self) -> None:
@@ -415,6 +406,4 @@ class TestDecisionBuildMode:
         # Spot-check that content differs
         brief_a = next(a for a in artifacts_a if a.artifact_type == "brief")
         brief_b = next(a for a in artifacts_b if a.artifact_type == "brief")
-        assert brief_a.content != brief_b.content, (
-            "Brief content should differ for different ideas"
-        )
+        assert brief_a.content != brief_b.content, "Brief content should differ for different ideas"

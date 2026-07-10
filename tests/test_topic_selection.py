@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.topic_selection import TopicSelectionGate, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.topic_selection import _CHECK_NAMES, TopicSelectionGate
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_context(
     *,

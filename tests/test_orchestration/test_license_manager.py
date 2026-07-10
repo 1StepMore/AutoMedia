@@ -10,8 +10,6 @@ Scenarios
 
 from __future__ import annotations
 
-import pytest
-
 from automedia.license.manager import LicenseManager, LicenseStatus
 
 
@@ -94,12 +92,14 @@ class TestCommercialFeatureList:
 
     def test_commercial_feature_list(self) -> None:
         from automedia.license.manager import COMMERCIAL_FEATURES
+
         for f in ["tenant", "rbac", "audit", "saml", "web_ui"]:
             assert f in COMMERCIAL_FEATURES
 
     def test_commercial_feature_list_exhaustive(self) -> None:
         """The COMMERCIAL_FEATURES list has exactly the 5 expected items."""
         from automedia.license.manager import COMMERCIAL_FEATURES
+
         assert set(COMMERCIAL_FEATURES) == {"tenant", "rbac", "audit", "saml", "web_ui"}
 
 
@@ -128,11 +128,12 @@ class TestUnknownFeatureIsUnavailable:
 # Helper: generate a test license key with the built-in generator
 # ---------------------------------------------------------------------------
 
+
 def _generate_test_key(days_valid: int = 365) -> str:
     """Generate a test license key valid for *days_valid* days from now
     (or expired if negative)."""
-    from automedia.license.manager import LicenseManager as LM
     from automedia.license.verifier import LicenseGenerator
+
     gen = LicenseGenerator()
     expiry = days_valid  # relative days
     key = gen.generate(tenant_id="test_tenant", days_valid=expiry)

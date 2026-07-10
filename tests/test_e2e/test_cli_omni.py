@@ -10,10 +10,13 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
 from automedia.omni.opp_adapter import ExtractionResult
+
+pytestmark = pytest.mark.e2e
 
 runner = CliRunner()
 
@@ -37,11 +40,17 @@ def test_localize_full_pipeline(tmp_path: Path) -> None:
             MagicMock(translated_md="# こんにちは世界", warnings=[]),
         ]
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "en,ja",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "en,ja",
+            ],
+        )
 
     # ── Assert ───────────────────────────────────────────────────────
     assert result.exit_code == 0, f"Exit code 0 expected, got {result.exit_code}: {result.output}"
@@ -62,11 +71,17 @@ def test_localize_full_pipeline(tmp_path: Path) -> None:
 
 def test_localize_missing_drafts_dir(tmp_path: Path) -> None:
     """Project without 01_content/drafts/ exits with code 1 and error message."""
-    result = runner.invoke(app, [
-        "omni", "localize",
-        "--project", str(tmp_path),
-        "--target-langs", "en",
-    ])
+    result = runner.invoke(
+        app,
+        [
+            "omni",
+            "localize",
+            "--project",
+            str(tmp_path),
+            "--target-langs",
+            "en",
+        ],
+    )
     assert result.exit_code == 1
     assert "Drafts directory not found" in result.output
 
@@ -76,11 +91,17 @@ def test_localize_empty_drafts(tmp_path: Path) -> None:
     drafts = tmp_path / "01_content" / "drafts"
     drafts.mkdir(parents=True)
 
-    result = runner.invoke(app, [
-        "omni", "localize",
-        "--project", str(tmp_path),
-        "--target-langs", "en",
-    ])
+    result = runner.invoke(
+        app,
+        [
+            "omni",
+            "localize",
+            "--project",
+            str(tmp_path),
+            "--target-langs",
+            "en",
+        ],
+    )
     assert result.exit_code == 1
     assert "No markdown files found" in result.output
 
@@ -94,11 +115,17 @@ def test_localize_translation_failure(tmp_path: Path) -> None:
     with patch("automedia.omni.ol_adapter.OLAdapter.translate") as mock_translate:
         mock_translate.side_effect = RuntimeError("API timeout")
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "fr",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "fr",
+            ],
+        )
         assert result.exit_code == 1
         assert "Translation failed" in result.output
         assert "No files were produced" in result.output
@@ -113,11 +140,17 @@ def test_localize_single_language(tmp_path: Path) -> None:
     with patch("automedia.omni.ol_adapter.OLAdapter.translate") as mock_translate:
         mock_translate.return_value = MagicMock(translated_md="# Bonjour", warnings=[])
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "fr",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "fr",
+            ],
+        )
         assert result.exit_code == 0
         assert "Localised" in result.output
 
@@ -149,12 +182,20 @@ def test_format_output(tmp_path: Path) -> None:
             "errors": [],
         }
 
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--input", str(input_file),
-            "--target-format", "docx",
-        ])
-        assert result.exit_code == 0, f"Exit code 0 expected, got {result.exit_code}: {result.output}"
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--input",
+                str(input_file),
+                "--target-format",
+                "docx",
+            ],
+        )
+        assert result.exit_code == 0, (
+            f"Exit code 0 expected, got {result.exit_code}: {result.output}"
+        )
         assert "Output:" in result.output
         assert "test.docx" in result.output
         mock_convert.assert_called_once_with(
@@ -182,12 +223,20 @@ def test_ingest(tmp_path: Path) -> None:
             warnings=[],
         )
 
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir),
-            "--output-dir", str(output_dir),
-        ])
-        assert result.exit_code == 0, f"Exit code 0 expected, got {result.exit_code}: {result.output}"
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
+        assert result.exit_code == 0, (
+            f"Exit code 0 expected, got {result.exit_code}: {result.output}"
+        )
         assert "Ingested" in result.output
         assert "report.md" in result.output
 

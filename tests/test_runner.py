@@ -2,23 +2,19 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from automedia.gates.base import BaseGate, GateRegistry
-from automedia.hooks.protocol import GateObserver
-from automedia.pipelines.gate_engine import AssetInfo, GateLogEntry, PipelineResult
+from automedia.gates.base import BaseGate
 from automedia.pipelines.runner import (
+    _MODE_MAP,
     _build_gates_from_names,
     _build_gates_log,
     _collect_assets,
-    _MODE_MAP,
     run_full_pipeline,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -125,20 +121,14 @@ class TestCollectAssets:
         assert _collect_assets({}) == []
 
     def test_output_files_key(self) -> None:
-        ctx = {
-            "output_files": [
-                {"type": "video", "path": "/tmp/v.mp4", "platform": "bilibili"}
-            ]
-        }
+        ctx = {"output_files": [{"type": "video", "path": "/tmp/v.mp4", "platform": "bilibili"}]}
         assets = _collect_assets(ctx)
         assert len(assets) == 1
         assert assets[0].type == "video"
 
     def test_assets_key(self) -> None:
         ctx = {
-            "assets": [
-                {"type": "image", "path": "/tmp/i.png", "platform": "wechat", "md5": "abc"}
-            ]
+            "assets": [{"type": "image", "path": "/tmp/i.png", "platform": "wechat", "md5": "abc"}]
         }
         assets = _collect_assets(ctx)
         assert len(assets) == 1
