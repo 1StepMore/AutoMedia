@@ -41,7 +41,7 @@ Documentation = "https://github.com/1stepmore/automedia/tree/main/docs"
 
 [project.optional-dependencies]
 openai = ["openai>=2.45.0"]
-anthropic = ["anthropic>=0.30"]
+anthropic = ["anthropic>=0.116.0"]
 httpx = ["httpx>=0.27"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0"]
