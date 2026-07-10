@@ -33,6 +33,20 @@ _CHECK_NAMES: list[str] = [
 ]
 
 
+_EXPECTED_MAP: dict[str, str] = {
+    "clarity": "Content is clear with no jargon or vague words",
+    "tone": "Content tone matches the brand profile",
+    "so_what": "Content answers 'why should the reader care?'",
+    "evidence": "Claims are backed by data or sources",
+    "specificity": "Abstract buzzwords are balanced by concrete examples",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
+
 # ---------------------------------------------------------------------------
 # Round 1: Clarity — sentence complexity, jargon, vague words
 # ---------------------------------------------------------------------------
@@ -488,12 +502,24 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "G2",
         "checks": checks,
         "modified_content": modified_content,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 

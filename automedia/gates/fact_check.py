@@ -31,6 +31,20 @@ _CHECK_NAMES: list[str] = [
 ]
 
 
+_EXPECTED_MAP: dict[str, str] = {
+    "source_trace": "Content references the source URL domain",
+    "number_verification": "All key numbers match the source data",
+    "timeline": "Event dates are chronologically consistent",
+    "quotes": "Quotes match the original source text",
+    "entities": "Key entity names match the source data",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -46,12 +60,24 @@ def _build_result(
     passed_count = sum(1 for c in checks if c["passed"])
     confidence = passed_count / len(checks) if checks else 0.0
 
+    # Build expected_vs_actual from first failing check, or first check if all pass
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "G0",
         "checks": checks,
         "error": error,
         "confidence": round(confidence, 4),
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
