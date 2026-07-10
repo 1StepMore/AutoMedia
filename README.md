@@ -202,6 +202,7 @@ python -m automedia.mcp.server
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
+- [JMT x402 Agent Tools](https://jmt-x402-proxy.jmthomasofficial.workers.dev) — 25 paid x402 endpoints on Base mainnet: web search, AI analysis, crypto/stock data, SEC filings, company intel, news, sentiment, macro dashboard. $0.001-$0.15/call USDC. Local LLM-powered.
 
 ### MCP Client Configuration Examples
 
