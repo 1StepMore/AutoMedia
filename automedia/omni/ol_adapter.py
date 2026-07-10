@@ -76,6 +76,14 @@ class OLAdapter(BaseOmniAdapter):
         try:
             from ol_mcp.translate_md import _translate_single
         except ImportError:
+            # When ol_mcp is not installed, check if the config path at least
+            # exists so we can report the right warning.
+            resolved = config_path or self.config_path
+            if resolved and not Path(resolved).is_file():
+                return TranslationResult(
+                    translated_md="",
+                    warnings=[f"Config not found at {resolved}. Check the path or set config_path explicitly."],
+                )
             return TranslationResult(
                 translated_md="",
                 warnings=["ol_mcp package not available. Install omni-localizer to enable OL translation."],
