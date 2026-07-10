@@ -1,0 +1,168 @@
+# PRD-3 27-node dependency graph
+# Mode: "both" = shared, "build" = build-only, "scale" = scale-only
+# Phase: 0, 1b, 1s, 2, 2.5, 3, 4
+
+nodes:
+  - node_id: 1
+    name: brand_questionnaire
+    phase: 0
+    mode: both
+    dependencies: []
+
+  - node_id: 2
+    name: build_scale_routing
+    phase: 0
+    mode: both
+    dependencies: [1]
+
+  - node_id: 3
+    name: mode_confirmation
+    phase: 0
+    mode: both
+    dependencies: [1, 2]
+
+  - node_id: 4
+    name: brand_positioning
+    phase: 1b
+    mode: build
+    dependencies: [1, 2, 3]
+
+  - node_id: 5
+    name: market_research
+    phase: 1b
+    mode: build
+    dependencies: [1, 2, 3]
+
+  - node_id: 6
+    name: audience_segmentation
+    phase: 1b
+    mode: build
+    dependencies: [4, 5]
+
+  - node_id: 7
+    name: competitor_analysis
+    phase: 1b
+    mode: build
+    dependencies: [5]
+
+  - node_id: 8
+    name: brand_health_diagnosis
+    phase: 1s
+    mode: scale
+    dependencies: [1, 2, 3]
+
+  - node_id: 9
+    name: market_revalidation
+    phase: 1s
+    mode: scale
+    dependencies: [1, 2, 3]
+
+  - node_id: 10
+    name: audience_deepening
+    phase: 1s
+    mode: scale
+    dependencies: [1, 2, 3]
+
+  - node_id: 11
+    name: competitor_tracking
+    phase: 1s
+    mode: scale
+    dependencies: [1, 2, 3]
+
+  - node_id: 12
+    name: content_asset_audit
+    phase: 1s
+    mode: scale
+    dependencies: [10]
+
+  - node_id: 13
+    name: product_optimization
+    phase: 2
+    mode: both
+    dependencies: [4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+  - node_id: 14
+    name: content_marketing_strategy
+    phase: 2
+    mode: both
+    dependencies: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+  - node_id: 15
+    name: asset_library_planning
+    phase: 2.5
+    mode: both
+    dependencies: [13, 14]
+
+  - node_id: 16
+    name: tagging_and_ingestion
+    phase: 2.5
+    mode: both
+    dependencies: [15]
+
+  - node_id: 17
+    name: content_calendar
+    phase: 3
+    mode: both
+    dependencies: [14, 15]
+
+  - node_id: 18
+    name: script_generation
+    phase: 3
+    mode: both
+    dependencies: [13, 14, 17]
+
+  - node_id: 19
+    name: pipeline_execution
+    phase: 3
+    mode: both
+    dependencies: [16, 17, 18]
+
+  - node_id: 20
+    name: quality_review
+    phase: 3
+    mode: both
+    dependencies: [19]
+
+  - node_id: 21
+    name: execution_handbook
+    phase: 4
+    mode: both
+    dependencies: [19, 20]
+
+  - node_id: 22
+    name: ab_test_setup
+    phase: 4
+    mode: both
+    dependencies: [19, 20]
+
+  - node_id: 23
+    name: progress_report
+    phase: 4
+    mode: both
+    dependencies: [19, 20]
+
+  - node_id: 24
+    name: publishing
+    phase: 4
+    mode: both
+    dependencies: [19, 20, 21, 22]
+
+  - node_id: 25
+    name: monitoring
+    phase: 4
+    mode: both
+    dependencies: [24]
+
+  - node_id: 26
+    name: brand_dna_refresh
+    phase: 4
+    mode: both
+    dependencies: [23, 25]
+    optional: true
+
+  - node_id: 27
+    name: next_cycle_planning
+    phase: 4
+    mode: both
+    dependencies: [23, 25, 26]
+    optional: true
