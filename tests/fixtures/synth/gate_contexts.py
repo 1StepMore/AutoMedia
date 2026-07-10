@@ -35,51 +35,112 @@ _PASS = {"passed": True, "detail": "mock-pass"}
 # Every check name across all gates — used to build _mock_results dicts.
 _ALL_CHECK_NAMES: list[str] = [
     # pre-gate (topic_selection)
-    "topic_not_charity", "topic_not_gov_tool", "topic_not_investment",
-    "topic_not_finance", "topic_not_entertainment", "topic_length_valid",
+    "topic_not_charity",
+    "topic_not_gov_tool",
+    "topic_not_investment",
+    "topic_not_finance",
+    "topic_not_entertainment",
+    "topic_length_valid",
     # G0 — fact_check
-    "source_trace", "number_verification", "timeline", "quotes", "entities",
+    "source_trace",
+    "number_verification",
+    "timeline",
+    "quotes",
+    "entities",
     # G1 — humanizer
-    "overused_adverbs", "hollow_intros", "vague_subjects",
-    "filler_connectors", "long_conjunctions", "template_conclusions",
-    "overacademic_vocabulary", "absolute_assertions", "repetitive_structures",
+    "overused_adverbs",
+    "hollow_intros",
+    "vague_subjects",
+    "filler_connectors",
+    "long_conjunctions",
+    "template_conclusions",
+    "overacademic_vocabulary",
+    "absolute_assertions",
+    "repetitive_structures",
     # G2 — copy_review
-    "clarity", "tone", "so_what", "evidence", "specificity",
+    "clarity",
+    "tone",
+    "so_what",
+    "evidence",
+    "specificity",
     # G3 — brand_cta
-    "brand_name_present", "cta_present", "brand_identity",
-    "blocked_words_absent", "cta_direction_sync", "bridge_sentence",
+    "brand_name_present",
+    "cta_present",
+    "brand_identity",
+    "blocked_words_absent",
+    "cta_direction_sync",
+    "bridge_sentence",
     # G4 — wechat_checklist
-    "title_length", "digest_length", "no_markdown", "cover_exists",
-    "tag_count", "body_image_count", "sensitive_words",
+    "title_length",
+    "digest_length",
+    "no_markdown",
+    "cover_exists",
+    "tag_count",
+    "body_image_count",
+    "sensitive_words",
     # G5 — html_hard
-    "tag_integrity", "no_markdown", "tag_count",
+    "tag_integrity",
+    "no_markdown",
+    "tag_count",
     # V0 — lint
-    "lint_errors", "lint_warnings", "syntax_valid",
+    "lint_errors",
+    "lint_warnings",
+    "syntax_valid",
     # V1 — vision_qa
-    "mid_frame_valid", "end_silence_valid", "all_entries_passed", "red_line_6",
+    "mid_frame_valid",
+    "end_silence_valid",
+    "all_entries_passed",
+    "red_line_6",
     # V2 — pre_send_whisper
-    "whisper_transcription", "transcription_length", "md5_integrity", "red_line_7",
+    "whisper_transcription",
+    "transcription_length",
+    "md5_integrity",
+    "red_line_7",
     # V3 — content_semantic
-    "keyword_coverage", "source_alignment", "no_hallucination",
+    "keyword_coverage",
+    "source_alignment",
+    "no_hallucination",
     # V4 — tts_brand_asset
-    "voice_id_match", "speaking_rate", "voice_consistency",
+    "voice_id_match",
+    "speaking_rate",
+    "voice_consistency",
     # V5 — mp3_vs_srt
-    "whisper_vs_srt_diff", "srt_not_empty", "whisper_not_empty",
+    "whisper_vs_srt_diff",
+    "srt_not_empty",
+    "whisper_not_empty",
     # V6 — subtitle_render
-    "subtitle_region_brightness", "subtitle_region_contrast",
-    "subtitle_visible", "red_line_5",
+    "subtitle_region_brightness",
+    "subtitle_region_contrast",
+    "subtitle_visible",
+    "red_line_5",
     # V7 — six_step_hard
-    "file_exists", "file_size_valid", "md5_verified",
-    "whisper_full", "format_valid", "duration_valid",
+    "file_exists",
+    "file_size_valid",
+    "md5_verified",
+    "whisper_full",
+    "format_valid",
+    "duration_valid",
     # L1 — publish_log_schema
-    "topic_present", "content_present", "media_paths_valid",
-    "platform_valid", "version_valid", "timestamp_valid",
+    "topic_present",
+    "content_present",
+    "media_paths_valid",
+    "platform_valid",
+    "version_valid",
+    "timestamp_valid",
     # L2 — archive_validation
-    "archive_status", "force_flag", "archive_path_exists",
-    "archive_metadata_complete", "archive_version_valid", "output_directory_exists",
+    "archive_status",
+    "force_flag",
+    "archive_path_exists",
+    "archive_metadata_complete",
+    "archive_version_valid",
+    "output_directory_exists",
     # L3 — platform_integrity
-    "all_platforms_present", "no_platform_splitting", "material_integrity",
-    "cross_platform_consistency", "format_completeness", "metadata_integrity",
+    "all_platforms_present",
+    "no_platform_splitting",
+    "material_integrity",
+    "cross_platform_consistency",
+    "format_completeness",
+    "metadata_integrity",
 ]
 
 
@@ -127,10 +188,17 @@ def build_topic_selection_context(
     """Build context for the pre-gate topic_selection gate."""
     return {
         "topic": topic,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "topic_not_charity", "topic_not_gov_tool", "topic_not_investment",
-            "topic_not_finance", "topic_not_entertainment", "topic_length_valid",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "topic_not_charity",
+                "topic_not_gov_tool",
+                "topic_not_investment",
+                "topic_not_finance",
+                "topic_not_entertainment",
+                "topic_length_valid",
+            ]
+        ),
     }
 
 
@@ -154,9 +222,16 @@ def build_fact_check_context(
         "topic": topic,
         "content": content,
         "source_data": source_data,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "source_trace", "number_verification", "timeline", "quotes", "entities",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "source_trace",
+                "number_verification",
+                "timeline",
+                "quotes",
+                "entities",
+            ]
+        ),
     }
 
 
@@ -171,18 +246,26 @@ def build_humanizer_context(
     """Build context for G1 humanizer gate."""
     return {
         "content": content,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "overused_adverbs", "hollow_intros", "vague_subjects",
-            "filler_connectors", "long_conjunctions", "template_conclusions",
-            "overacademic_vocabulary", "absolute_assertions", "repetitive_structures",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "overused_adverbs",
+                "hollow_intros",
+                "vague_subjects",
+                "filler_connectors",
+                "long_conjunctions",
+                "template_conclusions",
+                "overacademic_vocabulary",
+                "absolute_assertions",
+                "repetitive_structures",
+            ]
+        ),
     }
 
 
 def build_copy_review_context(
     content: str = (
-        "TestBrand delivers AI内容生产 solutions. "
-        "Our platform helps teams create content faster."
+        "TestBrand delivers AI内容生产 solutions. Our platform helps teams create content faster."
     ),
     brand_profile: dict[str, Any] | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
@@ -191,9 +274,16 @@ def build_copy_review_context(
     return {
         "content": content,
         "brand_profile": brand_profile or load_brand_profile(),
-        "_mock_results": mock_results or build_all_pass_mock([
-            "clarity", "tone", "so_what", "evidence", "specificity",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "clarity",
+                "tone",
+                "so_what",
+                "evidence",
+                "specificity",
+            ]
+        ),
     }
 
 
@@ -210,10 +300,17 @@ def build_brand_cta_context(
     ctx: dict[str, Any] = {
         "content": content,
         "brand_profile": brand_profile or load_brand_profile(),
-        "_mock_results": mock_results or build_all_pass_mock([
-            "brand_name_present", "cta_present", "brand_identity",
-            "blocked_words_absent", "cta_direction_sync", "bridge_sentence",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "brand_name_present",
+                "cta_present",
+                "brand_identity",
+                "blocked_words_absent",
+                "cta_direction_sync",
+                "bridge_sentence",
+            ]
+        ),
     }
     if video_script is not None:
         ctx["video_script"] = video_script
@@ -236,14 +333,25 @@ def build_wechat_checklist_context(
         "digest": digest,
         "cover_image": cover_image,
         "tags": tags or ["AI", "tech", "trends", "2025", "innovation"],
-        "body_images": body_images or [
-            "<img src='a.jpg'>", "<img src='b.jpg'>",
-            "<img src='c.jpg'>", "<img src='d.jpg'>",
+        "body_images": body_images
+        or [
+            "<img src='a.jpg'>",
+            "<img src='b.jpg'>",
+            "<img src='c.jpg'>",
+            "<img src='d.jpg'>",
         ],
-        "_mock_results": mock_results or build_all_pass_mock([
-            "title_length", "digest_length", "no_markdown", "cover_exists",
-            "tag_count", "body_image_count", "sensitive_words",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "title_length",
+                "digest_length",
+                "no_markdown",
+                "cover_exists",
+                "tag_count",
+                "body_image_count",
+                "sensitive_words",
+            ]
+        ),
     }
 
 
@@ -253,9 +361,14 @@ def build_lint_context(
     """Build context for V0 lint gate."""
     return {
         "lint_result": {"errors": 0, "warnings": 0, "syntax_ok": True},
-        "_mock_results": mock_results or build_all_pass_mock([
-            "lint_errors", "lint_warnings", "syntax_valid",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "lint_errors",
+                "lint_warnings",
+                "syntax_valid",
+            ]
+        ),
     }
 
 
@@ -276,9 +389,15 @@ def build_vision_qa_context(
         ]
     return {
         "entries": entries,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "mid_frame_valid", "end_silence_valid", "all_entries_passed", "red_line_6",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "mid_frame_valid",
+                "end_silence_valid",
+                "all_entries_passed",
+                "red_line_6",
+            ]
+        ),
     }
 
 
@@ -291,9 +410,15 @@ def build_whisper_context(
         "audio_path": "/tmp/test_audio.mp3",
         "expected_md5": "",
         "full_audio": True,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "whisper_transcription", "transcription_length", "md5_integrity", "red_line_7",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "whisper_transcription",
+                "transcription_length",
+                "md5_integrity",
+                "red_line_7",
+            ]
+        ),
     }
 
 
@@ -306,15 +431,22 @@ def build_content_semantic_context(
     """Build context for V3 content_semantic gate."""
     return {
         "source_keywords": source_keywords or ["AI", "technology", "trends", "2025", "production"],
-        "content_keywords": content_keywords or ["AI", "technology", "trends", "2025", "production"],
-        "source_texts": source_texts or [
+        "content_keywords": content_keywords
+        or ["AI", "technology", "trends", "2025", "production"],
+        "source_texts": source_texts
+        or [
             "Source 1 about AI trends in 2025.",
             "Source 2 about content production.",
             "Source 3 about technology advances.",
         ],
-        "_mock_results": mock_results or build_all_pass_mock([
-            "keyword_coverage", "source_alignment", "no_hallucination",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "keyword_coverage",
+                "source_alignment",
+                "no_hallucination",
+            ]
+        ),
     }
 
 
@@ -332,9 +464,14 @@ def build_tts_brand_context(
             {"voice_params": {"pitch": 0, "rate": 1.0}},
             {"voice_params": {"pitch": 0, "rate": 1.0}},
         ],
-        "_mock_results": mock_results or build_all_pass_mock([
-            "voice_id_match", "speaking_rate", "voice_consistency",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "voice_id_match",
+                "speaking_rate",
+                "voice_consistency",
+            ]
+        ),
     }
 
 
@@ -344,10 +481,17 @@ def build_mp3_vs_srt_context(
     """Build context for V5 mp3_vs_srt gate."""
     return {
         "whisper_text": "Hello world, this is a test transcription.",
-        "srt_text": "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n",
-        "_mock_results": mock_results or build_all_pass_mock([
-            "whisper_vs_srt_diff", "srt_not_empty", "whisper_not_empty",
-        ]),
+        "srt_text": (
+            "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n"
+        ),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "whisper_vs_srt_diff",
+                "srt_not_empty",
+                "whisper_not_empty",
+            ]
+        ),
     }
 
 
@@ -360,10 +504,15 @@ def build_subtitle_render_context(
         "contrast": 150,
         "opacity": 1.0,
         "pixel_valid": True,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "subtitle_region_brightness", "subtitle_region_contrast",
-            "subtitle_visible", "red_line_5",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "subtitle_region_brightness",
+                "subtitle_region_contrast",
+                "subtitle_visible",
+                "red_line_5",
+            ]
+        ),
     }
 
 
@@ -381,10 +530,17 @@ def build_six_step_hard_context(
         "actual_duration": 120.0,
         "expected_duration_min": 60.0,
         "expected_duration_max": 180.0,
-        "_mock_results": mock_results or build_all_pass_mock([
-            "file_exists", "file_size_valid", "md5_verified",
-            "whisper_full", "format_valid", "duration_valid",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "file_exists",
+                "file_size_valid",
+                "md5_verified",
+                "whisper_full",
+                "format_valid",
+                "duration_valid",
+            ]
+        ),
     }
 
 
@@ -402,10 +558,17 @@ def build_publish_log_context(
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
         },
-        "_mock_results": mock_results or build_all_pass_mock([
-            "topic_present", "content_present", "media_paths_valid",
-            "platform_valid", "version_valid", "timestamp_valid",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "topic_present",
+                "content_present",
+                "media_paths_valid",
+                "platform_valid",
+                "version_valid",
+                "timestamp_valid",
+            ]
+        ),
     }
 
 
@@ -423,10 +586,17 @@ def build_archive_validation_context(
             "created_at": "2025-06-01T12:00:00",
         },
         "output_dir": "/tmp/output",
-        "_mock_results": mock_results or build_all_pass_mock([
-            "archive_status", "force_flag", "archive_path_exists",
-            "archive_metadata_complete", "archive_version_valid", "output_directory_exists",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "archive_status",
+                "force_flag",
+                "archive_path_exists",
+                "archive_metadata_complete",
+                "archive_version_valid",
+                "output_directory_exists",
+            ]
+        ),
     }
 
 
@@ -442,10 +612,17 @@ def build_platform_integrity_context(
         "file_paths": [],
         "formats": ["mp4", "txt", "json"],
         "required_formats": ["mp4", "txt", "json"],
-        "_mock_results": mock_results or build_all_pass_mock([
-            "all_platforms_present", "no_platform_splitting", "material_integrity",
-            "cross_platform_consistency", "format_completeness", "metadata_integrity",
-        ]),
+        "_mock_results": mock_results
+        or build_all_pass_mock(
+            [
+                "all_platforms_present",
+                "no_platform_splitting",
+                "material_integrity",
+                "cross_platform_consistency",
+                "format_completeness",
+                "metadata_integrity",
+            ]
+        ),
     }
 
 
@@ -496,8 +673,10 @@ def build_full_pipeline_context(
         "cover_image": "https://example.com/cover.jpg",
         "tags": ["AI", "tech", "trends", "2025", "innovation"],
         "body_images": [
-            "<img src='a.jpg'>", "<img src='b.jpg'>",
-            "<img src='c.jpg'>", "<img src='d.jpg'>",
+            "<img src='a.jpg'>",
+            "<img src='b.jpg'>",
+            "<img src='c.jpg'>",
+            "<img src='d.jpg'>",
         ],
         # V0
         "lint_result": {"errors": 0, "warnings": 0, "syntax_ok": True},
@@ -530,7 +709,9 @@ def build_full_pipeline_context(
         ],
         # V5
         "whisper_text": "Hello world, this is a test transcription.",
-        "srt_text": "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n",
+        "srt_text": (
+            "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n"
+        ),
         # V6
         "avg_brightness": 128,
         "contrast": 150,
@@ -574,4 +755,10 @@ def build_full_pipeline_context(
         "file_paths": [],
         "formats": ["mp4", "txt", "json"],
         "required_formats": ["mp4", "txt", "json"],
+        # L4
+        "translation_result": {
+            "translated_md": "---\nsource_lang: zh\ntarget_lang: en\n---\nTranslated content here."
+        },
+        "source_lang": "zh",
+        "target_lang": "en",
     }

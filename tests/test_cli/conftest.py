@@ -9,8 +9,6 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from automedia.cli.app import app
-
 
 @pytest.fixture()
 def runner() -> CliRunner:
@@ -43,9 +41,7 @@ def tmp_project(tmp_path: Path) -> dict[str, Any]:
         "tenant_id": "default",
         "created_at": "2026-07-07T00:00:00+00:00",
     }
-    (project_dir / "00_project_info.json").write_text(
-        json.dumps(info, indent=2), encoding="utf-8"
-    )
+    (project_dir / "00_project_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
     return {
         "base_dir": str(tmp_path),
@@ -69,9 +65,7 @@ def tmp_project_with_assets(tmp_path: Path) -> dict[str, Any]:
         "tenant_id": "default",
         "created_at": "2026-07-08T00:00:00+00:00",
     }
-    (project_dir / "00_project_info.json").write_text(
-        json.dumps(info, indent=2), encoding="utf-8"
-    )
+    (project_dir / "00_project_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
     (project_dir / "01_content" / "drafts").mkdir(parents=True)
     (project_dir / "01_content" / "drafts" / "article.md").write_text("# Draft")

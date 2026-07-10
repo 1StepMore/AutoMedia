@@ -48,9 +48,7 @@ def _setup_override_dirs(tmp_path: Path):
 
 def _patch_home(monkeypatch, home: Path):
     """Redirect ``os.path.expanduser("~")`` to *home*."""
-    monkeypatch.setattr(
-        os.path, "expanduser", lambda p: str(home) if p == "~" else p
-    )
+    monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
 
 
 # ---------------------------------------------------------------------------
@@ -65,9 +63,7 @@ class TestLayer4Rules:
         """Layer 4 YAML overrides built-in defaults (Layer 1)."""
         home, rules, _ = _setup_override_dirs(tmp_path)
         (rules / "brand_a.yaml").write_text(
-            "content:\n"
-            "  default_tone: enthusiastic\n"
-            "  default_language: en\n"
+            "content:\n  default_tone: enthusiastic\n  default_language: en\n"
         )
         _patch_home(monkeypatch, home)
 
@@ -128,9 +124,7 @@ class TestLayer4Rules:
     def test_rules_deep_merge_with_defaults(self, tmp_path, monkeypatch):
         """Rule file keys are deep-merged with defaults, not a wholesale replace."""
         home, rules, _ = _setup_override_dirs(tmp_path)
-        (rules / "llm_override.yaml").write_text(
-            "llm:\n  text_generation:\n    temperature: 0.9\n"
-        )
+        (rules / "llm_override.yaml").write_text("llm:\n  text_generation:\n    temperature: 0.9\n")
         _patch_home(monkeypatch, home)
 
         config = load_config()
@@ -175,24 +169,16 @@ class TestLayer5Prompts:
     def test_prompts_loaded_under_prompts_key(self, tmp_path, monkeypatch):
         """J2 template files appear under config['prompts'] after load_config()."""
         home, _, prompts = _setup_override_dirs(tmp_path)
-        (prompts / "system.j2").write_text(
-            "You are a helpful assistant for {{ brand_name }}."
-        )
-        (prompts / "user.j2").write_text(
-            "Translate the following to {{ language }}: {{ content }}"
-        )
+        (prompts / "system.j2").write_text("You are a helpful assistant for {{ brand_name }}.")
+        (prompts / "user.j2").write_text("Translate the following to {{ language }}: {{ content }}")
         _patch_home(monkeypatch, home)
 
         config = load_config()
 
         assert "prompts" in config
+        assert config["prompts"]["system"] == "You are a helpful assistant for {{ brand_name }}."
         assert (
-            config["prompts"]["system"]
-            == "You are a helpful assistant for {{ brand_name }}."
-        )
-        assert (
-            config["prompts"]["user"]
-            == "Translate the following to {{ language }}: {{ content }}"
+            config["prompts"]["user"] == "Translate the following to {{ language }}: {{ content }}"
         )
 
     def test_prompts_maintain_sorted_order(self, tmp_path, monkeypatch):
@@ -314,7 +300,8 @@ class TestOverridePriority:
     """
 
     def _setup_all_layers(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> tuple[Path, Path, Path, Path, Path]:
         """Create directories for all 5 file-based layers.
 
@@ -359,15 +346,11 @@ class TestOverridePriority:
 
         # Layer 1 – built-in defaults (content.default_tone = neutral)
         # Layer 2
-        (project / "p.yaml").write_text(
-            "llm:\n  text_generation:\n    model: gpt-4\n"
-        )
+        (project / "p.yaml").write_text("llm:\n  text_generation:\n    model: gpt-4\n")
         # Layer 3 — different key so no conflict with rules
         (user / "u.yaml").write_text("user_custom: true\n")
         # Layer 4
-        (rules / "r.yaml").write_text(
-            "content:\n  default_tone: enthusiastic\n"
-        )
+        (rules / "r.yaml").write_text("content:\n  default_tone: enthusiastic\n")
         # Layer 5
         (prompts / "system.j2").write_text("Custom system prompt.")
 

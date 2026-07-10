@@ -62,6 +62,7 @@ class TestORFAdapterContract:
                 assert fh.read() == "nested content"
         finally:
             import shutil
+
             shutil.rmtree(out_dir, ignore_errors=True)
 
     def test_apply_xliff_returns_path_and_no_raise(self) -> None:
@@ -73,4 +74,5 @@ class TestORFAdapterContract:
             assert result.endswith(".backfilled.md")
         finally:
             import shutil
+
             shutil.rmtree(out_dir, ignore_errors=True)

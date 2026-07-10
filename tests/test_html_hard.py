@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.html_hard import (
-    G5HtmlHard,
-    _build_result,
-    _CHECK_NAMES,
-)
+from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.html_hard import (
+    _CHECK_NAMES,
+    G5HtmlHard,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -275,7 +272,7 @@ class TestG5ResultStructure:
 
     def test_build_result_structure(self) -> None:
         checks = [{"name": "test", "passed": True, "detail": "ok"}]
-        result = _build_result(checks)
+        result = build_gate_result(checks, gate="G5", expected_suffix=".")
         assert result["passed"] is True
         assert result["gate"] == "G5"
         assert result["checks"] == checks
@@ -283,7 +280,7 @@ class TestG5ResultStructure:
 
     def test_build_result_with_error(self) -> None:
         checks = [{"name": "test", "passed": False, "detail": "fail"}]
-        result = _build_result(checks, error="oops")
+        result = build_gate_result(checks, gate="G5", expected_suffix=".", error="oops")
         assert result["passed"] is False
         assert result["error"] == "oops"
 

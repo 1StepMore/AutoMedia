@@ -9,7 +9,6 @@ import pytest
 
 from automedia.gates.base import BaseGate, GateRegistry, _registry
 
-
 # =========================================================================
 # GateRegistry — unit tests
 # =========================================================================
@@ -28,19 +27,17 @@ class TestGateRegistryBasics:
         """register() + get() round-trip."""
         registry = GateRegistry()
 
-        class _UniqueGate_a(  # type: ignore[no-redef]
+        class _UniqueGateA(  # type: ignore[no-redef]
             BaseGate
         ):
             _gate_name = "TEST_REG_A"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
         registered_cls = registry.get("TEST_REG_A")
-        assert registered_cls is _UniqueGate_a
+        assert registered_cls is _UniqueGateA
         assert registered_cls._gate_name == "TEST_REG_A"  # class-level access
 
     def test_get_unknown(self) -> None:
@@ -51,30 +48,24 @@ class TestGateRegistryBasics:
 
     def test_register_duplicate_raises(self) -> None:
         """register() with a duplicate gate_name raises KeyError."""
-        registry = GateRegistry()
+        GateRegistry()
 
-        class _UniqueGate_b1(
-            BaseGate
-        ):
+        class _UniqueGateB1(BaseGate):
             _gate_name = "TEST_REG_DUP"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
         with pytest.raises(KeyError, match="TEST_REG_DUP"):
 
-            class _UniqueGate_b2(  # type: ignore[unused-variable]
+            class _UniqueGateB2(  # type: ignore[unused-variable]
                 BaseGate
             ):
                 _gate_name = "TEST_REG_DUP"
                 _failure_mode = "stop"
 
-                def execute(
-                    self, gate_context: dict[str, Any]
-                ) -> dict[str, Any]:
+                def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                     return {"nope": True}
 
     def test_list(self) -> None:
@@ -157,9 +148,7 @@ class TestBaseGateConcrete:
             _gate_name = "PING"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"status": "pong", "input": gate_context}
 
         gate = PingGate()
@@ -173,9 +162,7 @@ class TestBaseGateConcrete:
             _gate_name = "READONLY"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         gate = ReadOnlyGate()
@@ -191,9 +178,7 @@ class TestBaseGateConcrete:
             _gate_name = "STOPPY"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         assert StopGate().failure_mode == "stop"
@@ -205,9 +190,7 @@ class TestBaseGateConcrete:
             _gate_name = "FAILRO"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         gate = FailGate()
@@ -221,9 +204,7 @@ class TestBaseGateConcrete:
             _gate_name = "ECHO"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"echo": gate_context}
 
         result = EchoGate().execute({"msg": "hello"})
@@ -236,9 +217,7 @@ class TestBaseGateConcrete:
             _gate_name = "CAPTURE"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"captured": gate_context}
 
         ctx = {"step": 1, "value": 42}
@@ -261,9 +240,7 @@ class TestStringRepresentations:
             _gate_name = "STR1"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         assert str(StrGate()) == "STR1"
@@ -275,9 +252,7 @@ class TestStringRepresentations:
             _gate_name = "REPR1"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         r = repr(ReprGate())
@@ -337,9 +312,7 @@ class TestAutoRegistration:
             _gate_name = "LATE"
             _failure_mode = "stop"
 
-            def execute(
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"late": True}
 
         assert "LATE" in _registry

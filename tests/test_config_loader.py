@@ -239,9 +239,7 @@ class TestLoadConfig:
     def test_defaults_loaded(self, tmp_path, monkeypatch):
         """Layer 1: built-in defaults.yaml is the base config."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project))
         assert "llm" in config
         assert "text_generation" in config["llm"]
@@ -250,12 +248,8 @@ class TestLoadConfig:
     def test_project_overrides_defaults(self, tmp_path, monkeypatch):
         """Layer 2 > Layer 1."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        (project / "override.yaml").write_text(
-            "llm:\n  text_generation:\n    model: gpt-4\n"
-        )
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        (project / "override.yaml").write_text("llm:\n  text_generation:\n    model: gpt-4\n")
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project))
         assert config["llm"]["text_generation"]["model"] == "gpt-4"
         # defaults still present
@@ -266,9 +260,7 @@ class TestLoadConfig:
         project, home, user, *_ = self._setup_dirs(tmp_path)
         (project / "c.yaml").write_text("k: project")
         (user / "c.yaml").write_text("k: user")
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project))
         assert config["k"] == "user"
 
@@ -277,9 +269,7 @@ class TestLoadConfig:
         project, home, user, rules, *_ = self._setup_dirs(tmp_path)
         (user / "c.yaml").write_text("k: user")
         (rules / "c.yaml").write_text("k: rules")
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project))
         assert config["k"] == "rules"
 
@@ -287,9 +277,7 @@ class TestLoadConfig:
         """Layer 6a (env) > Layer 4 (rules)."""
         project, home, user, rules, *_ = self._setup_dirs(tmp_path)
         (rules / "c.yaml").write_text("k: rules")
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         monkeypatch.setenv("AUTOMEDIA_K", "env")
         config = load_config(config_dir=str(project))
         assert config["k"] == "env"
@@ -297,9 +285,7 @@ class TestLoadConfig:
     def test_overrides_overrides_env(self, tmp_path, monkeypatch):
         """Layer 6b (overrides param) > Layer 6a (env)."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         monkeypatch.setenv("AUTOMEDIA_K", "env")
         config = load_config(config_dir=str(project), overrides={"k": "override"})
         assert config["k"] == "override"
@@ -310,9 +296,7 @@ class TestLoadConfig:
         """Non-existent project config dir is silently skipped (no exception)."""
         home = tmp_path / "home"
         home.mkdir()
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir="/nonexistent/project/.automedia")
         assert "llm" in config  # defaults still loaded
 
@@ -346,9 +330,7 @@ class TestLoadConfig:
     def test_env_var_nested_mapping(self, tmp_path, monkeypatch):
         """AUTOMEDIA_LLM_API_KEY maps to config["llm"]["text_generation"]["api_key"]."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-secret")
         config = load_config(config_dir=str(project))
         assert config["llm"]["text_generation"]["api_key"] == "sk-secret"
@@ -356,9 +338,7 @@ class TestLoadConfig:
     def test_env_var_adds_nested_key(self, tmp_path, monkeypatch):
         """Env var creates new nested keys that coexist with defaults."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-new")
         config = load_config(config_dir=str(project))
         assert config["llm"]["text_generation"]["api_key"] == "sk-new"
@@ -382,9 +362,7 @@ class TestLoadConfig:
         # Layer 5 – prompts
         (prompts / "template.j2").write_text("Hello {{ name }}")
 
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
 
         # Layer 6a – env
         monkeypatch.setenv("AUTOMEDIA_LAYER", "env")
@@ -420,17 +398,13 @@ class TestLoadConfig:
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setattr(os, "getcwd", lambda: str(tmp_path / "cwd"))
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config()
         assert config["k"] == "from_cwd"
 
     def test_none_overrides_is_noop(self, tmp_path, monkeypatch):
         """Passing overrides=None does not crash."""
         project, home, *_ = self._setup_dirs(tmp_path)
-        monkeypatch.setattr(
-            os.path, "expanduser", lambda p: str(home) if p == "~" else p
-        )
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project), overrides=None)
         assert "llm" in config

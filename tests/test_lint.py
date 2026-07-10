@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.lint import V0Lint, _build_result, _CHECK_NAMES
+from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.lint import _CHECK_NAMES, V0Lint
 
 
 def _make_context(
@@ -16,8 +15,12 @@ def _make_context(
     mock_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     ctx: dict[str, Any] = {
-        "lint_result": lint_result if lint_result is not None else {
-            "errors": 0, "warnings": 2, "syntax_ok": True,
+        "lint_result": lint_result
+        if lint_result is not None
+        else {
+            "errors": 0,
+            "warnings": 2,
+            "syntax_ok": True,
         },
     }
     if mock_results is not None:
@@ -59,17 +62,23 @@ class TestV0MockDriven:
         assert len(result["checks"]) == 3
 
     def test_lint_errors_failure(self) -> None:
-        result = V0Lint().execute(_make_context(mock_results=_fail_check("lint_errors", "5 errors")))
+        result = V0Lint().execute(
+            _make_context(mock_results=_fail_check("lint_errors", "5 errors"))
+        )
         assert result["passed"] is False
         assert any(c["name"] == "lint_errors" and not c["passed"] for c in result["checks"])
 
     def test_lint_warnings_failure(self) -> None:
-        result = V0Lint().execute(_make_context(mock_results=_fail_check("lint_warnings", "too many")))
+        result = V0Lint().execute(
+            _make_context(mock_results=_fail_check("lint_warnings", "too many"))
+        )
         assert result["passed"] is False
         assert any(c["name"] == "lint_warnings" and not c["passed"] for c in result["checks"])
 
     def test_syntax_valid_failure(self) -> None:
-        result = V0Lint().execute(_make_context(mock_results=_fail_check("syntax_valid", "bad syntax")))
+        result = V0Lint().execute(
+            _make_context(mock_results=_fail_check("syntax_valid", "bad syntax"))
+        )
         assert result["passed"] is False
         assert any(c["name"] == "syntax_valid" and not c["passed"] for c in result["checks"])
 
@@ -87,32 +96,44 @@ class TestV0MockDriven:
 
 class TestV0RealLogic:
     def test_zero_errors_passes(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": True}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": True})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "lint_errors")
         assert chk["passed"] is True
 
     def test_nonzero_errors_fails(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 3, "warnings": 0, "syntax_ok": True}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 3, "warnings": 0, "syntax_ok": True})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "lint_errors")
         assert chk["passed"] is False
 
     def test_warnings_within_tolerance(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 0, "warnings": 10, "syntax_ok": True}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 0, "warnings": 10, "syntax_ok": True})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "lint_warnings")
         assert chk["passed"] is True
 
     def test_warnings_exceed_tolerance(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 0, "warnings": 15, "syntax_ok": True}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 0, "warnings": 15, "syntax_ok": True})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "lint_warnings")
         assert chk["passed"] is False
 
     def test_syntax_ok_passes(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": True}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": True})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "syntax_valid")
         assert chk["passed"] is True
 
     def test_syntax_bad_fails(self) -> None:
-        result = V0Lint().execute(_make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": False}))
+        result = V0Lint().execute(
+            _make_context(lint_result={"errors": 0, "warnings": 0, "syntax_ok": False})
+        )
         chk = next(c for c in result["checks"] if c["name"] == "syntax_valid")
         assert chk["passed"] is False
 
@@ -136,7 +157,11 @@ class TestV0ResultStructure:
         assert [c["name"] for c in result["checks"]] == _CHECK_NAMES
 
     def test_build_result_with_error(self) -> None:
-        result = _build_result([{"name": "x", "passed": False, "detail": "fail"}], error="oops")
+        result = build_gate_result(
+            [{"name": "x", "passed": False, "detail": "fail"}],
+            gate="V0",
+            error="oops",
+        )
         assert result["passed"] is False
         assert result["error"] == "oops"
 

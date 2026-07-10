@@ -33,20 +33,32 @@ class TestOmniLocalize:
 
     def test_localize_project_dir_not_found(self, tmp_path: Path) -> None:
         """Non-existent drafts dir should print error and exit 1."""
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path / "nonexistent"),
-            "--target-langs", "en",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path / "nonexistent"),
+                "--target-langs",
+                "en",
+            ],
+        )
         assert result.exit_code == 1
 
     def test_localize_no_drafts_dir(self, tmp_path: Path) -> None:
         """Project without 01_content/drafts/ should exit 1."""
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "en",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "en",
+            ],
+        )
         assert result.exit_code == 1
         assert "Drafts directory not found" in result.output
 
@@ -55,18 +67,22 @@ class TestOmniLocalize:
         drafts = tmp_path / "01_content" / "drafts"
         drafts.mkdir(parents=True)
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "en",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "en",
+            ],
+        )
         assert result.exit_code == 1
         assert "No markdown files found" in result.output
 
     @patch("automedia.omni.ol_adapter.OLAdapter.translate")
-    def test_localize_success_single_lang(
-        self, mock_translate: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_localize_success_single_lang(self, mock_translate: MagicMock, tmp_path: Path) -> None:
         """Happy path: one md file translated into one language."""
         drafts = tmp_path / "01_content" / "drafts"
         drafts.mkdir(parents=True)
@@ -77,11 +93,17 @@ class TestOmniLocalize:
             warnings=[],
         )
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "fr",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "fr",
+            ],
+        )
         assert result.exit_code == 0
         assert "Localised" in result.output
 
@@ -90,9 +112,7 @@ class TestOmniLocalize:
         assert publish_file.read_text(encoding="utf-8") == "# Bonjour"
 
     @patch("automedia.omni.ol_adapter.OLAdapter.translate")
-    def test_localize_success_multi_lang(
-        self, mock_translate: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_localize_success_multi_lang(self, mock_translate: MagicMock, tmp_path: Path) -> None:
         """Happy path: one md translated into two languages."""
         drafts = tmp_path / "01_content" / "drafts"
         drafts.mkdir(parents=True)
@@ -103,11 +123,17 @@ class TestOmniLocalize:
             MagicMock(translated_md="# こんにちは", warnings=[]),
         ]
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "fr,ja",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "fr,ja",
+            ],
+        )
         assert result.exit_code == 0
         assert "Localised" in result.output
 
@@ -115,9 +141,7 @@ class TestOmniLocalize:
         assert (tmp_path / "05_publish" / "ja" / "doc.md").exists()
 
     @patch("automedia.omni.ol_adapter.OLAdapter.translate")
-    def test_localize_translation_failure(
-        self, mock_translate: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_localize_translation_failure(self, mock_translate: MagicMock, tmp_path: Path) -> None:
         """When translate() raises, the command should continue with other langs."""
         drafts = tmp_path / "01_content" / "drafts"
         drafts.mkdir(parents=True)
@@ -125,11 +149,17 @@ class TestOmniLocalize:
 
         mock_translate.side_effect = RuntimeError("API timeout")
 
-        result = runner.invoke(app, [
-            "omni", "localize",
-            "--project", str(tmp_path),
-            "--target-langs", "fr",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "localize",
+                "--project",
+                str(tmp_path),
+                "--target-langs",
+                "fr",
+            ],
+        )
         assert result.exit_code == 1
         assert "Translation failed" in result.output
         assert "No files were produced" in result.output
@@ -145,34 +175,48 @@ class TestOmniFormatOutput:
 
     def test_format_output_missing_input(self) -> None:
         """Missing --input should exit with error."""
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--target-format", "docx",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--target-format",
+                "docx",
+            ],
+        )
         assert result.exit_code != 0
 
     def test_format_output_missing_format(self) -> None:
         """Missing --target-format should exit with error."""
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--input", "/tmp/test.md",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--input",
+                "/tmp/test.md",
+            ],
+        )
         assert result.exit_code != 0
 
     def test_format_output_file_not_found(self, tmp_path: Path) -> None:
         """Non-existent input file should exit 1."""
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--input", str(tmp_path / "missing.md"),
-            "--target-format", "docx",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--input",
+                str(tmp_path / "missing.md"),
+                "--target-format",
+                "docx",
+            ],
+        )
         assert result.exit_code == 1
         assert "Input file not found" in result.output
 
     @patch("automedia.omni.orf_adapter.ORFAdapter.convert")
-    def test_format_output_success(
-        self, mock_convert: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_format_output_success(self, mock_convert: MagicMock, tmp_path: Path) -> None:
         """Happy path: md converted to docx."""
         input_file = tmp_path / "input.md"
         input_file.write_text("# Hello", encoding="utf-8")
@@ -185,11 +229,17 @@ class TestOmniFormatOutput:
             "errors": [],
         }
 
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--input", str(input_file),
-            "--target-format", "docx",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--input",
+                str(input_file),
+                "--target-format",
+                "docx",
+            ],
+        )
         assert result.exit_code == 0
         assert "Output:" in result.output
         assert "input.docx" in result.output
@@ -205,11 +255,17 @@ class TestOmniFormatOutput:
 
         mock_convert.side_effect = RuntimeError("Converter crashed")
 
-        result = runner.invoke(app, [
-            "omni", "format-output",
-            "--input", str(input_file),
-            "--target-format", "pdf",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "format-output",
+                "--input",
+                str(input_file),
+                "--target-format",
+                "pdf",
+            ],
+        )
         assert result.exit_code == 1
         assert "Format conversion failed" in result.output
 
@@ -224,27 +280,43 @@ class TestOmniIngest:
 
     def test_ingest_missing_dir(self) -> None:
         """Missing --dir should exit with error."""
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--output-dir", "/tmp/out",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--output-dir",
+                "/tmp/out",
+            ],
+        )
         assert result.exit_code != 0
 
     def test_ingest_missing_output_dir(self) -> None:
         """Missing --output-dir should exit with error."""
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", "/tmp",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                "/tmp",
+            ],
+        )
         assert result.exit_code != 0
 
     def test_ingest_input_dir_not_found(self, tmp_path: Path) -> None:
         """Non-existent input dir should exit 1."""
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(tmp_path / "nonexistent"),
-            "--output-dir", str(tmp_path / "out"),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(tmp_path / "nonexistent"),
+                "--output-dir",
+                str(tmp_path / "out"),
+            ],
+        )
         assert result.exit_code == 1
         assert "Input directory not found" in result.output
 
@@ -260,18 +332,22 @@ class TestOmniIngest:
         (input_dir2 / "image.jpg").write_bytes(b"fake-jpeg")
 
         output_dir = tmp_path / "output"
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir2),
-            "--output-dir", str(output_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir2),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
         assert result.exit_code == 0
         assert "No supported documents found" in result.output
 
     @patch("automedia.omni.opp_adapter.OPPAdapter.extract")
-    def test_ingest_success(
-        self, mock_extract: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_ingest_success(self, mock_extract: MagicMock, tmp_path: Path) -> None:
         """Happy path: single docx file extracted to md."""
         input_dir = tmp_path / "input"
         input_dir.mkdir()
@@ -284,11 +360,17 @@ class TestOmniIngest:
             warnings=[],
         )
 
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir),
-            "--output-dir", str(output_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
         assert result.exit_code == 0
         assert "Ingested" in result.output
         assert "report.md" in result.output
@@ -299,9 +381,7 @@ class TestOmniIngest:
         mock_extract.assert_called_once_with(str(input_dir / "report.docx"))
 
     @patch("automedia.omni.opp_adapter.OPPAdapter.extract")
-    def test_ingest_multiple_files(
-        self, mock_extract: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_ingest_multiple_files(self, mock_extract: MagicMock, tmp_path: Path) -> None:
         """Multiple supported files are all processed."""
         input_dir = tmp_path / "multi"
         input_dir.mkdir()
@@ -316,11 +396,17 @@ class TestOmniIngest:
             ExtractionResult(md_content="# C", manifest={}, warnings=[]),
         ]
 
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir),
-            "--output-dir", str(output_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
         assert result.exit_code == 0
         assert "Ingested 3 file(s)" in result.output
 
@@ -346,11 +432,17 @@ class TestOmniIngest:
             ExtractionResult(md_content="# Good", manifest={}, warnings=[]),
         ]
 
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir),
-            "--output-dir", str(output_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
         assert result.exit_code == 0
         assert "Extraction failed" in result.output
         assert "Ingested 1 file(s)" in result.output
@@ -359,9 +451,7 @@ class TestOmniIngest:
         assert not (output_dir / "bad.md").exists()
 
     @patch("automedia.omni.opp_adapter.OPPAdapter.extract")
-    def test_ingest_all_fail(
-        self, mock_extract: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_ingest_all_fail(self, mock_extract: MagicMock, tmp_path: Path) -> None:
         """When every extract() raises, exit 1 with message."""
         input_dir = tmp_path / "allbad"
         input_dir.mkdir()
@@ -370,11 +460,17 @@ class TestOmniIngest:
 
         mock_extract.side_effect = RuntimeError("Everything broke")
 
-        result = runner.invoke(app, [
-            "omni", "ingest",
-            "--dir", str(input_dir),
-            "--output-dir", str(output_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "omni",
+                "ingest",
+                "--dir",
+                str(input_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
         assert result.exit_code == 1
         assert "Extraction failed" in result.output
         assert "No files were successfully processed" in result.output

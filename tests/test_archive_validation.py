@@ -7,15 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.archive_validation import L2ArchiveValidation, _CHECK_NAMES
+from automedia.gates.archive_validation import _CHECK_NAMES, L2ArchiveValidation
 from automedia.gates.base import BaseGate, _registry
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_context(
     *,
@@ -207,11 +205,13 @@ class TestL2OtherChecks:
 
     def test_complete_metadata_passes(self) -> None:
         """All required metadata fields present passes."""
-        ctx = _make_context(archive_metadata={
-            "title": "Test",
-            "platform": "wechat",
-            "created_at": "2026-07-07T10:00:00",
-        })
+        ctx = _make_context(
+            archive_metadata={
+                "title": "Test",
+                "platform": "wechat",
+                "created_at": "2026-07-07T10:00:00",
+            }
+        )
         result = L2ArchiveValidation().execute(ctx)
         mc = next(c for c in result["checks"] if c["name"] == "archive_metadata_complete")
         assert mc["passed"] is True

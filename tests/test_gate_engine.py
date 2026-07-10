@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateObserver
 from automedia.pipelines.gate_engine import (
@@ -15,7 +13,6 @@ from automedia.pipelines.gate_engine import (
     Pipeline,
     PipelineResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers — lightweight gate stubs
@@ -110,14 +107,10 @@ class _RecordingHook(GateObserver):
     def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
         self.before_calls.append((gate_name, context))
 
-    def after_gate(
-        self, gate_name: str, context: dict[str, Any], result: dict[str, Any]
-    ) -> None:
+    def after_gate(self, gate_name: str, context: dict[str, Any], result: dict[str, Any]) -> None:
         self.after_calls.append((gate_name, context, result))
 
-    def on_gate_failed(
-        self, gate_name: str, context: dict[str, Any], error: Exception
-    ) -> None:
+    def on_gate_failed(self, gate_name: str, context: dict[str, Any], error: Exception) -> None:
         self.failed_calls.append((gate_name, context, error))
 
 
@@ -137,9 +130,7 @@ class TestDataClasses:
         assert a.md5 == ""
 
     def test_asset_info_full(self) -> None:
-        a = AssetInfo(
-            type="image", path="/tmp/i.png", platform="wechat", md5="abc123"
-        )
+        a = AssetInfo(type="image", path="/tmp/i.png", platform="wechat", md5="abc123")
         assert a.platform == "wechat"
         assert a.md5 == "abc123"
 
@@ -149,9 +140,7 @@ class TestDataClasses:
         assert e.error is None
 
     def test_gate_log_entry_failed(self) -> None:
-        e = GateLogEntry(
-            gate_name="G3", status="failed", duration_s=0.3, error="bad brand"
-        )
+        e = GateLogEntry(gate_name="G3", status="failed", duration_s=0.3, error="bad brand")
         assert e.error == "bad brand"
 
     def test_pipeline_result_defaults(self) -> None:
@@ -247,9 +236,7 @@ class TestGateEngineRun:
 
     def test_fail_stop_in_middle(self) -> None:
         """Failing stop gate in the middle skips remaining gates."""
-        engine = GateEngine(
-            [_PassGate(), _FailStopGate(), _PassGate()]
-        )
+        engine = GateEngine([_PassGate(), _FailStopGate(), _PassGate()])
         ok, results = engine.run({})
         assert ok is False
         assert len(results) == 2  # third gate skipped

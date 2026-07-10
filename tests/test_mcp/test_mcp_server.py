@@ -6,23 +6,26 @@ All tests use synthetic data — zero production project data.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
 
 from automedia.mcp.server import (
+    _discover_projects,
     _load_allowlist,
+    _pipeline_result_to_dict,
+    _project_assets,
     _reset_allowlist_cache,
+    _resolve_projects_dir,
     check_path_allowed,
     create_server,
-    _discover_projects,
-    _project_assets,
-    _pipeline_result_to_dict,
+    health_check,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -123,6 +126,7 @@ def _reset_cache(tmp_path: Path) -> None:
     _reset_allowlist_cache()
     # Pre-populate cache with tmp_path so tool functions don't reject test paths
     import automedia.mcp.server as _server_mod
+
     _server_mod._cached_allowlist = [str(Path(tmp_path).resolve())]
     yield
     _reset_allowlist_cache()
@@ -163,9 +167,7 @@ class TestAllowlist:
         allowed_dir = tmp_path / "allowed"
         allowed_dir.mkdir()
         evil = tmp_path / "allowed_evil"  # sibling, not subdirectory
-        assert not check_path_allowed(
-            str(evil), allowlist=[os.path.realpath(str(allowed_dir))]
-        )
+        assert not check_path_allowed(str(evil), allowlist=[os.path.realpath(str(allowed_dir))])
         assert check_path_allowed(
             str(allowed_dir / "file.md"), allowlist=[os.path.realpath(str(allowed_dir))]
         )
@@ -202,24 +204,27 @@ class TestServerCreation:
         assert hasattr(server, "run")
 
     def test_server_has_all_13_tools(self) -> None:
-        """All 13 tools are registered."""
+        """All 14 tools are registered."""
         server = create_server()
         tool_names = sorted(server._tool_manager._tools.keys())
-        expected = sorted([
-            "select_topic",
-            "run_pipeline",
-            "get_pipeline_progress",
-            "get_pipeline_status",
-            "list_projects",
-            "get_project_assets",
-            "archive_project",
-            "list_topic_pool",
-            "register_platform_adapter",
-            "extract_brief",
-            "localize_content",
-            "localize_output",
-            "format_output",
-        ])
+        expected = sorted(
+            [
+                "health_check",
+                "select_topic",
+                "run_pipeline",
+                "get_pipeline_progress",
+                "get_pipeline_status",
+                "list_projects",
+                "get_project_assets",
+                "archive_project",
+                "list_topic_pool",
+                "register_platform_adapter",
+                "extract_brief",
+                "localize_content",
+                "localize_output",
+                "format_output",
+            ]
+        )
         assert tool_names == expected
 
 
@@ -236,6 +241,7 @@ class TestSelectTopic:
         create_server()
         # Call the underlying function directly
         from automedia.mcp.server import select_topic
+
         result = select_topic()
         assert "error" in result or result.get("selected") is None
 
@@ -251,6 +257,7 @@ class TestSelectTopic:
         db.close()
 
         from automedia.mcp.server import select_topic
+
         result = select_topic(pool_db_path=str(db_path))
         assert result["selected"]["title"] == "High score"
         assert result["remaining_count"] == 1
@@ -262,10 +269,13 @@ class TestSelectTopic:
         db_path = tmp_path / "pool.db"
         db = PoolDB(db_path)
         db.add_topic({"title": "Tech topic", "score": 5.0, "status": "pending", "category": "tech"})
-        db.add_topic({"title": "Finance topic", "score": 9.0, "status": "pending", "category": "finance"})
+        db.add_topic(
+            {"title": "Finance topic", "score": 9.0, "status": "pending", "category": "finance"}
+        )
         db.close()
 
         from automedia.mcp.server import select_topic
+
         result = select_topic(category="tech", pool_db_path=str(db_path))
         assert result["selected"]["title"] == "Tech topic"
 
@@ -281,6 +291,7 @@ class TestRunPipeline:
     def test_run_pipeline_returns_dict(self) -> None:
         """run_pipeline returns a JSON-serializable dict."""
         from automedia.mcp.server import run_pipeline
+
         result = run_pipeline(topic="test topic", brand="TestBrand", mode="auto")
         assert isinstance(result, dict)
         assert "status" in result
@@ -288,6 +299,7 @@ class TestRunPipeline:
     def test_run_pipeline_invalid_mode(self) -> None:
         """Invalid mode returns status='failed'."""
         from automedia.mcp.server import run_pipeline
+
         result = run_pipeline(topic="test", brand="Brand", mode="invalid_mode")
         assert result["status"] == "failed"
         assert "error" in result
@@ -304,12 +316,14 @@ class TestGetPipelineStatus:
     def test_project_not_found(self, tmp_path: Path) -> None:
         """Returns error when project_id is not found."""
         from automedia.mcp.server import get_pipeline_status
+
         result = get_pipeline_status(project_id="nonexistent", base_dir=str(tmp_path))
         assert "error" in result
 
     def test_project_found(self, sample_project: Path) -> None:
         """Returns project info and subdirs."""
         from automedia.mcp.server import get_pipeline_status
+
         result = get_pipeline_status(project_id="abc123def456", base_dir=str(sample_project))
         assert "project" in result
         assert result["project"]["project_id"] == "abc123def456"
@@ -328,6 +342,7 @@ class TestListProjects:
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Returns empty list when no projects exist."""
         from automedia.mcp.server import list_projects
+
         result = list_projects(base_dir=str(tmp_path))
         assert result["projects"] == []
         assert result["count"] == 0
@@ -335,6 +350,7 @@ class TestListProjects:
     def test_finds_projects(self, sample_project: Path) -> None:
         """Discovers projects from info JSON files."""
         from automedia.mcp.server import list_projects
+
         result = list_projects(base_dir=str(sample_project))
         assert result["count"] == 1
         assert result["projects"][0]["project_id"] == "abc123def456"
@@ -342,6 +358,7 @@ class TestListProjects:
     def test_status_filter(self, sample_project: Path, published_project: Path) -> None:
         """Filters by status when provided."""
         from automedia.mcp.server import list_projects
+
         result = list_projects(base_dir=str(sample_project.parent), status="published")
         # Only published_project should match
         ids = [p["project_id"] for p in result["projects"]]
@@ -360,12 +377,14 @@ class TestGetProjectAssets:
     def test_nonexistent_dir(self, tmp_path: Path) -> None:
         """Returns empty assets for non-existent directory."""
         from automedia.mcp.server import get_project_assets
+
         result = get_project_assets(project_dir=str(tmp_path / "nonexistent"))
         assert result["assets"] == []
 
     def test_finds_assets(self, sample_project: Path) -> None:
         """Lists all files in the project directory."""
         from automedia.mcp.server import get_project_assets
+
         proj_dir = str(sample_project / "20260707_test-topic")
         result = get_project_assets(project_dir=proj_dir)
         assert result["count"] > 0
@@ -386,6 +405,7 @@ class TestArchiveProject:
     def test_project_not_found(self, tmp_path: Path) -> None:
         """Returns error when project is not found."""
         from automedia.mcp.server import archive_project
+
         result = archive_project(project_id="nonexistent", base_dir=str(tmp_path))
         assert result["archived"] is False
         assert "error" in result
@@ -393,7 +413,10 @@ class TestArchiveProject:
     def test_red_line_8_rejects_non_published(self, draft_project: Path) -> None:
         """Refuses to archive non-published project without force."""
         from automedia.mcp.server import archive_project
-        result = archive_project(project_id="dra123abc456", base_dir=str(draft_project), force=False)
+
+        result = archive_project(
+            project_id="dra123abc456", base_dir=str(draft_project), force=False
+        )
         assert result["archived"] is False
         assert "Refused" in result["error"]
         assert "Red Line 8" in result["error"]
@@ -401,6 +424,7 @@ class TestArchiveProject:
     def test_force_overrides_red_line_8(self, draft_project: Path) -> None:
         """force=True overrides the published-status check."""
         from automedia.mcp.server import archive_project
+
         result = archive_project(project_id="dra123abc456", base_dir=str(draft_project), force=True)
         assert result["archived"] is True
         assert "archive_dir" in result
@@ -408,7 +432,10 @@ class TestArchiveProject:
     def test_published_project_archives_without_force(self, published_project: Path) -> None:
         """Published project can be archived without force."""
         from automedia.mcp.server import archive_project
-        result = archive_project(project_id="pub123abc456", base_dir=str(published_project), force=False)
+
+        result = archive_project(
+            project_id="pub123abc456", base_dir=str(published_project), force=False
+        )
         assert result["archived"] is True
 
 
@@ -423,6 +450,7 @@ class TestListTopicPool:
     def test_empty_pool(self) -> None:
         """Returns empty list for in-memory empty DB."""
         from automedia.mcp.server import list_topic_pool
+
         result = list_topic_pool()
         assert result["topics"] == []
         assert result["count"] == 0
@@ -439,6 +467,7 @@ class TestListTopicPool:
         db.close()
 
         from automedia.mcp.server import list_topic_pool
+
         result = list_topic_pool(pool_db_path=str(db_path))
         assert result["count"] == 3
 
@@ -453,6 +482,7 @@ class TestListTopicPool:
         db.close()
 
         from automedia.mcp.server import list_topic_pool
+
         result = list_topic_pool(status="pending", pool_db_path=str(db_path))
         assert result["count"] == 1
         assert result["topics"][0]["title"] == "Topic A"
@@ -468,6 +498,7 @@ class TestListTopicPool:
         db.close()
 
         from automedia.mcp.server import list_topic_pool
+
         result = list_topic_pool(category="tech", pool_db_path=str(db_path))
         assert result["count"] == 1
         assert result["topics"][0]["title"] == "Tech A"
@@ -484,6 +515,7 @@ class TestRegisterPlatformAdapter:
     def test_stub_mode(self) -> None:
         """Without adapter_class returns stub notice."""
         from automedia.mcp.server import register_platform_adapter
+
         result = register_platform_adapter(platform_name="test_platform")
         assert result["registered"] is False
         assert result["stub"] is True
@@ -492,6 +524,7 @@ class TestRegisterPlatformAdapter:
     def test_invalid_class_path(self) -> None:
         """Invalid adapter_class returns error."""
         from automedia.mcp.server import register_platform_adapter
+
         result = register_platform_adapter(
             platform_name="bad_platform",
             adapter_class="not.a.valid.path",
@@ -551,3 +584,137 @@ class TestHelpers:
         obj = SimpleNamespace(status="ok", project_id="x", error=None)
         d = _pipeline_result_to_dict(obj)
         assert d["status"] == "ok"
+
+    def test_health_check_returns_ok(self) -> None:
+        """health_check returns status=ok with version and uptime."""
+        result = health_check()
+        assert result["status"] == "ok"
+        assert result["version"] == "1.0.0"
+        assert result["uptime_s"] >= 0
+        assert result["tools_count"] >= 14
+
+
+# ---------------------------------------------------------------------------
+# Helper: _resolve_projects_dir
+# ---------------------------------------------------------------------------
+
+
+class TestResolveProjectsDir:
+    """Tests for the _resolve_projects_dir helper."""
+
+    def test_env_var_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """AUTOMEDIA_PROJECTS_DIR env var takes priority."""
+        target = tmp_path / "custom_projects"
+        target.mkdir()
+        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(target))
+        assert _resolve_projects_dir() == str(target.resolve())
+
+    def test_default_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Falls back to .automedia/output/projects relative to cwd."""
+        monkeypatch.delenv("AUTOMEDIA_PROJECTS_DIR", raising=False)
+        result = _resolve_projects_dir()
+        assert result.endswith(".automedia/output/projects") or result.endswith(
+            ".automedia\\output\\projects"
+        )
+
+
+# ---------------------------------------------------------------------------
+# MCP Resources
+# ---------------------------------------------------------------------------
+
+
+class TestResources:
+    """Tests for MCP resource endpoints."""
+
+    @pytest.fixture()
+    def server(self) -> Any:
+        return create_server()
+
+    def test_resources_listed(self, server: Any) -> None:
+        """create_server() registers automedia:// resources."""
+        resource_uris = list(server._resource_manager._resources.keys())
+        template_uris = list(server._resource_manager._templates.keys())
+        assert "automedia://projects" in resource_uris
+        assert any("automedia://pipeline/" in uri for uri in template_uris)
+        assert "automedia://pool" in resource_uris
+
+    def test_projects_resource_empty(
+        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns valid JSON array when no projects exist."""
+        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(tmp_path / "no_projects"))
+        result = asyncio.run(server.read_resource("automedia://projects"))
+        assert len(result) == 1
+        data = json.loads(result[0].content)
+        assert isinstance(data, list)
+        assert data == []
+
+    def test_projects_resource_with_data(
+        self, server: Any, sample_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns project summaries for discovered projects."""
+        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(sample_project))
+        result = asyncio.run(server.read_resource("automedia://projects"))
+        data = json.loads(result[0].content)
+        assert len(data) == 1
+        assert data[0]["project_id"] == "abc123def456"
+        assert data[0]["topic"] == "test topic"
+        assert "brand" in data[0]
+        assert "status" in data[0]
+        assert "_dir" not in data[0]
+
+    def test_pipeline_resource_not_found(
+        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns error JSON for nonexistent project_id."""
+        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(tmp_path / "empty"))
+        result = asyncio.run(server.read_resource("automedia://pipeline/nonexistent"))
+        data = json.loads(result[0].content)
+        assert data["status"] == "error"
+        assert "not found" in data["error"]
+
+    def test_pipeline_resource_found(
+        self, server: Any, sample_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns full project info including project_dir for valid project_id."""
+        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(sample_project))
+        result = asyncio.run(server.read_resource("automedia://pipeline/abc123def456"))
+        data = json.loads(result[0].content)
+        assert data["project_id"] == "abc123def456"
+        assert data["topic"] == "test topic"
+        assert "project_dir" in data
+        assert "_dir" not in data
+
+    def test_pool_resource_no_db(
+        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns error JSON when pool DB missing."""
+        monkeypatch.setenv("AUTOMEDIA_POOL_DB", str(tmp_path / "missing.db"))
+        result = asyncio.run(server.read_resource("automedia://pool"))
+        data = json.loads(result[0].content)
+        assert data["status"] == "error"
+        assert "Pool database not found" in data["error"]
+
+    def test_pool_resource_with_data(
+        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns topic summaries from an existing pool DB."""
+        from automedia.pool.db import PoolDB
+
+        db_path = tmp_path / "pool.db"
+        db = PoolDB(db_path)
+        db.add_topic({"title": "Topic A", "status": "pending", "category": "tech", "score": 5.0})
+        db.add_topic({"title": "Topic B", "status": "selected", "category": "finance", "score": 8.0})
+        db.close()
+
+        monkeypatch.setenv("AUTOMEDIA_POOL_DB", str(db_path))
+        result = asyncio.run(server.read_resource("automedia://pool"))
+        data = json.loads(result[0].content)
+        assert isinstance(data, list)
+        assert len(data) == 2
+        titles = {t["title"] for t in data}
+        assert titles == {"Topic A", "Topic B"}
+        for item in data:
+            assert "id" in item
+            assert "status" in item
+            assert "score" in item

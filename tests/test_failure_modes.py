@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
-import pytest
-
 from automedia.gates.failure_modes import FAILURE_MODES
 
 # Known gate names (matches the keys in failure_modes.py)
 _GATE_NAMES = [
-    "G0", "G1", "G2", "G3", "G4", "G5",
-    "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
-    "L1", "L2", "L3",
+    "D0",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "V0",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
     "pre-gate",
+    "CW",
 ]
 
 _REQUIRED_KEYS = {"description", "common_causes", "fixes", "docstring_ref"}

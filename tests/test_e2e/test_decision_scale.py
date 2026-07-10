@@ -17,10 +17,10 @@ import pytest
 from automedia.decision.base import DecisionArtifact
 from automedia.decision.orchestrator import DecisionOrchestrator
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _assert_artifact_types(
     artifacts: list[DecisionArtifact],
@@ -33,8 +33,7 @@ def _assert_artifact_types(
     actual_types = {a.artifact_type for a in artifacts}
     missing = expected_types - actual_types
     assert not missing, (
-        f"Missing artifact type(s): {sorted(missing)}. "
-        f"Actual types: {sorted(actual_types)}"
+        f"Missing artifact type(s): {sorted(missing)}. Actual types: {sorted(actual_types)}"
     )
 
 
@@ -65,9 +64,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        assert isinstance(artifacts, list), (
-            f"Expected list, got {type(artifacts).__name__}"
-        )
+        assert isinstance(artifacts, list), f"Expected list, got {type(artifacts).__name__}"
         assert len(artifacts) > 0, "Expected at least one artifact"
         for art in artifacts:
             assert isinstance(art, DecisionArtifact), (
@@ -133,9 +130,7 @@ class TestDecisionScaleMode:
                 f"Artifact '{art.artifact_type}'.content should be a dict, "
                 f"got {type(art.content).__name__}"
             )
-            assert len(art.content) > 0, (
-                f"Artifact '{art.artifact_type}'.content is empty"
-            )
+            assert len(art.content) > 0, f"Artifact '{art.artifact_type}'.content is empty"
 
     def test_scale_mode_brief_content(self) -> None:
         """The brief artifact contains the brand_name and the inferred mode."""
@@ -163,9 +158,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        health = next(
-            a for a in artifacts if a.artifact_type == "brand_health_report"
-        )
+        health = next(a for a in artifacts if a.artifact_type == "brand_health_report")
 
         assert "awareness" in health.content
         assert "consistency" in health.content
@@ -182,9 +175,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        market_scan = next(
-            a for a in artifacts if a.artifact_type == "market_scan"
-        )
+        market_scan = next(a for a in artifacts if a.artifact_type == "market_scan")
 
         assert "category_trends" in market_scan.content
         assert isinstance(market_scan.content["category_trends"], list)
@@ -199,9 +190,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        deepening = next(
-            a for a in artifacts if a.artifact_type == "audience_deepening"
-        )
+        deepening = next(a for a in artifacts if a.artifact_type == "audience_deepening")
 
         assert "existing_personas" in deepening.content
         assert "breakthrough_personas" in deepening.content
@@ -215,9 +204,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        tracking = next(
-            a for a in artifacts if a.artifact_type == "competitor_tracking"
-        )
+        tracking = next(a for a in artifacts if a.artifact_type == "competitor_tracking")
 
         assert "competitors" in tracking.content
         assert isinstance(tracking.content["competitors"], list)
@@ -232,9 +219,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        audit = next(
-            a for a in artifacts if a.artifact_type == "asset_audit"
-        )
+        audit = next(a for a in artifacts if a.artifact_type == "asset_audit")
 
         assert "hero_content" in audit.content
         assert "needs_update" in audit.content
@@ -250,9 +235,7 @@ class TestDecisionScaleMode:
             market="US market",
         )
 
-        strategy_docs = [
-            a for a in artifacts if a.artifact_type == "strategy_doc"
-        ]
+        strategy_docs = [a for a in artifacts if a.artifact_type == "strategy_doc"]
         assert len(strategy_docs) == 2
 
         # ProductOptimization
@@ -351,18 +334,10 @@ class TestDecisionScaleMode:
         )
 
         # Different mode in brief
-        build_brief = next(
-            a for a in build_artifacts if a.artifact_type == "brief"
-        )
-        scale_brief = next(
-            a for a in scale_artifacts if a.artifact_type == "brief"
-        )
-        assert build_brief.content["mode"] == "build", (
-            "Build mode brief should have mode='build'"
-        )
-        assert scale_brief.content["mode"] == "scale", (
-            "Scale mode brief should have mode='scale'"
-        )
+        build_brief = next(a for a in build_artifacts if a.artifact_type == "brief")
+        scale_brief = next(a for a in scale_artifacts if a.artifact_type == "brief")
+        assert build_brief.content["mode"] == "build", "Build mode brief should have mode='build'"
+        assert scale_brief.content["mode"] == "scale", "Scale mode brief should have mode='scale'"
 
         # Different artifact types
         build_types = {a.artifact_type for a in build_artifacts}
@@ -376,16 +351,17 @@ class TestDecisionScaleMode:
             "asset_audit",
         }
         assert scale_specific.issubset(scale_types), (
-            f"Scale mode missing unique types. "
-            f"Scale types: {sorted(scale_types)}"
+            f"Scale mode missing unique types. Scale types: {sorted(scale_types)}"
         )
 
         build_specific = {
-            "brand_dna", "market_report", "persona_map", "competitor_matrix",
+            "brand_dna",
+            "market_report",
+            "persona_map",
+            "competitor_matrix",
         }
         assert build_specific.issubset(build_types), (
-            f"Build mode missing unique types. "
-            f"Build types: {sorted(build_types)}"
+            f"Build mode missing unique types. Build types: {sorted(build_types)}"
         )
 
         # Both have brief and strategy_doc
@@ -405,12 +381,8 @@ class TestDecisionScaleMode:
             market="EU market",
         )
 
-        scan_us = next(
-            a for a in artifacts_us if a.artifact_type == "market_scan"
-        )
-        scan_eu = next(
-            a for a in artifacts_eu if a.artifact_type == "market_scan"
-        )
+        scan_us = next(a for a in artifacts_us if a.artifact_type == "market_scan")
+        scan_eu = next(a for a in artifacts_eu if a.artifact_type == "market_scan")
         assert scan_us.content != scan_eu.content, (
             "Market scan content should differ for different markets"
         )
@@ -431,13 +403,15 @@ class TestDecisionScaleMode:
         _assert_artifact_types(
             artifacts,
             {
-                "brief", "brand_health_report", "market_scan",
-                "audience_deepening", "competitor_tracking", "asset_audit",
+                "brief",
+                "brand_health_report",
+                "market_scan",
+                "audience_deepening",
+                "competitor_tracking",
+                "asset_audit",
                 "strategy_doc",
             },
         )
 
-        market_scan = next(
-            a for a in artifacts if a.artifact_type == "market_scan"
-        )
+        market_scan = next(a for a in artifacts if a.artifact_type == "market_scan")
         assert len(market_scan.content) > 0

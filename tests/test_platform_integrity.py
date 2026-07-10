@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.platform_integrity import L3PlatformIntegrity, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.platform_integrity import _CHECK_NAMES, L3PlatformIntegrity
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_context(
     *,
@@ -31,14 +29,18 @@ def _make_context(
     """Build a gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {
         "platforms": platforms if platforms is not None else ["wechat", "weibo"],
-        "expected_platforms": expected_platforms if expected_platforms is not None else ["wechat", "weibo"],
+        "expected_platforms": expected_platforms
+        if expected_platforms is not None
+        else ["wechat", "weibo"],
         "content_platform_map": content_platform_map if content_platform_map is not None else {},
         "unified_content": unified_content,
         "media_files": media_files if media_files is not None else ["video.mp4", "image.jpg"],
         "file_paths": file_paths if file_paths is not None else ["video.mp4", "image.jpg"],
         "platform_variants": platform_variants if platform_variants is not None else {},
         "formats": formats if formats is not None else ["mp4", "txt", "json"],
-        "required_formats": required_formats if required_formats is not None else ["mp4", "txt", "json"],
+        "required_formats": required_formats
+        if required_formats is not None
+        else ["mp4", "txt", "json"],
         "archive_metadata": archive_metadata
         if archive_metadata is not None
         else {

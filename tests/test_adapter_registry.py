@@ -7,10 +7,10 @@ import pytest
 from automedia.adapters.base import BasePlatformAdapter
 from automedia.adapters.registry import AdapterRegistry
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 class _StubAdapterA(BasePlatformAdapter):
     @property
@@ -41,6 +41,7 @@ def _reset_registry() -> None:
 # Singleton
 # ---------------------------------------------------------------------------
 
+
 class TestSingleton:
     def test_same_instance(self) -> None:
         r1 = AdapterRegistry()
@@ -57,6 +58,7 @@ class TestSingleton:
 # ---------------------------------------------------------------------------
 # Register
 # ---------------------------------------------------------------------------
+
 
 class TestRegister:
     def test_register_single(self) -> None:
@@ -103,6 +105,7 @@ class TestRegister:
 # Get
 # ---------------------------------------------------------------------------
 
+
 class TestGet:
     def test_get_existing(self) -> None:
         AdapterRegistry.register(_StubAdapterA)
@@ -125,6 +128,7 @@ class TestGet:
 # List
 # ---------------------------------------------------------------------------
 
+
 class TestList:
     def test_empty_after_clear(self) -> None:
         assert AdapterRegistry.list() == []
@@ -138,6 +142,7 @@ class TestList:
 # ---------------------------------------------------------------------------
 # Clear
 # ---------------------------------------------------------------------------
+
 
 class TestClear:
     def test_clear_removes_all(self) -> None:

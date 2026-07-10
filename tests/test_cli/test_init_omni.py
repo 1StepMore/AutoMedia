@@ -123,9 +123,7 @@ class TestInitOmniCommand:
         assert "target_lang" in ol_cfg
         assert "llm_pool" in ol_cfg
 
-    def test_omni_success_message(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_omni_success_message(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """A green success message is printed after init completes."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd as init_mod

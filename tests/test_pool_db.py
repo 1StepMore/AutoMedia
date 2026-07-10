@@ -11,7 +11,6 @@ import pytest
 
 from automedia.pool.db import PoolDB
 
-
 # ===================================================================
 # Fixtures
 # ===================================================================
@@ -135,7 +134,11 @@ class TestPoolDBMigration:
         # Manually create a DB without tenant_id to test migration
         conn = sqlite3.connect(db_path)
         conn.execute(
-            "CREATE TABLE topics (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'pending')"
+            "CREATE TABLE topics ("
+            "id INTEGER PRIMARY KEY,"
+            " title TEXT,"
+            " status TEXT DEFAULT 'pending'"
+            ")"
         )
         conn.commit()
         conn.close()
@@ -191,10 +194,7 @@ class TestPoolDBDeleteTopics:
         assert tmp_pool_db.get_topic(tid) is None
 
     def test_delete_multiple_topics(self, tmp_pool_db: PoolDB) -> None:
-        ids = [
-            tmp_pool_db.add_topic({"title": f"Item {i}"})
-            for i in range(5)
-        ]
+        ids = [tmp_pool_db.add_topic({"title": f"Item {i}"}) for i in range(5)]
         to_delete = ids[:3]
         deleted = tmp_pool_db.delete_topics(to_delete)
         assert deleted == 3

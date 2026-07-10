@@ -4,22 +4,21 @@ from __future__ import annotations
 
 from typing import Any
 
+from automedia.gates.base import BaseGate, _registry
 from automedia.gates.humanizer import (
-    G1Humanizer,
     _CHECK_NAMES,
-    _check_overused_adverbs,
-    _check_hollow_intros,
-    _check_vague_subjects,
-    _check_filler_connectors,
-    _check_long_conjunctions,
-    _check_template_conclusions,
-    _check_overacademic_vocabulary,
+    G1Humanizer,
     _check_absolute_assertions,
+    _check_filler_connectors,
+    _check_hollow_intros,
+    _check_long_conjunctions,
+    _check_overacademic_vocabulary,
+    _check_overused_adverbs,
     _check_repetitive_structures,
+    _check_template_conclusions,
+    _check_vague_subjects,
     _rewrite_content,
 )
-from automedia.gates.base import BaseGate, _registry
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -218,7 +217,9 @@ class TestG1RealLongConjunctions:
     """Real detection of long conjunction chains."""
 
     def test_detects_triple_and(self) -> None:
-        result = _check_long_conjunctions("We offer design and development and testing and deployment.")
+        result = _check_long_conjunctions(
+            "We offer design and development and testing and deployment."
+        )
         assert result["passed"] is False
 
     def test_single_conjunction_passes(self) -> None:

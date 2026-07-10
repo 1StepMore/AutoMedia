@@ -22,7 +22,6 @@ from automedia.pipelines.gate_engine import GateEngine
 from automedia.pipelines.language_config import resolve_language_config
 from automedia.pipelines.runner import run_full_pipeline
 
-
 # ---------------------------------------------------------------------------
 # Expected values — specific strings required by the spec
 # ---------------------------------------------------------------------------
@@ -157,30 +156,24 @@ class TestMultilingualEnglishPipeline:
             f"Got status={result.status!r}, error={result.error}"
         )
         assert "lang_config" in captured_context, (
-            "gate_context must contain 'lang_config' key when "
-            "default_lang is provided"
+            "gate_context must contain 'lang_config' key when default_lang is provided"
         )
 
         lang_config = captured_context["lang_config"]
         assert lang_config["tts_voice"] == EN_TTS_VOICE, (
-            f"Expected tts_voice={EN_TTS_VOICE!r}, "
-            f"got {lang_config['tts_voice']!r}"
+            f"Expected tts_voice={EN_TTS_VOICE!r}, got {lang_config['tts_voice']!r}"
         )
         assert lang_config["whisper_lang"] == EN_WHISPER_LANG, (
-            f"Expected whisper_lang={EN_WHISPER_LANG!r}, "
-            f"got {lang_config['whisper_lang']!r}"
+            f"Expected whisper_lang={EN_WHISPER_LANG!r}, got {lang_config['whisper_lang']!r}"
         )
         assert lang_config["cta_template"] == EN_CTA_TEMPLATE, (
-            f"Expected cta_template={EN_CTA_TEMPLATE!r}, "
-            f"got {lang_config['cta_template']!r}"
+            f"Expected cta_template={EN_CTA_TEMPLATE!r}, got {lang_config['cta_template']!r}"
         )
         assert lang_config["blocked_words"] == EN_BLOCKED_WORDS, (
-            f"Expected blocked_words={EN_BLOCKED_WORDS!r}, "
-            f"got {lang_config['blocked_words']!r}"
+            f"Expected blocked_words={EN_BLOCKED_WORDS!r}, got {lang_config['blocked_words']!r}"
         )
         assert lang_config["date_format"] == EN_DATE_FORMAT, (
-            f"Expected date_format={EN_DATE_FORMAT!r}, "
-            f"got {lang_config['date_format']!r}"
+            f"Expected date_format={EN_DATE_FORMAT!r}, got {lang_config['date_format']!r}"
         )
 
         # --- Verify additional gate_context keys are present ---
@@ -222,9 +215,7 @@ class TestMultilingualEnglishPipeline:
         mock_project_cls.init.return_value = mock_project
 
         # No brand-profile.yaml exists → load_brand_profile raises
-        mock_load_bp.side_effect = FileNotFoundError(
-            "brand-profile.yaml not found"
-        )
+        mock_load_bp.side_effect = FileNotFoundError("brand-profile.yaml not found")
 
         captured_context: dict[str, Any] = {}
 
@@ -241,31 +232,24 @@ class TestMultilingualEnglishPipeline:
         result = run_full_pipeline(sample_topic, "TestBrand")
 
         # --- Assert ---
-        assert result.status == "success", (
-            f"Pipeline should succeed. Got status={result.status!r}"
-        )
+        assert result.status == "success", f"Pipeline should succeed. Got status={result.status!r}"
         assert "lang_config" in captured_context
 
         lang_config = captured_context["lang_config"]
         assert lang_config["tts_voice"] == ZH_TTS_VOICE, (
-            f"Expected zh-CN tts_voice={ZH_TTS_VOICE!r}, "
-            f"got {lang_config['tts_voice']!r}"
+            f"Expected zh-CN tts_voice={ZH_TTS_VOICE!r}, got {lang_config['tts_voice']!r}"
         )
         assert lang_config["whisper_lang"] == ZH_WHISPER_LANG, (
-            f"Expected zh-CN whisper_lang={ZH_WHISPER_LANG!r}, "
-            f"got {lang_config['whisper_lang']!r}"
+            f"Expected zh-CN whisper_lang={ZH_WHISPER_LANG!r}, got {lang_config['whisper_lang']!r}"
         )
         assert lang_config["cta_template"] == ZH_CTA_TEMPLATE, (
-            f"Expected empty zh-CN cta_template, "
-            f"got {lang_config['cta_template']!r}"
+            f"Expected empty zh-CN cta_template, got {lang_config['cta_template']!r}"
         )
         assert lang_config["blocked_words"] == ZH_BLOCKED_WORDS, (
-            f"Expected empty zh-CN blocked_words, "
-            f"got {lang_config['blocked_words']!r}"
+            f"Expected empty zh-CN blocked_words, got {lang_config['blocked_words']!r}"
         )
         assert lang_config["date_format"] == ZH_DATE_FORMAT, (
-            f"Expected empty zh-CN date_format, "
-            f"got {lang_config['date_format']!r}"
+            f"Expected empty zh-CN date_format, got {lang_config['date_format']!r}"
         )
 
     # ------------------------------------------------------------------
@@ -300,8 +284,7 @@ class TestMultilingualEnglishPipeline:
 
         # Falls back to zh values because "en" is missing from the profile
         assert lang_config["tts_voice"] == ZH_TTS_VOICE, (
-            f"Expected zh-CN fallback tts_voice={ZH_TTS_VOICE!r}, "
-            f"got {lang_config['tts_voice']!r}"
+            f"Expected zh-CN fallback tts_voice={ZH_TTS_VOICE!r}, got {lang_config['tts_voice']!r}"
         )
         assert lang_config["whisper_lang"] == ZH_WHISPER_LANG, (
             f"Expected zh-CN fallback whisper_lang={ZH_WHISPER_LANG!r}, "
@@ -377,34 +360,26 @@ class TestMultilingualEnglishPipeline:
             )
 
         # --- Assert ---
-        assert result.status == "success", (
-            f"Pipeline should succeed. Got status={result.status!r}"
-        )
+        assert result.status == "success", f"Pipeline should succeed. Got status={result.status!r}"
         assert "lang_config" in captured_context, (
-            "gate_context must contain 'lang_config' when "
-            "default_lang='en'"
+            "gate_context must contain 'lang_config' when default_lang='en'"
         )
 
         lang_config = captured_context["lang_config"]
         assert lang_config["tts_voice"] == EN_TTS_VOICE, (
-            f"Expected tts_voice={EN_TTS_VOICE!r}, "
-            f"got {lang_config['tts_voice']!r}"
+            f"Expected tts_voice={EN_TTS_VOICE!r}, got {lang_config['tts_voice']!r}"
         )
         assert lang_config["whisper_lang"] == EN_WHISPER_LANG, (
-            f"Expected whisper_lang={EN_WHISPER_LANG!r}, "
-            f"got {lang_config['whisper_lang']!r}"
+            f"Expected whisper_lang={EN_WHISPER_LANG!r}, got {lang_config['whisper_lang']!r}"
         )
         assert lang_config["cta_template"] == EN_CTA_TEMPLATE, (
-            f"Expected cta_template={EN_CTA_TEMPLATE!r}, "
-            f"got {lang_config['cta_template']!r}"
+            f"Expected cta_template={EN_CTA_TEMPLATE!r}, got {lang_config['cta_template']!r}"
         )
         assert lang_config["blocked_words"] == EN_BLOCKED_WORDS, (
-            f"Expected blocked_words={EN_BLOCKED_WORDS!r}, "
-            f"got {lang_config['blocked_words']!r}"
+            f"Expected blocked_words={EN_BLOCKED_WORDS!r}, got {lang_config['blocked_words']!r}"
         )
         assert lang_config["date_format"] == EN_DATE_FORMAT, (
-            f"Expected date_format={EN_DATE_FORMAT!r}, "
-            f"got {lang_config['date_format']!r}"
+            f"Expected date_format={EN_DATE_FORMAT!r}, got {lang_config['date_format']!r}"
         )
 
         # — Verify the full context also contains expected non-lang keys —

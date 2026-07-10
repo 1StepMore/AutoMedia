@@ -26,6 +26,7 @@ import pytest
 
 from automedia.gates.base import BaseGate, _registry
 
+pytestmark = [pytest.mark.e2e, pytest.mark.redline]
 
 # ===================================================================
 # Red Line 1: Gate Bypass
@@ -53,6 +54,7 @@ class TestRedLine1GateBypass:
 
         # Attempting to register a fake gate with the same name must fail
         with pytest.raises(KeyError, match="already registered"):
+
             class FakeV1(BaseGate):
                 _gate_name = "V1"  # type: ignore[assignment]
                 _failure_mode = "stop"
@@ -120,6 +122,7 @@ class TestRedLine3WechatAdapter:
 
         try:
             import builtins
+
             original_import = builtins.__import__
 
             def _block_wechat(name: str, *args: Any, **kwargs: Any) -> Any:
@@ -207,10 +210,10 @@ class TestRedLine5AvSync:
         # Equal-division SRT causes subtitles to render with
         # low brightness, poor contrast, and zero opacity
         ctx: dict[str, Any] = {
-            "avg_brightness": 20,   # far below threshold of 50
-            "contrast": 30,         # far below threshold of 80
-            "opacity": 0.0,         # completely invisible
-            "pixel_valid": False,   # pixel-level validation failed
+            "avg_brightness": 20,  # far below threshold of 50
+            "contrast": 30,  # far below threshold of 80
+            "opacity": 0.0,  # completely invisible
+            "pixel_valid": False,  # pixel-level validation failed
         }
         result = gate.execute(ctx)
 
@@ -243,12 +246,14 @@ class TestRedLine6FullQa:
         # 10 entries total, but only first 3 have checked=True
         entries = []
         for i in range(10):
-            entries.append({
-                "mid_frame_path": f"/tmp/frame_{i}.png",
-                "end_silence_frame_path": f"/tmp/end_{i}.png",
-                "qa_passed": True,
-                "checked": i < 3,  # only first 3 checked — Red Line 6 violation
-            })
+            entries.append(
+                {
+                    "mid_frame_path": f"/tmp/frame_{i}.png",
+                    "end_silence_frame_path": f"/tmp/end_{i}.png",
+                    "qa_passed": True,
+                    "checked": i < 3,  # only first 3 checked — Red Line 6 violation
+                }
+            )
 
         ctx: dict[str, Any] = {"entries": entries}
         result = gate.execute(ctx)
@@ -260,8 +265,10 @@ class TestRedLine6FullQa:
         # red_line_6 check specifically must fail
         checks_by_name = {c["name"]: c for c in result["checks"]}
         assert checks_by_name["red_line_6"]["passed"] is False
-        assert "full coverage" in checks_by_name["red_line_6"]["detail"].lower() or \
-               "not checked" in checks_by_name["red_line_6"]["detail"].lower()
+        assert (
+            "full coverage" in checks_by_name["red_line_6"]["detail"].lower()
+            or "not checked" in checks_by_name["red_line_6"]["detail"].lower()
+        )
 
 
 # ===================================================================
@@ -284,7 +291,7 @@ class TestRedLine7Md5:
         audio_file.write_bytes(audio_content)
 
         # Compute actual MD5
-        actual_md5 = hashlib.md5(audio_content).hexdigest()
+        hashlib.md5(audio_content).hexdigest()
 
         # Use a deliberately wrong expected MD5
         wrong_md5 = "0" * 32
@@ -340,8 +347,8 @@ class TestRedLine8AgentArchive:
         gate = L2ArchiveValidation()
 
         ctx: dict[str, Any] = {
-            "archive_status": "draft",      # NOT published
-            "force": False,                  # NO --force flag
+            "archive_status": "draft",  # NOT published
+            "force": False,  # NO --force flag
             "archive_path": "/tmp/archive.zip",
             "archive_metadata": {
                 "title": "Test Archive",
@@ -368,8 +375,8 @@ class TestRedLine8AgentArchive:
         gate = L2ArchiveValidation()
 
         ctx: dict[str, Any] = {
-            "archive_status": "draft",      # NOT published
-            "force": True,                   # --force IS set
+            "archive_status": "draft",  # NOT published
+            "force": True,  # --force IS set
             "archive_path": "/tmp/archive.zip",
             "archive_metadata": {
                 "title": "Test Archive",
@@ -405,16 +412,20 @@ class TestRedLine9:
         from automedia.decision.gates.d0_gate import D0Gate
 
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build", "project_dir": str(tmp_path),
-            "force_provenance": False,
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(tmp_path),
+                "force_provenance": False,
+            }
+        )
         assert result["passed"] is False
         assert result.get("status") == "rl9_violation"
 
     def test_complete_solution_state_passes_d0(self, tmp_path) -> None:
         """D0Gate passes when all required nodes are completed."""
         import yaml
+
         from automedia.decision import dependency
         from automedia.decision.gates.d0_gate import D0Gate
 
@@ -433,9 +444,12 @@ class TestRedLine9:
         from automedia.decision.gates.d0_gate import D0Gate
 
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build", "project_dir": "/nonexistent",
-            "force_provenance": True,
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": "/nonexistent",
+                "force_provenance": True,
+            }
+        )
         assert result["passed"] is True
         assert result.get("status") == "bypassed"

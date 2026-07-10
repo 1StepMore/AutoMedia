@@ -11,6 +11,7 @@ simulates:
 Each stage is verified for correct input/output contracts.  After the
 pipeline runs, ``pipeline_md5.json`` is checked for the expected sections.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,6 +28,7 @@ from automedia.omni.md5_integration import (
 from automedia.omni.ol_adapter import TranslationResult
 from automedia.omni.opp_adapter import ExtractionResult
 
+pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -37,8 +39,7 @@ SAMPLE_XLIFF = "brief.xlf"
 SAMPLE_SKELETON = "brief.skeleton.zip"
 
 MD_CONTENT_SOURCE = (
-    "# Executive Summary\n\n"
-    "Our platform leverages AI to automate content production.\n"
+    "# Executive Summary\n\nOur platform leverages AI to automate content production.\n"
 )
 MANIFEST_SOURCE: dict[str, object] = {
     "title": "Executive Summary",
@@ -48,10 +49,7 @@ MANIFEST_SOURCE: dict[str, object] = {
         {"index": 2, "text": "Our platform leverages AI to automate content production."},
     ],
 }
-TRANSLATED_MD = (
-    "# 执行摘要\n\n"
-    "我们的平台利用AI实现内容生产自动化。\n"
-)
+TRANSLATED_MD = "# 执行摘要\n\n我们的平台利用AI实现内容生产自动化。\n"
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +130,7 @@ def pipeline_paths(tmp_path: Path) -> dict[str, Path]:
 def _clean_registry() -> None:
     """Ensure a clean OmniToolRegistry before each test."""
     from automedia.omni.registry import OmniToolRegistry
+
     OmniToolRegistry.clear()
 
 
@@ -173,7 +172,9 @@ class TestOmniXliffRoundtrip:
         assert result.skeleton_path == str(pipeline_paths["skeleton"])
         assert result.warnings == []
         mock_opp.extract.assert_called_once_with(
-            str(pipeline_paths["docx"]), "en", "zh",
+            str(pipeline_paths["docx"]),
+            "en",
+            "zh",
         )
 
     # ------------------------------------------------------------------
@@ -203,7 +204,9 @@ class TestOmniXliffRoundtrip:
         assert result.xliff_path == str(pipeline_paths["translated_xliff"])
         assert result.warnings == []
         mock_ol.translate.assert_called_once_with(
-            MD_CONTENT_SOURCE, source_lang="en", target_lang="zh",
+            MD_CONTENT_SOURCE,
+            source_lang="en",
+            target_lang="zh",
         )
 
     # ------------------------------------------------------------------
@@ -321,7 +324,9 @@ class TestOmniXliffRoundtrip:
 
         # ---- Assert: call args ----
         mock_opp.extract.assert_called_once_with(
-            str(pipeline_paths["docx"]), "en", "zh",
+            str(pipeline_paths["docx"]),
+            "en",
+            "zh",
         )
         mock_ol.translate.assert_called_once_with(
             MD_CONTENT_SOURCE,
@@ -533,9 +538,7 @@ class TestOmniXliffRoundtrip:
         mock_ol_instance.translate.return_value = _make_translation_result(
             xliff_path=str(pipeline_paths["translated_xliff"]),
         )
-        mock_orf_instance.apply_xliff.return_value = str(
-            pipeline_paths["output_docx"]
-        )
+        mock_orf_instance.apply_xliff.return_value = str(pipeline_paths["output_docx"])
 
         # Execute via registry
         opp = cast(MagicMock, reg.get("opp"))
@@ -593,7 +596,9 @@ class TestOmniXliffRoundtrip:
         )
 
         result = mock_ol_class.return_value.translate(
-            "# Hello", source_lang="en", target_lang="zh",
+            "# Hello",
+            source_lang="en",
+            target_lang="zh",
         )
 
         assert isinstance(result, TranslationResult)
@@ -642,7 +647,9 @@ class TestOmniXliffRoundtrip:
         )
 
         extraction = mock_opp_class.return_value.extract(
-            str(pipeline_paths["docx"]), "en", "zh",
+            str(pipeline_paths["docx"]),
+            "en",
+            "zh",
         )
         assert extraction.md_content == MD_CONTENT_SOURCE
         assert extraction.xliff_path is not None
@@ -680,7 +687,9 @@ class TestOmniXliffRoundtrip:
         mock_orf_class.return_value.apply_xliff.return_value = ""
 
         extraction = mock_opp_class.return_value.extract(
-            str(pipeline_paths["docx"]), "en", "zh",
+            str(pipeline_paths["docx"]),
+            "en",
+            "zh",
         )
         assert extraction.md_content == MD_CONTENT_SOURCE
 
@@ -733,13 +742,16 @@ class TestOmniXliffRoundtrip:
         mock_ol_class.return_value.translate.return_value = _make_translation_result(
             xliff_path=str(pipeline_paths["translated_xliff"]),
         )
-        mock_orf_class.return_value.apply_xliff.return_value = str(
-            pipeline_paths["output_docx"]
-        )
+        mock_orf_class.return_value.apply_xliff.return_value = str(pipeline_paths["output_docx"])
 
         # Stage 1 — save after extract
         _ = mock_opp_class.return_value.extract(str(docx), "en", "zh")
-        state1: dict[str, Any] = {"omni_inputs": {}, "omni_extraction": {}, "omni_translation": {}, "omni_orf_outputs": {}}
+        state1: dict[str, Any] = {
+            "omni_inputs": {},
+            "omni_extraction": {},
+            "omni_translation": {},
+            "omni_orf_outputs": {},
+        }
         state1["omni_inputs"][str(docx.resolve())] = {"md5": "inp"}
         state1["omni_extraction"][str(pipeline_paths["xliff"].resolve())] = {"md5": "ext"}
         save_state(state1, tmp)
@@ -749,9 +761,13 @@ class TestOmniXliffRoundtrip:
         assert "omni_extraction" in loaded1
 
         # Stage 2 — save after translate (preserve existing)
-        _ = mock_ol_class.return_value.translate(MD_CONTENT_SOURCE, source_lang="en", target_lang="zh")
+        _ = mock_ol_class.return_value.translate(
+            MD_CONTENT_SOURCE, source_lang="en", target_lang="zh"
+        )
         state2 = load_state(tmp)
-        state2.setdefault("omni_translation", {})[str(pipeline_paths["translated_xliff"].resolve())] = {"md5": "trn"}
+        state2.setdefault("omni_translation", {})[
+            str(pipeline_paths["translated_xliff"].resolve())
+        ] = {"md5": "trn"}
         save_state(state2, tmp)
 
         loaded2 = load_state(tmp)
@@ -767,7 +783,9 @@ class TestOmniXliffRoundtrip:
             str(pipeline_paths["output_docx"].parent),
         )
         state3 = load_state(tmp)
-        state3.setdefault("omni_orf_outputs", {})[str(pipeline_paths["output_docx"].resolve())] = {"md5": "out"}
+        state3.setdefault("omni_orf_outputs", {})[str(pipeline_paths["output_docx"].resolve())] = {
+            "md5": "out"
+        }
         save_state(state3, tmp)
 
         loaded3 = load_state(tmp)

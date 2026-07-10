@@ -104,6 +104,12 @@ class TestOmniToolRegistryCRUD:
 # Module-level: verify auto-registration runs when __init__.py is imported
 # This assertion runs during test collection, before any autouse fixture.
 _ = OmniToolRegistry()
-assert "opp" in OmniToolRegistry._registry, f"Auto-registration: opp not found in {list(OmniToolRegistry._registry.keys())}"
-assert "ol" in OmniToolRegistry._registry, f"Auto-registration: ol not found in {list(OmniToolRegistry._registry.keys())}"
-assert "orf" in OmniToolRegistry._registry, f"Auto-registration: orf not found in {list(OmniToolRegistry._registry.keys())}"
+assert "opp" in OmniToolRegistry._registry, (
+    f"Auto-registration: opp not found in {list(OmniToolRegistry._registry.keys())}"
+)
+assert "ol" in OmniToolRegistry._registry, (
+    f"Auto-registration: ol not found in {list(OmniToolRegistry._registry.keys())}"
+)
+assert "orf" in OmniToolRegistry._registry, (
+    f"Auto-registration: orf not found in {list(OmniToolRegistry._registry.keys())}"
+)

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
-import typer
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
+
+pytestmark = pytest.mark.e2e
 
 runner = CliRunner()
 

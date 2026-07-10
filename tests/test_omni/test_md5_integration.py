@@ -1,9 +1,8 @@
 """Tests for MD5 file-tracking functions with pipeline_md5.json format."""
+
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
 
 from automedia.omni.md5_integration import (
     OMNI_MD5_FILENAME,
@@ -90,7 +89,9 @@ class TestGetSetMd5:
             if key in state.get(section, {}):
                 found = True
                 break
-        assert found, f"File key {key} not found in any omni_* section of state: {list(state.keys())}"
+        assert found, (
+            f"File key {key} not found in any omni_* section of state: {list(state.keys())}"
+        )
 
 
 class TestHasChanged:

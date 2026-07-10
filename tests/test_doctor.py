@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from automedia.core.doctor import Doctor
-
 
 # ===================================================================
 # Fixtures
@@ -83,7 +82,9 @@ class TestDoctorGetVersion:
             assert ver is None
 
     def test_returns_none_on_timeout(self, doctor: Doctor):
-        with patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=1)):
+        with patch.object(
+            subprocess, "run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=1)
+        ):
             ver = doctor._get_version(["slow-cmd"])
             assert ver is None
 

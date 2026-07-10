@@ -12,10 +12,7 @@ Scenarios
 
 from __future__ import annotations
 
-import pytest
-
 from automedia.manifests.brand_profile_schema import BrandProfile
-
 
 # =====================================================================
 # Helpers
@@ -189,8 +186,11 @@ class TestReturnStructure:
 
         config = resolve_language_config(_ZH_PROFILE, default_lang="zh")
         expected_keys = {
-            "tts_voice", "whisper_lang", "cta_template",
-            "blocked_words", "date_format",
+            "tts_voice",
+            "whisper_lang",
+            "cta_template",
+            "blocked_words",
+            "date_format",
         }
         assert set(config.keys()) == expected_keys
 

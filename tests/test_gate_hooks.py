@@ -14,9 +14,7 @@ class TestGateHookProtocol:
         """A conforming hook must return None from before_gate."""
 
         class ConcreteHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 return None
 
             def after_gate(
@@ -43,9 +41,7 @@ class TestGateHookProtocol:
         """A conforming hook must return None from after_gate."""
 
         class ConcreteHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 return None
 
             def after_gate(
@@ -72,9 +68,7 @@ class TestGateHookProtocol:
         """A conforming hook must return None from on_gate_failed."""
 
         class ConcreteHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 return None
 
             def after_gate(
@@ -101,9 +95,7 @@ class TestGateHookProtocol:
         """@runtime_checkable enables isinstance check for conforming objects."""
 
         class GoodHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 pass
 
             def after_gate(
@@ -128,9 +120,7 @@ class TestGateHookProtocol:
         """An object missing required methods is NOT a GateHook."""
 
         class BadHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 pass
 
             # missing after_gate and on_gate_failed
@@ -151,27 +141,17 @@ class TestGateObserver:
 
     def test_after_gate_returns_none(self) -> None:
         """Default after_gate returns None."""
-        assert (
-            GateObserver().after_gate("my_gate", {"key": "val"}, {"ok": True})
-            is None
-        )
+        assert GateObserver().after_gate("my_gate", {"key": "val"}, {"ok": True}) is None
 
     def test_on_gate_failed_returns_none(self) -> None:
         """Default on_gate_failed returns None."""
-        assert (
-            GateObserver().on_gate_failed(
-                "my_gate", {"key": "val"}, ValueError("bad")
-            )
-            is None
-        )
+        assert GateObserver().on_gate_failed("my_gate", {"key": "val"}, ValueError("bad")) is None
 
     def test_subclass_can_override_single_method(self) -> None:
         """Users should be able to subclass GateObserver and override only what they need."""
 
         class MyHook(GateObserver):
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 self.called = True
                 return super().before_gate(gate_name, context)
 
@@ -191,9 +171,7 @@ class TestContextAndResultPassing:
         """before_gate receives the exact context dict."""
 
         class CaptureHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 self.ctx = context
 
             def after_gate(
@@ -222,9 +200,7 @@ class TestContextAndResultPassing:
         """after_gate receives the exact context and result dicts."""
 
         class CaptureHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 pass
 
             def after_gate(
@@ -255,9 +231,7 @@ class TestContextAndResultPassing:
         """on_gate_failed receives the exact context and exception."""
 
         class CaptureHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 pass
 
             def after_gate(
@@ -293,15 +267,11 @@ class TestContextAndResultPassing:
         ],
         ids=["before_gate", "after_gate", "on_gate_failed"],
     )
-    def test_all_methods_return_none(
-        self, method: str, args: tuple[Any, ...]
-    ) -> None:
+    def test_all_methods_return_none(self, method: str, args: tuple[Any, ...]) -> None:
         """All three GateHook methods must return None."""
 
         class FullHook:
-            def before_gate(
-                self, gate_name: str, context: dict[str, Any]
-            ) -> None:
+            def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
                 return None
 
             def after_gate(

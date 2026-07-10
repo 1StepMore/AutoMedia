@@ -4,21 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
+from automedia.gates.base import BaseGate, _registry
 from automedia.gates.copy_review import (
-    G2CopyReview,
     _CHECK_NAMES,
-    _build_result,
+    G2CopyReview,
     _check_clarity,
-    _check_tone,
-    _check_so_what,
     _check_evidence,
+    _check_so_what,
     _check_specificity,
+    _check_tone,
     _rewrite_content,
 )
-from automedia.gates.base import BaseGate, _registry
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -222,7 +218,9 @@ class TestG2RealEvidence:
     """Real detection of unsupported claims."""
 
     def test_claim_with_data_passes(self) -> None:
-        content = "Studies show this is the best approach. Data from 2024 confirms a 25% improvement."
+        content = (
+            "Studies show this is the best approach. Data from 2024 confirms a 25% improvement."
+        )
         result = _check_evidence(content)
         assert result["passed"] is True
 
@@ -248,7 +246,10 @@ class TestG2RealSpecificity:
         assert "abstract" in result["detail"]
 
     def test_abstract_with_concrete_passes(self) -> None:
-        content = "Our innovative approach cut costs by 40% in 3 months, for example in the Berlin office."
+        content = (
+            "Our innovative approach cut costs by 40% in 3 months,"
+            " for example in the Berlin office."
+        )
         result = _check_specificity(content)
         assert result["passed"] is True
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.mp3_vs_srt import V5Mp3VsSrt, _build_result, _CHECK_NAMES, _strip_srt_timestamps
 from automedia.gates.base import BaseGate, _registry
-
+from automedia.gates.mp3_vs_srt import (
+    _CHECK_NAMES,
+    V5Mp3VsSrt,
+    _strip_srt_timestamps,
+)
 
 _SRT_SAMPLE = """\
 1
@@ -72,7 +73,9 @@ class TestV5MockDriven:
         assert len(result["checks"]) == 3
 
     def test_diff_failure(self) -> None:
-        result = V5Mp3VsSrt().execute(_make_context(mock_results=_fail_check("whisper_vs_srt_diff")))
+        result = V5Mp3VsSrt().execute(
+            _make_context(mock_results=_fail_check("whisper_vs_srt_diff"))
+        )
         assert result["passed"] is False
 
     def test_srt_empty_failure(self) -> None:
@@ -91,18 +94,22 @@ class TestV5MockDriven:
 
 class TestV5RealLogic:
     def test_identical_text_high_similarity(self) -> None:
-        result = V5Mp3VsSrt().execute(_make_context(
-            whisper_text="hello world test",
-            srt_text="1\n00:00:01,000 --> 00:00:02,000\nhello world test\n",
-        ))
+        result = V5Mp3VsSrt().execute(
+            _make_context(
+                whisper_text="hello world test",
+                srt_text="1\n00:00:01,000 --> 00:00:02,000\nhello world test\n",
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "whisper_vs_srt_diff")
         assert chk["passed"] is True
 
     def test_different_text_low_similarity(self) -> None:
-        result = V5Mp3VsSrt().execute(_make_context(
-            whisper_text="completely different text about cats",
-            srt_text="1\n00:00:01,000 --> 00:00:02,000\nhello world test\n",
-        ))
+        result = V5Mp3VsSrt().execute(
+            _make_context(
+                whisper_text="completely different text about cats",
+                srt_text="1\n00:00:01,000 --> 00:00:02,000\nhello world test\n",
+            )
+        )
         chk = next(c for c in result["checks"] if c["name"] == "whisper_vs_srt_diff")
         assert chk["passed"] is False
 

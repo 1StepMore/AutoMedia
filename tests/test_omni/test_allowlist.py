@@ -77,10 +77,12 @@ class TestLoadAllowlist:
         config_dir.mkdir()
         config_file = config_dir / "omni_allowlist.yaml"
         config_file.write_text(
-            yaml.dump({
-                "allowed_paths": ["/data/media", "/data/cache"],
-                "write_paths": ["/data/cache"],
-            }),
+            yaml.dump(
+                {
+                    "allowed_paths": ["/data/media", "/data/cache"],
+                    "write_paths": ["/data/cache"],
+                }
+            ),
             encoding="utf-8",
         )
 

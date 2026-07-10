@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from automedia.gates.tts_brand_asset import V4TTSBrandAsset, _build_result, _CHECK_NAMES
 from automedia.gates.base import BaseGate, _registry
+from automedia.gates.tts_brand_asset import _CHECK_NAMES, V4TTSBrandAsset
 
 
 def _make_context(
@@ -22,7 +20,9 @@ def _make_context(
         "voice_id": voice_id,
         "expected_voice_id": expected_voice_id,
         "speaking_rate": speaking_rate,
-        "segments": segments if segments is not None else [
+        "segments": segments
+        if segments is not None
+        else [
             {"voice_params": {"pitch": 1.0, "speed": 1.0}},
             {"voice_params": {"pitch": 1.0, "speed": 1.0}},
         ],
@@ -66,7 +66,9 @@ class TestV4MockDriven:
         assert len(result["checks"]) == 3
 
     def test_voice_id_failure(self) -> None:
-        result = V4TTSBrandAsset().execute(_make_context(mock_results=_fail_check("voice_id_match")))
+        result = V4TTSBrandAsset().execute(
+            _make_context(mock_results=_fail_check("voice_id_match"))
+        )
         assert result["passed"] is False
 
     def test_speaking_rate_failure(self) -> None:
@@ -74,7 +76,9 @@ class TestV4MockDriven:
         assert result["passed"] is False
 
     def test_voice_consistency_failure(self) -> None:
-        result = V4TTSBrandAsset().execute(_make_context(mock_results=_fail_check("voice_consistency")))
+        result = V4TTSBrandAsset().execute(
+            _make_context(mock_results=_fail_check("voice_consistency"))
+        )
         assert result["passed"] is False
 
     def test_all_checks_fail(self) -> None:

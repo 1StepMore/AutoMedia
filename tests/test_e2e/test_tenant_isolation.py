@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from automedia.tenant.audit import AuditLog
 from automedia.tenant.manager import TenantManager
-from automedia.tenant.rbac import ROLE_PERMISSIONS, ROLES, check_permission
+from automedia.tenant.rbac import check_permission
+
+pytestmark = pytest.mark.e2e
 
 
 class TestTenantFileIsolation:
@@ -34,7 +38,7 @@ class TestTenantFileIsolation:
         tm = TenantManager()
         ws = tm.create_workspace("E2E-Test")
         tid = ws["workspace_id"]
-        expected = str(TenantManager.get_tenant_dir(tid))
+        str(TenantManager.get_tenant_dir(tid))
         assert tm.list_workspaces()[0]["workspace_id"] == tid
 
 

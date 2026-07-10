@@ -19,7 +19,6 @@ import pytest
 
 from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -103,9 +102,7 @@ class TestAutomatedPreset:
         for node_name, exec_type in self.AUTOMATED_MAP.items():
             if exec_type == "agent":
                 result = executor.execute(node_name, agent, {"idea": "test"})
-                assert result is not None, (
-                    f"Agent node {node_name!r} returned None"
-                )
+                assert result is not None, f"Agent node {node_name!r} returned None"
                 assert isinstance(result, DecisionArtifact)
 
     def test_human_node_blocks(self) -> None:
@@ -117,7 +114,9 @@ class TestAutomatedPreset:
         agent = _StubAgent(name="test")
 
         result = executor.execute(
-            "brand_questionnaire", agent, {"idea": "test"},
+            "brand_questionnaire",
+            agent,
+            {"idea": "test"},
         )
         assert result is None
         assert "brand_questionnaire" in executor.pending_nodes()
@@ -200,9 +199,7 @@ class TestSemiAutomatedPreset:
         ]
         for node_name in decision_nodes:
             result = executor.execute(node_name, agent, {"idea": "test"})
-            assert result is None, (
-                f"Decision node {node_name!r} should block, got artifact"
-            )
+            assert result is None, f"Decision node {node_name!r} should block, got artifact"
 
     def test_execution_nodes_run_immediately(self) -> None:
         """Execution nodes return artifact immediately (no block)."""
@@ -215,9 +212,7 @@ class TestSemiAutomatedPreset:
         execution_nodes = ["market_research", "competitor_analysis"]
         for node_name in execution_nodes:
             result = executor.execute(node_name, agent, {"idea": "test"})
-            assert result is not None, (
-                f"Execution node {node_name!r} should not block"
-            )
+            assert result is not None, f"Execution node {node_name!r} should not block"
             assert isinstance(result, DecisionArtifact)
 
     def test_pending_contains_all_human_nodes(self) -> None:
@@ -229,9 +224,7 @@ class TestSemiAutomatedPreset:
         agent = _StubAgent(name="test")
 
         human_nodes = [
-            name
-            for name, exec_type in self.SEMI_AUTOMATED_MAP.items()
-            if exec_type == "human"
+            name for name, exec_type in self.SEMI_AUTOMATED_MAP.items() if exec_type == "human"
         ]
 
         for node_name in self.SEMI_AUTOMATED_MAP:
@@ -240,9 +233,7 @@ class TestSemiAutomatedPreset:
         pending = executor.pending_nodes()
         assert len(pending) == len(human_nodes)
         for name in human_nodes:
-            assert name in pending, (
-                f"Human node {name!r} missing from pending"
-            )
+            assert name in pending, f"Human node {name!r} missing from pending"
 
 
 # ===================================================================
@@ -325,21 +316,21 @@ class TestOrchestratorIntegration:
         # Our implementation should make that import succeed.
         from automedia.decision.orchestrator import NodeExecutor as OrchNE
 
-        assert OrchNE is not None, (
-            "NodeExecutor import in orchestrator.py returned None"
-        )
+        assert OrchNE is not None, "NodeExecutor import in orchestrator.py returned None"
         assert OrchNE is not None  # ensure it's the real class
 
     def test_orchestrator_collaboration_mixed_mode(self) -> None:
         """Simulates an orchestrator workflow mixing agent and human nodes."""
-        from automedia.hitl.executor import NodeExecutor
-        from automedia.decision.diagnostic import DiagnosticAgent
         from automedia.decision.build import BrandPositioningAgent
+        from automedia.decision.diagnostic import DiagnosticAgent
+        from automedia.hitl.executor import NodeExecutor
 
-        config = _build_config({
-            "diagnosis": "agent",
-            "brand_positioning": "human",
-        })
+        config = _build_config(
+            {
+                "diagnosis": "agent",
+                "brand_positioning": "human",
+            }
+        )
         executor = NodeExecutor(config)
 
         diag = DiagnosticAgent()
@@ -372,10 +363,12 @@ class TestOrchestratorIntegration:
         """Orchestrator can skip some nodes and approve others."""
         from automedia.hitl.executor import NodeExecutor
 
-        config = _build_config({
-            "node_a": "human",
-            "node_b": "human",
-        })
+        config = _build_config(
+            {
+                "node_a": "human",
+                "node_b": "human",
+            }
+        )
         executor = NodeExecutor(config)
         agent = _StubAgent()
 

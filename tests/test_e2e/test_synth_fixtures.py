@@ -28,7 +28,6 @@ from tests.fixtures.synth.gate_contexts import (
     load_brand_profile,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -77,6 +76,7 @@ def _normalize_brand_profile(raw: dict[str, Any]) -> dict[str, Any]:
 def _build_gates(names: list[str]) -> list[BaseGate]:
     """Instantiate registered gates by name in order."""
     import automedia.gates  # noqa: F401 — ensure all gates are registered
+
     return [_registry.get(n)() for n in names]
 
 
@@ -180,17 +180,28 @@ class TestSynthGateContexts:
         ctx = build_full_pipeline_context()
         # Spot-check keys needed by specific gates
         required_keys = [
-            "topic", "content", "brand_profile", "_mock_results",
-            "title", "digest", "tags",  # G4
+            "topic",
+            "content",
+            "brand_profile",
+            "_mock_results",
+            "title",
+            "digest",
+            "tags",  # G4
             "lint_result",  # V0
             "entries",  # V1
-            "transcription", "audio_path",  # V2
-            "voice_id", "expected_voice_id",  # V4
-            "whisper_text", "srt_text",  # V5
-            "avg_brightness", "contrast",  # V6
+            "transcription",
+            "audio_path",  # V2
+            "voice_id",
+            "expected_voice_id",  # V4
+            "whisper_text",
+            "srt_text",  # V5
+            "avg_brightness",
+            "contrast",  # V6
             "publish_log",  # L1
-            "archive_status", "force",  # L2
-            "platforms", "expected_platforms",  # L3
+            "archive_status",
+            "force",  # L2
+            "platforms",
+            "expected_platforms",  # L3
         ]
         for key in required_keys:
             assert key in ctx, f"Missing key {key!r} in full pipeline context"
@@ -315,9 +326,7 @@ class TestSynthFullPipeline:
         assert len(results) == len(_AUTO_GATE_NAMES)
         for i, result in enumerate(results):
             gate_name = _AUTO_GATE_NAMES[i]
-            assert result.get("passed") is True, (
-                f"Gate {gate_name} failed: {result}"
-            )
+            assert result.get("passed") is True, f"Gate {gate_name} failed: {result}"
 
     def test_full_pipeline_text_only_mode(
         self,
@@ -343,9 +352,7 @@ class TestSynthFullPipeline:
         from automedia.pipelines.runner import _AUTO_GATE_NAMES
 
         fail_mock = build_single_fail_mock("brand_name_present")
-        ctx = build_full_pipeline_context(
-            mock_results=fail_mock, project_dir=str(tmp_path)
-        )
+        ctx = build_full_pipeline_context(mock_results=fail_mock, project_dir=str(tmp_path))
 
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)
@@ -367,9 +374,7 @@ class TestSynthFullPipeline:
         from automedia.pipelines.runner import _AUTO_GATE_NAMES
 
         fail_mock = build_single_fail_mock("overused_adverbs")
-        ctx = build_full_pipeline_context(
-            mock_results=fail_mock, project_dir=str(tmp_path)
-        )
+        ctx = build_full_pipeline_context(mock_results=fail_mock, project_dir=str(tmp_path))
 
         gates = _build_gates(_AUTO_GATE_NAMES)
         engine = GateEngine(gates)

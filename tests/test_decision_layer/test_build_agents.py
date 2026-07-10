@@ -12,10 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from automedia.decision.base import DecisionArtifact
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -207,9 +204,18 @@ class TestAudienceSegmentationAgent:
         agent = AudienceSegmentationAgent()
         result = agent.execute(MIN_CONTEXT)
         required = {
-            "name", "age_range", "gender", "income_level", "location",
-            "values", "interests", "challenges", "content_preferences",
-            "platforms", "pain_points", "content_resonance_map",
+            "name",
+            "age_range",
+            "gender",
+            "income_level",
+            "location",
+            "values",
+            "interests",
+            "challenges",
+            "content_preferences",
+            "platforms",
+            "pain_points",
+            "content_resonance_map",
         }
         for idx, p in enumerate(result.content["personas"]):
             missing = required - set(p.keys())
@@ -341,10 +347,10 @@ class TestBuildPackageExports:
 
     def test_all_agents_importable(self) -> None:
         from automedia.decision.build import (
-            BrandPositioningAgent,
-            MarketResearchAgent,
             AudienceSegmentationAgent,
+            BrandPositioningAgent,
             CompetitorAnalysisAgent,
+            MarketResearchAgent,
         )
 
         assert BrandPositioningAgent is not None
@@ -355,10 +361,10 @@ class TestBuildPackageExports:
     def test_all_agents_are_subclass_of_base(self) -> None:
         from automedia.decision.base import BaseDecisionAgent
         from automedia.decision.build import (
-            BrandPositioningAgent,
-            MarketResearchAgent,
             AudienceSegmentationAgent,
+            BrandPositioningAgent,
             CompetitorAnalysisAgent,
+            MarketResearchAgent,
         )
 
         for cls in (

@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
+import importlib
+import os
 from pathlib import Path
 
-import pytest
 import yaml
 
+import automedia.core.credential_loader as cl
 from automedia.core.credential_loader import (
     load_credential,
     resolve_api_key,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_home(monkeypatch, tmp_path: Path, subdir: str = ".automedia") -> Path:
     """Point ``Path.home()`` to *tmp_path/home* and create ``~/.automedia``.
@@ -101,9 +103,7 @@ class TestLoadCredential:
         """When keyring is importable and has the credential, it is returned."""
         _mock_keyring(
             monkeypatch,
-            lambda service, username: "ring-secret"
-            if username == "mykey"
-            else None,
+            lambda service, username: "ring-secret" if username == "mykey" else None,
         )
         monkeypatch.setenv("AUTOMEDIA_NOPE", "")  # ensure env is empty
         assert load_credential("mykey") == "ring-secret"
@@ -118,9 +118,7 @@ class TestLoadCredential:
         """A keyring that raises is silently skipped."""
         _mock_keyring(
             monkeypatch,
-            lambda service, username: (_ for _ in ()).throw(
-                RuntimeError("broken")
-            ),
+            lambda service, username: (_ for _ in ()).throw(RuntimeError("broken")),
         )
         assert load_credential("mykey") is None
 
@@ -312,3 +310,72 @@ class TestResolveApiKey:
         """resolve_api_key never raises; returns None on all failure paths."""
         _mock_home(monkeypatch, tmp_path)
         assert resolve_api_key("nonexistent") is None
+
+
+# ---------------------------------------------------------------------------
+# .env loading security (no CWD auto-load)
+# ---------------------------------------------------------------------------
+
+
+class TestDotenvLoading:
+    """Verify that .env is NOT auto-loaded from CWD.
+
+    The module should load .env from ``~/.automedia/.env`` (default) or from
+    the path specified by ``AUTOMEDIA_DOTENV_PATH`` (override).  A ``.env`` in
+    the current working directory must never be auto-loaded — that is a
+    security risk (malicious .env injection).
+    """
+
+    def test_cwd_dotenv_not_loaded(self, monkeypatch, tmp_path):
+        """A .env file in CWD must NOT be auto-loaded at import time."""
+        # Create a .env in a temp directory with a unique test key
+        cwd_dir = tmp_path / "cwd"
+        cwd_dir.mkdir()
+        (cwd_dir / ".env").write_text("SECURITY_TEST_CWD_VAR=injected\n")
+
+        # Chdir to that directory; ensure no ~/.automedia/.env exists
+        monkeypatch.chdir(cwd_dir)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+
+        # Reload the module to re-trigger import-time .env loading
+        importlib.reload(cl)
+
+        # The CWD .env must NOT have been loaded
+        assert os.environ.get("SECURITY_TEST_CWD_VAR") is None
+
+    def test_automedia_dotenv_loaded(self, monkeypatch, tmp_path):
+        """~/.automedia/.env is loaded when it exists (default location)."""
+        # Set up fake home with ~/.automedia/.env
+        fake_home = tmp_path / "fake_home"
+        automedia_dir = fake_home / ".automedia"
+        automedia_dir.mkdir(parents=True)
+        (automedia_dir / ".env").write_text("SECURITY_TEST_HOME_VAR=loaded_from_automedia\n")
+
+        monkeypatch.setattr(Path, "home", lambda: fake_home)
+        empty_cwd = tmp_path / "empty_cwd"
+        empty_cwd.mkdir()
+        monkeypatch.chdir(empty_cwd)
+        monkeypatch.delenv("AUTOMEDIA_DOTENV_PATH", raising=False)
+
+        importlib.reload(cl)
+
+        assert os.environ.get("SECURITY_TEST_HOME_VAR") == "loaded_from_automedia"
+
+    def test_dotenv_path_override(self, monkeypatch, tmp_path):
+        """AUTOMEDIA_DOTENV_PATH overrides the default .env location."""
+        # Create a .env at a custom non-standard path
+        custom_path = tmp_path / "custom" / "my.env"
+        custom_path.parent.mkdir(parents=True)
+        custom_path.write_text("SECURITY_TEST_CUSTOM_VAR=from_custom_path\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(custom_path))
+
+        # Ensure ~/.automedia/.env does not exist to avoid ambiguity
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        empty_cwd = tmp_path / "empty_cwd"
+        empty_cwd.mkdir()
+        monkeypatch.chdir(empty_cwd)
+
+        importlib.reload(cl)
+
+        assert os.environ.get("SECURITY_TEST_CUSTOM_VAR") == "from_custom_path"

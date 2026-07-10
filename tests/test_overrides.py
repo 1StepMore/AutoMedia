@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 import yaml
 
 from automedia.core.overrides import OverridesLoader, _load_j2_files, _load_yaml_files
-
 
 # ---------------------------------------------------------------------------
 # _load_yaml_files helper
@@ -129,19 +127,25 @@ class TestOverridesLoader:
         assert loader.load_rules() == []
 
     def test_load_rules_returns_all(self, tmp_path):
-        loader = self._make_loader(tmp_path, rules={
-            "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
-            "r2.yaml": yaml.dump({"gate": "G1", "brand": "Beta"}),
-        })
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
+                "r2.yaml": yaml.dump({"gate": "G1", "brand": "Beta"}),
+            },
+        )
         rules = loader.load_rules()
         assert len(rules) == 2
 
     def test_load_rules_brand_filter(self, tmp_path):
-        loader = self._make_loader(tmp_path, rules={
-            "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
-            "r2.yaml": yaml.dump({"gate": "G1", "brand": "Beta"}),
-            "r3.yaml": yaml.dump({"gate": "G2"}),  # global (no brand)
-        })
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
+                "r2.yaml": yaml.dump({"gate": "G1", "brand": "Beta"}),
+                "r3.yaml": yaml.dump({"gate": "G2"}),  # global (no brand)
+            },
+        )
         rules = loader.load_rules(brand="Acme")
         assert len(rules) == 2  # Acme + global
         brands = {r.get("brand") for r in rules}
@@ -149,16 +153,22 @@ class TestOverridesLoader:
         assert None in brands  # global rule has no brand key
 
     def test_load_rules_brand_case_insensitive(self, tmp_path):
-        loader = self._make_loader(tmp_path, rules={
-            "r1.yaml": yaml.dump({"gate": "G0", "brand": "ACME"}),
-        })
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "r1.yaml": yaml.dump({"gate": "G0", "brand": "ACME"}),
+            },
+        )
         rules = loader.load_rules(brand="acme")
         assert len(rules) == 1
 
     def test_load_rules_brand_no_match(self, tmp_path):
-        loader = self._make_loader(tmp_path, rules={
-            "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
-        })
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "r1.yaml": yaml.dump({"gate": "G0", "brand": "Acme"}),
+            },
+        )
         rules = loader.load_rules(brand="OtherBrand")
         assert len(rules) == 0
 
@@ -169,10 +179,13 @@ class TestOverridesLoader:
         assert loader.load_prompts() == {}
 
     def test_load_prompts_returns_all_global(self, tmp_path):
-        loader = self._make_loader(tmp_path, prompts={
-            "greet.j2": "Hello {{ name }}",
-            "farewell.j2": "Goodbye {{ name }}",
-        })
+        loader = self._make_loader(
+            tmp_path,
+            prompts={
+                "greet.j2": "Hello {{ name }}",
+                "farewell.j2": "Goodbye {{ name }}",
+            },
+        )
         prompts = loader.load_prompts()
         assert prompts == {
             "greet": "Hello {{ name }}",

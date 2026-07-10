@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ from automedia.cli.app import app
 from automedia.pool.db import PoolDB
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-JOBS_YAML = PROJECT_ROOT / "automedia" / "cron" / "jobs.yaml"
+JOBS_YAML = PROJECT_ROOT / "src" / "automedia" / "cron" / "jobs.yaml"
 
 EXPECTED_JOBS = ["hot-collection", "semantic-audit", "publish-check", "watchdog"]
 REQUIRED_FIELDS = {"name", "schedule", "command", "on_failure", "timeout_s", "description"}
@@ -171,12 +171,14 @@ class TestCronPoolScore:
     def _seed_pending(self, db_path: Path, count: int = 3) -> None:
         db = PoolDB(db_path)
         for i in range(count):
-            db.add_topic({
-                "title": f"AI video generation breakthrough {i}",
-                "source": "weibo",
-                "score": 8.0 + i * 0.5,
-                "status": "pending",
-            })
+            db.add_topic(
+                {
+                    "title": f"AI video generation breakthrough {i}",
+                    "source": "weibo",
+                    "score": 8.0 + i * 0.5,
+                    "status": "pending",
+                }
+            )
         db.close()
 
     def test_score_updates_pending(self, e2e_env: dict[str, Any]):
@@ -218,13 +220,15 @@ class TestCronPoolPrune:
 
     def _seed_old_and_fresh(self, db_path: Path) -> tuple[int, int]:
         db = PoolDB(db_path)
-        old_id = db.add_topic({
-            "title": "Old stale topic",
-            "status": "pending",
-        })
+        old_id = db.add_topic(
+            {
+                "title": "Old stale topic",
+                "status": "pending",
+            }
+        )
         db.conn.execute(
             "UPDATE topics SET created_at = ? WHERE id = ?",
-            ((datetime.now(timezone.utc) - timedelta(days=30)).isoformat(), old_id),
+            ((datetime.now(UTC) - timedelta(days=30)).isoformat(), old_id),
         )
         db.conn.commit()
 
@@ -233,7 +237,7 @@ class TestCronPoolPrune:
         selected_id = db.add_topic({"title": "Selected old", "status": "selected"})
         db.conn.execute(
             "UPDATE topics SET created_at = ? WHERE id = ?",
-            ((datetime.now(timezone.utc) - timedelta(days=30)).isoformat(), selected_id),
+            ((datetime.now(UTC) - timedelta(days=30)).isoformat(), selected_id),
         )
         db.conn.commit()
 
@@ -335,8 +339,18 @@ class TestCronCheckHealth:
     def test_check_health_missing_pool_db(self, e2e_env: dict[str, Any]):
         result = runner.invoke(app, ["cron", "check-health"])
         assert "Health Check" in result.output
-        pool_lines = [l for l in result.output.splitlines() if "pool.db" in l.lower() or "pool" in l.lower()]
-        assert any("✗" in l or "not" in l.lower() or "error" in l.lower() for l in pool_lines) or result.exit_code != 0
+        pool_lines = [
+            line
+            for line in result.output.splitlines()
+            if "pool.db" in line.lower() or "pool" in line.lower()
+        ]
+        assert (
+            any(
+                "✗" in line or "not" in line.lower() or "error" in line.lower()
+                for line in pool_lines
+            )
+            or result.exit_code != 0
+        )
 
     def test_check_health_missing_config_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         empty = tmp_path / "empty"

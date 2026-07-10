@@ -5,12 +5,9 @@ All fixtures produce synthetic data — zero production project data.
 
 from __future__ import annotations
 
-import os
 from typing import Any
-from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # pytest hooks
@@ -21,9 +18,7 @@ def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers for E2E and red-line tests."""
     config.addinivalue_line("markers", "e2e: end-to-end pipeline integration tests")
     config.addinivalue_line("markers", "redline: red-line enforcement tests")
-    config.addinivalue_line(
-        "markers", "slow: tests that take more than a few seconds"
-    )
+    config.addinivalue_line("markers", "slow: tests that take more than a few seconds")
 
 
 # ---------------------------------------------------------------------------
@@ -53,9 +48,7 @@ def mock_config_dir(tmp_path: Any) -> Any:
     config_dir.mkdir(exist_ok=True)
     config_file = config_dir / "config.yaml"
     config_file.write_text(
-        "brand: TestBrand\n"
-        "tenant_id: test\n"
-        "mode: auto\n",
+        "brand: TestBrand\ntenant_id: test\nmode: auto\n",
         encoding="utf-8",
     )
     return config_dir
@@ -119,54 +112,118 @@ def sample_gate_context(
     calling any LLM or external service.
     """
     _pass = {"passed": True, "detail": "mock-pass"}
-    _all_pass = {name: _pass for name in [
-        # pre-gate
-        "topic_not_charity", "topic_not_gov_tool", "topic_not_investment",
-        "topic_not_finance", "topic_not_entertainment", "topic_length_valid",
-        # G0
-        "source_trace", "number_verification", "timeline", "quotes", "entities",
-        # G1
-        "overused_adverbs", "hollow_intros", "vague_subjects",
-        "filler_connectors", "long_conjunctions", "template_conclusions",
-        "overacademic_vocabulary", "absolute_assertions", "repetitive_structures",
-        # G2
-        "clarity", "tone", "so_what", "evidence", "specificity",
-        # G3
-        "brand_name_present", "cta_present", "brand_identity",
-        "blocked_words_absent", "cta_direction_sync", "bridge_sentence",
-        # G4
-        "title_length", "digest_length", "no_markdown", "cover_exists",
-        "tag_count", "body_image_count", "sensitive_words",
-        # G5
-        "tag_integrity", "no_markdown", "tag_count",
-        # V0
-        "lint_errors", "lint_warnings", "syntax_valid",
-        # V1
-        "mid_frame_valid", "end_silence_valid", "all_entries_passed", "red_line_6",
-        # V2
-        "whisper_transcription", "transcription_length", "md5_integrity", "red_line_7",
-        # V3
-        "keyword_coverage", "source_alignment", "no_hallucination",
-        # V4
-        "voice_id_match", "speaking_rate", "voice_consistency",
-        # V5
-        "whisper_vs_srt_diff", "srt_not_empty", "whisper_not_empty",
-        # V6
-        "subtitle_region_brightness", "subtitle_region_contrast",
-        "subtitle_visible", "red_line_5",
-        # V7
-        "file_exists", "file_size_valid", "md5_verified",
-        "whisper_full", "format_valid", "duration_valid",
-        # L1
-        "topic_present", "content_present", "media_paths_valid",
-        "platform_valid", "version_valid", "timestamp_valid",
-        # L2
-        "archive_status", "force_flag", "archive_path_exists",
-        "archive_metadata_complete", "archive_version_valid", "output_directory_exists",
-        # L3
-        "all_platforms_present", "no_platform_splitting", "material_integrity",
-        "cross_platform_consistency", "format_completeness", "metadata_integrity",
-    ]}
+    _all_pass = {
+        name: _pass
+        for name in [
+            # pre-gate
+            "topic_not_charity",
+            "topic_not_gov_tool",
+            "topic_not_investment",
+            "topic_not_finance",
+            "topic_not_entertainment",
+            "topic_length_valid",
+            # G0
+            "source_trace",
+            "number_verification",
+            "timeline",
+            "quotes",
+            "entities",
+            # G1
+            "overused_adverbs",
+            "hollow_intros",
+            "vague_subjects",
+            "filler_connectors",
+            "long_conjunctions",
+            "template_conclusions",
+            "overacademic_vocabulary",
+            "absolute_assertions",
+            "repetitive_structures",
+            # G2
+            "clarity",
+            "tone",
+            "so_what",
+            "evidence",
+            "specificity",
+            # G3
+            "brand_name_present",
+            "cta_present",
+            "brand_identity",
+            "blocked_words_absent",
+            "cta_direction_sync",
+            "bridge_sentence",
+            # G4
+            "title_length",
+            "digest_length",
+            "no_markdown",
+            "cover_exists",
+            "tag_count",
+            "body_image_count",
+            "sensitive_words",
+            # G5
+            "tag_integrity",
+            "no_markdown",
+            "tag_count",
+            # V0
+            "lint_errors",
+            "lint_warnings",
+            "syntax_valid",
+            # V1
+            "mid_frame_valid",
+            "end_silence_valid",
+            "all_entries_passed",
+            "red_line_6",
+            # V2
+            "whisper_transcription",
+            "transcription_length",
+            "md5_integrity",
+            "red_line_7",
+            # V3
+            "keyword_coverage",
+            "source_alignment",
+            "no_hallucination",
+            # V4
+            "voice_id_match",
+            "speaking_rate",
+            "voice_consistency",
+            # V5
+            "whisper_vs_srt_diff",
+            "srt_not_empty",
+            "whisper_not_empty",
+            # V6
+            "subtitle_region_brightness",
+            "subtitle_region_contrast",
+            "subtitle_visible",
+            "red_line_5",
+            # V7
+            "file_exists",
+            "file_size_valid",
+            "md5_verified",
+            "whisper_full",
+            "format_valid",
+            "duration_valid",
+            # L1
+            "topic_present",
+            "content_present",
+            "media_paths_valid",
+            "platform_valid",
+            "version_valid",
+            "timestamp_valid",
+            # L2
+            "archive_status",
+            "force_flag",
+            "archive_path_exists",
+            "archive_metadata_complete",
+            "archive_version_valid",
+            "output_directory_exists",
+            # L3
+            "all_platforms_present",
+            "no_platform_splitting",
+            "material_integrity",
+            "cross_platform_consistency",
+            "format_completeness",
+            "metadata_integrity",
+        ]
+    }
 
     return {
         # Shared
@@ -179,26 +236,23 @@ def sample_gate_context(
         "brand_profile": sample_brand_profile,
         "source_data": sample_source_data,
         "_mock_results": _all_pass,
-
         # pre-gate
         # (topic is already set above)
-
         # G4 — WeChat checklist
         "title": "AI趋势",
         "digest": "AI trends 2025 overview",
         "cover_image": "https://example.com/cover.jpg",
         "tags": ["AI", "tech", "trends", "2025", "innovation"],
         "body_images": [
-            "<img src='a.jpg'>", "<img src='b.jpg'>", "<img src='c.jpg'>",
+            "<img src='a.jpg'>",
+            "<img src='b.jpg'>",
+            "<img src='c.jpg'>",
             "<img src='d.jpg'>",
         ],
-
         # G5 — HTML hard
         # (content and tags already set)
-
         # V0 — Lint
         "lint_result": {"errors": 0, "warnings": 0, "syntax_ok": True},
-
         # V1 — Vision QA
         "entries": [
             {
@@ -209,13 +263,11 @@ def sample_gate_context(
             }
             for i in range(5)
         ],
-
         # V2 — Pre-send whisper
         "transcription": "Full audio transcription text for testing purposes.",
         "audio_path": "/tmp/test_audio.mp3",
         "expected_md5": "",
         "full_audio": True,
-
         # V3 — Content semantic
         "source_keywords": ["AI", "technology", "trends", "2025", "production"],
         "content_keywords": ["AI", "technology", "trends", "2025", "production"],
@@ -224,7 +276,6 @@ def sample_gate_context(
             "Source 2 about content production.",
             "Source 3 about technology advances.",
         ],
-
         # V4 — TTS brand asset
         "voice_id": "brand_voice_001",
         "expected_voice_id": "brand_voice_001",
@@ -233,17 +284,16 @@ def sample_gate_context(
             {"voice_params": {"pitch": 0, "rate": 1.0}},
             {"voice_params": {"pitch": 0, "rate": 1.0}},
         ],
-
         # V5 — MP3 vs SRT
         "whisper_text": "Hello world, this is a test transcription.",
-        "srt_text": "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n",
-
+        "srt_text": (
+            "1\n00:00:00,000 --> 00:00:02,000\nHello world, this is a test transcription.\n"
+        ),
         # V6 — Subtitle render
         "avg_brightness": 128,
         "contrast": 150,
         "opacity": 1.0,
         "pixel_valid": True,
-
         # V7 — 6-step hard
         "required_files": [],
         "file_sizes": {},
@@ -254,7 +304,6 @@ def sample_gate_context(
         "actual_duration": 120.0,
         "expected_duration_min": 60.0,
         "expected_duration_max": 180.0,
-
         # L1 — Publish log schema
         "publish_log": {
             "topic": sample_topic,
@@ -264,7 +313,6 @@ def sample_gate_context(
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
         },
-
         # L2 — Archive validation
         "archive_status": "published",
         "force": True,
@@ -275,7 +323,6 @@ def sample_gate_context(
             "created_at": "2025-06-01T12:00:00",
         },
         "output_dir": "/tmp/output",
-
         # L3 — Platform integrity
         "platforms": ["wechat", "weibo"],
         "expected_platforms": ["wechat", "weibo"],

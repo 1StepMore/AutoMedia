@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import inspect
 import typing
-
-import pytest
 
 from automedia.omni.ol_adapter import OLAdapter, TranslationResult
 
@@ -76,6 +73,7 @@ def test_translate_graceful_on_missing_config() -> None:
     """translate() returns TranslationResult with warning instead of crashing."""
     adapter = OLAdapter()
     import os
+
     # Ensure OL_CONFIG_PATH points to a non-existent file
     bad_path = "/tmp/nonexistent_ol_config.yaml"
     os.environ["OL_CONFIG_PATH"] = bad_path

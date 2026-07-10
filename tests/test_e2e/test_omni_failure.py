@@ -25,6 +25,8 @@ from automedia.omni.opp_adapter import ExtractionResult
 from automedia.omni.registry import OmniToolRegistry
 from automedia.pool.collector import HotCollector
 
+pytestmark = pytest.mark.e2e
+
 # ===================================================================
 # Helpers  (mirror test_mcp_omni_roundtrip.py patterns)
 # ===================================================================
@@ -412,8 +414,8 @@ class TestORFBackfillFailure:
         mock_convert: MagicMock,
     ) -> None:
         """A failed convert does not leave orphan output files on disk."""
-        import tempfile
         import os
+        import tempfile
 
         mock_convert.side_effect = RuntimeError("ORF crashed")
 
@@ -434,9 +436,7 @@ class TestORFBackfillFailure:
         # didn't leave an output file with the expected suffix
         new_entries = entries_after - entries_before
         orphan_outputs = [e for e in new_entries if e.endswith(".pdf")]
-        assert len(orphan_outputs) == 0, (
-            f"Orphan output files detected: {orphan_outputs}"
-        )
+        assert len(orphan_outputs) == 0, f"Orphan output files detected: {orphan_outputs}"
 
 
 # ===================================================================
@@ -652,9 +652,7 @@ class TestPathAllowlistViolation:
         mock_require_allowed: MagicMock,
     ) -> None:
         """``_require_allowed`` raises ``PermissionError`` → graceful error dict."""
-        mock_require_allowed.side_effect = PermissionError(
-            "Path /blocked/doc.md is not allowed"
-        )
+        mock_require_allowed.side_effect = PermissionError("Path /blocked/doc.md is not allowed")
 
         result = extract_brief(
             file_path="/blocked/doc.md",

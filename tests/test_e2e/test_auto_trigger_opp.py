@@ -15,6 +15,7 @@ import pytest
 from automedia.omni.opp_adapter import ExtractionResult
 from automedia.pool.collector import HotCollector
 
+pytestmark = pytest.mark.e2e
 
 # ===================================================================
 # Fixtures
@@ -32,7 +33,10 @@ def mock_extract_success() -> MagicMock:
     """Patch OPPAdapter.extract to return a deterministic ExtractionResult."""
     result = ExtractionResult(
         md_content="# Extracted Title\n\nThis is the extracted content.",
-        manifest={"title": "Extracted Title", "segments": [{"index": 0, "text": "# Extracted Title"}]},
+        manifest={
+            "title": "Extracted Title",
+            "segments": [{"index": 0, "text": "# Extracted Title"}],
+        },
         xliff_path=None,
         skeleton_path=None,
         warnings=[],
@@ -187,7 +191,9 @@ class TestExtractFailure:
 
         result = collector.ingest_file(str(docx_path))
 
-        assert isinstance(result, ExtractionResult), f"Expected ExtractionResult, got {type(result)}"
+        assert isinstance(result, ExtractionResult), (
+            f"Expected ExtractionResult, got {type(result)}"
+        )
         assert result.md_content == ""
         assert result.manifest["source_file"] == str(docx_path)
         assert "Mock extraction failure" in result.manifest["error"]
@@ -201,9 +207,7 @@ class TestExtractFailure:
         def _crash(*args: object, **kwargs: object) -> object:
             raise ValueError("Unexpected crash")
 
-        monkeypatch.setattr(
-            "automedia.omni.opp_adapter.OPPAdapter.extract", _crash
-        )
+        monkeypatch.setattr("automedia.omni.opp_adapter.OPPAdapter.extract", _crash)
 
         docx_path = tmp_path / "crash.docx"
         docx_path.write_text("content")

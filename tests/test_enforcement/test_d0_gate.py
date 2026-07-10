@@ -12,15 +12,13 @@ Scenarios
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
 
-from automedia.decision.gates.d0_gate import D0Gate
 from automedia.decision import dependency
+from automedia.decision.gates.d0_gate import D0Gate
 
 
 @pytest.fixture
@@ -63,19 +61,23 @@ class TestD0GateMissingState:
 
     def test_missing_state_file_fails(self, empty_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(empty_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(empty_state_dir),
+            }
+        )
         assert result["passed"] is False
         assert result["status"] == "rl9_violation"
 
     def test_missing_state_has_error_message(self, empty_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(empty_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(empty_state_dir),
+            }
+        )
         assert "RL9" in result.get("error", "")
 
 
@@ -84,19 +86,23 @@ class TestD0GatePartialState:
 
     def test_partial_state_fails(self, partial_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(partial_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(partial_state_dir),
+            }
+        )
         assert result["passed"] is False
         assert result["status"] == "rl9_violation"
 
     def test_partial_state_lists_missing_nodes(self, partial_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(partial_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(partial_state_dir),
+            }
+        )
         assert "missing_nodes" in result
         assert len(result["missing_nodes"]) > 0
 
@@ -106,19 +112,23 @@ class TestD0GateCompleteState:
 
     def test_complete_state_passes(self, build_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(build_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(build_state_dir),
+            }
+        )
         assert result["passed"] is True
         assert result["status"] == "rl9_compliant"
 
     def test_complete_state_has_provenance(self, build_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(build_state_dir),
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(build_state_dir),
+            }
+        )
         assert "provenance" in result
         assert result["provenance"]["mode"] == "build"
 
@@ -128,11 +138,13 @@ class TestD0GateForceProvenance:
 
     def test_force_provenance_skips_check(self, empty_state_dir: Path) -> None:
         gate = D0Gate()
-        result = gate.execute({
-            "mode": "build",
-            "project_dir": str(empty_state_dir),
-            "force_provenance": True,
-        })
+        result = gate.execute(
+            {
+                "mode": "build",
+                "project_dir": str(empty_state_dir),
+                "force_provenance": True,
+            }
+        )
         assert result["passed"] is True
         assert result["status"] == "bypassed"
 
