@@ -25,6 +25,17 @@ _CHECK_NAMES: list[str] = [
 
 _MAX_WARNINGS: int = 10
 
+_EXPECTED_MAP: dict[str, str] = {
+    "lint_errors": "0 lint errors",
+    "lint_warnings": f"Lint warnings within {_MAX_WARNINGS}",
+    "syntax_valid": "Source syntax is valid",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
 
 # ---------------------------------------------------------------------------
 # Individual check functions
@@ -70,11 +81,24 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    # Build expected_vs_actual from first failing check, or first check if all pass
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "V0",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
