@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -13,14 +14,20 @@ from automedia.cli.app import app
 runner = CliRunner()
 
 
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from *text*."""
+    return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text)
+
+
 class TestInitOmniCommand:
     """Tests for ``automedia init --omni``."""
 
     def test_omni_flag_in_help(self) -> None:
         """``--help`` output includes the ``--omni`` flag."""
-        result = runner.invoke(app, ["init", "--help"], color=False)
+        result = runner.invoke(app, ["init", "--help"])
         assert result.exit_code == 0
-        assert "--omni" in result.output
+        clean = _strip_ansi(result.output)
+        assert "--omni" in clean
 
     def test_omni_creates_config_files(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -131,10 +138,11 @@ class TestInitOmniCommand:
             input="proxy\n50\n",
         )
         assert result.exit_code == 0
-        assert "Omni configuration written" in result.output
-        assert "omni_config.yaml" in result.output
-        assert "omni_allowlist.yaml" in result.output
-        assert "ol_config.yaml" in result.output
+        clean = _strip_ansi(result.output)
+        assert "Omni configuration written" in clean
+        assert "omni_config.yaml" in clean
+        assert "omni_allowlist.yaml" in clean
+        assert "ol_config.yaml" in clean
 
     def test_omni_creates_directory_if_not_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
