@@ -1,3 +1,8 @@
+---
+title: MCP systemd Setup
+description: Run the AutoMedia MCP server as a persistent systemd service with auto-restart on failure.
+---
+
 # MCP Server — systemd Service Setup
 
 Run the AutoMedia MCP server as a persistent systemd service so it stays

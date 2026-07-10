@@ -1,21 +1,29 @@
-# API 常见陷阱
+---
+title: API Gotchas
+description: Common pitfalls when using the AutoMedia API — drawn from the original SKILL.md and day-to-day development lessons.
+---
 
-本文档记录 AutoMedia API 使用中容易踩的坑, 源自原 SKILL.md 和日常开发中的经验教训。
+# Common API Pitfalls
 
-## 路径与目录
+This document records common pitfalls when using the AutoMedia API, drawn from
+the original SKILL.md and day-to-day development experience.
 
-### `Project.init()` 的 topic 参数会被 slugify
+## Paths and Directories
+
+### `Project.init()` slugifies the topic parameter
 
 ```python
-# topic 会经过 slugify: 转小写, 去除非 ASCII, 连字符化
-p = Project.init("Hello World 项目启动")  # 目录名: 20260707_hello-world
+# topic is slugified: lowercased, non-ASCII removed, hyphenated
+p = Project.init("Hello World 项目启动")  # directory name: 20260707_hello-world
 ```
 
-中文被完全去除, 所以目录名可能比预期短。如果 slug 结果为空, 抛出 `ValueError`。
+Chinese characters are completely removed, so the directory name may be shorter
+than expected. If the slug result is empty, a `ValueError` is raised.
 
-**陷阱:** 不要假设 `project_dir` 中保留 topic 的原始中文内容。
+**Gotcha:** Do not assume the original Chinese topic content is preserved in
+`project_dir`.
 
-### `sanitize_path()` 拒绝路径遍历
+### `sanitize_path()` rejects path traversal
 
 ```python
 from automedia.core.project import sanitize_path
@@ -25,190 +33,231 @@ sanitize_path("~/config") # ValueError: Path must not contain '~'
 sanitize_path("a//b")     # ValueError: Path must not contain '//'
 ```
 
-这是安全措施, 防止 topic 参数被用于路径遍历攻击。
+This is a security measure to prevent the topic parameter from being used for
+path traversal attacks.
 
-## 配置加载
+## Configuration Loading
 
-### 配置合并是浅层+递归混合
+### Config merge is shallow + recursive hybrid
 
-`deep_merge()` 对字典值递归合并, 但对列表直接覆盖。这意味着:
+`deep_merge()` recursively merges dict values but directly overwrites lists.
+This means:
 
 ```yaml
 # defaults.yaml
 blocked_words:
-  - 投资
-  - 金融
+  - investment
+  - finance
 
 # brand-profile.yaml
 blocked_words:
-  - 政治
+  - politics
 ```
 
-结果: `blocked_words` 只有 `["政治"]`, 不会与默认值合并。
+Result: `blocked_words` only contains `["politics"]`, it does not merge with
+the defaults.
 
-**解决方案:** 如果要追加列表项, 在 overrides 中列出完整的列表。
+**Solution:** To append list items, write the complete list in overrides.
 
-### 环境变量覆盖规则
+### Environment variable override rules
 
-`AUTOMEDIA_LLM_API_KEY=sk-xxx` 会解析为:
+`AUTOMEDIA_LLM_API_KEY=sk-xxx` resolves to:
 
 ```python
 {"llm": {"api": {"key": "sk-xxx"}}}
 ```
 
-即, 下划线分割的每一段成为嵌套层级。这可能导致意外的嵌套深度:
+That is, each underscore-delimited segment becomes a nesting level. This can
+lead to unexpected nesting depth:
 
 ```
 AUTOMEDIA_FOO_BAR_BAZ=val  →  {"foo": {"bar": {"baz": "val"}}}
 ```
 
-**陷阱:** 变量名中不要使用多余的下划线, 否则会产生预期外的嵌套结构。
+**Gotcha:** Do not use extra underscores in variable names, or they will
+produce unexpected nested structures.
 
-## Pipeline 执行
+## Pipeline Execution
 
-### `run_full_pipeline()` 不会抛异常
+### `run_full_pipeline()` does not throw exceptions
 
-所有异常被捕获并放入 `PipelineResult.error` 字段, 状态设为 `"failed"`。这是设计决定的, 让调用方统一检查 `result.status` 而不是 try/except。
+All exceptions are caught and placed into the `PipelineResult.error` field,
+with status set to `"failed"`. This is by design, so callers check
+`result.status` uniformly instead of using try/except.
 
 ```python
 result = run_full_pipeline(topic, brand)
 if result.status == "failed":
-    print(f"Error: {result.error}")  # 不要 try/except
+    print(f"Error: {result.error}")  # do not try/except
 ```
 
-**陷阱:** 如果你忘记检查 `result.status`, 可能误以为 Pipeline 成功完成。
+**Gotcha:** If you forget to check `result.status`, you might mistakenly
+assume the Pipeline completed successfully.
 
-### `resume_from` 使用 Gate 名称, 不是数字
+### `resume_from` uses Gate names, not numbers
 
 ```python
-# 正确
+# Correct
 run_full_pipeline(topic, brand, resume_from="G3")
 
-# 错误 (不会报错但不会按预期工作)
+# Wrong (won't error but won't work as expected)
 run_full_pipeline(topic, brand, resume_from="3")
 ```
 
-`resume_from` 的值必须在当前 mode 的 gate 列表中存在, 否则抛出 `ValueError`。
+The `resume_from` value must exist in the current mode's gate list, otherwise
+a `ValueError` is raised.
 
-### mode 影响 gate 列表
+### mode affects the gate list
 
-不同 mode 执行不同 Gate 子集:
+Different modes execute different Gate subsets:
 
-| mode | 包含 Gate |
-|------|-----------|
+| mode | Gates Included |
+|------|----------------|
 | `auto` | pre-gate, G0-G5, V0-V7, L1-L3 |
 | `text_only` | G0-G5, L1-L3 |
 | `video_only` | V0-V7, L1-L3 |
 | `qa_only` | G0, G2, G3, V1, V6 |
 
-**陷阱:** `qa_only` 只执行 5 个 Gate, 远少于全流水线的 18 个 Gate。不要用 `qa_only` 的结果判断整个流水线是否正常。
+**Gotcha:** `qa_only` only runs 5 Gates, far fewer than the full pipeline's
+18 Gates. Do not use `qa_only` results to judge whether the entire pipeline
+is working correctly.
 
-## Gate 开发
+## Gate Development
 
-### Gate 必须定义 `_gate_name` 和 `_failure_mode`
+### Gate must define `_gate_name` and `_failure_mode`
 
-缺失任一属性会在运行时抛 `NotImplementedError`:
+Missing either attribute raises `NotImplementedError` at runtime:
 
 ```python
 class MyGate(BaseGate):
-    # 缺少 _gate_name → NotImplementedError
-    # 缺少 _failure_mode → NotImplementedError
+    # Missing _gate_name → NotImplementedError
+    # Missing _failure_mode → NotImplementedError
     pass
 ```
 
-Gate 通过 `__init_subclass__` 自动注册, 所以这两个属性是类级别的, 不需要 `__init__`。
+Gates are automatically registered via `__init_subclass__`, so these two
+attributes are class-level and do not need `__init__`.
 
-### Gate 名称不能重复
+### Gate names cannot be duplicated
 
-如果两个 Gate 类定义了相同的 `_gate_name`, 注册时抛出 `KeyError`:
+If two Gate classes define the same `_gate_name`, registration raises a
+`KeyError`:
 
 ```
 KeyError: "Gate 'G0' is already registered by <class '...'>"
 ```
 
-### `failure_mode` 有两种值
+### `failure_mode` has two values
 
-- `"stop"`: Gate 失败则 Pipeline 立即停止, 返回 `status="partial"`
-- `"rewrite"`: Gate 失败但 Pipeline 继续执行 (用于可重试的门控)
+- `"stop"`: Gate failure stops the Pipeline immediately, returns
+  `status="partial"`
+- `"rewrite"`: Gate failure allows the Pipeline to continue (used for
+  retryable gates)
 
-### execute() 必须返回 dict
+### `execute()` must return a dict
 
-返回的 dict 会被追加到 `gate_context` 中传递给下游 Gate。至少应包含:
+The returned dict is appended to `gate_context` and passed to downstream
+Gates. At minimum, it should include:
 
 ```python
 return {"passed": True, "gate": self._gate_name}
 ```
 
-如果返回值中没有 `"gate"` 键, 日志中的 Gate 名称会显示 `"unknown"`。
+If the return value lacks a `"gate"` key, the Gate name in logs will show
+as `"unknown"`.
 
 ## GateHook
 
-### Hook 不能修改任何东西
+### Hooks cannot modify anything
 
-`GateHook` 是 `Protocol`, 三个方法的返回值类型都是 `None`。如果 hook 尝试修改 `context` 或 `result`, 修改不会在 Gate 之间传播 (context 是普通 dict, 修改对 Gate 可见, 但这违反约定)。
+`GateHook` is a `Protocol`, and all three methods have a return type of
+`None`. If a hook tries to modify `context` or `result`, the modifications
+will not propagate between Gates (context is a plain dict, so modifications
+are visible to Gates, but this violates the contract).
 
 ```python
 class BadHook:
     def before_gate(self, gate_name, context):
-        context["topic"] = "hacked"  # 技术上可以, 但违反约定
+        context["topic"] = "hacked"  # Technically works, but violates contract
 ```
 
-**设计原则:** Hook 是观察者, 不是拦截器。如需要自定义阻断逻辑, 用 overrides/rules 而非 hook。
+**Design principle:** Hooks are observers, not interceptors. If you need
+custom blocking logic, use overrides/rules instead of hooks.
 
-### MD5 记录的文件必须可读
+### Files recorded by MD5 must be readable
 
-`record_md5()` 会计算文件的 MD5。如果文件不存在或不可读, 静默忽略 (OSError 被捕获)。但你不会收到警告, 需要手动确认 `pipeline_md5.json` 中是否已有记录。
+`record_md5()` computes the MD5 of a file. If the file does not exist or is
+not readable, it is silently ignored (OSError is caught). But you will not
+receive a warning, so manually confirm that `pipeline_md5.json` has the
+expected records.
 
 ## MCP Server
 
-### `run_pipeline` 的 `resume_from` 空字符串和 None 不同
+### `run_pipeline`'s `resume_from`: empty string and None differ
 
-MCP server 将空字符串转为 `None`:
+The MCP server converts empty strings to `None`:
 
 ```python
 resume_from = resume_from or None  # "" → None
 ```
 
-所以如果你从 MCP 传入空字符串, 等价于从头开始。
+So if you pass an empty string from MCP, it is equivalent to starting from
+scratch.
 
-### allowlist 为空时所有路径都允许
+### An empty allowlist allows all paths
 
 ```yaml
-# mcp_allowlist.yaml 不存在或为空
+# mcp_allowlist.yaml does not exist or is empty
 ```
 
-此时 `check_path_allowed()` 返回 `True`, 所有路径都通过。这不是安全配置, 生产环境请配置 allowlist。
+In this case, `check_path_allowed()` returns `True`, and all paths pass
+through. This is not a secure configuration. Configure the allowlist in
+production.
 
-### 归档操作的 Red Line 8
+### Archive operation and Red Line 8
 
-`archive_project()` 检查项目状态是否为 `"published"`。如果不是且未设置 `force=True`, 返回 `{"archived": False, "error": "..."}`。这不是异常, 是预期行为。不要把这个返回值当作 bug。
+`archive_project()` checks whether the project status is `"published"`. If
+not and `force=True` is not set, it returns
+`{"archived": False, "error": "..."}`. This is not an exception, it is
+expected behavior. Do not treat this return value as a bug.
 
-## 测试
+## Testing
 
-### 测试中的 Gate 注册顺序
+### Gate registration order in tests
 
-Gate 在模块导入时通过 `__init_subclass__` 自动注册。测试中如果多次导入 gate 模块, 已经注册的同名 Gate 会抛出 `KeyError`。
+Gates are automatically registered via `__init_subclass__` on module import.
+If gate modules are imported multiple times during testing, already-registered
+gates with the same name will raise a `KeyError`.
 
-**解决方案:** 在测试之间调用 `_registry._gates.clear()` (注意是私有属性) 或使用隔离的注册表实例。
+**Solution:** Call `_registry._gates.clear()` (note the private attribute)
+between tests, or use an isolated registry instance.
 
-### 使用 `run_with_results()` 获取全量结果
+### Use `run_with_results()` for full results
 
-`run()` 在 stop-mode Gate 失败时提前返回。如果需要完整的 Gate 执行列表 (包括失败后未执行的 Gate 也需要记录), 使用 `run_with_results()`。
+`run()` returns early when a stop-mode Gate fails. If you need the complete
+Gate execution list (including Gates that were not executed due to failure),
+use `run_with_results()`.
 
-## 其他
+## Other
 
-### `automedia doctor` 不阻止运行
+### `automedia doctor` does not block execution
 
-缺失依赖标记为红色但不会退出。这可能导致 Pipeline 在运行中间某一步失败。例如 ComfyUI 不可用时 V1 Vision QA 会失败。
+Missing dependencies are marked in red but do not cause an exit. This can
+lead to pipeline failures mid-execution. For example, if ComfyUI is
+unavailable, V1 Vision QA will fail.
 
-### pool.db 默认使用内存数据库
+### pool.db uses an in-memory database by default
 
-如果不指定 `--db` 参数, 话题池默认创建在 `:memory:`。这意味着数据只在当前进程存活, 重启后丢失。生产环境始终指定 `--db`:
+If the `--db` parameter is not specified, the topic pool is created in
+`:memory:` by default. This means the data only lives as long as the current
+process and is lost on restart. Always specify `--db` in production:
 
 ```bash
 automedia pool list --db /path/to/pool.db
 ```
 
-### 项目目录包含日期前缀
+### Project directories include a date prefix
 
-`Project.init()` 创建的目录格式为 `{YYYYMMDD}_{slug}`。同一天同一话题多次运行会产生相同的目录名, 导致冲突。确保话题有区分度。
+`Project.init()` creates directories with the format `{YYYYMMDD}_{slug}`.
+Running multiple times on the same day with the same topic produces the same
+directory name, causing conflicts. Ensure topics are distinguishable.

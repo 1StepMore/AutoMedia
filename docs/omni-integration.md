@@ -1,3 +1,8 @@
+---
+title: Omni Triad Integration
+description: OPP (extraction), OL (localization), ORF (format conversion) — the three companion tools of Omni Triad.
+---
+
 # Omni Triad Integration
 
 ## Overview
@@ -6,7 +11,7 @@ Omni Triad is a set of three companion tools that work alongside the
 AutoMedia production pipeline as a **side-channel adapter**.  Omni is
 **not embedded** in the main pipeline — it runs before (OPP document
 extraction) and after (OL translation + ORF format re-flow) the core
-gate chain, leaving the 18-gate production sequence unchanged.
+gate chain, leaving the 20-gate production sequence unchanged.
 
 | Tool | Package | Role |
 |------|---------|------|

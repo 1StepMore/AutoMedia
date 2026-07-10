@@ -1,56 +1,61 @@
-# AutoMedia 开发者指南
+---
+title: Developer Guide
+description: Build the AutoMedia development environment from scratch, including prerequisites, installation steps, and development workflow.
+---
 
-## 从零搭建
+# AutoMedia Developer Guide
 
-### 前置依赖
+## From Scratch Setup
 
-AutoMedia 运行时依赖以下外部工具。在安装包之前确保它们已在 `$PATH` 中:
+### Prerequisites
+
+AutoMedia depends on the following external tools at runtime. Make sure they are in your `$PATH` before installing the package:
 
 - Python 3.11+
 - FFmpeg
-- Bun (用于 HyperFrames 渲染)
+- Bun (for HyperFrames rendering)
 - edge-tts CLI
 - Whisper (OpenAI whisper)
-- Chrome/Chromium (无头模式)
-- ComfyUI (图片生成)
+- Chrome/Chromium (headless mode)
+- ComfyUI (image generation)
 
-### 安装
+### Installation
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone <repo-url> && cd AutoMedia
 
-# 可编辑模式安装
+# Editable mode install
 pip install -e .
 
-# 安装可选依赖
-pip install -e ".[mcp]"     # MCP server 支持
+# Install optional dependencies
+pip install -e ".[mcp]"     # MCP server support
 pip install -e ".[openai]"  # OpenAI provider
 pip install -e ".[anthropic]" # Anthropic provider
-pip install -e ".[rich]"    # 富文本 CLI 输出
+pip install -e ".[rich]"    # Rich text CLI output
 ```
 
-### 初始化
+### Initialization
 
 ```bash
-# 交互式初始化 —— 配置 LLM provider 和 API key
+# Interactive initialization — configure LLM provider and API key
 automedia init
 
-# 最小配置 (非交互)
+# Minimal config (non-interactive)
 automedia init --template minimal
 
-# 文件结构如下:
+# File structure:
 # .automedia/
 #   config.yaml            # LLM provider, base_url, api_key
 ```
 
-### 健康检查
+### Health Check
 
 ```bash
 automedia doctor
 ```
 
-输出示例:
+Example output:
 
 ```
 Dependency Check:
@@ -67,26 +72,26 @@ Tool             Installed    Version
 ------------------------------------------------------------
 ```
 
-缺失的依赖标记红色, 系统不会阻止运行但对应 Gate 会在执行时报错。
+Missing dependencies are marked in red. The system will not block execution, but the corresponding Gate will report an error at runtime.
 
-### 运行流水线
+### Running the Pipeline
 
 ```bash
-automedia run --topic "AI 视频生成工具对比" --brand my-brand
+automedia run --topic "AI Video Generation Tool Comparison" --brand my-brand
 ```
 
-## 架构概览
+## Architecture Overview
 
-AutoMedia 采用三层架构:
+AutoMedia uses a three-layer architecture:
 
 ```
-外部调用层
-  Any MCP Client / Python SDK / CLI 终端
+External Call Layer
+  Any MCP Client / Python SDK / CLI Terminal
         |              |              |
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-  │   select_topic, run_pipeline, ...    │  8 个 tool
+  │   select_topic, run_pipeline, ...    │  8 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -94,7 +99,7 @@ AutoMedia 采用三层架构:
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
-  │     automedia/ 核心 Python 包         │
+  │     automedia/ Core Python Package    │
   │                                      │
   │  core/      pipelines/    gates/     │
   │  adapters/  manifests/   hooks/      │
@@ -102,23 +107,23 @@ AutoMedia 采用三层架构:
   └──────────────────────────────────────┘
 ```
 
-### 核心子包
+### Core Subpackages
 
-| 子包 | 职责 |
+| Subpackage | Responsibility |
 |------|------|
-| `core/` | 配置加载 (`config_loader.py`)、项目管理 (`project.py`)、凭证管理 (`credential_loader.py`)、健康检查 (`doctor.py`) |
-| `pipelines/` | Pipeline 编排 (`runner.py`)、Gate 引擎 (`gate_engine.py`)、音视频管线 |
-| `gates/` | 14+ 道 Gate 实现 + 失败模式知识库 (`failure_modes.py`) |
-| `adapters/` | 平台发布 adapter 注册表 (`registry.py`) + 基类 (`base.py`) |
-| `hooks/` | GateHook Protocol (`protocol.py`)、MD5 追踪 (`md5_tracker.py`) |
-| `manifests/` | 内置 YAML 默认配置 (`defaults.yaml`)、schema 定义 |
-| `pool/` | 话题池 SQLite 数据库 (`db.py`)、采集/评分/去重 |
-| `cron/` | 定时任务 YAML 定义 (`jobs.yaml`) |
-| `mcp/` | MCP Server 实现 (`server.py`), stdio 传输 |
+| `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`) |
+| `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
+| `gates/` | 20 Gate implementations + failure mode knowledge base (`failure_modes.py`) |
+| `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
+| `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
+| `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
+| `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
+| `cron/` | Scheduled job YAML definitions (`jobs.yaml`) |
+| `mcp/` | MCP Server implementation (`server.py`), stdio transport |
 
-### 三层入口共用实现
+### Unified Three-Layer Entry Point
 
-三层共享同一个 `run_full_pipeline()` 实现, 不重复代码:
+All three layers share the same `run_full_pipeline()` implementation, avoiding code duplication:
 
 ```
 CLI (typer)  -- parse argv --> call run_full_pipeline() -- print result
@@ -126,52 +131,52 @@ MCP Server   -- JSON-RPC  --> call run_full_pipeline() -- return JSON
 SDK          -- import    --> call run_full_pipeline() -- return Python object
 ```
 
-## 开发工作流
+## Development Workflow
 
-### 项目结构
+### Project Structure
 
 ```
-automedia/                  # 核心 Python 包
-  core/                     # 基础设施
-  pipelines/                # Pipeline 编排
-  gates/                    # 门控实现
-  adapters/                 # 平台适配器
+automedia/                  # Core Python package
+  core/                     # Infrastructure
+  pipelines/                # Pipeline orchestration
+  gates/                    # Gate implementations
+  adapters/                 # Platform adapters
   hooks/                    # GateHook
-  manifests/                # 配置文件 schema
-  pool/                     # 话题池
-  cron/                     # 定时任务
+  manifests/                # Config file schema
+  pool/                     # Topic pool
+  cron/                     # Scheduled tasks
   mcp/                      # MCP Server
   cli/                      # Typer CLI
-tests/                      # 测试目录
+tests/                      # Test directory
   test_cli/
   test_mcp/
   test_e2e/
-docs/                       # 文档
+docs/                       # Documentation
 ```
 
-### 运行测试
+### Running Tests
 
 ```bash
-# 运行全部测试
+# Run all tests
 pytest
 
-# 带覆盖率
-pytest --cov=automedia
+# With coverage
+pytest --cov=src/automedia
 
-# 特定测试文件
+# Specific test file
 pytest tests/test_runner.py
 
-# E2E 红线测试
+# E2E red line tests
 pytest tests/test_e2e/ -v
 ```
 
-### 添加新 Gate
+### Adding a New Gate
 
-1. 在 `automedia/gates/` 下创建新文件, 继承 `BaseGate`
-2. 定义 `_gate_name` 和 `_failure_mode` 类属性
-3. 实现 `execute(self, gate_context) -> dict` 方法
-4. 在 `failure_modes.py` 中添加失败模式条目
-5. 在 `tests/` 中添加对应测试
+1. Create a new file under `automedia/gates/`, inheriting from `BaseGate`
+2. Define `_gate_name` and `_failure_mode` class attributes
+3. Implement the `execute(self, gate_context) -> dict` method
+4. Add a failure mode entry in `failure_modes.py`
+5. Add corresponding tests in `tests/`
 
 ```python
 from automedia.gates.base import BaseGate
@@ -181,39 +186,39 @@ class MyNewGate(BaseGate):
     _failure_mode = "stop"
 
     def execute(self, gate_context):
-        # 你的逻辑
+        # Your logic
         return {"passed": True, "gate": self._gate_name}
 ```
 
-### 添加新 CLI 命令
+### Adding a New CLI Command
 
-1. 在 `automedia/cli/commands/` 下创建文件
-2. 使用 typer 定义命令
-3. 在 `automedia/cli/app.py` 中注册
+1. Create a file under `automedia/cli/commands/`
+2. Define the command using typer
+3. Register it in `automedia/cli/app.py`
 
-### Gate 命名规范
+### Gate Naming Convention
 
-| 前缀 | 范围 | 示例 |
+| Prefix | Range | Example |
 |------|------|------|
-| G0-G5 | 文案 Gate | 事实核查、去AI味、文案审查、品牌CTA |
-| V0-V7 | 视频 Gate | Lint、Vision QA、Whisper、字幕渲染 |
-| L1-L3 | 生命周期 Gate | 发布日志、归档验证、平台完整性 |
+| G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
+| V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
+| L1-L3 | Lifecycle Gates | Publish log, archive validation, platform integrity |
 
-## 配置层级
+## Configuration Hierarchy
 
-配置从低到高六层叠加, 高优先级覆盖低优先级:
+Six layers stack from lowest to highest priority, with higher priority overriding lower:
 
-1. 内置 `automedia/manifests/defaults.yaml`
-2. 项目 `.automedia/` 目录
-3. 用户 `~/.automedia/` 目录
+1. Built-in `automedia/manifests/defaults.yaml`
+2. Project `.automedia/` directory
+3. User `~/.automedia/` directory
 4. `~/.automedia/overrides/rules/*.yaml`
 5. `~/.automedia/overrides/prompts/*.j2`
-6. 环境变量 `AUTOMEDIA_*` + 显式 overrides 参数
+6. Environment variables `AUTOMEDIA_*` + explicit overrides parameter
 
-## 关键技术决策
+## Key Technical Decisions
 
-- **Gate 阻断**: `failure_mode="stop"` 的 Gate 失败则 Pipeline 立即停止
-- **GateHook 只读**: Hook 是观察者, 不能修改 Gate 行为
-- **MD5 追踪**: 每个 Gate 产物写入 `pipeline_md5.json`, 红线 7
-- **归档红线**: 仅用户 `--force` 可归档, agent 不得归档 (红线 8)
-- **调度外部化**: 外部 crond 调用 `automedia cron run`, 无内置调度器
+- **Gate blocking**: If a Gate with `failure_mode="stop"` fails, the Pipeline stops immediately
+- **GateHook read-only**: Hooks are observers, cannot modify Gate behavior
+- **MD5 tracking**: Each Gate's output is written to `pipeline_md5.json`, Red Line 7
+- **Archive red line**: Only user `--force` can archive, agent must not archive (Red Line 8)
+- **External scheduling**: External crond calls `automedia cron run`, no built-in scheduler

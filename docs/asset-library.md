@@ -1,3 +1,8 @@
+---
+title: Asset Library
+description: Persistent searchable storage for brand production artifacts — SQLite metadata with Chroma vector search.
+---
+
 # Asset Library
 
 The Asset Library provides persistent, searchable storage for brand production

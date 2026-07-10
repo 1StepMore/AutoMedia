@@ -1,59 +1,74 @@
+---
+title: MCP Server Setup
+description: Configure the AutoMedia MCP server for AI agents — integration guide for Claude Desktop, OpenCode, Codex CLI, and other clients.
+---
+
 # MCP Server Setup
 
-AutoMedia 提供 MCP (Model Context Protocol) server, 允许任何 MCP client (Claude Desktop, OpenCode, Cline) 通过标准工具调用接口使用 AutoMedia 流水线。
+AutoMedia provides an MCP (Model Context Protocol) server that allows any MCP client (Claude Desktop, OpenCode, Cline) to use the AutoMedia pipeline through a standard tool-calling interface.
 
-## 安装
+## Installation
 
 ```bash
 pip install automedia[mcp]
 ```
 
-## 启动
+## Starting the Server
 
-MCP server 使用 stdio 传输, 通过标准输入输出与 MCP client 通信:
+The MCP server uses stdio transport, communicating with the MCP client through standard input/output:
 
 ```bash
 python -m automedia.mcp.server
 ```
 
-查看已注册工具:
+View registered tools:
 
 ```bash
 python -m automedia.mcp.server --show-tools
 ```
 
-输出如下:
+Output:
 
 ```
 Registered MCP tools:
   - archive_project
+  - extract_brief
+  - format_output
+  - get_pipeline_progress
   - get_pipeline_status
   - get_project_assets
   - list_projects
   - list_topic_pool
+  - localize_content
+  - localize_output
   - register_platform_adapter
   - run_pipeline
   - select_topic
 ```
 
-## 可用 Tool
+## Available Tools (13)
 
-| Tool | 说明 |
+| Tool | Description |
 |------|------|
-| `select_topic` | 从话题池选择最高分话题 |
-| `run_pipeline` | 执行完整生产流水线 |
-| `get_pipeline_status` | 查询项目进度 |
-| `list_projects` | 列出所有项目 |
-| `get_project_assets` | 获取项目资产清单 |
-| `archive_project` | 归档项目 (红线 8 约束) |
-| `list_topic_pool` | 查看话题池 |
-| `register_platform_adapter` | 注册平台适配器 |
+| `select_topic` | Select the highest-scored topic from the topic pool |
+| `run_pipeline` | Execute full production pipeline (background async) |
+| `get_pipeline_progress` | Pull gate-by-gate progress of a running pipeline |
+| `get_pipeline_status` | Query project status |
+| `list_projects` | List all projects |
+| `get_project_assets` | Get project asset list |
+| `archive_project` | Archive a project (Red Line 8 constraint) |
+| `list_topic_pool` | View the topic pool |
+| `register_platform_adapter` | Register a platform adapter |
+| `extract_brief` | Extract a content brief from a document (OPP) |
+| `localize_content` | Translate Markdown content (OL shield pipeline) |
+| `localize_output` | Translate all project drafts into multiple languages |
+| `format_output` | Convert content format (ORF adapter) |
 
-## MCP Client 配置
+## MCP Client Configuration
 
 ### Claude Desktop
 
-编辑 `claude_desktop_config.json`:
+Edit `claude_desktop_config.json`:
 
 ```json
 {
@@ -71,7 +86,7 @@ Registered MCP tools:
 
 ### OpenCode
 
-编辑 `opencode.json` 或项目级配置文件:
+Edit `opencode.json` or the project-level config file:
 
 ```json
 {
@@ -84,7 +99,7 @@ Registered MCP tools:
 }
 ```
 
-或通过 `~/.config/opencode/mcp.json`:
+Or through `~/.config/opencode/mcp.json`:
 
 ```json
 {
@@ -100,7 +115,7 @@ Registered MCP tools:
 
 ### Cline
 
-编辑 VSCode 扩展配置或 `~/.config/cline/mcp.json`:
+Edit the VSCode extension config or `~/.config/cline/mcp.json`:
 
 ```json
 {
@@ -113,66 +128,75 @@ Registered MCP tools:
 }
 ```
 
-## 路径 Allowlist
+## Path Allowlist
 
-MCP server 的文件访问受 allowlist 限制。配置文件位于:
+MCP server file access is restricted by an allowlist. The config file is located at:
 
 ```
 ~/.automedia/mcp_allowlist.yaml
 ```
 
-示例:
+Example:
 
 ```yaml
 allowed_directories:
-  - "/mnt/d/AutoMedia/projects/"
+  - "/var/automedia/projects/"
   - "/tmp/automedia/"
 ```
 
-如果 allowlist 为空, 所有路径都允许访问 (宽松模式)。建议生产环境配置明确的 allowlist。
+If the allowlist is empty, all paths are allowed access (permissive mode). It is recommended to configure a specific allowlist for production environments.
 
-## 环境变量
+## Environment Variables
 
-MCP server 支持以下环境变量:
+The MCP server supports the following environment variables:
 
-| 变量 | 说明 |
+| Variable | Description |
 |------|------|
-| `AUTOMEDIA_LLM_API_KEY` | LLM API 密钥 |
-| `AUTOMEDIA_LLM_BASE_URL` | 自定义 API endpoint |
-| `FEISHU_WEBHOOK_URL` | 飞书通知 webhook |
-| `WX_APPID` | 微信公众号 AppID |
-| `WX_APPSECRET` | 微信公众号 AppSecret |
+| `AUTOMEDIA_LLM_API_KEY` | LLM API key |
+| `AUTOMEDIA_LLM_BASE_URL` | Custom API endpoint |
+| `FEISHU_WEBHOOK_URL` | Feishu notification webhook |
+| `WX_APPID` | WeChat Official Account AppID |
+| `WX_APPSECRET` | WeChat Official Account AppSecret |
 
-## 安全提醒
+## Security Notes
 
-- `archive_project` tool 遵循红线 8: 仅当项目状态为 `published` 或 `force=True` 时才能归档
-- 路径 allowlist 防止恶意 agent 读取项目目录外的文件
-- 建议为 MCP server 使用专用的 API key 和环境变量
-- 所有文件操作默认只读 (路径检查但不修改)
+- The `archive_project` tool follows Red Line 8: archiving is only allowed when project status is `published` or `force=True`
+- The path allowlist prevents malicious agents from reading files outside the project directory
+- It is recommended to use dedicated API keys and environment variables for the MCP server
+- All file operations are read-only by default (path check without modification)
 
-## 示例: Python 中直接调用 MCP 工具
+## Example: Calling MCP Tools Directly in Python
 
 ```python
 from automedia.mcp import (
     select_topic,
     run_pipeline,
+    get_pipeline_progress,
+    get_pipeline_status,
     list_projects,
+    get_project_assets,
     archive_project,
+    list_topic_pool,
+    register_platform_adapter,
+    extract_brief,
+    localize_content,
+    localize_output,
+    format_output,
 )
 
-# 选题
+# Select topic
 topic = select_topic(category="tech")
 if topic.get("selected"):
     print(f"Selected: {topic['selected']['title']}")
 
-# 运行流水线
+# Run pipeline
 result = run_pipeline(topic=topic, brand="my-brand")
 print(f"Status: {result['status']}")
 
-# 列出项目
+# List projects
 projects = list_projects(base_dir=".")
 print(f"Found {projects['count']} projects")
 
-# 归档 (需用户确认)
+# Archive (requires user confirmation)
 result = archive_project(project_id="abc123def456", force=True)
 ```

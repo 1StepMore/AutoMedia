@@ -1,6 +1,11 @@
+---
+title: CLI Reference
+description: AutoMedia CLI command reference — usage and parameter descriptions for 15 subcommands.
+---
+
 # CLI Reference
 
-## 全局
+## Global
 
 ```bash
 automedia --help
@@ -9,236 +14,325 @@ automedia --version
 
 ## `automedia run`
 
-执行完整内容生产流水线。
+Execute the full content production pipeline.
 
 ```bash
-automedia run --topic "AI 视频生成工具对比" --brand my-brand
+automedia run --topic "AI Video Generation Tool Comparison" --brand my-brand
 
-# 仅文案模式
+# Text-only mode
 automedia run --topic "..." --brand my-brand --mode text_only
 
-# 从指定 Gate 恢复
+# Resume from a specific Gate
 automedia run --topic "..." --brand my-brand --resume-from G3
 
-# 设置超时
-automedia run --topic "..." --brand my-brand --timeout 600
 ```
 
 ### Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--topic` | `-t` | `str` | 必填 | 内容话题 |
-| `--brand` | `-b` | `str` | 必填 | 品牌标识 |
-| `--mode` | `-m` | `str` | `auto` | 模式: auto, text_only, video_only, qa_only |
-| `--resume-from` | | `str \| None` | `None` | 从指定 Gate 恢复 |
-| `--timeout` | | `int` | `300` | 超时秒数 |
+| `--topic` | `-t` | `str` | required | Content topic |
+| `--brand` | `-b` | `str` | required | Brand identifier |
+| `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, video_only, qa_only |
+| `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate |
 
 ## `automedia pool`
 
-管理话题池。
+Manage the topic pool.
 
 ```bash
-# 列出话题 (可筛选状态)
+# List topics (filterable by status)
 automedia pool list
 automedia pool list --status pending
 
-# 添加话题
-automedia pool add --topic "AI 趋势 2026" --url "https://..." --source weibo
+# Add a topic
+automedia pool add --topic "AI Trends 2026" --url "https://..." --source weibo
 
-# 清理过期话题
+# Clean up expired topics
 automedia pool prune --days 7
 ```
 
 ### Subcommands
 
-| 子命令 | 说明 |
+| Subcommand | Description |
 |--------|------|
-| `list` | 列出话题, 支持 `--status` 筛选 |
-| `add` | 添加新话题, 需要 `--topic` |
-| `prune` | 清理 N 天前的过期话题, 默认 7 天 |
+| `list` | List topics, supports `--status` filtering |
+| `add` | Add a new topic, requires `--topic` |
+| `attach-brief` | Attach a content brief to a topic |
+| `prune` | Clean up expired topics from N days ago, defaults to 7 days |
 
 ### pool list Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--status` | `-s` | `str \| None` | `None` | 按状态筛选 (pending, selected, published) |
-| `--db` | | `str \| None` | `None` | pool SQLite 文件路径 |
+| `--status` | `-s` | `str \| None` | `None` | Filter by status (pending, selected, published) |
+| `--db` | | `str \| None` | `None` | Pool SQLite file path |
 
 ### pool add Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--topic` | `-t` | `str` | 必填 | 话题标题 |
-| `--url` | `-u` | `str` | `""` | 来源 URL |
-| `--source` | `-s` | `str` | `""` | 来源平台 |
-| `--db` | | `str \| None` | `None` | pool SQLite 文件路径 |
+| `--topic` | `-t` | `str` | required | Topic title |
+| `--url` | `-u` | `str` | `""` | Source URL |
+| `--source` | `-s` | `str` | `""` | Source platform |
+| `--db` | | `str \| None` | `None` | Pool SQLite file path |
 
 ### pool prune Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--days` | `-d` | `int` | `7` | 删除 N 天前的 pending 话题 |
-| `--db` | | `str \| None` | `None` | pool SQLite 文件路径 |
+| `--days` | `-d` | `int` | `7` | Delete pending topics older than N days |
+| `--db` | | `str \| None` | `None` | Pool SQLite file path |
 
 ## `automedia projects`
 
-查看和管理项目。
+View and manage projects.
 
 ```bash
-# 列出所有项目
+# List all projects
 automedia projects list
 
-# 按状态筛选
+# Filter by status
 automedia projects list --status published
 
-# 查看特定项目详情
+# View specific project details
 automedia projects get <project-id>
 ```
 
 ### Subcommands
 
-| 子命令 | 说明 |
+| Subcommand | Description |
 |--------|------|
-| `list` | 列出项目 |
-| `get` | 查看项目详情 (JSON) |
+| `list` | List projects |
+| `get` | View project details (JSON) |
+| `get-assets` | Get project asset list |
 
 ### projects list Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--status` | `-s` | `str \| None` | `None` | 按状态筛选 |
-| `--base-dir` | `-d` | `str` | `.` | 扫描项目的根目录 |
+| `--status` | `-s` | `str \| None` | `None` | Filter by status |
+| `--base-dir` | `-d` | `str` | `.` | Root directory to scan for projects |
 
 ### projects get Arguments
 
-| 参数 | 类型 | 说明 |
+| Argument | Type | Description |
 |------|------|------|
-| `project_id` | `str` | 项目 ID (必填) |
+| `project_id` | `str` | Project ID (required) |
 
 ## `automedia archive`
 
-归档项目 (红线 8 强制约束)。
+Archive a project (Red Line 8 mandatory constraint).
 
 ```bash
-# 正常归档 (状态须为 published)
+# Normal archive (status must be published)
 automedia archive <project-id>
 
-# 强制归档 (跳过 published 检查)
+# Force archive (skip published check)
 automedia archive <project-id> --force
 ```
 
 ### Arguments
 
-| 参数 | 类型 | 说明 |
+| Argument | Type | Description |
 |------|------|------|
-| `project_id` | `str` | 项目 ID (必填) |
+| `project_id` | `str` | Project ID (required) |
 
 ### Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--force` | `-f` | `bool` | `False` | 强制归档, 跳过 published 状态检查 |
-| `--base-dir` | `-d` | `str` | `.` | 项目根目录 |
+| `--force` | `-f` | `bool` | `False` | Force archive, skip published status check |
+| `--base-dir` | `-d` | `str` | `.` | Project root directory |
 
 ## `automedia adapter`
 
-管理平台适配器。
+Manage platform adapters.
 
 ```bash
-# 列出已注册适配器
+# List registered adapters
 automedia adapter list
 
-# 创建新适配器模板
+# Create new adapter template
 automedia adapter create --name youtube
 ```
 
 ### Subcommands
 
-| 子命令 | 说明 |
+| Subcommand | Description |
 |--------|------|
-| `list` | 列出所有已注册的平台适配器 |
-| `create` | 生成新的适配器模板文件 |
+| `list` | List all registered platform adapters |
+| `create` | Generate a new adapter template file |
 
 ### adapter create Flags
 
-| Flag | 简写 | 类型 | 默认值 | 说明 |
+| Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
-| `--name` | `-n` | `str` | 必填 | 平台名称 (如 youtube) |
-| `--output-dir` | `-o` | `str` | `automedia/adapters/platforms` | 输出目录 |
+| `--name` | `-n` | `str` | required | Platform name (e.g. youtube) |
+| `--output-dir` | `-o` | `str` | `automedia/adapters/platforms` | Output directory |
 
 ## `automedia cron`
 
-执行定时任务和健康检查。
+Run scheduled jobs and health checks.
 
 ```bash
-# 运行指定 job
+# Run a specific job
 automedia cron run <job-name>
 
-# 全系统健康检查
+# Full system health check
 automedia cron check-health
 ```
 
 ### Known Jobs
 
-| Job 名称 | 说明 |
+| Job Name | Description |
 |----------|------|
-| `pool-collect` | 采集新话题到池中 |
-| `pool-score` | 评分和排序话题 |
-| `pool-prune` | 清理过期话题 |
-| `publish-check` | 检查待发布内容 |
+| `pool-collect` | Collect new topics into the pool |
+| `pool-score` | Score and rank topics |
+| `pool-prune` | Clean up expired topics |
+| `publish-check` | Check pending publish content |
 
 ### cron run Arguments
 
-| 参数 | 类型 | 说明 |
+| Argument | Type | Description |
 |------|------|------|
-| `job_name` | `str` | Job 名称 (必填) |
+| `job_name` | `str` | Job name (required) |
 
 ### cron run Flags
 
-| Flag | 类型 | 默认值 | 说明 |
+| Flag | Type | Default | Description |
 |------|------|--------|------|
-| `--timeout` | `int` | `120` | Job 超时秒数 |
+| `--timeout` | `int` | `120` | Job timeout in seconds |
 
 ### cron check-health
 
-执行 4 步健康检查:
+Run a 4-step health check:
 
 1. Python >= 3.11
-2. ffmpeg 可用
-3. `.automedia/` 配置目录存在
-4. `pool.db` 可访问
+2. ffmpeg available
+3. `.automedia/` config directory exists
+4. `pool.db` accessible
 
 ## `automedia init`
 
-初始化 AutoMedia 配置。
+Initialize AutoMedia configuration.
 
 ```bash
-# 交互式向导
+# Interactive wizard
 automedia init
 
-# 最小配置 (非交互)
+# Minimal config (non-interactive)
 automedia init --template minimal
 ```
 
 ### Flags
 
-| Flag | 类型 | 默认值 | 说明 |
+| Flag | Type | Default | Description |
 |------|------|--------|------|
-| `--template` | `str \| None` | `None` | 模板模式: `minimal` |
+| `--template` | `str \| None` | `None` | Template mode: `minimal` |
 
-交互式向导提示以下内容:
+The interactive wizard prompts for the following:
 
 - LLM provider (`openai` / `anthropic`)
 - API base URL
-- API key (隐藏输入)
+- API key (hidden input)
 
 ## `automedia doctor`
 
-系统依赖和运行环境健康检查。
+System dependency and runtime environment health check.
 
 ```bash
 automedia doctor
 ```
 
-检查项: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome。缺失项会标红, 但不会阻止运行, 对应 Gate 在执行时报错。
+Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.
+
+## `automedia omni`
+
+Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF).
+
+```bash
+# Extract content brief
+automedia omni ingest --file document.md
+
+# Localization translation
+automedia omni localize --content "Hello world" --source-lang en --target-lang zh
+
+# Format conversion
+automedia omni format-output --content "# Title" --target-format html
+```
+
+## `automedia hitl`
+
+Human-in-the-loop review management.
+
+```bash
+# View review configuration
+automedia hitl config
+
+# List presets
+automedia hitl preset list
+```
+
+## `automedia license`
+
+License management.
+
+```bash
+# Check license status
+automedia license check
+
+# View available features
+automedia license features
+```
+
+## `automedia sop`
+
+SOP (Standard Operating Procedure) execution.
+
+```bash
+# Generate SOP report
+automedia sop generate --project-dir ./project
+```
+
+## `automedia tenant`
+
+Multi-tenant management.
+
+```bash
+# List tenants
+automedia tenant list
+
+# Create tenant
+automedia tenant create --name my-tenant
+
+# Invite member
+automedia tenant invite --tenant-id <id> --email user@example.com
+```
+
+## `automedia solution`
+
+Decision layer solution management.
+
+```bash
+# View next node
+automedia solution next-node --solution-id <id>
+
+# Approve node
+automedia solution approve-node --node-id <id>
+
+# Preflight check
+automedia solution preflight-check --solution-id <id>
+```
+
+## `automedia onboard`
+
+Guided configuration wizard.
+
+```bash
+# Launch configuration wizard
+automedia onboard
+
+# List available wizards
+automedia onboard list
+```

@@ -1,3 +1,8 @@
+---
+title: Decision Layer
+description: Decision orchestration layer above the production pipeline — what to produce and why.
+---
+
 # Decision Layer
 
 The Decision Layer sits **above** the Production Layer (PRD-1) and the Omni

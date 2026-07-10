@@ -1,14 +1,19 @@
+---
+title: API Reference
+description: Python SDK API documentation — run_full_pipeline, GateEngine, PipelineResult, and all public interfaces.
+---
+
 # API Reference
 
 ## `run_full_pipeline()`
 
-核心入口函数, 执行完整内容生产流水线。
+Core entry function, executes the full content production pipeline.
 
 ```python
 from automedia import run_full_pipeline
 
 result = run_full_pipeline(
-    topic="AI 视频生成工具对比",
+    topic="AI Video Generation Tool Comparison",
     brand="my-brand",
     hooks=None,
     mode="auto",
@@ -18,30 +23,30 @@ result = run_full_pipeline(
 )
 ```
 
-### 参数
+### Parameters
 
-| 参数 | 类型 | 默认值 | 说明 |
+| Parameter | Type | Default | Description |
 |------|------|--------|------|
-| `topic` | `str` | (必填) | 内容话题/主题 |
-| `brand` | `str` | (必填) | 品牌标识, 对应 brand-profile.yaml |
-| `hooks` | `list[GateHook] \| None` | `None` | GateHook 观察者列表 |
-| `mode` | `str` | `"auto"` | 运行模式: `auto`, `text_only`, `video_only`, `qa_only` |
-| `resume_from` | `str \| None` | `None` | 从指定 Gate 恢复 (跳过前面的 Gate) |
-| `config_dir` | `str \| None` | `None` | 项目 `.automedia/` 配置目录路径 |
-| `tenant_id` | `str` | `"default"` | 租户/命名空间标识 |
+| `topic` | `str` | (required) | Content topic/theme |
+| `brand` | `str` | (required) | Brand identifier, corresponds to brand-profile.yaml |
+| `hooks` | `list[GateHook] \| None` | `None` | List of GateHook observers |
+| `mode` | `str` | `"auto"` | Run mode: `auto`, `text_only`, `video_only`, `qa_only` |
+| `resume_from` | `str \| None` | `None` | Resume from a specific Gate (skip preceding Gates) |
+| `config_dir` | `str \| None` | `None` | Path to project `.automedia/` config directory |
+| `tenant_id` | `str` | `"default"` | Tenant/namespace identifier |
 
-### mode 可选值
+### mode Options
 
-| mode | 执行 Gate | 适用场景 |
+| mode | Executed Gates | Use Case |
 |------|-----------|----------|
-| `auto` | pre-gate + G0-G5 + V0-V7 + L1-L3 | 全链路生产 |
-| `text_only` | G0-G5 + L1-L3 | 仅文案生产 |
-| `video_only` | V0-V7 + L1-L3 | 仅视频生产 |
-| `qa_only` | G0 + G2 + G3 + V1 + V6 | 仅质量审查 |
+| `auto` | D0 + pre-gate + CW + G0-G5 + V0-V7 + L1-L4 | Full pipeline production |
+| `text_only` | D0 + CW + G0-G5 + L1-L4 | Text-only production |
+| `video_only` | D0 + V0-V7 + L1-L4 | Video-only production |
+| `qa_only` | D0 + G0 + G2 + G3 + V1 + V6 | Quality review only |
 
-### 返回值
+### Return Value
 
-返回 `PipelineResult` 对象。
+Returns a `PipelineResult` object.
 
 ## PipelineResult
 
@@ -55,32 +60,32 @@ class PipelineResult:
     brand: str
     assets: list[AssetInfo]
     gates_log: list[GateLogEntry]
-    start_time: float            # time.monotonic() 起始值
-    end_time: float              # time.monotonic() 结束值
-    total_duration_s: float      # 总耗时 (秒)
+    start_time: float            # time.monotonic() start value
+    end_time: float              # time.monotonic() end value
+    total_duration_s: float      # Total duration (seconds)
     error: str | None = None
 ```
 
-### 字段说明
+### Field Descriptions
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |------|------|------|
-| `status` | `str` | `"success"` 全部通过, `"partial"` 部分失败但未阻断, `"failed"` 异常中止 |
-| `project_id` | `str` | 12 字符十六进制唯一 ID |
-| `project_dir` | `str` | 项目根目录绝对路径 |
-| `assets` | `list[AssetInfo]` | 产出资产列表 |
-| `gates_log` | `list[GateLogEntry]` | 每个 Gate 的执行日志 |
-| `error` | `str \| None` | 异常信息 (仅 status="failed" 时有值) |
+| `status` | `str` | `"success"` all passed, `"partial"` partial failure but not blocking, `"failed"` abnormal termination |
+| `project_id` | `str` | 12-character hex unique ID |
+| `project_dir` | `str` | Absolute path to project root directory |
+| `assets` | `list[AssetInfo]` | List of output assets |
+| `gates_log` | `list[GateLogEntry]` | Execution log for each Gate |
+| `error` | `str \| None` | Error info (only populated when status="failed") |
 
 ## AssetInfo
 
 ```python
 @dataclass
 class AssetInfo:
-    type: str            # 资产类型 (如 "video", "article", "image", "audio")
-    path: str            # 资产文件路径
-    platform: str = ""   # 所属平台 (如 "wechat")
-    md5: str = ""        # 文件 MD5 哈希
+    type: str            # Asset type (e.g. "video", "article", "image", "audio")
+    path: str            # Asset file path
+    platform: str = ""   # Target platform (e.g. "wechat")
+    md5: str = ""        # File MD5 hash
 ```
 
 ## GateLogEntry
@@ -88,10 +93,10 @@ class AssetInfo:
 ```python
 @dataclass
 class GateLogEntry:
-    gate_name: str                     # Gate 名称 (如 "G0", "V1")
-    status: Literal["passed", "failed", "error"]  # 执行状态
-    duration_s: float                  # 执行耗时 (秒)
-    error: str | None = None           # 错误信息
+    gate_name: str                     # Gate name (e.g. "G0", "V1")
+    status: Literal["passed", "failed", "error"]  # Execution status
+    duration_s: float                  # Execution duration (seconds)
+    error: str | None = None           # Error message
 ```
 
 ## GateHook Protocol
@@ -106,23 +111,23 @@ class GateHook(Protocol):
     def on_gate_failed(self, gate_name: str, context: dict[str, Any], error: Exception) -> None: ...
 ```
 
-三个方法全部是只读观察者, 必须返回 `None`。不允许修改 Gate 行为或阻断执行。
+All three methods are read-only observers and must return `None`. They must not modify Gate behavior or block execution.
 
 ### `before_gate(gate_name, context)`
 
-Gate 执行前调用。`context` 包含话题、品牌、项目目录等不可变快照。
+Called before Gate execution. `context` contains an immutable snapshot of topic, brand, project directory, etc.
 
 ### `after_gate(gate_name, context, result)`
 
-Gate 执行成功后调用。`result` 包含通过/失败状态、耗时、关键指标。
+Called after Gate execution succeeds. `result` contains pass/fail status, duration, and key metrics.
 
 ### `on_gate_failed(gate_name, context, error)`
 
-Gate 抛出异常时调用。注意即使 hook 被调用, Pipeline 仍会按 failure_mode 决策是否停止。
+Called when a Gate raises an exception. Note that even if the hook is called, the Pipeline will still decide whether to stop based on the failure_mode.
 
 ### GateObserver
 
-方便子类化的默认空实现:
+Convenient default empty implementation for subclassing:
 
 ```python
 from automedia.hooks.protocol import GateObserver
@@ -134,18 +139,18 @@ class MyHook(GateObserver):
 
 ### MD5 Tracker Hook
 
-内置的 MD5 记录 Hook:
+Built-in MD5 tracking Hook:
 
 ```python
 from automedia.hooks.md5_tracker import record_md5, verify_md5, get_pipeline_md5
 
-# 记录文件 MD5
+# Record file MD5
 record_md5(project_dir, "G0", "/path/to/output.txt")
 
-# 验证文件完整性
+# Verify file integrity
 is_valid = verify_md5(project_dir, "G0", "/path/to/output.txt")
 
-# 读取全部 MD5 记录
+# Read all MD5 records
 all_md5 = get_pipeline_md5(project_dir)
 ```
 
@@ -155,45 +160,45 @@ all_md5 = get_pipeline_md5(project_dir)
 from automedia.core.project import Project
 
 project = Project.init(
-    topic_slug="AI 视频生成工具对比",
+    topic_slug="AI Video Generation Tool Comparison",
     brand="my-brand",
     tenant_id="default",
-    base_dir=None,   # 默认 os.getcwd()
+    base_dir=None,   # Defaults to os.getcwd()
 )
 ```
 
-### `Project.init()` 参数
+### `Project.init()` Parameters
 
-| 参数 | 类型 | 默认值 | 说明 |
+| Parameter | Type | Default | Description |
 |------|------|--------|------|
-| `topic_slug` | `str` | (必填) | 原始话题字符串, 自动 slugify 为目录名 |
-| `brand` | `str` | (必填) | 品牌标识, 验证路径安全 |
-| `tenant_id` | `str` | `"default"` | 租户标识 |
-| `base_dir` | `str \| None` | `None` | 项目父目录, 默认当前工作目录 |
+| `topic_slug` | `str` | (required) | Original topic string, auto slugified into directory name |
+| `brand` | `str` | (required) | Brand identifier, validated for path safety |
+| `tenant_id` | `str` | `"default"` | Tenant identifier |
+| `base_dir` | `str \| None` | `None` | Parent directory for projects, defaults to current working directory |
 
-### 创建的目录结构
+### Created Directory Structure
 
 ```
 {date}_{slug}/
-  00_project_info.json    # 项目元数据
-  01_content/drafts/      # 文案草稿
-  02_images/cover/        # 封面图片
-  03_video/               # 视频文件
-  03_subtitle/            # 字幕文件
-  04_review/              # 审查记录
-  05_publish/             # 发布产物
+  00_project_info.json    # Project metadata
+  01_content/drafts/      # Content drafts
+  02_images/cover/        # Cover images
+  03_video/               # Video files
+  03_subtitle/            # Subtitle files
+  04_review/              # Review records
+  05_publish/             # Published outputs
 ```
 
-### `Project` 字段
+### `Project` Fields
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |------|------|------|
-| `project_id` | `str` | uuid4().hex[:12] 短唯一 ID |
-| `project_dir` | `str` | 项目根目录绝对路径 |
-| `topic` | `str` | 原始话题 |
-| `brand` | `str` | 品牌标识 |
-| `tenant_id` | `str` | 租户标识 |
-| `created_at` | `str` | ISO-8601 创建时间戳 |
+| `project_id` | `str` | uuid4().hex[:12] short unique ID |
+| `project_dir` | `str` | Absolute path to project root directory |
+| `topic` | `str` | Original topic |
+| `brand` | `str` | Brand identifier |
+| `tenant_id` | `str` | Tenant identifier |
+| `created_at` | `str` | ISO-8601 creation timestamp |
 
 ## `load_config()`
 
@@ -201,19 +206,19 @@ project = Project.init(
 from automedia.core.config_loader import load_config
 
 config = load_config(
-    config_dir=None,   # 项目 .automedia/ 路径, 默认 $CWD/.automedia/
-    overrides=None,    # 最高优先级键值对
+    config_dir=None,   # Project .automedia/ path, defaults to $CWD/.automedia/
+    overrides=None,    # Highest priority key-value pairs
 )
 ```
 
-返回完全合并的配置字典, 包含六层优先级 (从低到高):
+Returns the fully merged config dictionary, with six priority levels (lowest to highest):
 
-1. 内置 `automedia/manifests/defaults.yaml`
-2. 项目 `.automedia/` 目录 YAML
-3. 用户 `~/.automedia/` 目录 YAML
+1. Built-in `automedia/manifests/defaults.yaml`
+2. Project `.automedia/` directory YAML
+3. User `~/.automedia/` directory YAML
 4. `~/.automedia/overrides/rules/*.yaml`
 5. `~/.automedia/overrides/prompts/*.j2`
-6. `AUTOMEDIA_*` 环境变量 + `overrides` 参数
+6. `AUTOMEDIA_*` environment variables + `overrides` parameter
 
 ## BaseGate
 
@@ -221,11 +226,11 @@ config = load_config(
 from automedia.gates.base import BaseGate
 
 class MyGate(BaseGate):
-    _gate_name = "GX"           # 唯一 Gate 标识
-    _failure_mode = "stop"      # "stop" 阻断流水线, "rewrite" 继续
+    _gate_name = "GX"           # Unique Gate identifier
+    _failure_mode = "stop"      # "stop" blocks pipeline, "rewrite" continues
 
     def execute(self, gate_context: dict) -> dict:
-        # gate_context 包含 topic, brand, project_dir, config 等
+        # gate_context contains topic, brand, project_dir, config, etc.
         return {"passed": True, "gate": self._gate_name}
 ```
 
@@ -234,13 +239,13 @@ class MyGate(BaseGate):
 ```python
 from automedia.pipelines.gate_engine import GateEngine
 
-# 构造
+# Constructor
 engine = GateEngine(gates, hooks=hooks)
 
-# 执行全部 Gate
+# Execute all Gates
 success, results = engine.run(gate_context)
 
-# 执行并返回全部结果 (即使提前停止)
+# Execute and return all results (even if stopped early)
 all_results = engine.run_with_results(gate_context)
 ```
 
@@ -249,10 +254,10 @@ all_results = engine.run_with_results(gate_context)
 ```python
 from automedia.gates.base import _registry
 
-# 注册的 Gate 自动通过 __init_subclass__ 注册
-_registry.list()              # 返回所有 Gate 名称列表
-_registry.get("G0")           # 获取 Gate 类
-"G0" in _registry             # 检查是否注册
+# Registered Gates are automatically registered via __init_subclass__
+_registry.list()              # Returns list of all Gate names
+_registry.get("G0")           # Get Gate class
+"G0" in _registry             # Check if registered
 ```
 
 ## AdapterRegistry
@@ -262,7 +267,7 @@ from automedia.adapters.registry import AdapterRegistry
 
 AdapterRegistry.register(WechatPublisher)
 cls = AdapterRegistry.get("wechat")
-AdapterRegistry.list()        # 列出所有已注册平台
+AdapterRegistry.list()        # List all registered platforms
 ```
 
 ## Doctor
@@ -272,7 +277,7 @@ from automedia.core.doctor import Doctor
 
 doctor = Doctor()
 results = doctor.check_dependencies()
-# 返回 [{"name": "python", "installed": True, "version": "...", "path": "..."}, ...]
+# Returns [{"name": "python", "installed": True, "version": "...", "path": "..."}, ...]
 ```
 
 ## `sanitize_path()`
@@ -280,6 +285,6 @@ results = doctor.check_dependencies()
 ```python
 from automedia.core.project import sanitize_path
 
-safe_path = sanitize_path("/valid/path")  # 验证并规范化路径
-# 拒绝 "..", "~", "//" 模式
+safe_path = sanitize_path("/valid/path")  # Validate and normalize path
+# Rejects "..", "~", "//" patterns
 ```

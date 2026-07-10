@@ -1,62 +1,68 @@
-# 日常生产流程
+---
+title: Production Workflow
+description: AutoMedia daily production standard operating procedures — daily production cadence and operations guide.
+---
 
-本文档描述 AutoMedia 在日常生产中的标准操作流程。
+# Daily Production Workflow
 
-## 每日生产节奏
+This document describes the standard operating procedures for AutoMedia in
+daily production.
 
-AutoMedia 每日按以下节奏执行:
+## Daily Production Cadence
 
-| 时间 | 操作 | 工具 |
-|------|------|------|
-| 08:00 | 热点采集 (4 平台 + Tavily + AIHOT) | `automedia cron run pool-collect` |
-| 08:05 | 语义审核 + 黑名单过滤 | `automedia cron run pool-score` |
-| 08:30 | 检查待发布内容 | `automedia cron run publish-check` |
-| 09:00 | 运营选话题, 启动生产 | `automedia run --topic "..." --brand ...` |
-| 09:30 | 全系统健康检查 | `automedia cron check-health` |
-| 全天 | 发布确认 + 归档 | `automedia archive <project-id>` |
+AutoMedia runs on the following daily schedule:
 
-## 生产前检查
+| Time | Operation | Tool |
+|------|-----------|------|
+| 08:00 | Hot topic collection (4 platforms + Tavily + AIHOT) | `automedia cron run pool-collect` |
+| 08:05 | Semantic review + blacklist filtering | `automedia cron run pool-score` |
+| 08:30 | Check pending publish content | `automedia cron run publish-check` |
+| 09:00 | Operators select topics, start production | `automedia run --topic "..." --brand ...` |
+| 09:30 | Full system health check | `automedia cron check-health` |
+| All day | Publish confirmation + archive | `automedia archive <project-id>` |
 
-### 1. 环境就绪
+## Pre-Production Checks
+
+### 1. Environment Readiness
 
 ```bash
-# 检查依赖
+# Check dependencies
 automedia doctor
 
-# 检查配置
+# Check configuration
 ls -la .automedia/
 cat .automedia/config.yaml
 
-# 检查话题池
+# Check topic pool
 automedia pool list --status pending --db .automedia/pool.db
 ```
 
-### 2. 网络连通性
+### 2. Network Connectivity
 
 ```bash
-# 确认 LLM API 可用
+# Confirm LLM API is available
 curl -s -o /dev/null -w "%{http_code}" https://api.openai.com/v1/models
 
-# 确认来源 URL 可访问 (G0 Gate 需要)
+# Confirm source URLs are accessible (G0 Gate needs this)
 curl -s -o /dev/null -w "%{http_code}" https://example.com
 ```
 
-### 3. 磁盘空间
+### 3. Disk Space
 
 ```bash
-df -h /mnt/d/AutoMedia/projects/
-# 确保至少 10GB 可用 (视频项目需要)
+df -h /var/automedia/projects/
+# Ensure at least 10GB free (video projects need this)
 ```
 
-## 启动生产
+## Starting Production
 
-### 方式 A: CLI 手动运行 (推荐)
+### Method A: CLI Manual Run (Recommended)
 
 ```bash
 automedia run --topic "AI 视频生成工具对比: 2026 年最新格局" --brand my-brand
 ```
 
-### 方式 B: Python SDK
+### Method B: Python SDK
 
 ```python
 from automedia import run_full_pipeline
@@ -68,40 +74,41 @@ result = run_full_pipeline(
 )
 
 if result.status == "success":
-    print(f"项目目录: {result.project_dir}")
+    print(f"Project directory: {result.project_dir}")
     for asset in result.assets:
         print(f"  [{asset.type}] {asset.path}")
 else:
-    print(f"失败: {result.error}")
+    print(f"Failed: {result.error}")
     for log in result.gates_log:
         if log.status != "passed":
             print(f"  Gate {log.gate_name}: {log.status} ({log.error})")
 ```
 
-### 方式 C: MCP (AI Agent)
+### Method C: MCP (AI Agent)
 
-Agent 调用 `select_topic` 选题, 然后调用 `run_pipeline` 生产。
+The agent calls `select_topic` to pick a topic, then calls `run_pipeline` to
+produce content.
 
-## 生产监视
+## Production Monitoring
 
-### 实时查看
+### Real-Time View
 
 ```bash
-# 查看项目目录变化
+# Watch project directory changes
 watch -n 5 ls -la 20260707_*/
 
-# 查看 pipeline_md5.json
+# View pipeline_md5.json
 cat 20260707_*/pipeline_md5.json
 ```
 
-### 查看 Gate 状态
+### View Gate Status
 
-运行 `automedia run` 时 CLI 输出包含每个 Gate 的状态:
+When running `automedia run`, the CLI output shows each Gate's status:
 
 ```
 Pipeline finished: success
   Project ID : abc123def456
-  Project dir: /mnt/d/AutoMedia/projects/20260707_ai-video-tools
+  Project dir: /var/automedia/projects/20260707_ai-video-tools
   Duration   : 342.5s
 
   Gates executed: 18
@@ -134,129 +141,133 @@ Pipeline finished: success
     - [log] 05_publish/publish_log.json
 ```
 
-### 失败处理
+### Failure Handling
 
-如果 Pipeline 显示 `status="partial"` 或 `status="failed"`:
+If the Pipeline shows `status="partial"` or `status="failed"`:
 
-1. 查看错误消息定位失败 Gate
-2. 查阅 `docs/runbook/gate-failure-modes.md` 获取修复步骤
-3. 修复问题后使用 `--resume-from` 从失败 Gate 恢复:
+1. Check the error message to identify the failing Gate
+2. Refer to `docs/runbook/gate-failure-modes.md` for remediation steps
+3. After fixing the issue, resume from the failed Gate using `--resume-from`:
 
 ```bash
 automedia run --topic "..." --brand my-brand --resume-from G3
 ```
 
-## 生产后操作
+## Post-Production Operations
 
-### 1. 检查产出
+### 1. Review Output
 
 ```bash
-# 检查各目录
-ls R 20260707_*/
+# Check directories
+ls 20260707_*/
 ls 20260707_*/01_content/drafts/
 ls 20260707_*/02_images/cover/
 ls 20260707_*/03_video/
 ```
 
-### 2. 验证文件完整性
+### 2. Verify File Integrity
 
 ```bash
-# 检查 MD5 记录
+# Check MD5 records
 cat 20260707_*/pipeline_md5.json
 
-# 验证关键文件
+# Verify key files
 ffprobe 20260707_*/03_video/video_final.mp4
 file 20260707_*/02_images/cover/*.png
 ```
 
-### 3. 发布
+### 3. Publish
 
-发布通过平台 adapter 自动或手动完成。如果配置了自动发布:
+Publishing is done automatically or manually through platform adapters. If
+auto-publish is configured:
 
 ```bash
-# 检查发布日志
+# Check publish log
 cat 20260707_*/05_publish/publish_log.json
 ```
 
-### 4. 归档
+### 4. Archive
 
-确认内容已成功发布后:
+After confirming the content has been successfully published:
 
 ```bash
-# 归档 (需要 status 为 published)
+# Archive (requires status to be published)
 automedia archive <project-id>
 
-# 或强制归档
+# Or force archive
 automedia archive <project-id> --force
 ```
 
-归档后项目目录添加 `_archived` 后缀。
+After archiving, the project directory gets the `_archived` suffix.
 
-## 周常维护
+## Weekly Maintenance
 
-### 清理话题池
+### Clean Topic Pool
 
-每周清理过期话题:
+Clean expired topics weekly:
 
 ```bash
 automedia pool prune --days 14 --db .automedia/pool.db
 ```
 
-### 检查磁盘使用
+### Check Disk Usage
 
 ```bash
-du -sh /mnt/d/AutoMedia/projects/*_archived/
-# 已归档项目可考虑移至冷存储
+du -sh /var/automedia/projects/*_archived/
+# Archived projects can be moved to cold storage
 ```
 
-### 更新品牌配置
+### Update Brand Configuration
 
-需要时修改 `~/.automedia/brand-profile.yaml`:
+Modify `~/.automedia/brand-profile.yaml` as needed:
 
-- 调整 CTA 策略
-- 更新禁止词列表
-- 修改品牌名称或调性
+- Adjust CTA strategy
+- Update the blocked words list
+- Change brand name or tone
 
-### 检查 cron 日志
+### Check Cron Logs
 
 ```bash
 tail -100 /var/log/automedia/cron.log
 ```
 
-确认过去一周所有 job 正常执行。
+Confirm all jobs have run normally over the past week.
 
-## 异常处理
+## Exception Handling
 
-### Gate 反复失败
+### Gate Repeatedly Fails
 
-如果某个 Gate 反复失败, 参考 `gate-failure-modes.md` 进行诊断。如果修复后仍然失败:
+If a Gate repeatedly fails, refer to `gate-failure-modes.md` for diagnosis.
+If it still fails after remediation:
 
-1. 检查 LLM provider 是否正常 (G0, G1 等 LLM 相关 Gate)
-2. 检查外部依赖是否正常 (V1 依赖 ComfyUI, V2 依赖 Whisper)
-3. 临时切换到较低的门控阈值 (通过 overrides/rules)
+1. Check if the LLM provider is working (G0, G1 and other LLM-related Gates)
+2. Check if external dependencies are working (V1 depends on ComfyUI,
+   V2 depends on Whisper)
+3. Temporarily switch to lower gate thresholds (via overrides/rules)
 
-### 磁盘空间不足
+### Insufficient Disk Space
 
 ```bash
-# 查找大文件
+# Find large files
 find . -type f -size +100M
-# 清理已归档项目的临时文件 (保留 00_project_info.json 即可)
+# Clean temp files from archived projects (keep 00_project_info.json only)
 ```
 
-### API 限流
+### API Rate Limiting
 
-如果遇到 LLM API 限流:
+If you encounter LLM API rate limiting:
 
-1. 检查 `model_config.yaml` 中的 `rate_limit` 配置
-2. Vision QA 会自动降级到像素亮度法 (输出中标注"降级")
-3. 考虑更换 provider 或增加限流窗口
+1. Check the `rate_limit` configuration in `model_config.yaml`
+2. Vision QA will automatically degrade to pixel luminance analysis
+   (noted as "degraded" in output)
+3. Consider switching providers or increasing the rate limit window
 
-### Pipeline 中途中断
+### Pipeline Interrupted Midway
 
 ```bash
-# 查看已完成的 Gate
+# View completed Gates
 cat 20260707_*/pipeline_md5.json | python -m json.tool
 
-# 从中断点恢复
+# Resume from the interruption point
 automedia run --topic "..." --brand my-brand --resume-from G3
 ```
