@@ -65,6 +65,21 @@ _CHECK_NAMES: list[str] = [entry["check"] for entry in _FORBIDDEN_PATTERNS] + [
     "topic_length_valid",
 ]
 
+_EXPECTED_MAP: dict[str, str] = {
+    "topic_not_charity": "Topic does not match charity/public-science category",
+    "topic_not_gov_tool": "Topic does not match government tools category",
+    "topic_not_investment": "Topic does not match investment category",
+    "topic_not_finance": "Topic does not match finance category",
+    "topic_not_entertainment": "Topic does not match entertainment category",
+    "topic_length_valid": "Topic length is between 5 and 500 characters",
+}
+
+
+def _derive_expected(check_name: str) -> str:
+    """Convert a check name to a human-readable expected statement."""
+    return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -77,11 +92,24 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+
+    # Build expected_vs_actual from first failing check, or first check if all pass
+    target = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if target:
+        expected_vs_actual = {
+            "check": target["name"],
+            "expected": _derive_expected(target["name"]),
+            "actual": target.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "pre-gate",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 

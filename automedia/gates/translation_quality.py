@@ -119,6 +119,11 @@ def _get_translation_md(translation_result: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _derive_expected(check_name: str) -> str:
+    """Convert a snake_case check name to a human-readable expected statement."""
+    return check_name.replace("_", " ").capitalize() + "."
+
+
 class L4TranslationQuality(BaseGate):
     """L4 Translation Quality Gate — validates OL translation output.
 
@@ -141,12 +146,24 @@ class L4TranslationQuality(BaseGate):
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
         """Run translation quality checks and return a structured dict."""
         result = self.run(gate_context)
+        first_fail_name = next(
+            (n for n in _CHECK_NAMES if not result.check_results.get(n, True)),
+            None,
+        )
+        target_name = first_fail_name if first_fail_name is not None else _CHECK_NAMES[0]
+        expected_vs_actual = {
+            "check": target_name,
+            "expected": _derive_expected(target_name),
+            "actual": result.failures[0] if result.failures else "",
+            "context": {},
+        }
         return {
             "passed": result.passed,
             "gate": self.gate_name,
             "warnings": list(result.warnings),
             "failures": list(result.failures),
             "check_results": dict(result.check_results),
+            "expected_vs_actual": expected_vs_actual,
         }
 
     # ------------------------------------------------------------------
