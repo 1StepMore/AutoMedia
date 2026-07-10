@@ -201,13 +201,14 @@ class TestServerCreation:
         assert server is not None
         assert hasattr(server, "run")
 
-    def test_server_has_all_12_tools(self) -> None:
-        """All 12 tools are registered (8 original + 3 Omni + 1 localize_output)."""
+    def test_server_has_all_13_tools(self) -> None:
+        """All 13 tools are registered."""
         server = create_server()
         tool_names = sorted(server._tool_manager._tools.keys())
         expected = sorted([
             "select_topic",
             "run_pipeline",
+            "get_pipeline_progress",
             "get_pipeline_status",
             "list_projects",
             "get_project_assets",
