@@ -57,6 +57,10 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
+def _derive_expected(check_name: str) -> str:
+    return check_name.replace("_", " ").capitalize()
+
+
 def _build_result(
     checks: list[dict[str, Any]],
     *,
@@ -64,11 +68,22 @@ def _build_result(
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*."""
     all_passed = all(c["passed"] for c in checks)
+    first_fail = next((c for c in checks if not c["passed"]), checks[0] if checks else None)
+    expected_vs_actual: dict[str, Any] = {}
+    if first_fail:
+        expected_vs_actual = {
+            "check": first_fail["name"],
+            "expected": _derive_expected(first_fail["name"]),
+            "actual": first_fail.get("detail", ""),
+            "context": {},
+        }
+
     return {
         "passed": all_passed,
         "gate": "L1",
         "checks": checks,
         "error": error,
+        "expected_vs_actual": expected_vs_actual,
     }
 
 
