@@ -4,22 +4,22 @@ Automated Media Production Pipeline — for content teams and AI coding agents.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/1stepmore/automedia/ci.yml?branch=main&label=CI)](https://github.com/1stepmore/automedia/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Agent Ready](https://img.shields.io/badge/agent-ready-purple)](AGENTS.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](https://github.com/1stepmore/automedia/blob/main/LICENSE)
+[![Agent Ready](https://img.shields.io/badge/agent-ready-purple)](https://github.com/1stepmore/automedia/blob/main/AGENTS.md)
 
-This README serves **both human developers and AI coding agents** (OpenCode, Claude Code, Codex CLI, OpenClaw, Hermes Agent) as the primary entry point. For detailed agent-role context, constraints, and codebase map, read [AGENTS.md](AGENTS.md).
+This README serves **both human developers and AI coding agents** (OpenCode, Claude Code, Codex CLI, OpenClaw, Hermes Agent) as the primary entry point. For detailed agent-role context, constraints, and codebase map, read [AGENTS.md](https://github.com/1stepmore/automedia/blob/main/AGENTS.md).
 
 ## Quick Overview
 
 AutoMedia automates content production from topic selection through draft writing, video generation, subtitle rendering, and multi-platform publishing. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-21,697 LOC (core) · 80,256 LOC (total) · 424 Python files · Python 3.11+ · 1,817 tests (0 failing) · MIT License
+23,118 LOC (core) · 86,905 LOC (total) · 442 Python files · Python 3.11+ · 2,047 tests (0 failing) · MIT License
 
 ### For AI Agents
 
 If you are an AI coding agent entering this codebase:
 
-1. **Read [AGENTS.md](AGENTS.md)** — agent-role context, constraints, directory layout, MCP/CLI references, red lines
+1. **Read [AGENTS.md](https://github.com/1stepmore/automedia/blob/main/AGENTS.md)** — agent-role context, constraints, directory layout, MCP/CLI references, red lines
 2. **Connect MCP** — Start the MCP server (`python -m automedia.mcp.server`) or configure your tool's MCP client (see [Three-Layer API](#three-layer-api))
 3. **Explore config files** — `opencode.json`, `.claude/`, `.env.example` for tool-specific setup
 4. **Find tests** — `tests/` directory, run with `make test` or `pytest`
@@ -59,13 +59,17 @@ If you are an AI coding agent entering this codebase:
 Start using AutoMedia without any local dependencies:
 
 ```bash
-docker pull kevinzhow/automedia:latest
-docker run -it --rm kevinzhow/automedia:latest automedia doctor
+docker pull kevinzhow/automedia-pipeline:latest
+docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor
 ```
 
 A devcontainer configuration is also available at `.devcontainer/devcontainer.json` for VS Code Remote.
 
 ### Manual installation
+
+> **License notice:** Optional extras `[omni-pdf]` and `[omni]` install PyMuPDF,
+> which is licensed under AGPL v3. Ensure compliance with the AGPL before using
+> these extras in your project.
 
 **Prerequisites:**
 
@@ -405,7 +409,7 @@ pytest tests/test_mcp/ -v
 
 ## Project Status
 
-Active development. 1,817 tests passing, 0 failing. 80,256 LOC across 424 Python files (21,697 LOC in automedia/ core).
+Active development. 2,047 tests passing, 0 failing. 86,905 LOC across 442 Python files (23,118 LOC in automedia/ core).
 
 ## License
 

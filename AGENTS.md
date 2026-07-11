@@ -9,7 +9,7 @@ This is the first file an AI coding agent reads to understand the AutoMedia code
 AutoMedia is an automated media production pipeline. It handles the full content lifecycle: topic selection, draft writing, video generation, subtitle rendering, and multi-platform publishing.
 
 - **Language:** Python 3.11+
-- **Size:** 21,697 LOC across 137 Python files (automedia/ core) · 80,256 LOC across 424 Python files (entire repo)
+- **Size:** 23,118 LOC across 142 Python files (automedia/ core) · 86,905 LOC across 442 Python files (entire repo)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 
@@ -32,7 +32,7 @@ All three share the same `run_full_pipeline()` implementation in `automedia/pipe
 ```
 AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (21,697 LOC)
+│   └── automedia/              # Core Python package (23,118 LOC)
 │       ├── __init__.py             # Public API surface
 │       ├── __main__.py             # `python -m automedia`
 │       ├── _version.py             # Version string
@@ -325,17 +325,17 @@ pre-commit run --all-files
 
 ```bash
 # Run the MCP server
-docker run -it --rm --entrypoint python kevinzhow/automedia:latest -m automedia.mcp.server
+docker run -it --rm --entrypoint python kevinzhow/automedia-pipeline:latest -m automedia.mcp.server
 
 # Run CLI commands
-docker run -it --rm kevinzhow/automedia:latest automedia doctor
-docker run -it --rm kevinzhow/automedia:latest automedia run --topic "..." --brand my-brand --mode text_only
+docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor
+docker run -it --rm kevinzhow/automedia-pipeline:latest automedia run --topic "..." --brand my-brand --mode text_only
 
 # Run tests
-docker run -it --rm --entrypoint pytest kevinzhow/automedia:latest
+docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest
 
 # Run tests with coverage
-docker run -it --rm --entrypoint pytest kevinzhow/automedia:latest -- --cov=src/automedia
+docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- --cov=src/automedia
 ```
 
 ---
