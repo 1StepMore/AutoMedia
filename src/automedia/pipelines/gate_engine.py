@@ -308,7 +308,7 @@ class GateEngine:
             every gate passed (or no ``failure_mode="stop"`` gate failed),
             and *results* is the list of per-gate result dicts.
         """
-        return self._run(gate_context, early_stop=True, progress=progress)  # type: return-value
+        return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]
 
     def run_with_results(
         self,
@@ -321,7 +321,7 @@ class GateEngine:
         Unlike :meth:`run`, this always returns the full result list
         regardless of early-stop.
         """
-        return self._run(gate_context, early_stop=False, progress=progress)  # type: return-value
+        return self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]
 
 
 # Keep a backward-compatible alias so existing ``from ... import Pipeline``
