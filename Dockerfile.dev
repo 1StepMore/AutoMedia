@@ -28,5 +28,10 @@ RUN pip install --no-cache-dir -e ".[dev,mcp]"
 # Smoke-test: verify the package imports correctly
 RUN python -c "from automedia import __version__; print(f'AutoMedia {__version__} installed')"
 
+# Create non-root user and switch to it (AFTER pip install which needs root)
+RUN adduser --disabled-password --gecos '' automedia
+RUN chown -R automedia:automedia /app
+USER automedia
+
 # Default command
 CMD ["automedia", "--help"]

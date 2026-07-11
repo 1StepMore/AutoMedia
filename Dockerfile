@@ -43,6 +43,11 @@ RUN pip install --no-cache-dir /tmp/*.whl && rm -f /tmp/*.whl
 # Smoke-test: verify the package imports correctly
 RUN python -c "from automedia import __version__; print(f'AutoMedia {__version__} installed')"
 
+# Create non-root user and switch to it
+RUN adduser --disabled-password --gecos '' automedia
+RUN chown -R automedia:automedia /app
+USER automedia
+
 # Default entrypoint
 ENTRYPOINT ["automedia"]
 CMD ["doctor"]
