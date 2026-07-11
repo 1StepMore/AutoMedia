@@ -1,7 +1,7 @@
 # Publish AutoMedia to PyPI using Trusted Publishing (OIDC)
 #
 # Prerequisites — one-time manual setup at PyPI:
-#   1. Create the project at https://pypi.org/manage/project/automedia/settings/
+#   1. Create the project at https://pypi.org/manage/project/automedia-pipeline/settings/
 #   2. Under "Publishing" → "Add a new publisher":
 #      - Owner: 1stepmore
 #      - Repository: automedia
@@ -72,8 +72,8 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   # ---------------------------------------------------------------------------
-  # To enable production PyPI publishing:
-  #   1. Set up Trusted Publisher at https://pypi.org/manage/project/automedia/settings/
+#   To enable production PyPI publishing:
+#   1. Set up Trusted Publisher at https://pypi.org/manage/project/automedia-pipeline/settings/
   #   2. Create a GitHub environment named "pypi" in repo settings
   #   3. Uncomment the job below and remove the testpypi job above
   # ---------------------------------------------------------------------------
