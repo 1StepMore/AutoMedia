@@ -89,3 +89,4 @@ tests/fixtures/synth/**/api_key*
 site/
 "=6"
 "ave 1                    Wave 2                          Wave 3\\\\"
+*.cover

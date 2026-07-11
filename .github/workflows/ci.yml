@@ -32,10 +32,9 @@ jobs:
         run: |
           pip install -e ".[dev]"
       - name: Security scan (pip-audit)
-        continue-on-error: true
         run: |
           pip install pip-audit
-          pip-audit
+          pip-audit --fail-on CRITICAL
       - name: Security scan (bandit)
         continue-on-error: true
         run: |
@@ -80,7 +79,7 @@ jobs:
         with:
           directory: .
           quiet: true
-          soft_fail: true
+          soft_fail: false
           skip_check: CKV_DOCKER_2
   trivy:
     runs-on: ubuntu-latest
@@ -93,5 +92,5 @@ jobs:
         with:
           image-ref: automedia:scan
           format: table
-          exit-code: 0
+          exit-code: 1
           severity: CRITICAL,HIGH
