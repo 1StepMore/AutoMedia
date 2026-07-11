@@ -22,7 +22,7 @@ from automedia.pipelines.gate_engine import (
 class _PassGate(BaseGate):
     """Always passes."""
 
-    _gate_name = "TEST_PASS"
+    _gate_name = "G85"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -32,7 +32,7 @@ class _PassGate(BaseGate):
 class _FailStopGate(BaseGate):
     """Always fails with failure_mode='stop'."""
 
-    _gate_name = "TEST_FAIL_STOP"
+    _gate_name = "G84"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -42,7 +42,7 @@ class _FailStopGate(BaseGate):
 class _FailRewriteGate(BaseGate):
     """Always fails with failure_mode='rewrite'."""
 
-    _gate_name = "TEST_FAIL_REWRITE"
+    _gate_name = "G83"
     _failure_mode = "rewrite"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -52,7 +52,7 @@ class _FailRewriteGate(BaseGate):
 class _ErrorGate(BaseGate):
     """Raises an exception during execute."""
 
-    _gate_name = "TEST_ERROR"
+    _gate_name = "G82"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -62,7 +62,7 @@ class _ErrorGate(BaseGate):
 class _ErrorRewriteGate(BaseGate):
     """Raises an exception but failure_mode='rewrite'."""
 
-    _gate_name = "TEST_ERROR_REWRITE"
+    _gate_name = "G81"
     _failure_mode = "rewrite"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -72,7 +72,7 @@ class _ErrorRewriteGate(BaseGate):
 class _ContextCaptureGate(BaseGate):
     """Captures the context for inspection."""
 
-    _gate_name = "TEST_CAPTURE"
+    _gate_name = "G80"
     _failure_mode = "stop"
 
     def __init__(self) -> None:
@@ -86,7 +86,7 @@ class _ContextCaptureGate(BaseGate):
 class _OutputGate(BaseGate):
     """Writes to gate_context to simulate downstream data passing."""
 
-    _gate_name = "TEST_OUTPUT"
+    _gate_name = "G79"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -226,7 +226,7 @@ class TestGateEngineRun:
         cap = _ContextCaptureGate()
         engine = GateEngine([cap])
         engine.run({"topic": "test"})
-        assert cap.captured_context["_gate_name"] == "TEST_CAPTURE"
+        assert cap.captured_context["_gate_name"] == "G80"
 
     def test_multiple_passing_gates(self) -> None:
         engine = GateEngine([_PassGate(), _PassGate(), _PassGate()])
@@ -285,7 +285,7 @@ class TestHookDispatch:
         engine = GateEngine([_PassGate()], hooks=[hook])
         engine.run({})
         assert len(hook.before_calls) == 1
-        assert hook.before_calls[0][0] == "TEST_PASS"
+        assert hook.before_calls[0][0] == "G85"
 
     def test_after_gate_called_on_pass(self) -> None:
         hook = _RecordingHook()

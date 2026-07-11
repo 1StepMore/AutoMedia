@@ -15,10 +15,18 @@ import pytest
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Register custom markers for E2E and red-line tests."""
+    """Register custom markers and warning filters."""
+    import warnings as _w
+
     config.addinivalue_line("markers", "e2e: end-to-end pipeline integration tests")
     config.addinivalue_line("markers", "redline: red-line enforcement tests")
     config.addinivalue_line("markers", "slow: tests that take more than a few seconds")
+    # Suppress RL7 warnings for test-only gate names (G-prefixed test gates
+    # are not in failure_modes.py — this is expected).
+    config.addinivalue_line(
+        "filterwarnings",
+        "ignore:Gate 'G[0-9]+' is registered but missing from FAILURE_MODES",
+    )
 
 
 # ---------------------------------------------------------------------------

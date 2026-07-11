@@ -30,15 +30,15 @@ class TestGateRegistryBasics:
         class _UniqueGateA(  # type: ignore[no-redef]
             BaseGate
         ):
-            _gate_name = "TEST_REG_A"
+            _gate_name = "G99"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
-        registered_cls = registry.get("TEST_REG_A")
+        registered_cls = registry.get("G99")
         assert registered_cls is _UniqueGateA
-        assert registered_cls._gate_name == "TEST_REG_A"  # class-level access
+        assert registered_cls._gate_name == "G99"  # class-level access
 
     def test_get_unknown(self) -> None:
         """get() on unknown name raises KeyError."""
@@ -51,18 +51,18 @@ class TestGateRegistryBasics:
         GateRegistry()
 
         class _UniqueGateB1(BaseGate):
-            _gate_name = "TEST_REG_DUP"
+            _gate_name = "G98"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
-        with pytest.raises(KeyError, match="TEST_REG_DUP"):
+        with pytest.raises(KeyError, match="G98"):
 
             class _UniqueGateB2(  # type: ignore[unused-variable]
                 BaseGate
             ):
-                _gate_name = "TEST_REG_DUP"
+                _gate_name = "G98"
                 _failure_mode = "stop"
 
                 def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -80,27 +80,27 @@ class TestGateRegistryBasics:
         """list() includes the classes we registered above."""
         registry = GateRegistry()
         names = registry.list()
-        assert "TEST_REG_A" in names
-        assert "TEST_REG_DUP" in names
+        assert "G99" in names
+        assert "G98" in names
 
     def test_get_all(self) -> None:
         """get_all() returns a copy of the full mapping."""
         registry = GateRegistry()
         all_gates = registry.get_all()
         assert isinstance(all_gates, dict)
-        assert "TEST_REG_A" in all_gates
+        assert "G99" in all_gates
 
     def test_get_all_is_copy(self) -> None:
         """Modifying get_all() dict does not affect the registry."""
         registry = GateRegistry()
         snapshot = registry.get_all()
         snapshot.clear()
-        assert "TEST_REG_A" in registry.get_all()
+        assert "G99" in registry.get_all()
 
     def test_contains(self) -> None:
         """__contains__ works."""
         registry = GateRegistry()
-        assert "TEST_REG_A" in registry
+        assert "G99" in registry
         assert "NONEXISTENT" not in registry
 
     def test_len(self) -> None:
@@ -145,7 +145,7 @@ class TestBaseGateConcrete:
         """Gate with all required members can be created."""
 
         class PingGate(BaseGate):
-            _gate_name = "PING"
+            _gate_name = "G97"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -159,14 +159,14 @@ class TestBaseGateConcrete:
         """gate_name is a property and cannot be set on the instance."""
 
         class ReadOnlyGate(BaseGate):
-            _gate_name = "READONLY"
+            _gate_name = "G96"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
         gate = ReadOnlyGate()
-        assert gate.gate_name == "READONLY"
+        assert gate.gate_name == "G96"
 
         with pytest.raises(AttributeError):
             gate.gate_name = "MUTATED"  # type: ignore
@@ -175,7 +175,7 @@ class TestBaseGateConcrete:
         """failure_mode returns the class-level value."""
 
         class StopGate(BaseGate):
-            _gate_name = "STOPPY"
+            _gate_name = "G95"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -187,7 +187,7 @@ class TestBaseGateConcrete:
         """failure_mode is read-only on the instance."""
 
         class FailGate(BaseGate):
-            _gate_name = "FAILRO"
+            _gate_name = "G94"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -201,7 +201,7 @@ class TestBaseGateConcrete:
         """execute() returns the expected dict."""
 
         class EchoGate(BaseGate):
-            _gate_name = "ECHO"
+            _gate_name = "G93"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -214,7 +214,7 @@ class TestBaseGateConcrete:
         """execute() receives the context dict passed by the caller."""
 
         class CaptureGate(BaseGate):
-            _gate_name = "CAPTURE"
+            _gate_name = "G92"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -237,19 +237,19 @@ class TestStringRepresentations:
         """__str__ returns the gate_name."""
 
         class StrGate(BaseGate):
-            _gate_name = "STR1"
+            _gate_name = "G91"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {}
 
-        assert str(StrGate()) == "STR1"
+        assert str(StrGate()) == "G91"
 
     def test_repr(self) -> None:
         """__repr__ includes class name, gate_name, and failure_mode."""
 
         class ReprGate(BaseGate):
-            _gate_name = "REPR1"
+            _gate_name = "G90"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -257,7 +257,7 @@ class TestStringRepresentations:
 
         r = repr(ReprGate())
         assert "ReprGate" in r
-        assert "REPR1" in r
+        assert "G90" in r
         assert "stop" in r
 
 
@@ -273,12 +273,12 @@ class TestAutoRegistration:
         """A concrete BaseGate subclass is automatically in _registry."""
         # The classes defined above already registered themselves.
         # We verify they're reachable:
-        assert "PING" in _registry
-        assert "ECHO" in _registry
+        assert "G97" in _registry
+        assert "G93" in _registry
 
     def test_registry_get_returns_class_not_instance(self) -> None:
         """registry.get() returns the class, usable for instantiation."""
-        cls = _registry.get("PING")
+        cls = _registry.get("G97")
         instance = cls()
         assert instance.execute({"a": 1}) == {"status": "pong", "input": {"a": 1}}
 
@@ -287,12 +287,12 @@ class TestAutoRegistration:
         (registry stores classes), but still can't be instantiated."""
 
         class MiddleGate(BaseGate, ABC):
-            _gate_name = "MIDDLE"
+            _gate_name = "G88"
             _failure_mode = "stop"
             # execute is still abstract
 
         # Registry stores the class (it has _gate_name / _failure_mode)
-        assert "MIDDLE" in _registry
+        assert "G88" in _registry
 
         # But can't instantiate because execute is abstract
         with pytest.raises(TypeError):
@@ -309,14 +309,14 @@ class TestAutoRegistration:
         """A subclass defined after previous tests still gets registered."""
 
         class LateGate(BaseGate):
-            _gate_name = "LATE"
+            _gate_name = "G87"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"late": True}
 
-        assert "LATE" in _registry
-        assert _registry.get("LATE") is LateGate
+        assert "G87" in _registry
+        assert _registry.get("G87") is LateGate
 
 
 # =========================================================================
