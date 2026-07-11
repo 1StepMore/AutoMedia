@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_json
 from automedia.core.doctor import Doctor
 
 
