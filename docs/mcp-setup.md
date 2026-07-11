@@ -10,7 +10,7 @@ AutoMedia provides an MCP (Model Context Protocol) server that allows any MCP cl
 ## Installation
 
 ```bash
-pip install automedia[mcp]
+pip install automedia-pipeline[mcp]
 ```
 
 ## Starting the Server

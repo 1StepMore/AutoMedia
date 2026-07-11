@@ -42,6 +42,10 @@ Requires a valid license key. Adds:
 
 ---
 
+> **License notice regarding PyMuPDF:** The optional extras `[omni-pdf]` and `[omni]`
+> install PyMuPDF, which is licensed under **AGPL v3**. Ensure compliance with the
+> AGPL before using these extras in your project.
+
 ## License Check Mechanism
 
 License verification uses RSA-signed keys verified against a public key stored
@@ -89,7 +93,7 @@ COMMERCIAL_FEATURES = ["tenant", "rbac", "audit", "saml", "web_ui"]
 ### Community Edition (No License)
 
 ```bash
-pip install automedia
+pip install automedia-pipeline
 # All community features available immediately
 ```
 

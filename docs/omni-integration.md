@@ -23,10 +23,10 @@ gate chain, leaving the 20-gate production sequence unchanged.
 
 ```bash
 # Minimal OPP-only environment
-pip install automedia[omni-core]
+pip install automedia-pipeline[omni-core]
 
 # Full Omni suite (includes ML dependencies for OL)
-pip install automedia[omni]
+pip install automedia-pipeline[omni]
 
 # Development
 pip install -e ".[dev,omni]"
@@ -318,7 +318,7 @@ prompting strategy).
 ## Troubleshooting Checklist
 
 ```
-□ pip install automedia[omni] succeeded
+□ pip install automedia-pipeline[omni] succeeded
 □ automedia init --omni ran and created config files
 □ ~/.automedia/omni_allowlist.yaml has correct paths
 □ OL_TRANSLATION_API_KEY is set (if using OL)
