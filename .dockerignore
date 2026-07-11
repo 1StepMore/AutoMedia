@@ -42,5 +42,14 @@ Thumbs.db
 # ===== Git =====
 .git/
 
+# ===== Credentials / Secrets =====
+oscreds.yaml
+*_credentials.yaml
+*_credentials.json
+*.token
+
+# ===== Agent plans (internal) =====
+.omo/
+
 # ===== Deploy config (not in image) =====
 deploy/
