@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import json
 from enum import Enum
-from typing import Any
 
+import structlog
 import typer
 from typer._click.globals import get_current_context
+
+logger = structlog.get_logger()
 
 
 class OutputMode(Enum):
@@ -28,12 +30,12 @@ def get_output_mode() -> OutputMode:
         ctx = get_current_context(silent=True)
         if ctx and ctx.obj and ctx.obj.get("json"):
             return OutputMode.JSON
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("failed to read click context for --json flag", error=str(exc))
     return OutputMode.TEXT
 
 
-def output_json(data: Any) -> None:
+def output_json(data: object) -> None:
     """Serialize *data* as pretty-printed JSON and print it to stdout."""
     typer.echo(json.dumps(data, indent=2, ensure_ascii=False, default=str))
 

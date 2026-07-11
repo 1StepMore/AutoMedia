@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_json
 from automedia.sop.runner import SOPRunner
 
 app = typer.Typer(name="sop", help="SOP document generation.")

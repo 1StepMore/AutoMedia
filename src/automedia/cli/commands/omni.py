@@ -338,7 +338,10 @@ def omni_ingest(
 
     if not files:
         if is_json:
-            output_json({"status": "ok", "files": [], "count": 0, "message": f"No supported documents found in {scan_dir}"})
+            output_json({
+                "status": "ok", "files": [], "count": 0,
+                "message": f"No supported documents found in {scan_dir}",
+            })
         else:
             typer.echo(f"No supported documents found in {scan_dir}")
         return

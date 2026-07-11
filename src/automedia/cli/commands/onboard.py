@@ -560,7 +560,9 @@ def cmd_list() -> None:
     if is_json:
         output_json({
             "status": "ok",
-            "llm_provider": config.get("llm", {}).get("text_generation", {}).get("provider", "not set"),
+            "llm_provider": (
+                config.get("llm", {}).get("text_generation", {}).get("provider", "not set")
+            ),
             "llm_model": config.get("llm", {}).get("text_generation", {}).get("model", "not set"),
             "default_mode": config.get("mode", "auto"),
             "default_language": config.get("content", {}).get("default_language", "zh"),

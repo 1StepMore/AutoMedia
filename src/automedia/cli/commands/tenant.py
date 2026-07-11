@@ -218,7 +218,10 @@ def rbac_grant(
     if is_json:
         output_json({"status": "ok", "workspace": workspace, "user": user, "role": role})
     else:
-        typer.secho(f"Role '{role}' granted to {user} in workspace {workspace}.", fg=typer.colors.GREEN)
+        typer.secho(
+            f"Role '{role}' granted to {user} in workspace {workspace}.",
+            fg=typer.colors.GREEN,
+        )
 
 
 # ---------------------------------------------------------------------------
