@@ -21,6 +21,7 @@ on:
     types: [published]
   push:
     tags: ["v*"]
+  workflow_dispatch:  # Allow manual trigger for verification
 
 permissions:
   contents: read
@@ -72,24 +73,24 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   # ---------------------------------------------------------------------------
-#   To enable production PyPI publishing:
-#   1. Set up Trusted Publisher at https://pypi.org/manage/project/automedia-pipeline/settings/
+  # To enable production PyPI publishing:
+  #   1. Set up Trusted Publisher at https://pypi.org/manage/project/automedia-pipeline/settings/
   #   2. Create a GitHub environment named "pypi" in repo settings
   #   3. Uncomment the job below and remove the testpypi job above
   # ---------------------------------------------------------------------------
-  # publish-pypi:
-  #   name: Publish to PyPI
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   environment: pypi
-  #   permissions:
-  #     id-token: write  # Required for Trusted Publishing (OIDC)
-  #   steps:
-  #     - name: Download build artifacts
-  #       uses: actions/download-artifact@v8
-  #       with:
-  #         name: dist
-  #         path: dist/
-  #
-  #     - name: Publish to PyPI
-  #       uses: pypa/gh-action-pypi-publish@release/v1
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Required for Trusted Publishing (OIDC)
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
