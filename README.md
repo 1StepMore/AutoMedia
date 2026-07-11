@@ -417,17 +417,17 @@ MIT License. See `LICENSE` for details.
 |----------|----------|----------|
 | `AGENTS.md` | English | AI coding agents — codebase map, constraints, MCP/CLI refs |
 | `README.md` (this file) | English | Human developers + AI agents — entry point, install, quick start |
-| `docs/developer-guide.md` | Chinese | Full developer guide |
-| `docs/api-reference.md` | Chinese | SDK API reference |
-| `docs/cli-reference.md` | Chinese | CLI command reference |
-| `docs/mcp-setup.md` | Chinese | MCP server setup guide |
-| `docs/decision-layer.md` | Chinese | Decision layer documentation |
-| `docs/omni-integration.md` | Chinese | Omni Triad integration |
-| `docs/hitl-framework.md` | Chinese | HITL framework |
-| `docs/sop-runner.md` | Chinese | SOP runner |
-| `docs/asset-library.md` | Chinese | Asset library |
-| `docs/runbook/gate-failure-modes.md` | Chinese | Gate failure troubleshooting |
-| `docs/runbook/production-workflow.md` | Chinese | Production operations |
-| `docs/runbook/cron-troubleshooting.md` | Chinese | Cron job debugging |
-| `docs/runbook/api-gotchas.md` | Chinese | Common API pitfalls |
+| `docs/developer-guide.md` | English | Full developer guide |
+| `docs/api-reference.md` | English | SDK API reference |
+| `docs/cli-reference.md` | English | CLI command reference |
+| `docs/mcp-setup.md` | English | MCP server setup guide |
+| `docs/decision-layer.md` | English | Decision layer documentation |
+| `docs/omni-integration.md` | English | Omni Triad integration |
+| `docs/hitl-framework.md` | English | HITL framework |
+| `docs/sop-runner.md` | English | SOP runner |
+| `docs/asset-library.md` | English | Asset library |
+| `docs/runbook/gate-failure-modes.md` | English | Gate failure troubleshooting |
+| `docs/runbook/production-workflow.md` | English | Production operations |
+| `docs/runbook/cron-troubleshooting.md` | English | Cron job debugging |
+| `docs/runbook/api-gotchas.md` | English | Common API pitfalls |
 | `CHANGELOG.md` | English | Version history and release notes |
