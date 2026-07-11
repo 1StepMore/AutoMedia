@@ -1,18 +1,12 @@
-# Publish AutoMedia to PyPI using Trusted Publishing (OIDC)
+# Publish AutoMedia Pipeline to PyPI via Trusted Publishing (OIDC)
 #
-# Prerequisites — one-time manual setup at PyPI:
-#   1. Create the project at https://pypi.org/manage/project/automedia-pipeline/settings/
-#   2. Under "Publishing" → "Add a new publisher":
-#      - Owner: 1stepmore
-#      - Repository: automedia
-#      - Workflow: publish.yml
-#      - Environment: pypi  (must match the environment below)
-#   3. Repeat at https://test.pypi.org for the TestPyPI trusted publisher
-#      (environment: testpypi)
-#
-# Once configured, uncomment the "Publish to PyPI" step and remove the
-# TestPyPI dry-run step. No API tokens or secrets are needed — the OIDC
-# exchange handles authentication automatically.
+# Set up at https://pypi.org/manage/project/automedia-pipeline/settings/
+# under "Publishing" → "Add a new publisher":
+#   - PyPI Project: automedia-pipeline
+#   - Owner:        1StepMore
+#   - Repository:   AutoMedia
+#   - Workflow:     publish.yml
+#   - Environment:  pypi
 
 name: Publish to PyPI
 
@@ -21,7 +15,7 @@ on:
     types: [published]
   push:
     tags: ["v*"]
-  workflow_dispatch:  # Allow manual trigger for verification
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -53,31 +47,6 @@ jobs:
           name: dist
           path: dist/
 
-  publish-testpypi:
-    name: Publish to TestPyPI (dry-run safety)
-    needs: build
-    runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      id-token: write  # Required for Trusted Publishing (OIDC)
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  # ---------------------------------------------------------------------------
-  # To enable production PyPI publishing:
-  #   1. Set up Trusted Publisher at https://pypi.org/manage/project/automedia-pipeline/settings/
-  #   2. Create a GitHub environment named "pypi" in repo settings
-  #   3. Uncomment the job below and remove the testpypi job above
-  # ---------------------------------------------------------------------------
   publish-pypi:
     name: Publish to PyPI
     needs: build
