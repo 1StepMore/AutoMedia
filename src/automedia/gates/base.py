@@ -9,7 +9,6 @@ from typing import Any, ClassVar
 
 from automedia.gates._context import GateContext
 
-
 _VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
 """Regex for RL6-enforced gate naming convention: ``G0``–``G5``, ``V0``–``V7``,
 ``L1``–``L4``, ``D0``, ``CW``, ``pre-gate``."""
