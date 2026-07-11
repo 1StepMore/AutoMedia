@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import re
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
 from automedia.gates._context import GateContext
+
+
+_VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
+"""Regex for RL6-enforced gate naming convention: ``G0``–``G5``, ``V0``–``V7``,
+``L1``–``L4``, ``D0``, ``CW``, ``pre-gate``."""
 
 
 class GateRegistry:
@@ -25,11 +32,38 @@ class GateRegistry:
     # Public API
     # ------------------------------------------------------------------
     def register(self, gate_cls: type[BaseGate]) -> None:
-        """Register a BaseGate subclass under its ``gate_name``."""
+        """Register a BaseGate subclass under its ``gate_name``.
+
+        Validates the gate name convention (RL6) and checks that a
+        failure-mode entry exists (RL7).
+        """
         name: str = gate_cls._gate_name  # type: ignore[attr-defined]
+
+        # RL6: Gate naming convention
+        if not _VALID_GATE_NAME_RE.match(name):
+            raise ValueError(
+                f"Gate name {name!r} violates RL6 naming convention. "
+                f"Expected pattern: G<digit>, V<digit>, L<digit>, D<digit>, "
+                f"CW, or pre-gate."
+            )
+
         if name in self._gates:
             raise KeyError(f"Gate '{name}' is already registered by {self._gates[name]}")
         self._gates[name] = gate_cls
+
+        # RL7: Every registered gate SHOULD have a failure-mode entry
+        try:
+            from automedia.gates.failure_modes import FAILURE_MODES
+
+            if name not in FAILURE_MODES:
+                warnings.warn(
+                    f"Gate '{name}' is registered but missing from "
+                    f"FAILURE_MODES in failure_modes.py (RL7). "
+                    f"Add an entry for debugging support.",
+                    stacklevel=2,
+                )
+        except ImportError:
+            pass
 
     def get(self, gate_name: str) -> type[BaseGate]:
         """Look up a gate class by name."""

@@ -24,7 +24,7 @@ from automedia.pipelines.runner import (
 class _AlwaysPassGate(BaseGate):
     """Gate that always passes — for runner integration tests."""
 
-    _gate_name = "RUNNER_PASS"
+    _gate_name = "G77"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -34,7 +34,7 @@ class _AlwaysPassGate(BaseGate):
 class _AlwaysFailGate(BaseGate):
     """Gate that always fails — for runner failure tests."""
 
-    _gate_name = "RUNNER_FAIL"
+    _gate_name = "G76"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
