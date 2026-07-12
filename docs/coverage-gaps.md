@@ -5,6 +5,8 @@
 
 This document lists capabilities and dimensions that are **absent from AutoMedia's current implementation**. It serves as a gap analysis for contributors, a roadmap input, and a reference for AI agents entering the codebase.
 
+> **📌 Note:** This document is **superseded** by `docs/project-audit.md`, which provides a more comprehensive and up-to-date audit of the entire codebase. New contributors should start with `docs/project-audit.md`. **Section 1.4 has been updated** to reflect PRD-4's implementation — all other sections remain accurate as of the last-updated date.
+
 ---
 
 ## Table of Contents
@@ -71,36 +73,23 @@ These are capabilities that the pipeline claims or implies it has, but does **no
 
 | | |
 |---|---|
-| **Status** | ❌ Completely absent |
-| **What's missing** | AutoMedia has **zero infrastructure** for AI agents to log into, manage, or inspect social media accounts. There is no: |
-| | • **Agent login flow** — no OAuth2 authorization code flow, no QR-code scan login, no browser-based automated login (Playwright/Selenium), no username/password credential submission |
-| | • **Account registry** — no concept of "connected accounts" per platform; the entire codebase supports only **one set of static credentials per platform** (one WeChat Official Account, one Zhihu account) |
-| | • **Session management** — no token caching/refresh, no cookie rotation, no session expiry detection. WeChat's `access_token` (2-hour TTL) is fetched fresh every `publish()` call with **zero caching**. Zhihu's cookie is a static env var that expires silently with no warning. |
-| | • **Account status / health check** — no MCP tool or CLI command to check whether a WeChat token is valid, whether a Zhihu cookie has expired, or whether an account has publishing permissions |
-| | • **Multi-account switching** — no ability to manage or switch between multiple accounts on the same platform (e.g., two different WeChat Official Accounts, or a personal + brand Zhihu account) |
-| | • **Account analytics** — no follower/subscriber counts, no read/play stats, no engagement data pulled from any platform |
-| | • **Agent identity/profile** — no concept of "agent profile" bound to social media accounts anywhere in the codebase |
-| **Current auth approach** | Each platform adapter handles authentication internally with no shared framework: |
-| | • **WeChat**: `client_credential` OAuth grant (server-to-server, not user login) using `appid + appsecret` → `access_token` fetched per publish, no caching |
-| | • **Zhihu**: Static cookie string from `ZHIHU_COOKIE` env var, passed in HTTP headers as-is |
-| | • **Xiaohongshu**: Static cookie from `XHS_COOKIE`, but adapter returns `not_implemented` |
-| | • **Feishu**: Static webhook URL, no auth |
-| | *(All credentials loaded via `src/automedia/core/credential_loader.py` — a flat key-value string store with no account concept)* |
-| **Impact** | Without this capability: |
-| | • Agents cannot autonomously connect new social media accounts |
-| | • Credentials expire silently, causing publish failures |
-| | • No multi-account support (e.g., brand + personal accounts) |
-| | • No post-publish analytics feedback loop |
-| | • No "一键上传" (one-click upload) for WeChat drafts — each publish requires manual credential setup |
-| **Location** | `src/automedia/core/credential_loader.py` (flat KV store), `src/automedia/adapters/platforms/` (per-adapter hardcoded auth) |
-| **Suggested approach** | Build a new **Account Management subsystem** covering: |
-| | 1. **Account credential store** — Encrypted storage for per-platform account credentials (tokens, cookies, API keys), possibly extending the existing credential loader |
-| | 2. **Auth flow engine** — OAuth2 (authorization_code, client_credentials), cookie-based auth, API key auth with redirect URI handling; QR-code login for WeChat |
-| | 3. **Session manager** — Token refresh, cookie rotation, session health monitoring, expiry detection and alerting |
-| | 4. **Account registry** — Multi-account support per platform with CRUD, account switching, status tracking; expose via MCP tools (`list_accounts`, `check_account_health`, `connect_account`, `disconnect_account`) |
-| | 5. **Browser automation module** — Playwright-based login flows for platforms without APIs (Xiaohongshu), with captcha handling fallback |
-| | 6. **Account dashboard** — MCP resources or CLI commands for viewing connected accounts and their health status |
-| | The existing `BasePlatformAdapter` protocol and `AdapterRegistry` can be extended to support account-aware publishing, but the core auth/session infrastructure must be built from scratch. |
+| **Status** | ✅ Implemented (PRD-4, v2.0-alpha) |
+| **What was built** | The PRD-4 Account Management subsystem is fully implemented in `src/automedia/accounts/`: |
+| | • **Encrypted credential store** (`store.py`) — AES-256-GCM encryption per-platform credentials, master key derived from `AUTOMEDIA_MASTER_KEY` via SHA-256 |
+| | • **Account registry** (`registry.py`) — Multi-account CRUD per platform with label uniqueness enforcement, health status tracking |
+| | • **Auth flow engine** (`auth/oauth2.py`, `auth/flows.py`) — OAuth2 authorization_code + PKCE, OAuth2 client_credentials, CookieAuthFlow, APIKeyAuthFlow |
+| | • **Session manager** (`session.py`) — TTL-aware token cache with concurrency locks, rate-limit backoff, health monitoring |
+| | • **Pydantic v2 models** (`models.py`) — Account, Credential, SessionToken with field-level encryption and masked repr |
+| | • **4 MCP tools** (`mcp/accounts.py`) — `connect_account`, `list_accounts`, `get_account_health`, `disconnect_account` |
+| | • **5 CLI commands** (`cli/commands/account.py`) — `account connect`, `account list`, `account health`, `account disconnect`, `account refresh` |
+| | • **191 tests** — all passing, included in CI |
+| **Remaining gaps** | While the core auth infrastructure is production-ready, these agent-facing features remain: |
+| | • **Browser automation** — no Playwright-based login for platforms without APIs (Xiaohongshu). Stub remains in `xiaohongshu_publisher.py`. |
+| | • **Account analytics dashboard** — no MCP resource or CLI command for aggregate health overview |
+| | • **Post-publish analytics** — `get_analytics()` still returns `"not_implemented"` on all platform adapters |
+| **Impact** | The core account infrastructure no longer blocks autonomous agent operation. Agents can register, authenticate, and manage multiple platform accounts programmatically. Remaining gaps are around browser-automation-only platforms (Xiaohongshu) and the analytics feedback loop. |
+| **Location** | `src/automedia/accounts/` (new subsystem), `src/automedia/mcp/accounts.py` (MCP tools), `src/automedia/cli/commands/account.py` (CLI commands) |
+| **Related docs** | `docs/project-audit.md §2.5` (account layer in architecture), `docs/project-audit.md §4` (OAuth2/AES rows in maturity matrix) |
 
 ---
 
@@ -284,7 +273,7 @@ Architecture Decision Records (ADRs) that were **accepted but not yet implemente
 | 1.1 | Video synthesis & rendering | 🔴 High | New capability | Large (weeks) |
 | 1.2 | International social publishing (YouTube/Twitter/TikTok) | 🔴 High | New capability | Medium (3–5 days per platform) |
 | 1.3 | Real topic collection API | 🔴 High | Replace stub | Medium (3–5 days per source) |
-| 1.4 | Agent account & session management | 🔴 High | New subsystem | Large (weeks) — auth engine + storage + MCP tools |
+| 1.4 | Agent account & session management | ✅ Implemented (PRD-4) | New subsystem ✅ | Complete (191 tests, 7 modules) |
 | 2.1 | Content repurposing | 🟡 Medium | New capability | Large (weeks) |
 | 2.2 | Post-publish analytics | 🟡 Medium | New capability | Large (weeks) |
 | 2.3 | Decision Layer LLM integration | 🟡 Medium | Upgrade existing | Medium (5–7 days) |

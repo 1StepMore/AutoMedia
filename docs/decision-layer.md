@@ -11,6 +11,10 @@ Production Layer to answer *how*.
 
 ---
 
+> **⚠️ Implementation Note:** The agents described below are currently **deterministic templates** that produce structured artifacts using hardcoded logic. None of the 11 agents make LLM calls — they generate template-based brand positions, market reports, and strategies rather than performing AI-powered analysis. This document describes the **intended architecture** and agent design, not the current implementation state. For a current-state assessment, see `docs/project-audit.md §7` (Decision Layer Status).
+
+---
+
 ## Architecture Overview
 
 ```
