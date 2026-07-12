@@ -26,7 +26,7 @@ def run_cmd(
     decision_mode: str = typer.Option(
         "build",
         "--decision-mode",
-        help="Decision layer mode: build or scale.",
+        help="(DEPRECATED) Decision mode for pipeline execution — no longer functional",
     ),
     resume_from: str | None = typer.Option(
         None,

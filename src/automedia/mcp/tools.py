@@ -177,6 +177,7 @@ def run_pipeline(
     topic: str,
     brand: str,
     mode: str = "auto",
+    # DEPRECATED — kept for backward compatibility, scheduled for removal
     decision_mode: str = "build",
     tenant_id: str = "default",
     resume_from: str = "",

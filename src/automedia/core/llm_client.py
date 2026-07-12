@@ -6,6 +6,7 @@ Config is read from the merged AutoMedia config dict at call time.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from tenacity import (
@@ -41,6 +42,8 @@ def _get_retryable_errors() -> tuple[type[BaseException], ...]:
 
 
 _RETRYABLE_ERRORS: tuple[type[BaseException], ...] = _get_retryable_errors()
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +187,207 @@ def _llm_structured_completion_with_retry(
         )
 
     return _call()
+
+
+# ---------------------------------------------------------------------------
+# Structured-output fallback for non-OpenAI providers
+# ---------------------------------------------------------------------------
+
+
+def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
+    """Return exception types that trigger the structured-output fallback.
+
+    Non-OpenAI providers (DeepSeek, etc.) raise ``AttributeError`` when
+    ``client.beta`` does not exist, ``NotImplementedError`` when the
+    provider explicitly refuses structured output, or ``openai.APIError``
+    when the server rejects the beta endpoint.
+    """
+    try:
+        import openai
+
+        return (AttributeError, NotImplementedError, openai.APIError)
+    except ImportError:
+        return (AttributeError, NotImplementedError)
+
+
+_FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = (
+    _get_fallback_structured_errors()
+)
+
+
+def _structured_completion_with_fallback(
+    prompt: str,
+    *,
+    response_format: type,
+    config: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    model: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    task_type: str = "text_generation",
+) -> Any:  # noqa: ANN401
+    """Try structured completion; fall back to manual JSON parse.
+
+    Attempts the OpenAI ``beta.chat.completions.parse`` endpoint first.
+    If the provider does not support structured output (e.g. DeepSeek),
+    falls back to :func:`llm_complete` + ``model.model_validate_json``.
+
+    Parameters
+    ----------
+    prompt:
+        The user message content.
+    response_format:
+        A Pydantic model class that defines the expected JSON schema.
+    config:
+        Merged AutoMedia config.  Lazily loaded when *None*.
+    system_prompt:
+        Optional system instruction.
+    model:
+        Model override (default: from config).
+    temperature:
+        Sampling temperature override.
+    max_tokens:
+        Max output token override.
+    task_type:
+        Config section under ``llm`` to read (e.g. ``text_generation``,
+        ``vision``, ``subtitle_proofread``).
+
+    Returns
+    -------
+    Any
+        An instance of *response_format* populated from the LLM response.
+
+    Raises
+    ------
+    LLMError
+        On provider errors or unexpected failures.
+    """
+    if config is None:
+        from automedia.core.config_loader import load_config
+
+        config = load_config()
+
+    llm_cfg = config.get("llm", {}).get(task_type, {})
+    client = _build_client(config, task_type=task_type)
+
+    resolved_model: str = model or llm_cfg.get("model", "")
+    if not resolved_model:
+        raise LLMError(
+            f"No model configured for structured output in llm.{task_type}.model. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+        )
+    resolved_temp: float = (
+        temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
+    )
+    resolved_max: int = (
+        max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
+    )
+
+    messages: list[dict[str, str]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        logger.info("Attempting structured completion via beta API")
+        response = _llm_structured_completion_with_retry(
+            client,
+            model=resolved_model,
+            messages=messages,
+            response_format=response_format,
+            temperature=resolved_temp,
+            max_tokens=resolved_max,
+        )
+        return response.choices[0].message.parsed
+    except _FALLBACK_STRUCTURED_ERRORS as exc:
+        logger.info(
+            "Structured beta API not supported by provider (%s: %s). "
+            "Falling back to manual JSON parse.",
+            type(exc).__name__,
+            exc,
+        )
+
+    try:
+        response = _llm_chat_completion_with_retry(
+            client,
+            model=resolved_model,
+            messages=messages,
+            temperature=resolved_temp,
+            max_tokens=resolved_max,
+        )
+    except Exception as exc:
+        raise LLMError(
+            f"LLM completion failed during structured fallback: {exc}"
+        ) from exc
+
+    raw_text: str = response.choices[0].message.content or ""
+
+    try:
+        return response_format.model_validate_json(raw_text)
+    except Exception as exc:
+        raise LLMError(
+            f"Failed to parse LLM response as {response_format.__name__}: {exc}"
+        ) from exc
+
+
+def llm_complete_structured_safe(
+    prompt: str,
+    *,
+    response_format: type,
+    config: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    model: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    task_type: str = "text_generation",
+) -> Any:  # noqa: ANN401
+    """Send a structured completion request with automatic fallback.
+
+    Wraps :func:`_structured_completion_with_fallback` to provide a
+    public API that works with both OpenAI (native structured output via
+    ``beta.chat.completions.parse``) and non-OpenAI providers such as
+    DeepSeek (manual JSON parse fallback).
+
+    Parameters
+    ----------
+    prompt:
+        The user message content.
+    response_format:
+        A Pydantic model class that defines the expected JSON schema.
+    config:
+        Merged AutoMedia config.  Lazily loaded when *None*.
+    system_prompt:
+        Optional system instruction.
+    model:
+        Model override (default: from config).
+    temperature:
+        Sampling temperature override.
+    max_tokens:
+        Max output token override.
+    task_type:
+        Config section under ``llm`` to read (e.g. ``text_generation``,
+        ``vision``, ``subtitle_proofread``).
+
+    Returns
+    -------
+    Any
+        An instance of *response_format* populated from the LLM response.
+
+    Raises
+    ------
+    LLMError
+        On provider errors or unexpected failures.
+    """
+    return _structured_completion_with_fallback(
+        prompt,
+        response_format=response_format,
+        config=config,
+        system_prompt=system_prompt,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        task_type=task_type,
+    )
 
 
 # ---------------------------------------------------------------------------

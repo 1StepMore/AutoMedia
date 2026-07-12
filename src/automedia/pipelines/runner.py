@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import time
+import warnings
 from dataclasses import asdict
 from typing import Any, Literal, cast
 
@@ -232,6 +233,10 @@ def run_full_pipeline(
     mode:
         Pipeline execution mode — ``"auto"``, ``"text_only"``,
         ``"video_only"``, or ``"qa_only"``.
+    decision_mode:
+        **DEPRECATED** — kept for backward compatibility only.
+        No longer consumed by any gate and will be removed in a
+        future version.
     resume_from:
         Gate name to resume from (skip preceding gates).  ``None`` runs
         from the beginning.
@@ -260,6 +265,15 @@ def run_full_pipeline(
         ``error`` is populated instead of raising.
     """
     start = time.monotonic()
+
+    if decision_mode is not None and decision_mode != "build":
+        warnings.warn(
+            "decision_mode is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        log.warning("decision_mode parameter is deprecated, ignoring value: %s", decision_mode)
+
     log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
 
     try:
