@@ -16,14 +16,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from automedia.mcp.allowlist import (
-    _ALLOWED_OUTPUT_FORMATS,
-    check_path_allowed,
-)
 from automedia.mcp._state import (
     _SERVER_START,
     _lock,
     _pipeline_tracker,
+)
+from automedia.mcp.allowlist import (
+    _ALLOWED_OUTPUT_FORMATS,
 )
 from automedia.pipelines.gate_engine import PipelineProgress
 
@@ -171,6 +170,54 @@ def select_topic(
 
     except Exception as exc:
         return {"selected": None, "error": str(exc)}
+
+
+def research_topics(
+    category: str,
+    count: int = 5,
+    trending_data: str = "",
+) -> dict[str, Any]:
+    """Research trending or high-potential topics within a category using LLM.
+
+    Uses the ``topic_research`` prompt template and the
+    :class:`TopicResearchOutput` Pydantic model to produce a structured
+    list of topic suggestions with angles, confidence scores, and format
+    recommendations.  The result is ready to feed into the topic pool.
+
+    Parameters
+    ----------
+    category:
+        Content category to research (e.g. ``"AI Tools"``, ``"Finance"``).
+    count:
+        Number of topics to generate (default 5).
+    trending_data:
+        Optional context — trending signals, audience data, or keywords
+        to steer the LLM toward relevant topics.
+
+    Returns
+    -------
+    dict
+        ``{"topics": [...], "category": str, "total_found": int}``
+        or an error dict on failure.
+    """
+    try:
+        from automedia.core.llm_client import llm_complete_structured_safe
+        from automedia.decision.pydantic import TopicResearchOutput
+        from automedia.prompts import load_prompt
+
+        prompt = load_prompt(
+            "topic_research",
+            category=category,
+            count=count,
+            trending_data=trending_data,
+        )
+        result = llm_complete_structured_safe(
+            prompt,
+            response_format=TopicResearchOutput,
+        )
+        return result.model_dump()
+    except Exception as exc:
+        return {"topics": [], "category": category, "total_found": 0, "error": str(exc)}
 
 
 def run_pipeline(
@@ -820,6 +867,65 @@ def format_output(
 
 
 # ---------------------------------------------------------------------------
+# Content quality evaluation tool
+# ---------------------------------------------------------------------------
+
+
+def evaluate_content_quality(
+    content: str,
+    criteria: str = "general",
+    brand: str = "",
+) -> dict[str, Any]:
+    """Evaluate content quality using an LLM with structured output.
+
+    Uses the ``content_quality.j2`` prompt template in combination with
+    ``ContentQualityOutput`` Pydantic model to produce a scored evaluation
+    with issues, suggestions, and an overall assessment.
+
+    Parameters
+    ----------
+    content:
+        The content text to evaluate.
+    criteria:
+        Quality dimensions to evaluate — e.g. ``"general"``,
+        ``"clarity, accuracy, brand voice, SEO readiness"``.
+    brand:
+        Optional brand identifier for brand-specific evaluation.
+
+    Returns
+    -------
+    dict
+        ``{"quality_score": float, "issues": list[str],
+        "suggestions": list[str], "overall_assessment": str}``
+        or an error dict on failure.
+    """
+    try:
+        from automedia.core.llm_client import llm_complete_structured_safe
+        from automedia.decision.pydantic import ContentQualityOutput
+        from automedia.prompts import load_prompt
+
+        prompt = load_prompt(
+            "content_quality",
+            content=content,
+            criteria=criteria,
+            brand=brand,
+        )
+        result = llm_complete_structured_safe(
+            prompt,
+            response_format=ContentQualityOutput,
+        )
+        return result.model_dump()
+    except Exception as exc:
+        return {
+            "quality_score": 0.0,
+            "issues": [],
+            "suggestions": [],
+            "overall_assessment": "",
+            "error": str(exc),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Health-check tool
 # ---------------------------------------------------------------------------
 
@@ -841,7 +947,126 @@ def health_check() -> dict[str, Any]:
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
-            "tools_count": 18,
+            "tools_count": 19,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# LLM-driven tools
+# ---------------------------------------------------------------------------
+
+
+def run_brand_strategy(
+    brand_name: str,
+    industry: str,
+    target_audience: str,
+    context: str = "",
+) -> dict[str, Any]:
+    """Generate a brand strategy using LLM-driven analysis.
+
+    Loads the ``brand_strategy`` Jinja2 prompt template, fills in the
+    parameters, and sends it to the configured LLM via
+    :func:`~automedia.core.llm_client.llm_complete_structured_safe` with
+    :class:`~automedia.decision.pydantic.BrandStrategyOutput` as the
+    response schema.
+
+    Parameters
+    ----------
+    brand_name:
+        Name of the brand to analyse.
+    industry:
+        Industry or vertical (e.g. ``"SaaS"``, ``"e-commerce"``).
+    target_audience:
+        Description of the target audience.
+    context:
+        Optional additional context or constraints for the strategy.
+
+    Returns
+    -------
+    dict
+        A dict matching the ``BrandStrategyOutput`` schema with keys:
+        ``brand_positioning``, ``audience_analysis``,
+        ``competitive_landscape``, ``key_differentiators``,
+        ``suggested_messaging``.  On failure the dict contains an
+        ``"error"`` key instead.
+    """
+    from automedia.core.llm_client import llm_complete_structured_safe
+    from automedia.decision.pydantic import BrandStrategyOutput
+    from automedia.prompts import load_prompt
+
+    prompt = load_prompt(
+        "brand_strategy",
+        brand_name=brand_name,
+        industry=industry,
+        target_audience=target_audience,
+        context=context,
+    )
+    result = llm_complete_structured_safe(prompt, response_format=BrandStrategyOutput)
+    return result.model_dump()
+
+
+def run_pipeline_from_strategy(
+    topic: str,
+    brand: str,
+    mode: str = "auto",
+    strategy_context: str = "",
+) -> dict[str, Any]:
+    """Generate a content strategy via LLM then execute the production pipeline.
+
+    Loads the ``pipeline_strategy`` Jinja2 prompt template, fills in the
+    parameters, and sends it to the configured LLM via
+    :func:`~automedia.core.llm_client.llm_complete_structured_safe` with
+    :class:`~automedia.decision.pydantic.PipelineStrategyOutput` as the
+    response schema.  Then delegates to
+    :func:`~automedia.pipelines.runner.run_full_pipeline` with the
+    original *topic*, *brand*, and *mode* parameters.
+
+    Parameters
+    ----------
+    topic:
+        Content topic / subject.
+    brand:
+        Brand identifier.
+    mode:
+        Pipeline mode — ``"auto"``, ``"text_only"``, ``"video_only"``,
+        or ``"qa_only"``.
+    strategy_context:
+        Optional additional context or constraints for the strategy
+        (e.g. target audience, tone, platform hints).
+
+    Returns
+    -------
+    dict
+        ``{"strategy": {...}, "pipeline_result": {...}}`` on success.
+        On failure the dict contains an ``"error"`` key with the
+        failure description.
+    """
+    from automedia.core.llm_client import llm_complete_structured_safe
+    from automedia.decision.pydantic import PipelineStrategyOutput
+    from automedia.pipelines.runner import run_full_pipeline
+    from automedia.prompts import load_prompt
+
+    prompt = load_prompt(
+        "pipeline_strategy",
+        topic=topic,
+        brand=brand,
+        mode=mode,
+        context=strategy_context,
+    )
+    strategy: PipelineStrategyOutput = llm_complete_structured_safe(
+        prompt,
+        response_format=PipelineStrategyOutput,
+    )
+
+    pipeline_result = run_full_pipeline(
+        topic=topic,
+        brand=brand,
+        mode=mode,
+    )
+
+    return {
+        "strategy": strategy.model_dump(),
+        "pipeline_result": _pipeline_result_to_dict(pipeline_result),
+    }

@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 18 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 19 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -31,6 +31,15 @@ from __future__ import annotations
 from typing import Any
 
 # ---------------------------------------------------------------------------
+# Shared state imports (from _state.py)
+# ---------------------------------------------------------------------------
+from automedia.mcp._state import (
+    _SERVER_START,
+    _lock,
+    _pipeline_tracker,
+)
+
+# ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.accounts import (
@@ -38,32 +47,6 @@ from automedia.mcp.accounts import (
     disconnect_account,
     get_account_health,
     list_accounts,
-)
-from automedia.mcp.tools import (
-    archive_project,
-    extract_brief,
-    format_output,
-    get_pipeline_progress,
-    get_pipeline_status,
-    get_project_assets,
-    health_check,
-    list_projects,
-    list_topic_pool,
-    localize_content,
-    localize_output,
-    register_platform_adapter,
-    run_pipeline,
-    select_topic,
-)
-
-# ---------------------------------------------------------------------------
-# Helper / utility imports (from tools.py)
-# ---------------------------------------------------------------------------
-from automedia.mcp.tools import (
-    _discover_projects,
-    _pipeline_result_to_dict,
-    _project_assets,
-    _resolve_projects_dir,
 )
 
 # ---------------------------------------------------------------------------
@@ -80,15 +63,6 @@ from automedia.mcp.allowlist import (
 )
 
 # ---------------------------------------------------------------------------
-# Shared state imports (from _state.py)
-# ---------------------------------------------------------------------------
-from automedia.mcp._state import (
-    _SERVER_START,
-    _lock,
-    _pipeline_tracker,
-)
-
-# ---------------------------------------------------------------------------
 # Resource imports (from resources.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.resources import (
@@ -100,6 +74,32 @@ from automedia.mcp.resources import (
 )
 
 # ---------------------------------------------------------------------------
+# Helper / utility imports (from tools.py)
+# ---------------------------------------------------------------------------
+from automedia.mcp.tools import (
+    _discover_projects,
+    _pipeline_result_to_dict,
+    _project_assets,
+    _resolve_projects_dir,
+    archive_project,
+    evaluate_content_quality,
+    extract_brief,
+    format_output,
+    get_pipeline_progress,
+    get_pipeline_status,
+    get_project_assets,
+    health_check,
+    list_projects,
+    list_topic_pool,
+    localize_content,
+    localize_output,
+    register_platform_adapter,
+    research_topics,
+    run_pipeline,
+    select_topic,
+)
+
+# ---------------------------------------------------------------------------
 # Public API — backward-compatible re-exports
 # ---------------------------------------------------------------------------
 __all__ = [
@@ -107,6 +107,8 @@ __all__ = [
     "create_server",
     "main",
     # Tool handlers
+    "evaluate_content_quality",
+    "research_topics",
     "select_topic",
     "run_pipeline",
     "get_pipeline_progress",
@@ -157,7 +159,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     Returns
     -------
     FastMCP
-        A fully configured server with all 18 tools and 5 resources registered.
+        A fully configured server with all 19 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -214,6 +216,12 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "\n"
             "  qa_only     Quality-assurance pass — runs selected QA gates on existing\n"
             "              content without generating new assets. Use for re-validation.\n"
+            "\n"
+            "━━━ CONTENT QUALITY (1 tool) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "\n"
+            "  evaluate_content_quality(content, criteria?, brand?)\n"
+            "      Score content against specified criteria using LLM evaluation.\n"
+            "      Returns {quality_score, issues[], suggestions[], overall_assessment}.\n"
             "\n"
             "━━━ OMNI TRIAD TOOLS (4 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -345,6 +353,15 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 
     mcp.tool(
         description=(
+            "Research trending or high-potential topics within a category using LLM. "
+            "Takes a category name, optional count (default 5), and optional trending "
+            "data. Returns a structured list of topics with angles, confidence scores, "
+            "and format recommendations. The result is ready to feed into the topic pool."
+        ),
+    )(research_topics)
+
+    mcp.tool(
+        description=(
             "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON."
         ),
     )(run_pipeline)
@@ -430,6 +447,19 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     )(localize_output)
 
     # ------------------------------------------------------------------
+    # Content quality evaluation tool
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Evaluate content quality using an LLM. Scores content against "
+            "specified criteria (clarity, accuracy, brand voice, etc.) and "
+            "returns a quality score (0.0-1.0), issues with severity prefixes, "
+            "concrete suggestions, and an overall assessment with verdict."
+        ),
+    )(evaluate_content_quality)
+
+    # ------------------------------------------------------------------
     # Account tools
     # ------------------------------------------------------------------
 
@@ -503,7 +533,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 18 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 19 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",
