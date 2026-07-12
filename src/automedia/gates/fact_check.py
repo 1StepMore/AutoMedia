@@ -10,15 +10,23 @@ Steps:
 When ``gate_context["_mock_results"]`` is present, each check's result is
 driven from that dict instead of calling the LLM provider — making the gate
 fully deterministic for unit testing.
+
+When ``gate_context["config"]["enable_llm"]`` is ``True`` (default), the gate
+attempts LLM-based evaluation via :func:`llm_check_with_fallback` before
+falling back to the deterministic substring-matching logic.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.llm_helpers import llm_check_with_fallback
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -45,6 +53,20 @@ _EXPECTED_MAP: dict[str, str] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
+def _run_deterministic_checks(
+    content: str,
+    source_url: str,
+    source_data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Run all 5 deterministic checks and return the check dicts."""
+    return [
+        _check_source_trace(content, source_url, source_data),
+        _check_number_verification(content, source_data),
+        _check_timeline(content, source_data),
+        _check_quotes(content, source_data),
+        _check_entities(content, source_data),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -224,29 +246,88 @@ class G0FactCheck(BaseGate):
         source_url: str = source_data.get("url", "")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
 
-        # Determine each check result — use mock if available, otherwise run check
-        check_fns: list[tuple[str, Any]] = [
-            ("source_trace", lambda: _check_source_trace(content, source_url, source_data)),
-            ("number_verification", lambda: _check_number_verification(content, source_data)),
-            ("timeline", lambda: _check_timeline(content, source_data)),
-            ("quotes", lambda: _check_quotes(content, source_data)),
-            ("entities", lambda: _check_entities(content, source_data)),
-        ]
+        config: dict[str, Any] = gate_context.get("config", {})
+        enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
-        checks: list[dict[str, Any]] = []
-        for name, fn in check_fns:
-            if mock_results is not None and name in mock_results:
-                mock = mock_results[name]
-                checks.append(
-                    {
-                        "name": name,
-                        "passed": bool(mock["passed"]),
-                        "detail": str(mock.get("detail", "")),
-                    }
-                )
+        if mock_results is not None:
+            checks: list[dict[str, Any]] = []
+            for name in _CHECK_NAMES:
+                if name in mock_results:
+                    mock = mock_results[name]
+                    checks.append(
+                        {
+                            "name": name,
+                            "passed": bool(mock["passed"]),
+                            "detail": str(mock.get("detail", "")),
+                        }
+                    )
+                else:
+                    checks.append({"name": name, "passed": True, "detail": ""})
+
+            return build_gate_result(
+                checks,
+                gate="G0",
+                expected_map=_EXPECTED_MAP,
+                confidence=round(
+                    sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
+                    4,
+                ),
+            )
+
+        if enable_llm:
+            # Mutable container captures per-step checks from deterministic fallback closure
+            captured_checks: list[dict[str, Any]] = []
+
+            def _deterministic_fn(_text: str) -> dict[str, Any]:
+                det_checks = _run_deterministic_checks(content, source_url, source_data)
+                captured_checks.extend(det_checks)
+                return {
+                    "passed": all(c["passed"] for c in det_checks),
+                    "issues": [c["detail"] for c in det_checks if not c["passed"]],
+                }
+
+            llm_result = llm_check_with_fallback(
+                text=content,
+                check_type="fact_check",
+                prompt_template_name="fact_check_g0",
+                deterministic_fn=_deterministic_fn,
+                source_data=source_data,
+            )
+
+            method = llm_result.get("method", "deterministic")
+
+            if method == "deterministic" and captured_checks:
+                checks = captured_checks
             else:
-                checks.append(fn())
+                passed = llm_result["passed"]
+                issues = llm_result.get("issues", [])
+                detail = (
+                    "; ".join(issues) if issues
+                    else ("verified by LLM" if passed else "fact-check failed")
+                )
+                checks = [
+                    {"name": name, "passed": passed, "detail": detail}
+                    for name in _CHECK_NAMES
+                ]
 
+            confidence = llm_result.get("confidence")
+            if confidence is None:
+                confidence = round(
+                    sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
+                    4,
+                )
+
+            logger.info("G0 fact-check method=%s passed=%s", method, llm_result["passed"])
+
+            return build_gate_result(
+                checks,
+                gate="G0",
+                expected_map=_EXPECTED_MAP,
+                confidence=confidence,
+                method=method,
+            )
+
+        checks = _run_deterministic_checks(content, source_url, source_data)
         return build_gate_result(
             checks,
             gate="G0",
@@ -255,4 +336,5 @@ class G0FactCheck(BaseGate):
                 sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
                 4,
             ),
+            method="deterministic",
         )

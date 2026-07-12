@@ -496,3 +496,19 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
 
 For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/agent-troubleshooting.md).
+
+---
+
+## 13. Skills
+
+Skills (agent instructions for specific tasks) are stored in
+`.opencode/skills/` and are available to **all agent types** — OpenCode,
+Claude Code, Codex CLI, and Cline.
+
+- **Canonical location:** `.opencode/skills/`
+- **Claude Code:** `.claude/skills/README.md` points to canonical location
+- **Codex CLI:** `.codex/skills/README.md` points to canonical location
+- **Cline:** Reference `.opencode/skills/` directly — no dedicated directory
+
+Do not duplicate skill files. All agents should reference the canonical
+`.opencode/skills/` directory.

@@ -14,12 +14,14 @@ fully deterministic for unit testing.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.llm_helpers import llm_check_with_fallback
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -521,11 +523,67 @@ class G2CopyReview(BaseGate):
     _failure_mode = "retry"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
-        """Run 5-round copy review and return structured result."""
+        """Run 5-round copy review and return structured result.
+
+        When ``enable_llm`` is ``True`` (via ``gate_context["config"]``),
+        attempts LLM-based evaluation first.  On LLM failure, falls back
+        to the deterministic keyword-matching checks.  When
+        ``_mock_results`` is present, always uses the deterministic path
+        for test compatibility.
+        """
         content: str = gate_context.get("content", "")
         brand_profile: dict[str, Any] | None = gate_context.get("brand_profile")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
+        config: dict[str, Any] = gate_context.get("config", {})
+        enable_llm: bool = config.get("enable_llm", False)
 
+        if mock_results is not None:
+            return self._run_deterministic(content, brand_profile, mock_results)
+
+        if enable_llm and content.strip():
+            brand_guidelines: str = json.dumps(brand_profile) if brand_profile else ""
+            llm_result = llm_check_with_fallback(
+                text=content,
+                check_type="copy_review",
+                prompt_template_name="copy_review_g2",
+                deterministic_fn=lambda text: self._run_deterministic(
+                    text, brand_profile, None,
+                ),
+                brand_guidelines=brand_guidelines,
+            )
+
+            if llm_result.get("method") == "llm":
+                all_passed = llm_result["passed"]
+                modified_content: str | None = None
+                if not all_passed and content:
+                    modified_content = _rewrite_content(content)
+
+                result = build_gate_result(
+                    self._build_llm_checks(llm_result),
+                    gate="G2",
+                    expected_map=_EXPECTED_MAP,
+                    modified_content=modified_content,
+                )
+                result["method"] = "llm"
+                result["tone_score"] = llm_result.get("tone_score", 1.0)
+                result["brand_compliance"] = llm_result.get("brand_compliance", True)
+                return result
+
+            return llm_result
+
+        return self._run_deterministic(content, brand_profile, mock_results)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _run_deterministic(
+        self,
+        content: str,
+        brand_profile: dict[str, Any] | None,
+        mock_results: dict[str, dict[str, Any]] | None,
+    ) -> dict[str, Any]:
+        """Run the 5-round keyword-matching review (deterministic path)."""
         check_fns: list[tuple[str, Any]] = [
             ("clarity", lambda: _check_clarity(content)),
             ("tone", lambda: _check_tone(content, brand_profile)),
@@ -560,3 +618,15 @@ class G2CopyReview(BaseGate):
             expected_map=_EXPECTED_MAP,
             modified_content=modified_content,
         )
+
+    @staticmethod
+    def _build_llm_checks(llm_result: dict[str, Any]) -> list[dict[str, Any]]:
+        """Convert LLM result into a checks list for standard format."""
+        passed: bool = llm_result["passed"]
+        issues: list[str] = llm_result.get("issues", [])
+        detail = (
+            "; ".join(issues)
+            if issues
+            else ("all checks passed" if passed else "issues found")
+        )
+        return [{"name": "llm_review", "passed": passed, "detail": detail}]

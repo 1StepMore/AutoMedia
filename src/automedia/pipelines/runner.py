@@ -329,7 +329,6 @@ def run_full_pipeline(
             tenant_id=tenant_id,
             lang_config=lang_config,
             mode=config.get("mode", "auto"),
-            decision_mode=decision_mode,
             force_provenance=force_provenance,
             brand_profile=asdict(brand_profile) if brand_profile is not None else None,
         )

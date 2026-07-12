@@ -17,6 +17,7 @@ from typing import Any
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+from automedia.prompts import load_prompt
 
 _EXPECTED_MAP: dict[str, str] = {
     "topic_present": "Topic is provided in gate_context",
@@ -31,26 +32,6 @@ _EXPECTED_MAP: dict[str, str] = {
 def _derive_expected(check_name: str) -> str:
     """Convert a check name to a human-readable expected statement."""
     return _EXPECTED_MAP.get(check_name, check_name.replace("_", " ").capitalize())
-
-
-# ---------------------------------------------------------------------------
-# Default system prompt used when no override is provided in config
-# ---------------------------------------------------------------------------
-
-_DEFAULT_WRITER_PROMPT: str = """\
-You are a professional content writer for Chinese social media (WeChat, Xiaohongshu, Bilibili).
-Write a high-quality, engaging article in Simplified Chinese based on the topic and brand provided.
-
-Requirements:
-- Write in a natural, human tone — avoid AI-sounding language
-- Use markdown formatting with headings, lists, and emphasis where appropriate
-- Include a compelling title as an H1 heading at the top
-- Write 800–1500 characters (Chinese) — substantial enough to be valuable
-- Include a strong call-to-action at the end
-- Follow the brand voice guidelines if provided
-- The article should be original, well-researched in tone, and ready for publication
-- DO NOT include any placeholder text, notes about "AI generation", or meta-commentary
-Return only the article content, no explanations."""
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +98,7 @@ class ContentWriterGate(BaseGate):
             }
 
         # --- Build the writer prompt ------------------------------------------------
-        writer_prompt = _DEFAULT_WRITER_PROMPT
+        writer_prompt = load_prompt("content_writer")
         # Allow per-call override from model_config.yaml → llm.writer.system_prompt
         if config:
             llm_cfg = config.get("llm", {})

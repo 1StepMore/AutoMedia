@@ -322,7 +322,9 @@ class TestServerCreation:
                 "localize_output",
                 "register_platform_adapter",
                 "research_topics",
+                "run_brand_strategy",
                 "run_pipeline",
+                "run_pipeline_from_strategy",
                 "select_topic",
             ]
         )

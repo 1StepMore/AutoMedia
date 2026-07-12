@@ -947,7 +947,7 @@ def health_check() -> dict[str, Any]:
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
-            "tools_count": 19,
+            "tools_count": 22,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}

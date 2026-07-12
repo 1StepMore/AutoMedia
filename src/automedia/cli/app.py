@@ -64,9 +64,6 @@ app.add_typer(adapter_app, name="adapter")
 app.add_typer(cron_app, name="cron")
 app.add_typer(omni_app, name="omni")
 app.add_typer(hitl_app, name="hitl")
-app.add_typer(license_app, name="license")
-app.add_typer(sop_app, name="sop")
-app.add_typer(solution_app, name="solution")
 app.add_typer(onboard_app, name="onboard")
 
 

@@ -1,7 +1,7 @@
 """Search — combined keyword + semantic search over the Asset Library.
 
-Provides the top-level ``AssetLibrary`` class used by the Decision Layer
-and other subsystems to find relevant brand assets.
+Provides the top-level ``AssetLibrary`` class used by subsystems to find
+relevant brand assets.
 
 The search pipeline
 -------------------
@@ -82,7 +82,7 @@ class AssetLibrary:
     """Top-level orchestrator for a brand's Asset Library.
 
     Manages both the SQLite database and the Chroma vector store, and
-    exposes the combined search API used by the Decision Layer.
+    exposes the combined keyword + semantic search API.
 
     Parameters
     ----------

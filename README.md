@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (22 tools)
+- **Three-layer API**: SDK / CLI (12 commands) / MCP Server (22 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
@@ -262,7 +262,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (16 commands)
+### CLI (12 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -277,10 +277,6 @@ result = run_full_pipeline(
 | `automedia doctor` | Check system dependencies and environment health |
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
-| `automedia license` | License management |
-| `automedia sop` | SOP (Standard Operating Procedure) runner |
-| `automedia tenant` | Multi-tenant management |
-| `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
 ### MCP Server (22 tools)
@@ -397,14 +393,14 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  22 tools      |     |  16 commands       |
+  |  22 tools      |     |  12 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
   |      automedia/ Python Package             |
   |  core/ pipelines/ gates/ adapters/         |
   |  accounts/ hooks/ manifests/ pool/ cron/   |
-  |  mcp/ cli/ decision/ hitl/ omni/           |
+  |  mcp/ cli/ hitl/ omni/                     |
   +--------------------------------------------+
 ```
 
@@ -422,13 +418,9 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (16 command modules) |
-| `decision/` | Decision layer (orchestrator, gates, strategies, scaling) |
+| `cli/` | Typer CLI application (12 command modules) |
 | `hitl/` | Human-in-the-loop framework |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
-| `tenant/` | Multi-tenant support (manager, RBAC, audit) |
-| `sop/` | SOP runner |
-| `license/` | License management and verification |
 | `asset_library/` | Vector store, document ingest, similarity search |
 
 ## Configuration
@@ -537,10 +529,8 @@ MIT License. See `LICENSE` for details.
 | `docs/api-reference.md` | English | SDK API reference |
 | `docs/cli-reference.md` | English | CLI command reference |
 | `docs/mcp-setup.md` | English | MCP server setup guide |
-| `docs/decision-layer.md` | English | Decision layer documentation |
 | `docs/omni-integration.md` | English | Omni Triad integration |
 | `docs/hitl-framework.md` | English | HITL framework |
-| `docs/sop-runner.md` | English | SOP runner |
 | `docs/asset-library.md` | English | Asset library |
 | `docs/runbook/gate-failure-modes.md` | English | Gate failure troubleshooting |
 | `docs/runbook/production-workflow.md` | English | Production operations |

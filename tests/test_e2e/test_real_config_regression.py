@@ -35,6 +35,7 @@ _ALLOWLIST = {
     "pipeline",
     "prompts",
     "brand",
+    "gate_engine",
 }
 
 

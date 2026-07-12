@@ -8,56 +8,27 @@ from typing import Any
 
 import yaml
 
-from automedia.hitl.protocol import NodeProvider
-
-
-def _classify(node_name: str) -> str:
-    """Classify a node by name into decision / preference / execution."""
-    decision_keywords = (
-        "diagnosis",
-        "positioning",
-        "strategy",
-        "optimization",
-        "questionnaire",
-        "routing",
-        "confirmation",
-        "planning",
-        "audit",
-        "refresh",
-    )
-    preference_keywords = (
-        "segmentation",
-        "persona",
-        "audience",
-        "calendar",
-        "tracking",
-        "revalidation",
-        "deepening",
-    )
-    for kw in decision_keywords:
-        if kw in node_name:
-            return "decision"
-    for kw in preference_keywords:
-        if kw in node_name:
-            return "preference"
-    return "execution"
-
-
 # Static presets that do NOT require a NodeProvider.
 _STATIC_PRESETS: dict[str, list[dict[str, Any]]] = {}
 
-
-def _build_automated_preset(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Build the ``test_automated`` preset from raw node dicts."""
-    preset = [
-        {"name": node["name"], "type": _classify(node["name"]), "autoset": "agent"}
-        for node in nodes
-    ]
-    # Override brand_questionnaire to human
-    for node in preset:
-        if node["name"] == "brand_questionnaire":
-            node["autoset"] = "human"
-    return preset
+# Build the test_automated preset from automated.yaml at import time.
+_automated_yaml = Path(__file__).parent / "presets" / "automated.yaml"
+if _automated_yaml.is_file():
+    with open(_automated_yaml, encoding="utf-8") as _fh:
+        _parsed = yaml.safe_load(_fh)
+    if isinstance(_parsed, dict):
+        _nodes_dict = _parsed.get("nodes", {})
+        if isinstance(_nodes_dict, dict):
+            _test_nodes = [
+                {"name": name, "autoset": cfg.get("autoset", "agent")}
+                for name, cfg in _nodes_dict.items()
+                if isinstance(cfg, dict)
+            ]
+            # brand_questionnaire is human in the test_automated preset
+            for _node in _test_nodes:
+                if _node["name"] == "brand_questionnaire":
+                    _node["autoset"] = "human"
+            _STATIC_PRESETS["test_automated"] = _test_nodes
 
 
 class HITLConfig:
@@ -71,20 +42,16 @@ class HITLConfig:
         Optional path to a directory containing ``*.yaml`` override files.
         Defaults to ``~/.automedia/hitl/overrides/``.
     node_provider:
-        Optional ``NodeProvider`` that supplies decision node metadata.
-        When provided (and *preset_name* is ``"test_automated"``), auto-generated
-        presets are built from the provider's node list.  When ``None``,
-        only static and filesystem presets are available.
+        Deprecated. Kept for backward compatibility; value is ignored.
     """
 
     def __init__(
         self,
         preset_name: str = "automated",
         overrides_dir: str | None = None,
-        node_provider: NodeProvider | None = None,
+        node_provider: Any = None,  # noqa: ANN401 — kept for backward compat
     ) -> None:
         self._nodes: dict[str, dict[str, Any]] = {}
-        self._node_provider = node_provider
 
         # 1. Load preset
         preset_nodes = self._load_preset(preset_name)
@@ -127,23 +94,8 @@ class HITLConfig:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_dynamic_presets(self) -> dict[str, list[dict[str, Any]]]:
-        """Build presets that require a ``NodeProvider``.
-
-        Returns an empty dict when no provider is wired.
-        """
-        if self._node_provider is None:
-            return {}
-        nodes = self._node_provider.list_all_nodes()
-        return {"test_automated": _build_automated_preset(nodes)}
-
     def _load_preset(self, name: str) -> list[dict[str, Any]]:
-        """Load a preset by name — checks dynamic, static, then filesystem."""
-        # Dynamic presets (require NodeProvider)
-        dynamic = self._get_dynamic_presets()
-        if name in dynamic:
-            return dynamic[name]
-
+        """Load a preset by name — checks static, then filesystem."""
         # Static presets
         if name in _STATIC_PRESETS:
             return _STATIC_PRESETS[name]
@@ -153,7 +105,16 @@ class HITLConfig:
         if preset_path.is_file():
             with open(preset_path, encoding="utf-8") as fh:
                 data = yaml.safe_load(fh)
-            return data.get("nodes", []) if isinstance(data, dict) else []
+            if not isinstance(data, dict):
+                return []
+            nodes = data.get("nodes", {})
+            if isinstance(nodes, dict):
+                return [
+                    {"name": n, "autoset": c.get("autoset", "agent")}
+                    for n, c in nodes.items()
+                    if isinstance(c, dict)
+                ]
+            return nodes if isinstance(nodes, list) else []
 
         raise FileNotFoundError(f"HITL preset not found: {name!r}")
 

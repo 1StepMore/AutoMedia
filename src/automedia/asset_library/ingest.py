@@ -1,6 +1,6 @@
 """Ingestion — scan project directories and import artifacts into the Asset Library.
 
-Scans a project directory for decision artifacts, extracts metadata,
+Scans a project directory for production artifacts, extracts metadata,
 computes MD5 checksums, and writes both to the SQLite database and
 the Chroma vector store.
 
@@ -8,7 +8,7 @@ Artifact file discovery conventions
 -----------------------------------
 The ingester looks for files in these locations:
 
-* ``decision/``  — DecisionAgent YAML/JSON/MD output files
+* ``decision/``, ``research_data/`` — strategy & planning output files
 * ``01_content/``, ``02_images/``, etc. — content pipeline outputs
 * ``research_data/`` — Omni extraction outputs (see ``artifact_mapping``)
 * ``*.md`` files at the project root (briefs, strategy docs)
@@ -182,7 +182,7 @@ def ingest_artifacts(project_dir: str, brand: str) -> IngestResult:
 # Discovery helpers
 # ---------------------------------------------------------------------------
 
-_DECISION_SUBDIRS = {"decision", "research_data", "01_content", "02_images"}
+_INGEST_SUBDIRS = {"decision", "research_data", "01_content", "02_images"}
 _PROJECT_FILE_PATTERNS = ("*.md", "*.yaml", "*.yml", "*.json")
 
 
@@ -198,7 +198,7 @@ def _discover_artifacts(
     seen: set[Path] = set()
 
     # 1. Walk known sub-directories.
-    for subdir_name in _DECISION_SUBDIRS:
+    for subdir_name in _INGEST_SUBDIRS:
         subdir = root / subdir_name
         if subdir.is_dir():
             for pattern in _PROJECT_FILE_PATTERNS:

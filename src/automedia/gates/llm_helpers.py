@@ -59,6 +59,17 @@ class G2CheckResult(BaseModel):
     brand_compliance: bool = True
 
 
+class DeepCheckResult(BaseModel):
+    """Structured output model for optional deep-check LLM evaluation.
+
+    Used by G3, V3, L3, and pre-gate for advisory-only LLM checks
+    that never block the gate.
+    """
+
+    passed: bool
+    issues: list[str] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Result type mapping
 # ---------------------------------------------------------------------------
@@ -66,6 +77,7 @@ class G2CheckResult(BaseModel):
 _RESULT_MODELS: dict[str, type[BaseModel]] = {
     "fact_check": G0CheckResult,
     "copy_review": G2CheckResult,
+    "deep_check": DeepCheckResult,
 }
 
 
@@ -187,3 +199,64 @@ def llm_check_with_fallback(
         _fallback_count,
     )
     return det_result
+
+
+# ---------------------------------------------------------------------------
+# Deep-check helper (advisory-only, never blocks the gate)
+# ---------------------------------------------------------------------------
+
+
+def run_deep_check(
+    text: str,
+    check_description: str,
+    timeout: int = 15,
+) -> dict[str, Any]:
+    """Run an advisory LLM deep-check on gate content.
+
+    This is optional and never blocks the gate.  Returns a dict with
+    ``passed``, ``issues``, and ``method`` keys.
+
+    Parameters
+    ----------
+    text:
+        The content to evaluate by the LLM.
+    check_description:
+        Short description for the LLM prompt
+        (e.g. ``"brand and CTA compliance"``).
+    timeout:
+        Maximum seconds to wait for the LLM response.  Defaults to 15.
+
+    Returns
+    -------
+    dict[str, Any]
+        A dict with keys:
+
+        - ``passed``: bool — whether the check passed
+        - ``issues``: list[str] — list of issues found (empty when passed)
+        - ``method``: str — ``"llm"`` on success, ``"failed"`` on error
+    """
+    prompt = f"Review this content for {check_description}:\n\n{text}"
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                llm_complete_structured_safe,
+                prompt,
+                response_format=DeepCheckResult,
+                system_prompt=(
+                    "You are a content quality reviewer. "
+                    "Identify any issues in the content."
+                ),
+            )
+            result = future.result(timeout=timeout)
+        return {
+            "passed": result.passed,
+            "issues": result.issues,
+            "method": "llm",
+        }
+    except Exception:
+        logger.debug("LLM deep-check failed (advisory, suppressed)", exc_info=True)
+        return {
+            "passed": True,
+            "issues": [],
+            "method": "failed",
+        }

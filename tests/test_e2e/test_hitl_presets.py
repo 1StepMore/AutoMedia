@@ -37,7 +37,17 @@ def _build_config(mapping: dict[str, str]) -> Any:
     """
     from automedia.hitl.config import HITLConfig
 
-    cfg = HITLConfig(preset_name="test_automated")
+    class _StubNodeProvider:
+        """Minimal NodeProvider stub — returns empty node list."""
+
+        @staticmethod
+        def list_all_nodes() -> list[dict[str, str]]:
+            return []
+
+    cfg = HITLConfig(
+        preset_name="test_automated",
+        node_provider=_StubNodeProvider(),
+    )
     for name, executor in mapping.items():
         cfg._nodes[name] = {"name": name, "type": "execution", "autoset": executor}
     return cfg

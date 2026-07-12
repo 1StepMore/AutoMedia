@@ -15,6 +15,8 @@ from automedia.gates.copy_review import (
     _check_tone,
     _rewrite_content,
 )
+from automedia.gates.llm_helpers import G2CheckResult
+from tests.mock_llm import mock_llm_failure, mock_llm_response
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -33,6 +35,7 @@ def _make_context(
     content: str = _CLEAN_CONTENT,
     brand_profile: dict[str, Any] | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {"content": content}
@@ -40,6 +43,8 @@ def _make_context(
         ctx["brand_profile"] = brand_profile
     if mock_results is not None:
         ctx["_mock_results"] = mock_results
+    if config is not None:
+        ctx["config"] = config
     return ctx
 
 
@@ -377,3 +382,171 @@ class TestG2EdgeCases:
         assert len(_CHECK_NAMES) == 5
         expected = {"clarity", "tone", "so_what", "evidence", "specificity"}
         assert set(_CHECK_NAMES) == expected
+
+
+# =========================================================================
+# LLM evaluation path tests
+# =========================================================================
+
+
+class TestG2LlmPath:
+    """execute() with enable_llm=True uses LLM evaluation."""
+
+    def test_llm_method_selected(self) -> None:
+        """When LLM returns data, method='llm' is set."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=0.9, brand_compliance=True)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["method"] == "llm"
+
+    def test_llm_passed_true(self) -> None:
+        """LLM returning passed=True → result passed=True."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=1.0, brand_compliance=True)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["passed"] is True
+
+    def test_llm_passed_false(self) -> None:
+        """LLM returning passed=False → result passed=False."""
+        data = G2CheckResult(
+            passed=False,
+            issues=["tone mismatch"],
+            tone_score=0.3,
+            brand_compliance=False,
+        )
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["passed"] is False
+
+    def test_llm_tone_score_propagated(self) -> None:
+        """tone_score from LLM appears in result."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=0.85, brand_compliance=True)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["tone_score"] == 0.85
+
+    def test_llm_brand_compliance_propagated(self) -> None:
+        """brand_compliance from LLM appears in result."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=1.0, brand_compliance=False)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["brand_compliance"] is False
+
+    def test_llm_result_has_extra_keys(self) -> None:
+        """LLM path result includes method, tone_score, brand_compliance."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=0.9, brand_compliance=True)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert "method" in result
+        assert "tone_score" in result
+        assert "brand_compliance" in result
+        assert result["gate"] == "G2"
+        assert "checks" in result
+
+    def test_llm_modified_content_present_on_failure(self) -> None:
+        """When LLM says passed=False, modified_content is set."""
+        data = G2CheckResult(
+            passed=False,
+            issues=["brand violation"],
+            tone_score=0.2,
+            brand_compliance=False,
+        )
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["modified_content"] is not None
+        assert isinstance(result["modified_content"], str)
+
+    def test_llm_modified_content_none_when_all_pass(self) -> None:
+        """When LLM says passed=True, modified_content is None."""
+        data = G2CheckResult(passed=True, issues=[], tone_score=1.0, brand_compliance=True)
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_response(data):
+            result = G2CopyReview().execute(ctx)
+        assert result["modified_content"] is None
+
+
+# =========================================================================
+# LLM failure → deterministic fallback tests
+# =========================================================================
+
+
+class TestG2LlmFallback:
+    """LLM failure falls back to deterministic evaluation."""
+
+    def test_llm_failure_sets_deterministic_method(self) -> None:
+        """When LLM fails, method='deterministic'."""
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_failure():
+            result = G2CopyReview().execute(ctx)
+        assert result["method"] == "deterministic"
+
+    def test_llm_failure_produces_five_checks(self) -> None:
+        """Fallback produces 5 deterministic checks with correct names."""
+        ctx = _make_context(config={"enable_llm": True})
+        with mock_llm_failure():
+            result = G2CopyReview().execute(ctx)
+        assert "checks" in result
+        check_names = [c["name"] for c in result["checks"]]
+        assert check_names == _CHECK_NAMES
+        assert len(result["checks"]) == 5
+
+    def test_llm_failure_content_checked(self) -> None:
+        """Fallback correctly detects issues in content."""
+        ctx = _make_context(
+            content="We leverage synergy to deliver scalable solutions.",
+            config={"enable_llm": True},
+        )
+        with mock_llm_failure():
+            result = G2CopyReview().execute(ctx)
+        # Deterministic check should find jargon issues
+        assert "passed" in result
+
+
+# =========================================================================
+# enable_llm=False tests (pure deterministic path)
+# =========================================================================
+
+
+class TestG2EnableLlmFalse:
+    """enable_llm=False uses only deterministic evaluation."""
+
+    def test_no_llm_extra_keys(self) -> None:
+        """Without LLM, result has no method/tone_score/brand_compliance."""
+        ctx = _make_context(config={"enable_llm": False})
+        result = G2CopyReview().execute(ctx)
+        assert "method" not in result
+        assert "tone_score" not in result
+        assert "brand_compliance" not in result
+
+    def test_deterministic_checks_always_run(self) -> None:
+        """enable_llm=False still produces 5 checks."""
+        ctx = _make_context(config={"enable_llm": False})
+        result = G2CopyReview().execute(ctx)
+        check_names = [c["name"] for c in result["checks"]]
+        assert check_names == _CHECK_NAMES
+
+    def test_clean_content_passes(self) -> None:
+        """Clean content passes with enable_llm=False."""
+        ctx = _make_context(content=_CLEAN_CONTENT, config={"enable_llm": False})
+        result = G2CopyReview().execute(ctx)
+        assert result["passed"] is True
+        assert result["modified_content"] is None
+
+    def test_mock_results_take_priority(self) -> None:
+        """Mock results take priority even when enable_llm=False."""
+        ctx = _make_context(
+            mock_results=_fail_check("clarity"),
+            config={"enable_llm": False},
+        )
+        result = G2CopyReview().execute(ctx)
+        assert result["passed"] is False
+        failed = [c for c in result["checks"] if not c["passed"]]
+        assert len(failed) == 1
+        assert failed[0]["name"] == "clarity"

@@ -6,6 +6,11 @@ from typing import Any
 
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.fact_check import _CHECK_NAMES, G0FactCheck
+from automedia.gates.llm_helpers import G0CheckResult
+from tests.mock_llm import (
+    mock_llm_failure,
+    mock_llm_response,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -18,6 +23,7 @@ def _make_context(
     content: str = "Some content from example.com about events on 2024-01-15.",
     source_data: dict[str, Any] | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {
@@ -35,6 +41,8 @@ def _make_context(
     }
     if mock_results is not None:
         ctx["_mock_results"] = mock_results
+    if config is not None:
+        ctx["config"] = config
     return ctx
 
 
@@ -393,3 +401,148 @@ class TestG0EdgeCases:
         result = G0FactCheck().execute(ctx)
         tl = next(c for c in result["checks"] if c["name"] == "timeline")
         assert tl["detail"] == "custom error 123"
+
+
+# =========================================================================
+# LLM integration tests
+# =========================================================================
+
+
+class TestG0LlmIntegration:
+    """execute() respects enable_llm flag and mock_llm helpers."""
+
+    # ------------------------------------------------------------------
+    # LLM evaluation path
+    # ------------------------------------------------------------------
+
+    def test_llm_evaluation_returns_valid_result(self) -> None:
+        """When LLM returns valid data, result.method='llm'."""
+        data = G0CheckResult(passed=True, issues=[], confidence=1.0)
+        ctx = _make_context(
+            content="Alice and Bob attended the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+        )
+        with mock_llm_response(data):
+            result = G0FactCheck().execute(ctx)
+
+        assert result.get("method") == "llm"
+        assert result["passed"] is True
+        assert result["confidence"] == 1.0
+
+    def test_llm_confidences_and_issues_propagate(self) -> None:
+        """LLM result issues appear in check detail, confidence at top level."""
+        data = G0CheckResult(
+            passed=False,
+            issues=["entity 'Charlie' not verified", "source mismatch"],
+            confidence=0.3,
+        )
+        ctx = _make_context(
+            content="Alice spoke at the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+        )
+        with mock_llm_response(data):
+            result = G0FactCheck().execute(ctx)
+
+        assert result.get("method") == "llm"
+        assert result["passed"] is False
+        assert result["confidence"] == 0.3
+        for check in result["checks"]:
+            assert "entity 'Charlie' not verified" in check["detail"]
+            assert "source mismatch" in check["detail"]
+
+    # ------------------------------------------------------------------
+    # LLM failure → fallback path
+    # ------------------------------------------------------------------
+
+    def test_llm_failure_falls_back_to_deterministic(self) -> None:
+        """When LLM fails, result.method='deterministic'."""
+        ctx = _make_context(
+            content="Alice and Bob attended the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+        )
+        with mock_llm_failure():
+            result = G0FactCheck().execute(ctx)
+
+        assert result.get("method") == "deterministic"
+
+    def test_llm_failure_still_produces_valid_results(self) -> None:
+        """After LLM fallback, deterministic logic still finds matching entities."""
+        ctx = _make_context(
+            content="Alice and Bob attended the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+        )
+        with mock_llm_failure():
+            result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is not None
+        ent = next(c for c in result["checks"] if c["name"] == "entities")
+        assert ent["passed"] is True  # Alice and Bob are in the content
+
+    # ------------------------------------------------------------------
+    # enable_llm=False flag
+    # ------------------------------------------------------------------
+
+    def test_enable_llm_false_uses_deterministic(self) -> None:
+        """When enable_llm=False, result.method='deterministic'."""
+        ctx = _make_context(
+            content="Alice and Bob attended the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+            config={"enable_llm": False},
+        )
+        result = G0FactCheck().execute(ctx)
+
+        assert result.get("method") == "deterministic"
+        # Deterministic logic still works
+        ent = next(c for c in result["checks"] if c["name"] == "entities")
+        assert ent["passed"] is True
+
+    def test_enable_llm_false_skips_llm_even_when_mock_available(self) -> None:
+        """When enable_llm=False, no LLM call is made."""
+        data = G0CheckResult(passed=False, issues=["llm issue"])
+        ctx = _make_context(
+            content="Alice and Bob attended the event.",
+            source_data={
+                "url": "",
+                "published_date": "",
+                "key_numbers": {},
+                "entities": ["Alice", "Bob"],
+                "quotes": [],
+            },
+            config={"enable_llm": False},
+        )
+        with mock_llm_response(data) as mock:
+            result = G0FactCheck().execute(ctx)
+
+        # LLM should NOT have been called
+        assert mock.call_count == 0
+        assert result.get("method") == "deterministic"
