@@ -9,6 +9,7 @@ config                   Print the current HITL configuration summary
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
@@ -16,6 +17,8 @@ import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
 from automedia.hitl.config import HITLConfig
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(name="hitl", help="Manage Human-In-The-Loop configuration.")
 
@@ -48,7 +51,8 @@ def _read_active_preset() -> str | None:
         if isinstance(data, dict):
             return data.get("active_preset")
         return None
-    except Exception:
+    except (OSError, yaml.YAMLError):
+        logger.warning("Failed to read active HITL preset from %s", _ACTIVE_PRESET_PATH)
         return None
 
 

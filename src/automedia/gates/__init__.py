@@ -1,8 +1,6 @@
 # AutoMedia gates
 
 # Text-track gates (G0-G5)
-# Decision-Layer gate (PRD-3)
-from automedia.decision.gates.d0_gate import D0Gate  # noqa: F401
 from automedia.gates._context import GateContext  # noqa: F401
 from automedia.gates.archive_validation import L2ArchiveValidation  # noqa: F401
 from automedia.gates.brand_cta import G3BrandCTA  # noqa: F401

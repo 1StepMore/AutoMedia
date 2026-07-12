@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from automedia.core.registry import BaseRegistry
+
 if TYPE_CHECKING:
     from automedia.omni.base import BaseOmniAdapter
 
 
-class OmniToolRegistry:
+class OmniToolRegistry(BaseRegistry):
     """Global registry that maps adapter names to adapter instances.
+
+    Inherits singleton lifecycle from :class:`BaseRegistry`.
+    Keeps ``@classmethod`` wrappers for backward compatibility.
 
     Usage::
 
@@ -18,23 +23,28 @@ class OmniToolRegistry:
         for name in OmniToolRegistry.list_tools(): ...
     """
 
-    _registry: dict[str, BaseOmniAdapter] = {}
-    _instance: OmniToolRegistry | None = None
+    # ------------------------------------------------------------------
+    # Validation hook
+    # ------------------------------------------------------------------
 
-    def __new__(cls, *args: object, **kwargs: object) -> OmniToolRegistry:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def _validate(self, key: str, value: BaseOmniAdapter) -> None:
+        """Enforce non-empty adapter name and no duplicates."""
+        if not isinstance(key, str) or not key:
+            raise ValueError(f"Adapter.name must be a non-empty string, got {key!r}")
+        if key in self._registry:
+            raise KeyError(
+                f"Adapter {key!r} is already registered ({type(self._registry[key]).__name__})"
+            )
+
+    # ------------------------------------------------------------------
+    # Public API — classmethods for backward compatibility
+    # ------------------------------------------------------------------
 
     @classmethod
     def register(cls, adapter: BaseOmniAdapter) -> None:
         name = adapter.name
-        if not isinstance(name, str) or not name:
-            raise ValueError(f"Adapter.name must be a non-empty string, got {name!r}")
-        if name in cls._registry:
-            raise KeyError(
-                f"Adapter {name!r} is already registered ({type(cls._registry[name]).__name__})"
-            )
+        inst = cls()
+        inst._validate(name, adapter)
         cls._registry[name] = adapter
 
     @classmethod

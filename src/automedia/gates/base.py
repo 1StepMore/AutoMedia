@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar
+from typing import Any
 
+from automedia.core.registry import BaseRegistry
 from automedia.gates._context import GateContext
 
 _VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
@@ -14,22 +15,53 @@ _VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
 ``L1``–``L4``, ``D0``, ``CW``, ``pre-gate``."""
 
 
-class GateRegistry:
-    """Singleton registry that auto-registers BaseGate subclasses by gate_name."""
+class GateRegistry(BaseRegistry):
+    """Singleton registry that auto-registers BaseGate subclasses by gate_name.
 
-    _gates: dict[str, type[BaseGate]] = {}
-    _instance: ClassVar[GateRegistry | None] = None
+    Inherits singleton lifecycle and CRUD from :class:`BaseRegistry`.
+    Overrides :meth:`_validate` to enforce gate naming convention (RL6)
+    and failure-mode coverage (RL7).
+    """
 
-    # Singleton instance — module-level code uses the module variable directly.
-    def __new__(cls) -> GateRegistry:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._gates = {}
-        return cls._instance
+    # ------------------------------------------------------------------
+    # Validation hook
+    # ------------------------------------------------------------------
+
+    def _validate(self, key: str, value: type[BaseGate]) -> None:
+        """Enforce RL6 naming convention and RL7 failure-mode coverage."""
+        # RL6: Gate naming convention
+        if not _VALID_GATE_NAME_RE.match(key):
+            raise ValueError(
+                f"Gate name {key!r} violates RL6 naming convention. "
+                f"Expected pattern: G<digit>, V<digit>, L<digit>, D<digit>, "
+                f"CW, or pre-gate."
+            )
+
+        if key in self._registry:
+            raise KeyError(f"Gate '{key}' is already registered by {self._registry[key]}")
+
+        # RL7: Every registered gate SHOULD have a failure-mode entry
+        try:
+            from automedia.gates.failure_modes import FAILURE_MODES
+
+            if key not in FAILURE_MODES:
+                warnings.warn(
+                    f"Gate '{key}' is registered but missing from "
+                    f"FAILURE_MODES in failure_modes.py (RL7). "
+                    f"Add an entry for debugging support.",
+                    stacklevel=2,
+                )
+        except ImportError:
+            import logging
+
+            logging.getLogger(__name__).debug(
+                "Could not import failure_modes — RL7 check skipped"
+            )
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
     def register(self, gate_cls: type[BaseGate]) -> None:
         """Register a BaseGate subclass under its ``gate_name``.
 
@@ -37,52 +69,36 @@ class GateRegistry:
         failure-mode entry exists (RL7).
         """
         name: str = gate_cls._gate_name  # type: ignore[attr-defined]
-
-        # RL6: Gate naming convention
-        if not _VALID_GATE_NAME_RE.match(name):
-            raise ValueError(
-                f"Gate name {name!r} violates RL6 naming convention. "
-                f"Expected pattern: G<digit>, V<digit>, L<digit>, D<digit>, "
-                f"CW, or pre-gate."
-            )
-
-        if name in self._gates:
-            raise KeyError(f"Gate '{name}' is already registered by {self._gates[name]}")
-        self._gates[name] = gate_cls
-
-        # RL7: Every registered gate SHOULD have a failure-mode entry
-        try:
-            from automedia.gates.failure_modes import FAILURE_MODES
-
-            if name not in FAILURE_MODES:
-                warnings.warn(
-                    f"Gate '{name}' is registered but missing from "
-                    f"FAILURE_MODES in failure_modes.py (RL7). "
-                    f"Add an entry for debugging support.",
-                    stacklevel=2,
-                )
-        except ImportError:
-            pass
+        super().register(name, gate_cls)
 
     def get(self, gate_name: str) -> type[BaseGate]:
-        """Look up a gate class by name."""
-        if gate_name not in self._gates:
-            raise KeyError(f"Gate '{gate_name}' is not registered. Available: {list(self._gates)}")
-        return self._gates[gate_name]
+        """Look up a gate class by name.
 
-    def list(self) -> list[str]:
-        """Return sorted list of registered gate names."""
-        return sorted(self._gates)
+        If *gate_name* is ``"D0"`` and it's not yet registered, the
+        decision-layer gate module is imported lazily so that
+        ``BaseGate.__init_subclass__`` auto-registers it on the fly.
+        """
+        if gate_name not in self._registry:
+            if gate_name == "D0":
+                try:
+                    # Lazy import — triggers D0Gate auto-registration
+                    # via BaseGate.__init_subclass__.
+                    import automedia.decision.gates.d0_gate  # noqa: F401
+                except ImportError:
+                    import logging
+
+                    logging.getLogger(__name__).debug(
+                        "Could not import D0 gate — decision layer not available"
+                    )
+            if gate_name not in self._registry:
+                raise KeyError(
+                    f"Gate '{gate_name}' is not registered. Available: {list(self._registry)}"
+                )
+        return self._registry[gate_name]
 
     def get_all(self) -> dict[str, type[BaseGate]]:
         """Return a copy of the full name→class mapping."""
-        return dict(self._gates)
-
-    def __contains__(self, name: str) -> bool:
-        return name in self._gates
-
-    def __len__(self) -> int:
-        return len(self._gates)
+        return dict(self._registry)
 
     def __repr__(self) -> str:
         return f"GateRegistry({len(self)} gates: {', '.join(self.list())})"

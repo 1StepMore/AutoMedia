@@ -44,6 +44,7 @@ class GateContext:
     tenant_id: str = "default"
     lang_config: dict[str, Any] = field(default_factory=dict)
     mode: str = "auto"
+    decision_mode: str = "build"
     force_provenance: bool = False
 
     # Set per-gate by the engine loop

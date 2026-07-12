@@ -31,16 +31,16 @@ The `run_full_pipeline()` function returns a `PipelineResult` dataclass:
 | `error` | `str \| None` | Top-level error message (only for unexpected exceptions) |
 | `assets` | `list[AssetInfo]` | Produced asset metadata (type, path, md5) |
 
-A `status="partial"` means some gates passed but a `failure_mode="stop"` gate failed or a `failure_mode="rewrite"` gate failed and the pipeline continued.
+A `status="partial"` means some gates passed but a `failure_mode="stop"` gate failed or a `failure_mode="retry"` gate failed and the pipeline continued.
 
 **Step 3: Interpret gate failure modes**
 
 Each gate has a `failure_mode` defined at the class level:
 
 - **`"stop"`** — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: D0, pre-gate, G0, G2, G3, G4, G5, V0, V3, V6, V7, L1, L2, L3, L4.
-- **`"rewrite"`** — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: CW, G1, V1, V2, V4, V5.
+- **`"retry"`** — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: CW, G1, V1, V2, V4, V5.
 
-Gates with `"rewrite"` mode can be retried by re-running the pipeline with `resume_from` set to the failed gate name.
+Gates with `"retry"` mode can be retried by re-running the pipeline with `resume_from` set to the failed gate name.
 
 **Step 4: Read gate logs**
 
@@ -192,7 +192,7 @@ To work around allowlist restrictions:
 If an MCP tool call returns "tool not found":
 
 1. Verify the server is running: check that `python -m automedia.mcp.server` is still running
-2. Check the tool name against the 13 tools listed in AGENTS.md section 9
+2. Check the tool name against the 14 tools listed in AGENTS.md section 9
 3. Restart the server: kill the process and start it again
 
 ### Testing MCP tools directly

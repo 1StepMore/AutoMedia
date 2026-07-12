@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from automedia._version import __version__
+from automedia.cli.commands.account import app as account_app
 from automedia.cli.commands.adapter import app as adapter_app
 from automedia.cli.commands.archive import archive_cmd
 from automedia.cli.commands.cron import app as cron_app
@@ -60,6 +61,7 @@ def main(
 # ---------------------------------------------------------------------------
 
 
+app.add_typer(account_app, name="account")
 app.add_typer(pool_app, name="pool")
 app.add_typer(projects_app, name="projects")
 app.add_typer(adapter_app, name="adapter")

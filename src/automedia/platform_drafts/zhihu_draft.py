@@ -1,12 +1,18 @@
-"""Xiaohongshu adapter — stub for publishing to 小红书 (RED)."""
+"""Zhihu draft adapter — stub for saving drafts to Zhihu (知乎).
+
+.. deprecated::
+   Use :class:`automedia.adapters.platforms.zhihu_publisher.ZhihuPublisher`
+   instead.  This module is kept for backward compatibility and will be
+   removed in a future release.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
 
-class XiaohongshuAdapter:
-    """Stub adapter for publishing content to Xiaohongshu (小红书 / RED).
+class ZhihuDraftAdapter:
+    """Stub adapter for publishing drafts to Zhihu (知乎).
 
     Parameters
     ----------
@@ -31,7 +37,7 @@ class XiaohongshuAdapter:
     # ------------------------------------------------------------------
 
     def publish(self, content: dict[str, Any]) -> dict[str, Any]:
-        """Stub: publish *content* to Xiaohongshu.
+        """Stub: publish *content* as a Zhihu draft.
 
         Parameters
         ----------
@@ -47,5 +53,5 @@ class XiaohongshuAdapter:
         _ = content  # mark as used
         return {
             "status": "not_implemented",
-            "platform": "xiaohongshu",
+            "platform": "zhihu_draft",
         }

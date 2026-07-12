@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from automedia.decision import dependency
+from automedia.hitl.protocol import NodeProvider
 
 
 def _classify(node_name: str) -> str:
@@ -43,18 +43,21 @@ def _classify(node_name: str) -> str:
     return "execution"
 
 
-# Built-in presets (also available as files in presets/)
-_BUILTIN_PRESETS: dict[str, list[dict[str, Any]]] = {
-    "test_automated": [
-        {"name": node["name"], "type": _classify(node["name"]), "autoset": "agent"}
-        for node in dependency.list_all_nodes()
-    ],
-}
+# Static presets that do NOT require a NodeProvider.
+_STATIC_PRESETS: dict[str, list[dict[str, Any]]] = {}
 
-# Override brand_questionnaire to human
-for node in _BUILTIN_PRESETS["test_automated"]:
-    if node["name"] == "brand_questionnaire":
-        node["autoset"] = "human"
+
+def _build_automated_preset(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build the ``test_automated`` preset from raw node dicts."""
+    preset = [
+        {"name": node["name"], "type": _classify(node["name"]), "autoset": "agent"}
+        for node in nodes
+    ]
+    # Override brand_questionnaire to human
+    for node in preset:
+        if node["name"] == "brand_questionnaire":
+            node["autoset"] = "human"
+    return preset
 
 
 class HITLConfig:
@@ -67,14 +70,21 @@ class HITLConfig:
     overrides_dir:
         Optional path to a directory containing ``*.yaml`` override files.
         Defaults to ``~/.automedia/hitl/overrides/``.
+    node_provider:
+        Optional ``NodeProvider`` that supplies decision node metadata.
+        When provided (and *preset_name* is ``"test_automated"``), auto-generated
+        presets are built from the provider's node list.  When ``None``,
+        only static and filesystem presets are available.
     """
 
     def __init__(
         self,
         preset_name: str = "automated",
         overrides_dir: str | None = None,
+        node_provider: NodeProvider | None = None,
     ) -> None:
         self._nodes: dict[str, dict[str, Any]] = {}
+        self._node_provider = node_provider
 
         # 1. Load preset
         preset_nodes = self._load_preset(preset_name)
@@ -110,18 +120,35 @@ class HITLConfig:
         self._nodes[node_name]["autoset"] = executor
 
     def list_nodes(self) -> list[dict[str, Any]]:
-        """Return all 27 nodes with their current configuration."""
+        """Return all configured nodes with their current configuration."""
         return list(self._nodes.values())
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_preset(self, name: str) -> list[dict[str, Any]]:
-        """Load a preset by name — checks built-in dicts first, then filesystem."""
-        if name in _BUILTIN_PRESETS:
-            return _BUILTIN_PRESETS[name]
+    def _get_dynamic_presets(self) -> dict[str, list[dict[str, Any]]]:
+        """Build presets that require a ``NodeProvider``.
 
+        Returns an empty dict when no provider is wired.
+        """
+        if self._node_provider is None:
+            return {}
+        nodes = self._node_provider.list_all_nodes()
+        return {"test_automated": _build_automated_preset(nodes)}
+
+    def _load_preset(self, name: str) -> list[dict[str, Any]]:
+        """Load a preset by name — checks dynamic, static, then filesystem."""
+        # Dynamic presets (require NodeProvider)
+        dynamic = self._get_dynamic_presets()
+        if name in dynamic:
+            return dynamic[name]
+
+        # Static presets
+        if name in _STATIC_PRESETS:
+            return _STATIC_PRESETS[name]
+
+        # Filesystem presets
         preset_path = Path(__file__).parent / "presets" / f"{name}.yaml"
         if preset_path.is_file():
             with open(preset_path, encoding="utf-8") as fh:

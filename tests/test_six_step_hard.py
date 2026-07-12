@@ -118,32 +118,36 @@ class TestV7RealLogic:
         chk = next(c for c in result["checks"] if c["name"] == "file_exists")
         assert chk["passed"] is False
 
-    def test_valid_file_sizes_pass(self) -> None:
-        result = V7SixStepHard().execute(_make_context(file_sizes={"/tmp/a.mp3": 1024}))
+    def test_valid_file_sizes_pass(self, tmp_path: Any) -> None:
+        test_file = str(tmp_path / "a.mp3")
+        result = V7SixStepHard().execute(_make_context(file_sizes={test_file: 1024}))
         chk = next(c for c in result["checks"] if c["name"] == "file_size_valid")
         assert chk["passed"] is True
 
-    def test_empty_file_size_fails(self) -> None:
-        result = V7SixStepHard().execute(_make_context(file_sizes={"/tmp/a.mp3": 0}))
+    def test_empty_file_size_fails(self, tmp_path: Any) -> None:
+        test_file = str(tmp_path / "a.mp3")
+        result = V7SixStepHard().execute(_make_context(file_sizes={test_file: 0}))
         chk = next(c for c in result["checks"] if c["name"] == "file_size_valid")
         assert chk["passed"] is False
 
-    def test_md5_match_passes(self) -> None:
+    def test_md5_match_passes(self, tmp_path: Any) -> None:
+        test_file = str(tmp_path / "a.mp3")
         result = V7SixStepHard().execute(
             _make_context(
                 md5_records={
-                    "/tmp/a.mp3": {"expected": "abc123", "actual": "abc123"},
+                    test_file: {"expected": "abc123", "actual": "abc123"},
                 }
             )
         )
         chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
         assert chk["passed"] is True
 
-    def test_md5_mismatch_fails(self) -> None:
+    def test_md5_mismatch_fails(self, tmp_path: Any) -> None:
+        test_file = str(tmp_path / "a.mp3")
         result = V7SixStepHard().execute(
             _make_context(
                 md5_records={
-                    "/tmp/a.mp3": {"expected": "abc123", "actual": "def456"},
+                    test_file: {"expected": "abc123", "actual": "def456"},
                 }
             )
         )

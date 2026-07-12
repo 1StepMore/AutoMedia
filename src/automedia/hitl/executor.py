@@ -8,11 +8,9 @@ Usage
 -----
 >>> from automedia.hitl.config import HITLConfig
 >>> from automedia.hitl.executor import NodeExecutor
->>> from automedia.decision.diagnostic import DiagnosticAgent
 >>>
 >>> cfg = HITLConfig(preset_name="automated")
 >>> executor = NodeExecutor(cfg)
->>> agent = DiagnosticAgent()
 >>>
 >>> # Agent-mode: artifact returned immediately
 >>> result = executor.execute("build_scale_routing", agent, context)
@@ -24,9 +22,10 @@ Usage
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from automedia.decision.base import DecisionArtifact
+if TYPE_CHECKING:
+    from automedia.decision.base import DecisionArtifact
 
 
 class NodeExecutor:
@@ -41,7 +40,7 @@ class NodeExecutor:
 
     def __init__(self, hitl_config: Any) -> None:  # noqa: ANN401
         self._config = hitl_config
-        self._pending: dict[str, DecisionArtifact] = {}
+        self._pending: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Public API

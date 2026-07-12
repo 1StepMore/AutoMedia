@@ -63,7 +63,7 @@ class TestD0GateMissingState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(empty_state_dir),
             }
         )
@@ -74,7 +74,7 @@ class TestD0GateMissingState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(empty_state_dir),
             }
         )
@@ -88,7 +88,7 @@ class TestD0GatePartialState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(partial_state_dir),
             }
         )
@@ -99,7 +99,7 @@ class TestD0GatePartialState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(partial_state_dir),
             }
         )
@@ -114,7 +114,7 @@ class TestD0GateCompleteState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(build_state_dir),
             }
         )
@@ -125,7 +125,7 @@ class TestD0GateCompleteState:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(build_state_dir),
             }
         )
@@ -140,7 +140,7 @@ class TestD0GateForceProvenance:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(empty_state_dir),
                 "force_provenance": True,
             }
@@ -158,7 +158,7 @@ class TestD0GateModeAwareness:
         with open(sp, "w", encoding="utf-8") as fh:
             yaml.dump(state, fh)
         gate = D0Gate()
-        result = gate.execute({"mode": "build", "project_dir": str(tmp_path)})
+        result = gate.execute({"decision_mode": "build", "project_dir": str(tmp_path)})
         assert result["passed"] is False
 
     def test_scale_mode_requires_scale_nodes(self, tmp_path: Path) -> None:
@@ -167,5 +167,5 @@ class TestD0GateModeAwareness:
         with open(sp, "w", encoding="utf-8") as fh:
             yaml.dump(state, fh)
         gate = D0Gate()
-        result = gate.execute({"mode": "scale", "project_dir": str(tmp_path)})
+        result = gate.execute({"decision_mode": "scale", "project_dir": str(tmp_path)})
         assert result["passed"] is False

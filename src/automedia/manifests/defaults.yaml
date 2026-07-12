@@ -62,6 +62,10 @@ pool:
   retention_days: 7
   max_pending_topics: 1000
 
+gate_engine:
+  max_retries: 3
+  retry_delay: 1.0
+
 pipeline:
   video:
     enabled: true
@@ -69,5 +73,10 @@ pipeline:
     enabled: true
   image:
     enabled: true
+    comfyui:
+      host: 127.0.0.1
+      port: 8188
+      protocol: http
+      timeout: 300
   text:
     enabled: true

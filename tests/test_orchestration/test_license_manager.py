@@ -124,6 +124,57 @@ class TestUnknownFeatureIsUnavailable:
             LicenseManager._clear_test_key()
 
 
+class TestLicenseKeyPermissions:
+    """license.key file permission enforcement."""
+
+    def test_loose_permissions_logs_warning_and_fixes(
+        self, tmp_path, monkeypatch, caplog,
+    ) -> None:
+        """A key file with 0o644 should log a warning and be fixed to 0o600."""
+        LicenseManager._clear_test_key()
+        LicenseManager._clear_test_status()
+
+        key_dir = tmp_path / ".automedia" / "license"
+        key_dir.mkdir(parents=True)
+        key_file = key_dir / "license.key"
+        key_file.write_text("test-key-content\n", encoding="utf-8")
+        key_file.chmod(0o644)
+        monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+        with caplog.at_level("WARNING"):
+            result = LicenseManager._get_key()
+
+        assert result == "test-key-content"
+        assert any(
+            "license.key permissions too permissive" in record.getMessage()
+            for record in caplog.records
+        )
+        assert (key_file.stat().st_mode & 0o777) == 0o600
+
+    def test_correct_permissions_no_warning(
+        self, tmp_path, monkeypatch, caplog,
+    ) -> None:
+        """A key file with 0o600 should not log any warning."""
+        LicenseManager._clear_test_key()
+        LicenseManager._clear_test_status()
+
+        key_dir = tmp_path / ".automedia" / "license"
+        key_dir.mkdir(parents=True)
+        key_file = key_dir / "license.key"
+        key_file.write_text("test-key-content\n", encoding="utf-8")
+        key_file.chmod(0o600)
+        monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+        with caplog.at_level("WARNING"):
+            result = LicenseManager._get_key()
+
+        assert result == "test-key-content"
+        assert not any(
+            "license.key permissions too permissive" in record.getMessage()
+            for record in caplog.records
+        )
+
+
 # ---------------------------------------------------------------------------
 # Helper: generate a test license key with the built-in generator
 # ---------------------------------------------------------------------------

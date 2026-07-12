@@ -237,7 +237,7 @@ class TestRedLine5AvSync:
 class TestRedLine6FullQa:
     """Only 3 frames sampled (not full coverage) → V1 FAIL."""
 
-    def test_red_line_6_full_qa(self) -> None:
+    def test_red_line_6_full_qa(self, tmp_path: Any) -> None:
         """V1 rejects entries where only 3 of 10 were checked (sampling)."""
         from automedia.gates.vision_qa import V1VisionQA
 
@@ -248,8 +248,8 @@ class TestRedLine6FullQa:
         for i in range(10):
             entries.append(
                 {
-                    "mid_frame_path": f"/tmp/frame_{i}.png",
-                    "end_silence_frame_path": f"/tmp/end_{i}.png",
+                    "mid_frame_path": f"{tmp_path}/frame_{i}.png",
+                    "end_silence_frame_path": f"{tmp_path}/end_{i}.png",
                     "qa_passed": True,
                     "checked": i < 3,  # only first 3 checked — Red Line 6 violation
                 }
@@ -340,7 +340,7 @@ class TestRedLine7Md5:
 class TestRedLine8AgentArchive:
     """Archive without --force flag (non-published status) → L2 FAIL."""
 
-    def test_red_line_8_agent_archive(self) -> None:
+    def test_red_line_8_agent_archive(self, tmp_path: Any) -> None:
         """L2 rejects non-published archive when --force is not set."""
         from automedia.gates.archive_validation import L2ArchiveValidation
 
@@ -349,14 +349,14 @@ class TestRedLine8AgentArchive:
         ctx: dict[str, Any] = {
             "archive_status": "draft",  # NOT published
             "force": False,  # NO --force flag
-            "archive_path": "/tmp/archive.zip",
+            "archive_path": str(tmp_path / "archive.zip"),
             "archive_metadata": {
                 "title": "Test Archive",
                 "platform": "wechat",
                 "created_at": "2025-06-01T12:00:00",
             },
             "archive_version": "1.0",
-            "output_dir": "/tmp/output",
+            "output_dir": str(tmp_path / "output"),
         }
         result = gate.execute(ctx)
 
@@ -368,7 +368,7 @@ class TestRedLine8AgentArchive:
         checks_by_name = {c["name"]: c for c in result["checks"]}
         assert checks_by_name["archive_status"]["passed"] is False
 
-    def test_red_line_8_force_overrides(self) -> None:
+    def test_red_line_8_force_overrides(self, tmp_path: Any) -> None:
         """L2 passes when --force is set even for non-published archive."""
         from automedia.gates.archive_validation import L2ArchiveValidation
 
@@ -377,14 +377,14 @@ class TestRedLine8AgentArchive:
         ctx: dict[str, Any] = {
             "archive_status": "draft",  # NOT published
             "force": True,  # --force IS set
-            "archive_path": "/tmp/archive.zip",
+            "archive_path": str(tmp_path / "archive.zip"),
             "archive_metadata": {
                 "title": "Test Archive",
                 "platform": "wechat",
                 "created_at": "2025-06-01T12:00:00",
             },
             "archive_version": "1.0",
-            "output_dir": "/tmp/output",
+            "output_dir": str(tmp_path / "output"),
         }
         result = gate.execute(ctx)
 

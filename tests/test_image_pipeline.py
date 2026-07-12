@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import builtins
 import os
 from typing import Any
+from unittest.mock import MagicMock, patch
 
+import pytest
 from PIL import Image
 
 from automedia.pipelines.image_pipeline import (
@@ -13,6 +16,8 @@ from automedia.pipelines.image_pipeline import (
     ImagePipeline,
     ImageValidator,
     VisionQADegradation,
+    _create_placeholder,
+    _extract_output_filename,
     _run_comfyui,
 )
 
@@ -310,7 +315,7 @@ class TestVisionQADegradation:
 
 
 class TestRunComfyui:
-    """ComfyUI subprocess helper."""
+    """ComfyUI HTTP API client with PIL fallback."""
 
     def test_creates_output_file(self, tmp_path: Any) -> None:
         workflow = {"filename": "test_out.png", "width": 200, "height": 150}
@@ -322,3 +327,264 @@ class TestRunComfyui:
         path = _run_comfyui(workflow, str(tmp_path))
         with Image.open(path) as img:
             assert img.size == (320, 240)
+
+    # ------------------------------------------------------------------
+    # httpx fallback (import error)
+    # ------------------------------------------------------------------
+
+    def test_httpx_not_available_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder when httpx is not installed."""
+        original_import = builtins.__import__
+
+        def _mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
+            if name == "httpx":
+                raise ImportError(f"No module named '{name}'")
+            return original_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_mock_import):
+            workflow = {"filename": "fallback.png", "width": 120, "height": 80}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+        with Image.open(path) as img:
+            assert img.size == (120, 80)
+
+    # ------------------------------------------------------------------
+    # HTTP error fallback tests
+    # ------------------------------------------------------------------
+
+    def test_connection_error_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder when ComfyUI server is unreachable."""
+        mock_client = MagicMock()
+        mock_client.post.side_effect = ConnectionError("Connection refused")
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            workflow = {"filename": "conn_err.png", "width": 64, "height": 64}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+        with Image.open(path) as img:
+            assert img.size == (64, 64)
+
+    def test_timeout_error_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder when ComfyUI request times out."""
+        mock_client = MagicMock()
+        mock_client.post.side_effect = TimeoutError("Request timed out")
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            workflow = {"filename": "timeout.png", "width": 80, "height": 80}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+        with Image.open(path) as img:
+            assert img.size == (80, 80)
+
+    def test_http_error_status_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder on HTTP 5xx response."""
+        mock_client = MagicMock()
+        post_resp = MagicMock()
+        post_resp.raise_for_status.side_effect = Exception("HTTP 500")
+        mock_client.post.return_value = post_resp
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            workflow = {"filename": "http_err.png", "width": 100, "height": 100}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+
+    def test_malformed_response_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder when response has no prompt_id."""
+        mock_client = MagicMock()
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"status": "error"}  # no prompt_id
+        mock_client.post.return_value = post_resp
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            workflow = {"filename": "bad_resp.png", "width": 100, "height": 100}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+
+    # ------------------------------------------------------------------
+    # Successful HTTP flow
+    # ------------------------------------------------------------------
+
+    def test_successful_http_flow(self, tmp_path: Any) -> None:
+        """Make successful ComfyUI API call and download image."""
+        mock_client = MagicMock()
+
+        # POST /prompt → success
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "test-prompt-abc"}
+        mock_client.post.return_value = post_resp
+
+        # GET responses (history + download)
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "test-prompt-abc": {
+                "status": {"completed": True},
+                "outputs": {
+                    "3": {"images": [{"filename": "comfy_output.png"}]},
+                },
+            },
+        }
+
+        download_resp = MagicMock()
+        download_resp.content = b"fake-image-content"
+
+        # 1st GET = _poll_comfyui, 2nd GET = history re-fetch, 3rd GET = download
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            workflow = {"filename": "real_out.png", "width": 512, "height": 512}
+            path = _run_comfyui(workflow, str(tmp_path))
+
+        assert os.path.isfile(path)
+        with open(path, "rb") as f:
+            assert f.read() == b"fake-image-content"
+
+    # ------------------------------------------------------------------
+    # Polling timeout
+    # ------------------------------------------------------------------
+
+    def test_polling_timeout_fallback(self, tmp_path: Any) -> None:
+        """Fall back to PIL placeholder when polling exceeds timeout."""
+        mock_client = MagicMock()
+
+        # POST succeeds
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "slow-prompt"}
+        mock_client.post.return_value = post_resp
+
+        # GET never returns completed=True → triggers timeout
+        pending_resp = MagicMock()
+        pending_resp.json.return_value = {
+            "slow-prompt": {"status": {"completed": False}},
+        }
+        mock_client.get.return_value = pending_resp
+
+        with (
+            patch("httpx.Client") as mock_cls,
+            patch("time.monotonic") as mock_time,
+        ):
+            mock_cls.return_value.__enter__.return_value = mock_client
+            # Simulate time advancing beyond 1s timeout
+            mock_time.side_effect = [0.0, 0.1, 2.0]
+
+            workflow = {"filename": "slow_out.png", "width": 50, "height": 50}
+            path = _run_comfyui(workflow, str(tmp_path), timeout=1)
+
+        assert os.path.isfile(path)
+        with Image.open(path) as img:
+            assert img.size == (50, 50)
+
+    # ------------------------------------------------------------------
+    # Custom parameters
+    # ------------------------------------------------------------------
+
+    def test_custom_host_port_protocol(self, tmp_path: Any) -> None:
+        """Pass custom host, port, protocol parameters."""
+        mock_client = MagicMock()
+
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "custom-prompt"}
+        mock_client.post.return_value = post_resp
+
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "custom-prompt": {
+                "status": {"completed": True},
+                "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+            },
+        }
+        download_resp = MagicMock()
+        download_resp.content = b"data"
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        with patch("httpx.Client") as mock_cls:
+            mock_cls.return_value.__enter__.return_value = mock_client
+            path = _run_comfyui(
+                {"filename": "custom.png"},
+                str(tmp_path),
+                host="192.168.1.100",
+                port=8288,
+                protocol="https",
+            )
+
+        assert os.path.isfile(path)
+        # Verify the correct URL was used
+        mock_client.post.assert_called_once()
+        call_url = mock_client.post.call_args[0][0]
+        assert "https://192.168.1.100:8288/prompt" in call_url
+
+
+# =========================================================================
+# _create_placeholder tests
+# =========================================================================
+
+
+class TestCreatePlaceholder:
+    """PIL placeholder image creation."""
+
+    def test_creates_png_file(self, tmp_path: Any) -> None:
+        path = str(tmp_path / "placeholder.png")
+        _create_placeholder(path, 100, 200)
+        assert os.path.isfile(path)
+
+    def test_correct_dimensions(self, tmp_path: Any) -> None:
+        path = str(tmp_path / "dim.png")
+        _create_placeholder(path, 320, 240)
+        with Image.open(path) as img:
+            assert img.size == (320, 240)
+
+    def test_overwrites_existing_file(self, tmp_path: Any) -> None:
+        path = str(tmp_path / "overwrite.png")
+        _create_placeholder(path, 10, 10)
+        _create_placeholder(path, 50, 50)
+        with Image.open(path) as img:
+            assert img.size == (50, 50)
+
+
+# =========================================================================
+# _extract_output_filename tests
+# =========================================================================
+
+
+class TestExtractOutputFilename:
+    """Extract first image filename from ComfyUI history response."""
+
+    def test_extracts_first_image(self) -> None:
+        history = {
+            "prompt-1": {
+                "outputs": {
+                    "5": {"images": [{"filename": "result.png"}]},
+                },
+            },
+        }
+        assert _extract_output_filename(history, "prompt-1") == "result.png"
+
+    def test_skips_nodes_without_images(self) -> None:
+        history = {
+            "prompt-1": {
+                "outputs": {
+                    "1": {"images": []},
+                    "2": {"images": [{"filename": "final.png"}]},
+                },
+            },
+        }
+        assert _extract_output_filename(history, "prompt-1") == "final.png"
+
+    def test_raises_on_missing_outputs(self) -> None:
+        history = {"prompt-1": {"status": {"completed": True}}}
+        with pytest.raises(RuntimeError, match="No output image found"):
+            _extract_output_filename(history, "prompt-1")
+
+    def test_raises_on_missing_prompt(self) -> None:
+        history: dict[str, Any] = {}
+        with pytest.raises(RuntimeError, match="No output image found"):
+            _extract_output_filename(history, "nonexistent")

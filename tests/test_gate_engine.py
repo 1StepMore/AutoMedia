@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+import pytest
 
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateObserver
@@ -40,10 +43,10 @@ class _FailStopGate(BaseGate):
 
 
 class _FailRewriteGate(BaseGate):
-    """Always fails with failure_mode='rewrite'."""
+    """Always fails with failure_mode='retry'."""
 
     _gate_name = "G83"
-    _failure_mode = "rewrite"
+    _failure_mode = "retry"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
         return {"passed": False, "gate": self.gate_name, "error": "rewrite me"}
@@ -60,13 +63,13 @@ class _ErrorGate(BaseGate):
 
 
 class _ErrorRewriteGate(BaseGate):
-    """Raises an exception but failure_mode='rewrite'."""
+    """Raises a transient exception but failure_mode='retry'."""
 
     _gate_name = "G81"
-    _failure_mode = "rewrite"
+    _failure_mode = "retry"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
-        raise ValueError("soft crash")
+        raise ConnectionError("soft crash")
 
 
 class _ContextCaptureGate(BaseGate):
@@ -89,9 +92,12 @@ class _OutputGate(BaseGate):
     _gate_name = "G79"
     _failure_mode = "stop"
 
+    def __init__(self, base_dir: str = "/tmp") -> None:
+        self.base_dir = base_dir
+
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
         gate_context["output_files"] = [
-            {"type": "video", "path": "/tmp/out.mp4", "platform": "bilibili"}
+            {"type": "video", "path": f"{self.base_dir}/out.mp4", "platform": "bilibili"}
         ]
         return {"passed": True, "gate": self.gate_name}
 
@@ -122,15 +128,16 @@ class _RecordingHook(GateObserver):
 class TestDataClasses:
     """AssetInfo, GateLogEntry, PipelineResult construction."""
 
-    def test_asset_info_defaults(self) -> None:
-        a = AssetInfo(type="video", path="/tmp/v.mp4")
+    def test_asset_info_defaults(self, tmp_path: Any) -> None:
+        p = str(tmp_path / "v.mp4")
+        a = AssetInfo(type="video", path=p)
         assert a.type == "video"
-        assert a.path == "/tmp/v.mp4"
+        assert a.path == p
         assert a.platform == ""
         assert a.md5 == ""
 
-    def test_asset_info_full(self) -> None:
-        a = AssetInfo(type="image", path="/tmp/i.png", platform="wechat", md5="abc123")
+    def test_asset_info_full(self, tmp_path: Any) -> None:
+        a = AssetInfo(type="image", path=str(tmp_path / "i.png"), platform="wechat", md5="abc123")
         assert a.platform == "wechat"
         assert a.md5 == "abc123"
 
@@ -151,14 +158,14 @@ class TestDataClasses:
         assert r.gates_log == []
         assert r.error is None
 
-    def test_pipeline_result_full(self) -> None:
+    def test_pipeline_result_full(self, tmp_path: Any) -> None:
         r = PipelineResult(
             status="failed",
             project_id="abc123",
-            project_dir="/tmp/proj",
+            project_dir=str(tmp_path / "proj"),
             topic="AI",
             brand="test",
-            assets=[AssetInfo(type="v", path="/tmp/v")],
+            assets=[AssetInfo(type="v", path=str(tmp_path / "v"))],
             gates_log=[GateLogEntry(gate_name="G0", status="passed", duration_s=1)],
             start_time=100.0,
             end_time=105.0,
@@ -215,7 +222,7 @@ class TestGateEngineRun:
         assert "gate crashed" in results[0]["error"]
 
     def test_exception_in_rewrite_gate_continues(self) -> None:
-        """An exception in a rewrite gate does NOT halt the pipeline."""
+        """A transient exception in a rewrite gate does NOT halt the pipeline."""
         engine = GateEngine([_ErrorRewriteGate(), _PassGate()])
         ok, results = engine.run({})
         assert ok is False
@@ -240,6 +247,15 @@ class TestGateEngineRun:
         ok, results = engine.run({})
         assert ok is False
         assert len(results) == 2  # third gate skipped
+
+    def test_result_contains_duration_s(self) -> None:
+        """Every result dict includes duration_s >= 0."""
+        engine = GateEngine([_PassGate(), _FailRewriteGate(), _ErrorGate()])
+        _, results = engine.run({})
+        assert len(results) >= 1
+        for r in results:
+            assert "duration_s" in r, f"Missing duration_s in {r.get('gate', '?')}"
+            assert r["duration_s"] >= 0.0, f"Negative duration_s in {r.get('gate', '?')}"
 
 
 # =========================================================================
@@ -365,9 +381,184 @@ class TestPipelineAlias:
 class TestContextMutation:
     """Gates can mutate the context for downstream gates."""
 
-    def test_output_gate_writes_to_context(self) -> None:
-        engine = GateEngine([_OutputGate()])
+    def test_output_gate_writes_to_context(self, tmp_path: Any) -> None:
+        engine = GateEngine([_OutputGate(base_dir=str(tmp_path))])
         ctx: dict[str, Any] = {}
         engine.run(ctx)
         assert "output_files" in ctx
         assert ctx["output_files"][0]["type"] == "video"
+
+
+# =========================================================================
+# Exception categorization helpers (TDD — Issue #2)
+# =========================================================================
+
+# Permanent exceptions — should fail immediately even in rewrite mode
+_PERMANENT_EXCEPTION_TYPES = (KeyError, ValueError, TypeError)
+
+# Transient exceptions — retriable, may continue in retry mode
+_TRANSIENT_EXCEPTION_TYPES = (ConnectionError, TimeoutError)
+
+
+class _PermanentErrorRewriteGate(BaseGate):
+    """Raises ValueError (permanent) with failure_mode='retry'."""
+
+    _gate_name = "G78"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise ValueError("permanent error — bad input")
+
+
+class _KeyErrorRewriteGate(BaseGate):
+    """Raises KeyError (permanent) with failure_mode='retry'."""
+
+    _gate_name = "G77"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise KeyError("missing required key")
+
+
+class _TypeErrorRewriteGate(BaseGate):
+    """Raises TypeError (permanent) with failure_mode='retry'."""
+
+    _gate_name = "G76"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise TypeError("wrong argument type")
+
+
+class _TransientConnectionErrorGate(BaseGate):
+    """Raises ConnectionError (transient) with failure_mode='retry'."""
+
+    _gate_name = "G75"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise ConnectionError("transient — network down")
+
+
+class _TransientTimeoutErrorGate(BaseGate):
+    """Raises TimeoutError (transient) with failure_mode='retry'."""
+
+    _gate_name = "G74"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise TimeoutError("transient — request timed out")
+
+
+class _UnknownErrorRewriteGate(BaseGate):
+    """Raises RuntimeError (unknown category) with failure_mode='retry'."""
+
+    _gate_name = "G73"
+    _failure_mode = "retry"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        raise RuntimeError("unknown error type")
+
+
+# =========================================================================
+# TDD: Exception categorization (Issue #2)
+# =========================================================================
+
+
+class TestExceptionCategorization:
+    """Permanent exceptions in retry-mode gates should halt the pipeline.
+
+    Currently (bug): ALL exceptions in retry-mode gates are silently swallowed
+    and the pipeline continues.  Permanent exceptions (KeyError, ValueError,
+    TypeError) should cause an immediate halt — they cannot be fixed by
+    re-running the gate.
+    """
+
+    @pytest.mark.parametrize(
+        "gate_cls, exc_name",
+        [
+            (_PermanentErrorRewriteGate, "ValueError"),
+            (_KeyErrorRewriteGate, "KeyError"),
+            (_TypeErrorRewriteGate, "TypeError"),
+        ],
+        ids=["ValueError", "KeyError", "TypeError"],
+    )
+    def test_permanent_exception_in_rewrite_gate_halts_pipeline(
+        self, gate_cls: type[BaseGate], exc_name: str
+    ) -> None:
+        """Permanent exceptions in retry-mode gates must halt the pipeline."""
+        trailing = _PassGate()
+        engine = GateEngine([gate_cls(), trailing])
+        ok, results = engine.run({})
+
+        assert ok is False, f"{exc_name} in retry gate should fail pipeline"
+        assert len(results) >= 1
+        error_result = results[-1] if not results[0].get("passed", True) else results[0]
+        assert error_result["passed"] is False
+        assert len(results) == 1, (
+            f"{exc_name} in rewrite gate should halt before the next gate, "
+            f"but {len(results)} results were returned (expected 1)"
+        )
+
+    def test_transient_connection_error_in_rewrite_gate_continues(self) -> None:
+        """Transient ConnectionError in a rewrite gate allows continuation."""
+        trailing = _PassGate()
+        engine = GateEngine([_TransientConnectionErrorGate(), trailing])
+        ok, results = engine.run({})
+
+        assert ok is False
+        assert len(results) == 2, "Transient error should not halt pipeline"
+        assert results[0]["passed"] is False
+        assert results[1]["passed"] is True
+
+    def test_transient_timeout_error_in_rewrite_gate_continues(self) -> None:
+        """Transient TimeoutError in a rewrite gate allows continuation."""
+        trailing = _PassGate()
+        engine = GateEngine([_TransientTimeoutErrorGate(), trailing])
+        ok, results = engine.run({})
+
+        assert ok is False
+        assert len(results) == 2
+        assert results[0]["passed"] is False
+        assert results[1]["passed"] is True
+
+    def test_unknown_exception_in_rewrite_gate_re_raised(self) -> None:
+        """Unknown exceptions in rewrite gates must be re-raised, not swallowed."""
+        engine = GateEngine([_UnknownErrorRewriteGate(), _PassGate()])
+
+        with pytest.raises(RuntimeError, match="unknown error type"):
+            engine.run({})
+
+
+class TestTracebackLogging:
+    """All exception types must log full tracebacks, not just str(exc)."""
+
+    def test_permanent_error_logs_traceback(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Permanent exceptions must include traceback in the log."""
+        engine = GateEngine([_PermanentErrorRewriteGate()])
+        with caplog.at_level(logging.ERROR, logger="automedia.pipelines.gate_engine"):
+            engine.run({})
+
+        error_records = [
+            r for r in caplog.records if r.levelno >= logging.ERROR
+        ]
+        assert len(error_records) >= 1, "Expected at least one ERROR log record"
+        combined = "\n".join(r.getMessage() for r in error_records)
+        assert "ValueError" in combined or "permanent error" in combined
+
+    def test_transient_error_logs_traceback(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Transient exceptions must include traceback in the log."""
+        engine = GateEngine([_TransientConnectionErrorGate()])
+        with caplog.at_level(logging.ERROR, logger="automedia.pipelines.gate_engine"):
+            engine.run({})
+
+        error_records = [
+            r for r in caplog.records if r.levelno >= logging.ERROR
+        ]
+        assert len(error_records) >= 1
+        combined = "\n".join(r.getMessage() for r in error_records)
+        assert "ConnectionError" in combined or "transient" in combined

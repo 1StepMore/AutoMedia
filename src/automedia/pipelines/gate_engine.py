@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import threading
 import time
+import traceback
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
+import tenacity
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
@@ -20,6 +23,10 @@ from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateHook
 
 log = get_logger(__name__)
+
+# Exception categorization for gate error handling.
+_PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError)
+_TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -155,15 +162,25 @@ class GateEngine:
     hooks:
         Optional list of :class:`GateHook` observers notified at each
         lifecycle event.
+    max_retries:
+        Maximum retry attempts for gates with ``failure_mode="retry"``
+        when a transient exception is raised.  Default: 3.
+    retry_delay:
+        Base delay in seconds for exponential backoff between retries.
+        Actual delay = ``retry_delay * 2 ** (attempt - 1)``.  Default: 1.0.
     """
 
     def __init__(
         self,
         gates: list[BaseGate],
         hooks: list[GateHook] | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ) -> None:
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
+        self._max_retries = max_retries
+        self._retry_delay = retry_delay
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -196,6 +213,58 @@ class GateEngine:
             hook.on_gate_failed(gate_name, ctx, error)
 
     # ------------------------------------------------------------------
+    # Retry helper
+    # ------------------------------------------------------------------
+
+    def _execute_gate_with_retry(
+        self,
+        gate: BaseGate,
+        gate_context: GateContext | dict[str, Any],
+        fm: str,
+        gate_name: str,
+        progress: PipelineProgress | None = None,
+    ) -> dict[str, Any]:
+        """Execute *gate* with tenacity retry for transient exceptions.
+
+        Only applies when ``fm == "retry"``.  Permanent and unknown
+        exceptions are never retried — they propagate immediately.
+        """
+        if fm != "retry":
+            return gate.execute(gate_context)
+
+        _attempt_counter = {"n": 0}
+
+        def _before_sleep(retry_state: tenacity.RetryCallState) -> None:
+            _attempt_counter["n"] += 1
+            attempt = _attempt_counter["n"]
+            delay = float(retry_state.upcoming_sleep or 0)
+            exc = retry_state.outcome.exception() if retry_state.outcome else None
+            log.info(
+                "gate.retry.attempt",
+                gate_name=gate_name,
+                attempt=attempt,
+                max_retries=self._max_retries,
+                delay_s=delay,
+                error=str(exc) if exc else "",
+            )
+            if progress:
+                progress.on_gate_end(gate_name, False, 0.0)
+                progress.on_gate_start(gate_name)
+
+        retryer = tenacity.Retrying(
+            stop=tenacity.stop_after_attempt(self._max_retries),
+            wait=tenacity.wait_exponential(multiplier=self._retry_delay),
+            retry=tenacity.retry_if_exception_type(_TRANSIENT_EXCEPTIONS),
+            before_sleep=_before_sleep,
+            reraise=True,
+        )
+        result = retryer(gate.execute, gate_context)
+
+        if _attempt_counter["n"] > 0:
+            result.setdefault("retry_count", _attempt_counter["n"])
+        return result
+
+    # ------------------------------------------------------------------
     # Private gate execution loop
     # ------------------------------------------------------------------
 
@@ -215,11 +284,23 @@ class GateEngine:
         for gate_idx, gate in enumerate(self._gates, 1):
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
+
+            # Backward compatibility: accept "rewrite" → map to "retry"
+            fm = gate.failure_mode
+            if fm == "rewrite":
+                warnings.warn(
+                    f"failure_mode='rewrite' is deprecated for gate '{gate_name}', "
+                    f"use failure_mode='retry' instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                fm = "retry"
+
             log.info(
                 "gate.start",
                 gate_name=gate_name, gate_idx=gate_idx,
                 total_gates=total_gates,
-                failure_mode=gate.failure_mode,
+                failure_mode=fm,
             )
 
             if progress:
@@ -229,9 +310,12 @@ class GateEngine:
             start = time.monotonic()
 
             try:
-                result = gate.execute(gate_context)
-                results.append(result)
+                result = self._execute_gate_with_retry(
+                    gate, gate_context, fm, gate_name, progress,
+                )
                 duration = time.monotonic() - start
+                result["duration_s"] = duration
+                results.append(result)
 
                 passed = result.get("passed", True)
                 if progress:
@@ -245,36 +329,93 @@ class GateEngine:
                     log.warning(
                         "gate.failed",
                         gate_name=gate_name, duration_s=duration,
-                        failure_mode=gate.failure_mode,
+                        failure_mode=fm,
                     )
-                    if gate.failure_mode == "stop":
+                    if fm == "stop":
                         if early_stop:
                             return False, results
                         return results
-                    # failure_mode == "rewrite" → continue
+                    # failure_mode == "retry" → continue
                     self._dispatch_after(gate_name, gate_context, result)
 
-            except Exception as exc:
+            except _PERMANENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start
                 all_ok = False
+                tb = traceback.format_exc()
                 log.error(
-                    "gate.error",
+                    "gate.error.permanent",
                     gate_name=gate_name, duration_s=duration,
-                    error=str(exc), failure_mode=gate.failure_mode,
+                    error=str(exc), failure_mode=fm,
+                    traceback=tb,
                 )
                 error_result: dict[str, Any] = {
                     "passed": False,
                     "gate": gate_name,
                     "error": str(exc),
+                    "duration_s": duration,
                 }
                 results.append(error_result)
                 if progress:
                     progress.on_gate_end(gate_name, False, duration)
                 self._dispatch_failed(gate_name, gate_context, exc)
-                if gate.failure_mode == "stop":
+                if early_stop:
+                    return False, results
+                return results
+
+            except _TRANSIENT_EXCEPTIONS as exc:
+                duration = time.monotonic() - start
+                all_ok = False
+                tb = traceback.format_exc()
+                log.error(
+                    "gate.error.transient",
+                    gate_name=gate_name, duration_s=duration,
+                    error=str(exc), failure_mode=fm,
+                    traceback=tb,
+                )
+                error_result: dict[str, Any] = {
+                    "passed": False,
+                    "gate": gate_name,
+                    "error": str(exc),
+                    "duration_s": duration,
+                }
+                if fm == "retry":
+                    error_result["retry_count"] = self._max_retries
+                    error_result["retry_delay_s"] = self._retry_delay
+                results.append(error_result)
+                if progress:
+                    progress.on_gate_end(gate_name, False, duration)
+                self._dispatch_failed(gate_name, gate_context, exc)
+                if fm == "stop":
                     if early_stop:
                         return False, results
                     return results
+                # failure_mode == "retry" → transient error, exhausted retries, continue
+
+            except Exception as exc:
+                duration = time.monotonic() - start
+                all_ok = False
+                tb = traceback.format_exc()
+                log.error(
+                    "gate.error.unknown",
+                    gate_name=gate_name, duration_s=duration,
+                    error=str(exc), failure_mode=fm,
+                    traceback=tb,
+                )
+                error_result = {
+                    "passed": False,
+                    "gate": gate_name,
+                    "error": str(exc),
+                    "duration_s": duration,
+                }
+                results.append(error_result)
+                if progress:
+                    progress.on_gate_end(gate_name, False, duration)
+                self._dispatch_failed(gate_name, gate_context, exc)
+                if fm == "stop":
+                    if early_stop:
+                        return False, results
+                    return results
+                raise
 
         if early_stop:
             return all_ok, results

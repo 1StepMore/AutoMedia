@@ -19,7 +19,7 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 13 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 14 tools |
 | CLI | `automedia <subcommand>` | 15 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -101,7 +101,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 13 tools
+│       │   ├── server.py           # FastMCP server — 14 tools
 │       │   ├── parallel.py         # Parallel execution helpers
 │       │   └── mcp_allowlist.yaml  # Path allowlist (do not modify without request)
 │       │
@@ -178,7 +178,7 @@ AutoMedia/
 │           ├── vector_store.py
 │           └── migrate.py
 │
-├── docs/                       # Documentation (19 files)
+├── docs/                       # Documentation (17 files)
 │   ├── developer-guide.md
 │   ├── api-reference.md
 │   ├── cli-reference.md
@@ -189,8 +189,6 @@ AutoMedia/
 │   ├── omni-integration.md
 │   ├── open-core.md
 │   ├── enforcement-mechanisms.md
-│   ├── hermes-coupling-checklist.md
-│   ├── prd-1-verification-summary.md
 │   ├── production-e2e-test-design.md
 │   ├── sop-runner.md
 │   ├── asset-library.md
@@ -356,7 +354,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ### Add a New Gate
 1. Create a file in `automedia/gates/` that inherits from `BaseGate`
-2. Set class-level `_gate_name` (e.g. `"G6"`) and `_failure_mode` (`"stop"` or `"rewrite"`)
+2. Set class-level `_gate_name` (e.g. `"G6"`) and `_failure_mode` (`"stop"` or `"retry"`)
 3. Implement `execute(self, gate_context: dict) -> dict`
 4. Add a failure mode entry in `automedia/gates/failure_modes.py`
 5. Add the gate name to the appropriate gate list in `automedia/pipelines/runner.py` (`_AUTO_GATE_NAMES`, etc.)
@@ -383,7 +381,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (13 tools)
+## 9. MCP Tools Quick Reference (14 tools)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -462,8 +460,6 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/omni-integration.md` | Omni Triad integration docs |
 | `docs/open-core.md` | Open-core licensing model |
 | `docs/enforcement-mechanisms.md` | Red line enforcement docs |
-| `docs/hermes-coupling-checklist.md` | Hermes decoupling checklist |
-| `docs/prd-1-verification-summary.md` | PRD-1 verification summary |
 | `docs/production-e2e-test-design.md` | E2E test design for production |
 | `docs/sop-runner.md` | SOP runner documentation |
 | `docs/asset-library.md` | Asset library documentation |

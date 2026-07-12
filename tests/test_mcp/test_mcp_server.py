@@ -1,6 +1,6 @@
 """Tests for the AutoMedia MCP server layer.
 
-Covers all 8 tools, the path allowlist, and server creation.
+Covers all 14 tools, the path allowlist, and server creation.
 All tests use synthetic data — zero production project data.
 """
 
@@ -188,6 +188,101 @@ class TestAllowlist:
         dirs = _load_allowlist(allowlist_path=empty_allowlist_yaml)
         assert dirs == []
 
+    # ------------------------------------------------------------------
+    # Path resolution security tests
+    # ------------------------------------------------------------------
+
+    def test_dot_resolves_to_absolute(self, tmp_path: Path) -> None:
+        """'.' must be resolved to absolute path before allowlist check.
+
+        Even when a dot is passed as-is, check_path_allowed should reject
+        it unless the CWD happens to be inside an allowed directory.
+        """
+        allowed = str(tmp_path / "allowed")
+        Path(allowed).mkdir(parents=True)
+        allowlist = [os.path.realpath(allowed)]
+        # CWD is the repo root — not under tmp_path/allowed
+        assert check_path_allowed(".", allowlist=allowlist) is False
+
+    def test_require_allowed_dot_raises(self, tmp_path: Path) -> None:
+        """_require_allowed('.') raises ValueError when CWD not in allowlist."""
+        from automedia.mcp.server import _require_allowed
+
+        allowed = str(tmp_path / "allowed")
+        Path(allowed).mkdir(parents=True)
+        with pytest.raises(ValueError, match="not within any allowed directory"):
+            _require_allowed(".", tool_name="test_tool")
+
+    def test_etc_outside_allowlist(self, tmp_path: Path) -> None:
+        """/etc/ is rejected when allowlist only contains tmp_path/allowed."""
+        allowed = str(tmp_path / "allowed")
+        Path(allowed).mkdir(parents=True)
+        allowlist = [os.path.realpath(allowed)]
+        assert check_path_allowed("/etc", allowlist=allowlist) is False
+        assert check_path_allowed("/etc/passwd", allowlist=allowlist) is False
+
+    def test_dot_dot_traversal_blocked(self, tmp_path: Path) -> None:
+        """Path traversal via ../.. is blocked by realpath resolution."""
+        allowed = str(tmp_path / "allowed")
+        Path(allowed).mkdir(parents=True)
+        allowlist = [os.path.realpath(allowed)]
+        # ../../etc from allowed/ resolves to /etc, which is outside
+        traversal = os.path.join(allowed, "..", "..", "etc")
+        assert check_path_allowed(traversal, allowlist=allowlist) is False
+
+    def test_symlink_outside_blocked(self, tmp_path: Path) -> None:
+        """Symlink inside allowed dir pointing outside is blocked.
+
+        Path.resolve() resolves the symlink to its real target,
+        which is outside the allowlist → blocked.
+        """
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside_secret"
+        outside.mkdir()
+        link = allowed / "link_to_outside"
+        os.symlink(outside, link, target_is_directory=True)
+        allowlist = [os.path.realpath(str(allowed))]
+        # The symlink resolves to outside/ which is NOT under allowed/
+        assert check_path_allowed(str(link), allowlist=allowlist) is False
+
+    def test_symlink_to_allowed_works(self, tmp_path: Path) -> None:
+        """Symlink outside → allowed dir is permitted (resolves correctly).
+
+        The path resolves through the symlink to the real allowed dir,
+        so it passes the allowlist check.
+        """
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside_link_dir"
+        outside.mkdir()
+        link = outside / "link_to_allowed"
+        os.symlink(allowed, link, target_is_directory=True)
+        allowlist = [os.path.realpath(str(allowed))]
+        # Resolving through the symlink lands inside the allowed dir
+        assert check_path_allowed(str(link / "file.txt"), allowlist=allowlist) is True
+
+    def test_dot_default_rejected_in_list_projects(self) -> None:
+        """list_projects(base_dir='.') returns error when CWD not in allowlist.
+
+        This is an end-to-end test that the '.' default value does NOT
+        bypass the allowlist — it must be resolved to an absolute path
+        and checked before any file operations occur.
+        """
+        from automedia.mcp.server import list_projects
+
+        result = list_projects(base_dir=".")
+        assert "error" in result
+        assert "not within any allowed directory" in result["error"]
+
+    def test_dot_default_rejected_in_archive_project(self) -> None:
+        """archive_project(base_dir='.') returns error when CWD not in allowlist."""
+        from automedia.mcp.server import archive_project
+
+        result = archive_project(project_id="test", base_dir=".")
+        assert "error" in result
+        assert "not within any allowed directory" in result["error"]
+
 
 # ---------------------------------------------------------------------------
 # Server creation tests
@@ -203,26 +298,30 @@ class TestServerCreation:
         assert server is not None
         assert hasattr(server, "run")
 
-    def test_server_has_all_13_tools(self) -> None:
-        """All 14 tools are registered."""
+    def test_server_has_all_18_tools(self) -> None:
+        """All 18 tools are registered."""
         server = create_server()
         tool_names = sorted(server._tool_manager._tools.keys())
         expected = sorted(
             [
-                "health_check",
-                "select_topic",
-                "run_pipeline",
+                "archive_project",
+                "connect_account",
+                "disconnect_account",
+                "extract_brief",
+                "format_output",
+                "get_account_health",
                 "get_pipeline_progress",
                 "get_pipeline_status",
-                "list_projects",
                 "get_project_assets",
-                "archive_project",
+                "health_check",
+                "list_accounts",
+                "list_projects",
                 "list_topic_pool",
-                "register_platform_adapter",
-                "extract_brief",
                 "localize_content",
                 "localize_output",
-                "format_output",
+                "register_platform_adapter",
+                "run_pipeline",
+                "select_topic",
             ]
         )
         assert tool_names == expected

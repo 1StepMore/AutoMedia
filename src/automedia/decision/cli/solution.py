@@ -355,7 +355,7 @@ def next_node(
 
             _config = HITLConfig(preset_name=_preset_name)
             _is_human = _config.get_executor(next_node_info["name"]) == "human"
-        except Exception:  # noqa: S110 — HITL module unavailable, assume agent
+        except Exception:  # noqa: S110, BLE001 — HITL module unavailable, assume agent
             pass  # HITL module unavailable or node not configured — assume agent
 
     if is_json:

@@ -227,7 +227,7 @@ from automedia.gates.base import BaseGate
 
 class MyGate(BaseGate):
     _gate_name = "GX"           # Unique Gate identifier
-    _failure_mode = "stop"      # "stop" blocks pipeline, "rewrite" continues
+    _failure_mode = "stop"      # "stop" blocks pipeline, "retry" continues
 
     def execute(self, gate_context: dict) -> dict:
         # gate_context contains topic, brand, project_dir, config, etc.

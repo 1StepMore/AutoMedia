@@ -32,7 +32,7 @@ dependencies = [
     "tenacity>=8",
     "Pillow>=10,<12",
     "typing_extensions>=4.12",
-    "cryptography>=41,<45",
+    "cryptography>=44.0.1,<45",
     "structlog>=24,<27",
 ]
 
@@ -95,7 +95,7 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "S", "SIM", "ANN"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/automedia/.vulture_whitelist.py" = ["F821", "B018", "N999"]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S105", "S106"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -8,10 +8,13 @@ Public API
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -70,5 +73,6 @@ class BaseDecisionAgent(ABC):
 
             library = AssetLibrary(brand=brand)
             return library.search(query=query, filters=filters or {})
-        except Exception:
+        except Exception:  # noqa: BLE001 — intentional graceful degradation; any failure returns empty
+            logger.warning("AssetLibrary search failed for brand '%s'", brand)
             return []

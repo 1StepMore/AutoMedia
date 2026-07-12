@@ -1,4 +1,8 @@
-"""``automedia adapter`` — manage platform adapters."""
+"""``automedia adapter`` — manage platform adapters.
+
+Note: Account management has moved to ``automedia account``.
+The ``automedia adapter`` commands are deprecated.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +29,9 @@ def adapter_list() -> None:
     try:  # noqa: SIM105 — suppress is not clearer here
         import automedia.adapters.platforms  # noqa: F401 — trigger registration
     except ImportError:
-        pass
+        from automedia.core._import_helpers import warn_missing_optional
+
+        warn_missing_optional("adapters.platforms", feature="platform adapter registration")
 
     names = AdapterRegistry.list()
     if is_json:

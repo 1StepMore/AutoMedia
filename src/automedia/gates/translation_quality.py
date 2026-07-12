@@ -171,7 +171,7 @@ class L4TranslationQuality(BaseGate):
     # New-style public API
     # ------------------------------------------------------------------
 
-    def run(self, context: dict[str, Any]) -> GateResult:
+    def run(self, context: GateContext | dict[str, Any]) -> GateResult:
         """Execute all 4 translation-quality checks.
 
         Returns a ``GateResult`` whose ``passed`` field is ``True`` when no

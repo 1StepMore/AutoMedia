@@ -725,7 +725,7 @@ class TestPathAllowlistViolation:
         """
         mock_convert.return_value = {
             "status": "ok",
-            "output_path": "/tmp/output.html",
+            "output_path": "/outputs/output.html",
             "success": True,
             "errors": [],
         }

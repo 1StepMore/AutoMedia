@@ -8,10 +8,10 @@ from automedia.gates.base import BaseGate, _registry
 from automedia.gates.vision_qa import _CHECK_NAMES, V1VisionQA
 
 
-def _good_entry(idx: int = 0) -> dict[str, Any]:
+def _good_entry(idx: int = 0, base_dir: str = "/tmp") -> dict[str, Any]:
     return {
-        "mid_frame_path": f"/tmp/mid_{idx}.png",
-        "end_silence_frame_path": f"/tmp/end_{idx}.png",
+        "mid_frame_path": f"{base_dir}/mid_{idx}.png",
+        "end_silence_frame_path": f"{base_dir}/end_{idx}.png",
         "qa_passed": True,
         "checked": True,
     }
@@ -88,34 +88,34 @@ class TestV1MockDriven:
 
 
 class TestV1RealLogic:
-    def test_good_entries_all_pass(self) -> None:
-        entries = [_good_entry(i) for i in range(3)]
+    def test_good_entries_all_pass(self, tmp_path: Any) -> None:
+        entries = [_good_entry(i, str(tmp_path)) for i in range(3)]
         result = V1VisionQA().execute(_make_context(entries=entries))
         assert result["passed"] is True
 
-    def test_missing_mid_frame_fails(self) -> None:
-        entry = _good_entry(0)
+    def test_missing_mid_frame_fails(self, tmp_path: Any) -> None:
+        entry = _good_entry(0, str(tmp_path))
         entry["mid_frame_path"] = ""
         result = V1VisionQA().execute(_make_context(entries=[entry]))
         chk = next(c for c in result["checks"] if c["name"] == "mid_frame_valid")
         assert chk["passed"] is False
 
-    def test_missing_end_silence_fails(self) -> None:
-        entry = _good_entry(0)
+    def test_missing_end_silence_fails(self, tmp_path: Any) -> None:
+        entry = _good_entry(0, str(tmp_path))
         entry["end_silence_frame_path"] = ""
         result = V1VisionQA().execute(_make_context(entries=[entry]))
         chk = next(c for c in result["checks"] if c["name"] == "end_silence_valid")
         assert chk["passed"] is False
 
-    def test_entry_qa_failed(self) -> None:
-        entry = _good_entry(0)
+    def test_entry_qa_failed(self, tmp_path: Any) -> None:
+        entry = _good_entry(0, str(tmp_path))
         entry["qa_passed"] = False
         result = V1VisionQA().execute(_make_context(entries=[entry]))
         chk = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
         assert chk["passed"] is False
 
-    def test_red_line_6_unchecked_entry_fails(self) -> None:
-        entry = _good_entry(0)
+    def test_red_line_6_unchecked_entry_fails(self, tmp_path: Any) -> None:
+        entry = _good_entry(0, str(tmp_path))
         entry["checked"] = False
         result = V1VisionQA().execute(_make_context(entries=[entry]))
         chk = next(c for c in result["checks"] if c["name"] == "red_line_6")

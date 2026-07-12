@@ -9,9 +9,12 @@ Responsibilities
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
+
+logger = logging.getLogger(__name__)
 
 
 def assign_mode(user_input: str) -> str:
@@ -83,7 +86,8 @@ class DiagnosticAgent(BaseDecisionAgent):
             try:
                 results = asset_library.search(query=idea)  # type: ignore[union-attr]
                 existing_count = len(results) if results else 0
-            except Exception:
+            except (AttributeError, ValueError, RuntimeError):
+                logger.debug("AssetLibrary search failed, assuming zero existing assets")
                 existing_count = 0
 
         content: dict[str, Any] = {

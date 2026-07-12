@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import asdict
 from typing import Any, Literal, cast
 
 from structlog import get_logger
@@ -16,7 +17,7 @@ from automedia.core.config_loader import load_config
 from automedia.core.project import Project
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate, GateRegistry, _registry
-from automedia.hooks.md5_tracker import record_md5
+from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5, verify_md5
 from automedia.hooks.protocol import GateHook
 from automedia.manifests.brand_profile_schema import BrandProfile, load_brand_profile
 from automedia.pipelines.gate_engine import (
@@ -132,6 +133,53 @@ def _collect_assets(gate_context: GateContext | dict[str, Any]) -> list[AssetInf
     return assets
 
 
+def _verify_resume_integrity(
+    project_dir: str,
+    resume_from: str,
+    gate_names_in_mode: list[str],
+) -> None:
+    """Verify MD5 of all gate outputs before *resume_from*.
+
+    Reads the pipeline_md5.json and checks every gate recorded before
+    the resume point.  Mismatches are logged as warnings — the pipeline
+    will regenerate those outputs anyway.
+    """
+    try:
+        resume_idx = gate_names_in_mode.index(resume_from)
+    except ValueError:
+        return
+
+    prior_gates = gate_names_in_mode[:resume_idx]
+    if not prior_gates:
+        return
+
+    data = get_pipeline_md5(project_dir)
+    gates_record = data.get("gates", {})
+
+    for gate_name in prior_gates:
+        record = gates_record.get(gate_name)
+        if record is None:
+            continue
+
+        file_path = record.get("file_path", "")
+        if not file_path:
+            continue
+
+        try:
+            md5_ok = verify_md5(project_dir, gate_name, file_path)
+        except (OSError, FileNotFoundError):
+            md5_ok = False
+
+        if not md5_ok:
+            log.warning(
+                "pipeline.resume.md5_mismatch",
+                gate_name=gate_name,
+                file_path=file_path,
+                hint="The file has been modified or is missing since the original pipeline run. "
+                     "The resumed pipeline will regenerate this output.",
+            )
+
+
 def _record_gate_md5s(
     project_dir: str,
     gate_results: list[dict[str, Any]],
@@ -141,11 +189,15 @@ def _record_gate_md5s(
         output_path = result.get("output_path")
         gate_name = result.get("gate", "")
         if output_path and gate_name:
-            try:  # noqa: SIM105 — non-fatal
+            try:
                 record_md5(project_dir, gate_name, output_path)
-            except (OSError, FileNotFoundError):
-                # Non-fatal: asset may not exist on disk yet
-                pass
+            except (OSError, FileNotFoundError) as exc:
+                log.warning(
+                    "pipeline.md5_record_failed",
+                    gate_name=gate_name,
+                    output_path=output_path,
+                    error=str(exc),
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +211,7 @@ def run_full_pipeline(
     *,
     hooks: list[GateHook] | None = None,
     mode: str = "auto",
+    decision_mode: str = "build",
     resume_from: str | None = None,
     config_dir: str | None = None,
     tenant_id: str = "default",
@@ -234,6 +287,10 @@ def run_full_pipeline(
                     f"resume_from gate {resume_from!r} not found in mode {mode!r} gate list"
                 ) from None
 
+        # 3.5 Verify previous gate outputs when resuming
+        if resume_from is not None:
+            _verify_resume_integrity(project.project_dir, resume_from, _MODE_MAP.get(mode, []))
+
         gates = _build_gates_from_names(gate_names)
         log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
 
@@ -263,8 +320,20 @@ def run_full_pipeline(
             tenant_id=tenant_id,
             lang_config=lang_config,
             mode=config.get("mode", "auto"),
+            decision_mode=decision_mode,
             force_provenance=force_provenance,
+            brand_profile=asdict(brand_profile) if brand_profile is not None else None,
         )
+
+        # 5.5 Content fallback guard (Issue #14)
+        #      When CW is not in the gate list (video_only / qa_only modes),
+        #      content stays empty.  Inject a placeholder so downstream gates
+        #      and pipeline consumers don't see blank content.
+        if "CW" not in gate_names and not gate_context.get("content", "").strip():
+            placeholder = f"[content skipped in {mode} mode]"
+            gate_context["content"] = placeholder
+            gate_context["draft"] = placeholder
+            log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
 
         # 6. Execute
         success, results = engine.run(gate_context, progress=progress)

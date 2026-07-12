@@ -618,8 +618,8 @@ class TestOmniXliffRoundtrip:
         mock_orf_class.return_value.apply_xliff.return_value = ""
 
         result = mock_orf_class.return_value.apply_xliff(
-            "/tmp/missing.xlf",
-            "/tmp/output",
+            "/xliff/missing.xlf",
+            "/xliff/output",
         )
 
         assert result == ""

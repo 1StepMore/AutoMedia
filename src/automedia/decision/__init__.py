@@ -12,6 +12,7 @@ Exports
 
 from __future__ import annotations
 
+from automedia.core._import_helpers import warn_missing_optional
 from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
 from automedia.decision.diagnostic import DiagnosticAgent
 from automedia.decision.gates import D0Gate
@@ -19,6 +20,7 @@ from automedia.decision.gates import D0Gate
 try:
     from automedia.decision.orchestrator import DecisionOrchestrator
 except ImportError:
+    warn_missing_optional("decision.orchestrator", feature="DecisionOrchestrator disabled")
     DecisionOrchestrator = None  # type: ignore[assignment,misc]
 
 # Build agents
@@ -30,6 +32,7 @@ try:
         MarketResearchAgent,
     )
 except ImportError:
+    warn_missing_optional("decision.build", feature="Build agents disabled")
     BrandPositioningAgent = None  # type: ignore[assignment,misc]
     MarketResearchAgent = None  # type: ignore[assignment,misc]
     AudienceSegmentationAgent = None  # type: ignore[assignment,misc]
@@ -45,6 +48,7 @@ try:
         MarketRevalidationAgent,
     )
 except ImportError:
+    warn_missing_optional("decision.scale", feature="Scale agents disabled")
     BrandHealthDiagnosisAgent = None  # type: ignore[assignment,misc]
     MarketRevalidationAgent = None  # type: ignore[assignment,misc]
     AudienceDeepeningAgent = None  # type: ignore[assignment,misc]
@@ -58,6 +62,7 @@ try:
         ProductOptimizationAgent,
     )
 except ImportError:
+    warn_missing_optional("decision.strategy", feature="Strategy agents disabled")
     ProductOptimizationAgent = None  # type: ignore[assignment,misc]
     ContentMarketingAgent = None  # type: ignore[assignment,misc]
 

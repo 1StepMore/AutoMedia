@@ -3,23 +3,34 @@
 # All file system operations through the MCP server are restricted to
 # directories listed here. An empty list blocks all paths (fail-closed).
 #
-# Usage: uncomment lines matching your environment, or add your own.
+# Usage: Uncomment lines matching your environment, or add your own.
 # Paths are resolved relative to the MCP server's working directory.
 #
-# Examples — uncomment what you need:
-#   - /tmp/automedia/                    # Temporary test data
-#   - /var/automedia/projects/           # Production project storage
-#   - /var/automedia/briefs/             # Source document briefs
-#   - /home/user/AutoMedia/data/         # Data directory
-#   - /home/user/AutoMedia/output/       # Output directory
-#   - /home/user/AutoMedia/projects/     # Projects directory
+# --- Development / Local ---
+# Uncomment these when running from the AutoMedia repo root:
+#   - ./data/                          # Topic pool, config, runtime data
+#   - ./output/                        # Generated pipeline output
+#   - ./projects/                      # Project working directories
+#   - /tmp/automedia/                  # Temporary test data (always safe)
 #
-# On Docker: mount your volumes to /app/data /app/output /app/projects
-# and uncomment those paths below.
+# --- Production / Server ---
+# Examples for production deployment:
+#   - /var/automedia/projects/         # Production project storage
+#   - /var/automedia/briefs/           # Source document briefs
+#   - /home/user/AutoMedia/data/       # Data directory
+#   - /home/user/AutoMedia/output/     # Output directory
+#   - /home/user/AutoMedia/projects/   # Projects directory
+#
+# --- Docker ---
+# Mount your volumes to /app/data /app/output /app/projects
+# and uncomment below:
+#   - /app/data/
+#   - /app/output/
+#   - /app/projects/
+#
+# Environment variable override:
+#   Set AUTOMEDIA_MCP_ALLOWLIST_PATH to point to a custom YAML file.
+#   See deploy/systemd/automedia-mcp.env for details.
 #
 allowed_directories:
   - /tmp/automedia/
-  # Docker volume paths (uncomment if using docker-compose volumes):
-  # - /app/data/
-  # - /app/output/
-  # - /app/projects/

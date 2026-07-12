@@ -151,7 +151,7 @@ KeyError: "Gate 'G0' is already registered by <class '...'>"
 
 - `"stop"`: Gate failure stops the Pipeline immediately, returns
   `status="partial"`
-- `"rewrite"`: Gate failure allows the Pipeline to continue (used for
+- `"retry"`: Gate failure allows the Pipeline to continue (used for
   retryable gates)
 
 ### `execute()` must return a dict

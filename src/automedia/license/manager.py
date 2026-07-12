@@ -7,8 +7,11 @@ determining commercial feature availability.
 from __future__ import annotations
 
 import enum
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class LicenseStatus(enum.Enum):
@@ -106,7 +109,15 @@ class LicenseManager:
 
         key_path = Path.home() / ".automedia" / "license" / "license.key"
         if key_path.is_file():
-            return key_path.read_text(encoding="utf-8").strip()
+            key = key_path.read_text(encoding="utf-8").strip()
+            mode = key_path.stat().st_mode & 0o777
+            if mode != 0o600:
+                logger.warning(
+                    "license.key permissions too permissive: %s, expected 0o600",
+                    oct(mode),
+                )
+                key_path.chmod(0o600)
+            return key
 
         return None
 

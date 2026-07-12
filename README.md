@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (15 commands) / MCP Server (13 tools)
+- **Three-layer API**: SDK / CLI (15 commands) / MCP Server (14 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
@@ -80,6 +80,104 @@ A devcontainer configuration is also available at `.devcontainer/devcontainer.js
 - Whisper (faster-whisper or openai-whisper)
 - Chrome/Chromium (headless mode for video rendering)
 - ComfyUI (optional, for custom video generation)
+
+> **Tip:** All external dependencies come pre-installed in the [Docker image](#quick-start-with-docker). Use that to skip local setup.
+
+#### Python 3.11+
+
+AutoMedia requires Python 3.11 or newer.
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv python3-pip` |
+| macOS | `brew install python@3.11` |
+| Windows | `winget install Python.Python.3.11` or download from [python.org](https://www.python.org/downloads/) |
+
+Verify: `python3 --version` (or `python --version` on Windows)
+
+#### FFmpeg
+
+Audio/video encoding, decoding, format conversion, and frame extraction.
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y ffmpeg` |
+| macOS | `brew install ffmpeg` |
+| Windows | `winget install "FFmpeg (Essentials Build)"` or download from [ffmpeg.org](https://ffmpeg.org/download.html) |
+
+Verify: `ffmpeg -version`
+
+#### Bun
+
+JavaScript runtime for HyperFrames subtitle rendering and video assembly.
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu / macOS | `curl -fsSL https://bun.sh/install \| bash` |
+| Windows | `powershell -c "irm https://bun.sh/install.ps1 \| iex"` |
+| Any (via npm) | `npm install -g bun` |
+
+Verify: `bun --version`
+
+#### edge-tts CLI
+
+Python-based text-to-speech engine using Microsoft Edge TTS service.
+
+```bash
+pip install edge-tts
+```
+
+Verify: `edge-tts --help`
+
+#### Whisper
+
+Speech-to-text engine for subtitle generation. Choose one:
+
+```bash
+# Recommended: faster-whisper (faster, lower memory)
+pip install faster-whisper
+
+# Alternative: openai-whisper
+pip install openai-whisper
+```
+
+Verify:
+
+```bash
+# faster-whisper
+python -c "import faster_whisper; print(faster_whisper.__version__)"
+
+# openai-whisper
+python -c "import whisper; print(whisper.__version__)"
+```
+
+#### Chrome/Chromium
+
+Used headless for video rendering and screenshot capture.
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y chromium-browser` |
+| macOS | `brew install --cask google-chrome` |
+| Windows | `winget install Google.Chrome` |
+
+Verify: `google-chrome --version` (or `chromium-browser --version` on Ubuntu)
+
+#### ComfyUI (optional)
+
+Custom video generation with AI models. Required only for pipelines that use AI-generated visuals.
+
+```bash
+git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI
+pip install -r requirements.txt
+```
+
+See the [ComfyUI repository](https://github.com/comfyanonymous/ComfyUI) for full setup.
+
+Verify: Start the server (`python main.py`) and check `http://localhost:8188` is reachable.
+
+> **Docker alternative:** All external dependencies are pre-installed in the Docker image. See [Quick start with Docker](#quick-start-with-docker).
 
 ```bash
 pip install -e .
@@ -183,7 +281,7 @@ result = run_full_pipeline(
 | `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (13 tools)
+### MCP Server (14 tools)
 
 Start:
 
@@ -288,7 +386,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  13 tools      |     |  15 commands       |
+  |  14 tools      |     |  15 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -335,7 +433,7 @@ Each layer merges with the one below it. See `.env.example` for all supported en
 
 ## Gate System
 
-Gates are quality checks that run at specific points in the pipeline. Each gate has a failure mode (`"stop"` halts the pipeline, `"rewrite"` triggers content regeneration).
+Gates are quality checks that run at specific points in the pipeline. Each gate has a failure mode (`"stop"` halts the pipeline, `"retry"` triggers content regeneration).
 
 | Range | Count | Purpose |
 |-------|-------|---------|

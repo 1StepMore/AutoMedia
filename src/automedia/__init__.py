@@ -12,6 +12,7 @@ try:
 except ImportError:
     pass
 
+from automedia.gates.base import GateRegistry
 from automedia.hooks.protocol import GateHook
 from automedia.pipelines.gate_engine import (
     AssetInfo,
@@ -49,6 +50,7 @@ except ImportError:
 __all__ = [
     "AssetInfo",
     "AssetLibrary",
+    "GateRegistry",
     "BaseDecisionAgent",
     "DecisionArtifact",
     "DecisionOrchestrator",

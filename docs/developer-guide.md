@@ -15,9 +15,91 @@ AutoMedia depends on the following external tools at runtime. Make sure they are
 - FFmpeg
 - Bun (for HyperFrames rendering)
 - edge-tts CLI
-- Whisper (OpenAI whisper)
+- Whisper (faster-whisper or openai-whisper)
 - Chrome/Chromium (headless mode)
-- ComfyUI (image generation)
+- ComfyUI (optional, image generation)
+
+> **Tip:** All external dependencies come pre-installed in the Docker image. Use `docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor` to verify without local setup.
+
+#### Python 3.11+
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv python3-pip` |
+| macOS | `brew install python@3.11` |
+| Windows | `winget install Python.Python.3.11` or download from [python.org](https://www.python.org/downloads/) |
+
+Verify: `python3 --version` (or `python --version` on Windows)
+
+#### FFmpeg
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y ffmpeg` |
+| macOS | `brew install ffmpeg` |
+| Windows | `winget install "FFmpeg (Essentials Build)"` or download from [ffmpeg.org](https://ffmpeg.org/download.html) |
+
+Verify: `ffmpeg -version`
+
+#### Bun
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu / macOS | `curl -fsSL https://bun.sh/install \| bash` |
+| Windows | `powershell -c "irm https://bun.sh/install.ps1 \| iex"` |
+| Any (via npm) | `npm install -g bun` |
+
+Verify: `bun --version`
+
+#### edge-tts CLI
+
+```bash
+pip install edge-tts
+```
+
+Verify: `edge-tts --help`
+
+#### Whisper
+
+Choose one:
+
+```bash
+# faster-whisper (recommended)
+pip install faster-whisper
+
+# openai-whisper (alternative)
+pip install openai-whisper
+```
+
+Verify:
+
+```bash
+python -c "import faster_whisper; print(faster_whisper.__version__)"
+# or
+python -c "import whisper; print(whisper.__version__)"
+```
+
+#### Chrome/Chromium
+
+| Platform | Install |
+|----------|---------|
+| Ubuntu | `sudo apt-get update && sudo apt-get install -y chromium-browser` |
+| macOS | `brew install --cask google-chrome` |
+| Windows | `winget install Google.Chrome` |
+
+Verify: `google-chrome --version` (or `chromium-browser --version` on Ubuntu)
+
+#### ComfyUI (optional)
+
+```bash
+git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI
+pip install -r requirements.txt
+```
+
+See the [ComfyUI repository](https://github.com/comfyanonymous/ComfyUI) for full setup.
+
+Verify: `http://localhost:8188` is reachable after starting the server.
 
 ### Installation
 
@@ -91,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-  │   select_topic, run_pipeline, ...    │  8 tools
+  │   select_topic, run_pipeline, ...    │  14 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -203,6 +285,19 @@ class MyNewGate(BaseGate):
 | G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
 | V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
 | L1-L3 | Lifecycle Gates | Publish log, archive validation, platform integrity |
+
+### Pipeline Modes
+
+The pipeline supports four modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
+
+| Mode | Gates Executed | Use Case |
+|------|---------------|----------|
+| `auto` | D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
+| `text_only` | D0 → CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `video_only` | D0 → V0-V7 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
+| `qa_only` | D0 → G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
+
+Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, and `_QA_ONLY_GATE_NAMES`.
 
 ## Configuration Hierarchy
 

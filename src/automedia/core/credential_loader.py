@@ -12,10 +12,14 @@ environment variable (override).
 
 from __future__ import annotations
 
+import logging
 import os
+import warnings
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Load .env on import — makes AUTOMEDIA_* vars available immediately
@@ -29,7 +33,13 @@ try:
     if _env_path.is_file():
         load_dotenv(_env_path, override=False)
 except ImportError:
-    pass
+    from automedia.core._import_helpers import warn_missing_optional
+
+    warn_missing_optional(
+        "python-dotenv",
+        install_command="pip install automedia-pipeline",
+        feature=".env file will not be loaded",
+    )
 
 # ---------------------------------------------------------------------------
 # Optional dependency: keyring
@@ -38,6 +48,9 @@ except ImportError:
 try:
     import keyring as _keyring
 except ImportError:
+    from automedia.core._import_helpers import warn_missing_optional
+
+    warn_missing_optional("keyring", install_command="pip install keyring")
     _keyring = None  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------------
@@ -70,13 +83,15 @@ def _load_yaml_cred(filename: str, key_name: str) -> str | None:
                 value = data.get(key_name)
                 if isinstance(value, str):
                     return value
-    except Exception:  # noqa: S110 — silent fallback is intentional
+    except Exception:  # noqa: BLE001 — silent fallback is intentional
+        logger.debug("Could not load credential from %s", filename)
         pass
     return None
 
 
 # ---------------------------------------------------------------------------
 # Public API
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
 
@@ -128,7 +143,8 @@ def load_credential(key_name: str, *, provider: str | None = None) -> str | None
             value = _keyring.get_password(service, key_name)
             if value is not None:
                 return value
-        except Exception:  # noqa: S110 — silent fallback is intentional
+        except Exception:  # noqa: BLE001 — silent fallback is intentional
+            logger.debug("Keyring lookup failed for %s", key_name)
             pass
 
     # ------------------------------------------------------------------
@@ -142,6 +158,40 @@ def load_credential(key_name: str, *, provider: str | None = None) -> str | None
     # Layer 4 — credentials.yaml (legacy fallback)
     # ------------------------------------------------------------------
     return _load_yaml_cred("credentials.yaml", key_name)
+
+
+def load_credential_or_env(legacy_env_var: str, key_name: str) -> str | None:
+    """Try the standard :func:`load_credential` chain first, then legacy env var.
+
+    This helper supports gradual migration: platform adapters that historically
+    read vendor-specific environment variables (e.g. ``WX_APPID``) can use it
+    to retain backward compatibility while adopting the standard
+    ``AUTOMEDIA_*`` credential chain.
+
+    Priority order (highest first):
+
+    1. :func:`load_credential` — checks ``AUTOMEDIA_<KEY>`` env var,
+       ``AUTOMEDIA_<KEY>_KEY`` suffix, system keyring, and YAML files.
+    2. Legacy environment variable (e.g. ``WX_APPID``, ``XHS_COOKIE``).
+
+    Parameters
+    ----------
+    legacy_env_var:
+        The legacy environment-variable name checked as fallback
+        (e.g. ``"WX_APPID"``).
+    key_name:
+        The logical credential name passed to :func:`load_credential`
+        (e.g. ``"wechat_appid"`` → ``AUTOMEDIA_WECHAT_APPID``).
+
+    Returns
+    -------
+    str | None
+        The credential value, or ``None`` if not found in any source.
+    """
+    value = load_credential(key_name)
+    if value is not None:
+        return value
+    return os.environ.get(legacy_env_var)
 
 
 def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
@@ -183,7 +233,57 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
                         api_key = prov_cfg.get("api_key")
                         if isinstance(api_key, str):
                             return api_key
-    except Exception:  # noqa: S110 — silent fallback is intentional
+    except Exception:  # noqa: BLE001 — silent fallback is intentional
+        logger.debug("Could not read model_config.yaml for %s", provider_name)
         pass
 
     return load_credential(provider_name, provider=provider_name)
+
+
+def load_credential_with_account_fallback(
+    key_name: str,
+    *,
+    provider: str | None = None,
+    account_id: str | None = None,
+) -> str | None:
+    """Try PRD-4 account store first, then fall back to legacy credential chain.
+
+    This is the bridging layer for gradual migration from flat env-var
+    credentials to the PRD-4 encrypted account store.
+
+    When *account_id* is provided and the account exists in the PRD-4
+    store, returns the credential from the encrypted store.
+    Otherwise falls back to :func:`load_credential` with a deprecation warning.
+
+    Parameters
+    ----------
+    key_name:
+        The credential key name (e.g. ``"wechat_appid"``, ``"zhihu_cookie"``).
+    provider:
+        Optional provider name for legacy keyring lookup.
+    account_id:
+        Optional PRD-4 account ID for encrypted store lookup.
+
+    Returns
+    -------
+    str | None
+        The credential value, or ``None`` if not found in any source.
+    """
+    if account_id:
+        try:
+            from automedia.accounts.store import AccountStore
+
+            store = AccountStore()
+            creds = store.load(account_id)
+            if creds and key_name in creds:
+                return creds[key_name]
+        except Exception:
+            logger.debug("PRD-4 account lookup failed for %s/%s", account_id, key_name)
+
+    warnings.warn(
+        f"Using legacy credential path for '{key_name}'. "
+        "Migrate to PRD-4 account store: automedia account connect ...",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return load_credential(key_name, provider=provider)

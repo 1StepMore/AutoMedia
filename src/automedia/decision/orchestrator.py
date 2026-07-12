@@ -34,6 +34,9 @@ from automedia.decision.strategy import (
 try:
     from automedia.hitl.executor import NodeExecutor
 except ImportError:
+    from automedia.core._import_helpers import warn_missing_optional
+
+    warn_missing_optional("hitl.executor", feature="HITL NodeExecutor disabled")
     NodeExecutor = None  # type: ignore[assignment,misc]
 
 

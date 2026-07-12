@@ -164,7 +164,7 @@ def _build_full_context(
     sample_topic: str,
     sample_brand_profile: dict[str, Any],
     mock_results: dict[str, dict[str, Any]] | None = None,
-    project_dir: str = "/tmp/test_project",
+    project_dir: str = "/projects/test_project",
 ) -> dict[str, Any]:
     """Build a mega-context that satisfies every gate's expected keys."""
     if mock_results is None:
@@ -204,8 +204,8 @@ def _build_full_context(
         # V1
         "entries": [
             {
-                "mid_frame_path": f"/tmp/frame_{i}.png",
-                "end_silence_frame_path": f"/tmp/end_{i}.png",
+                "mid_frame_path": f"{project_dir}/frame_{i}.png",
+                "end_silence_frame_path": f"{project_dir}/end_{i}.png",
                 "qa_passed": True,
                 "checked": True,
             }
@@ -213,7 +213,7 @@ def _build_full_context(
         ],
         # V2
         "transcription": "Full audio transcription text for testing.",
-        "audio_path": "/tmp/test.mp3",
+        "audio_path": f"{project_dir}/test.mp3",
         "expected_md5": "",
         "full_audio": True,
         # V3
@@ -252,7 +252,7 @@ def _build_full_context(
         "publish_log": {
             "topic": sample_topic,
             "content": "Test article content.",
-            "media_paths": ["/tmp/video.mp4"],
+            "media_paths": [f"{project_dir}/video.mp4"],
             "platform": "wechat",
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
@@ -260,14 +260,14 @@ def _build_full_context(
         # L2
         "archive_status": "published",
         "force": True,
-        "archive_path": "/tmp/archive.zip",
+        "archive_path": f"{project_dir}/archive.zip",
         "archive_metadata": {
             "title": "AI Trends 2025",
             "platform": "wechat",
             "created_at": "2025-06-01T12:00:00",
         },
         "archive_version": "1.0",
-        "output_dir": "/tmp/output",
+        "output_dir": f"{project_dir}/output",
         # L3
         "platforms": ["wechat", "weibo"],
         "expected_platforms": ["wechat", "weibo"],
@@ -351,7 +351,7 @@ class TestFullPipeline:
         sample_brand_profile: dict[str, Any],
         tmp_path: Path,
     ) -> None:
-        """G1 (failure_mode='rewrite') fails → pipeline continues to next gate."""
+        """G1 (failure_mode='retry') fails → pipeline continues to next gate."""
         mock_results = _build_mock_results()
         # Make G1 Humanizer fail — overused_adverbs check fails
         mock_results["overused_adverbs"] = {"passed": False, "detail": "found adverbs"}

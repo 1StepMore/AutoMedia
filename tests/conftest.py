@@ -21,6 +21,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "e2e: end-to-end pipeline integration tests")
     config.addinivalue_line("markers", "redline: red-line enforcement tests")
     config.addinivalue_line("markers", "slow: tests that take more than a few seconds")
+    config.addinivalue_line("markers", "cruel: cruel acceptance tests requiring real API access")
     # Suppress RL7 warnings for test-only gate names (G-prefixed test gates
     # are not in failure_modes.py — this is expected).
     config.addinivalue_line(
@@ -244,6 +245,7 @@ def sample_gate_context(
         "brand_profile": sample_brand_profile,
         "source_data": sample_source_data,
         "_mock_results": _all_pass,
+        "decision_mode": "build",
         # pre-gate
         # (topic is already set above)
         # G4 — WeChat checklist
@@ -264,8 +266,8 @@ def sample_gate_context(
         # V1 — Vision QA
         "entries": [
             {
-                "mid_frame_path": f"/tmp/frame_{i}.png",
-                "end_silence_frame_path": f"/tmp/end_{i}.png",
+                "mid_frame_path": f"/synthetic/frame_{i}.png",
+                "end_silence_frame_path": f"/synthetic/end_{i}.png",
                 "qa_passed": True,
                 "checked": True,
             }
@@ -273,7 +275,7 @@ def sample_gate_context(
         ],
         # V2 — Pre-send whisper
         "transcription": "Full audio transcription text for testing purposes.",
-        "audio_path": "/tmp/test_audio.mp3",
+        "audio_path": "/synthetic/test_audio.mp3",
         "expected_md5": "",
         "full_audio": True,
         # V3 — Content semantic
@@ -316,7 +318,7 @@ def sample_gate_context(
         "publish_log": {
             "topic": sample_topic,
             "content": "Test article content for publish log.",
-            "media_paths": ["/tmp/output/video.mp4"],
+            "media_paths": ["/synthetic/output/video.mp4"],
             "platform": "wechat",
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
@@ -324,13 +326,13 @@ def sample_gate_context(
         # L2 — Archive validation
         "archive_status": "published",
         "force": True,
-        "archive_path": "/tmp/archive.zip",
+        "archive_path": "/synthetic/archive.zip",
         "archive_metadata": {
             "title": "AI Trends 2025",
             "platform": "wechat",
             "created_at": "2025-06-01T12:00:00",
         },
-        "output_dir": "/tmp/output",
+        "output_dir": "/synthetic/output",
         # L3 — Platform integrity
         "platforms": ["wechat", "weibo"],
         "expected_platforms": ["wechat", "weibo"],

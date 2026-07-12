@@ -35,7 +35,7 @@ class TestEnforcementE2E:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(tmp_path),
             }
         )
@@ -61,7 +61,7 @@ class TestEnforcementE2E:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(tmp_path),
             }
         )
@@ -83,7 +83,7 @@ class TestEnforcementE2E:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(tmp_path),
                 "force_provenance": True,
             }
@@ -118,7 +118,7 @@ class TestEnforcementE2E:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "build",
+                "decision_mode": "build",
                 "project_dir": str(tmp_path),
             }
         )
@@ -146,7 +146,7 @@ class TestEnforcementE2E:
         gate = D0Gate()
         result = gate.execute(
             {
-                "mode": "scale",
+                "decision_mode": "scale",
                 "project_dir": str(tmp_path),
             }
         )

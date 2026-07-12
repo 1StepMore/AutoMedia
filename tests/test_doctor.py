@@ -97,24 +97,37 @@ class TestDoctorCheckDependencies:
         with (
             patch.object(doctor, "_resolve_path", return_value="/usr/bin/ok"),
             patch.object(doctor, "_get_version", return_value="1.0"),
+            patch.object(doctor, "_check_comfyui_http", return_value=(True, "ComfyUI reachable")),
+            patch.object(doctor, "_check_llm_api", return_value=(True, "API reachable")),
         ):
             results = doctor.check_dependencies()
             for dep in results:
                 assert dep["installed"] is True, f"{dep['name']} should be installed"
-                assert dep["path"] == "/usr/bin/ok"
-                if dep["name"] in ("comfyui", "chrome"):
-                    assert dep["version"] is None
+                if dep["name"] == "comfyui":
+                    assert dep["path"] is None
+                    assert dep["version"] == "ComfyUI reachable"
+                elif dep["name"] == "llm_api":
+                    assert dep["path"] is None
+                    assert dep["version"] == "API reachable"
                 else:
-                    assert dep["version"] == "1.0"
+                    assert dep["path"] == "/usr/bin/ok"
+                    if dep["name"] == "chrome":
+                        assert dep["version"] is None
+                    else:
+                        assert dep["version"] == "1.0"
 
     def test_all_missing(self, doctor: Doctor):
         """No tools found — returns installed=False for each."""
-        with patch.object(doctor, "_resolve_path", return_value=None):
+        with (
+            patch.object(doctor, "_resolve_path", return_value=None),
+            patch.object(doctor, "_check_comfyui_http", return_value=(False, None)),
+            patch.object(doctor, "_check_llm_api", return_value=(False, "no API key")),
+        ):
             results = doctor.check_dependencies()
             for dep in results:
                 assert dep["installed"] is False
                 assert dep["path"] is None
-                assert dep["version"] is None
+                assert dep["version"] is None or dep["name"] == "llm_api"
 
     def test_partial_installation(self, doctor: Doctor):
         """Only some tools are installed."""
@@ -126,6 +139,8 @@ class TestDoctorCheckDependencies:
         with (
             patch.object(doctor, "_resolve_path", side_effect=mock_resolve),
             patch.object(doctor, "_get_version", return_value="1.0"),
+            patch.object(doctor, "_check_comfyui_http", return_value=(False, None)),
+            patch.object(doctor, "_check_llm_api", return_value=(False, "no API key")),
         ):
             results = doctor.check_dependencies()
 
@@ -136,12 +151,15 @@ class TestDoctorCheckDependencies:
         assert "edge-tts" in missing
         assert "comfyui" in missing
         assert "chrome" in missing
+        assert "llm_api" in missing
 
     def test_result_structure(self, doctor: Doctor):
         """Each result dict has the required keys."""
         with (
             patch.object(doctor, "_resolve_path", return_value="/usr/bin/python3"),
             patch.object(doctor, "_get_version", return_value="3.11"),
+            patch.object(doctor, "_check_comfyui_http", return_value=(True, "ok")),
+            patch.object(doctor, "_check_llm_api", return_value=(True, "API reachable")),
         ):
             results = doctor.check_dependencies()
 

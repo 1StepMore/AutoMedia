@@ -54,7 +54,7 @@ class TestV5Metadata:
         assert V5Mp3VsSrt().gate_name == "V5"
 
     def test_failure_mode_is_rewrite(self) -> None:
-        assert V5Mp3VsSrt().failure_mode == "rewrite"
+        assert V5Mp3VsSrt().failure_mode == "retry"
 
     def test_is_base_gate_subclass(self) -> None:
         assert issubclass(V5Mp3VsSrt, BaseGate)
@@ -130,7 +130,7 @@ class TestV5RealLogic:
         assert "Hello" in cleaned
 
     def test_failure_mode_is_rewrite_not_stop(self) -> None:
-        assert V5Mp3VsSrt().failure_mode == "rewrite"
+        assert V5Mp3VsSrt().failure_mode == "retry"
 
 
 class TestV5ResultStructure:

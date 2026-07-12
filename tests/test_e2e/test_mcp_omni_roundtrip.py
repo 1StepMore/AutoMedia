@@ -308,7 +308,7 @@ class TestLocalizeOutput:
         """Should call _require_allowed with project_dir."""
         from automedia.mcp.server import localize_output
 
-        localize_output("/tmp/test_project", "en")
+        localize_output("/projects/test_project", "en")
         mock_require.assert_called_once()
 
     @patch("automedia.omni.ol_adapter.OLAdapter")

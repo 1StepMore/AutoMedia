@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 import typing
+from typing import Any
+
+import pytest
 
 from automedia.omni.ol_adapter import OLAdapter, TranslationResult
 
 
 class TestTranslationResult:
-    def test_has_all_fields(self) -> None:
+    def test_has_all_fields(self, tmp_path: Any) -> None:
+        xliff = str(tmp_path / "translated.xlf")
         r = TranslationResult(
             translated_md="# Bonjour",
-            xliff_path="/tmp/translated.xlf",
+            xliff_path=xliff,
             warnings=["low quality"],
         )
         assert r.translated_md == "# Bonjour"
-        assert r.xliff_path == "/tmp/translated.xlf"
+        assert r.xliff_path == xliff
         assert r.warnings == ["low quality"]
 
     def test_xliff_path_defaults_to_none(self) -> None:
@@ -69,13 +73,13 @@ class TestOLAdapterContract:
         assert hints["return"] is TranslationResult
 
 
-def test_translate_graceful_on_missing_config() -> None:
+def test_translate_graceful_on_missing_config(tmp_path: Any) -> None:
     """translate() returns TranslationResult with warning instead of crashing."""
     adapter = OLAdapter()
     import os
 
     # Ensure OL_CONFIG_PATH points to a non-existent file
-    bad_path = "/tmp/nonexistent_ol_config.yaml"
+    bad_path = str(tmp_path / "nonexistent_ol_config.yaml")
     os.environ["OL_CONFIG_PATH"] = bad_path
     try:
         result = adapter.translate("# Hello", source_lang="en", target_lang="zh")

@@ -225,7 +225,7 @@ class SOPRunner:
         for yaml_path in sorted(self._overrides_dir.glob("*.yaml")):
             try:
                 data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
-            except Exception:  # noqa: S112 — skip malformed files
+            except Exception:  # noqa: S112, BLE001 — skip malformed files
                 continue  # skip malformed files
             if isinstance(data, dict):
                 merged.update(data)

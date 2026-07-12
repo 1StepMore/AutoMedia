@@ -2,7 +2,7 @@
 
 Provides three main classes:
     - :class:`ImagePipeline` — generates cover images, body images, and fallback
-      frames via ComfyUI subprocess calls.
+      frames via ComfyUI HTTP API calls.
     - :class:`ImageValidator` — validates image dimensions and aspect ratios using PIL.
     - :class:`VisionQADegradation` — degrades to pixel-luminance analysis when the
       Vision API is rate-limited.
@@ -10,16 +10,18 @@ Provides three main classes:
 
 from __future__ import annotations
 
-import json
-import logging
 import os
-import subprocess
+import time
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PIL import Image
+from structlog import get_logger
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    import httpx
+
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -39,23 +41,40 @@ ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 
 
 # ---------------------------------------------------------------------------
-# ComfyUI helpers (subprocess shell-out)
+# ComfyUI helpers (HTTP API client)
 # ---------------------------------------------------------------------------
 
 
-def _run_comfyui(workflow: dict[str, Any], output_dir: str) -> str:
-    """Shell out to ComfyUI CLI to execute *workflow*.
+def _run_comfyui(
+    workflow: dict[str, Any],
+    output_dir: str,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8188,
+    protocol: str = "http",
+    timeout: int = 300,
+) -> str:
+    """Execute a ComfyUI workflow via its HTTP API.
 
-    In production this would call the actual ComfyUI API / CLI.
-    The simulated implementation writes a placeholder file to *output_dir*
-    and returns its path.
+    Makes a real HTTP POST to the ComfyUI ``/prompt`` endpoint with the
+    workflow JSON, polls for completion, and downloads the output image.
+    Falls back to PIL placeholder generation when *httpx* is not available
+    or the server is unreachable.
 
     Parameters
     ----------
     workflow:
-        ComfyUI workflow JSON payload.
+        ComfyUI workflow JSON payload (node graph).
     output_dir:
         Directory where generated images are stored.
+    host:
+        ComfyUI server hostname (default ``"127.0.0.1"``).
+    port:
+        ComfyUI server port (default ``8188``).
+    protocol:
+        HTTP protocol scheme (default ``"http"``).
+    timeout:
+        Maximum time in seconds to wait for prompt completion (default ``300``).
 
     Returns
     -------
@@ -63,35 +82,107 @@ def _run_comfyui(workflow: dict[str, Any], output_dir: str) -> str:
         Path to the generated image file.
     """
     output_path = os.path.join(output_dir, workflow.get("filename", "output.png"))
-
-    # Build the command — in real usage this would be something like:
-    #   comfyui --workflow <json> --output <dir>
-    cmd = [
-        "echo",
-        json.dumps({"status": "ok", "output": output_path}),
-    ]
-
-    try:
-        result = subprocess.run(  # noqa: S603 — trusted internal command
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            logger.warning("ComfyUI subprocess returned %d: %s", result.returncode, result.stderr)
-    except FileNotFoundError:
-        logger.info("ComfyUI CLI not found — using simulated output")
-    except subprocess.TimeoutExpired:
-        logger.warning("ComfyUI subprocess timed out")
-
-    # Simulated: create a minimal PNG placeholder using PIL
     width = workflow.get("width", 1080)
     height = workflow.get("height", 1080)
+
+    # ---- Attempt real ComfyUI API call via httpx ----
+    try:
+        import httpx  # noqa: F811
+    except ImportError:
+        from automedia.core._import_helpers import warn_missing_optional
+
+        warn_missing_optional("httpx", feature="using PIL placeholder fallback")
+        _create_placeholder(output_path, width, height)
+        return output_path
+
+    base_url = f"{protocol}://{host}:{port}"
+    try:
+        with httpx.Client(timeout=httpx.Timeout(timeout)) as client:
+            # a) POST workflow to /prompt
+            resp = client.post(f"{base_url}/prompt", json={"prompt": workflow})
+            resp.raise_for_status()
+            prompt_data = resp.json()
+            prompt_id = prompt_data.get("prompt_id")
+            if not prompt_id:
+                raise RuntimeError(f"No prompt_id in ComfyUI response: {prompt_data}")
+
+            # b) Poll /history/{prompt_id} until completed
+            _poll_comfyui(client, base_url, prompt_id, timeout)
+
+            # c) Get output filename from history
+            history_resp = client.get(f"{base_url}/history/{prompt_id}")
+            history_resp.raise_for_status()
+            history = history_resp.json()
+            output_filename = _extract_output_filename(history, prompt_id)
+
+            # d) Download image via /view
+            download_resp = client.get(
+                f"{base_url}/view",
+                params={"filename": output_filename},
+            )
+            download_resp.raise_for_status()
+
+            # e) Write image to disk
+            with open(output_path, "wb") as f:
+                f.write(download_resp.content)
+
+            logger.info("ComfyUI generated image → %s", output_path)
+            return output_path
+
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as exc:
+        logger.warning("ComfyUI API error (%s) — using PIL fallback", exc)
+    except Exception as exc:
+        logger.warning("ComfyUI unexpected error (%s) — using PIL fallback", exc)
+
+    # ---- Fallback: PIL placeholder ----
+    _create_placeholder(output_path, width, height)
+    return output_path
+
+
+def _poll_comfyui(
+    client: httpx.Client,  # noqa: F821  — guarded by TYPE_CHECKING
+    base_url: str,
+    prompt_id: str,
+    timeout: int,
+) -> None:
+    """Poll the ComfyUI ``/history`` endpoint until the prompt completes.
+
+    Raises
+    ------
+    TimeoutError
+        If the prompt does not complete within *timeout* seconds.
+    """
+    start = time.monotonic()
+    poll_interval = 1.0
+
+    while (time.monotonic() - start) < timeout:
+        resp = client.get(f"{base_url}/history/{prompt_id}")
+        resp.raise_for_status()
+        history = resp.json()
+        prompt_entry = history.get(prompt_id, {})
+        if prompt_entry.get("status", {}).get("completed") is True:
+            return
+        time.sleep(poll_interval)
+
+    raise TimeoutError(f"ComfyUI prompt {prompt_id} did not complete within {timeout}s")
+
+
+def _extract_output_filename(history: dict[str, Any], prompt_id: str) -> str:
+    """Extract the first output image filename from a ComfyUI history response."""
+    outputs = history.get(prompt_id, {}).get("outputs", {})
+    for _node_id, node_output in outputs.items():
+        images = node_output.get("images", [])
+        if images:
+            filename = images[0].get("filename")
+            if filename:
+                return filename
+    raise RuntimeError(f"No output image found in ComfyUI history for prompt {prompt_id}")
+
+
+def _create_placeholder(output_path: str, width: int, height: int) -> None:
+    """Create a minimal PNG placeholder image using PIL."""
     img = Image.new("RGB", (width, height), color=(30, 30, 30))
     img.save(output_path, "PNG")
-
-    return output_path
 
 
 # ---------------------------------------------------------------------------

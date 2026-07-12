@@ -1,9 +1,23 @@
-"""AutoMedia platform adapters (stub / draft layer)."""
+"""
+Backward-compatibility shim for ``automedia.platform``.
 
-from automedia.platform.xiaohongshu import XiaohongshuAdapter
-from automedia.platform.zhihu_draft import ZhihuDraftAdapter
+.. deprecated::
+   Use :mod:`automedia.platform_drafts` instead.
+
+This shim will be removed in v2.0.
+"""
+
+import warnings
+
+from automedia.platform_drafts import XiaohongshuAdapter, ZhihuDraftAdapter  # noqa: F401
 
 __all__ = [
-    "ZhihuDraftAdapter",
     "XiaohongshuAdapter",
+    "ZhihuDraftAdapter",
 ]
+
+warnings.warn(
+    "automedia.platform is deprecated; use automedia.platform_drafts instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

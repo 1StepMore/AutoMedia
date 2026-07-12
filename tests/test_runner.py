@@ -24,7 +24,7 @@ from automedia.pipelines.runner import (
 class _AlwaysPassGate(BaseGate):
     """Gate that always passes — for runner integration tests."""
 
-    _gate_name = "G77"
+    _gate_name = "G60"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -34,7 +34,7 @@ class _AlwaysPassGate(BaseGate):
 class _AlwaysFailGate(BaseGate):
     """Gate that always fails — for runner failure tests."""
 
-    _gate_name = "G76"
+    _gate_name = "G61"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -120,24 +120,24 @@ class TestCollectAssets:
     def test_empty_context(self) -> None:
         assert _collect_assets({}) == []
 
-    def test_output_files_key(self) -> None:
-        ctx = {"output_files": [{"type": "video", "path": "/tmp/v.mp4", "platform": "bilibili"}]}
+    def test_output_files_key(self, tmp_path: Any) -> None:
+        ctx = {"output_files": [{"type": "video", "path": str(tmp_path / "v.mp4"), "platform": "bilibili"}]}
         assets = _collect_assets(ctx)
         assert len(assets) == 1
         assert assets[0].type == "video"
 
-    def test_assets_key(self) -> None:
+    def test_assets_key(self, tmp_path: Any) -> None:
         ctx = {
-            "assets": [{"type": "image", "path": "/tmp/i.png", "platform": "wechat", "md5": "abc"}]
+            "assets": [{"type": "image", "path": str(tmp_path / "i.png"), "platform": "wechat", "md5": "abc"}]
         }
         assets = _collect_assets(ctx)
         assert len(assets) == 1
         assert assets[0].md5 == "abc"
 
-    def test_both_keys(self) -> None:
+    def test_both_keys(self, tmp_path: Any) -> None:
         ctx = {
-            "output_files": [{"type": "a", "path": "/a"}],
-            "assets": [{"type": "b", "path": "/b"}],
+            "output_files": [{"type": "a", "path": str(tmp_path / "a")}],
+            "assets": [{"type": "b", "path": str(tmp_path / "b")}],
         }
         assets = _collect_assets(ctx)
         assert len(assets) == 2
@@ -190,10 +190,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "test123"
-        mock_proj.project_dir = "/tmp/proj"
+        mock_proj.project_dir = str(tmp_path / "proj")
         mock_project.init.return_value = mock_proj
 
         mock_build.return_value = [_AlwaysPassGate()]
@@ -216,10 +217,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "p1"
-        mock_proj.project_dir = "/tmp/p1"
+        mock_proj.project_dir = str(tmp_path / "p1")
         mock_project.init.return_value = mock_proj
 
         mock_build.return_value = [_AlwaysFailGate()]
@@ -243,10 +245,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "p"
-        mock_proj.project_dir = "/tmp/p"
+        mock_proj.project_dir = str(tmp_path / "proj")
         mock_project.init.return_value = mock_proj
 
         result = run_full_pipeline("t", "b", mode="nonexistent")
@@ -263,10 +266,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "r1"
-        mock_proj.project_dir = "/tmp/r1"
+        mock_proj.project_dir = str(tmp_path / "r1")
         mock_project.init.return_value = mock_proj
 
         # Capture the names passed to _build_gates_from_names
@@ -293,10 +297,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "r2"
-        mock_proj.project_dir = "/tmp/r2"
+        mock_proj.project_dir = str(tmp_path / "r2")
         mock_project.init.return_value = mock_proj
 
         result = run_full_pipeline("t", "b", mode="auto", resume_from="INVALID_GATE")
@@ -313,10 +318,11 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "c1"
-        mock_proj.project_dir = "/tmp/c1"
+        mock_proj.project_dir = str(tmp_path / "c1")
         mock_project.init.return_value = mock_proj
 
         mock_build.return_value = [_AlwaysPassGate()]
@@ -334,13 +340,183 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
+        tmp_path: Any,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "t1"
-        mock_proj.project_dir = "/tmp/t1"
+        mock_proj.project_dir = str(tmp_path / "t1")
         mock_project.init.return_value = mock_proj
 
         mock_build.return_value = [_AlwaysPassGate()]
 
         run_full_pipeline("t", "b", tenant_id="acme")
         mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
+
+
+# =========================================================================
+# Fallback content guard tests (Issue #14)
+# =========================================================================
+
+
+class TestFallbackContentGuard:
+    """video_only / qa_only modes must inject fallback content when CW is skipped."""
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_video_only_has_fallback_content(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """video_only mode provides fallback text for empty content."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "v99"
+        mock_proj.project_dir = str(tmp_path / "v99")
+        mock_project.init.return_value = mock_proj
+
+        captured: dict[str, Any] = {"content": ""}
+
+        class _CaptureContentGate(BaseGate):
+            _gate_name = "V99"
+            _failure_mode = "stop"
+
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured["content"] = __gate_context.get("content", "")
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureContentGate()]
+
+        run_full_pipeline("AI topic", "testbrand", mode="video_only")
+
+        # RED: This assertion currently FAILS because content is empty.
+        # GREEN: After guard implementation, content will have placeholder text.
+        content = captured["content"]
+        assert content != "", (
+            f"video_only mode should provide fallback content, got empty string"
+        )
+        assert "[content skipped" in content, (
+            f"Expected placeholder marker in content, got {content!r}"
+        )
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_qa_only_has_fallback_content(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """qa_only mode provides fallback text for empty content."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "q99"
+        mock_proj.project_dir = str(tmp_path / "q99")
+        mock_project.init.return_value = mock_proj
+
+        captured: dict[str, Any] = {"content": ""}
+
+        class _CaptureContentGate(BaseGate):
+            _gate_name = "V98"
+            _failure_mode = "stop"
+
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured["content"] = __gate_context.get("content", "")
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureContentGate()]
+
+        run_full_pipeline("AI topic", "testbrand", mode="qa_only")
+
+        # RED: This assertion currently FAILS because content is empty.
+        # GREEN: After guard implementation, content will have placeholder text.
+        content = captured["content"]
+        assert content != "", (
+            f"qa_only mode should provide fallback content, got empty string"
+        )
+        assert "[content skipped" in content, (
+            f"Expected placeholder marker in content, got {content!r}"
+        )
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_auto_mode_not_affected(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """auto mode still starts with empty content (CW fills it later)."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "a99"
+        mock_proj.project_dir = str(tmp_path / "a99")
+        mock_project.init.return_value = mock_proj
+
+        captured: dict[str, Any] = {"content": "DEFAULT"}
+
+        class _CaptureContentGate(BaseGate):
+            _gate_name = "V97"
+            _failure_mode = "stop"
+
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured["content"] = __gate_context.get("content", "")
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureContentGate()]
+
+        run_full_pipeline("AI topic", "testbrand", mode="auto")
+
+        # auto mode should NOT have fallback — CW will set content
+        content = captured["content"]
+        assert content == "", (
+            f"auto mode should start with empty content, got {content!r}"
+        )
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_text_only_mode_not_affected(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """text_only mode still starts with empty content (CW fills it later)."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "t99"
+        mock_proj.project_dir = str(tmp_path / "t99")
+        mock_project.init.return_value = mock_proj
+
+        captured: dict[str, Any] = {"content": "DEFAULT"}
+
+        class _CaptureContentGate(BaseGate):
+            _gate_name = "V96"
+            _failure_mode = "stop"
+
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured["content"] = __gate_context.get("content", "")
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureContentGate()]
+
+        run_full_pipeline("AI topic", "testbrand", mode="text_only")
+
+        # text_only mode should NOT have fallback — CW will set content
+        content = captured["content"]
+        assert content == "", (
+            f"text_only mode should start with empty content, got {content!r}"
+        )

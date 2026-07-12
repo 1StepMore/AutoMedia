@@ -194,7 +194,7 @@ class TestOmniFormatOutput:
                 "omni",
                 "format-output",
                 "--input",
-                "/tmp/test.md",
+                "/inputs/test.md",
             ],
         )
         assert result.exit_code != 0
@@ -286,7 +286,7 @@ class TestOmniIngest:
                 "omni",
                 "ingest",
                 "--output-dir",
-                "/tmp/out",
+                "/outputs/out",
             ],
         )
         assert result.exit_code != 0

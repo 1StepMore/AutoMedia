@@ -118,7 +118,7 @@ def _build_pipeline_context(
     topic: str,
     brand_profile: dict[str, Any],
     mock_results: dict[str, dict[str, Any]] | None = None,
-    project_dir: str = "/tmp/test_brand_switch",
+    project_dir: str = "/projects/test_brand_switch",
 ) -> dict[str, Any]:
     """Build a minimal pipeline context sufficient for CW + G3 gates.
 

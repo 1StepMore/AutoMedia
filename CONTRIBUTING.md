@@ -232,7 +232,7 @@ Gates are quality checkpoints in the AutoMedia pipeline. To add a new gate:
 
    class MyNewGate(BaseGate):
        _gate_name = "G6"        # Follow naming: G0-G5, V0-V7, L1-L4, D0, pre-gate, CW
-       _failure_mode = "stop"   # "stop" or "rewrite"
+        _failure_mode = "stop"   # "stop" or "retry"
 
        def execute(self, gate_context: dict) -> dict:
            # Your gate logic here

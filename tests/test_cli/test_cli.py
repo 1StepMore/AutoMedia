@@ -76,11 +76,11 @@ class TestRunCommand:
         monkeypatch.setattr(run_mod, "_MODEL_CONFIG_PATH", cfg_file)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_success(self, mock_runner: MagicMock, _model_config_present: None) -> None:
+    def test_run_success(self, mock_runner: MagicMock, _model_config_present: None, tmp_path: Any) -> None:
         mock_runner.return_value = PipelineResult(
             status="success",
             project_id="abc123",
-            project_dir="/tmp/proj",
+            project_dir=str(tmp_path / "proj"),
             topic="test",
             brand="test",
             total_duration_s=1.5,
@@ -88,7 +88,7 @@ class TestRunCommand:
         result = runner.invoke(app, ["run", "--topic", "test", "--brand", "test"])
         assert result.exit_code == 0
         assert "Pipeline finished: success" in result.output
-        mock_runner.assert_called_once_with("test", "test", mode="auto", resume_from=None)
+        mock_runner.assert_called_once_with("test", "test", mode="auto", decision_mode="build", resume_from=None)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_with_mode(self, mock_runner: MagicMock, _model_config_present: None) -> None:
@@ -98,7 +98,7 @@ class TestRunCommand:
         )
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b", "--mode", "text_only"])
         assert result.exit_code == 0
-        mock_runner.assert_called_once_with("t", "b", mode="text_only", resume_from=None)
+        mock_runner.assert_called_once_with("t", "b", mode="text_only", decision_mode="build", resume_from=None)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_with_resume_from(
@@ -110,7 +110,7 @@ class TestRunCommand:
         )
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b", "--resume-from", "G3"])
         assert result.exit_code == 0
-        mock_runner.assert_called_once_with("t", "b", mode="auto", resume_from="G3")
+        mock_runner.assert_called_once_with("t", "b", mode="auto", decision_mode="build", resume_from="G3")
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_failure_exits_1(self, mock_runner: MagicMock, _model_config_present: None) -> None:

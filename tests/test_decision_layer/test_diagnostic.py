@@ -88,3 +88,75 @@ class TestQuestionnaireOutput:
 
         brief = questionnaire({})
         assert brief["mode"] == "build"
+
+    def test_questionnaire_existing_stage_returns_scale(self) -> None:
+        from automedia.decision.diagnostic import questionnaire
+
+        brief = questionnaire({"idea": "SaaS", "market": "EU", "stage": "existing"})
+        assert brief["mode"] == "scale"
+
+    def test_questionnaire_from_scratch_returns_build(self) -> None:
+        from automedia.decision.diagnostic import questionnaire
+
+        brief = questionnaire({"stage": "from scratch"})
+        assert brief["mode"] == "build"
+
+
+class TestAssignModeEdgeCases:
+    """assign_mode() edge cases and defaults."""
+
+    def test_none_input_defaults_to_build(self) -> None:
+        from automedia.decision.diagnostic import assign_mode
+
+        result = assign_mode("")
+        assert result == "build"
+
+    def test_whitespace_only_defaults_to_build(self) -> None:
+        from automedia.decision.diagnostic import assign_mode
+
+        result = assign_mode("   ")
+        assert result == "build"
+
+    def test_running_keyword_returns_scale(self) -> None:
+        from automedia.decision.diagnostic import assign_mode
+
+        assert assign_mode("currently running brand") == "scale"
+
+    def test_have_a_brand_returns_scale(self) -> None:
+        from automedia.decision.diagnostic import assign_mode
+
+        assert assign_mode("I have a brand already") == "scale"
+
+
+class TestDiagnosticAgentMetadata:
+    """DiagnosticAgent.metadata shape checks."""
+
+    def test_metadata_contains_agent_and_phase(self) -> None:
+        from automedia.decision.diagnostic import DiagnosticAgent
+
+        agent = DiagnosticAgent()
+        result = agent.execute({"idea": "test", "market": "US", "stage": "new"}, None)
+        assert result.metadata.get("agent") == "diagnostic"
+        assert result.metadata.get("phase") == 0
+
+    def test_empty_idea_fallback(self) -> None:
+        """Empty idea still produces a valid brief artifact."""
+        from automedia.decision.diagnostic import DiagnosticAgent
+
+        agent = DiagnosticAgent()
+        result = agent.execute({"idea": "", "market": "", "stage": ""}, None)
+        assert result.artifact_type == "brief"
+        assert result.content["mode"] == "build"
+        assert result.content["existing_assets"] == 0
+
+    def test_execute_with_asset_library_error(self) -> None:
+        """When asset_library.search() raises, existing_assets defaults to 0."""
+        from automedia.decision.diagnostic import DiagnosticAgent
+
+        class BrokenLib:
+            def search(self, **kwargs: object) -> list[str]:
+                raise RuntimeError("boom")
+
+        agent = DiagnosticAgent()
+        result = agent.execute({"idea": "test"}, BrokenLib())
+        assert result.content["existing_assets"] == 0

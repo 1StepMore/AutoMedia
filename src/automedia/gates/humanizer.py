@@ -504,7 +504,7 @@ class G1Humanizer(BaseGate):
     """
 
     _gate_name = "G1"
-    _failure_mode = "rewrite"
+    _failure_mode = "retry"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 9-category AI pattern detection and return structured result."""

@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
+
 from automedia.omni.opp_adapter import ExtractionResult, OPPAdapter, _parse_md_to_segments
 
 
 class TestExtractionResult:
-    def test_has_all_fields(self) -> None:
+    def test_has_all_fields(self, tmp_path: Any) -> None:
+        xliff = str(tmp_path / "test.xlf")
+        skeleton = str(tmp_path / "skeleton.zip")
         r = ExtractionResult(
             md_content="# Hello",
             manifest={"title": "test"},
-            xliff_path="/tmp/test.xlf",
-            skeleton_path="/tmp/skeleton.zip",
+            xliff_path=xliff,
+            skeleton_path=skeleton,
             warnings=["minor issue"],
         )
         assert r.md_content == "# Hello"
         assert r.manifest == {"title": "test"}
-        assert r.xliff_path == "/tmp/test.xlf"
-        assert r.skeleton_path == "/tmp/skeleton.zip"
+        assert r.xliff_path == xliff
+        assert r.skeleton_path == skeleton
         assert r.warnings == ["minor issue"]
 
     def test_xliff_path_defaults_to_none(self) -> None:

@@ -90,10 +90,14 @@ class OLAdapter(BaseOmniAdapter):
                         " Check the path or set config_path explicitly."
                     ],
                 )
+            from automedia.core._import_helpers import warn_missing_optional
+
+            warn_missing_optional("ol_mcp", feature="OL translation disabled")
             return TranslationResult(
                 translated_md="",
                 warnings=[
-                    "ol_mcp package not available. Install omni-localizer to enable OL translation."
+                    "ol_mcp package not available — OL translation disabled. "
+                    "Install with: pip install automedia-pipeline[omni]"
                 ],
             )
 

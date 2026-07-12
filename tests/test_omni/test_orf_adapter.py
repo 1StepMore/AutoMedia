@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from typing import Any
 
 import pytest
 
@@ -38,18 +39,14 @@ class TestORFAdapterContract:
         result = adapter.backfill("t", "o", skeleton_path=None)
         assert result == "t"
 
-    def test_apply_md_writes_file(self) -> None:
+    def test_apply_md_writes_file(self, tmp_path: Any) -> None:
         adapter = ORFAdapter()
-        out_path = "/tmp/test_orf_output.md"
-        try:
-            returned = adapter.apply_md("content", out_path)
-            assert returned == out_path
-            assert os.path.isfile(out_path)
-            with open(out_path, encoding="utf-8") as fh:
-                assert fh.read() == "content"
-        finally:
-            if os.path.exists(out_path):
-                os.remove(out_path)
+        out_path = str(tmp_path / "test_orf_output.md")
+        returned = adapter.apply_md("content", out_path)
+        assert returned == out_path
+        assert os.path.isfile(out_path)
+        with open(out_path, encoding="utf-8") as fh:
+            assert fh.read() == "content"
 
     def test_apply_md_creates_parent_dirs(self) -> None:
         adapter = ORFAdapter()
@@ -65,11 +62,12 @@ class TestORFAdapterContract:
 
             shutil.rmtree(out_dir, ignore_errors=True)
 
-    def test_apply_xliff_returns_path_and_no_raise(self) -> None:
+    def test_apply_xliff_returns_path_and_no_raise(self, tmp_path: Any) -> None:
         adapter = ORFAdapter()
         out_dir = tempfile.mkdtemp()
         try:
-            result = adapter.apply_xliff("/tmp/test.xlf", out_dir)
+            xliff_input = str(tmp_path / "test.xlf")
+            result = adapter.apply_xliff(xliff_input, out_dir)
             assert isinstance(result, str)
             assert result.endswith(".backfilled.md")
         finally:

@@ -11,6 +11,7 @@ import yaml
 import automedia.core.credential_loader as cl
 from automedia.core.credential_loader import (
     load_credential,
+    load_credential_or_env,
     resolve_api_key,
 )
 
@@ -379,3 +380,136 @@ class TestDotenvLoading:
         importlib.reload(cl)
 
         assert os.environ.get("SECURITY_TEST_CUSTOM_VAR") == "from_custom_path"
+
+
+# ---------------------------------------------------------------------------
+# Adapter credential loading edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestAdapterEdgeCases:
+    """Edge cases for adapter credential loading — empty strings, null YAML
+    values, and priority-chain interactions when values are empty.
+
+    These tests cover scenarios that platform adapters encounter when loading
+    credentials: empty env vars, empty/null YAML values, and the interaction
+    between empty values and the fallback chain.
+    """
+
+    # -- Empty environment variable values ---------------------------------
+
+    def test_env_var_empty_value_returns_empty_string(self, monkeypatch):
+        """``AUTOMEDIA_KEY=""`` is a valid (present) value — returns ``""``.
+
+        This differs from a missing env var. The credential loader treats an
+        empty string as a legitimate value because the env-var layer checks
+        ``is not None`` rather than truthiness.
+        """
+        monkeypatch.setenv("AUTOMEDIA_KEY", "")
+        assert load_credential("key") == ""
+
+    def test_env_var_suffix_empty_value(self, monkeypatch):
+        """Suffix env var ``AUTOMEDIA_KEY_KEY=""`` returns ``""`` when primary
+        is not set."""
+        monkeypatch.setenv("AUTOMEDIA_KEY_KEY", "")
+        assert load_credential("key") == ""
+
+    def test_env_var_empty_overrides_yaml(self, monkeypatch, tmp_path):
+        """An empty env var (``AUTOMEDIA_KEY=""``) takes priority over YAML
+        fallback — the env layer returns ``""`` before reaching YAML."""
+        cred_dir = _mock_home(monkeypatch, tmp_path)
+        (cred_dir / "oscreds.yaml").write_text("key: sk-from-yaml\n")
+        monkeypatch.setenv("AUTOMEDIA_KEY", "")
+        assert load_credential("key") == ""
+
+    # -- YAML value edge cases --------------------------------------------
+
+    def test_oscreds_yaml_empty_string_value(self, monkeypatch, tmp_path):
+        """Empty-string value in oscreds.yaml (``key: ""``) is returned as
+        ``""`` (satisfies ``isinstance(value, str)``)."""
+        cred_dir = _mock_home(monkeypatch, tmp_path)
+        (cred_dir / "oscreds.yaml").write_text('mykey: ""\n')
+        assert load_credential("mykey") == ""
+
+    def test_oscreds_yaml_null_value_returns_none(self, monkeypatch, tmp_path):
+        """Null / missing value (``mykey:`` or ``mykey: null``) in
+        oscreds.yaml yields ``None`` — does not satisfy ``isinstance(value, str)``."""
+        cred_dir = _mock_home(monkeypatch, tmp_path)
+        (cred_dir / "oscreds.yaml").write_text("mykey:\n")
+        assert load_credential("mykey") is None
+
+    def test_oscreds_yaml_scalar_content(self, monkeypatch, tmp_path):
+        """oscreds.yaml containing a bare string (not a dict) returns
+        ``None`` — ``isinstance(data, dict)`` is ``False``."""
+        cred_dir = _mock_home(monkeypatch, tmp_path)
+        (cred_dir / "oscreds.yaml").write_text("just a bare string\n")
+        assert load_credential("mykey") is None
+
+    # -- Keyring edge case ------------------------------------------------
+
+    def test_keyring_returns_empty_string(self, monkeypatch):
+        """Keyring returning ``""`` is treated as a valid value (``is not None``
+        check)."""
+        _mock_keyring(
+            monkeypatch,
+            lambda service, username: "",
+        )
+        assert load_credential("mykey") == ""
+
+    # -- resolve_api_key empty-env interaction ----------------------------
+
+    def test_resolve_api_key_empty_env_with_model_config(
+        self, monkeypatch, tmp_path
+    ):
+        """``resolve_api_key`` skips an empty env var (falsy check) and
+        proceeds to ``model_config.yaml`` lookup."""
+        cred_dir = _mock_home(monkeypatch, tmp_path)
+        config = {"providers": {"openai": {"api_key": "cfg-sk-openai"}}}
+        (cred_dir / "model_config.yaml").write_text(yaml.dump(config))
+        monkeypatch.setenv("AUTOMEDIA_OPENAI", "")
+        assert resolve_api_key("openai") == "cfg-sk-openai"
+
+
+# ---------------------------------------------------------------------------
+# load_credential_or_env
+# ---------------------------------------------------------------------------
+
+
+class TestLoadCredentialOrEnv:
+    """Tests for ``load_credential_or_env`` — standard-chain wrapper."""
+
+    def test_load_credential_takes_precedence(self, monkeypatch):
+        """load_credential (AUTOMEDIA_*) is checked before legacy env var."""
+        monkeypatch.setenv("WX_APPID", "legacy-appid")
+        monkeypatch.setenv("AUTOMEDIA_WECHAT_APPID", "new-appid")
+        result = load_credential_or_env("WX_APPID", "wechat_appid")
+        assert result == "new-appid"
+
+    def test_falls_back_to_legacy_env_var(self, monkeypatch):
+        """When load_credential returns nothing, legacy env var is used."""
+        monkeypatch.setenv("WX_APPID", "legacy-appid")
+        result = load_credential_or_env("WX_APPID", "wechat_appid")
+        assert result == "legacy-appid"
+
+    def test_returns_none_when_not_found(self):
+        """Neither credential chain nor legacy env var → None."""
+        result = load_credential_or_env("WX_APPID", "wechat_appid")
+        assert result is None
+
+    def test_empty_legacy_env_var_returned(self, monkeypatch):
+        """An empty (but present) legacy env var is returned when load_credential is None."""
+        monkeypatch.setenv("WX_APPID", "")
+        result = load_credential_or_env("WX_APPID", "wechat_appid")
+        assert result == ""
+
+    def test_respects_load_credential_yaml_fallback(self, monkeypatch, tmp_path):
+        """load_credential YAML chain is consulted before legacy env var."""
+        monkeypatch.setenv("WX_APPID", "legacy-appid")
+        cred_dir = tmp_path / "home" / ".automedia"
+        cred_dir.mkdir(parents=True)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+        (cred_dir / "oscreds.yaml").write_text("wechat_appid: yaml-value\n")
+
+        result = load_credential_or_env("WX_APPID", "wechat_appid")
+        # YAML is part of load_credential chain → takes precedence over legacy env var
+        assert result == "yaml-value"

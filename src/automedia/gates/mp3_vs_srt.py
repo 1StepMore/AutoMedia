@@ -5,7 +5,7 @@ Checks:
     2. srt_not_empty       — SRT file content is non-empty
     3. whisper_not_empty   — Whisper transcription is non-empty
 
-failure_mode = "rewrite" — on failure, pipeline can rewrite/fix and retry.
+failure_mode = "retry" — on failure, pipeline can retry/fix the gate.
 """
 
 from __future__ import annotations
@@ -113,14 +113,14 @@ class V5Mp3VsSrt(BaseGate):
           ``{"passed": bool, "detail": str}`` — drives deterministic results
           for testing.
 
-    failure_mode = "rewrite" — on failure, pipeline can rewrite and retry.
+    failure_mode = "retry" — on failure, pipeline can retry the gate.
 
     Returns:
         dict with keys: ``passed``, ``gate``, ``checks``, ``error``.
     """
 
     _gate_name = "V5"
-    _failure_mode = "rewrite"
+    _failure_mode = "retry"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V5 MP3 vs SRT checks and return structured result."""

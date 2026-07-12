@@ -65,6 +65,7 @@ def _make_context(
     translated_md: str | None = None,
     source_lang: str = "en",
     target_lang: str = "zh",
+    xliff_path: str = "/translations/test.xliff",
 ) -> dict[str, Any]:
     """Build a gate_context dict with sensible defaults.
 
@@ -73,7 +74,7 @@ def _make_context(
     return {
         "translation_result": {
             "translated_md": translated_md if translated_md is not None else VALID_FRONTMATTER,
-            "xliff_path": "/tmp/test.xliff",
+            "xliff_path": xliff_path,
             "warnings": [],
             "source_lang": source_lang,
             "target_lang": target_lang,

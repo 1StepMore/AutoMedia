@@ -29,7 +29,9 @@ try:
 
     _chromadb_installed = True
 except ImportError:
-    logger.warning("chromadb is not installed — vector search disabled.")
+    from automedia.core._import_helpers import warn_missing_optional
+
+    warn_missing_optional("chromadb", feature="vector search disabled")
 
 # ---------------------------------------------------------------------------
 # Default embedding function name
@@ -104,7 +106,7 @@ class VectorStore:
             self._collection = self._client.get_or_create_collection(
                 name=self._collection_name,
             )
-        except Exception:
+        except (ValueError, RuntimeError):
             # Fallback: try creating it fresh
             with contextlib.suppress(Exception):
                 self._client.delete_collection(self._collection_name)
@@ -274,7 +276,8 @@ class VectorStore:
             return 0
         try:
             return self._collection.count()
-        except Exception:
+        except (ValueError, RuntimeError):
+            logger.debug("VectorStore.count() failed, returning 0")
             return 0
 
     def reset(self) -> None:

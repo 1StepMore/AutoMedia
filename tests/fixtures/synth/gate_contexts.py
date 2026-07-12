@@ -375,13 +375,14 @@ def build_lint_context(
 def build_vision_qa_context(
     entries: list[dict[str, Any]] | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
+    base_dir: str = "/tmp",
 ) -> dict[str, Any]:
     """Build context for V1 vision_qa gate."""
     if entries is None:
         entries = [
             {
-                "mid_frame_path": f"/tmp/frame_{i}.png",
-                "end_silence_frame_path": f"/tmp/end_{i}.png",
+                "mid_frame_path": f"{base_dir}/frame_{i}.png",
+                "end_silence_frame_path": f"{base_dir}/end_{i}.png",
                 "qa_passed": True,
                 "checked": True,
             }
@@ -403,11 +404,12 @@ def build_vision_qa_context(
 
 def build_whisper_context(
     mock_results: dict[str, dict[str, Any]] | None = None,
+    base_dir: str = "/tmp",
 ) -> dict[str, Any]:
     """Build context for V2 pre_send_whisper gate."""
     return {
         "transcription": "Full audio transcription text for testing purposes.",
-        "audio_path": "/tmp/test_audio.mp3",
+        "audio_path": f"{base_dir}/test_audio.mp3",
         "expected_md5": "",
         "full_audio": True,
         "_mock_results": mock_results
@@ -547,13 +549,14 @@ def build_six_step_hard_context(
 def build_publish_log_context(
     topic: str = "AI technology trends in 2025",
     mock_results: dict[str, dict[str, Any]] | None = None,
+    base_dir: str = "/tmp",
 ) -> dict[str, Any]:
     """Build context for L1 publish_log_schema gate."""
     return {
         "publish_log": {
             "topic": topic,
             "content": "Test article content for publish log.",
-            "media_paths": ["/tmp/output/video.mp4"],
+            "media_paths": [f"{base_dir}/output/video.mp4"],
             "platform": "wechat",
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
@@ -574,18 +577,19 @@ def build_publish_log_context(
 
 def build_archive_validation_context(
     mock_results: dict[str, dict[str, Any]] | None = None,
+    base_dir: str = "/tmp",
 ) -> dict[str, Any]:
     """Build context for L2 archive_validation gate."""
     return {
         "archive_status": "published",
         "force": True,
-        "archive_path": "/tmp/archive.zip",
+        "archive_path": f"{base_dir}/archive.zip",
         "archive_metadata": {
             "title": "AI Trends 2025",
             "platform": "wechat",
             "created_at": "2025-06-01T12:00:00",
         },
-        "output_dir": "/tmp/output",
+        "output_dir": f"{base_dir}/output",
         "_mock_results": mock_results
         or build_all_pass_mock(
             [
@@ -635,7 +639,7 @@ def build_full_pipeline_context(
     topic: str = "AI technology trends in 2025",
     brand_profile: dict[str, Any] | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
-    project_dir: str = "/tmp/test_project",
+    project_dir: str = "/projects/test_project",
 ) -> dict[str, Any]:
     """Build a mega-context that satisfies every gate's expected keys.
 
@@ -683,8 +687,8 @@ def build_full_pipeline_context(
         # V1
         "entries": [
             {
-                "mid_frame_path": f"/tmp/frame_{i}.png",
-                "end_silence_frame_path": f"/tmp/end_{i}.png",
+                "mid_frame_path": f"{project_dir}/frame_{i}.png",
+                "end_silence_frame_path": f"{project_dir}/end_{i}.png",
                 "qa_passed": True,
                 "checked": True,
             }
@@ -692,7 +696,7 @@ def build_full_pipeline_context(
         ],
         # V2
         "transcription": "Full audio transcription text for testing.",
-        "audio_path": "/tmp/test.mp3",
+        "audio_path": f"{project_dir}/test.mp3",
         "expected_md5": "",
         "full_audio": True,
         # V3
@@ -731,7 +735,7 @@ def build_full_pipeline_context(
         "publish_log": {
             "topic": topic,
             "content": "Test article content.",
-            "media_paths": ["/tmp/video.mp4"],
+            "media_paths": [f"{project_dir}/video.mp4"],
             "platform": "wechat",
             "version": "1.0",
             "created_at": "2025-06-01T12:00:00",
@@ -739,14 +743,14 @@ def build_full_pipeline_context(
         # L2
         "archive_status": "published",
         "force": True,
-        "archive_path": "/tmp/archive.zip",
+        "archive_path": f"{project_dir}/archive.zip",
         "archive_metadata": {
             "title": "AI Trends 2025",
             "platform": "wechat",
             "created_at": "2025-06-01T12:00:00",
         },
         "archive_version": "1.0",
-        "output_dir": "/tmp/output",
+        "output_dir": f"{project_dir}/output",
         # L3
         "platforms": ["wechat", "weibo"],
         "expected_platforms": ["wechat", "weibo"],

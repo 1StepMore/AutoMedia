@@ -42,7 +42,7 @@ class D0Gate(BaseGate):
     """Decision Layer Provenance Gate — validates Decision Layer completion.
 
     ``gate_context`` expected keys:
-        - ``mode``: ``"build"`` or ``"scale"`` (from Diagnostic Agent)
+        - ``decision_mode``: ``"build"`` or ``"scale"`` (from Diagnostic Agent)
         - ``project_dir``: project directory path (optional)
         - ``force_provenance``: bool — skip check if True
 
@@ -54,7 +54,7 @@ class D0Gate(BaseGate):
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Check Decision Layer state and return pass/fail with provenance."""
-        mode = gate_context.get("mode", "build")
+        mode = gate_context.get("decision_mode", "build")
         project_dir = gate_context.get("project_dir")
         force_provenance = gate_context.get("force_provenance", False)
 

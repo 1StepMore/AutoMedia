@@ -69,7 +69,7 @@ class TestG1HumanizerMetadata:
 
     def test_failure_mode_is_rewrite(self) -> None:
         gate = G1Humanizer()
-        assert gate.failure_mode == "rewrite"
+        assert gate.failure_mode == "retry"
 
     def test_is_base_gate_subclass(self) -> None:
         assert issubclass(G1Humanizer, BaseGate)

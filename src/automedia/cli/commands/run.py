@@ -23,6 +23,11 @@ def run_cmd(
         "-m",
         help="Pipeline mode: auto, text_only, video_only, qa_only.",
     ),
+    decision_mode: str = typer.Option(
+        "build",
+        "--decision-mode",
+        help="Decision layer mode: build or scale.",
+    ),
     resume_from: str | None = typer.Option(
         None,
         "--resume-from",
@@ -57,6 +62,7 @@ def run_cmd(
             topic,
             brand,
             mode=mode,
+            decision_mode=decision_mode,
             resume_from=resume_from,
         )
     except Exception as exc:

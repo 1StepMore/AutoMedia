@@ -146,11 +146,11 @@ def _ensure_extractor_map() -> None:
             continue
         try:
             _instance = _cls()
-        except Exception:  # noqa: S112 — skip broken extractors
+        except Exception:  # noqa: S112, BLE001 — skip broken extractors
             continue
         try:
             _exts = _instance.supported_extensions()
-        except Exception:  # noqa: S112 — skip broken extractors
+        except Exception:  # noqa: S112, BLE001 — skip broken extractors
             continue
         for _ext in _exts:
             _EXTRACTOR_MAP[_ext.lower()] = _cls

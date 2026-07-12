@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from automedia.core.registry import BaseRegistry
+
 if TYPE_CHECKING:
     from automedia.adapters.base import BasePlatformAdapter
 
 
-class AdapterRegistry:
+class AdapterRegistry(BaseRegistry):
     """Global registry that maps platform names to adapter classes.
+
+    Inherits singleton lifecycle from :class:`BaseRegistry`.
+    Keeps ``@classmethod`` wrappers for backward compatibility.
 
     Usage::
 
@@ -19,28 +24,33 @@ class AdapterRegistry:
             ...
     """
 
-    _registry: dict[str, type[BasePlatformAdapter]] = {}
-    _instance: AdapterRegistry | None = None
+    # ------------------------------------------------------------------
+    # Validation hook
+    # ------------------------------------------------------------------
 
-    def __new__(cls, *args: object, **kwargs: object) -> AdapterRegistry:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def _validate(self, key: str, value: type[BasePlatformAdapter]) -> None:
+        """Enforce non-empty platform name and no duplicates."""
+        if not isinstance(key, str) or not key:
+            raise ValueError(
+                f"{value.__name__}.platform_name must be a non-empty string, got {key!r}"
+            )
+        if key in self._registry:
+            raise KeyError(
+                f"Adapter for platform {key!r} is already registered "
+                f"({self._registry[key].__name__})"
+            )
+
+    # ------------------------------------------------------------------
+    # Public API — classmethods for backward compatibility
+    # ------------------------------------------------------------------
 
     @classmethod
     def register(cls, adapter_cls: type[BasePlatformAdapter]) -> None:
         """Register an adapter class keyed by its ``platform_name``."""
         # Instantiate a temporary adapter to evaluate the @property.
         name = adapter_cls().platform_name
-        if not isinstance(name, str) or not name:
-            raise ValueError(
-                f"{adapter_cls.__name__}.platform_name must be a non-empty string, got {name!r}"
-            )
-        if name in cls._registry:
-            raise KeyError(
-                f"Adapter for platform {name!r} is already registered "
-                f"({cls._registry[name].__name__})"
-            )
+        inst = cls()
+        inst._validate(name, adapter_cls)
         cls._registry[name] = adapter_cls
 
     @classmethod

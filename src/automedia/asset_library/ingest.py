@@ -345,7 +345,7 @@ def _read_text_content(file_path: Path) -> str:
     """
     try:
         raw = file_path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return ""
 
     # Strip front-matter.

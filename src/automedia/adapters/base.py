@@ -16,6 +16,20 @@ class BasePlatformAdapter(ABC):
     """
 
     # ------------------------------------------------------------------
+    # Initialisation
+    # ------------------------------------------------------------------
+
+    def __init__(self, account_id: str | None = None) -> None:
+        """Initialize the adapter with an optional PRD-4 account ID.
+
+        Parameters
+        ----------
+        account_id:
+            Optional account identifier for account-aware publishing.
+        """
+        self._account_id: str | None = account_id
+
+    # ------------------------------------------------------------------
     # Read-only metadata
     # ------------------------------------------------------------------
     @property
@@ -69,3 +83,85 @@ class BasePlatformAdapter(ABC):
         credential files, network reachability, *etc.*
         """
         return True
+
+    # ------------------------------------------------------------------
+    # PRD-4: Session & health management (concrete defaults)
+    # ------------------------------------------------------------------
+
+    def authenticate(self, account_id: str | None = None) -> dict[str, Any]:
+        """Authenticate with the platform.
+
+        PRD-4: Override this to use SessionManager for token-based auth.
+        Default returns ``"not_implemented"`` for backward compatibility.
+
+        Parameters
+        ----------
+        account_id:
+            Optional account identifier to authenticate as.
+
+        Returns
+        -------
+        dict
+            Result dict with at least ``"status"``.
+        """
+        return {"status": "not_implemented", "reason": "auth not implemented"}
+
+    def refresh_session(self, account_id: str) -> dict[str, Any]:
+        """Refresh the platform session.
+
+        PRD-4: Override this to implement token refresh via SessionManager.
+        Default returns ``"not_implemented"`` for backward compatibility.
+
+        Parameters
+        ----------
+        account_id:
+            The account whose session to refresh.
+
+        Returns
+        -------
+        dict
+            Result dict with at least ``"status"``.
+        """
+        return {"status": "not_implemented", "reason": "session refresh not implemented"}
+
+    def check_health(self, account_id: str | None = None) -> dict[str, Any]:
+        """Check if the platform session is healthy.
+
+        PRD-4: Override this to verify credentials are still valid.
+        Default returns ``"not_implemented"`` for backward compatibility.
+
+        Parameters
+        ----------
+        account_id:
+            Optional account to health-check.
+
+        Returns
+        -------
+        dict
+            Result dict with ``"status"``, ``"healthy"``, and ``"reason"``.
+        """
+        return {
+            "status": "not_implemented",
+            "healthy": False,
+            "reason": "health check not implemented",
+        }
+
+    def get_analytics(self, account_id: str, period: str = "7d") -> dict[str, Any]:
+        """Get platform analytics for an account.
+
+        PRD-4: Override this to return follower count, engagement rate, etc.
+        Default returns ``"not_implemented"`` for backward compatibility.
+
+        Parameters
+        ----------
+        account_id:
+            The account to fetch analytics for.
+        period:
+            Analysis period (e.g. ``"7d"``, ``"30d"``).
+
+        Returns
+        -------
+        dict
+            Result dict with at least ``"status"``.
+        """
+        return {"status": "not_implemented", "reason": "analytics not implemented"}

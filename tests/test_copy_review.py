@@ -69,7 +69,7 @@ class TestG2CopyReviewMetadata:
 
     def test_failure_mode_is_rewrite(self) -> None:
         gate = G2CopyReview()
-        assert gate.failure_mode == "rewrite"
+        assert gate.failure_mode == "retry"
 
     def test_is_base_gate_subclass(self) -> None:
         assert issubclass(G2CopyReview, BaseGate)
