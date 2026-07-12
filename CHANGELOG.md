@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+
+#### Account & Publishing Management (PRD-4)
+
+- **Encrypted Credential Store**: AES-256-GCM encrypted storage for platform credentials with atomic index writes and fingerprint deduplication (`accounts/store.py`)
+- **Account Registry**: Full CRUD for platform accounts with label uniqueness enforcement per platform (`accounts/registry.py`)
+- **Auth Flow Engine**: OAuth2 Client Credentials and Authorization Code flows with PKCE/state support, localhost server for interactive login, Cookie auth, API Key auth (`accounts/auth/`)
+- **Session Manager**: TTL-aware token cache with per-account thread-safe locking, rate-limit backoff with configurable cooldown (`accounts/session.py`)
+- **Account Models**: Pydantic v2 models for account metadata, credentials, sessions (`accounts/models.py`)
+- **Platform Adapter Auth Integration**: `authenticate()`, `refresh_session()`, `check_health()`, `get_analytics()` methods on `BasePlatformAdapter` with concrete defaults; `account_ids` parameter on `PublishEngine.publish_all()` with partial failure continuation
+- **CLI**: `automedia account connect|list|health|disconnect|refresh` — 5 subcommands (16 total)
+- **MCP Tools**: `connect_account`, `list_accounts`, `get_account_health`, `disconnect_account` — 4 new tools (18 total)
+- **Credential Bridging**: `load_credential_with_account_fallback()` in `credential_loader.py` for backward-compatible credential resolution
+- **Test Coverage**: 191 PRD-4-specific tests across accounts models, store, registry, auth flows, session, CLI, and MCP — all passing
+
+#### Security
+
+- **Master Key Encryption**: All platform credentials encrypted at rest with AES-256-GCM; key derived from `AUTOMEDIA_MASTER_KEY` environment variable via SHA-256
+- **Credential Leak Prevention**: `SessionToken.__repr__` masks access/refresh tokens (shows first 8 chars); account credentials never appear in logs or MCP responses
+
 ## [1.0.0] - 2026-07-07
 
 ### Added

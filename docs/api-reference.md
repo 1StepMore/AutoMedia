@@ -280,6 +280,100 @@ results = doctor.check_dependencies()
 # Returns [{"name": "python", "installed": True, "version": "...", "path": "..."}, ...]
 ```
 
+## Account Management (PRD-4)
+
+### `AccountRegistry`
+
+```python
+from automedia.accounts.registry import AccountRegistry
+
+registry = AccountRegistry()
+
+# Register a new account
+meta = registry.register(
+    platform="wechat",
+    credentials={"cookie": "sessionid=abc123"},
+    label="Main WeChat",
+    auth_type="cookie",
+)
+# Returns: {"account_id": "acc_wechat_a1b2c3d4", "platform": "wechat", ...}
+
+# List accounts
+all_accounts = registry.list()
+wechat_accounts = registry.list(platform="wechat")
+
+# Get single account
+info = registry.get("acc_wechat_a1b2c3d4")
+
+# Delete account
+registry.delete("acc_wechat_a1b2c3d4")
+```
+
+### `AccountStore`
+
+```python
+from automedia.accounts.store import AccountStore
+
+store = AccountStore()
+
+# Store credentials (encrypted with AES-256-GCM)
+store.put("acc_wechat_a1b2c3d4", {"cookie": "sessionid=abc123"}, auth_type="cookie", label="")
+
+# Retrieve credentials
+creds = store.get("acc_wechat_a1b2c3d4")
+
+# List all stored account IDs
+ids = store.list()
+
+# Delete
+store.delete("acc_wechat_a1b2c3d4")
+```
+
+### `AuthFlowEngine`
+
+```python
+from automedia.accounts.auth import AuthFlowEngine
+
+engine = AuthFlowEngine(store)
+
+# Authenticate using stored credentials
+result = engine.authenticate("acc_wechat_a1b2c3d4")
+# Returns AuthResult with access_token, expires_at, etc.
+
+# Supported auth flows:
+# - CookieAuthFlow: Cookie-based authentication
+# - APIKeyAuthFlow: API key authentication
+# - OAuth2ClientCredentialsFlow: OAuth2 client credentials grant
+# - OAuth2AuthCodeFlow: OAuth2 authorization code (with localhost server)
+```
+
+### `SessionManager`
+
+```python
+from automedia.accounts.session import SessionManager
+
+session_mgr = SessionManager(store)
+
+# Get a cached session (auto-refreshes if expired)
+session = session_mgr.get_session("acc_wechat_a1b2c3d4")
+
+# Invalidate a session
+session_mgr.invalidate("acc_wechat_a1b2c3d4")
+```
+
+### Credential Loading (Backward Compatible)
+
+```python
+from automedia.core.credential_loader import load_credential_with_account_fallback
+
+# Tries PRD-4 account store first, falls back to legacy credential loading
+creds = load_credential_with_account_fallback(
+    account_id="acc_wechat_a1b2c3d4",
+    platform="wechat",
+    env_var="WECHAT_COOKIE",
+)
+```
+
 ## `sanitize_path()`
 
 ```python

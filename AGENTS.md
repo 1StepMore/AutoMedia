@@ -19,8 +19,8 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 14 tools |
-| CLI | `automedia <subcommand>` | 15 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 18 tools |
+| CLI | `automedia <subcommand>` | 16 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -83,7 +83,8 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│       │   └── commands/           # 15 command modules
+│       │   └── commands/           # 16 command modules
+│       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
 │       │       ├── projects.py     # automedia projects
@@ -101,7 +102,10 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 14 tools
+│       │   ├── server.py           # FastMCP server — 18 tools
+│       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
+│       │   ├── tools.py            # Core pipeline tools
+│       │   ├── resources.py        # MCP resource handlers
 │       │   ├── parallel.py         # Parallel execution helpers
 │       │   └── mcp_allowlist.yaml  # Path allowlist (do not modify without request)
 │       │
@@ -110,6 +114,17 @@ AutoMedia/
 │       │   ├── registry.py         # AdapterRegistry
 │       │   ├── publish_engine.py   # Publish orchestration
 │       │   └── platforms/          # Platform-specific adapters
+│       │
+│       ├── accounts/               # PRD-4 account & credential management
+│       │   ├── __init__.py         # Public API: AccountRegistry, AccountStore, AuthFlowEngine, SessionManager
+│       │   ├── models.py           # Pydantic v2 models for accounts, credentials, sessions
+│       │   ├── store.py            # AES-256-GCM encrypted credential store
+│       │   ├── registry.py         # AccountRegistry — CRUD with label uniqueness
+│       │   ├── session.py          # TTL-aware token cache, concurrency locks, rate-limit backoff
+│       │   └── auth/               # Auth flow implementations
+│       │       ├── __init__.py     # AuthFlowEngine, AuthFlow, AuthResult
+│       │       ├── flows.py        # CookieAuthFlow, APIKeyAuthFlow
+│       │       └── oauth2.py       # OAuth2ClientCredentialsFlow, OAuth2AuthCodeFlow
 │       │
 │       ├── platform/               # Platform-specific logic
 │       │   ├── xiaohongshu.py
@@ -381,12 +396,13 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (14 tools)
+## 9. MCP Tools Quick Reference (18 tools)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
+| `health_check` | — | Return server health status (version, uptime, tool count) |
 | `select_topic` | category, tenant_id, pool_db_path | Select the highest-scored pending topic from the pool |
 | `run_pipeline` | topic, brand, mode, tenant_id, resume_from | Execute full production pipeline in a background thread (async) |
 | `get_pipeline_progress` | project_id | Poll a running pipeline's gate-by-gate progress |
@@ -400,10 +416,14 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `localize_content` | md_content, source_lang, target_lang | Translate markdown content via OL shield pipeline |
 | `localize_output` | project_dir, target_langs | Translate all project drafts into multiple languages |
 | `format_output` | content, target_format, **options | Convert content format via ORF adapter |
+| `connect_account` | platform, auth_type, credentials, label | Register a new platform account (returns account_id) |
+| `list_accounts` | platform, status | List registered accounts with optional filters |
+| `get_account_health` | account_id | Check an account's health status |
+| `disconnect_account` | account_id | Remove a platform account |
 
 ---
 
-## 10. CLI Commands Quick Reference (15 commands)
+## 10. CLI Commands Quick Reference (16 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -412,6 +432,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
+| `automedia account` | Platform account management (connect, list, health, disconnect, refresh) |
 | `automedia archive` | Archive a project (Red Line 8: requires --force unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |

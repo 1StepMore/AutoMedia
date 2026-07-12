@@ -12,6 +12,94 @@ automedia --help
 automedia --version
 ```
 
+## `automedia account`
+
+Manage platform accounts for publishing.
+
+```bash
+# Connect a new account
+automedia account connect wechat --auth-type cookie --label "Main WeChat"
+
+# List all accounts
+automedia account list
+
+# List accounts filtered by platform
+automedia account list --platform wechat
+
+# Check account health
+automedia account health acc_wechat_a1b2c3d4
+
+# Disconnect an account
+automedia account disconnect acc_wechat_a1b2c3d4
+
+# Force disconnect without confirmation
+automedia account disconnect acc_wechat_a1b2c3d4 --yes
+
+# Refresh an account session
+automedia account refresh acc_wechat_a1b2c3d4
+```
+
+### Subcommands
+
+| Subcommand | Description |
+|--------|------|
+| `connect` | Register a new platform account (prompts for credentials) |
+| `list` | List registered accounts, supports `--platform` and `--status` filtering |
+| `health` | Check an account's health status and last check time |
+| `disconnect` | Remove a platform account (requires confirmation unless `--yes`) |
+| `refresh` | Force refresh an account session |
+
+### account connect Arguments
+
+| Argument | Type | Default | Description |
+|------|------|--------|------|
+| `platform` | `str` | required | Platform name (e.g. wechat, zhihu, xiaohongshu) |
+
+### account connect Flags
+
+| Flag | Type | Default | Description |
+|------|------|--------|------|
+| `--auth-type` | `str` | `api_key` | Authentication type (api_key, cookie, oauth2_client_cred) |
+| `--label` | `str` | `""` | Human-readable label for the account |
+
+After running the command, enter credentials as `key=value` pairs (one per line, empty line to finish):
+
+```
+  cookie=sessionid=abc123; token=xyz789
+  user_agent=Mozilla/5.0...
+```
+
+### account list Flags
+
+| Flag | Short | Type | Default | Description |
+|------|------|------|--------|------|
+| `--platform` | `-p` | `str \| None` | `None` | Filter by platform |
+| `--status` | `-s` | `str \| None` | `None` | Filter by status (active, inactive, stale) |
+
+### account health Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `account_id` | `str` | Account ID (required) |
+
+### account disconnect Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `account_id` | `str` | Account ID (required) |
+
+### account disconnect Flags
+
+| Flag | Short | Type | Default | Description |
+|------|------|------|--------|------|
+| `--yes` | `-y` | `bool` | `False` | Skip confirmation prompt |
+
+### account refresh Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `account_id` | `str` | Account ID (required) |
+
 ## `automedia run`
 
 Execute the full content production pipeline.

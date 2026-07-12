@@ -26,11 +26,12 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (15 commands) / MCP Server (14 tools)
+- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (18 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
 - **Platform adapter system**: Extensible publish targets
+- **Account & credential management**: AES-256-GCM encrypted store, OAuth2/Cookie/API Key auth flows, session management
 - **Omni Triad**: OPP (extraction), OL (localization), ORF (format conversion)
 - **Human-in-the-loop**: Review gates for content and video quality approval
 - **MCP-native**: Works with Claude Desktop/Code, OpenCode, Codex CLI, Cline, OpenClaw, Hermes Agent
@@ -261,7 +262,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (15 commands)
+### CLI (16 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -270,6 +271,7 @@ result = run_full_pipeline(
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
+| `automedia account` | Platform account management (connect, list, health, disconnect, refresh) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |
@@ -281,7 +283,7 @@ result = run_full_pipeline(
 | `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (14 tools)
+### MCP Server (18 tools)
 
 Start:
 
@@ -291,6 +293,7 @@ python -m automedia.mcp.server
 
 | Tool | Description |
 |------|-------------|
+| `health_check` | Return server health status (version, uptime, tool count) |
 | `select_topic` | Select highest-scored pending topic from pool |
 | `run_pipeline` | Execute full production pipeline (background, async) |
 | `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress |
@@ -304,6 +307,10 @@ python -m automedia.mcp.server
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
+| `connect_account` | Register a new platform account for publishing |
+| `list_accounts` | List all registered accounts with optional filters |
+| `get_account_health` | Check an account's health status |
+| `disconnect_account` | Disconnect/remove a platform account |
 
 ### MCP Client Configuration Examples
 
@@ -386,13 +393,14 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  14 tools      |     |  15 commands       |
+  |  18 tools      |     |  16 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
   |      automedia/ Python Package             |
   |  core/ pipelines/ gates/ adapters/         |
-  |  hooks/ manifests/ pool/ cron/ mcp/        |
+  |  accounts/ hooks/ manifests/ pool/ cron/   |
+  |  mcp/ cli/ decision/ hitl/ omni/           |
   +--------------------------------------------+
 ```
 
@@ -405,11 +413,12 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `gates/` | 20 gate implementations + failure mode knowledge base |
 | `hooks/` | GateHook observer protocol (readonly), MD5 tracking, metrics |
 | `adapters/` | Platform publish adapter registry + base classes |
+| `accounts/` | Encrypted credential store, account registry, auth flow engine, session manager |
 | `manifests/` | Built-in YAML defaults, brand profile schema, model config schema |
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (15 command modules) |
+| `cli/` | Typer CLI application (16 command modules) |
 | `decision/` | Decision layer (orchestrator, gates, strategies, scaling) |
 | `hitl/` | Human-in-the-loop framework |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
@@ -449,7 +458,8 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 
 - **Red Line 8**: `archive_project` / `automedia archive` refuses unless status is `"published"` or `force=True`. Agents MUST NOT circumvent.
 - **Path allowlist**: MCP server (`mcp_allowlist.yaml`) restricts file access to configured directories. Empty list = deny all paths. Do not modify without explicit user request.
-- **Credential isolation**: Credentials loaded from env vars or system keyring, never persisted to config files.
+- **Encrypted credential store**: Platform credentials encrypted at rest with AES-256-GCM; master key derived from `AUTOMEDIA_MASTER_KEY` via SHA-256. Credentials never appear in logs or MCP responses.
+- **Credential isolation**: Credentials loaded from encrypted store, env vars, or system keyring, never persisted to config files.
 - **No production data in tests**: Use synthetic fixtures from `tests/fixtures/synth/` only.
 - **Git secrets**: `.env`, `credentials.yaml`, `*.pem`, `*.key`, `*.token` all gitignored.
 
