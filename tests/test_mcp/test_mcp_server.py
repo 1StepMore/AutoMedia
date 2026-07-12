@@ -298,8 +298,8 @@ class TestServerCreation:
         assert server is not None
         assert hasattr(server, "run")
 
-    def test_server_has_all_18_tools(self) -> None:
-        """All 18 tools are registered."""
+    def test_server_has_all_tools(self) -> None:
+        """All tools are registered."""
         server = create_server()
         tool_names = sorted(server._tool_manager._tools.keys())
         expected = sorted(
@@ -307,6 +307,7 @@ class TestServerCreation:
                 "archive_project",
                 "connect_account",
                 "disconnect_account",
+                "evaluate_content_quality",
                 "extract_brief",
                 "format_output",
                 "get_account_health",
@@ -320,6 +321,7 @@ class TestServerCreation:
                 "localize_content",
                 "localize_output",
                 "register_platform_adapter",
+                "research_topics",
                 "run_pipeline",
                 "select_topic",
             ]
@@ -690,7 +692,7 @@ class TestHelpers:
         assert result["status"] == "ok"
         assert result["version"] == "1.0.0"
         assert result["uptime_s"] >= 0
-        assert result["tools_count"] >= 14
+        assert result["tools_count"] >= 20
 
 
 # ---------------------------------------------------------------------------

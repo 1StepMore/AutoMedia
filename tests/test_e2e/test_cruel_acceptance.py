@@ -83,7 +83,7 @@ def test_cruel_c_md5_detects_tampered_asset_during_resume(tmp_path: str) -> None
     proj = Path(str(tmp_path))
 
     # Create synthetic gate outputs and record MD5s
-    gate_order = ["D0", "CW", "G0", "G1", "G2", "G3", "G4", "G5"]
+    gate_order = ["CW", "G0", "G1", "G2", "G3", "G4", "G5"]
     files: list[tuple[str, Path]] = []
     for name in gate_order:
         f = proj / f"{name}_output.txt"

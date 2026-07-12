@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
+from automedia.decision.base import DecisionArtifact
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,7 +43,7 @@ def _build_config(mapping: dict[str, str]) -> Any:
     return cfg
 
 
-class _StubAgent(BaseDecisionAgent):
+class _StubAgent:
     """Deterministic stub for E2E tests."""
 
     def __init__(self, name: str = "stub") -> None:
@@ -306,97 +306,4 @@ class TestAgentCannotSkip:
             executor.approve_node("test_node")
 
 
-@pytest.mark.e2e
-class TestOrchestratorIntegration:
-    """DecisionOrchestrator uses NodeExecutor correctly."""
 
-    def test_executor_imported_by_orchestrator(self) -> None:
-        """DecisionOrchestrator imports NodeExecutor (gracefully)."""
-        # The orchestrator module has a try/except import for NodeExecutor.
-        # Our implementation should make that import succeed.
-        from automedia.decision.orchestrator import NodeExecutor as OrchNE
-
-        assert OrchNE is not None, "NodeExecutor import in orchestrator.py returned None"
-        assert OrchNE is not None  # ensure it's the real class
-
-    def test_orchestrator_collaboration_mixed_mode(self) -> None:
-        """Simulates an orchestrator workflow mixing agent and human nodes."""
-        from automedia.decision.build import BrandPositioningAgent
-        from automedia.decision.diagnostic import DiagnosticAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config(
-            {
-                "diagnosis": "agent",
-                "brand_positioning": "human",
-            }
-        )
-        executor = NodeExecutor(config)
-
-        diag = DiagnosticAgent()
-        bp = BrandPositioningAgent()
-
-        # Phase 0: Diagnostic (agent -> immediate)
-        brief = executor.execute(
-            "diagnosis",
-            diag,
-            {"idea": "AI social app", "market": "SEA", "stage": "new"},
-        )
-        assert brief is not None
-        assert brief.artifact_type == "brief"
-
-        # Phase 1: Brand positioning (human -> pending)
-        bp_result = executor.execute(
-            "brand_positioning",
-            bp,
-            {**brief.content, "idea": "AI social app", "market": "SEA"},
-        )
-        assert bp_result is None
-        assert executor.pending_nodes() == ["brand_positioning"]
-
-        # Human approves
-        approved = executor.approve_node("brand_positioning")
-        assert approved.artifact_type == "brand_dna"
-        assert executor.pending_nodes() == []
-
-    def test_orchestrator_mixed_skip_and_approve(self) -> None:
-        """Orchestrator can skip some nodes and approve others."""
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config(
-            {
-                "node_a": "human",
-                "node_b": "human",
-            }
-        )
-        executor = NodeExecutor(config)
-        agent = _StubAgent()
-
-        executor.execute("node_a", agent, {"idea": "a"})
-        executor.execute("node_b", agent, {"idea": "b"})
-
-        # Skip A, approve B
-        skipped = executor.skip_node("node_a")
-        approved = executor.approve_node("node_b")
-
-        assert skipped.metadata.get("human_skipped") is True
-        assert "human_skipped" not in approved.metadata
-        assert executor.pending_nodes() == []
-
-    def test_orchestrator_standard_run_build_mode(self) -> None:
-        """Standard DecisionOrchestrator run_build_mode still works.
-
-        Even with NodeExecutor available, the standard orchestrator
-        flow without HITL should continue to function.
-        """
-        from automedia.decision.orchestrator import DecisionOrchestrator
-
-        orch = DecisionOrchestrator()
-        artifacts = orch.run_build_mode(
-            idea="Test product",
-            brand="TestBrand",
-        )
-
-        assert len(artifacts) > 0
-        assert all(isinstance(a, DecisionArtifact) for a in artifacts)
-        assert artifacts[0].artifact_type == "brief"

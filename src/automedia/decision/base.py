@@ -1,20 +1,15 @@
-"""Decision Layer base abstractions.
+"""DecisionArtifact — structured artifact dataclass.
 
 Public API
 ----------
-- ``BaseDecisionAgent`` — abstract base for all Decision Agents
-- ``DecisionArtifact`` — structured artifact dataclass
+- ``DecisionArtifact`` — structured artifact dataclass.
 """
 
 from __future__ import annotations
 
-import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -42,37 +37,3 @@ class DecisionArtifact:
     format: str = "yaml"
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
-
-
-class BaseDecisionAgent(ABC):
-    """Abstract base for all Decision Layer agents."""
-
-    @abstractmethod
-    def name(self) -> str:
-        """Agent name for registry and logging."""
-        ...
-
-    @abstractmethod
-    def execute(
-        self,
-        context: dict[str, Any],
-        asset_library: Any,  # AssetLibrary | None  # noqa: ANN401
-    ) -> DecisionArtifact:
-        """Run agent inference and return a structured artifact."""
-        ...
-
-    def search_asset_library(
-        self,
-        brand: str,
-        query: str,
-        filters: dict[str, Any] | None = None,
-    ) -> list[Any]:
-        """Auto-retrieve relevant docs from Asset Library before inference."""
-        try:
-            from automedia.asset_library import AssetLibrary
-
-            library = AssetLibrary(brand=brand)
-            return library.search(query=query, filters=filters or {})
-        except Exception:  # noqa: BLE001 — intentional graceful degradation; any failure returns empty
-            logger.warning("AssetLibrary search failed for brand '%s'", brand)
-            return []

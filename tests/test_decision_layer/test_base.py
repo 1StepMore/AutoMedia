@@ -1,4 +1,4 @@
-"""Tests for Decision Layer base abstractions — DecisionArtifact + BaseDecisionAgent.
+"""Tests for DecisionArtifact dataclass.
 
 Covers
 ------
@@ -7,45 +7,14 @@ Covers
 3. DecisionArtifact dict round-trip serialisation
 4. DecisionArtifact invalid content type rejection
 5. Metadata mutability and provenance round-trip
-6. BaseDecisionAgent cannot be instantiated (ABC enforcement)
-7. Subclass must implement both abstract methods
-8. Minimal concrete agent lifecycle
-9. search_asset_library returns results on success
-10. search_asset_library degrades gracefully on exception
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, patch
 
-import pytest
-
-from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-class MinimalAgent(BaseDecisionAgent):
-    """Concrete agent with the smallest possible implementation."""
-
-    def name(self) -> str:
-        return "minimal_test_agent"
-
-    def execute(
-        self,
-        context: dict[str, Any],
-        asset_library: Any,
-    ) -> DecisionArtifact:
-        return DecisionArtifact(
-            artifact_type="brief",
-            content={"idea": context.get("idea", "unknown")},
-            metadata={"agent": self.name()},
-        )
+from automedia.decision.base import DecisionArtifact
 
 
 # ===================================================================
@@ -107,7 +76,7 @@ class TestDecisionArtifactSerialization:
     """Dict round-trip preserves all data."""
 
     def test_roundtrip_via_dict(self) -> None:
-        """dataclasses.asdict → reconstruct preserves equality."""
+        """dataclasses.asdict -> reconstruct preserves equality."""
         from dataclasses import asdict
 
         original = DecisionArtifact(
@@ -124,7 +93,7 @@ class TestDecisionArtifactSerialization:
         """Nested dicts inside content survive serialisation."""
         from dataclasses import asdict
 
-        nested = {
+        nested: dict[str, Any] = {
             "consumer_profile": {
                 "age_range": "18-35",
                 "values": ["sustainability", "innovation"],
@@ -150,19 +119,15 @@ class TestDecisionArtifactSerialization:
 
 
 class TestDecisionArtifactValidation:
-    """Invalid argument types are rejected by type hints / runtime checks."""
+    """Invalid argument types are accepted (dataclasses don't enforce)."""
 
-    def test_artifact_type_must_be_string(self) -> None:
-        """artifact_type is annotated as str; passing int triggers TypeError or succeeds
-        with wrong type (dataclasses don't enforce types at runtime, but we verify
-        the value is stored as-is for transparency)."""
-        # Dataclasses don't enforce types at construction — this is a smoke test
-        # confirming no crash occurs; a stricter layer (e.g. Pydantic) would reject.
+    def test_artifact_type_can_be_non_string(self) -> None:
+        """artifact_type stores whatever is passed (dataclasses don't enforce types)."""
         artifact = DecisionArtifact(artifact_type=123, content={})  # type: ignore[arg-type]
         assert artifact.artifact_type == 123  # type: ignore[comparison-overlap]
 
-    def test_content_must_be_dict(self) -> None:
-        """content is annotated as dict; passing a list stores it as-is (dataclass limitation)."""
+    def test_content_can_be_non_dict(self) -> None:
+        """content stores whatever is passed (dataclasses don't enforce types)."""
         artifact = DecisionArtifact(
             artifact_type="brief", content=["not", "a", "dict"]  # type: ignore[arg-type]
         )
@@ -198,142 +163,3 @@ class TestMetadataProvenance:
         restored = DecisionArtifact(**d)
         assert restored.metadata["source"] == "diagnostic"
         assert restored.metadata["nested"]["deep"] is True
-
-
-# ===================================================================
-# BaseDecisionAgent — ABC enforcement
-# ===================================================================
-
-
-class TestBaseDecisionAgentABC:
-    """BaseDecisionAgent cannot be instantiated; abstract methods enforced."""
-
-    def test_cannot_instantiate_directly(self) -> None:
-        """Direct instantiation raises TypeError."""
-        with pytest.raises(TypeError, match="name"):
-            BaseDecisionAgent()  # type: ignore[abstract]
-
-    def test_missing_execute_raises_type_error(self) -> None:
-        """Subclass implementing only name() still cannot be instantiated."""
-
-        class OnlyName(BaseDecisionAgent):
-            def name(self) -> str:
-                return "partial"
-
-        with pytest.raises(TypeError, match="execute"):
-            OnlyName()  # type: ignore[abstract]
-
-    def test_missing_name_raises_type_error(self) -> None:
-        """Subclass implementing only execute() still cannot be instantiated."""
-
-        class OnlyExecute(BaseDecisionAgent):
-            def execute(
-                self,
-                context: dict[str, Any],
-                asset_library: Any,
-            ) -> DecisionArtifact:
-                return DecisionArtifact(artifact_type="x", content={})
-
-        with pytest.raises(TypeError, match="name"):
-            OnlyExecute()  # type: ignore[abstract]
-
-    def test_minimal_concrete_agent_works(self) -> None:
-        """A fully implemented subclass instantiates and runs correctly."""
-        agent = MinimalAgent()
-        assert agent.name() == "minimal_test_agent"
-
-        result = agent.execute({"idea": "test idea"}, None)
-        assert isinstance(result, DecisionArtifact)
-        assert result.artifact_type == "brief"
-        assert result.content["idea"] == "test idea"
-        assert result.metadata["agent"] == "minimal_test_agent"
-
-
-# ===================================================================
-# BaseDecisionAgent — search_asset_library
-# ===================================================================
-
-
-class TestSearchAssetLibrary:
-    """search_asset_library() delegates to AssetLibrary and degrades gracefully."""
-
-    def test_returns_results_when_library_succeeds(self) -> None:
-        """When AssetLibrary.search() returns results, they are forwarded."""
-        mock_results = [{"id": "doc1", "text": "brand guidelines"}, {"id": "doc2", "text": "tone of voice"}]
-        mock_library_cls = MagicMock()
-        mock_library_instance = MagicMock()
-        mock_library_instance.search.return_value = mock_results
-        mock_library_cls.return_value = mock_library_instance
-
-        agent = MinimalAgent()
-        with patch.dict(
-            "sys.modules",
-            {"automedia.asset_library": MagicMock(AssetLibrary=mock_library_cls)},
-        ):
-            results = agent.search_asset_library("test-brand", "brand guidelines")
-
-        assert results == mock_results
-        mock_library_cls.assert_called_once_with(brand="test-brand")
-        mock_library_instance.search.assert_called_once_with(
-            query="brand guidelines", filters={}
-        )
-
-    def test_returns_results_with_filters(self) -> None:
-        """Filters dict is forwarded to library.search()."""
-        mock_library_cls = MagicMock()
-        mock_library_instance = MagicMock()
-        mock_library_instance.search.return_value = ["doc"]
-        mock_library_cls.return_value = mock_library_instance
-
-        agent = MinimalAgent()
-        filters = {"category": "brand", "lang": "en"}
-        with patch.dict(
-            "sys.modules",
-            {"automedia.asset_library": MagicMock(AssetLibrary=mock_library_cls)},
-        ):
-            agent.search_asset_library("test-brand", "query", filters=filters)
-
-        mock_library_instance.search.assert_called_once_with(
-            query="query", filters=filters
-        )
-
-    def test_returns_empty_list_when_library_import_fails(self) -> None:
-        """Graceful degradation: returns [] when AssetLibrary import raises."""
-        agent = MinimalAgent()
-        # Patch import to raise ImportError
-        with patch.dict("sys.modules", {"automedia.asset_library": None}):
-            results = agent.search_asset_library("test-brand", "anything")
-
-        assert results == []
-
-    def test_returns_empty_list_when_search_raises(self) -> None:
-        """Graceful degradation: returns [] when library.search() raises."""
-        mock_library_cls = MagicMock()
-        mock_library_instance = MagicMock()
-        mock_library_instance.search.side_effect = RuntimeError("db connection failed")
-        mock_library_cls.return_value = mock_library_instance
-
-        agent = MinimalAgent()
-        with patch.dict(
-            "sys.modules",
-            {"automedia.asset_library": MagicMock(AssetLibrary=mock_library_cls)},
-        ):
-            results = agent.search_asset_library("test-brand", "query")
-
-        assert results == []
-
-    def test_defaults_filters_to_empty_dict(self) -> None:
-        """When filters is None (default), an empty dict is passed to search()."""
-        mock_library_cls = MagicMock()
-        mock_library_instance = MagicMock()
-        mock_library_instance.search.return_value = []
-        mock_library_cls.return_value = mock_library_instance
-
-        agent = MinimalAgent()
-        with patch.dict(
-            "sys.modules",
-            {"automedia.asset_library": MagicMock(AssetLibrary=mock_library_cls)},
-        ):
-            agent.search_asset_library("brand", "q")
-
-        mock_library_instance.search.assert_called_once_with(query="q", filters={})

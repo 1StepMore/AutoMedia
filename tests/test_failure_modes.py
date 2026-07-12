@@ -6,7 +6,6 @@ from automedia.gates.failure_modes import FAILURE_MODES
 
 # Known gate names (matches the keys in failure_modes.py)
 _GATE_NAMES = [
-    "D0",
     "G0",
     "G1",
     "G2",

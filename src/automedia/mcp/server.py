@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 19 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 22 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -95,7 +95,9 @@ from automedia.mcp.tools import (
     localize_output,
     register_platform_adapter,
     research_topics,
+    run_brand_strategy,
     run_pipeline,
+    run_pipeline_from_strategy,
     select_topic,
 )
 
@@ -109,6 +111,8 @@ __all__ = [
     # Tool handlers
     "evaluate_content_quality",
     "research_topics",
+    "run_brand_strategy",
+    "run_pipeline_from_strategy",
     "select_topic",
     "run_pipeline",
     "get_pipeline_progress",
@@ -159,7 +163,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     Returns
     -------
     FastMCP
-        A fully configured server with all 19 tools and 5 resources registered.
+        A fully configured server with all 22 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -169,8 +173,9 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "18 MCP tools for topic selection, pipeline execution, project\n"
-            "management, Omni Triad document processing, and server health.\n"
+            "22 MCP tools for topic selection, pipeline execution, project\n"
+            "management, Omni Triad document processing, brand strategy,\n"
+            "content quality evaluation, and server health.\n"
             "\n"
             "━━━ CORE WORKFLOW (5 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -217,7 +222,21 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "  qa_only     Quality-assurance pass — runs selected QA gates on existing\n"
             "              content without generating new assets. Use for re-validation.\n"
             "\n"
-            "━━━ CONTENT QUALITY (1 tool) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━ STRATEGY & CONTENT QUALITY (4 tools) ━━━━━━━━━━━━━━━━━━━━━\n"
+            "\n"
+            "  run_brand_strategy(brand_name, industry, target_audience, context?)\n"
+            "      Generate a brand strategy using LLM-driven analysis.\n"
+            "      Returns {brand_positioning, audience_analysis,\n"
+            "      competitive_landscape, key_differentiators, suggested_messaging}.\n"
+            "\n"
+            "  run_pipeline_from_strategy(topic, brand, mode?, strategy_context?)\n"
+            "      Generate a content strategy via LLM then execute the pipeline.\n"
+            "      Returns {strategy: {...}, pipeline_result: {...}}.\n"
+            "\n"
+            "  research_topics(category, count?, trending?)\n"
+            "      Research trending/high-potential topics using LLM.\n"
+            "      Returns structured list with angles, confidence scores, and\n"
+            "      format recommendations.\n"
             "\n"
             "  evaluate_content_quality(content, criteria?, brand?)\n"
             "      Score content against specified criteria using LLM evaluation.\n"
@@ -460,6 +479,29 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     )(evaluate_content_quality)
 
     # ------------------------------------------------------------------
+    # Strategy tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Generate a brand strategy using LLM-driven analysis. "
+            "Takes brand_name, industry, target_audience, and optional context. "
+            "Returns a structured strategy with brand positioning, audience "
+            "analysis, competitive landscape, key differentiators, and "
+            "suggested messaging."
+        ),
+    )(run_brand_strategy)
+
+    mcp.tool(
+        description=(
+            "Generate a content strategy via LLM then execute the AutoMedia "
+            "production pipeline. Takes topic, brand, optional mode, and "
+            "optional strategy_context. Returns both the strategy output and "
+            "the pipeline result."
+        ),
+    )(run_pipeline_from_strategy)
+
+    # ------------------------------------------------------------------
     # Account tools
     # ------------------------------------------------------------------
 
@@ -533,7 +575,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 19 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 22 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",

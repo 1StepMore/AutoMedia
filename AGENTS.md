@@ -19,7 +19,7 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 18 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 22 tools |
 | CLI | `automedia <subcommand>` | 16 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -102,7 +102,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 18 tools
+│       │   ├── server.py           # FastMCP server — 22 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -396,7 +396,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (18 tools)
+## 9. MCP Tools Quick Reference (22 tools)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -404,7 +404,10 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 |------|-----------|-------------|
 | `health_check` | — | Return server health status (version, uptime, tool count) |
 | `select_topic` | category, tenant_id, pool_db_path | Select the highest-scored pending topic from the pool |
+| `research_topics` | category, count, trending | Research trending topics within a category using LLM |
+| `run_brand_strategy` | brand_name, industry, target_audience, context | Generate a brand strategy using LLM analysis |
 | `run_pipeline` | topic, brand, mode, tenant_id, resume_from | Execute full production pipeline in a background thread (async) |
+| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | project_id | Poll a running pipeline's gate-by-gate progress |
 | `get_pipeline_status` | project_id, base_dir | Query project status from its info file |
 | `list_projects` | base_dir, status | List all projects found under a base directory |
@@ -416,6 +419,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `localize_content` | md_content, source_lang, target_lang | Translate markdown content via OL shield pipeline |
 | `localize_output` | project_dir, target_langs | Translate all project drafts into multiple languages |
 | `format_output` | content, target_format, **options | Convert content format via ORF adapter |
+| `evaluate_content_quality` | content, criteria, brand | Score content quality against criteria (clarity, accuracy, brand voice, etc.) |
 | `connect_account` | platform, auth_type, credentials, label | Register a new platform account (returns account_id) |
 | `list_accounts` | platform, status | List registered accounts with optional filters |
 | `get_account_health` | account_id | Check an account's health status |

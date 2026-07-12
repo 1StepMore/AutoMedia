@@ -17,12 +17,12 @@ class TestVerifyResumeIntegrity:
     def test_all_gates_pass_verification(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         """When all prior gates' MD5s match, no warnings."""
         # Record some gates
-        for name in ["D0", "CW", "G0"]:
+        for name in ["CW", "G0", "G1"]:
             f = tmp_path / f"{name}_output.txt"
             f.write_text(f"content from {name}")
             record_md5(str(tmp_path), name, str(f))
 
-        _verify_resume_integrity(str(tmp_path), "G1", ["D0", "CW", "G0", "G1", "G2"])
+        _verify_resume_integrity(str(tmp_path), "G2", ["CW", "G0", "G1", "G2", "G3"])
 
         # No warnings for intact gates
         assert not any("md5 mismatch" in r.getMessage().lower() for r in caplog.records)
@@ -37,7 +37,7 @@ class TestVerifyResumeIntegrity:
         # Tamper with it
         f.write_text("tampered content")
 
-        _verify_resume_integrity(str(tmp_path), "G1", ["D0", "CW", "G0", "G1"])
+        _verify_resume_integrity(str(tmp_path), "G1", ["CW", "G0", "G1"])
 
         warnings = [r for r in caplog.records if "mismatch" in r.getMessage().lower()]
         assert len(warnings) >= 1
@@ -52,7 +52,7 @@ class TestVerifyResumeIntegrity:
         # Delete the file
         f.unlink()
 
-        _verify_resume_integrity(str(tmp_path), "G0", ["D0", "CW", "G0"])
+        _verify_resume_integrity(str(tmp_path), "G0", ["CW", "G0"])
 
         warnings = [r for r in caplog.records if "mismatch" in r.getMessage().lower() or "missing" in r.getMessage().lower()]
         assert len(warnings) >= 1
@@ -60,21 +60,21 @@ class TestVerifyResumeIntegrity:
     def test_no_previous_records_no_warnings(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         """When no pipeline_md5.json exists, verification is silently skipped."""
         # No records written yet
-        _verify_resume_integrity(str(tmp_path), "D0", ["D0", "CW"])
+        _verify_resume_integrity(str(tmp_path), "CW", ["CW"])
         assert len(caplog.records) == 0
 
     def test_verify_does_not_check_current_or_future_gates(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         """Gates at or after the resume point are NOT verified — they haven't run yet in this context."""
-        for name in ["D0", "CW", "G0"]:
+        for name in ["CW", "G0"]:
             f = tmp_path / f"{name}_output.txt"
             f.write_text(f"content from {name}")
             record_md5(str(tmp_path), name, str(f))
 
-        # Resume from G0 — only D0 and CW should be checked
+        # Resume from G0 — only CW should be checked (G0 is the resume point)
         # Tamper with G0 (should be ignored since it's the resume point)
         (tmp_path / "G0_output.txt").write_text("tampered at resume point")
 
-        _verify_resume_integrity(str(tmp_path), "G0", ["D0", "CW", "G0", "G1"])
+        _verify_resume_integrity(str(tmp_path), "G0", ["CW", "G0"])
 
         # No warnings (G0 is at resume point, not before it)
         assert not any("mismatch" in r.getMessage().lower() for r in caplog.records)

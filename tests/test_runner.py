@@ -76,7 +76,7 @@ class TestModeMap:
 
     def test_qa_only_subset(self) -> None:
         names = _MODE_MAP["qa_only"]
-        assert names == ["D0", "G0", "G2", "G3", "V1", "V6"]
+        assert names == ["G0", "G2", "G3", "V1", "V6"]
 
     def test_non_qa_modes_have_lifecycle_gates(self) -> None:
         for mode, names in _MODE_MAP.items():

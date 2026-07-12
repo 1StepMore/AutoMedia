@@ -1,6 +1,4 @@
-"""AutoMedia — automated media production pipeline with Decision Layer."""
-
-import warnings
+"""AutoMedia — automated media production pipeline."""
 
 from automedia._version import __version__
 
@@ -24,36 +22,12 @@ from automedia.pipelines.gate_engine import (
 )
 from automedia.pipelines.runner import run_full_pipeline
 
-# Decision Layer (PRD-3) — optional imports
-try:
-    from automedia.asset_library import AssetLibrary
-except ImportError:
-    warnings.warn(
-        "AssetLibrary not available. Install with: pip install automedia[omni]",
-        ImportWarning,
-        stacklevel=2,
-    )
-    AssetLibrary = None  # type: ignore[assignment,misc]
-
-try:
-    from automedia.decision import BaseDecisionAgent, DecisionArtifact, DecisionOrchestrator
-except ImportError:
-    warnings.warn(
-        "DecisionLayer not available. Install with: pip install automedia[omni]",
-        ImportWarning,
-        stacklevel=2,
-    )
-    DecisionOrchestrator = None  # type: ignore[assignment,misc]
-    BaseDecisionAgent = None  # type: ignore[assignment,misc]
-    DecisionArtifact = None  # type: ignore[assignment,misc]
+from automedia.decision.base import DecisionArtifact
 
 __all__ = [
     "AssetInfo",
-    "AssetLibrary",
     "GateRegistry",
-    "BaseDecisionAgent",
     "DecisionArtifact",
-    "DecisionOrchestrator",
     "GateEngine",
     "GateHook",
     "GateLogEntry",

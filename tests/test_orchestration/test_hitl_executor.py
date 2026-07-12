@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
+from automedia.decision.base import DecisionArtifact
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +44,7 @@ def _build_config(mapping: dict[str, str]) -> Any:
     return cfg
 
 
-class _StubAgent(BaseDecisionAgent):
+class _StubAgent:
     """Minimal deterministic agent for executor unit tests."""
 
     def __init__(self, name: str = "stub") -> None:
@@ -288,151 +288,4 @@ class TestNodeExecutorHumanMode:
         assert executor.pending_nodes() == ["node_b"]
 
 
-# ===================================================================
-# Integration with real agents
-# ===================================================================
 
-
-class TestNodeExecutorIntegration:
-    """NodeExecutor works with real BaseDecisionAgent subclasses."""
-
-    def test_with_diagnostic_agent(self) -> None:
-        """Executor runs DiagnosticAgent in agent mode."""
-        from automedia.decision.diagnostic import DiagnosticAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config({"diagnosis": "agent"})
-        executor = NodeExecutor(config)
-        agent = DiagnosticAgent()
-
-        result = executor.execute(
-            "diagnosis",
-            agent,
-            {"idea": "AI fitness app", "market": "SEA", "stage": "new"},
-        )
-
-        assert isinstance(result, DecisionArtifact)
-        assert result.artifact_type == "brief"
-
-    def test_with_brand_positioning_agent(self) -> None:
-        """Executor runs BrandPositioningAgent in agent mode."""
-        from automedia.decision.build import BrandPositioningAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config({"brand_positioning": "agent"})
-        executor = NodeExecutor(config)
-        agent = BrandPositioningAgent()
-
-        result = executor.execute(
-            "brand_positioning",
-            agent,
-            {"idea": "Eco water bottle", "market": "Thailand", "stage": "new"},
-        )
-
-        assert isinstance(result, DecisionArtifact)
-        assert result.artifact_type == "brand_dna"
-
-    def test_human_mode_with_real_agent(self) -> None:
-        """Executor runs a real agent in human mode -- stores pending."""
-        from automedia.decision.diagnostic import DiagnosticAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config({"diagnosis": "human"})
-        executor = NodeExecutor(config)
-        agent = DiagnosticAgent()
-
-        # Human mode -> returns None
-        result = executor.execute(
-            "diagnosis",
-            agent,
-            {"idea": "Test", "market": "US", "stage": "new"},
-        )
-        assert result is None
-        assert executor.pending_nodes() == ["diagnosis"]
-
-        # Approve and verify the artifact
-        artifact = executor.approve_node("diagnosis")
-        assert isinstance(artifact, DecisionArtifact)
-        assert artifact.artifact_type == "brief"
-
-    def test_human_skip_with_real_agent(self) -> None:
-        """Skip a real agent's pending suggestion."""
-        from automedia.decision.diagnostic import DiagnosticAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config({"diagnosis": "human"})
-        executor = NodeExecutor(config)
-        agent = DiagnosticAgent()
-
-        executor.execute(
-            "diagnosis",
-            agent,
-            {"idea": "Test", "market": "US", "stage": "new"},
-        )
-        artifact = executor.skip_node("diagnosis")
-
-        assert artifact.metadata.get("human_skipped") is True
-        assert artifact.artifact_type == "brief"
-
-    def test_orchestrator_collaboration_pattern(self) -> None:
-        """Simulates how DecisionOrchestrator would use NodeExecutor."""
-        from automedia.decision.build import BrandPositioningAgent
-        from automedia.decision.diagnostic import DiagnosticAgent
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config(
-            {
-                "diagnosis": "agent",
-                "brand_positioning": "agent",
-                "market_research": "agent",
-            }
-        )
-        executor = NodeExecutor(config)
-        diag_agent = DiagnosticAgent()
-        bp_agent = BrandPositioningAgent()
-
-        # Phase 0: Diagnostic
-        brief = executor.execute(
-            "diagnosis",
-            diag_agent,
-            {"idea": "AI video app", "market": "SEA", "stage": "new"},
-        )
-        assert brief is not None
-        assert brief.artifact_type == "brief"
-
-        # Phase 1: Brand positioning (uses brief context)
-        bp_result = executor.execute(
-            "brand_positioning",
-            bp_agent,
-            {
-                **brief.content,
-                "idea": "AI video app",
-                "market": "SEA",
-                "stage": "new",
-            },
-        )
-        assert bp_result is not None
-        assert bp_result.artifact_type == "brand_dna"
-        assert bp_result.content.get("brand_name")
-
-    def test_pending_survives_multiple_approve_cycles(self) -> None:
-        """A node can be approved then a new node executed and approved."""
-        from automedia.hitl.executor import NodeExecutor
-
-        config = _build_config(
-            {
-                "first": "human",
-                "second": "human",
-            }
-        )
-        executor = NodeExecutor(config)
-        agent = _StubAgent()
-
-        executor.execute("first", agent, {"idea": "first"})
-        executor.approve_node("first")
-
-        executor.execute("second", agent, {"idea": "second"})
-        assert executor.pending_nodes() == ["second"]
-
-        executor.approve_node("second")
-        assert executor.pending_nodes() == []

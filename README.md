@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (18 tools)
+- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (22 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
@@ -283,7 +283,7 @@ result = run_full_pipeline(
 | `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (18 tools)
+### MCP Server (22 tools)
 
 Start:
 
@@ -295,7 +295,10 @@ python -m automedia.mcp.server
 |------|-------------|
 | `health_check` | Return server health status (version, uptime, tool count) |
 | `select_topic` | Select highest-scored pending topic from pool |
+| `research_topics` | Research trending topics within a category using LLM |
+| `run_brand_strategy` | Generate a brand strategy using LLM analysis |
 | `run_pipeline` | Execute full production pipeline (background, async) |
+| `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects under a base directory |
@@ -307,6 +310,7 @@ python -m automedia.mcp.server
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
+| `evaluate_content_quality` | Score content quality against criteria (clarity, accuracy, brand voice, etc.) |
 | `connect_account` | Register a new platform account for publishing |
 | `list_accounts` | List all registered accounts with optional filters |
 | `get_account_health` | Check an account's health status |
@@ -393,7 +397,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  18 tools      |     |  16 commands       |
+  |  22 tools      |     |  16 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
