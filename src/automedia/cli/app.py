@@ -12,15 +12,11 @@ from automedia.cli.commands.cron import app as cron_app
 from automedia.cli.commands.doctor import doctor_cmd
 from automedia.cli.commands.hitl import app as hitl_app
 from automedia.cli.commands.init_cmd import init_cmd
-from automedia.cli.commands.license import app as license_app
 from automedia.cli.commands.omni import app as omni_app
 from automedia.cli.commands.onboard import app as onboard_app
 from automedia.cli.commands.pool import app as pool_app
 from automedia.cli.commands.projects import app as projects_app
 from automedia.cli.commands.run import run_cmd
-from automedia.cli.commands.sop import app as sop_app
-from automedia.cli.commands.tenant import app as tenant_app
-from automedia.decision.cli.solution import app as solution_app
 
 app = typer.Typer(
     name="automedia",
@@ -70,7 +66,6 @@ app.add_typer(omni_app, name="omni")
 app.add_typer(hitl_app, name="hitl")
 app.add_typer(license_app, name="license")
 app.add_typer(sop_app, name="sop")
-app.add_typer(tenant_app, name="tenant")
 app.add_typer(solution_app, name="solution")
 app.add_typer(onboard_app, name="onboard")
 
