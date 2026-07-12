@@ -37,7 +37,6 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _AUTO_GATE_NAMES: list[str] = [
-    "D0",
     "pre-gate",
     "CW",
     "G0",
@@ -61,7 +60,6 @@ _AUTO_GATE_NAMES: list[str] = [
 ]
 
 _TEXT_ONLY_GATE_NAMES: list[str] = [
-    "D0",
     "CW",
     "G0",
     "G1",
@@ -76,7 +74,6 @@ _TEXT_ONLY_GATE_NAMES: list[str] = [
 ]
 
 _VIDEO_ONLY_GATE_NAMES: list[str] = [
-    "D0",
     "V0",
     "V1",
     "V2",
@@ -92,7 +89,6 @@ _VIDEO_ONLY_GATE_NAMES: list[str] = [
 ]
 
 _QA_ONLY_GATE_NAMES: list[str] = [
-    "D0",
     "G0",
     "G2",
     "G3",
@@ -250,8 +246,7 @@ def run_full_pipeline(
         ``None`` resolves to ``"zh"``.  The value is injected into
         ``gate_context["lang_config"]`` for downstream gates.
     force_provenance:
-        When ``True`` bypass the D0 Decision-Layer provenance check
-        (Red Line 9).  Requires ``--confirm-bypass-rl9`` on the CLI.
+        Deprecated.  Kept for backward compatibility — no longer used.
     progress:
         Optional progress tracker.  When provided, ``GateEngine.run()``
         emits ``GateProgressEvent`` entries for each gate so agents
@@ -352,12 +347,6 @@ def run_full_pipeline(
         # 6. Execute
         success, results = engine.run(gate_context, progress=progress)
 
-        # 6.5 Check for RL9 violation
-        rl9_failure = False
-        if results and results[0].get("gate") == "D0" and not results[0].get("passed", True):  # noqa: SIM102
-            if results[0].get("status") == "rl9_violation":
-                rl9_failure = True
-
         # 7. Collect assets
         assets = _collect_assets(gate_context)
 
@@ -369,7 +358,7 @@ def run_full_pipeline(
 
         end = time.monotonic()
 
-        status = "rl9_violation" if rl9_failure else "success" if success else "partial"
+        status = "success" if success else "partial"
         log.info(
             "pipeline.complete",
             status=status, duration_s=end - start,
@@ -377,7 +366,7 @@ def run_full_pipeline(
         )
 
         return PipelineResult(
-            status=cast(Literal["success", "failed", "partial", "rl9_violation"], status),
+            status=cast(Literal["success", "failed", "partial"], status),
             project_id=project.project_id,
             project_dir=project.project_dir,
             topic=topic,

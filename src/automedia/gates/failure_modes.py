@@ -334,25 +334,6 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         ],
         "docstring_ref": "gates/topic_selection.py",
     },
-    "D0": {
-        "description": (
-            "Provenance Gate (RL9) — verifies the pipeline has a"
-            " legitimate brand provenance decision before proceeding"
-        ),
-        "common_causes": [
-            "No DecisionOrchestrator run completed before the pipeline",
-            "force_provenance=True was not set when bypassing RL9",
-            "Decision artifacts missing or incomplete in the project directory",
-            "Preflight checks failed due to missing brand profile or config",
-        ],
-        "fixes": [
-            "Run the Decision Layer (automedia solution build) before the pipeline",
-            "Pass --confirm-bypass-rl9 (force_provenance=True) to skip provenance check",
-            "Ensure decision artifacts exist: brand-profile.yaml, decision-log.json",
-            "Run automedia doctor to verify all prerequisites are met",
-        ],
-        "docstring_ref": "decision/gates/d0_gate.py",
-    },
     "CW": {
         "description": (
             "Content Writer Gate — generates draft content from the topic brief using LLM"

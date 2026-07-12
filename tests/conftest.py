@@ -342,3 +342,46 @@ def sample_gate_context(
         "formats": ["mp4", "txt", "json"],
         "required_formats": ["mp4", "txt", "json"],
     }
+
+
+# ---------------------------------------------------------------------------
+# LLM mock fixture for LLM-driven gate tests (G0/G2)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def llm_mock() -> dict[str, Any]:
+    """Fixture providing LLM mock helpers for gate tests.
+
+    Returns a dict with three keys:
+
+    ``response``
+        :func:`tests.mock_llm.mock_llm_response` — mock LLM to return a
+        given Pydantic model instance.
+    ``failure``
+        :func:`tests.mock_llm.mock_llm_failure` — simulate LLM API
+        failure to force deterministic fallback.
+    ``assert_called``
+        :func:`tests.mock_llm.assert_llm_called` — assert the LLM was
+        called an expected number of times.
+
+    Example
+    -------
+    >>> def test_my_gate(llm_mock):
+    ...     from automedia.gates.llm_helpers import G0CheckResult
+    ...     data = G0CheckResult(passed=True, issues=[])
+    ...     with llm_mock["response"](data):
+    ...         # gate code that calls llm_complete_structured_safe
+    ...         pass
+    """
+    from tests.mock_llm import (
+        assert_llm_called,
+        mock_llm_failure,
+        mock_llm_response,
+    )
+
+    return {
+        "response": mock_llm_response,
+        "failure": mock_llm_failure,
+        "assert_called": assert_llm_called,
+    }

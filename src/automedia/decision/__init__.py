@@ -6,7 +6,6 @@ Exports
 - ``BaseDecisionAgent`` — abstract base for all agents
 - ``DecisionArtifact`` — structured artifact dataclass
 - ``DiagnosticAgent`` — phase-0 questionnaire / routing / asset scan
-- ``D0Gate`` — Decision-Layer provenance gate (Red Line 9)
 - All Build / Scale / Strategy agents
 """
 
@@ -15,7 +14,9 @@ from __future__ import annotations
 from automedia.core._import_helpers import warn_missing_optional
 from automedia.decision.base import BaseDecisionAgent, DecisionArtifact
 from automedia.decision.diagnostic import DiagnosticAgent
-from automedia.decision.gates import D0Gate
+
+# Pydantic models for MCP tool output validation
+from automedia.decision import pydantic  # noqa: F401  # export submodule
 
 try:
     from automedia.decision.orchestrator import DecisionOrchestrator
@@ -71,7 +72,6 @@ __all__ = [
     "DecisionArtifact",
     "DecisionOrchestrator",
     "DiagnosticAgent",
-    "D0Gate",
     "BrandPositioningAgent",
     "MarketResearchAgent",
     "AudienceSegmentationAgent",

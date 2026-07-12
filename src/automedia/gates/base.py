@@ -12,7 +12,7 @@ from automedia.gates._context import GateContext
 
 _VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
 """Regex for RL6-enforced gate naming convention: ``G0``–``G5``, ``V0``–``V7``,
-``L1``–``L4``, ``D0``, ``CW``, ``pre-gate``."""
+``L1``–``L4``, ``CW``, ``pre-gate``."""
 
 
 class GateRegistry(BaseRegistry):
@@ -72,28 +72,11 @@ class GateRegistry(BaseRegistry):
         super().register(name, gate_cls)
 
     def get(self, gate_name: str) -> type[BaseGate]:
-        """Look up a gate class by name.
-
-        If *gate_name* is ``"D0"`` and it's not yet registered, the
-        decision-layer gate module is imported lazily so that
-        ``BaseGate.__init_subclass__`` auto-registers it on the fly.
-        """
+        """Look up a gate class by name."""
         if gate_name not in self._registry:
-            if gate_name == "D0":
-                try:
-                    # Lazy import — triggers D0Gate auto-registration
-                    # via BaseGate.__init_subclass__.
-                    import automedia.decision.gates.d0_gate  # noqa: F401
-                except ImportError:
-                    import logging
-
-                    logging.getLogger(__name__).debug(
-                        "Could not import D0 gate — decision layer not available"
-                    )
-            if gate_name not in self._registry:
-                raise KeyError(
-                    f"Gate '{gate_name}' is not registered. Available: {list(self._registry)}"
-                )
+            raise KeyError(
+                f"Gate '{gate_name}' is not registered. Available: {list(self._registry)}"
+            )
         return self._registry[gate_name]
 
     def get_all(self) -> dict[str, type[BaseGate]]:
