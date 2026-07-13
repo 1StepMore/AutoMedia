@@ -110,14 +110,6 @@ class OPPAdapter(BaseOmniAdapter):
             )
         return results
 
-    def detect_format(self, md_content: str) -> str:
-        """Detect the document format of *md_content*.
-
-        Stub implementation — always returns ``"markdown"``.  Real detection
-        via LLM will be added later.
-        """
-        return "markdown"
-
 
 def _parse_md_to_segments(md_content: str) -> list[dict[str, Any]]:
     """Parse markdown content into a list of segment dicts.

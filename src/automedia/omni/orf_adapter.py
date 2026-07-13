@@ -15,8 +15,6 @@ class ORFAdapter(BaseOmniAdapter):
         return "orf"
 
     def validate_env(self) -> bool:
-        import os
-
         return "MCP_ALLOWED_DIRECTORIES" in os.environ
 
     def convert(
@@ -43,19 +41,6 @@ class ORFAdapter(BaseOmniAdapter):
             "errors": [str(e) for e in result.errors] if result.errors else [],
         }
 
-    def backfill(
-        self,
-        translated_md: str,
-        original_md: str,
-        skeleton_path: str | None = None,
-    ) -> str:
-        """Backfill translated markdown using original + skeleton.
-
-        Stub — returns translated_md as-is. Real skeleton-based backfill
-        will be implemented later.
-        """
-        return translated_md
-
     def apply_md(self, md_content: str, target_path: str) -> str:
         """Write markdown content to *target_path*, creating dirs as needed."""
         parent = os.path.dirname(target_path)
@@ -65,9 +50,4 @@ class ORFAdapter(BaseOmniAdapter):
             fh.write(md_content)
         return target_path
 
-    def apply_xliff(self, xliff_path: str, output_dir: str) -> str:
-        """Placeholder — real XLIFF backfill not yet implemented."""
-        base = os.path.splitext(os.path.basename(xliff_path))[0]
-        output_path = os.path.join(output_dir, base + ".backfilled.md")
-        print(f"[ORFAdapter] apply_xliff is a placeholder — no-op for {xliff_path}")
-        return output_path
+

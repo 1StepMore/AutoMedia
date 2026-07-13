@@ -23,8 +23,8 @@ def collector_with_seed() -> HotCollector:
     seed = [
         {
             "source": "seed",
-            "title": "AIGC内容创作指南",
-            "url": "https://seed.com/aigc",
+            "title": "自媒体创作工具评测",
+            "url": "https://seed.com/tools",
             "heat_score": 9.0,
             "collected_at": "2025-01-01T00:00:00+00:00",
         },
@@ -68,26 +68,18 @@ class TestCollectAll:
         titles = [t["title"].strip().lower() for t in result]
         assert len(titles) == len(set(titles))
 
-    def test_covers_all_sources(self, collector: HotCollector):
-        """Result should contain items from at least weibo, zhihu, bilibili."""
-        result = collector.collect_all()
+    def test_covers_tavily_and_aihot(self, collector_with_seed: HotCollector):
+        """Result should contain items from tavily and aihot."""
+        result = collector_with_seed.collect_all()
         sources = {t["source"] for t in result}
-        assert "weibo" in sources
-        assert "zhihu" in sources
-        assert "bilibili" in sources
+        assert "tavily" in sources
+        assert "aihot" in sources
 
     def test_seed_topics_included(self, collector_with_seed: HotCollector):
         """Pre-seeded topics should appear in the output."""
         result = collector_with_seed.collect_all()
         titles = [t["title"] for t in result]
-        assert "AIGC内容创作指南" in titles
-
-    def test_seed_topics_deduplicated(self, collector_with_seed: HotCollector):
-        """If a seed topic title matches a layer-1 title, only one copy kept."""
-        result = collector_with_seed.collect_all()
-        titles_lower = [t["title"].strip().lower() for t in result]
-        # "AIGC内容创作指南" also appears in zhihu layer → should be deduped
-        assert titles_lower.count("aigc内容创作指南") == 1
+        assert "自媒体创作工具评测" in titles
 
     def test_collected_at_is_iso_format(self, collector: HotCollector):
         """All collected_at values should be valid ISO-8601."""
@@ -104,31 +96,7 @@ class TestCollectAll:
 
 
 class TestLayerCollectors:
-    """Each platform collector returns a non-empty list with correct source."""
-
-    def test_weibo_returns_items(self):
-        c = HotCollector()
-        items = c._collect_weibo()
-        assert len(items) > 0
-        assert all(i["source"] == "weibo" for i in items)
-
-    def test_zhihu_returns_items(self):
-        c = HotCollector()
-        items = c._collect_zhihu()
-        assert len(items) > 0
-        assert all(i["source"] == "zhihu" for i in items)
-
-    def test_douyin_returns_items(self):
-        c = HotCollector()
-        items = c._collect_douyin()
-        assert len(items) > 0
-        assert all(i["source"] == "douyin" for i in items)
-
-    def test_bilibili_returns_items(self):
-        c = HotCollector()
-        items = c._collect_bilibili()
-        assert len(items) > 0
-        assert all(i["source"] == "bilibili" for i in items)
+    """Each platform collector returns correct results."""
 
     def test_tavily_returns_items(self):
         c = HotCollector()

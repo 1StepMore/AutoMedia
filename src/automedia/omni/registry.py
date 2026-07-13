@@ -61,10 +61,5 @@ class OmniToolRegistry(BaseRegistry):
         return sorted(cls._registry)
 
     @classmethod
-    def list(cls) -> list[str]:
-        """Deprecated: use list_tools() instead."""
-        return cls.list_tools()
-
-    @classmethod
     def clear(cls) -> None:
         cls._registry.clear()

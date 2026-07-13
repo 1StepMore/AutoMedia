@@ -156,7 +156,8 @@ class TestCronPoolCollect:
         db.close()
 
         sources = {t["source"] for t in topics}
-        assert len(sources) > 1
+        assert len(sources) >= 1
+        assert "aihot" in sources
         assert topics[0]["title"]
 
 

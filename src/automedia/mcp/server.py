@@ -31,15 +31,6 @@ from __future__ import annotations
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Shared state imports (from _state.py)
-# ---------------------------------------------------------------------------
-from automedia.mcp._state import (
-    _SERVER_START,
-    _lock,
-    _pipeline_tracker,
-)
-
-# ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.accounts import (
@@ -53,13 +44,7 @@ from automedia.mcp.accounts import (
 # Allowlist imports (from allowlist.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.allowlist import (
-    _ALLOWED_OUTPUT_FORMATS,
-    _ALLOWLIST_FILE,
-    _cached_allowlist,
-    _load_allowlist,
     _require_allowed,
-    _reset_allowlist_cache,
-    check_path_allowed,
 )
 
 # ---------------------------------------------------------------------------
@@ -77,10 +62,6 @@ from automedia.mcp.resources import (
 # Helper / utility imports (from tools.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.tools import (
-    _discover_projects,
-    _pipeline_result_to_dict,
-    _project_assets,
-    _resolve_projects_dir,
     archive_project,
     evaluate_content_quality,
     extract_brief,
@@ -137,22 +118,7 @@ __all__ = [
     "get_account_health",
     "disconnect_account",
     # Allowlist helpers
-    "check_path_allowed",
     "_require_allowed",
-    "_load_allowlist",
-    "_reset_allowlist_cache",
-    "_ALLOWED_OUTPUT_FORMATS",
-    "_ALLOWLIST_FILE",
-    "_cached_allowlist",
-    # Helper utilities
-    "_resolve_projects_dir",
-    "_discover_projects",
-    "_project_assets",
-    "_pipeline_result_to_dict",
-    # Shared state
-    "_pipeline_tracker",
-    "_lock",
-    "_SERVER_START",
 ]
 
 

@@ -170,10 +170,4 @@ class OLAdapter(BaseOmniAdapter):
             results.append(result)
         return results
 
-    def judge(self, translated_md: str) -> dict[str, float | str]:
-        """Evaluate translated markdown quality.
 
-        Stub implementation — always returns an auto-approved score.
-        Replace with a real LLM-as-judge call when available.
-        """
-        return {"score": 1.0, "feedback": "Auto-approved (stub)"}

@@ -59,13 +59,6 @@ class TestOLAdapterContract:
         adapter = OLAdapter()
         assert adapter.config_path == "ol_config.yaml"
 
-    def test_judge_returns_stub(self) -> None:
-        adapter = OLAdapter()
-        result = adapter.judge("any text")
-        assert isinstance(result, dict)
-        assert result["score"] == 1.0
-        assert "feedback" in result
-
     def test_translate_returns_translation_result(self) -> None:
         adapter = OLAdapter()
         assert callable(adapter.translate)

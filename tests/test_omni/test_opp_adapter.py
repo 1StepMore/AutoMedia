@@ -68,10 +68,6 @@ class TestOPPAdapterContract:
         result = adapter.batch_extract([])
         assert result == []
 
-    def test_detect_format_returns_markdown(self) -> None:
-        adapter = OPPAdapter()
-        assert adapter.detect_format("any content") == "markdown"
-
 
 class TestParseMdToSegments:
     def test_returns_list_of_dicts(self) -> None:

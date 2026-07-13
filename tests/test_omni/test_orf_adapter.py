@@ -29,16 +29,6 @@ class TestORFAdapterContract:
         with pytest.raises(Exception):
             adapter.convert("/nonexistent/test.docx")
 
-    def test_backfill_returns_translated_md(self) -> None:
-        adapter = ORFAdapter()
-        result = adapter.backfill("translated", "original")
-        assert result == "translated"
-
-    def test_backfill_skeleton_none(self) -> None:
-        adapter = ORFAdapter()
-        result = adapter.backfill("t", "o", skeleton_path=None)
-        assert result == "t"
-
     def test_apply_md_writes_file(self, tmp_path: Any) -> None:
         adapter = ORFAdapter()
         out_path = str(tmp_path / "test_orf_output.md")
@@ -62,15 +52,4 @@ class TestORFAdapterContract:
 
             shutil.rmtree(out_dir, ignore_errors=True)
 
-    def test_apply_xliff_returns_path_and_no_raise(self, tmp_path: Any) -> None:
-        adapter = ORFAdapter()
-        out_dir = tempfile.mkdtemp()
-        try:
-            xliff_input = str(tmp_path / "test.xlf")
-            result = adapter.apply_xliff(xliff_input, out_dir)
-            assert isinstance(result, str)
-            assert result.endswith(".backfilled.md")
-        finally:
-            import shutil
 
-            shutil.rmtree(out_dir, ignore_errors=True)

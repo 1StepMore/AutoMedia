@@ -15,16 +15,20 @@ from typing import Any
 import pytest
 import yaml
 
-from automedia.mcp.server import (
-    _discover_projects,
+from automedia.mcp.allowlist import (
     _load_allowlist,
-    _pipeline_result_to_dict,
-    _project_assets,
     _reset_allowlist_cache,
-    _resolve_projects_dir,
     check_path_allowed,
+)
+from automedia.mcp.server import (
     create_server,
     health_check,
+)
+from automedia.mcp.tools import (
+    _discover_projects,
+    _pipeline_result_to_dict,
+    _project_assets,
+    _resolve_projects_dir,
 )
 
 # ---------------------------------------------------------------------------

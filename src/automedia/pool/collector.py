@@ -1,10 +1,7 @@
-"""HotCollector — three-layer funnel hot topic collection.
+"""HotCollector — topic collection funnel.
 
-Layer 1: Simulated platform hot-search APIs (Weibo, Zhihu, Douyin, Bilibili).
 Layer 2: Tavily AI search on extracted keywords.
 Layer 3: AIHOT aggregator feed.
-
-All data is synthetic — zero real API calls.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class HotCollector:
-    """Collect hot topics from multiple simulated sources via a 3-layer funnel.
+    """Collect hot topics from simulated sources.
 
     Parameters
     ----------
@@ -36,7 +33,7 @@ class HotCollector:
     # ------------------------------------------------------------------
 
     def collect_all(self) -> list[dict]:
-        """Run the full three-layer funnel and return deduplicated topics.
+        """Run the collection funnel and return deduplicated topics.
 
         Returns
         -------
@@ -44,22 +41,15 @@ class HotCollector:
             Each item has keys: ``source``, ``title``, ``url``,
             ``heat_score`` (float 0-10), ``collected_at`` (ISO-8601).
         """
-        # Layer 1 — platform hot-search APIs
-        layer1: list[dict] = []
-        layer1.extend(self._collect_weibo())
-        layer1.extend(self._collect_zhihu())
-        layer1.extend(self._collect_douyin())
-        layer1.extend(self._collect_bilibili())
-
-        # Layer 2 — Tavily AI search on keywords extracted from layer-1 titles
-        keywords = self._extract_keywords(layer1)
+        # Layer 2 — Tavily AI search on extracted keywords
+        keywords = self._extract_keywords(self._seed_topics)
         layer2 = self._search_tavily(keywords)
 
         # Layer 3 — AIHOT aggregator
         layer3 = self._fetch_aihot()
 
         # Merge all layers + seed topics
-        all_topics = layer1 + layer2 + layer3 + self._seed_topics
+        all_topics = layer2 + layer3 + self._seed_topics
 
         # Simple title-based dedup (preserve order, keep first occurrence)
         seen_titles: set[str] = set()
@@ -119,118 +109,6 @@ class HotCollector:
                 manifest={"source_file": file_path, "error": str(exc)},
                 warnings=[f"Extraction failed: {exc}"],
             )
-
-    # ------------------------------------------------------------------
-    # Layer 1 — platform hot-search APIs (simulated)
-    # ------------------------------------------------------------------
-
-    def _collect_weibo(self) -> list[dict]:
-        """Simulate Weibo hot-search API."""
-        now = _now_iso()
-        return [
-            {
-                "source": "weibo",
-                "title": "AI视频生成技术突破",
-                "url": "https://weibo.com/hot/ai-video",
-                "heat_score": 9.2,
-                "collected_at": now,
-            },
-            {
-                "source": "weibo",
-                "title": "大模型降价潮来袭",
-                "url": "https://weibo.com/hot/llm-price",
-                "heat_score": 8.5,
-                "collected_at": now,
-            },
-            {
-                "source": "weibo",
-                "title": "自媒体创作者工具更新",
-                "url": "https://weibo.com/hot/creator-tools",
-                "heat_score": 7.8,
-                "collected_at": now,
-            },
-        ]
-
-    def _collect_zhihu(self) -> list[dict]:
-        """Simulate Zhihu hot-search API."""
-        now = _now_iso()
-        return [
-            {
-                "source": "zhihu",
-                "title": "人工智能如何改变教育",
-                "url": "https://zhihu.com/hot/ai-edu",
-                "heat_score": 8.0,
-                "collected_at": now,
-            },
-            {
-                "source": "zhihu",
-                "title": "AIGC内容创作指南",
-                "url": "https://zhihu.com/hot/aigc-guide",
-                "heat_score": 8.8,
-                "collected_at": now,
-            },
-            {
-                "source": "zhihu",
-                "title": "芯片行业最新动态",
-                "url": "https://zhihu.com/hot/chip-news",
-                "heat_score": 6.5,
-                "collected_at": now,
-            },
-        ]
-
-    def _collect_douyin(self) -> list[dict]:
-        """Simulate Douyin hot-search API."""
-        now = _now_iso()
-        return [
-            {
-                "source": "douyin",
-                "title": "AI绘画爆款教程",
-                "url": "https://douyin.com/hot/ai-paint",
-                "heat_score": 9.0,
-                "collected_at": now,
-            },
-            {
-                "source": "douyin",
-                "title": "科技博主推荐的AI工具",
-                "url": "https://douyin.com/hot/ai-tools",
-                "heat_score": 7.5,
-                "collected_at": now,
-            },
-            {
-                "source": "douyin",
-                "title": "互联网大厂裁员最新消息",
-                "url": "https://douyin.com/hot/layoff",
-                "heat_score": 6.0,
-                "collected_at": now,
-            },
-        ]
-
-    def _collect_bilibili(self) -> list[dict]:
-        """Simulate Bilibili hot-search API."""
-        now = _now_iso()
-        return [
-            {
-                "source": "bilibili",
-                "title": "Sora最新视频效果展示",
-                "url": "https://bilibili.com/hot/sora",
-                "heat_score": 9.5,
-                "collected_at": now,
-            },
-            {
-                "source": "bilibili",
-                "title": "大模型应用开发实战",
-                "url": "https://bilibili.com/hot/llm-dev",
-                "heat_score": 8.2,
-                "collected_at": now,
-            },
-            {
-                "source": "bilibili",
-                "title": "体育赛事精彩集锦",
-                "url": "https://bilibili.com/hot/sports",
-                "heat_score": 5.0,
-                "collected_at": now,
-            },
-        ]
 
     # ------------------------------------------------------------------
     # Layer 2 — Tavily AI search (simulated)

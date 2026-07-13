@@ -63,10 +63,6 @@ class TestOmniToolRegistryCRUD:
         names = OmniToolRegistry.list_tools()
         assert names == ["stub", "stub2"]
 
-    def test_list_deprecated_still_works(self) -> None:
-        OmniToolRegistry.register(_StubAdapter())
-        assert OmniToolRegistry.list() == ["stub"]
-
     def test_register_raises_value_error_for_empty_name(self) -> None:
         class _EmptyNameAdapter(BaseOmniAdapter):
             @property
