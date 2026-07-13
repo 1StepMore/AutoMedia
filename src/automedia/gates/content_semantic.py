@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -43,7 +43,7 @@ _EXPECTED_MAP: dict[str, str] = {
 def _check_keyword_coverage(
     source_keywords: list[str],
     content_keywords: list[str],
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 1: keyword coverage ≥80% across 3 sources.
 
     Coverage = |source ∩ content| / |source|.
@@ -72,7 +72,7 @@ def _check_keyword_coverage(
     }
 
 
-def _check_source_alignment(source_texts: list[str]) -> dict[str, Any]:
+def _check_source_alignment(source_texts: list[str]) -> CheckResult:
     """Check 2: at least 2 of 3 sources are present (alignment)."""
     name = "source_alignment"
     present = sum(1 for t in source_texts if t and t.strip())
@@ -93,7 +93,7 @@ def _check_no_hallucination(
     source_keywords: list[str],
     content_keywords: list[str],
     max_hallucination_ratio: float = 0.30,
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 3: no excessive hallucinated keywords outside source overlap."""
     name = "no_hallucination"
     if not content_keywords:

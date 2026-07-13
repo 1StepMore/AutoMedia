@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from automedia.gates._result import CheckResult
+
 
 def apply_mock_overrides(
-    check_fns: list[tuple[str, Callable[[], dict[str, Any]]]],
+    check_fns: list[tuple[str, Callable[[], CheckResult]]],
     mock_results: dict[str, dict[str, Any]] | None,
-) -> list[dict[str, Any]]:
+) -> list[CheckResult]:
     """Build a list of check result dicts, overriding with mock values
     when the gate is running under test.
 
@@ -33,7 +35,7 @@ def apply_mock_overrides(
     Returns:
         List of check result dicts compatible with ``build_gate_result()``.
     """
-    checks: list[dict[str, Any]] = []
+    checks: list[CheckResult] = []
     for name, fn in check_fns:
         if mock_results is not None and name in mock_results:
             mock = mock_results[name]

@@ -7,7 +7,23 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
+
+
+class TopicRecord(TypedDict, total=False):
+    """A single topic row from the pool database."""
+
+    id: int
+    title: str
+    url: str
+    source: str
+    category: str
+    status: str
+    score: float
+    tenant_id: str
+    created_at: str
+    updated_at: str
+    research_data: str
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS topics (
@@ -137,7 +153,7 @@ class PoolDB:
         assert lastrowid is not None  # noqa: S101 — type narrowing
         return lastrowid
 
-    def get_topic(self, topic_id: int) -> dict[str, Any] | None:
+    def get_topic(self, topic_id: int) -> TopicRecord | None:
         """Fetch a single topic by its primary key.
 
         Returns ``None`` when the topic does not exist.
@@ -146,15 +162,15 @@ class PoolDB:
         row = cur.fetchone()
         if row is None:
             return None
-        return dict(row)
+        return dict(row)  # type: ignore[return-value]
 
-    def list_topics(self, status: str | None = None) -> list[dict[str, Any]]:
+    def list_topics(self, status: str | None = None) -> list[TopicRecord]:
         """Return all topics, optionally filtered by *status*."""
         if status:
             cur = self.conn.execute("SELECT * FROM topics WHERE status = ? ORDER BY id", (status,))
         else:
             cur = self.conn.execute("SELECT * FROM topics ORDER BY id")
-        return [dict(r) for r in cur.fetchall()]
+        return [dict(r) for r in cur.fetchall()]  # type: ignore[misc]
 
     def mark_selected(self, topic_id: int) -> None:
         """Update a topic's status to ``'selected'``."""

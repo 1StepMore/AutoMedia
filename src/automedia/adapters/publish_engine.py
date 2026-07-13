@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from automedia.adapters.base import BasePlatformAdapter
+from automedia.adapters.base import BasePlatformAdapter, PublishResult
 from automedia.adapters.registry import AdapterRegistry
 
 
@@ -25,7 +25,7 @@ class PublishEngine:
         artifact_dir: str,
         project: dict[str, Any],
         account_ids: list[str] | None = None,
-    ) -> dict[str, dict[str, Any]]:
+    ) -> dict[str, PublishResult]:
         """Iterate adapters and publish.
 
         When *account_ids* is provided, publishes only to those accounts
@@ -47,11 +47,11 @@ class PublishEngine:
 
         Returns
         -------
-        dict[str, dict]
+        dict[str, PublishResult]
             Mapping ``{platform_or_account_id -> result_dict}`` for every
             adapter that was actually invoked.
         """
-        results: dict[str, dict[str, Any]] = {}
+        results: dict[str, PublishResult] = {}
 
         if account_ids:
             # PRD-4 path: publish per-account

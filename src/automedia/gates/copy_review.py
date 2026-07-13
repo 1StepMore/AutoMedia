@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import llm_check_with_fallback
+from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -111,7 +112,7 @@ _VAGUE_RE = re.compile(
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 
-def _check_clarity(content: str) -> dict[str, Any]:
+def _check_clarity(content: str) -> CheckResult:
     """Round 1: Check clarity — sentence complexity, jargon, vague words."""
     name = "clarity"
     if not content.strip():
@@ -167,7 +168,7 @@ _TONE_CONFLICTS: dict[str, set[str]] = {
 }
 
 
-def _check_tone(content: str, brand_profile: dict[str, Any] | None) -> dict[str, Any]:
+def _check_tone(content: str, brand_profile: dict[str, Any] | None) -> CheckResult:
     """Round 2: Check brand tone consistency."""
     name = "tone"
     if not content.strip():
@@ -244,7 +245,7 @@ _VALUE_RE = re.compile(
 )
 
 
-def _check_so_what(content: str) -> dict[str, Any]:
+def _check_so_what(content: str) -> CheckResult:
     """Round 3: Does the content answer 'So what?' (reader value)."""
     name = "so_what"
     if not content.strip():
@@ -299,7 +300,7 @@ _EVIDENCE_PATTERNS: list[str] = [
 _EVIDENCE_RE = re.compile("|".join(_EVIDENCE_PATTERNS), re.IGNORECASE)
 
 
-def _check_evidence(content: str) -> dict[str, Any]:
+def _check_evidence(content: str) -> CheckResult:
     """Round 4: Are claims backed by data/sources?"""
     name = "evidence"
     if not content.strip():
@@ -369,7 +370,7 @@ _CONCRETE_INDICATORS: list[str] = [
 _CONCRETE_RE = re.compile("|".join(_CONCRETE_INDICATORS), re.IGNORECASE)
 
 
-def _check_specificity(content: str) -> dict[str, Any]:
+def _check_specificity(content: str) -> CheckResult:
     """Round 5: Is the copy using abstract buzzwords or concrete examples?"""
     name = "specificity"
     if not content.strip():
@@ -546,9 +547,9 @@ class G2CopyReview(BaseGate):
                 text=content,
                 check_type="copy_review",
                 prompt_template_name="copy_review_g2",
-                deterministic_fn=lambda text: self._run_deterministic(
+                deterministic_fn=lambda text: cast(LLMCheckResult, self._run_deterministic(  # type: ignore[arg-type]
                     text, brand_profile, None,
-                ),
+                )),
                 brand_guidelines=brand_guidelines,
             )
 
@@ -569,7 +570,7 @@ class G2CopyReview(BaseGate):
                 result["brand_compliance"] = llm_result.get("brand_compliance", True)
                 return result
 
-            return llm_result
+            return cast(dict[str, Any], llm_result)
 
         return self._run_deterministic(content, brand_profile, mock_results)
 
@@ -592,7 +593,7 @@ class G2CopyReview(BaseGate):
             ("specificity", lambda: _check_specificity(content)),
         ]
 
-        checks: list[dict[str, Any]] = []
+        checks: list[CheckResult] = []
         for name, fn in check_fns:
             if mock_results is not None and name in mock_results:
                 mock = mock_results[name]
@@ -620,7 +621,7 @@ class G2CopyReview(BaseGate):
         )
 
     @staticmethod
-    def _build_llm_checks(llm_result: dict[str, Any]) -> list[dict[str, Any]]:
+    def _build_llm_checks(llm_result: LLMCheckResult) -> list[CheckResult]:
         """Convert LLM result into a checks list for standard format."""
         passed: bool = llm_result["passed"]
         issues: list[str] = llm_result.get("issues", [])

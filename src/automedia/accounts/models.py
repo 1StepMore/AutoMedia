@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, TypedDict
 
 
 class AuthType(enum.StrEnum):
@@ -56,9 +56,27 @@ class AccountCredentials:
     algorithm: str = "AES-256-GCM"
 
 
-# Type alias for index entries — intentionally loosely typed because
-# the index stores heterogeneous metadata dicts.
-IndexEntry = dict[str, Any]
+class AccountInfo(TypedDict, total=False):
+    """Metadata entry for a platform account in the index.
+
+    ``account_id``, ``platform``, ``label``, ``auth_type``,
+    ``fingerprint``, and ``status`` are always present.
+    """
+
+    account_id: str
+    platform: str
+    label: str
+    auth_type: str
+    fingerprint: str
+    status: str
+    created_at: str
+    last_used: str | None
+    last_health_check: str | None
+    tags: dict[str, str]
+
+
+# Type alias for backward compatibility
+IndexEntry = AccountInfo
 
 
 @dataclass

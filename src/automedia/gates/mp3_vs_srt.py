@@ -15,7 +15,7 @@ from difflib import SequenceMatcher
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -55,7 +55,7 @@ def _strip_srt_timestamps(srt_text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _check_whisper_vs_srt_diff(whisper_text: str, srt_text: str) -> dict[str, Any]:
+def _check_whisper_vs_srt_diff(whisper_text: str, srt_text: str) -> CheckResult:
     """Check 1: diff ratio between Whisper output and SRT text ≥80%."""
     name = "whisper_vs_srt_diff"
     if not whisper_text.strip() or not srt_text.strip():
@@ -76,7 +76,7 @@ def _check_whisper_vs_srt_diff(whisper_text: str, srt_text: str) -> dict[str, An
     }
 
 
-def _check_srt_not_empty(srt_text: str) -> dict[str, Any]:
+def _check_srt_not_empty(srt_text: str) -> CheckResult:
     """Check 2: SRT file content is non-empty."""
     name = "srt_not_empty"
     if srt_text.strip():
@@ -84,7 +84,7 @@ def _check_srt_not_empty(srt_text: str) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "SRT text is empty"}
 
 
-def _check_whisper_not_empty(whisper_text: str) -> dict[str, Any]:
+def _check_whisper_not_empty(whisper_text: str) -> CheckResult:
     """Check 3: Whisper transcription is non-empty."""
     name = "whisper_not_empty"
     if whisper_text.strip():

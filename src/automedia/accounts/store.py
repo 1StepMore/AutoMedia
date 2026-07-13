@@ -32,6 +32,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from automedia.accounts.models import AccountInfo
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
@@ -156,7 +158,7 @@ class AccountStore:
         label: str = "",
         auth_type: str = "api_key",
         tags: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> AccountInfo:
         """Encrypt and store credentials for an account.
 
         Parameters
@@ -212,7 +214,7 @@ class AccountStore:
         }
         self._save_index_atomic(index)
 
-        return dict(index["accounts"][account_id])
+        return {"account_id": account_id, **index["accounts"][account_id]}
 
     def load(self, account_id: str) -> dict[str, Any] | None:
         """Decrypt and return the credentials for *account_id*.
@@ -266,23 +268,23 @@ class AccountStore:
         self,
         platform: str | None = None,
         status: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[AccountInfo]:
         """List all accounts, optionally filtered by platform and/or status.
 
         Returns account metadata (not decrypted credentials).
         """
         index = self._load_index()
-        accounts: list[dict[str, Any]] = []
+        accounts: list[AccountInfo] = []
         for acc_id, info in index["accounts"].items():
             if platform and info["platform"] != platform:
                 continue
             if status and info["status"] != status:
                 continue
-            entry: dict[str, Any] = {"account_id": acc_id, **info}
+            entry: AccountInfo = {"account_id": acc_id, **info}
             accounts.append(entry)
         return accounts
 
-    def get_account_info(self, account_id: str) -> dict[str, Any] | None:
+    def get_account_info(self, account_id: str) -> AccountInfo | None:
         """Get unencrypted account metadata from the index.
 
         Returns ``None`` when *account_id* is not found.

@@ -22,7 +22,7 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +30,31 @@ from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
+
+
+class LLMCheckResult(TypedDict, total=False):
+    """Result dict produced by :func:`llm_check_with_fallback`.
+
+    ``passed``, ``issues``, and ``method`` are always present.
+    ``confidence`` (G0/G1), ``tone_score`` (G2), and
+    ``brand_compliance`` (G2) are model-specific extras.
+    """
+
+    passed: bool
+    issues: list[str]
+    method: str
+    confidence: float
+    tone_score: float
+    brand_compliance: bool
+
+
+class DeepCheckOutput(TypedDict, total=False):
+    """Result dict produced by :func:`run_deep_check`."""
+
+    passed: bool
+    issues: list[str]
+    method: str
+
 
 # ---------------------------------------------------------------------------
 # Counters for monitoring LLM vs fallback ratio
@@ -101,10 +126,10 @@ def llm_check_with_fallback(
     text: str,
     check_type: str,
     prompt_template_name: str,
-    deterministic_fn: Callable[[str], dict[str, Any]],
+    deterministic_fn: Callable[[str], LLMCheckResult],
     timeout: int = 30,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> LLMCheckResult:
     """Run an LLM-based check with deterministic fallback.
 
     Attempts to evaluate *text* using an LLM with structured output.
@@ -163,7 +188,7 @@ def llm_check_with_fallback(
             result = future.result(timeout=timeout)
 
         # Build success response
-        response: dict[str, Any] = {
+        response: LLMCheckResult = {
             "passed": result.passed,
             "issues": result.issues,
             "method": "llm",
@@ -222,7 +247,7 @@ def run_deep_check(
     text: str,
     check_description: str,
     timeout: int = 15,
-) -> dict[str, Any]:
+) -> DeepCheckOutput:
     """Run an advisory LLM deep-check on gate content.
 
     This is optional and never blocks the gate.  Returns a dict with

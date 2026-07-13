@@ -12,7 +12,7 @@ from typing import Any
 
 from structlog import get_logger
 
-from automedia.adapters.base import BasePlatformAdapter
+from automedia.adapters.base import PublishResult, BasePlatformAdapter
 from automedia.core.credential_loader import load_credential_or_env
 
 log = get_logger(__name__)
@@ -54,7 +54,7 @@ class FeishuNotifier(BasePlatformAdapter):
     # ------------------------------------------------------------------
     # Publish
     # ------------------------------------------------------------------
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
+    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
         """POST an interactive card to the configured Feishu webhook.
 
         Returns

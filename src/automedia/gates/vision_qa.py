@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -35,7 +35,7 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-def _check_mid_frame_valid(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _check_mid_frame_valid(entries: list[dict[str, Any]]) -> CheckResult:
     """Check 1: every entry has a valid mid_frame_path."""
     name = "mid_frame_valid"
     if not entries:
@@ -54,7 +54,7 @@ def _check_mid_frame_valid(entries: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _check_end_silence_frame_valid(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _check_end_silence_frame_valid(entries: list[dict[str, Any]]) -> CheckResult:
     """Check 2: every entry has a valid end_silence_frame_path."""
     name = "end_silence_valid"
     if not entries:
@@ -73,7 +73,7 @@ def _check_end_silence_frame_valid(entries: list[dict[str, Any]]) -> dict[str, A
     }
 
 
-def _check_all_entries_passed(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _check_all_entries_passed(entries: list[dict[str, Any]]) -> CheckResult:
     """Check 3: every entry has qa_passed=True."""
     name = "all_entries_passed"
     if not entries:
@@ -84,7 +84,7 @@ def _check_all_entries_passed(entries: list[dict[str, Any]]) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": f"all {len(entries)} entries passed vision QA"}
 
 
-def _check_red_line_6(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _check_red_line_6(entries: list[dict[str, Any]]) -> CheckResult:
     """Check 4 (Red Line 6): full coverage — every entry must be checked, no sampling."""
     name = "red_line_6"
     if not entries:

@@ -12,7 +12,7 @@ import re
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -108,7 +108,7 @@ _CLOSE_TAG_RE = re.compile(r"</(\w+)>", re.DOTALL)
 # ---------------------------------------------------------------------------
 
 
-def _check_tag_integrity(content: str) -> dict[str, Any]:
+def _check_tag_integrity(content: str) -> CheckResult:
     """Check 1: Basic HTML tag structure is well-formed.
 
     For every paired tag that appears, count open vs close tags.
@@ -150,7 +150,7 @@ def _check_tag_integrity(content: str) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": "all paired tags match"}
 
 
-def _check_no_markdown(content: str) -> dict[str, Any]:
+def _check_no_markdown(content: str) -> CheckResult:
     """Check 2: HTML content contains no Markdown artifacts."""
     name = "no_markdown"
     if not content.strip():
@@ -172,7 +172,7 @@ def _check_no_markdown(content: str) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": "no Markdown artifacts detected"}
 
 
-def _check_tag_count(tags: list[str]) -> dict[str, Any]:
+def _check_tag_count(tags: list[str]) -> CheckResult:
     """Check 3: tags count ≥ 5."""
     name = "tag_count"
     count = len(tags)

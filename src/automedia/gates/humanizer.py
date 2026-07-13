@@ -23,9 +23,9 @@ import re
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import llm_check_with_fallback
+from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -209,7 +209,7 @@ _EXPECTED_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _check_overused_adverbs(content: str) -> dict[str, Any]:
+def _check_overused_adverbs(content: str) -> CheckResult:
     """Check 1: Detect overused adverbs."""
     matches = _ADVERB_RE.findall(content)
     if not matches:
@@ -222,7 +222,7 @@ def _check_overused_adverbs(content: str) -> dict[str, Any]:
     }
 
 
-def _check_hollow_intros(content: str) -> dict[str, Any]:
+def _check_hollow_intros(content: str) -> CheckResult:
     """Check 2: Detect hollow introductory phrases."""
     sentences = _SENTENCE_SPLIT_RE.split(content.strip())
     found: list[str] = []
@@ -241,7 +241,7 @@ def _check_hollow_intros(content: str) -> dict[str, Any]:
     }
 
 
-def _check_vague_subjects(content: str) -> dict[str, Any]:
+def _check_vague_subjects(content: str) -> CheckResult:
     """Check 3: Detect vague/generic subject constructions."""
     sentences = _SENTENCE_SPLIT_RE.split(content.strip())
     found: list[str] = []
@@ -260,7 +260,7 @@ def _check_vague_subjects(content: str) -> dict[str, Any]:
     }
 
 
-def _check_filler_connectors(content: str) -> dict[str, Any]:
+def _check_filler_connectors(content: str) -> CheckResult:
     """Check 4: Detect filler connectors at sentence starts."""
     sentences = _SENTENCE_SPLIT_RE.split(content.strip())
     found: list[str] = []
@@ -277,7 +277,7 @@ def _check_filler_connectors(content: str) -> dict[str, Any]:
     }
 
 
-def _check_long_conjunctions(content: str) -> dict[str, Any]:
+def _check_long_conjunctions(content: str) -> CheckResult:
     """Check 5: Detect overly long conjunction chains."""
     sentences = _SENTENCE_SPLIT_RE.split(content.strip())
     found: list[str] = []
@@ -301,7 +301,7 @@ def _check_long_conjunctions(content: str) -> dict[str, Any]:
     }
 
 
-def _check_template_conclusions(content: str) -> dict[str, Any]:
+def _check_template_conclusions(content: str) -> CheckResult:
     """Check 6: Detect template-style conclusion phrases."""
     sentences = _SENTENCE_SPLIT_RE.split(content.strip())
     found: list[str] = []
@@ -324,7 +324,7 @@ def _check_template_conclusions(content: str) -> dict[str, Any]:
     }
 
 
-def _check_overacademic_vocabulary(content: str) -> dict[str, Any]:
+def _check_overacademic_vocabulary(content: str) -> CheckResult:
     """Check 7: Detect over-academic vocabulary."""
     matches = _ACADEMIC_WORD_RE.findall(content)
     if not matches:
@@ -341,7 +341,7 @@ def _check_overacademic_vocabulary(content: str) -> dict[str, Any]:
     }
 
 
-def _check_absolute_assertions(content: str) -> dict[str, Any]:
+def _check_absolute_assertions(content: str) -> CheckResult:
     """Check 8: Detect absolute assertion patterns."""
     matches = _ABSOLUTE_RE.findall(content)
     if not matches:
@@ -358,7 +358,7 @@ def _check_absolute_assertions(content: str) -> dict[str, Any]:
     }
 
 
-def _check_repetitive_structures(content: str) -> dict[str, Any]:
+def _check_repetitive_structures(content: str) -> CheckResult:
     """Check 9: Detect repetitive sentence-opening structures."""
     sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(content.strip()) if s.strip()]
     if len(sentences) < 3:
@@ -545,9 +545,9 @@ class G1Humanizer(BaseGate):
         # ------------------------------------------------------------------
         if enable_llm and content.strip():
             # Mutable container to capture per-step checks from fallback
-            captured_checks: list[dict[str, Any]] = []
+            captured_checks: list[CheckResult] = []
 
-            def _deterministic_fn(_text: str) -> dict[str, Any]:
+            def _deterministic_fn(_text: str) -> LLMCheckResult:
                 det_checks = self._run_deterministic(content, None)
                 captured_checks.extend(det_checks)
                 return {
@@ -615,7 +615,7 @@ class G1Humanizer(BaseGate):
         self,
         content: str,
         mock_results: dict[str, dict[str, Any]] | None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[CheckResult]:
         """Run the 9-category regex detection (deterministic path).
 
         When *mock_results* is provided, individual check results are
@@ -633,7 +633,7 @@ class G1Humanizer(BaseGate):
             ("repetitive_structures", lambda: _check_repetitive_structures(content)),
         ]
 
-        checks: list[dict[str, Any]] = []
+        checks: list[CheckResult] = []
         for name, fn in check_fns:
             if mock_results is not None and name in mock_results:
                 mock = mock_results[name]

@@ -15,7 +15,7 @@ import re
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -132,7 +132,7 @@ def _check_topic_not_category(
     check_name: str,
     patterns: list[str],
     category_label: str,
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check that *topic* does not match any of the forbidden *patterns*."""
     if not isinstance(topic, str):
         return {
@@ -157,7 +157,7 @@ def _check_topic_not_category(
     }
 
 
-def _check_topic_length_valid(topic: str) -> dict[str, Any]:
+def _check_topic_length_valid(topic: str) -> CheckResult:
     """Check that the topic string has a reasonable length."""
     name = "topic_length_valid"
     if not isinstance(topic, str):

@@ -7,7 +7,52 @@ modules.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
+
+
+class CheckResult(TypedDict):
+    """Individual check dict produced by a gate check function.
+
+    Every gate check returns at minimum ``name``, ``passed``, and ``detail``.
+    Additional keys (e.g. ``method``, ``confidence``) may be present when
+    the check was performed by an LLM.
+    """
+
+    name: str
+    passed: bool
+    detail: str
+
+
+class ExpectedVsActual(TypedDict):
+    """Expected-vs-actual comparison for the first failing check."""
+
+    check: str
+    expected: str
+    actual: str
+    context: dict[str, Any]
+
+
+class GateResult(TypedDict, total=False):
+    """Structured result produced by a gate execution.
+
+    ``passed``, ``gate``, ``checks``, ``error``, and
+    ``expected_vs_actual`` are always present when the gate runs
+    successfully.  ``duration_s`` is injected by ``GateEngine`` after
+    execution.  Extra keys such as ``output_path``, ``modified_content``,
+    or ``retry_count`` are gate-specific.
+    """
+
+    passed: bool
+    gate: str
+    checks: list[CheckResult]
+    error: str | None
+    expected_vs_actual: ExpectedVsActual
+    duration_s: float
+    output_path: str
+    retry_count: int
+    modified_content: str
+    method: str
+    confidence: float
 
 
 def _derive_expected(
@@ -28,7 +73,7 @@ def _derive_expected(
 
 
 def build_gate_result(
-    checks: list[dict[str, Any]],
+    checks: list[CheckResult],
     *,
     gate: str,
     error: str | None = None,
@@ -66,7 +111,7 @@ def build_gate_result(
         (c for c in checks if not c["passed"]),
         checks[0] if checks else None,
     )
-    expected_vs_actual: dict[str, Any] = {}
+    expected_vs_actual: ExpectedVsActual | dict[str, Any] = {}
     if target:
         expected_vs_actual = {
             "check": target["name"],

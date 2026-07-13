@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import _derive_expected, build_gate_result
+from automedia.gates._result import CheckResult, _derive_expected, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -32,7 +32,7 @@ _CHECK_NAMES: list[str] = [
 
 
 
-def _check_archive_status(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_archive_status(context: GateContext | dict[str, Any]) -> CheckResult:
     """Red Line 8: archive must have status ``"published"``.
 
     If status is not ``"published"`` this check fails. The overall pipeline
@@ -49,7 +49,7 @@ def _check_archive_status(context: GateContext | dict[str, Any]) -> dict[str, An
     }
 
 
-def _check_force_flag(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_force_flag(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check whether the ``--force`` / ``force`` flag is set.
 
     When true this overrides a non-published archive status (Red Line 8).
@@ -69,7 +69,7 @@ def _check_force_flag(context: GateContext | dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _check_archive_path_exists(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_archive_path_exists(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that an archive path has been provided."""
     name = "archive_path_exists"
     path = context.get("archive_path", "")
@@ -78,7 +78,7 @@ def _check_archive_path_exists(context: GateContext | dict[str, Any]) -> dict[st
     return {"name": name, "passed": False, "detail": "archive_path is missing or empty"}
 
 
-def _check_archive_metadata_complete(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_archive_metadata_complete(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that archive metadata contains required fields."""
     name = "archive_metadata_complete"
     metadata: dict[str, Any] = context.get("archive_metadata", {})
@@ -97,7 +97,7 @@ def _check_archive_metadata_complete(context: GateContext | dict[str, Any]) -> d
     }
 
 
-def _check_archive_version_valid(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_archive_version_valid(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that the archive version is a non-empty string if provided."""
     name = "archive_version_valid"
     version = context.get("archive_version", "")
@@ -108,7 +108,7 @@ def _check_archive_version_valid(context: GateContext | dict[str, Any]) -> dict[
     return {"name": name, "passed": False, "detail": "archive_version is present but empty"}
 
 
-def _check_output_directory_exists(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_output_directory_exists(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that an output directory has been provided."""
     name = "output_directory_exists"
     out_dir = context.get("output_dir", "")

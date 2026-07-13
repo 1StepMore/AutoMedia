@@ -13,7 +13,7 @@ import traceback
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 import tenacity
 from structlog import get_logger
@@ -68,6 +68,31 @@ class PipelineResult:
     end_time: float = 0.0
     total_duration_s: float = 0.0
     error: str | None = None
+
+
+class GateErrorResult(TypedDict, total=False):
+    """Structured error result produced when a gate raises an exception.
+
+    ``passed``, ``gate``, ``error``, and ``duration_s`` are always
+    present.  ``retry_count`` and ``retry_delay_s`` are set when
+    transient exceptions exhaust their retry budget.
+    """
+
+    passed: bool
+    gate: str
+    error: str
+    duration_s: float
+    retry_count: int
+    retry_delay_s: float
+
+
+class ProgressData(TypedDict, total=False):
+    """Snapshot of pipeline progress returned by ``get_progress()``."""
+
+    project_id: str
+    current_gate: str | None
+    events: list[dict[str, Any]]
+    error: str | None
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +156,7 @@ class PipelineProgress:
 
     # -- Accessors (called by MCP get_pipeline_progress) --------------------
 
-    def get_progress(self) -> dict[str, Any]:
+    def get_progress(self) -> ProgressData:
         """Return current progress as a JSON-compatible dict."""
         with self._lock:
             return {
@@ -348,7 +373,7 @@ class GateEngine:
                     error=str(exc), failure_mode=fm,
                     traceback=tb,
                 )
-                error_result: dict[str, Any] = {
+                error_result = {
                     "passed": False,
                     "gate": gate_name,
                     "error": str(exc),
@@ -372,7 +397,7 @@ class GateEngine:
                     error=str(exc), failure_mode=fm,
                     traceback=tb,
                 )
-                error_result: dict[str, Any] = {
+                error_result = {
                     "passed": False,
                     "gate": gate_name,
                     "error": str(exc),

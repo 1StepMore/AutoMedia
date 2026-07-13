@@ -22,9 +22,9 @@ import logging
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import llm_check_with_fallback
+from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def _run_deterministic_checks(
     content: str,
     source_url: str,
     source_data: dict[str, Any],
-) -> list[dict[str, Any]]:
+    ) -> list[CheckResult]:
     """Run all 5 deterministic checks and return the check dicts."""
     return [
         _check_source_trace(content, source_url, source_data),
@@ -76,7 +76,7 @@ def _run_deterministic_checks(
 
 def _check_source_trace(
     content: str, source_url: str, source_data: dict[str, Any]
-) -> dict[str, Any]:
+) -> CheckResult:
     """Step 1: Verify that *content* references the *source_url* domain."""
     name = "source_trace"
     if not source_url:
@@ -109,7 +109,7 @@ def _check_source_trace(
     }
 
 
-def _check_number_verification(content: str, source_data: dict[str, Any]) -> dict[str, Any]:
+def _check_number_verification(content: str, source_data: dict[str, Any]) -> CheckResult:
     """Step 2: Verify that numbers in *content* match *source_data.key_numbers*."""
     name = "number_verification"
     key_numbers: dict[str, str] = source_data.get("key_numbers", {})
@@ -129,7 +129,7 @@ def _check_number_verification(content: str, source_data: dict[str, Any]) -> dic
     return {"name": name, "passed": True, "detail": f"all {len(key_numbers)} key_numbers verified"}
 
 
-def _check_timeline(content: str, source_data: dict[str, Any]) -> dict[str, Any]:
+def _check_timeline(content: str, source_data: dict[str, Any]) -> CheckResult:
     """Step 3: Verify that event dates in *content* are chronologically consistent."""
     name = "timeline"
     published_date: str = source_data.get("published_date", "")
@@ -172,7 +172,7 @@ def _check_timeline(content: str, source_data: dict[str, Any]) -> dict[str, Any]
     return {"name": name, "passed": True, "detail": "timeline consistent"}
 
 
-def _check_quotes(content: str, source_data: dict[str, Any]) -> dict[str, Any]:
+def _check_quotes(content: str, source_data: dict[str, Any]) -> CheckResult:
     """Step 4: Verify that quotes in *content* match *source_data.quotes*."""
     name = "quotes"
     source_quotes: list[str] = source_data.get("quotes", [])
@@ -195,7 +195,7 @@ def _check_quotes(content: str, source_data: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": f"all {len(source_quotes)} quotes verified"}
 
 
-def _check_entities(content: str, source_data: dict[str, Any]) -> dict[str, Any]:
+def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
     """Step 5: Verify that key entity names in *content* match *source_data.entities*."""
     name = "entities"
     source_entities: list[str] = source_data.get("entities", [])
@@ -250,7 +250,7 @@ class G0FactCheck(BaseGate):
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
         if mock_results is not None:
-            checks: list[dict[str, Any]] = []
+            checks: list[CheckResult] = []
             for name in _CHECK_NAMES:
                 if name in mock_results:
                     mock = mock_results[name]
@@ -276,9 +276,9 @@ class G0FactCheck(BaseGate):
 
         if enable_llm:
             # Mutable container captures per-step checks from deterministic fallback closure
-            captured_checks: list[dict[str, Any]] = []
+            captured_checks: list[CheckResult] = []
 
-            def _deterministic_fn(_text: str) -> dict[str, Any]:
+            def _deterministic_fn(_text: str) -> LLMCheckResult:
                 det_checks = _run_deterministic_checks(content, source_url, source_data)
                 captured_checks.extend(det_checks)
                 return {

@@ -18,7 +18,7 @@ from typing import Any
 
 import structlog
 
-from automedia.adapters.base import BasePlatformAdapter
+from automedia.adapters.base import PublishResult, BasePlatformAdapter
 from automedia.core.credential_loader import load_credential_or_env
 
 logger = structlog.get_logger(__name__)
@@ -58,7 +58,7 @@ class XiaohongshuPublisher(BasePlatformAdapter):
         )
         return True
 
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
+    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
         """Report that automated publishing is unavailable for Xiaohongshu.
 
         Returns a ``"not_implemented"`` status explaining that RED

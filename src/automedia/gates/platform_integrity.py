@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -33,7 +33,7 @@ _CHECK_NAMES: list[str] = [
 
 
 
-def _check_all_platforms_present(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_all_platforms_present(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that all expected platforms are covered in the archive."""
     name = "all_platforms_present"
     platforms: list[str] = context.get("platforms", [])
@@ -56,7 +56,7 @@ def _check_all_platforms_present(context: GateContext | dict[str, Any]) -> dict[
     }
 
 
-def _check_no_platform_splitting(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_no_platform_splitting(context: GateContext | dict[str, Any]) -> CheckResult:
     """Ensure content is NOT split per platform — must be a single unified archive.
 
     If ``content_platform_map`` exists and maps content to specific platforms,
@@ -87,7 +87,7 @@ def _check_no_platform_splitting(context: GateContext | dict[str, Any]) -> dict[
     }
 
 
-def _check_material_integrity(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_material_integrity(context: GateContext | dict[str, Any]) -> CheckResult:
     """Verify that all referenced media files are present."""
     name = "material_integrity"
     media_files: list[str] = context.get("media_files", [])
@@ -115,7 +115,7 @@ def _check_material_integrity(context: GateContext | dict[str, Any]) -> dict[str
     }
 
 
-def _check_cross_platform_consistency(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_cross_platform_consistency(context: GateContext | dict[str, Any]) -> CheckResult:
     """Ensure content is consistent across all platforms (same core content)."""
     name = "cross_platform_consistency"
     platform_variants: dict[str, str] = context.get("platform_variants", {})
@@ -144,7 +144,7 @@ def _check_cross_platform_consistency(context: GateContext | dict[str, Any]) -> 
     return {"name": name, "passed": True, "detail": "content is consistent across platforms"}
 
 
-def _check_format_completeness(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_format_completeness(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that all required output formats are specified."""
     name = "format_completeness"
     formats: list[str] = context.get("formats", [])
@@ -169,7 +169,7 @@ def _check_format_completeness(context: GateContext | dict[str, Any]) -> dict[st
     }
 
 
-def _check_metadata_integrity(context: GateContext | dict[str, Any]) -> dict[str, Any]:
+def _check_metadata_integrity(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that the archive metadata is internally consistent."""
     name = "metadata_integrity"
     metadata: dict[str, Any] = context.get("archive_metadata", {})

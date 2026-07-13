@@ -16,7 +16,7 @@ import re
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -72,7 +72,7 @@ _IMG_RE = re.compile(r"<img\s[^>]*src\s*=\s*\"[^\"]*\"[^>]*/?>", re.IGNORECASE)
 # ---------------------------------------------------------------------------
 
 
-def _check_title_length(title: str) -> dict[str, Any]:
+def _check_title_length(title: str) -> CheckResult:
     """Step 1: title ≤ 9 characters."""
     name = "title_length"
     length = len(title)
@@ -81,7 +81,7 @@ def _check_title_length(title: str) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"title length {length} > 9"}
 
 
-def _check_digest_length(digest: str) -> dict[str, Any]:
+def _check_digest_length(digest: str) -> CheckResult:
     """Step 2: digest ≤ 20 characters."""
     name = "digest_length"
     length = len(digest)
@@ -90,7 +90,7 @@ def _check_digest_length(digest: str) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"digest length {length} > 20"}
 
 
-def _check_no_markdown(content: str) -> dict[str, Any]:
+def _check_no_markdown(content: str) -> CheckResult:
     """Step 3: HTML content contains no Markdown artifacts."""
     name = "no_markdown"
     if not content.strip():
@@ -112,7 +112,7 @@ def _check_no_markdown(content: str) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": "no Markdown artifacts detected"}
 
 
-def _check_cover_exists(cover_image: str) -> dict[str, Any]:
+def _check_cover_exists(cover_image: str) -> CheckResult:
     """Step 4: cover image is provided."""
     name = "cover_exists"
     if cover_image:
@@ -120,7 +120,7 @@ def _check_cover_exists(cover_image: str) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "no cover image"}
 
 
-def _check_tag_count(tags: list[str]) -> dict[str, Any]:
+def _check_tag_count(tags: list[str]) -> CheckResult:
     """Step 5: tags count ≥ 5."""
     name = "tag_count"
     count = len(tags)
@@ -129,7 +129,7 @@ def _check_tag_count(tags: list[str]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"{count} tags < 5"}
 
 
-def _check_body_image_count(body_images: list[str]) -> dict[str, Any]:
+def _check_body_image_count(body_images: list[str]) -> CheckResult:
     """Step 6: body image count between 3 and 6."""
     name = "body_image_count"
     count = len(body_images)
@@ -138,7 +138,7 @@ def _check_body_image_count(body_images: list[str]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"{count} body images outside range [3, 6]"}
 
 
-def _check_sensitive_words(content: str) -> dict[str, Any]:
+def _check_sensitive_words(content: str) -> CheckResult:
     """Step 7: content contains no sensitive/blocked words."""
     name = "sensitive_words"
     if not content.strip():

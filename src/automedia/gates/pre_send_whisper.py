@@ -15,7 +15,7 @@ import hashlib
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -38,7 +38,7 @@ _MIN_TRANSCRIPTION_LENGTH: int = 10
 # ---------------------------------------------------------------------------
 
 
-def _check_whisper_transcription(transcription: str) -> dict[str, Any]:
+def _check_whisper_transcription(transcription: str) -> CheckResult:
     """Check 1: full audio transcription completed (non-empty)."""
     name = "whisper_transcription"
     if transcription and transcription.strip():
@@ -46,7 +46,7 @@ def _check_whisper_transcription(transcription: str) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "transcription is empty"}
 
 
-def _check_transcription_length(transcription: str) -> dict[str, Any]:
+def _check_transcription_length(transcription: str) -> CheckResult:
     """Check 2: transcription text meets minimum length."""
     name = "transcription_length"
     length = len(transcription.strip())
@@ -63,7 +63,7 @@ def _check_transcription_length(transcription: str) -> dict[str, Any]:
     }
 
 
-def _check_md5_integrity(audio_path: str, expected_md5: str) -> dict[str, Any]:
+def _check_md5_integrity(audio_path: str, expected_md5: str) -> CheckResult:
     """Check 3: audio file MD5 matches recorded hash."""
     name = "md5_integrity"
     if not expected_md5:
@@ -90,7 +90,7 @@ def _check_md5_integrity(audio_path: str, expected_md5: str) -> dict[str, Any]:
         return {"name": name, "passed": False, "detail": f"MD5 check error: {exc}"}
 
 
-def _check_red_line_7(transcription: str, full_audio: bool) -> dict[str, Any]:
+def _check_red_line_7(transcription: str, full_audio: bool) -> CheckResult:
     """Check 4 (Red Line 7): full transcription, not sampling."""
     name = "red_line_7"
     if full_audio:

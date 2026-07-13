@@ -3,7 +3,52 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypedDict
+
+
+class PublishResult(TypedDict, total=False):
+    """Result produced by adapter ``publish()``.
+
+    ``status`` (``"ok"`` or ``"error"``) is always present.
+    Platform-specific keys (``platform``, ``url``, ``article_id``,
+    ``draft_id``, ``publish_id``, ``message_id``) are optional.
+    """
+
+    status: str
+    healthy: bool
+    reason: str
+    url: str
+    platform: str
+    article_id: str
+    draft_id: str
+    publish_id: str
+    message_id: str
+    access_token: str
+
+
+class AuthResult(TypedDict, total=False):
+    """Result produced by adapter ``authenticate()``."""
+
+    status: str
+    healthy: bool
+    reason: str
+
+
+class HealthResult(TypedDict, total=False):
+    """Result produced by adapter ``check_health()``."""
+
+    status: str
+    healthy: bool
+    reason: str
+
+
+class AnalyticsResult(TypedDict, total=False):
+    """Result produced by adapter ``get_analytics()``."""
+
+    status: str
+    reason: str
+    followers: int
+    engagement_rate: float
 
 
 class BasePlatformAdapter(ABC):
@@ -54,7 +99,7 @@ class BasePlatformAdapter(ABC):
     # Core contract
     # ------------------------------------------------------------------
     @abstractmethod
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
+    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
         """Publish an artifact directory to this platform.
 
         Parameters
@@ -88,7 +133,7 @@ class BasePlatformAdapter(ABC):
     # PRD-4: Session & health management (concrete defaults)
     # ------------------------------------------------------------------
 
-    def authenticate(self, account_id: str | None = None) -> dict[str, Any]:
+    def authenticate(self, account_id: str | None = None) -> AuthResult:
         """Authenticate with the platform.
 
         PRD-4: Override this to use SessionManager for token-based auth.
@@ -106,7 +151,7 @@ class BasePlatformAdapter(ABC):
         """
         return {"status": "not_implemented", "reason": "auth not implemented"}
 
-    def refresh_session(self, account_id: str) -> dict[str, Any]:
+    def refresh_session(self, account_id: str) -> AuthResult:
         """Refresh the platform session.
 
         PRD-4: Override this to implement token refresh via SessionManager.
@@ -124,7 +169,7 @@ class BasePlatformAdapter(ABC):
         """
         return {"status": "not_implemented", "reason": "session refresh not implemented"}
 
-    def check_health(self, account_id: str | None = None) -> dict[str, Any]:
+    def check_health(self, account_id: str | None = None) -> HealthResult:
         """Check if the platform session is healthy.
 
         PRD-4: Override this to verify credentials are still valid.
@@ -146,7 +191,7 @@ class BasePlatformAdapter(ABC):
             "reason": "health check not implemented",
         }
 
-    def get_analytics(self, account_id: str, period: str = "7d") -> dict[str, Any]:
+    def get_analytics(self, account_id: str, period: str = "7d") -> AnalyticsResult:
         """Get platform analytics for an account.
 
         PRD-4: Override this to return follower count, engagement rate, etc.

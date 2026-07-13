@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -38,7 +38,7 @@ _MIN_CONTRAST: int = 80
 # ---------------------------------------------------------------------------
 
 
-def _check_subtitle_region_brightness(avg_brightness: int) -> dict[str, Any]:
+def _check_subtitle_region_brightness(avg_brightness: int) -> CheckResult:
     """Check 1: subtitle region pixel brightness above threshold."""
     name = "subtitle_region_brightness"
     if avg_brightness >= _MIN_BRIGHTNESS:
@@ -54,7 +54,7 @@ def _check_subtitle_region_brightness(avg_brightness: int) -> dict[str, Any]:
     }
 
 
-def _check_subtitle_region_contrast(contrast: int) -> dict[str, Any]:
+def _check_subtitle_region_contrast(contrast: int) -> CheckResult:
     """Check 2: sufficient contrast in subtitle region."""
     name = "subtitle_region_contrast"
     if contrast >= _MIN_CONTRAST:
@@ -62,7 +62,7 @@ def _check_subtitle_region_contrast(contrast: int) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"contrast {contrast} < {_MIN_CONTRAST}"}
 
 
-def _check_subtitle_visible(opacity: float) -> dict[str, Any]:
+def _check_subtitle_visible(opacity: float) -> CheckResult:
     """Check 3: subtitle text is visible (not transparent)."""
     name = "subtitle_visible"
     if opacity > 0.0:
@@ -70,7 +70,7 @@ def _check_subtitle_visible(opacity: float) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"opacity {opacity} == 0 (invisible)"}
 
 
-def _check_red_line_5(pixel_valid: bool) -> dict[str, Any]:
+def _check_red_line_5(pixel_valid: bool) -> CheckResult:
     """Check 4 (Red Line 5): pixel-level subtitle validation passed."""
     name = "red_line_5"
     if pixel_valid:

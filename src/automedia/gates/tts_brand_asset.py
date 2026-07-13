@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -34,7 +34,7 @@ _MAX_RATE: float = 2.0
 # ---------------------------------------------------------------------------
 
 
-def _check_voice_id_match(actual_voice_id: str, expected_voice_id: str) -> dict[str, Any]:
+def _check_voice_id_match(actual_voice_id: str, expected_voice_id: str) -> CheckResult:
     """Check 1: TTS voice ID matches brand asset."""
     name = "voice_id_match"
     if not expected_voice_id:
@@ -48,7 +48,7 @@ def _check_voice_id_match(actual_voice_id: str, expected_voice_id: str) -> dict[
     }
 
 
-def _check_speaking_rate(speaking_rate: float) -> dict[str, Any]:
+def _check_speaking_rate(speaking_rate: float) -> CheckResult:
     """Check 2: speaking rate within acceptable range."""
     name = "speaking_rate"
     if speaking_rate == 0.0:
@@ -66,7 +66,7 @@ def _check_speaking_rate(speaking_rate: float) -> dict[str, Any]:
     }
 
 
-def _check_voice_consistency(segments: list[dict[str, Any]]) -> dict[str, Any]:
+def _check_voice_consistency(segments: list[dict[str, Any]]) -> CheckResult:
     """Check 3: voice parameters consistent across segments."""
     name = "voice_consistency"
     if not segments:

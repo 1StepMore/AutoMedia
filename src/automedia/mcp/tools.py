@@ -24,7 +24,7 @@ from automedia.mcp._state import (
 from automedia.mcp.allowlist import (
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.pipelines.gate_engine import PipelineProgress
+from automedia.pipelines.gate_engine import PipelineProgress, ProgressData
 
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
@@ -298,7 +298,7 @@ def run_pipeline(
     return {"project_id": project_id, "status": "started"}
 
 
-def get_pipeline_progress(project_id: str) -> dict[str, Any]:
+def get_pipeline_progress(project_id: str) -> ProgressData:
     """Get current progress of a running pipeline by project_id.
 
     Poll this after ``run_pipeline`` to observe gate execution in real

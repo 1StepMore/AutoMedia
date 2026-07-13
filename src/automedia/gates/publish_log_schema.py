@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -61,7 +61,7 @@ _CHECK_NAMES: list[str] = [
 
 
 
-def _check_topic_present(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_topic_present(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *topic* is a non-empty string."""
     name = "topic_present"
     topic = publish_log.get("topic")
@@ -70,7 +70,7 @@ def _check_topic_present(publish_log: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "topic is missing or empty"}
 
 
-def _check_content_present(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_content_present(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *content* is a non-empty string."""
     name = "content_present"
     content = publish_log.get("content")
@@ -79,7 +79,7 @@ def _check_content_present(publish_log: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "content is missing or empty"}
 
 
-def _check_media_paths_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_media_paths_valid(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *media_paths* is an array of non-empty strings."""
     name = "media_paths_valid"
     media_paths = publish_log.get("media_paths")
@@ -101,7 +101,7 @@ def _check_media_paths_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _check_platform_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_platform_valid(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *platform* is one of the allowed values."""
     name = "platform_valid"
     valid_platforms: set[str] = set(_PUBLISH_LOG_SCHEMA["properties"]["platform"]["enum"])
@@ -115,7 +115,7 @@ def _check_platform_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _check_version_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_version_valid(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *version* is a string if provided (optional field)."""
     name = "version_valid"
     if "version" not in publish_log:
@@ -126,7 +126,7 @@ def _check_version_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "version is present but empty"}
 
 
-def _check_timestamp_valid(publish_log: dict[str, Any]) -> dict[str, Any]:
+def _check_timestamp_valid(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *created_at* is a valid ISO-format string if provided."""
     name = "timestamp_valid"
     if "created_at" not in publish_log:

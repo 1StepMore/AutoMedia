@@ -21,7 +21,7 @@ import re
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -100,7 +100,7 @@ _BRIDGE_RE = re.compile(
 def _check_brand_name_present(
     content: str,
     brand_profile: dict[str, Any],
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 1: 主品牌名或别名是否在内容中出现。"""
     name = "brand_name_present"
     brand_name: str = brand_profile.get("brand_name", "")
@@ -138,7 +138,7 @@ def _check_brand_name_present(
     }
 
 
-def _check_cta_present(content: str) -> dict[str, Any]:
+def _check_cta_present(content: str) -> CheckResult:
     """Check 2: CTA（行动号召）是否存在。"""
     name = "cta_present"
     matches = _CTA_RE.findall(content)
@@ -159,7 +159,7 @@ def _check_cta_present(content: str) -> dict[str, Any]:
 def _check_brand_identity(
     content: str,
     brand_profile: dict[str, Any],
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 3: 品牌身份定位是否正确 — 必须是"AI内容生产"方向。"""
     name = "brand_identity"
 
@@ -216,7 +216,7 @@ def _check_brand_identity(
 def _check_blocked_words(
     content: str,
     brand_profile: dict[str, Any],
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 4: 禁止词是否出现。"""
     name = "blocked_words_absent"
     blocked_words: list[str] = brand_profile.get("blocked_words", [])
@@ -251,7 +251,7 @@ def _check_cta_direction_sync(
     content: str,
     video_script: str | None,
     brand_profile: dict[str, Any],
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 5: 视频 + 文章 CTA 方向是否同步。
 
     If no video_script is provided, the check passes (nothing to sync).
@@ -321,7 +321,7 @@ def _check_cta_direction_sync(
 
 def _check_bridge_sentence(
     content: str,
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 6: CTA 前是否存在过渡句 (bridge sentence)。
 
     Strategy: find the CTA region, then check the preceding text

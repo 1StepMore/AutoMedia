@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from automedia.accounts.models import AccountInfo
 from automedia.accounts.store import AccountStore
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class AccountRegistry:
         label: str = "",
         auth_type: str = "api_key",
         tags: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> AccountInfo:
         """Register a new platform account.
 
         Validates:
@@ -101,7 +102,7 @@ class AccountRegistry:
         # Enrich with account_id — the store's save() does not include it
         return {"account_id": account_id, **meta}
 
-    def list(self, platform: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list(self, platform: str | None = None, status: str | None = None) -> list[AccountInfo]:
         """List registered accounts, optionally filtered by platform and/or status.
 
         Parameters
@@ -118,7 +119,7 @@ class AccountRegistry:
         """
         return self._store.list_accounts(platform, status)
 
-    def get(self, account_id: str) -> dict[str, Any] | None:
+    def get(self, account_id: str) -> AccountInfo | None:
         """Get account metadata (not decrypted credentials).
 
         Parameters
@@ -220,7 +221,7 @@ class AccountRegistry:
     # Queries
     # ------------------------------------------------------------------
 
-    def get_by_label(self, platform: str, label: str) -> dict[str, Any] | None:
+    def get_by_label(self, platform: str, label: str) -> AccountInfo | None:
         """Find an account by platform + label combination.
 
         Parameters

@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -39,7 +39,7 @@ _EXPECTED_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _check_lint_errors(lint_result: dict[str, Any]) -> dict[str, Any]:
+def _check_lint_errors(lint_result: dict[str, Any]) -> CheckResult:
     """Check 1: lint result must report 0 errors."""
     name = "lint_errors"
     errors: int = lint_result.get("errors", 0)
@@ -48,7 +48,7 @@ def _check_lint_errors(lint_result: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"{errors} lint error(s) found"}
 
 
-def _check_lint_warnings(lint_result: dict[str, Any]) -> dict[str, Any]:
+def _check_lint_warnings(lint_result: dict[str, Any]) -> CheckResult:
     """Check 2: lint warnings count is within tolerance."""
     name = "lint_warnings"
     warnings: int = lint_result.get("warnings", 0)
@@ -57,7 +57,7 @@ def _check_lint_warnings(lint_result: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": f"{warnings} warnings exceed {_MAX_WARNINGS}"}
 
 
-def _check_syntax_valid(lint_result: dict[str, Any]) -> dict[str, Any]:
+def _check_syntax_valid(lint_result: dict[str, Any]) -> CheckResult:
     """Check 3: source syntax is valid."""
     name = "syntax_valid"
     syntax_ok: bool = lint_result.get("syntax_ok", True)

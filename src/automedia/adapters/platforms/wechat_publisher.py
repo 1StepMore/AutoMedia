@@ -16,7 +16,7 @@ from typing import Any
 
 from structlog import get_logger
 
-from automedia.adapters.base import BasePlatformAdapter
+from automedia.adapters.base import PublishResult, BasePlatformAdapter
 from automedia.core.credential_loader import load_credential
 
 log = get_logger(__name__)
@@ -103,7 +103,7 @@ class WechatPublisher(BasePlatformAdapter):
 
     def publish(
         self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    ) -> PublishResult:
         """Publish a project article to WeChat Official Account.
 
         Parameters
@@ -154,7 +154,7 @@ class WechatPublisher(BasePlatformAdapter):
         # 2. Read content from artifact directory
         content_result = self._read_content(artifact_dir, project)
         if content_result.get("status") != "ok":
-            return content_result
+            return content_result  # type: ignore[return-value]
         title = content_result["title"]
         body_html = content_result["body_html"]
 
@@ -186,7 +186,7 @@ class WechatPublisher(BasePlatformAdapter):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_access_token(self, appid: str, secret: str) -> dict[str, Any]:
+    def _get_access_token(self, appid: str, secret: str) -> PublishResult:
         """Obtain a WeChat ``access_token`` via client_credential grant."""
         url = (
             f"{WX_TOKEN_URL}?grant_type=client_credential"
@@ -293,7 +293,7 @@ class WechatPublisher(BasePlatformAdapter):
         title: str,
         body_html: str,
         project: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> PublishResult:
         """Create a WeChat draft via the ``/cgi-bin/draft/add`` API."""
         article: dict[str, Any] = {
             "title": title,
@@ -352,7 +352,7 @@ class WechatPublisher(BasePlatformAdapter):
 
     def _submit_publish(
         self, access_token: str, draft_id: str
-    ) -> dict[str, Any]:
+    ) -> PublishResult:
         """Submit a draft for publication via ``/cgi-bin/freepublish/submit``."""
         url = f"{WX_PUBLISH_SUBMIT_URL}?access_token={access_token}"
         safe_url = _sanitize_url(url)

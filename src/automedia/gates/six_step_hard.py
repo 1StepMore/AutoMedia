@@ -15,7 +15,7 @@ import os
 from typing import Any
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -38,7 +38,7 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-def _check_file_exists(required_files: list[str]) -> dict[str, Any]:
+def _check_file_exists(required_files: list[str]) -> CheckResult:
     """Check 1: all required output files exist."""
     name = "file_exists"
     if not required_files:
@@ -49,7 +49,7 @@ def _check_file_exists(required_files: list[str]) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": f"all {len(required_files)} files exist"}
 
 
-def _check_file_size_valid(file_sizes: dict[str, int]) -> dict[str, Any]:
+def _check_file_size_valid(file_sizes: dict[str, int]) -> CheckResult:
     """Check 2: files are non-empty and within size limits."""
     name = "file_size_valid"
     if not file_sizes:
@@ -65,7 +65,7 @@ def _check_file_size_valid(file_sizes: dict[str, int]) -> dict[str, Any]:
     return {"name": name, "passed": True, "detail": f"all {len(file_sizes)} files have valid sizes"}
 
 
-def _check_md5_verified(md5_records: dict[str, dict[str, str]]) -> dict[str, Any]:
+def _check_md5_verified(md5_records: dict[str, dict[str, str]]) -> CheckResult:
     """Check 3: MD5 checksums match recorded values.
 
     md5_records: {file_path: {"expected": str, "actual": str}}
@@ -84,7 +84,7 @@ def _check_md5_verified(md5_records: dict[str, dict[str, str]]) -> dict[str, Any
     return {"name": name, "passed": True, "detail": f"all {len(md5_records)} MD5s verified"}
 
 
-def _check_whisper_full(whisper_full_audio: bool) -> dict[str, Any]:
+def _check_whisper_full(whisper_full_audio: bool) -> CheckResult:
     """Check 4: Whisper ran on full audio (not sampled)."""
     name = "whisper_full"
     if whisper_full_audio:
@@ -92,7 +92,7 @@ def _check_whisper_full(whisper_full_audio: bool) -> dict[str, Any]:
     return {"name": name, "passed": False, "detail": "Whisper did NOT run on full audio"}
 
 
-def _check_format_valid(actual_format: str, expected_format: str) -> dict[str, Any]:
+def _check_format_valid(actual_format: str, expected_format: str) -> CheckResult:
     """Check 5: output format matches expected codec/container."""
     name = "format_valid"
     if not expected_format:
@@ -110,7 +110,7 @@ def _check_duration_valid(
     actual_duration: float,
     expected_min: float,
     expected_max: float,
-) -> dict[str, Any]:
+) -> CheckResult:
     """Check 6: output duration within expected range."""
     name = "duration_valid"
     if expected_min == 0.0 and expected_max == 0.0:
