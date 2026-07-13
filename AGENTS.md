@@ -83,7 +83,7 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│       │   └── commands/           # 16 command modules
+│       │   └── commands/           # 13 command modules
 │       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
@@ -95,9 +95,6 @@ AutoMedia/
 │       │       ├── doctor.py       # automedia doctor
 │       │       ├── omni.py         # automedia omni
 │       │       ├── hitl.py         # automedia hitl
-│       │       ├── license.py      # automedia license
-│       │       ├── sop.py          # automedia sop
-│       │       ├── tenant.py       # automedia tenant
 │       │       ├── onboard.py      # automedia onboard
 │       │       └── __init__.py
 │       │
@@ -150,10 +147,6 @@ AutoMedia/
 │       │   ├── schema_validator.py # Schema validation
 │       │   ├── diagnostic.py       # Diagnostics
 │       │   ├── audit.py            # Decision audit
-│       │   ├── cli/                # Decision CLI (solution command)
-│       │   ├── gates/              # Decision-specific gates
-│       │   ├── strategy/           # Decision strategies
-│       │   └── scale/              # Scaling logic
 │       │
 │       ├── hitl/                   # Human-in-the-loop framework
 │       │   ├── config.py           # HITL configuration
@@ -174,18 +167,6 @@ AutoMedia/
 │       │   ├── brand_profile_schema.py
 │       │   └── model_config_schema.py
 │       │
-│       ├── tenant/                 # Multi-tenant support
-│       │   ├── manager.py
-│       │   ├── rbac.py
-│       │   └── audit.py
-│       │
-│       ├── license/                # License management
-│       │   ├── manager.py
-│       │   └── verifier.py
-│       │
-│       ├── sop/                    # SOP runner
-│       │   └── runner.py
-│       │
 │       └── asset_library/          # Asset library / vector store
 │           ├── db.py
 │           ├── ingest.py
@@ -199,13 +180,11 @@ AutoMedia/
 │   ├── cli-reference.md
 │   ├── mcp-setup.md
 │   ├── mcp-systemd-setup.md
-│   ├── decision-layer.md
 │   ├── hitl-framework.md
 │   ├── omni-integration.md
 │   ├── open-core.md
 │   ├── enforcement-mechanisms.md
 │   ├── production-e2e-test-design.md
-│   ├── sop-runner.md
 │   ├── asset-library.md
 │   └── runbook/                # Troubleshooting guides (4 files)
 │       ├── gate-failure-modes.md
@@ -427,7 +406,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 
 ---
 
-## 10. CLI Commands Quick Reference (16 commands)
+## 10. CLI Commands Quick Reference (13 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -442,9 +421,6 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia doctor` | Check system dependencies and environment health |
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
-| `automedia license` | License management |
-| `automedia sop` | SOP (Standard Operating Procedure) runner |
-| `automedia tenant` | Multi-tenant management |
 | `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
@@ -480,13 +456,11 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/cli-reference.md` | CLI command reference |
 | `docs/mcp-setup.md` | MCP server setup guide |
 | `docs/mcp-systemd-setup.md` | systemd deployment guide |
-| `docs/decision-layer.md` | Decision Layer documentation |
 | `docs/hitl-framework.md` | Human-in-the-loop framework docs |
 | `docs/omni-integration.md` | Omni Triad integration docs |
 | `docs/open-core.md` | Open-core licensing model |
 | `docs/enforcement-mechanisms.md` | Red line enforcement docs |
 | `docs/production-e2e-test-design.md` | E2E test design for production |
-| `docs/sop-runner.md` | SOP runner documentation |
 | `docs/asset-library.md` | Asset library documentation |
 | `docs/runbook/gate-failure-modes.md` | Gate failure troubleshooting |
 | `docs/runbook/production-workflow.md` | Production operations guide |
