@@ -61,6 +61,7 @@ cron:
 pool:
   retention_days: 7
   max_pending_topics: 1000
+  enable_llm_scoring: true
 
 gate_engine:
   max_retries: 3
