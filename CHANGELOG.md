@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **G2 (Copy Review)**: `enable_llm` default changed from `False` to `True` to match G0 behavior. LLM-based review is now enabled by default. Set `enable_llm: false` in gate config to disable. Added `isinstance(config, dict)` guard for robustness.
+
 ### Added
 
 #### Account & Publishing Management (PRD-4)

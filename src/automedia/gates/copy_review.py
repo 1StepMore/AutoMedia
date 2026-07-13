@@ -525,17 +525,17 @@ class G2CopyReview(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 5-round copy review and return structured result.
 
-        When ``enable_llm`` is ``True`` (via ``gate_context["config"]``),
-        attempts LLM-based evaluation first.  On LLM failure, falls back
-        to the deterministic keyword-matching checks.  When
-        ``_mock_results`` is present, always uses the deterministic path
-        for test compatibility.
+        When ``enable_llm`` is ``True`` (the default, configurable via
+        ``gate_context["config"]``), attempts LLM-based evaluation first.
+        On LLM failure, falls back to the deterministic keyword-matching
+        checks.  When ``_mock_results`` is present, always uses the
+        deterministic path for test compatibility.
         """
         content: str = gate_context.get("content", "")
         brand_profile: dict[str, Any] | None = gate_context.get("brand_profile")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
         config: dict[str, Any] = gate_context.get("config", {})
-        enable_llm: bool = config.get("enable_llm", False)
+        enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
         if mock_results is not None:
             return self._run_deterministic(content, brand_profile, mock_results)
