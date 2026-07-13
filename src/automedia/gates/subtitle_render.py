@@ -16,6 +16,7 @@ from typing import Any
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.helpers import apply_mock_overrides
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -134,18 +135,6 @@ class V6SubtitleRender(BaseGate):
             ("red_line_5", lambda: _check_red_line_5(pixel_valid)),
         ]
 
-        checks: list[dict[str, Any]] = []
-        for name, fn in check_fns:
-            if mock_results is not None and name in mock_results:
-                mock = mock_results[name]
-                checks.append(
-                    {
-                        "name": name,
-                        "passed": bool(mock["passed"]),
-                        "detail": str(mock.get("detail", "")),
-                    }
-                )
-            else:
-                checks.append(fn())
+        checks = apply_mock_overrides(check_fns, mock_results)
 
         return build_gate_result(checks, gate="V6", expected_suffix=".")

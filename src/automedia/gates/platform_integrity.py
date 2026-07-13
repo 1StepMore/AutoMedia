@@ -11,6 +11,7 @@ from typing import Any
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.helpers import apply_mock_overrides
 
 
 # ---------------------------------------------------------------------------
@@ -236,19 +237,7 @@ class L3PlatformIntegrity(BaseGate):
             ("metadata_integrity", lambda: _check_metadata_integrity(gate_context)),
         ]
 
-        checks: list[dict[str, Any]] = []
-        for name, fn in check_fns:
-            if mock_results is not None and name in mock_results:
-                mock = mock_results[name]
-                checks.append(
-                    {
-                        "name": name,
-                        "passed": bool(mock["passed"]),
-                        "detail": str(mock.get("detail", "")),
-                    }
-                )
-            else:
-                checks.append(fn())
+        checks = apply_mock_overrides(check_fns, mock_results)
 
         result = build_gate_result(checks, gate="L3")
 

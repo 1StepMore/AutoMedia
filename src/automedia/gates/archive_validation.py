@@ -11,6 +11,7 @@ from typing import Any
 from automedia.gates._context import GateContext
 from automedia.gates._result import _derive_expected, build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.helpers import apply_mock_overrides
 
 # ---------------------------------------------------------------------------
 # Check names
@@ -166,19 +167,7 @@ class L2ArchiveValidation(BaseGate):
             ("output_directory_exists", lambda: _check_output_directory_exists(gate_context)),
         ]
 
-        checks: list[dict[str, Any]] = []
-        for name, fn in check_fns:
-            if mock_results is not None and name in mock_results:
-                mock = mock_results[name]
-                checks.append(
-                    {
-                        "name": name,
-                        "passed": bool(mock["passed"]),
-                        "detail": str(mock.get("detail", "")),
-                    }
-                )
-            else:
-                checks.append(fn())
+        checks = apply_mock_overrides(check_fns, mock_results)
 
         # Compute overall passed — Red Line 8 is enforced by combining the
         # archive_status and force_flag checks with the top-level combination.
