@@ -87,6 +87,7 @@ class PoolDB:
 
     @property
     def conn(self) -> sqlite3.Connection:
+        """Return the active SQLite connection, opening it if needed."""
         if self._conn is None:
             self._open()
         assert self._conn is not None  # noqa: S101 — type narrowing after _open()
@@ -202,6 +203,7 @@ class PoolDB:
         return cur.rowcount
 
     def update_brief(self, topic_id: int, md_content: str) -> None:
+        """Store research brief markdown content for a topic."""
         self.conn.execute(
             "UPDATE topics SET research_data = ?, updated_at = datetime('now') WHERE id = ?",
             (md_content, topic_id),

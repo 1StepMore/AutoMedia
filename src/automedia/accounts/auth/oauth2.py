@@ -34,6 +34,7 @@ class OAuth2ClientCredentialsFlow:
     """
 
     def __init__(self, http_client: httpx.Client | None = None) -> None:
+        """Initialize the client credentials flow with an optional HTTP client."""
         self._http = http_client or httpx.Client(timeout=30)
 
     def exchange(
@@ -244,6 +245,7 @@ class OAuth2AuthCodeFlow:
     """
 
     def __init__(self) -> None:
+        """Initialize the auth code flow with PKCE challenge and CSRF state."""
         self._state = secrets.token_urlsafe(32)
         self._code_verifier = secrets.token_urlsafe(64)
         self._code_challenge = self._pkce_challenge(self._code_verifier)

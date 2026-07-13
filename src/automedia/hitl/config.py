@@ -51,6 +51,13 @@ class HITLConfig:
         overrides_dir: str | None = None,
         node_provider: Any = None,  # noqa: ANN401 — kept for backward compat
     ) -> None:
+        """Initialize from a preset, then merge user overrides.
+
+        Args:
+            preset_name: Name of the built-in HITL preset.
+            overrides_dir: Optional override directory path.
+            node_provider: Deprecated — kept for backward compatibility.
+        """
         self._nodes: dict[str, dict[str, Any]] = {}
 
         # 1. Load preset
@@ -135,4 +142,5 @@ class HITLConfig:
 
     @staticmethod
     def _default_overrides_dir() -> str:
+        """Return the default HITL overrides directory path."""
         return os.path.join(os.path.expanduser("~"), ".automedia", "hitl", "overrides")

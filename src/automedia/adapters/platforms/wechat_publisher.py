@@ -82,14 +82,24 @@ class WechatPublisher(BasePlatformAdapter):
 
     @property
     def platform_name(self) -> str:
+        """Return the platform identifier ``\"wechat\"``."""
         return "wechat"
 
     @property
     def enabled(self) -> bool:
+        """Check whether WeChat credentials (appid + secret) are configured."""
         appid, secret = _load_wx_credentials()
         return bool(appid) and bool(secret)
 
     def validate(self, artifact_dir: str) -> bool:
+        """Validate that WeChat publish credentials are present and usable.
+
+        Args:
+            artifact_dir: Project artifacts directory (unused in this check).
+
+        Returns:
+            ``True`` when both appid and secret are available.
+        """
         _ = artifact_dir
         appid, secret = _load_wx_credentials()
         if not appid or not secret:

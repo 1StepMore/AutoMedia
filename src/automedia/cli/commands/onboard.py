@@ -47,6 +47,7 @@ _STEPS = [
 
 
 def _print_header(title: str) -> None:
+    """Print a section header for the onboarding wizard."""
     typer.echo("")
     typer.echo("=" * 50)
     typer.echo(f"  {title}")
@@ -54,6 +55,7 @@ def _print_header(title: str) -> None:
 
 
 def _print_success(path: str) -> None:
+    """Print a success message indicating a file was written."""
     typer.secho(f"  ✅ Written: {path}", fg=typer.colors.GREEN)
 
 
@@ -63,6 +65,7 @@ def _print_success(path: str) -> None:
 
 
 def _step_llm() -> None:
+    """Configure LLM provider, model, API key, and parameters."""
     _print_header("Step 1/8: LLM Provider")
 
     cfg_path = _USER_CFG_DIR / "model_config.yaml"
@@ -111,6 +114,7 @@ def _step_llm() -> None:
 
 
 def _step_brand() -> None:
+    """Configure brand name, tone, CTA principles, blocked words, and languages."""
     _print_header("Step 2/8: Brand Profile")
 
     brand_path = _USER_CFG_DIR / "brand-profile.yaml"
@@ -166,6 +170,7 @@ def _step_brand() -> None:
 
 
 def _default_tts(lang: str) -> str:
+    """Return the default TTS voice for a given language code."""
     voices = {
         "zh": "zh-CN-YunxiNeural",
         "en": "en-US-JennyNeural",
@@ -176,6 +181,7 @@ def _default_tts(lang: str) -> str:
 
 
 def _default_whisper(lang: str) -> str:
+    """Return the default Whisper language code for a given language."""
     whispers = {"zh": "zh", "en": "en", "ja": "ja", "ko": "ko"}
     return whispers.get(lang, lang)
 
@@ -186,6 +192,7 @@ def _default_whisper(lang: str) -> str:
 
 
 def _step_pipeline() -> None:
+    """Configure default mode, and enable/disable text, image, video, audio tracks."""
     _print_header("Step 3/8: Pipeline Configuration")
 
     existing = load_config()
@@ -235,6 +242,7 @@ def _step_pipeline() -> None:
 
 
 def _step_platforms() -> None:
+    """Enable or disable platform publish adapters (WeChat, Zhihu, Xiaohongshu, etc.)."""
     _print_header("Step 4/8: Platform Adapters")
 
     cfg_path = _USER_CFG_DIR / "config.yaml"
@@ -273,6 +281,7 @@ def _step_platforms() -> None:
 
 
 def _step_hitl() -> None:
+    """Choose HITL preset — automated or semi-automated decision node execution."""
     _print_header("Step 5/8: HITL (Human In The Loop)")
 
     typer.echo("  Choose how Decision Layer nodes execute:")
@@ -296,6 +305,7 @@ def _step_hitl() -> None:
 
 
 def _step_cron() -> None:
+    """Enable/disable and configure cron job schedules."""
     _print_header("Step 6/8: Scheduled Jobs")
 
     jobs_path = _CRON_DIR / "jobs.yaml"
@@ -330,6 +340,7 @@ def _step_cron() -> None:
 
 
 def _step_omni() -> None:
+    """Enable Omni document processing (OPP/OL/ORF packages)."""
     _print_header("Step 7/8: Omni Document Localization (optional)")
 
     enable = typer.prompt(
@@ -351,6 +362,7 @@ def _step_omni() -> None:
 
 
 def _step_prompts() -> None:
+    """Copy default prompt templates and rule examples to the overrides directory."""
     _print_header("Step 8/8: Prompt Customization")
 
     prompts_dir = _USER_CFG_DIR / "overrides" / "prompts"

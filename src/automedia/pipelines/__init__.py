@@ -1,3 +1,5 @@
+"""Pipeline orchestration — runner, gate engine, and audio/image sub-pipelines."""
+
 from automedia.pipelines.audio_pipeline import AudioPipeline
 from automedia.pipelines.gate_engine import (
     AssetInfo,

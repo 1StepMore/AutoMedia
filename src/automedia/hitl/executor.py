@@ -39,6 +39,7 @@ class NodeExecutor:
     """
 
     def __init__(self, hitl_config: Any) -> None:  # noqa: ANN401
+        """Initialize the executor with a HITL configuration instance."""
         self._config = hitl_config
         self._pending: dict[str, Any] = {}
 

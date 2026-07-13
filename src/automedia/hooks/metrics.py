@@ -31,6 +31,7 @@ class MetricsHook(GateObserver):
     """
 
     def __init__(self) -> None:
+        """Initialize the metrics hook with empty state."""
         self._start_times: dict[str, float] = {}
         self._gates: list[dict[str, Any]] = []
         self._project_dir: str | None = None

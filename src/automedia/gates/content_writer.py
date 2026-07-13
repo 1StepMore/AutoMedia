@@ -66,6 +66,21 @@ class ContentWriterGate(BaseGate):
     _failure_mode = "stop"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
+        """Generate article content from the provided topic via LLM.
+
+        Validates that ``topic`` and ``project_dir`` are present in the
+        context, calls the LLM to produce content, writes the draft to
+        ``01_content/drafts/`` under the project directory, and updates
+        gate_context with the generated content for downstream gates.
+
+        Args:
+            gate_context: Pipeline context containing ``topic``, ``brand``,
+                ``project_dir``, and optional ``config`` / ``brand_profile``.
+
+        Returns:
+            dict with keys: ``passed``, ``gate``, ``content``, ``output_path``,
+            ``expected_vs_actual``, and ``error`` on failure.
+        """
         topic: str = gate_context.get("topic", "")
         brand: str = gate_context.get("brand", "")
         project_dir: str = gate_context.get("project_dir", "")

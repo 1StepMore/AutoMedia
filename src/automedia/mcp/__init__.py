@@ -1,4 +1,9 @@
-# AutoMedia MCP
+"""MCP (Model Context Protocol) server — JSON-RPC over stdio.
+
+Exposes 22 tools for pipeline execution, topic management, Omni Triad
+operations, account management, and platform adapter registration.
+"""
+
 from automedia.mcp.parallel import start_parallel_servers, stop_parallel_servers
 from automedia.mcp.server import (
     archive_project,

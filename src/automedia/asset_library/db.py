@@ -130,6 +130,7 @@ class AssetDatabase:
     """
 
     def __init__(self, brand: str) -> None:
+        """Initialize the asset library database for a given brand."""
         self._brand = brand
         self._db_path = self._resolve_db_path(brand)
         self._conn: sqlite3.Connection | None = None
@@ -139,10 +140,12 @@ class AssetDatabase:
 
     @staticmethod
     def _base_dir() -> Path:
+        """Return the root directory for asset library databases."""
         return Path(os.path.expanduser("~/.automedia/asset-library/"))
 
     @classmethod
     def _resolve_db_path(cls, brand: str) -> Path:
+        """Resolve the SQLite database path for a given brand."""
         return cls._base_dir() / brand / "index.sqlite"
 
     # -- Connection management ------------------------------------------------
@@ -164,6 +167,7 @@ class AssetDatabase:
 
     @property
     def conn(self) -> sqlite3.Connection:
+        """Return the active SQLite connection, opening it if needed."""
         if self._conn is None:
             self._open()
         assert self._conn is not None  # noqa: S101 — type narrowing after _open()
@@ -171,10 +175,12 @@ class AssetDatabase:
 
     @property
     def brand(self) -> str:
+        """Return the brand identifier for this database instance."""
         return self._brand
 
     @property
     def db_path(self) -> Path:
+        """Return the resolved SQLite database file path."""
         return self._db_path
 
     def close(self) -> None:
@@ -340,7 +346,9 @@ class AssetDatabase:
     # -- Context manager ------------------------------------------------------
 
     def __enter__(self) -> AssetDatabase:
+        """Enter context manager and return self."""
         return self
 
     def __exit__(self, *exc: object) -> None:
+        """Exit context manager — close the database connection."""
         self.close()

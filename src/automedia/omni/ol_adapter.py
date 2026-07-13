@@ -24,18 +24,25 @@ class OLAdapter(BaseOmniAdapter):
     config_path: str
 
     def __init__(self, config_path: str = "ol_config.yaml") -> None:
+        """Initialize the OL adapter with a path to the OL config YAML."""
         super().__init__()
         self.config_path = config_path
 
     @property
     @override
     def name(self) -> str:
+        """Return the adapter identifier ``"ol"``."""
         return "ol"
 
     @override
     def validate_env(self) -> bool:
-        # fail-CLOSED: require MCP_ALLOWED_DIRECTORIES to be set so the
-        # OL pipeline's security validator has a path allowlist to check.
+        """Check that ``MCP_ALLOWED_DIRECTORIES`` is set for OL operations.
+
+        fail-CLOSED: require the env var so the OL pipeline's security
+        validator has a path allowlist to check.
+
+        Returns ``True`` when the environment variable is present.
+        """
         import os
 
         return "MCP_ALLOWED_DIRECTORIES" in os.environ
@@ -111,6 +118,7 @@ class OLAdapter(BaseOmniAdapter):
         try:
 
             async def _run() -> tuple[str, list[str]]:
+                """Execute the OL translation pipeline asynchronously."""
                 translated, warnings = await _translate_single(
                     content=md_content,
                     source_lang=source_lang,

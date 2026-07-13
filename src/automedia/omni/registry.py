@@ -42,6 +42,7 @@ class OmniToolRegistry(BaseRegistry):
 
     @classmethod
     def register(cls, adapter: BaseOmniAdapter) -> None:
+        """Register an omni adapter instance under its ``name``."""
         name = adapter.name
         inst = cls()
         inst._validate(name, adapter)
@@ -49,6 +50,10 @@ class OmniToolRegistry(BaseRegistry):
 
     @classmethod
     def get(cls, name: str) -> BaseOmniAdapter:
+        """Return the registered adapter for *name*.
+
+        Raises :class:`KeyError` if *name* is not registered.
+        """
         if name not in cls._registry:
             raise KeyError(
                 f"No adapter registered for {name!r}. Available: {sorted(cls._registry)}"
@@ -62,4 +67,5 @@ class OmniToolRegistry(BaseRegistry):
 
     @classmethod
     def clear(cls) -> None:
+        """Remove all registered adapters.  Used in tests for isolation."""
         cls._registry.clear()

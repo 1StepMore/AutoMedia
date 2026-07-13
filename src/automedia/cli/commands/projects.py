@@ -112,6 +112,7 @@ def projects_get(
 
 
 def _collect_assets(project_dir: Path) -> list[dict[str, str]]:
+    """Walk known asset subdirectories and return a flat list of file info dicts."""
     assets: list[dict[str, str]] = []
     for subdir_name in _ASSET_SUBDIRS:
         subdir = project_dir / subdir_name

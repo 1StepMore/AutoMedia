@@ -26,6 +26,12 @@ class HotCollector:
     """
 
     def __init__(self, seed_topics: list[dict] | None = None) -> None:
+        """Initialize the hot topic collector.
+
+        Args:
+            seed_topics: Optional pre-seeded topics to include in the
+                collection funnel.
+        """
         self._seed_topics = seed_topics or []
 
     # ------------------------------------------------------------------

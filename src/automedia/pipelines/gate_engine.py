@@ -120,6 +120,11 @@ class PipelineProgress:
     """
 
     def __init__(self, project_id: str = "") -> None:
+        """Initialize the progress tracker.
+
+        Args:
+            project_id: Optional project identifier for tracking context.
+        """
         self.project_id = project_id
         self.current_gate: str | None = None
         self._events: list[GateProgressEvent] = []
@@ -202,6 +207,14 @@ class GateEngine:
         max_retries: int = 3,
         retry_delay: float = 1.0,
     ) -> None:
+        """Initialize the gate engine with an ordered list of gates.
+
+        Args:
+            gates: Ordered list of BaseGate instances to execute sequentially.
+            hooks: Optional lifecycle observers notified at each gate event.
+            max_retries: Max retry attempts for gates with failure_mode="retry".
+            retry_delay: Base delay in seconds for exponential backoff.
+        """
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
         self._max_retries = max_retries
@@ -212,6 +225,7 @@ class GateEngine:
     # ------------------------------------------------------------------
 
     def _dispatch_before(self, gate_name: str, context: GateContext | dict[str, Any]) -> None:
+        """Notify all registered hooks that *gate_name* is about to run."""
         log.debug("hooks.dispatch_before", gate_name=gate_name, hook_count=len(self._hooks))
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
@@ -220,6 +234,7 @@ class GateEngine:
     def _dispatch_after(
         self, gate_name: str, context: GateContext | dict[str, Any], result: dict[str, Any]
     ) -> None:
+        """Notify all registered hooks that *gate_name* completed successfully."""
         log.debug("hooks.dispatch_after", gate_name=gate_name, hook_count=len(self._hooks))
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
@@ -228,6 +243,7 @@ class GateEngine:
     def _dispatch_failed(
         self, gate_name: str, context: GateContext | dict[str, Any], error: Exception
     ) -> None:
+        """Notify all registered hooks that *gate_name* raised an exception."""
         log.debug(
             "hooks.dispatch_failed",
             gate_name=gate_name, error=str(error),
@@ -260,6 +276,7 @@ class GateEngine:
         _attempt_counter = {"n": 0}
 
         def _before_sleep(retry_state: tenacity.RetryCallState) -> None:
+            """Log retry attempt info and update progress before sleeping."""
             _attempt_counter["n"] += 1
             attempt = _attempt_counter["n"]
             delay = float(retry_state.upcoming_sleep or 0)

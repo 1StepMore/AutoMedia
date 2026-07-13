@@ -20,6 +20,7 @@ _OMNI_SECTIONS = ("omni_inputs", "omni_extraction", "omni_translation", "omni_or
 
 
 def _default_state_dir() -> Path:
+    """Return the default state directory (``~/.automedia``)."""
     return Path.home() / ".automedia"
 
 
@@ -36,6 +37,15 @@ def compute_md5(file_path: str | Path) -> str:
 
 
 def _state_path(state_dir: str | Path | None = None) -> Path:
+    """Resolve the path to the pipeline_md5.json state file.
+
+    Args:
+        state_dir: Optional directory override.  Falls back to
+            ``_default_state_dir()`` when not provided.
+
+    Returns:
+        The absolute ``Path`` to the state file.
+    """
     if state_dir is not None:
         return Path(state_dir) / OMNI_MD5_FILENAME
     return _default_state_dir() / OMNI_MD5_FILENAME

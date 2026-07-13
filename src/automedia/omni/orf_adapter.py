@@ -12,9 +12,14 @@ from automedia.omni.base import BaseOmniAdapter
 class ORFAdapter(BaseOmniAdapter):
     @property
     def name(self) -> str:
+        """Return the adapter identifier ``"orf"``."""
         return "orf"
 
     def validate_env(self) -> bool:
+        """Check that ``MCP_ALLOWED_DIRECTORIES`` is set for ORF operations.
+
+        Returns ``True`` when the environment variable is present.
+        """
         return "MCP_ALLOWED_DIRECTORIES" in os.environ
 
     def convert(

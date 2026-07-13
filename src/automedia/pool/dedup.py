@@ -20,6 +20,7 @@ class TopicDeduplicator:
     """
 
     def __init__(self, threshold: float = 0.75) -> None:
+        """Initialize the deduplicator with a similarity threshold."""
         self._threshold = threshold
 
     # ------------------------------------------------------------------

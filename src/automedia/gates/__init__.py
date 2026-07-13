@@ -1,4 +1,7 @@
-# AutoMedia gates
+"""Quality gates — all concrete gate implementations are imported here for auto-registration in GateRegistry.
+
+Gate naming convention: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), CW (content writer), pre-gate.
+"""
 
 # Text-track gates (G0-G5)
 from automedia.gates._context import GateContext  # noqa: F401

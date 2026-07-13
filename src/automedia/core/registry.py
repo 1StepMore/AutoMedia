@@ -26,12 +26,14 @@ class BaseRegistry:
     # ------------------------------------------------------------------
 
     def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401
+        """Initialize per-subclass singleton state when a subclass is created."""
         super().__init_subclass__(**kwargs)
         # Each concrete subclass gets its own singleton state.
         cls._instance = None
         cls._registry = {}
 
     def __new__(cls) -> BaseRegistry:
+        """Return the singleton instance for *cls*, creating it if needed."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

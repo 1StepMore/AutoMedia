@@ -23,9 +23,14 @@ class ExtractionResult:
 class OPPAdapter(BaseOmniAdapter):
     @property
     def name(self) -> str:
+        """Return the adapter identifier ``"opp"``."""
         return "opp"
 
     def validate_env(self) -> bool:
+        """Check that the OPP environment is ready.
+
+        Returns ``True`` — OPP adapter has no mandatory env vars.
+        """
         return True
 
     def extract(
@@ -128,6 +133,12 @@ _EXTRACTOR_MAP: dict[str, type] = {}
 
 
 def _ensure_extractor_map() -> None:
+    """Populate the global ``_EXTRACTOR_MAP`` on first call.
+
+    Iterates over available ``opp.extractors``, creates instances, and maps
+    each extractor's supported file extensions to its class.  Safe to call
+    multiple times — the map is only built once.
+    """
     if _EXTRACTOR_MAP:
         return
     from opp import extractors as _extractors

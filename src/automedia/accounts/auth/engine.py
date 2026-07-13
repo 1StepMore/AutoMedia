@@ -42,6 +42,7 @@ class AuthFlowEngine:
     """
 
     def __init__(self) -> None:
+        """Initialize the auth flow engine with empty session state."""
         self._sessions: dict[str, AuthSession] = {}
         self._oauth2_client = OAuth2ClientCredentialsFlow()
 
