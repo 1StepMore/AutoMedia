@@ -23,7 +23,7 @@ from typing import Any
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import run_deep_check
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -436,16 +436,5 @@ class G3BrandCTA(BaseGate):
                 checks.append(fn())
 
         result = build_gate_result(checks, gate="G3", expected_map=_EXPECTED_MAP)
-
-        # Optional LLM deep-check — advisory only, never blocks the gate
-        config = gate_context.get("config", {})
-        if config.get("enable_llm_deep_check", False):
-            try:
-                llm_result = run_deep_check(content, "brand and CTA compliance issues")
-                if not llm_result.get("passed", True):
-                    result.setdefault("issues", []).extend(llm_result.get("issues", []))
-                    result["llm_deep_check"] = llm_result.get("method", "unknown")
-            except Exception:
-                pass  # LLM check is optional, don't fail the gate
 
         return result
