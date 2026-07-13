@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 22 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 24 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -93,6 +93,8 @@ from automedia.mcp.tools import (
     list_topic_pool,
     localize_content,
     localize_output,
+    pool_add_topic,
+    publish_content,
     register_platform_adapter,
     research_topics,
     run_brand_strategy,
@@ -121,6 +123,8 @@ __all__ = [
     "get_project_assets",
     "archive_project",
     "list_topic_pool",
+    "pool_add_topic",
+    "publish_content",
     "register_platform_adapter",
     "extract_brief",
     "localize_content",
@@ -163,7 +167,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     Returns
     -------
     FastMCP
-        A fully configured server with all 22 tools and 5 resources registered.
+        A fully configured server with all 24 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -173,7 +177,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "22 MCP tools for topic selection, pipeline execution, project\n"
+            "24 MCP tools for topic selection, pipeline execution, project\n"
             "management, Omni Triad document processing, brand strategy,\n"
             "content quality evaluation, and server health.\n"
             "\n"
@@ -417,6 +421,22 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     mcp.tool(
         description=("List topics in the pool, optionally filtered by status or category."),
     )(list_topic_pool)
+
+    mcp.tool(
+        description=(
+            "Add a topic to the topic pool. "
+            "Takes title, optional category, and optional pool_db_path. "
+            "Returns the new topic id, title, category, and status."
+        ),
+    )(pool_add_topic)
+
+    mcp.tool(
+        description=(
+            "Publish a project to a platform. "
+            "Takes project_id, platform name, optional account_id, and optional base_dir. "
+            "Returns the publish result including URL."
+        ),
+    )(publish_content)
 
     mcp.tool(
         description=(

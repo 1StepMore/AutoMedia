@@ -507,6 +507,105 @@ def list_topic_pool(
         return {"topics": [], "error": str(exc)}
 
 
+def pool_add_topic(
+    title: str,
+    category: str = "",
+    pool_db_path: str = "",
+) -> dict[str, Any]:
+    """Add a topic to the topic pool.
+
+    Parameters
+    ----------
+    title:
+        Title of the topic to add.
+    category:
+        Optional category for the topic.
+    pool_db_path:
+        Explicit path to the topic pool SQLite database.
+
+    Returns
+    -------
+    dict
+        ``{"id": int, "title": str, "category": str, "status": "pending"}``
+        or an error dict on failure.
+    """
+    try:
+        from automedia.pool.db import PoolDB
+
+        if pool_db_path:
+            _require_allowed(pool_db_path, tool_name="pool_add_topic")
+            db = PoolDB(pool_db_path)
+        else:
+            db = PoolDB(":memory:")
+
+        topic_id = db.add_topic(data={"title": title, "category": category})
+        db.close()
+        return {
+            "id": topic_id,
+            "title": title,
+            "category": category,
+            "status": "pending",
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def publish_content(
+    project_id: str,
+    platform: str,
+    account_id: str = "",
+    base_dir: str = "",
+) -> dict[str, Any]:
+    """Publish a project to a platform.
+
+    Parameters
+    ----------
+    project_id:
+        Project identifier.
+    platform:
+        Target platform name (e.g. ``"xiaohongshu"``, ``"zhihu"``).
+    account_id:
+        Optional account identifier for PRD-4 account-aware publishing.
+    base_dir:
+        Root directory containing project directories.
+
+    Returns
+    -------
+    dict
+        ``{"published": bool, "platform": str, "url": str}``
+        or an error dict on failure.
+    """
+    try:
+        from automedia.adapters.publish_engine import PublishEngine
+
+        projects_dir = base_dir or _resolve_projects_dir()
+        projects = _discover_projects(projects_dir)
+        match = [p for p in projects if p.get("project_id") == project_id]
+        if not match:
+            return {"published": False, "error": f"Project {project_id!r} not found"}
+
+        proj = match[0]
+        artifact_dir = proj["_dir"]
+
+        engine = PublishEngine()
+        account_ids = [account_id] if account_id else None
+        result = engine.publish_all(
+            artifact_dir=artifact_dir,
+            project=proj,
+            account_ids=account_ids,
+        )
+
+        platform_result = result.get(platform, {})
+        success = platform_result.get("success", False) or platform_result.get("status") in ("ok", "published")
+        return {
+            "published": success,
+            "platform": platform,
+            "url": platform_result.get("url", ""),
+        }
+    except Exception as exc:
+        return {"published": False, "error": str(exc)}
+
+
 def register_platform_adapter(
     platform_name: str,
     adapter_class: str = "",
@@ -947,7 +1046,7 @@ def health_check() -> dict[str, Any]:
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
-            "tools_count": 22,
+            "tools_count": 24,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -992,19 +1091,25 @@ def run_brand_strategy(
         ``suggested_messaging``.  On failure the dict contains an
         ``"error"`` key instead.
     """
-    from automedia.core.llm_client import llm_complete_structured_safe
-    from automedia.decision.pydantic import BrandStrategyOutput
-    from automedia.prompts import load_prompt
+    try:
+        from automedia.core.llm_client import llm_complete_structured_safe
+        from automedia.decision.pydantic import BrandStrategyOutput
+        from automedia.prompts import load_prompt
 
-    prompt = load_prompt(
-        "brand_strategy",
-        brand_name=brand_name,
-        industry=industry,
-        target_audience=target_audience,
-        context=context,
-    )
-    result = llm_complete_structured_safe(prompt, response_format=BrandStrategyOutput)
-    return result.model_dump()
+        prompt = load_prompt(
+            "brand_strategy",
+            brand_name=brand_name,
+            industry=industry,
+            target_audience=target_audience,
+            context=context,
+        )
+        result = llm_complete_structured_safe(
+            prompt,
+            response_format=BrandStrategyOutput,
+        )
+        return result.model_dump()
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 def run_pipeline_from_strategy(
@@ -1043,30 +1148,33 @@ def run_pipeline_from_strategy(
         On failure the dict contains an ``"error"`` key with the
         failure description.
     """
-    from automedia.core.llm_client import llm_complete_structured_safe
-    from automedia.decision.pydantic import PipelineStrategyOutput
-    from automedia.pipelines.runner import run_full_pipeline
-    from automedia.prompts import load_prompt
+    try:
+        from automedia.core.llm_client import llm_complete_structured_safe
+        from automedia.decision.pydantic import PipelineStrategyOutput
+        from automedia.pipelines.runner import run_full_pipeline
+        from automedia.prompts import load_prompt
 
-    prompt = load_prompt(
-        "pipeline_strategy",
-        topic=topic,
-        brand=brand,
-        mode=mode,
-        context=strategy_context,
-    )
-    strategy: PipelineStrategyOutput = llm_complete_structured_safe(
-        prompt,
-        response_format=PipelineStrategyOutput,
-    )
+        prompt = load_prompt(
+            "pipeline_strategy",
+            topic=topic,
+            brand=brand,
+            mode=mode,
+            context=strategy_context,
+        )
+        strategy: PipelineStrategyOutput = llm_complete_structured_safe(
+            prompt,
+            response_format=PipelineStrategyOutput,
+        )
 
-    pipeline_result = run_full_pipeline(
-        topic=topic,
-        brand=brand,
-        mode=mode,
-    )
+        pipeline_result = run_full_pipeline(
+            topic=topic,
+            brand=brand,
+            mode=mode,
+        )
 
-    return {
-        "strategy": strategy.model_dump(),
-        "pipeline_result": _pipeline_result_to_dict(pipeline_result),
-    }
+        return {
+            "strategy": strategy.model_dump(),
+            "pipeline_result": _pipeline_result_to_dict(pipeline_result),
+        }
+    except Exception as exc:
+        return {"error": str(exc)}

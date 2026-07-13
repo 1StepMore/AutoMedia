@@ -320,6 +320,8 @@ class TestServerCreation:
                 "list_topic_pool",
                 "localize_content",
                 "localize_output",
+                "pool_add_topic",
+                "publish_content",
                 "register_platform_adapter",
                 "research_topics",
                 "run_brand_strategy",
