@@ -18,6 +18,9 @@ from typing import TYPE_CHECKING, Any
 from PIL import Image
 from structlog import get_logger
 
+from automedia.core.llm_client import LLMError, llm_complete
+from automedia.prompts import load_prompt
+
 if TYPE_CHECKING:
     import httpx
 
@@ -186,6 +189,69 @@ def _create_placeholder(output_path: str, width: int, height: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Image prompt generation (LLM-powered with naive fallback)
+# ---------------------------------------------------------------------------
+
+
+def _generate_image_prompt(topic: str, brand: str, image_index: int) -> str:
+    """Generate a detailed SD/ComfyUI image prompt via LLM.
+
+    Uses :func:`load_prompt` to render a Jinja2 template for the user message,
+    then calls :func:`llm_complete` with a system prompt tailored for SD
+    prompt generation.
+
+    Falls back to the naive ``f"{topic} body image {image_index + 1}"``
+    template on any failure (LLM error, empty response, etc.).
+
+    Parameters
+    ----------
+    topic:
+        Content topic used as the image prompt seed.
+    brand:
+        Brand identifier for style context.
+    image_index:
+        Zero-based index of the body image (used for variation).
+
+    Returns
+    -------
+    str
+        The generated image prompt (LLM result or fallback).
+    """
+    try:
+        user_message = load_prompt(
+            "image_prompt",
+            topic=topic,
+            brand=brand,
+            image_index=image_index,
+        )
+        result: str = llm_complete(
+            user_message,
+            system_prompt=(
+                "You are a professional Stable Diffusion prompt engineer. "
+                "Generate detailed, high-quality comma-separated image prompts "
+                "optimized for text-to-image generation. "
+                "Return ONLY the prompt text — no explanations."
+            ),
+        )
+        if result.strip():
+            return result.strip()
+        logger.warning(
+            "LLM returned empty image prompt — using fallback",
+            topic=topic,
+            image_index=image_index,
+        )
+    except (LLMError, Exception) as exc:
+        logger.warning(
+            "LLM image prompt generation failed (%s) — using fallback",
+            exc,
+            topic=topic,
+            image_index=image_index,
+        )
+
+    return f"{topic} body image {image_index + 1}"
+
+
+# ---------------------------------------------------------------------------
 # ImagePipeline
 # ---------------------------------------------------------------------------
 
@@ -244,8 +310,9 @@ class ImagePipeline:
         topic: str,
         project_dir: str,
         count: int = 4,
+        brand: str = "",
     ) -> list[str]:
-        """Generate 4:3 landscape body images.
+        """Generate 4:3 landscape body images with LLM-enhanced prompts.
 
         Parameters
         ----------
@@ -255,6 +322,8 @@ class ImagePipeline:
             Root project directory; images are written to ``body/``.
         count:
             Number of images to generate (clamped to 3–6).
+        brand:
+            Brand identifier for prompt context (optional).
 
         Returns
         -------
@@ -269,8 +338,9 @@ class ImagePipeline:
         paths: list[str] = []
         for i in range(count):
             filename = f"body_{i:02d}.png"
+            prompt = _generate_image_prompt(topic, brand, i)
             workflow = {
-                "prompt": f"{topic} body image {i + 1}",
+                "prompt": prompt,
                 "width": w,
                 "height": h,
                 "filename": filename,
