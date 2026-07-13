@@ -1,0 +1,38 @@
+Task 4: LLM-generated image prompts — Template Rendering Verification
+======================================================================
+Date: 2026-07-13
+File: src/automedia/prompts/image_prompt.j2
+Target: src/automedia/pipelines/image_pipeline.py
+
+Verification: Jinja2 template renders with all variables resolved
+Command: python3 -c "from automedia.prompts import load_prompt; rendered = load_prompt('image_prompt', topic='AI robots in healthcare', brand='MedTech', image_index=2); print(rendered)"
+
+Result: PASS
+  - Template loads from src/automedia/prompts/image_prompt.j2
+  - All variables resolved correctly:
+    * Topic: "AI robots in healthcare" ✓
+    * Brand: "MedTech" ✓
+    * Image index: 2 ✓
+  - Template covers required SD elements:
+    * Subject description ✓
+    * Style/medium ✓
+    * Lighting ✓
+    * Color palette ✓
+    * Composition ✓
+    * Mood ✓
+  - Quality tags included: masterpiece, best quality, highly detailed ✓
+  - English, comma-separated format ✓
+
+Sample rendered output first lines:
+  Generate a detailed Stable Diffusion / ComfyUI image prompt...
+  Topic: AI robots in healthcare
+  Brand context: MedTech
+  Image index: 2
+
+Integration: _generate_image_prompt() calls load_prompt() then llm_complete()
+  - On LLM success → returns detailed prompt
+  - On LLM failure → falls back to naive template
+
+Architecture matches content_writer.py pattern:
+  content_writer.py: load_prompt("content_writer", ...) → llm_complete(user_message, config=config, system_prompt=...)
+  image_pipeline.py: load_prompt("image_prompt", ...) → llm_complete(user_message, system_prompt=...)
