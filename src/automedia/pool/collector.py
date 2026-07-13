@@ -200,9 +200,6 @@ class HotCollector:
         keywords: list[str] = []
         for t in topics:
             title: str = t.get("title", "")
-            for _word in title:
-                # Keep Chinese characters and English letters as tokens
-                pass
             # Simple character-level keyword extraction for CJK
             for segment in _split_cjk(title):
                 if segment not in stop_words and len(segment) >= 2:
