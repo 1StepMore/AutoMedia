@@ -35,11 +35,14 @@ def _make_context(
     *,
     content: str = _CLEAN_CONTENT,
     mock_results: dict[str, dict[str, Any]] | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {"content": content}
     if mock_results is not None:
         ctx["_mock_results"] = mock_results
+    if config is not None:
+        ctx["config"] = config
     return ctx
 
 
@@ -401,7 +404,7 @@ class TestG1EdgeCases:
 
     def test_clean_content_all_pass(self) -> None:
         """Clean, human-written content passes all 9 checks."""
-        ctx = _make_context(content=_CLEAN_CONTENT)
+        ctx = _make_context(content=_CLEAN_CONTENT, config={"enable_llm": False})
         result = G1Humanizer().execute(ctx)
         assert result["passed"] is True
         assert result["modified_content"] is None

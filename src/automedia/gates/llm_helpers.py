@@ -19,8 +19,10 @@ Usage
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-from typing import Any, Callable
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -59,6 +61,14 @@ class G2CheckResult(BaseModel):
     brand_compliance: bool = True
 
 
+class G1CheckResult(BaseModel):
+    """Structured output model for G1 (humanizer) LLM evaluation."""
+
+    passed: bool
+    issues: list[str] = Field(default_factory=list)
+    confidence: float = 1.0
+
+
 class DeepCheckResult(BaseModel):
     """Structured output model for optional deep-check LLM evaluation.
 
@@ -77,6 +87,7 @@ class DeepCheckResult(BaseModel):
 _RESULT_MODELS: dict[str, type[BaseModel]] = {
     "fact_check": G0CheckResult,
     "copy_review": G2CheckResult,
+    "humanizer": G1CheckResult,
     "deep_check": DeepCheckResult,
 }
 
@@ -105,7 +116,8 @@ def llm_check_with_fallback(
     text:
         The content to evaluate.
     check_type:
-        Either ``"fact_check"`` (G0) or ``"copy_review"`` (G2).
+        Either ``"fact_check"`` (G0), ``"copy_review"`` (G2), or
+        ``"humanizer"`` (G1).
     prompt_template_name:
         Name of the Jinja2 prompt template (without ``.j2`` extension).
     deterministic_fn:
@@ -124,7 +136,7 @@ def llm_check_with_fallback(
         - ``passed``: bool — whether the check passed
         - ``issues``: list[str] — list of issues found
         - ``method``: str — ``"llm"`` or ``"deterministic"``
-        - ``confidence``: float (G0 only) — confidence score
+        - ``confidence``: float (G0 / G1) — confidence score
         - ``tone_score``: float (G2 only) — tone quality score
         - ``brand_compliance``: bool (G2 only) — brand compliance flag
     """
@@ -158,7 +170,7 @@ def llm_check_with_fallback(
         }
 
         # Add model-specific fields
-        if isinstance(result, G0CheckResult):
+        if isinstance(result, (G0CheckResult, G1CheckResult)):
             response["confidence"] = result.confidence
         elif isinstance(result, G2CheckResult):
             response["tone_score"] = result.tone_score

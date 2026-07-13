@@ -25,6 +25,7 @@ from typing import Any
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.llm_helpers import llm_check_with_fallback
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -497,6 +498,9 @@ class G1Humanizer(BaseGate):
         - ``_mock_results`` (optional): dict mapping check names to
           ``{"passed": bool, "detail": str}`` — drives deterministic results
           for testing without running real detection.
+        - ``config`` (optional): dict with optional key ``enable_llm``
+          (default ``True``) — when ``True``, attempts LLM-based evaluation
+          first, falling back to deterministic regex detection.
 
     Returns:
         dict with keys: ``passed``, ``gate``, ``checks``, ``modified_content``,
@@ -507,10 +511,116 @@ class G1Humanizer(BaseGate):
     _failure_mode = "retry"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
-        """Run 9-category AI pattern detection and return structured result."""
+        """Run 9-category AI pattern detection and return structured result.
+
+        When ``enable_llm`` is ``True`` (the default, configurable via
+        ``gate_context["config"]``), attempts LLM-based evaluation first.
+        On LLM failure, falls back to deterministic regex checks.
+        When ``_mock_results`` is present, skips LLM and uses the
+        deterministic path directly for test compatibility.
+        """
         content: str = gate_context.get("content", "")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
+        config: dict[str, Any] = gate_context.get("config", {})
+        enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
+        # ------------------------------------------------------------------
+        # Mock path — skip LLM entirely, use deterministic with overrides
+        # ------------------------------------------------------------------
+        if mock_results is not None:
+            checks = self._run_deterministic(content, mock_results)
+            all_passed = all(c["passed"] for c in checks)
+            modified_content: str | None = None
+            if not all_passed and content:
+                modified_content = _rewrite_content(content)
+            return build_gate_result(
+                checks,
+                gate="G1",
+                expected_map=_EXPECTED_MAP,
+                modified_content=modified_content,
+            )
+
+        # ------------------------------------------------------------------
+        # LLM path — try AI evaluation, fall back to deterministic
+        # ------------------------------------------------------------------
+        if enable_llm and content.strip():
+            # Mutable container to capture per-step checks from fallback
+            captured_checks: list[dict[str, Any]] = []
+
+            def _deterministic_fn(_text: str) -> dict[str, Any]:
+                det_checks = self._run_deterministic(content, None)
+                captured_checks.extend(det_checks)
+                return {
+                    "passed": all(c["passed"] for c in det_checks),
+                    "issues": [c["detail"] for c in det_checks if not c["passed"]],
+                }
+
+            llm_result = llm_check_with_fallback(
+                text=content,
+                check_type="humanizer",
+                prompt_template_name="humanizer_g1",
+                deterministic_fn=_deterministic_fn,
+            )
+
+            method = llm_result.get("method", "deterministic")
+
+            if method == "deterministic" and captured_checks:
+                checks = captured_checks
+            else:
+                passed = llm_result["passed"]
+                issues = llm_result.get("issues", [])
+                detail = (
+                    "; ".join(issues)
+                    if issues
+                    else ("verified by LLM" if passed else "humanizer check failed")
+                )
+                checks = [
+                    {"name": name, "passed": passed, "detail": detail}
+                    for name in _CHECK_NAMES
+                ]
+
+            all_passed = all(c["passed"] for c in checks)
+            modified_content = None
+            if not all_passed and content:
+                modified_content = _rewrite_content(content)
+
+            return build_gate_result(
+                checks,
+                gate="G1",
+                expected_map=_EXPECTED_MAP,
+                modified_content=modified_content,
+                method=method,
+            )
+
+        # ------------------------------------------------------------------
+        # Deterministic-only path (enable_llm=False or empty content)
+        # ------------------------------------------------------------------
+        checks = self._run_deterministic(content, None)
+        all_passed = all(c["passed"] for c in checks)
+        modified_content = None
+        if not all_passed and content:
+            modified_content = _rewrite_content(content)
+        return build_gate_result(
+            checks,
+            gate="G1",
+            expected_map=_EXPECTED_MAP,
+            modified_content=modified_content,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _run_deterministic(
+        self,
+        content: str,
+        mock_results: dict[str, dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        """Run the 9-category regex detection (deterministic path).
+
+        When *mock_results* is provided, individual check results are
+        driven from the mock dict instead of running real detection.
+        """
         check_fns: list[tuple[str, Any]] = [
             ("overused_adverbs", lambda: _check_overused_adverbs(content)),
             ("hollow_intros", lambda: _check_hollow_intros(content)),
@@ -536,16 +646,4 @@ class G1Humanizer(BaseGate):
                 )
             else:
                 checks.append(fn())
-
-        # If any check failed, produce a rewritten version
-        all_passed = all(c["passed"] for c in checks)
-        modified_content: str | None = None
-        if not all_passed and content:
-            modified_content = _rewrite_content(content)
-
-        return build_gate_result(
-            checks,
-            gate="G1",
-            expected_map=_EXPECTED_MAP,
-            modified_content=modified_content,
-        )
+        return checks
