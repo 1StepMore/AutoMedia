@@ -582,6 +582,8 @@ def publish_content(
         or an error dict on failure.
     """
     try:
+        _require_allowed(base_dir, tool_name="publish_content")
+
         from automedia.adapters.publish_engine import PublishEngine
 
         projects_dir = base_dir or _resolve_projects_dir()
