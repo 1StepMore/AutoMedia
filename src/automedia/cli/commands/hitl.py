@@ -15,7 +15,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import output_error, output_text
 from automedia.hitl.config import HITLConfig
 
 logger = logging.getLogger(__name__)
@@ -93,10 +93,12 @@ def preset(
 
     # No flags — show current active preset
     current = _read_active_preset()
-    is_json = get_output_mode() == OutputMode.JSON
-    if is_json:
-        output_json({"status": "ok", "active_preset": current or "automated"})
-    elif current:
+    if output_text(
+        None,
+        data={"status": "ok", "active_preset": current or "automated"},
+    ):
+        return
+    if current:
         typer.echo(f"Active preset: {current}")
     else:
         typer.echo("No active preset set. Default is 'automated'.")
@@ -106,29 +108,25 @@ def _show_presets() -> None:
     """Print all available presets to stdout."""
     filesystem = _scan_filesystem_presets()
     all_presets = sorted(set(filesystem) | _BUILTIN_PRESETS)
-    is_json = get_output_mode() == OutputMode.JSON
 
-    if is_json:
-        active = _read_active_preset()
-        output_json({
-            "status": "ok",
-            "presets": [
-                {
-                    "name": name,
-                    "source": "built-in" if name in _BUILTIN_PRESETS else "file",
-                    "active": name == active,
-                }
-                for name in all_presets
-            ],
-            "active_preset": active,
-        })
+    active = _read_active_preset()
+    if output_text(None, data={
+        "status": "ok",
+        "presets": [
+            {
+                "name": name,
+                "source": "built-in" if name in _BUILTIN_PRESETS else "file",
+                "active": name == active,
+            }
+            for name in all_presets
+        ],
+        "active_preset": active,
+    }):
         return
 
     if not all_presets:
         typer.echo("No presets found.")
         return
-
-    active = _read_active_preset()
 
     typer.echo("Available HITL presets:")
     for name in all_presets:
@@ -142,30 +140,20 @@ def _show_presets() -> None:
 
 def _activate_preset(name: str) -> None:
     """Activate a preset by name (validates it exists first)."""
-    is_json = get_output_mode() == OutputMode.JSON
     filesystem = _scan_filesystem_presets()
     all_presets = set(filesystem) | _BUILTIN_PRESETS
 
     if name not in all_presets:
-        msg = (
+        output_error(
             f"Preset {name!r} not found.\n"
             f"Run 'automedia hitl preset --list' to see available presets."
         )
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
 
     # Validate the preset loads correctly
     try:
         HITLConfig(preset_name=name)
     except Exception as exc:
-        msg = f"Failed to load preset {name!r}: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Failed to load preset {name!r}: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
     # Write active preset file
@@ -174,20 +162,14 @@ def _activate_preset(name: str) -> None:
         with open(_ACTIVE_PRESET_PATH, "w", encoding="utf-8") as fh:
             yaml.dump({"active_preset": name}, fh, default_flow_style=False)
     except Exception as exc:
-        msg = f"Failed to write active preset: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Failed to write active preset: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "active_preset": name})
-    else:
-        typer.secho(
-            f"Active preset set to {name!r}.",
-            fg=typer.colors.GREEN,
-        )
+    output_text(
+        f"Active preset set to {name!r}.",
+        data={"status": "ok", "active_preset": name},
+        green=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -198,17 +180,12 @@ def _activate_preset(name: str) -> None:
 @app.command("config")
 def config_cmd() -> None:
     """Print a summary of the current HITL configuration."""
-    is_json = get_output_mode() == OutputMode.JSON
     active_name = _read_active_preset() or "automated"
 
     try:
         config = HITLConfig(preset_name=active_name)
     except Exception as exc:
-        msg = f"Failed to load HITL config: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Failed to load HITL config: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
     nodes = config.list_nodes()
@@ -223,16 +200,15 @@ def config_cmd() -> None:
         t = n.get("type", "unknown")
         type_counts[t] = type_counts.get(t, 0) + 1
 
-    if is_json:
-        output_json({
-            "status": "ok",
-            "active_preset": active_name,
-            "total_nodes": len(nodes),
-            "human_nodes": human_count,
-            "agent_nodes": agent_count,
-            "by_type": type_counts,
-            "nodes": sorted(nodes, key=lambda x: x.get("name", "")),
-        })
+    if output_text(None, data={
+        "status": "ok",
+        "active_preset": active_name,
+        "total_nodes": len(nodes),
+        "human_nodes": human_count,
+        "agent_nodes": agent_count,
+        "by_type": type_counts,
+        "nodes": sorted(nodes, key=lambda x: x.get("name", "")),
+    }):
         return
 
     typer.echo("HITL Configuration Summary")

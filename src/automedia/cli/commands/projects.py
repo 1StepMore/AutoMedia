@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import output_error, output_text
 
 app = typer.Typer(name="projects", help="List and inspect media projects.")
 
@@ -51,23 +51,17 @@ def projects_list(
     ),
 ) -> None:
     """List projects found under the base directory."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         projects = _discover_projects(base_dir)
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error scanning projects: {exc}")
-        else:
-            typer.secho(f"Error scanning projects: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error scanning projects: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
     if status:
         projects = [p for p in projects if p.get("status", "") == status]
 
-    if is_json:
-        # Strip internal _dir key from output
-        items = [{k: v for k, v in p.items() if k != "_dir"} for p in projects]
-        output_json({"status": "ok", "items": items, "count": len(items)})
+    items = [{k: v for k, v in p.items() if k != "_dir"} for p in projects]
+    if output_text(None, data={"status": "ok", "items": items, "count": len(items)}):
         return
 
     if not projects:
@@ -95,30 +89,21 @@ def projects_get(
     ),
 ) -> None:
     """Show details for a single project."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         projects = _discover_projects(base_dir)
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error scanning projects: {exc}")
-        else:
-            typer.secho(f"Error scanning projects: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error scanning projects: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
     match = [p for p in projects if p.get("project_id") == project_id]
     if not match:
-        msg = f"Project {project_id!r} not found."
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Project {project_id!r} not found.")
 
     proj = match[0]
-    if is_json:
-        output_json({k: v for k, v in proj.items() if k != "_dir"})
-    else:
-        typer.echo(json.dumps(proj, indent=2, ensure_ascii=False))
+    output_text(
+        json.dumps(proj, indent=2, ensure_ascii=False),
+        data={k: v for k, v in proj.items() if k != "_dir"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -153,29 +138,20 @@ def projects_get_assets(
     ),
 ) -> None:
     """Return a JSON list of asset files for a project."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         projects = _discover_projects(base_dir)
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error scanning projects: {exc}")
-        else:
-            typer.secho(f"Error scanning projects: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error scanning projects: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
     match = [p for p in projects if p.get("project_id") == project_id]
     if not match:
-        msg = f"Project {project_id!r} not found."
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Project {project_id!r} not found.")
 
     proj = match[0]
     project_dir = Path(proj["_dir"])
     assets = _collect_assets(project_dir)
-    if is_json:
-        output_json({"status": "ok", "items": assets, "count": len(assets)})
-    else:
-        typer.echo(json.dumps(assets, indent=2, ensure_ascii=False))
+    output_text(
+        json.dumps(assets, indent=2, ensure_ascii=False),
+        data={"status": "ok", "items": assets, "count": len(assets)},
+    )

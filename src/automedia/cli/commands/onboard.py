@@ -23,7 +23,7 @@ from typing import Any
 import typer
 import yaml
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.config_loader import load_config
 
 _USER_CFG_DIR = Path.home() / ".automedia"
@@ -421,23 +421,16 @@ def start(
     ),
 ) -> None:
     """Run the onboarding wizard for one or all steps."""
-    is_json = get_output_mode() == OutputMode.JSON
     steps = _STEPS if step == "all" else [step]
 
     if step not in _STEPS:
-        msg = f"Unknown step: {step!r}. Choose from: {', '.join(_STEPS)}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Unknown step: {step!r}. Choose from: {', '.join(_STEPS)}")
 
-    if is_json:
-        output_error_json(
+    if get_output_mode() == OutputMode.JSON:
+        output_error(
             "Interactive onboarding not supported in --json mode. "
             "Use 'automedia init --template minimal' for non-interactive setup."
         )
-        raise typer.Exit(code=1)
 
     typer.echo("")
     typer.echo("╔══════════════════════════════════════════════════╗")
@@ -475,8 +468,6 @@ def start(
 @app.command()
 def status() -> None:
     """Show current onboarding status — which configs are set."""
-    is_json = get_output_mode() == OutputMode.JSON
-
     checks = [
         ("LLM config", _USER_CFG_DIR / "model_config.yaml"),
         ("Brand profile", _USER_CFG_DIR / "brand-profile.yaml"),
@@ -494,25 +485,20 @@ def status() -> None:
         ("Prompt overrides", _USER_CFG_DIR / "overrides" / "prompts"),
     ]
 
-    if is_json:
-        items = []
-        all_done = True
-        for name, path in checks:
-            configured = False
-            if path is not None and isinstance(path, Path) and path.exists():
-                configured = True
-            elif path is None:
-                configured = False
-            if not configured:
-                all_done = False
-            items.append({"name": name, "configured": configured})
-        output_json({"status": "ok", "all_configured": all_done, "items": items})
+    items = []
+    all_done = True
+    for name, path in checks:
+        configured = bool(path is not None and isinstance(path, Path) and path.exists())
+        if not configured:
+            all_done = False
+        items.append({"name": name, "configured": configured})
+
+    if output_text(None, data={"status": "ok", "all_configured": all_done, "items": items}):
         return
 
     typer.echo("\nOnboarding Status")
     typer.echo("=" * 50)
 
-    all_done = True
     for name, path in checks:
         if path is None:
             typer.echo(f"  ⬜ {name} — not configured")
@@ -536,8 +522,6 @@ def status() -> None:
 @app.command(name="list")
 def cmd_list() -> None:
     """List all configurable items and their current values."""
-    is_json = get_output_mode() == OutputMode.JSON
-
     config = load_config()
 
     # Brand
@@ -557,8 +541,7 @@ def cmd_list() -> None:
     platforms = config.get("platforms", {})
     enabled = [k for k, v in platforms.items() if isinstance(v, dict) and v.get("enabled")]
 
-    if is_json:
-        output_json({
+    if output_text(None, data={
             "status": "ok",
             "llm_provider": (
                 config.get("llm", {}).get("text_generation", {}).get("provider", "not set")
@@ -570,7 +553,8 @@ def cmd_list() -> None:
             "languages": [k for k in brand.get("languages", {})] or ["not configured"],
             "enabled_platforms": enabled or ["none"],
             "hitl_preset": hitl.get("preset", "not set"),
-        })
+        },
+    ):
         return
 
     typer.echo("\nCurrent Configuration")

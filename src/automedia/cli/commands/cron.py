@@ -10,7 +10,7 @@ from pathlib import Path
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.pool.collector import HotCollector
 from automedia.pool.db import PoolDB
 from automedia.pool.dedup import TopicDeduplicator
@@ -44,16 +44,12 @@ def cron_run(
     timeout: int = typer.Option(120, "--timeout", help="Job timeout in seconds."),
 ) -> None:
     """Execute a named cron job."""
-    is_json = get_output_mode() == OutputMode.JSON
     if job_name not in _KNOWN_JOBS:
-        msg = f"Unknown job {job_name!r}. Known jobs: {list(_KNOWN_JOBS)}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(
+            f"Unknown job {job_name!r}. Known jobs: {list(_KNOWN_JOBS)}"
+        )
 
-    if not is_json:
+    if get_output_mode() == OutputMode.TEXT:
         typer.echo(f"Running cron job: {job_name} — {_KNOWN_JOBS[job_name]}")
 
     # Dispatch to the appropriate handler
@@ -68,17 +64,14 @@ def cron_run(
     try:
         handlers[job_name]()
     except Exception as exc:
-        msg = f"Job {job_name!r} failed: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Job {job_name!r} failed: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "job": job_name})
-    else:
-        typer.secho(f"Job {job_name!r} completed.", fg=typer.colors.GREEN)
+    output_text(
+        f"Job {job_name!r} completed.",
+        data={"status": "ok", "job": job_name},
+        green=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +228,6 @@ def _job_watchdog() -> None:
 @app.command("check-health")
 def cron_check_health() -> None:
     """Run a 4-step health check of the AutoMedia system."""
-    is_json = get_output_mode() == OutputMode.JSON
     checks: list[tuple[str, bool, str]] = []
 
     # 1. Config directory exists
@@ -297,14 +289,13 @@ def cron_check_health() -> None:
 
     all_ok = all(ok for _, ok, _ in checks)
 
-    if is_json:
-        output_json({
-            "status": "ok" if all_ok else "error",
-            "checks": [
-                {"name": name, "passed": ok, "detail": detail}
-                for name, ok, detail in checks
-            ],
-        })
+    if output_text(None, data={
+        "status": "ok" if all_ok else "error",
+        "checks": [
+            {"name": name, "passed": ok, "detail": detail}
+            for name, ok, detail in checks
+        ],
+    }):
         if not all_ok:
             raise typer.Exit(code=1)
         return

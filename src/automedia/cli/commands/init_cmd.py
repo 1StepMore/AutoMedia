@@ -13,7 +13,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 
 _USER_CFG_DIR = Path.home() / ".automedia"
 _MODEL_CONFIG_FILE = _USER_CFG_DIR / "model_config.yaml"
@@ -51,26 +51,18 @@ def init_cmd(
 
     With ``--omni`` runs the Omni Triad interactive configuration wizard.
     """
-    is_json = get_output_mode() == OutputMode.JSON
-
     if omni:
-        _init_omni(is_json=is_json)
+        _init_omni()
     elif template == "minimal":
-        _init_minimal(is_json=is_json)
+        _init_minimal()
     elif template is None:
-        if is_json:
-            output_error_json(
+        if get_output_mode() == OutputMode.JSON:
+            output_error(
                 "Interactive init not supported in --json mode. Use --template minimal."
             )
-            raise typer.Exit(code=1)
         _init_interactive()
     else:
-        msg = f"Unknown template: {template!r}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Unknown template: {template!r}")
 
 
 def _init_interactive() -> None:
@@ -98,7 +90,7 @@ def _init_interactive() -> None:
     _write_model_config(data)
 
 
-def _init_minimal(*, is_json: bool = False) -> None:
+def _init_minimal() -> None:
     """Non-interactive minimal config generation."""
     data = {
         "llm": {
@@ -110,11 +102,13 @@ def _init_minimal(*, is_json: bool = False) -> None:
         },
     }
     _write_model_config(data)
-    if is_json:
-        output_json({"status": "ok", "path": str(_MODEL_CONFIG_FILE)})
+    output_text(
+        None,
+        data={"status": "ok", "path": str(_MODEL_CONFIG_FILE)},
+    )
 
 
-def _init_omni(*, is_json: bool = False) -> None:
+def _init_omni() -> None:
     """Interactive Omni Triad configuration wizard.
 
     Creates ``~/.automedia/omni_config.yaml``, copies template allowlist and
@@ -128,15 +122,10 @@ def _init_omni(*, is_json: bool = False) -> None:
     ]
     missing = [str(p) for p in _required_templates if not p.exists()]
     if missing:
-        msg = (
+        output_error(
             "Error: The following required template file(s) were not found:\n"
             + "\n".join(f"  • {m}" for m in missing)
         )
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
 
     _USER_CFG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -164,8 +153,9 @@ def _init_omni(*, is_json: bool = False) -> None:
     with open(omni_config_path, "w", encoding="utf-8") as fh:
         yaml.dump(config, fh, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
-    if is_json:
-        output_json({
+    if output_text(
+        None,
+        data={
             "status": "ok",
             "config_dir": str(_USER_CFG_DIR),
             "files": [
@@ -173,9 +163,11 @@ def _init_omni(*, is_json: bool = False) -> None:
                 "omni_allowlist.yaml",
                 "omni/ol_config.yaml",
             ],
-        })
-    else:
-        typer.secho(f"\nOmni configuration written to {_USER_CFG_DIR}", fg=typer.colors.GREEN)
-        typer.secho("  └─ omni_config.yaml", fg=typer.colors.GREEN)
-        typer.secho("  └─ omni_allowlist.yaml", fg=typer.colors.GREEN)
-        typer.secho("  └─ omni/ol_config.yaml", fg=typer.colors.GREEN)
+        },
+    ):
+        return
+
+    typer.secho(f"\nOmni configuration written to {_USER_CFG_DIR}", fg=typer.colors.GREEN)
+    typer.secho("  └─ omni_config.yaml", fg=typer.colors.GREEN)
+    typer.secho("  └─ omni_allowlist.yaml", fg=typer.colors.GREEN)
+    typer.secho("  └─ omni/ol_config.yaml", fg=typer.colors.GREEN)

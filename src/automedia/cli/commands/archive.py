@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import output_error, output_text
 
 
 def archive_cmd(
@@ -24,8 +24,6 @@ def archive_cmd(
     Red Line 8: if the project status is not ``published`` the command
     refuses to proceed unless ``--force`` is supplied.
     """
-    is_json = get_output_mode() == OutputMode.JSON
-
     # Locate project
     base = Path(base_dir)
     info_files = list(base.glob("*/00_project_info.json"))
@@ -44,65 +42,35 @@ def archive_cmd(
             continue
 
     if project_dir is None:
-        msg = f"Project {project_id!r} not found."
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Project {project_id!r} not found.")
 
     # Red Line 8: status must be published unless --force
     status = str(project_info.get("status", ""))
     if status != "published" and not force:
-        msg = (
+        output_error(
             f"Refused: project status is '{status}', not 'published'. "
             f"Use --force to override (Red Line 8)."
         )
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
 
     if project_dir.name.endswith("_archived"):
-        msg = (
+        output_error(
             f"Refused: project directory {project_dir.name!r} is already archived. "
             f"Double-archive would create nested _archived_archived. "
             f"Use 'archive' on the original (non-_archived) directory instead."
         )
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
 
     archive_dir = project_dir.parent / f"{project_dir.name}_archived"
     if archive_dir.exists():
-        msg = f"Archive target already exists: {archive_dir}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"Archive target already exists: {archive_dir}")
 
     try:
         project_dir.rename(archive_dir)
     except OSError as exc:
-        msg = f"Archive failed: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Archive failed: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({
-            "status": "ok",
-            "project_id": project_id,
-            "archive_dir": str(archive_dir),
-        })
-    else:
-        typer.secho(
-            f"Archived project {project_id} → {archive_dir}",
-            fg=typer.colors.GREEN,
-        )
+    output_text(
+        f"Archived project {project_id} → {archive_dir}",
+        data={"status": "ok", "project_id": project_id, "archive_dir": str(archive_dir)},
+        green=True,
+    )

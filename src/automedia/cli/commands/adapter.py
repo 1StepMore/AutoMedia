@@ -12,7 +12,7 @@ from pathlib import Path
 import typer
 
 from automedia.adapters.registry import AdapterRegistry
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import output_error, output_text
 
 app = typer.Typer(name="adapter", help="List and create platform adapters.")
 
@@ -25,7 +25,6 @@ app = typer.Typer(name="adapter", help="List and create platform adapters.")
 @app.command("list")
 def adapter_list() -> None:
     """List all registered platform adapters."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:  # noqa: SIM105 — suppress is not clearer here
         import automedia.adapters.platforms  # noqa: F401 — trigger registration
     except ImportError:
@@ -34,8 +33,10 @@ def adapter_list() -> None:
         warn_missing_optional("adapters.platforms", feature="platform adapter registration")
 
     names = AdapterRegistry.list()
-    if is_json:
-        output_json({"status": "ok", "adapters": names, "count": len(names)})
+    if output_text(
+        None,
+        data={"status": "ok", "adapters": names, "count": len(names)},
+    ):
         return
 
     if not names:
@@ -89,31 +90,22 @@ def adapter_create(
     ),
 ) -> None:
     """Generate a new adapter template file."""
-    is_json = get_output_mode() == OutputMode.JSON
     class_name = name.replace("_", " ").replace("-", " ").title().replace(" ", "")
     content = _ADAPTER_TEMPLATE.format(name=name, class_name=class_name, name_lower=name.lower())
 
     out_path = Path(output_dir) / f"{name}_adapter.py"
     if out_path.exists():
-        msg = f"File already exists: {out_path}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        output_error(f"File already exists: {out_path}")
 
     try:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(content, encoding="utf-8")
     except OSError as exc:
-        msg = f"Error writing adapter: {exc}"
-        if is_json:
-            output_error_json(msg)
-        else:
-            typer.secho(msg, fg=typer.colors.RED, err=True)
+        output_error(f"Error writing adapter: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "path": str(out_path)})
-    else:
-        typer.secho(f"Adapter created: {out_path}", fg=typer.colors.GREEN)
+    output_text(
+        f"Adapter created: {out_path}",
+        data={"status": "ok", "path": str(out_path)},
+        green=True,
+    )

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import output_error, output_text
 from automedia.pool.db import PoolDB
 
 app = typer.Typer(name="pool", help="Manage the topic pool database.")
@@ -34,20 +34,15 @@ def pool_list(
     db_path: str | None = typer.Option(None, "--db", help="Path to pool SQLite file."),
 ) -> None:
     """List topics in the pool, optionally filtered by status."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         db = _get_db(db_path)
         topics = db.list_topics(status=status)
         db.close()
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error listing pool: {exc}")
-        else:
-            typer.secho(f"Error listing pool: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error listing pool: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "items": topics, "count": len(topics)})
+    if output_text(None, data={"status": "ok", "items": topics, "count": len(topics)}):
         return
 
     if not topics:
@@ -73,7 +68,6 @@ def pool_add(
     db_path: str | None = typer.Option(None, "--db", help="Path to pool SQLite file."),
 ) -> None:
     """Add a new topic to the pool."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         db = _get_db(db_path)
         topic_id = db.add_topic(
@@ -85,16 +79,14 @@ def pool_add(
         )
         db.close()
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error adding topic: {exc}")
-        else:
-            typer.secho(f"Error adding topic: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error adding topic: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "topic_id": topic_id, "title": topic})
-    else:
-        typer.secho(f"Topic added (id={topic_id}): {topic}", fg=typer.colors.GREEN)
+    output_text(
+        f"Topic added (id={topic_id}): {topic}",
+        data={"status": "ok", "topic_id": topic_id, "title": topic},
+        green=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +107,6 @@ def pool_prune(
     db_path: str | None = typer.Option(None, "--db", help="Path to pool SQLite file."),
 ) -> None:
     """Remove stale topics older than *days* days, optionally filtered by status."""
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         db = _get_db(db_path)
         cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
@@ -133,14 +124,13 @@ def pool_prune(
         removed = cur.rowcount
         db.close()
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error pruning pool: {exc}")
-        else:
-            typer.secho(f"Error pruning pool: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error pruning pool: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({"status": "ok", "removed": removed, "days": days, "filter_status": status})
+    if output_text(
+        None,
+        data={"status": "ok", "removed": removed, "days": days, "filter_status": status},
+    ):
         return
 
     status_label = f" ({status})" if status else ""
@@ -164,17 +154,11 @@ def pool_attach_brief(
     ``research_data`` field.  This is the manual fallback when
     OPP extraction fails.
     """
-    is_json = get_output_mode() == OutputMode.JSON
     try:
         # Validate md_file path
         md_path = Path(md_file)
         if not md_path.is_file():
-            msg = f"Error: file not found: {md_file}"
-            if is_json:
-                output_error_json(msg)
-            else:
-                typer.secho(msg, fg=typer.colors.RED, err=True)
-            raise typer.Exit(code=1)
+            output_error(f"Error: file not found: {md_file}")
 
         md_content = md_path.read_text(encoding="utf-8")
 
@@ -183,12 +167,7 @@ def pool_attach_brief(
         # Verify topic exists
         topic_row = db.get_topic(topic)
         if topic_row is None:
-            msg = f"Error: topic {topic} not found in pool."
-            if is_json:
-                output_error_json(msg)
-            else:
-                typer.secho(msg, fg=typer.colors.RED, err=True)
-            raise typer.Exit(code=1)
+            output_error(f"Error: topic {topic} not found in pool.")
 
         db.update_brief(topic, md_content)
         db.close()
@@ -196,21 +175,16 @@ def pool_attach_brief(
     except typer.Exit:
         raise
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Error attaching brief: {exc}")
-        else:
-            typer.secho(f"Error attaching brief: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Error attaching brief: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        output_json({
+    output_text(
+        f"Brief attached to topic {topic} ({md_path.name}, {len(md_content)} bytes).",
+        data={
             "status": "ok",
             "topic_id": topic,
             "file": md_path.name,
             "bytes": len(md_content),
-        })
-    else:
-        typer.secho(
-            f"Brief attached to topic {topic} ({md_path.name}, {len(md_content)} bytes).",
-            fg=typer.colors.GREEN,
-        )
+        },
+        green=True,
+    )

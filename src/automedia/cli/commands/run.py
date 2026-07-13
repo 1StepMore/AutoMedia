@@ -8,7 +8,7 @@ from typing import Any
 
 import typer
 
-from automedia.cli.output import OutputMode, get_output_mode, output_error_json, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.pipelines.runner import run_full_pipeline
 
 _MODEL_CONFIG_PATH = Path.home() / ".automedia" / "model_config.yaml"
@@ -35,24 +35,14 @@ def run_cmd(
     ),
 ) -> None:
     """Run the full AutoMedia pipeline for a given topic and brand."""
-    is_json = get_output_mode() == OutputMode.JSON
 
     if not _MODEL_CONFIG_PATH.is_file():
-        if is_json:
-            output_error_json(
-                f"Model config not found: {_MODEL_CONFIG_PATH}\n"
-                "Run 'automedia init' first to create it."
-            )
-        else:
-            typer.secho(
-                f"Model config not found: {_MODEL_CONFIG_PATH}\n"
-                "Run 'automedia init' first to create it.",
-                fg=typer.colors.RED,
-                err=True,
-            )
-        raise typer.Exit(code=1)
+        output_error(
+            f"Model config not found: {_MODEL_CONFIG_PATH}\n"
+            "Run 'automedia init' first to create it."
+        )
 
-    if not is_json:
+    if get_output_mode() == OutputMode.TEXT:
         typer.echo(f"Starting pipeline: topic={topic!r}  brand={brand!r}  mode={mode}")
         if resume_from:
             typer.echo(f"Resuming from gate: {resume_from}")
@@ -66,26 +56,23 @@ def run_cmd(
             resume_from=resume_from,
         )
     except Exception as exc:
-        if is_json:
-            output_error_json(f"Pipeline failed: {exc}")
-        else:
-            typer.secho(f"Pipeline failed: {exc}", fg=typer.colors.RED, err=True)
+        output_error(f"Pipeline failed: {exc}", code=0)
         raise typer.Exit(code=1) from exc
 
-    if is_json:
-        data: dict[str, Any] = {
-            "status": result.status,
-            "project_id": result.project_id,
-            "project_dir": result.project_dir,
-            "total_duration_s": result.total_duration_s,
-        }
-        if result.gates_log:
-            data["gates_log"] = [asdict(e) for e in result.gates_log]
-        if result.assets:
-            data["assets"] = [asdict(a) for a in result.assets]
-        if result.error:
-            data["error"] = result.error
-        output_json(data)
+    data: dict[str, Any] = {
+        "status": result.status,
+        "project_id": result.project_id,
+        "project_dir": result.project_dir,
+        "total_duration_s": result.total_duration_s,
+    }
+    if result.gates_log:
+        data["gates_log"] = [asdict(e) for e in result.gates_log]
+    if result.assets:
+        data["assets"] = [asdict(a) for a in result.assets]
+    if result.error:
+        data["error"] = result.error
+
+    if output_text(None, data=data):
         if result.status == "failed":
             raise typer.Exit(code=1)
         return
