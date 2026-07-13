@@ -176,6 +176,7 @@ def research_topics(
     category: str,
     count: int = 5,
     trending_data: str = "",
+    pattern: str = "b",
 ) -> dict[str, Any]:
     """Research trending or high-potential topics within a category using LLM.
 
@@ -193,6 +194,9 @@ def research_topics(
     trending_data:
         Optional context — trending signals, audience data, or keywords
         to steer the LLM toward relevant topics.
+    pattern:
+        When ``"a"``, return raw input data without calling the LLM.
+        When ``"b"`` (default), use the LLM as usual.
 
     Returns
     -------
@@ -200,6 +204,8 @@ def research_topics(
         ``{"topics": [...], "category": str, "total_found": int}``
         or an error dict on failure.
     """
+    if pattern == "a":
+        return {"topics": [], "category": category, "total_found": 0, "note": "pattern_a_raw_data"}
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import TopicResearchOutput
@@ -974,6 +980,7 @@ def evaluate_content_quality(
     content: str,
     criteria: str = "general",
     brand: str = "",
+    pattern: str = "b",
 ) -> dict[str, Any]:
     """Evaluate content quality using an LLM with structured output.
 
@@ -990,6 +997,9 @@ def evaluate_content_quality(
         ``"clarity, accuracy, brand voice, SEO readiness"``.
     brand:
         Optional brand identifier for brand-specific evaluation.
+    pattern:
+        When ``"a"``, return raw input data without calling the LLM.
+        When ``"b"`` (default), use the LLM as usual.
 
     Returns
     -------
@@ -998,6 +1008,8 @@ def evaluate_content_quality(
         "suggestions": list[str], "overall_assessment": str}``
         or an error dict on failure.
     """
+    if pattern == "a":
+        return {"quality_score": 0.5, "note": "pattern_a_raw_data", "criteria": criteria}
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import ContentQualityOutput
@@ -1062,6 +1074,7 @@ def run_brand_strategy(
     industry: str,
     target_audience: str,
     context: str = "",
+    pattern: str = "b",
 ) -> dict[str, Any]:
     """Generate a brand strategy using LLM-driven analysis.
 
@@ -1081,6 +1094,9 @@ def run_brand_strategy(
         Description of the target audience.
     context:
         Optional additional context or constraints for the strategy.
+    pattern:
+        When ``"a"``, return raw input data without calling the LLM.
+        When ``"b"`` (default), use the LLM as usual.
 
     Returns
     -------
@@ -1091,6 +1107,16 @@ def run_brand_strategy(
         ``suggested_messaging``.  On failure the dict contains an
         ``"error"`` key instead.
     """
+    if pattern == "a":
+        return {
+            "note": "pattern_a_raw_data",
+            "input": {
+                "brand_name": brand_name,
+                "industry": industry,
+                "target_audience": target_audience,
+                "context": context,
+            },
+        }
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import BrandStrategyOutput
@@ -1117,6 +1143,7 @@ def run_pipeline_from_strategy(
     brand: str,
     mode: str = "auto",
     strategy_context: str = "",
+    pattern: str = "b",
 ) -> dict[str, Any]:
     """Generate a content strategy via LLM then execute the production pipeline.
 
@@ -1140,6 +1167,9 @@ def run_pipeline_from_strategy(
     strategy_context:
         Optional additional context or constraints for the strategy
         (e.g. target audience, tone, platform hints).
+    pattern:
+        When ``"a"``, return raw input data without calling the LLM.
+        When ``"b"`` (default), use the LLM as usual.
 
     Returns
     -------
@@ -1148,6 +1178,16 @@ def run_pipeline_from_strategy(
         On failure the dict contains an ``"error"`` key with the
         failure description.
     """
+    if pattern == "a":
+        return {
+            "note": "pattern_a_raw_data",
+            "input": {
+                "topic": topic,
+                "brand": brand,
+                "mode": mode,
+                "strategy_context": strategy_context,
+            },
+        }
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import PipelineStrategyOutput
