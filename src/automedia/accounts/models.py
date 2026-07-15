@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import TypedDict
 
 
 class AuthType(enum.StrEnum):

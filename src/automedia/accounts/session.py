@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable
 
 from automedia.accounts.models import HealthStatus, SessionToken
 
@@ -143,9 +143,8 @@ class SessionManager:
                     return self._refresh(account_id, refresh_fn)
                 return None
 
-            if ttl > 0 and elapsed >= ttl * self._refresh_threshold:
+            if ttl > 0 and elapsed >= ttl * self._refresh_threshold and refresh_fn and not cached.is_refreshing:
                 # Past threshold — refresh if not already refreshing
-                if refresh_fn and not cached.is_refreshing:
                     # Fire async refresh in background
                     cached.is_refreshing = True
                     t = threading.Thread(

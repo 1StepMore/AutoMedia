@@ -23,7 +23,6 @@ from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------

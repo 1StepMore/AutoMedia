@@ -19,7 +19,6 @@ from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
-
 # ---------------------------------------------------------------------------
 # Forbidden keyword patterns (Chinese + English)
 # ---------------------------------------------------------------------------

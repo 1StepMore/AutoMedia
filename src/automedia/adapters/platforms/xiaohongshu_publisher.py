@@ -18,7 +18,7 @@ from typing import Any
 
 import structlog
 
-from automedia.adapters.base import PublishResult, BasePlatformAdapter
+from automedia.adapters.base import BasePlatformAdapter, PublishResult
 from automedia.core.credential_loader import load_credential_or_env
 
 logger = structlog.get_logger(__name__)

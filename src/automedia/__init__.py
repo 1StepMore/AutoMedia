@@ -10,6 +10,7 @@ try:
 except ImportError:
     pass
 
+from automedia.decision.base import DecisionArtifact
 from automedia.gates.base import GateRegistry
 from automedia.hooks.protocol import GateHook
 from automedia.pipelines.gate_engine import (
@@ -21,8 +22,6 @@ from automedia.pipelines.gate_engine import (
     PipelineResult,
 )
 from automedia.pipelines.runner import run_full_pipeline
-
-from automedia.decision.base import DecisionArtifact
 
 __all__ = [
     "AssetInfo",

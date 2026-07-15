@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -65,7 +68,7 @@ jobs:
           pip install -e ".[dev]"
       - name: Security scan (pip-audit)
         run: |
-          pip install pip-audit
+          pip install "pip-audit>=2.7"
           pip-audit --fail-on CRITICAL
       - name: Security scan (bandit)
         continue-on-error: true

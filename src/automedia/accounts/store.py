@@ -32,9 +32,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from automedia.accounts.models import AccountInfo
-
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from automedia.accounts.models import AccountInfo
 
 
 class AccountStore:

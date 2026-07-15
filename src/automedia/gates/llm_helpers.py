@@ -128,7 +128,7 @@ def llm_check_with_fallback(
     prompt_template_name: str,
     deterministic_fn: Callable[[str], LLMCheckResult],
     timeout: int = 30,
-    **kwargs: Any,
+    **kwargs: Any,  # noqa: ANN401  — passthrough to LLM call
 ) -> LLMCheckResult:
     """Run an LLM-based check with deterministic fallback.
 

@@ -90,9 +90,8 @@ class AccountRegistry:
         if not credentials:
             raise ValueError("Credentials payload must be non-empty.")
 
-        if label:
-            if self._label_exists(platform, label):
-                raise ValueError(
+        if label and self._label_exists(platform, label):
+            raise ValueError(
                     f"Label '{label}' already exists for platform '{platform}'. "
                     "Labels must be unique per platform."
                 )
@@ -266,8 +265,7 @@ class AccountRegistry:
         """
         accounts = self._store.list_accounts(platform=platform)
         for acc in accounts:
-            if acc.get("label") == label:
-                if exclude is None or acc["account_id"] != exclude:
+            if acc.get("label") == label and (exclude is None or acc["account_id"] != exclude):
                     return True
         return False
 
