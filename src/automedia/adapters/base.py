@@ -28,6 +28,7 @@ class PublishResult(TypedDict, total=False):
     publish_id: str
     message_id: str
     access_token: str
+    video_id: str
 
 
 class AuthResult(TypedDict, total=False):
@@ -71,6 +72,22 @@ AUTOMATION_DEFAULTS: dict[str, str] = {
     "zhihu": "auto",
     "xiaohongshu": "manual",
     "feishu": "auto",
+    "douyin": "manual",
+    "bilibili": "manual",
+    "weibo": "manual",
+    "toutiao": "manual",
+    "baijiahao": "manual",
+    "kuaishou": "manual",
+    "youtube": "auto",
+    "twitter": "auto",
+    "reddit": "auto",
+    "tiktok": "auto",
+    "facebook": "auto",
+    "instagram": "manual",
+    "linkedin": "auto",
+    "medium": "auto",
+    "wordpress": "auto",
+    "juejin": "manual",
 }
 """Default automation levels by platform when brand profile omits them."""
 
