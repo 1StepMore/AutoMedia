@@ -19,6 +19,21 @@ gate chain, leaving the 20-gate production sequence unchanged.
 | **OL** (Omni Localizer) | `omni-localizer` | Multi-language translation — Markdown/XLIFF → translated output |
 | **ORF** (Omni Re-Formatter) | `omni-re-formatter` | Format backfill — translated XLIFF → DOCX/PPTX |
 
+## MCP-CLI Naming Equivalences
+
+The three Omni tools use **different names** in the MCP and CLI interfaces
+even though they call the same underlying implementation:
+
+| Function | CLI Command | MCP Tool |
+|----------|-------------|----------|
+| Document extraction | `automedia omni extract` | `extract_brief` |
+| Content translation | `automedia omni translate` | `localize_content` |
+| Format conversion | `automedia omni convert` | `format_output` |
+
+These pairs are **semantically equivalent**.  The CLI and MCP interfaces
+share the same Omni adapter layer (:class:`~automedia.omni.OPPAdapter`,
+:class:`~automedia.omni.OLAdapter`, :class:`~automedia.omni.ORFAdapter`).
+
 ## Installation
 
 ```bash
@@ -40,6 +55,49 @@ The optional dependency groups are:
 | `[omni-pdf]` | `pymupdf` |
 | `[omni-ml]` | `sentence-transformers`, `torch` |
 | `[omni]` | All of the above + `omni-pre-processor`, `omni-localizer`, `omni-re-formatter` |
+
+### Explicit Dependency Requirements
+
+The `[omni]` extra installs three version-pinned packages, each wrapping a
+different external tool:
+
+| Python Import | PyPI Package | Version Constraint | Purpose |
+|---------------|-------------|--------------------|---------|
+| `opp` | `omni-pre-processor` | `>=0.9,<1.0` | Document extraction (OPP) |
+| `ol_mcp` | `omni-localizer` | `>=0.7,<1.0` | Multi-language translation (OL) |
+| `orf` | `omni-re-formatter` | `>=0.4,<1.0` | Format conversion (ORF) |
+
+These constraints are defined in `pyproject.toml` under
+`[project.optional-dependencies] omni` and are enforced at install time by
+`pip`.
+
+### Verification Script
+
+A verification script is available to confirm all three packages are
+installed and importable:
+
+```bash
+python scripts/verify-omni-packages.py
+```
+
+This script imports each package and exercises its basic API. Exit code
+0 means all packages are functional; exit code 1 indicates missing or
+broken packages.
+
+### Graceful Degradation
+
+All three adapters handle missing packages gracefully.  If an Omni package
+is not installed (e.g. `pip install automedia-pipeline` without
+`[omni]`), the corresponding adapter methods return empty results with
+descriptive warnings instead of raising ``ImportError``:
+
+- **OPPAdapter.extract()** → `ExtractionResult(md_content="", warnings=[...])`
+- **OLAdapter.translate()** → `TranslationResult(translated_md="", warnings=[...])`
+- **ORFAdapter.convert()** → `{"status": "error", "errors": [...], ...}`
+
+This preserves the main pipeline: missing Omni packages never crash
+production runs. Gate logs contain ``WARNING`` messages pointing users
+to `pip install automedia-pipeline[omni]`.
 
 ## Three Integration Modes
 

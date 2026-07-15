@@ -112,7 +112,10 @@ class WechatPublisher(BasePlatformAdapter):
     # ------------------------------------------------------------------
 
     def publish(
-        self, artifact_dir: str, project: dict[str, Any]
+        self,
+        artifact_dir: str,
+        project: dict[str, Any],
+        draft_only: bool = False,
     ) -> PublishResult:
         """Publish a project article to WeChat Official Account.
 
@@ -125,6 +128,10 @@ class WechatPublisher(BasePlatformAdapter):
         project:
             Full project dict.  At a minimum ``project["topic"]`` is used
             for the article title.
+        draft_only:
+            When ``True``, create a draft without submitting for publish.
+            The returned ``status`` will be ``"draft_created"`` with a
+            ``draft_url``.
 
         Returns
         -------
@@ -132,6 +139,8 @@ class WechatPublisher(BasePlatformAdapter):
             ``{"status": "ok", "platform": "wechat", "article_id": …,
             "publish_id": …}`` on success, or ``{"status": "error",
             "platform": "wechat", "reason": …}`` on failure.
+            When ``draft_only=True`` returns ``{"status": "draft_created",
+            "platform": "wechat", "draft_id": …, "draft_url": …}``.
         """
         # --- pre-flight: credentials -------------------------------------------
         appid, secret = _load_wx_credentials()
@@ -174,7 +183,26 @@ class WechatPublisher(BasePlatformAdapter):
             return draft_result
         draft_id = draft_result["draft_id"]
 
-        # 4. Submit for publish
+        # 4. draft_only: skip submit, return draft info
+        if draft_only:
+            draft_url = (
+                "https://mp.weixin.qq.com/cgi-bin/appmsg?"
+                f"t=media/appmsg_edit&action=edit&type=10"
+                f"&appmsgid={draft_id}&token={access_token}"
+            )
+            log.info(
+                "wechat.draft_only.created",
+                draft_id=draft_id,
+                draft_url=draft_url,
+            )
+            return {
+                "status": "draft_created",
+                "platform": "wechat",
+                "draft_id": draft_id,
+                "draft_url": draft_url,
+            }
+
+        # 5. Submit for publish
         publish_result = self._submit_publish(access_token, draft_id)
         if publish_result.get("status") != "ok":
             return publish_result

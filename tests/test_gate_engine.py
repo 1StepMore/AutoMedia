@@ -209,7 +209,7 @@ class TestGateEngineRun:
         """A failing rewrite gate does NOT halt the pipeline."""
         engine = GateEngine([_FailRewriteGate(), _PassGate()])
         ok, results = engine.run({})
-        assert ok is False  # overall still failed
+        assert ok is True  # pipeline completed with stop gate passing
         assert len(results) == 2  # second gate DID run
 
     def test_exception_in_stop_gate_stops(self) -> None:
@@ -225,7 +225,7 @@ class TestGateEngineRun:
         """A transient exception in a rewrite gate does NOT halt the pipeline."""
         engine = GateEngine([_ErrorRewriteGate(), _PassGate()])
         ok, results = engine.run({})
-        assert ok is False
+        assert ok is True  # pipeline completed with stop gate passing
         assert len(results) == 2
 
     def test_gate_context_gets_gate_name(self) -> None:
@@ -506,7 +506,7 @@ class TestExceptionCategorization:
         engine = GateEngine([_TransientConnectionErrorGate(), trailing])
         ok, results = engine.run({})
 
-        assert ok is False
+        assert ok is True  # pipeline completed with stop gate passing
         assert len(results) == 2, "Transient error should not halt pipeline"
         assert results[0]["passed"] is False
         assert results[1]["passed"] is True
@@ -517,7 +517,7 @@ class TestExceptionCategorization:
         engine = GateEngine([_TransientTimeoutErrorGate(), trailing])
         ok, results = engine.run({})
 
-        assert ok is False
+        assert ok is True  # pipeline completed with stop gate passing
         assert len(results) == 2
         assert results[0]["passed"] is False
         assert results[1]["passed"] is True

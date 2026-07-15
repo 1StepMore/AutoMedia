@@ -111,8 +111,10 @@ Pipeline finished: success
   Project dir: /var/automedia/projects/20260707_ai-video-tools
   Duration   : 342.5s
 
-  Gates executed: 18
+  Gates executed: 20
+    ✓ D0 (0.50s)
     ✓ pre-gate (0.32s)
+    ✓ CW (8.00s)
     ✓ G0 (12.50s)
     ✓ G1 (8.20s)
     ✓ G2 (5.10s)
@@ -130,6 +132,7 @@ Pipeline finished: success
     ✓ L1 (0.50s)
     ✓ L2 (1.20s)
     ✓ L3 (0.80s)
+    ✓ L4 (1.50s)
 
   Assets produced: 7
     - [article] 01_content/drafts/wechat/wechat_draft.html
@@ -185,6 +188,12 @@ auto-publish is configured:
 # Check publish log
 cat 20260707_*/05_publish/publish_log.json
 ```
+
+> **Xiaohongshu limitation (intentional divergence):** Xiaohongshu has no
+> public API for automated publishing. The adapter returns
+> ``"not_implemented"`` and never attempts to publish.  You must post
+> manually through the RED mobile app or web creator portal.  See
+> ``docs/dev/founder-expectations.md`` (F32) for the documented rationale.
 
 ### 4. Archive
 

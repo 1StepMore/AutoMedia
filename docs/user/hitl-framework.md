@@ -112,10 +112,11 @@ automedia hitl preset --set semi-automated
 automedia hitl config
 
 # Record human approval for a node
-automedia solution approve-node --node brand_positioning --by "alice@example.com"
+# (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)
+# CLI: automedia hitl approve --node brand_positioning --by "alice@example.com"
 
 # Show next pending node (exit code 1 if node requires HITL)
-automedia solution next-node --mode build --block-on-hitl
+# CLI: automedia hitl next --mode build --block-on-hitl
 ```
 
 ---

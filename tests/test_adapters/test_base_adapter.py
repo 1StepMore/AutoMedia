@@ -20,7 +20,9 @@ class _StubAdapter(BasePlatformAdapter):
     def platform_name(self) -> str:
         return "stub"
 
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
+    def publish(
+        self, artifact_dir: str, project: dict[str, Any], **kwargs: Any
+    ) -> dict[str, Any]:
         return {"status": "ok"}
 
 

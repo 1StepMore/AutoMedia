@@ -381,8 +381,8 @@ class TestSynthFullPipeline:
 
         success, results = engine.run(ctx)
 
-        # Pipeline continues (G1 is rewrite mode) but overall success is False
-        assert success is False
+        # Pipeline completes successfully — H0 approves the escalation
+        assert success is True
         assert len(results) == len(_AUTO_GATE_NAMES)
         g1_index = _AUTO_GATE_NAMES.index("G1")
         assert results[g1_index]["passed"] is False

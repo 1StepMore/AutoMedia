@@ -362,3 +362,28 @@ Ensure the asset set for each target publishing platform is complete.
 - Generate all required resolution variants (1080p, 720p, 480p)
 - Generate platform-compatible thumbnails (size, format, aspect ratio)
 - Generate platform-specific subtitle files (SRT, VTT, SCC)
+
+## L4: Translation Quality
+
+Validate the quality of translated content across target languages.
+
+**Common failure causes:**
+
+- Translation quality score is below the minimum threshold
+- Brand names or proper nouns were translated instead of being preserved
+- Target language grammar or phrasing sounds unnatural
+- Formatting or markdown structure was lost during translation
+
+**Remediation:**
+
+- Increase translation temperature or switch to a better LLM model for higher quality output
+- Add a glossary or term list to preserve brand names and proper nouns in their original form
+- Use a native-speaker review pass or enable HITL review for critical languages
+- Re-translate while preserving markdown structure with explicit format instructions in the prompt
+
+**Quick diagnosis:**
+
+```bash
+# Check the translation quality score in the project info
+cat <project-dir>/00_project_info.json | python3 -m json.tool | grep translation_quality
+```

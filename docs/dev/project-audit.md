@@ -547,7 +547,7 @@ PublishEngine.publish_all()
 
 ### 10.3 测试差距
 
-1. **生产端到端测试（S1–S3）** — `docs/production-e2e-test-design.md` 定义了 S1–S3 测试但** `tests/production/` 目录不存在**。零实现。
+1. **生产端到端测试（S1–S3）** — `docs/archive/production-e2e-test-design.md` 定义了 S1–S3 测试但** `tests/production/` 目录不存在**。零实现。
 2. **集成测试** — 测试使用合成数据。很少有测试调用真实 API 或测试端到端管线使用真实 LLM。
 3. **性能测试** — 未找到负载/压力测试。
 4. **安全测试** — 未找到渗漏/注入测试。
@@ -935,4 +935,4 @@ src/automedia/engines/              # 新增包
 
 ---
 
-*此审计基于代码库直接检查、模块级文件阅读和架构分析。配套文档 `docs/coverage-gaps.md`（现标注为被本文替代）提供逐项差距摘要表。`docs/decision-layer.md`（含实现说明）描述决策层代理架构。§13 记录 2026-07-12 可选引擎抽象层设计方案，与项目"默认开源轻量 + 用户自选"哲学一致。*
+*此审计基于代码库直接检查、模块级文件阅读和架构分析。配套文档 `docs/archive/coverage-gaps.md`（现标注为被本文替代）提供逐项差距摘要表。§13 记录 2026-07-12 可选引擎抽象层设计方案，与项目"默认开源轻量 + 用户自选"哲学一致。*

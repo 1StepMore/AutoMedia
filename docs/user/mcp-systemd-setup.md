@@ -19,7 +19,7 @@ alive across reboots and restarts automatically on failure.
 |------|---------|
 | `deploy/systemd/automedia-mcp.service` | systemd unit definition |
 | `deploy/systemd/automedia-mcp.env` | Environment variable template |
-| `docs/mcp-systemd-setup.md` | This guide |
+| `docs/user/mcp-systemd-setup.md` | This guide |
 
 ## Installation
 
@@ -90,7 +90,22 @@ sudo systemctl status automedia-mcp
 
 Expected output includes `Active: active (running)`.
 
-### 8. View logs
+### 8. Security hardening note
+
+The service files ship with `ProtectHome=read-only` enabled. Since
+AutoMedia reads user configuration from `~/.automedia/`, the service
+files also include `ReadWritePaths=/home/*/.automedia` to grant the
+service access to user-level config while keeping the rest of `/home/`
+protected.
+
+If you deploy with a non-standard home directory layout, adjust
+`ReadWritePaths` accordingly — for example:
+
+```ini
+ReadWritePaths=/opt/automedia/.automedia
+```
+
+### 9. View logs
 
 ```bash
 # Follow new log entries

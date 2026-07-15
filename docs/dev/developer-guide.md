@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-  │   select_topic, run_pipeline, ...    │  14 tools
+   │   select_topic, run_pipeline, ...    │  41 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -233,7 +233,7 @@ tests/                      # Test directory
   test_cli/
   test_mcp/
   test_e2e/
-docs/                       # Documentation
+docs/                       # Documentation (user/ + dev/)
 ```
 
 ### Running Tests
@@ -284,7 +284,7 @@ class MyNewGate(BaseGate):
 |------|------|------|
 | G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
 | V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
-| L1-L3 | Lifecycle Gates | Publish log, archive validation, platform integrity |
+| L1-L4 | Lifecycle Gates | Publish log, archive validation, platform integrity, translation quality |
 
 ### Pipeline Modes
 

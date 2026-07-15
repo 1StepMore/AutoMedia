@@ -5,7 +5,7 @@
 
 This document lists capabilities and dimensions that are **absent from AutoMedia's current implementation**. It serves as a gap analysis for contributors, a roadmap input, and a reference for AI agents entering the codebase.
 
-> **📌 Note:** This document is **superseded** by `docs/project-audit.md`, which provides a more comprehensive and up-to-date audit of the entire codebase. New contributors should start with `docs/project-audit.md`. **Section 1.4 has been updated** to reflect PRD-4's implementation — all other sections remain accurate as of the last-updated date.
+> **📌 Note:** This document is **superseded** by `docs/dev/project-audit.md`, which provides a more comprehensive and up-to-date audit of the entire codebase. New contributors should start with `docs/dev/project-audit.md`. **Section 1.4 has been updated** to reflect PRD-4's implementation — all other sections remain accurate as of the last-updated date.
 
 ---
 
@@ -89,7 +89,7 @@ These are capabilities that the pipeline claims or implies it has, but does **no
 | | • **Post-publish analytics** — `get_analytics()` still returns `"not_implemented"` on all platform adapters |
 | **Impact** | The core account infrastructure no longer blocks autonomous agent operation. Agents can register, authenticate, and manage multiple platform accounts programmatically. Remaining gaps are around browser-automation-only platforms (Xiaohongshu) and the analytics feedback loop. |
 | **Location** | `src/automedia/accounts/` (new subsystem), `src/automedia/mcp/accounts.py` (MCP tools), `src/automedia/cli/commands/account.py` (CLI commands) |
-| **Related docs** | `docs/project-audit.md §2.5` (account layer in architecture), `docs/project-audit.md §4` (OAuth2/AES rows in maturity matrix) |
+| **Related docs** | `docs/dev/project-audit.md §2.5` (account layer in architecture), `docs/dev/project-audit.md §4` (OAuth2/AES rows in maturity matrix) |
 
 ---
 
@@ -300,6 +300,6 @@ Architecture Decision Records (ADRs) that were **accepted but not yet implemente
 
 - Current capability overview: `AGENTS.md` (project root)
 - Architecture decisions: `docs/adr/architecture-decisions.md`
-- Commercial vs open-source split: `docs/open-core.md`
+- Commercial vs open-source split: `docs/user/open-core.md`
 - Adapter framework: `src/automedia/adapters/base.py`
 - Pipeline modes and gates: `src/automedia/pipelines/runner.py`

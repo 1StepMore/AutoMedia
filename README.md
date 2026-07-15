@@ -525,13 +525,13 @@ MIT License. See `LICENSE` for details.
 |----------|----------|----------|
 | `AGENTS.md` | English | AI coding agents — codebase map, constraints, MCP/CLI refs |
 | `README.md` (this file) | English | Human developers + AI agents — entry point, install, quick start |
-| `docs/developer-guide.md` | English | Full developer guide |
-| `docs/api-reference.md` | English | SDK API reference |
-| `docs/cli-reference.md` | English | CLI command reference |
-| `docs/mcp-setup.md` | English | MCP server setup guide |
-| `docs/omni-integration.md` | English | Omni Triad integration |
-| `docs/hitl-framework.md` | English | HITL framework |
-| `docs/asset-library.md` | English | Asset library |
+| `docs/dev/developer-guide.md` | English | Full developer guide |
+| `docs/user/api-reference.md` | English | SDK API reference |
+| `docs/user/cli-reference.md` | English | CLI command reference |
+| `docs/user/mcp-setup.md` | English | MCP server setup guide |
+| `docs/user/omni-integration.md` | English | Omni Triad integration |
+| `docs/user/hitl-framework.md` | English | HITL framework |
+| `docs/user/asset-library.md` | English | Asset library |
 | `docs/runbook/gate-failure-modes.md` | English | Gate failure troubleshooting |
 | `docs/runbook/production-workflow.md` | English | Production operations |
 | `docs/runbook/cron-troubleshooting.md` | English | Cron job debugging |

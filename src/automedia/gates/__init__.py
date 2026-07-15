@@ -27,6 +27,9 @@ from automedia.gates.publish_log_schema import L1PublishLogSchema  # noqa: F401
 from automedia.gates.six_step_hard import V7SixStepHard  # noqa: F401
 from automedia.gates.subtitle_render import V6SubtitleRender  # noqa: F401
 
+# HITL gates
+from automedia.gates.h0_human_review import H0HumanReviewGate  # noqa: F401
+
 # Pre-gates
 from automedia.gates.topic_selection import TopicSelectionGate  # noqa: F401
 from automedia.gates.translation_quality import L4TranslationQuality  # noqa: F401

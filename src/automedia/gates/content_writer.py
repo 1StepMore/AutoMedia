@@ -28,6 +28,22 @@ _EXPECTED_MAP: dict[str, str] = {
     "content_generated": "Article content is generated and saved",
 }
 
+_THRESHOLDS: dict[str, str] = {
+    "topic_present": "gate_context must contain a non-empty 'topic' string",
+    "project_dir_present": "gate_context must contain a non-empty 'project_dir' string",
+    "llm_success": "LLM call must return without raising LLMError",
+    "content_not_empty": "LLM response must contain non-whitespace content",
+    "file_write_success": "Draft file must be writable to 01_content/drafts/",
+}
+
+_SUGGESTIONS: dict[str, str] = {
+    "topic_present": "Provide a non-empty 'topic' string in gate_context",
+    "project_dir_present": "Provide a valid 'project_dir' path in gate_context",
+    "llm_success": "Check LLM configuration (API key, model, endpoint) and network connectivity",
+    "content_not_empty": "Review the writer prompt — it may be producing empty responses",
+    "file_write_success": "Ensure the project directory exists and is writable",
+}
+
 
 def _derive_expected(check_name: str) -> str:
     """Convert a check name to a human-readable expected statement."""
@@ -92,6 +108,16 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: 'topic' is required in gate_context",
+                "checks": [
+                    {
+                        "name": "topic_present",
+                        "passed": False,
+                        "detail": "topic is empty or missing",
+                        "actual_value": f"topic={topic!r}",
+                        "threshold": _THRESHOLDS["topic_present"],
+                        "suggestion": _SUGGESTIONS["topic_present"],
+                    },
+                ],
                 "expected_vs_actual": {
                     "check": "topic_present",
                     "expected": _derive_expected("topic_present"),
@@ -104,6 +130,16 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: 'project_dir' is required in gate_context",
+                "checks": [
+                    {
+                        "name": "project_dir_present",
+                        "passed": False,
+                        "detail": "project_dir is empty or missing",
+                        "actual_value": f"project_dir={project_dir!r}",
+                        "threshold": _THRESHOLDS["project_dir_present"],
+                        "suggestion": _SUGGESTIONS["project_dir_present"],
+                    },
+                ],
                 "expected_vs_actual": {
                     "check": "project_dir_present",
                     "expected": _derive_expected("project_dir_present"),
@@ -121,12 +157,34 @@ class ContentWriterGate(BaseGate):
             if writer_sys:
                 writer_prompt = writer_sys
 
+        # Detect pipeline mode for content length optimization
+        pipeline_mode: str = gate_context.get("mode", "") or ""
+        is_short_video: bool = pipeline_mode == "short-video"
+
         # Build user message with topic + brand context
         user_message = f"Topic: {topic}\nBrand: {brand}"
         if brand_profile:
             voice = brand_profile.get("voice", "")
             if voice:
                 user_message += f"\nBrand voice: {voice}"
+
+        # Inject format hint for social-thread mode
+        content_format = gate_context.get("content_format", "")
+        if content_format == "social_thread":
+            user_message += (
+                "\n\nIMPORTANT: Write this content as a social media thread "
+                "with 5-8 numbered posts. Each post must have its own hook "
+                "and contain 2-4 short paragraphs. Format each post with\n"
+                "'## Post N: <hook>' headers. The thread should flow "
+                "logically from post to post, building a complete narrative."
+            )
+        if is_short_video:
+            user_message += (
+                "\n\nIMPORTANT: This is for a SHORT VIDEO format. "
+                "Write concise, punchy content (200–400 characters Chinese). "
+                "Use short sentences, a hook at the start, and a strong CTA. "
+                "Avoid long paragraphs — this is optimized for 30–60 second video narration."
+            )
 
         # --- Call LLM ---------------------------------------------------------------
         try:
@@ -140,6 +198,16 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": f"ContentWriterGate: LLM call failed — {exc}",
+                "checks": [
+                    {
+                        "name": "llm_success",
+                        "passed": False,
+                        "detail": f"LLM call failed: {exc}",
+                        "actual_value": str(exc),
+                        "threshold": _THRESHOLDS["llm_success"],
+                        "suggestion": _SUGGESTIONS["llm_success"],
+                    },
+                ],
                 "expected_vs_actual": {
                     "check": "llm_success",
                     "expected": _derive_expected("llm_success"),
@@ -153,6 +221,16 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": "ContentWriterGate: LLM returned empty content",
+                "checks": [
+                    {
+                        "name": "content_not_empty",
+                        "passed": False,
+                        "detail": "LLM returned empty or whitespace-only content",
+                        "actual_value": f"content length={len(content)}",
+                        "threshold": _THRESHOLDS["content_not_empty"],
+                        "suggestion": _SUGGESTIONS["content_not_empty"],
+                    },
+                ],
                 "expected_vs_actual": {
                     "check": "content_not_empty",
                     "expected": _derive_expected("content_not_empty"),
@@ -177,6 +255,16 @@ class ContentWriterGate(BaseGate):
                 "passed": False,
                 "gate": "CW",
                 "error": f"ContentWriterGate: failed to write file — {exc}",
+                "checks": [
+                    {
+                        "name": "file_write_success",
+                        "passed": False,
+                        "detail": f"File write failed: {exc}",
+                        "actual_value": str(exc),
+                        "threshold": _THRESHOLDS["file_write_success"],
+                        "suggestion": _SUGGESTIONS["file_write_success"],
+                    },
+                ],
                 "expected_vs_actual": {
                     "check": "file_write_success",
                     "expected": _derive_expected("file_write_success"),

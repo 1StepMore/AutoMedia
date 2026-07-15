@@ -78,8 +78,24 @@ class ZhihuPublisher(BasePlatformAdapter):
     # ------------------------------------------------------------------
     # Publish
     # ------------------------------------------------------------------
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
+    def publish(
+        self,
+        artifact_dir: str,
+        project: dict[str, Any],
+        draft_only: bool = False,
+    ) -> PublishResult:
         """POST article content to the Zhihu draft API.
+
+        Parameters
+        ----------
+        artifact_dir:
+            Path to the rendered artifact directory.
+        project:
+            Full project dict.
+        draft_only:
+            When ``True``, return a ``"draft_created"`` response with
+            a ``draft_url`` (Zhihu always creates drafts; the parameter
+            controls the response format).
 
         Returns
         -------
@@ -87,6 +103,8 @@ class ZhihuPublisher(BasePlatformAdapter):
             ``{"status": "ok", "platform": "zhihu", "draft_id": …}``
             on success, or ``{"status": "error", "platform": "zhihu",
             "reason": …}`` on failure.
+            When ``draft_only=True`` returns ``{"status": "draft_created",
+            "platform": "zhihu", "draft_id": …, "draft_url": …}``.
         """
         # --- pre-flight: cookie -------------------------------------------------
         cookie = load_credential_or_env("ZHIHU_COOKIE", "zhihu_cookie")
@@ -185,15 +203,31 @@ class ZhihuPublisher(BasePlatformAdapter):
                 "reason": f"unexpected API response: no 'id' field in {data}",
             }
 
+        draft_id_str = str(draft_id)
+
+        if draft_only:
+            draft_url = f"https://www.zhihu.com/creator/editor?draft_id={draft_id_str}"
+            log.info(
+                "zhihu.draft_only.created",
+                draft_id=draft_id_str,
+                draft_url=draft_url,
+            )
+            return {
+                "status": "draft_created",
+                "platform": "zhihu",
+                "draft_id": draft_id_str,
+                "draft_url": draft_url,
+            }
+
         log.info(
             "zhihu.publish.success",
-            draft_id=draft_id,
+            draft_id=draft_id_str,
             title=title,
         )
         return {
             "status": "ok",
             "platform": "zhihu",
-            "draft_id": str(draft_id),
+            "draft_id": draft_id_str,
         }
 
     # ------------------------------------------------------------------

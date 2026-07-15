@@ -72,6 +72,43 @@ def _derive_expected(
     return check_name.replace("_", " ").capitalize() + suffix
 
 
+def _derive_suggestion(check_name: str, threshold: str) -> str:
+    """Derive a remediation suggestion from the check name and expected threshold."""
+    check_label = check_name.replace("_", " ")
+    threshold_lower = threshold.lower()
+
+    if threshold_lower.startswith(("no ", "not ")):
+        return f"Remove or avoid {check_label} to satisfy: {threshold}"
+    if "must" in threshold_lower or "should" in threshold_lower:
+        return f"Ensure {check_label} to satisfy: {threshold}"
+    if "between" in threshold_lower or "within" in threshold_lower or threshold_lower.startswith("all "):
+        return f"Verify {check_label} meets: {threshold}"
+
+    return f"Address {check_label} to match expected: {threshold}"
+
+
+def _enrich_failing_checks(
+    checks: list[CheckResult],
+    *,
+    expected_map: dict[str, str] | None = None,
+    expected_suffix: str = "",
+) -> None:
+    """Add structured error fields to all failing check dicts in-place.
+
+    Each failing check (``passed=False``) receives ``check_name``,
+    ``actual_value``, ``threshold``, ``detail``, and ``suggestion`` keys
+    for a standardized error schema.
+    """
+    for check in checks:
+        if not check["passed"]:
+            check_name = check["name"]
+            threshold = _derive_expected(check_name, expected_map=expected_map, suffix=expected_suffix)
+            check["check_name"] = check_name
+            check["actual_value"] = check.get("detail", "")
+            check["threshold"] = threshold
+            check["suggestion"] = _derive_suggestion(check_name, threshold)
+
+
 def build_gate_result(
     checks: list[CheckResult],
     *,
@@ -123,6 +160,9 @@ def build_gate_result(
             "actual": target.get("detail", ""),
             "context": {},
         }
+
+    # Enrich failing checks with structured error fields
+    _enrich_failing_checks(checks, expected_map=expected_map, expected_suffix=expected_suffix)
 
     result: dict[str, Any] = {
         "passed": all_passed,

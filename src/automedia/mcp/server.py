@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 24 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 25 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -62,14 +62,19 @@ from automedia.mcp.resources import (
 # Helper / utility imports (from tools.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.tools import (
+    add_cron_schedule,
     archive_project,
+    batch_run,
     evaluate_content_quality,
     extract_brief,
     format_output,
+    get_config,
     get_pipeline_progress,
     get_pipeline_status,
     get_project_assets,
     health_check,
+    list_brands,
+    list_cron_schedules,
     list_projects,
     list_topic_pool,
     localize_content,
@@ -77,6 +82,7 @@ from automedia.mcp.tools import (
     pool_add_topic,
     publish_content,
     register_platform_adapter,
+    remove_cron_schedule,
     research_topics,
     run_brand_strategy,
     run_pipeline,
@@ -92,6 +98,7 @@ __all__ = [
     "create_server",
     "main",
     # Tool handlers
+    "batch_run",
     "evaluate_content_quality",
     "research_topics",
     "run_brand_strategy",
@@ -111,7 +118,13 @@ __all__ = [
     "localize_content",
     "localize_output",
     "format_output",
+    "get_config",
     "health_check",
+    "list_brands",
+    # Cron schedule tools
+    "add_cron_schedule",
+    "list_cron_schedules",
+    "remove_cron_schedule",
     # Account tools
     "connect_account",
     "list_accounts",
@@ -133,7 +146,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     Returns
     -------
     FastMCP
-        A fully configured server with all 24 tools and 5 resources registered.
+        A fully configured server with all 28 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -143,9 +156,9 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "24 MCP tools for topic selection, pipeline execution, project\n"
-            "management, Omni Triad document processing, brand strategy,\n"
-            "content quality evaluation, and server health.\n"
+"28 MCP tools for topic selection, pipeline execution, project\n"
+             "management, Omni Triad document processing, brand strategy,\n"
+             "cron schedule management, content quality evaluation, and server health.\n"
             "\n"
             "━━━ CORE WORKFLOW (5 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -185,6 +198,9 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "\n"
             "  text_only   Copy gates only (G0-G5 + L1-L4). Skips video/audio.\n"
             "              Use when you only need a written article or social post.\n"
+            "\n"
+            "  text_with_cover  Copy gates (G0-G5 + L1-L4) + single cover image.\n"
+            "              Generates a cover image in 02_images/cover/.\n"
             "\n"
             "  video_only  Video gates only (V0-V7 + L1-L4). Assumes text already exists.\n"
             "              Use when the draft is ready and you only need video output.\n"
@@ -247,7 +263,30 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "  health_check()\n"
             "      Returns {status, version, uptime_s, tools_count}. No parameters.\n"
             "\n"
-            "━━━ ACCOUNT TOOLS (4 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+"━━━ BRAND TOOLS (1 tool) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+             "\n"
+             "  list_brands()\n"
+             "      List all configured brands with full profile metadata.\n"
+             "      Returns structured list with aliases, CTA principles, blocked\n"
+             "      words, tone guidelines, brand identity, languages, industry,\n"
+             "      target audience, personality, and platforms.\n"
+             "\n"
+             "━━━ CRON SCHEDULE TOOLS (3 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+             "\n"
+             "  add_cron_schedule(name, expression, brand?, category?, count?)\n"
+             "      Add a cron schedule entry to cron/jobs.yaml. Validates\n"
+             "      the cron expression (5 fields) and prevents duplicate names.\n"
+             "      Returns {added: true, name} on success.\n"
+             "\n"
+             "  list_cron_schedules()\n"
+             "      List all cron schedule entries sorted by name.\n"
+             "      Returns {schedules[], count}.\n"
+             "\n"
+             "  remove_cron_schedule(name)\n"
+             "      Remove a cron schedule entry by name.\n"
+             "      Returns {removed: true, name} or {error} if not found.\n"
+             "\n"
+             "━━━ ACCOUNT TOOLS (4 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
             "  connect_account(platform, auth_type?, credentials?, label?)\n"
             "      Register a new platform account for publishing.\n"
@@ -335,6 +374,16 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 
     mcp.tool(
         description=(
+            "Return merged configuration (excluding secrets). "
+            "When key is empty, returns all non-secret config keys. "
+            "When key is specified (e.g. 'llm.temperature'), returns that value. "
+            "Dot-notation traversal is supported. "
+            "Secret keys (containing 'key', 'secret', 'password', or 'token') are redacted."
+        ),
+    )(get_config)
+
+    mcp.tool(
+        description=(
             "Select the highest-scored pending topic from the pool. "
             "Returns the selected topic and remaining count."
         ),
@@ -351,7 +400,9 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 
     mcp.tool(
         description=(
-            "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON."
+            "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON. "
+            "Modes: auto, text_only, text_with_cover, video_only, qa_only, "
+            "image-carousel, social-thread, short-video."
         ),
     )(run_pipeline)
 
@@ -395,6 +446,34 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "Returns the new topic id, title, category, and status."
         ),
     )(pool_add_topic)
+
+    # ------------------------------------------------------------------
+    # Cron schedule tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Add a cron schedule entry. "
+            "Takes a unique name, a 5-field cron expression, optional brand, "
+            "category, and count. Validates the cron expression format and "
+            "prevents duplicate names. Appends to cron/jobs.yaml."
+        ),
+    )(add_cron_schedule)
+
+    mcp.tool(
+        description=(
+            "List all cron schedule entries from cron/jobs.yaml. "
+            "Returns all entries sorted by name with their expression, "
+            "brand, category, and count fields."
+        ),
+    )(list_cron_schedules)
+
+    mcp.tool(
+        description=(
+            "Remove a cron schedule entry by name. "
+            "Returns an error if the name is not found."
+        ),
+    )(remove_cron_schedule)
 
     mcp.tool(
         description=(
@@ -480,12 +559,39 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 
     mcp.tool(
         description=(
+            "Execute pipelines for multiple topics sequentially. "
+            "Takes a list of topics, brand, and optional mode "
+            "(auto, text_only, text_with_cover, video_only, qa_only, "
+            "image-carousel, social-thread, short-video). "
+            "A single topic failure does not stop the batch. "
+            "Returns per-topic results with a pass/fail summary."
+        ),
+    )(batch_run)
+
+    mcp.tool(
+        description=(
             "Generate a content strategy via LLM then execute the AutoMedia "
-            "production pipeline. Takes topic, brand, optional mode, and "
+            "production pipeline. Takes topic, brand, optional mode "
+            "(auto, text_only, text_with_cover, video_only, qa_only, "
+            "image-carousel, social-thread, short-video), and "
             "optional strategy_context. Returns both the strategy output and "
             "the pipeline result."
         ),
     )(run_pipeline_from_strategy)
+
+    # ------------------------------------------------------------------
+    # Brand tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "List all configured brands with full profile metadata. "
+            "Returns structured list including aliases, CTA principles, "
+            "blocked words, tone guidelines, brand identity, languages, "
+            "industry, target audience, personality, and platforms. "
+            "Returns empty list when no brands configured (not an error)."
+        ),
+    )(list_brands)
 
     # ------------------------------------------------------------------
     # Account tools
@@ -561,7 +667,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 22 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 25 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",

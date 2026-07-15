@@ -8,11 +8,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from automedia.gates.base import BaseGate
+from automedia.manifests.brand_profile_schema import BrandProfile
 from automedia.pipelines.runner import (
+    _IMAGE_CAROUSEL_GATE_NAMES,
     _MODE_MAP,
+    _PLATFORM_CATEGORIES,
+    _TEXT_WITH_COVER_GATE_NAMES,
     _build_gates_from_names,
     _build_gates_log,
     _collect_assets,
+    _derive_mode_from_platforms,
     run_full_pipeline,
 )
 
@@ -84,6 +89,60 @@ class TestModeMap:
                 continue  # qa_only is a subset, no L1-L3
             for i in range(1, 4):
                 assert f"L{i}" in names, f"L{i} missing from {mode}"
+
+    def test_image_carousel_mode_in_map(self) -> None:
+        """image-carousel mode is registered in _MODE_MAP."""
+        assert "image-carousel" in _MODE_MAP
+
+    def test_image_carousel_has_correct_gates(self) -> None:
+        """image-carousel has CW → G0-G5 → L1-L4, no video gates."""
+        names = _MODE_MAP["image-carousel"]
+        # Has CW
+        assert "CW" in names
+        # Has G0-G5
+        for i in range(6):
+            assert f"G{i}" in names, f"G{i} missing from image-carousel"
+        # Has L1-L4
+        for i in range(1, 5):
+            assert f"L{i}" in names, f"L{i} missing from image-carousel"
+        # No video gates
+        for i in range(8):
+            assert f"V{i}" not in names, f"V{i} should not be in image-carousel"
+
+    def test_image_carousel_gate_list_constant_matches(self) -> None:
+        """_IMAGE_CAROUSEL_GATE_NAMES matches _MODE_MAP entry."""
+        assert _MODE_MAP["image-carousel"] is _IMAGE_CAROUSEL_GATE_NAMES
+
+    # ------------------------------------------------------------------
+    # text_with_cover mode tests
+    # ------------------------------------------------------------------
+
+    def test_text_with_cover_mode_in_map(self) -> None:
+        """text_with_cover mode is registered in _MODE_MAP."""
+        assert "text_with_cover" in _MODE_MAP
+
+    def test_text_with_cover_has_no_video_gates(self) -> None:
+        """text_with_cover mode has no V gates (text only mode)."""
+        names = _MODE_MAP["text_with_cover"]
+        for i in range(8):
+            assert f"V{i}" not in names
+
+    def test_text_with_cover_has_CW_and_G0_G5(self) -> None:
+        """text_with_cover has CW, G0-G5, lifecycle gates."""
+        names = _MODE_MAP["text_with_cover"]
+        assert "CW" in names
+        for i in range(6):
+            assert f"G{i}" in names, f"G{i} missing from text_with_cover"
+        for i in range(1, 5):
+            assert f"L{i}" in names, f"L{i} missing from text_with_cover"
+
+    def test_text_with_cover_gate_list_constant_matches(self) -> None:
+        """_TEXT_WITH_COVER_GATE_NAMES matches _MODE_MAP entry."""
+        assert _MODE_MAP["text_with_cover"] is _TEXT_WITH_COVER_GATE_NAMES
+
+    def test_text_with_cover_matches_text_only_gates(self) -> None:
+        """text_with_cover has same gate list as text_only."""
+        assert _MODE_MAP["text_with_cover"] == _MODE_MAP["text_only"]
 
 
 # =========================================================================
@@ -352,6 +411,100 @@ class TestRunFullPipeline:
         run_full_pipeline("t", "b", tenant_id="acme")
         mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
 
+    @patch("automedia.pipelines.runner.HITLConfig")
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_hitl_config_in_context(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_hitl: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """run_full_pipeline injects hitl_config dict into gate_context."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "hitl-ctx"
+        mock_proj.project_dir = str(tmp_path / "hitl-ctx")
+        mock_project.init.return_value = mock_proj
+
+        mock_cfg = MagicMock()
+        mock_cfg.list_nodes.return_value = [
+            {"name": "brand_questionnaire", "autoset": "human"},
+            {"name": "build_scale_routing", "autoset": "agent"},
+        ]
+        mock_hitl.return_value = mock_cfg
+
+        captured: dict = {}
+
+        class _CaptureHITLConfigGate(BaseGate):
+            _gate_name = "H99"
+            _failure_mode = "stop"
+
+            def execute(  # noqa: PLR6301
+                self, gate_context: dict[str, Any]
+            ) -> dict[str, Any]:
+                captured["hitl_config"] = gate_context.get("hitl_config", {})
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureHITLConfigGate()]
+
+        result = run_full_pipeline("HITL test topic", "testbrand", mode="auto")
+
+        assert result.status == "success"
+        hc = captured["hitl_config"]
+        assert "enabled_nodes" in hc, f"hitl_config missing enabled_nodes, got keys: {list(hc)}"
+        assert "default_executor" in hc
+        assert "timeout_s" in hc
+        assert {"name": "brand_questionnaire", "autoset": "human"} in hc["enabled_nodes"]
+        assert {"name": "build_scale_routing", "autoset": "agent"} not in hc["enabled_nodes"]
+        assert hc["default_executor"] == "agent"
+        assert hc["timeout_s"] == 86400
+
+    # ------------------------------------------------------------------
+    # text_with_cover mode — cover image generation
+    # ------------------------------------------------------------------
+
+    @patch("automedia.pipelines.runner.ImagePipeline")
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_text_with_cover_generates_cover(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_image_pipeline: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """text_with_cover mode calls ImagePipeline.generate_single_cover."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "tcv1"
+        mock_proj.project_dir = str(tmp_path / "tcv1")
+        mock_project.init.return_value = mock_proj
+
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.generate_single_cover.return_value = "/path/to/cover.png"
+        mock_image_pipeline.return_value = mock_pipeline
+
+        result = run_full_pipeline(
+            "AI topic", "testbrand", mode="text_with_cover",
+        )
+
+        assert result.status == "success"
+        mock_pipeline.generate_single_cover.assert_called_once_with(
+            topic="AI topic",
+            brand="testbrand",
+            project_dir=mock_proj.project_dir,
+        )
+
 
 # =========================================================================
 # Fallback content guard tests (Issue #14)
@@ -397,7 +550,7 @@ class TestFallbackContentGuard:
         # GREEN: After guard implementation, content will have placeholder text.
         content = captured["content"]
         assert content != "", (
-            f"video_only mode should provide fallback content, got empty string"
+            "video_only mode should provide fallback content, got empty string"
         )
         assert "[content skipped" in content, (
             f"Expected placeholder marker in content, got {content!r}"
@@ -439,7 +592,7 @@ class TestFallbackContentGuard:
         # GREEN: After guard implementation, content will have placeholder text.
         content = captured["content"]
         assert content != "", (
-            f"qa_only mode should provide fallback content, got empty string"
+            "qa_only mode should provide fallback content, got empty string"
         )
         assert "[content skipped" in content, (
             f"Expected placeholder marker in content, got {content!r}"
@@ -520,3 +673,314 @@ class TestFallbackContentGuard:
         assert content == "", (
             f"text_only mode should start with empty content, got {content!r}"
         )
+
+
+# =========================================================================
+# Platform-based mode auto-derivation tests
+# =========================================================================
+
+
+class TestPlatformCategories:
+    """_PLATFORM_CATEGORIES maps known platforms to content categories."""
+
+    def test_wechat_is_text_first(self) -> None:
+        assert _PLATFORM_CATEGORIES["wechat"] == "text-first"
+
+    def test_zhihu_is_text_first(self) -> None:
+        assert _PLATFORM_CATEGORIES["zhihu"] == "text-first"
+
+    def test_xiaohongshu_is_mixed_social(self) -> None:
+        assert _PLATFORM_CATEGORIES["xiaohongshu"] == "mixed-social"
+
+    def test_feishu_is_notification_only(self) -> None:
+        assert _PLATFORM_CATEGORIES["feishu"] == "notification-only"
+
+
+class TestDeriveModeFromPlatforms:
+    """_derive_mode_from_platforms() returns the correct mode."""
+
+    def test_empty_list_returns_empty(self) -> None:
+        assert _derive_mode_from_platforms([]) == ""
+
+    def test_text_only_platforms_return_text_only(self) -> None:
+        assert _derive_mode_from_platforms(["wechat"]) == "text_only"
+        assert _derive_mode_from_platforms(["zhihu"]) == "text_only"
+        assert _derive_mode_from_platforms(["wechat", "zhihu"]) == "text_only"
+
+    def test_mixed_social_returns_auto(self) -> None:
+        assert _derive_mode_from_platforms(["xiaohongshu"]) == "auto"
+
+    def test_notification_only_returns_text_only(self) -> None:
+        assert _derive_mode_from_platforms(["feishu"]) == "text_only"
+
+    def test_mixed_text_and_notification_returns_text_only(self) -> None:
+        assert _derive_mode_from_platforms(["wechat", "feishu"]) == "text_only"
+
+    def test_mixed_text_and_social_returns_auto(self) -> None:
+        assert _derive_mode_from_platforms(["wechat", "xiaohongshu"]) == "auto"
+        assert _derive_mode_from_platforms(["zhihu", "xiaohongshu"]) == "auto"
+        assert _derive_mode_from_platforms(["wechat", "zhihu", "xiaohongshu"]) == "auto"
+
+    def test_unknown_platform_treated_as_text_first(self) -> None:
+        assert _derive_mode_from_platforms(["unknown_platform"]) == "text_only"
+
+    def test_unknown_with_mixed_social_returns_auto(self) -> None:
+        assert _derive_mode_from_platforms(["unknown", "xiaohongshu"]) == "auto"
+
+    def test_all_notification_returns_text_only(self) -> None:
+        assert _derive_mode_from_platforms(["feishu", "feishu"]) == "text_only"
+
+
+class TestRunFullPipelineModeDerivation:
+    """run_full_pipeline auto-derives mode from brand platforms."""
+
+    def _make_mock_profile(
+        self,
+        platforms: list[str] | None = None,
+    ) -> BrandProfile:
+        return BrandProfile(
+            brand_name="testbrand",
+            platforms=platforms or [],
+        )
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_text_only_platforms_derive_text_only(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """Brand with wechat+zhihu derives text_only mode."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md1"
+        mock_proj.project_dir = str(tmp_path / "md1")
+        mock_project.init.return_value = mock_proj
+
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=["wechat", "zhihu"]),
+        }
+
+        # Capture gate names built
+        captured_names: list[list[str]] = []
+
+        def capture(names: list[str]) -> list[BaseGate]:
+            captured_names.append(names)
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+
+        result = run_full_pipeline("t", "testbrand")
+        assert result.status == "success"
+
+        # Should use text_only gate list (no V gates)
+        built = captured_names[0]
+        assert "CW" in built
+        assert "V0" not in built, "text_only mode should not include V0"
+        assert built == _MODE_MAP["text_only"]
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_mixed_social_platforms_derive_auto(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """Brand with xiaohongshu derives auto mode."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md2"
+        mock_proj.project_dir = str(tmp_path / "md2")
+        mock_project.init.return_value = mock_proj
+
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=["xiaohongshu"]),
+        }
+
+        captured_names: list[list[str]] = []
+
+        def capture(names: list[str]) -> list[BaseGate]:
+            captured_names.append(names)
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+
+        result = run_full_pipeline("t", "testbrand")
+        assert result.status == "success"
+
+        # Should use auto gate list (includes V gates)
+        built = captured_names[0]
+        assert "V0" in built, "auto mode should include V0"
+        assert built == _MODE_MAP["auto"]
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_explicit_mode_overrides_derivation(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """Explicit --mode=text_only stays text_only even with mixed-social platforms."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md3"
+        mock_proj.project_dir = str(tmp_path / "md3")
+        mock_project.init.return_value = mock_proj
+
+        # Brand has xiaohongshu (mixed-social → would derive "auto")
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=["xiaohongshu"]),
+        }
+
+        captured_names: list[list[str]] = []
+
+        def capture(names: list[str]) -> list[BaseGate]:
+            captured_names.append(names)
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+
+        # Explicitly pass text_only — should NOT be overridden
+        result = run_full_pipeline("t", "testbrand", mode="text_only")
+        assert result.status == "success"
+
+        built = captured_names[0]
+        # Should use text_only gate list despite xiaohongshu
+        assert "V0" not in built, "explicit text_only mode should not include V0"
+        assert built == _MODE_MAP["text_only"]
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_no_platforms_keeps_default_mode(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """Brand with no platforms keeps default auto mode."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md4"
+        mock_proj.project_dir = str(tmp_path / "md4")
+        mock_project.init.return_value = mock_proj
+
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=[]),
+        }
+
+        captured_names: list[list[str]] = []
+
+        def capture(names: list[str]) -> list[BaseGate]:
+            captured_names.append(names)
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+
+        result = run_full_pipeline("t", "testbrand")
+        assert result.status == "success"
+
+        built = captured_names[0]
+        assert built == _MODE_MAP["auto"]
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_brand_platforms_in_gate_context(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """gate_context has brand_platforms key listing the platforms."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md5"
+        mock_proj.project_dir = str(tmp_path / "md5")
+        mock_project.init.return_value = mock_proj
+
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=["wechat", "xiaohongshu"]),
+        }
+
+        captured_ctx: dict[str, Any] = {}
+
+        class _CaptureCtxGate(BaseGate):
+            _gate_name = "H98"
+            _failure_mode = "stop"
+
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured_ctx["brand_platforms"] = gate_context.get("brand_platforms", [])
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureCtxGate()]
+
+        result = run_full_pipeline("t", "testbrand")
+        assert result.status == "success"
+        assert captured_ctx["brand_platforms"] == ["wechat", "xiaohongshu"]
+
+    @patch("automedia.pipelines.runner.load_config", return_value={})
+    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    @patch("automedia.pipelines.runner.load_brand_profiles")
+    def test_no_brand_platforms_empty_list_in_context(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        """gate_context has empty brand_platforms when brand has no platforms."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "md6"
+        mock_proj.project_dir = str(tmp_path / "md6")
+        mock_project.init.return_value = mock_proj
+
+        mock_load_profiles.return_value = {
+            "testbrand": self._make_mock_profile(platforms=[]),
+        }
+
+        captured_ctx: dict[str, Any] = {"brand_platforms": "UNSET"}
+
+        class _CaptureCtxGate(BaseGate):
+            _gate_name = "H97"
+            _failure_mode = "stop"
+
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+                captured_ctx["brand_platforms"] = gate_context.get("brand_platforms", "MISSING")
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureCtxGate()]
+
+        result = run_full_pipeline("t", "testbrand")
+        assert result.status == "success"
+        assert captured_ctx["brand_platforms"] == []

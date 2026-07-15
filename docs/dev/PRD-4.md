@@ -7,8 +7,8 @@ description: Account registry, OAuth/session management, and publishing automati
 
 > **Layer:** Account & Publishing Management  
 > **Sits alongside:** PRD-1 (Production Layer — 通用化), PRD-2 (Omni Adapter Layer — Omni三件套集成), PRD-3 (Decision Layer — 商用一站式solution-wise)  
-> **Status:** Draft — requirements gathering  
-> **Target:** v2.0
+> **Status:** ✅ **已实现** — 见 `src/automedia/accounts/`、`automedia account` CLI 及 MCP 账户工具  
+> **Target:** v2.0 (已发布)
 
 ---
 
@@ -382,12 +382,11 @@ Each platform requires adapter-level support for PRD-4. The following table maps
 
 ## 10. References
 
-- `docs/coverage-gaps.md` §1.4 — Agent Account & Session Management (gap analysis)
+- `docs/archive/coverage-gaps.md` §1.4 — Agent Account & Session Management (gap analysis)
 - `src/automedia/core/credential_loader.py` — Existing flat credential store (to be deprecated)
 - `src/automedia/adapters/base.py` — BasePlatformAdapter (to be extended)
 - `src/automedia/adapters/platforms/wechat_publisher.py` — WeChat auth pattern (client_credential)
 - `src/automedia/adapters/platforms/zhihu_publisher.py` — Cookie auth pattern
-- `docs/open-core.md` — Community vs Commercial feature split
-- `docs/decision-layer.md` — PRD-3: Decision Layer (商用一站式solution-wise) — strategy agents, asset library, HITL, SOP; consumer of PRD-4 analytics
-- `docs/omni-integration.md` — PRD-2: Omni Adapter Layer (Omni三件套集成) — OPP extraction, OL localization, ORF format conversion; no direct dependency on PRD-4
-- `docs/developer-guide.md` — PRD-1: Production Layer (通用化) — core pipeline, 20 gates, platform adapters; consumers of PRD-4 authenticated sessions
+- `docs/user/open-core.md` — Community vs Commercial feature split
+- `docs/user/omni-integration.md` — PRD-2: Omni Adapter Layer (Omni三件套集成) — OPP extraction, OL localization, ORF format conversion; no direct dependency on PRD-4
+- `docs/dev/developer-guide.md` — PRD-1: Production Layer (通用化) — core pipeline, 20 gates, platform adapters; consumers of PRD-4 authenticated sessions

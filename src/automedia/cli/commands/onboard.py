@@ -198,7 +198,7 @@ def _step_pipeline() -> None:
     existing = load_config()
     pipeline = existing.get("pipeline", {})
 
-    mode = typer.prompt("Default mode (auto / text_only / video_only / qa_only)", default="auto")
+    mode = typer.prompt("Default mode (auto / text_only / text_with_cover / video_only / qa_only / image-carousel / social-thread / short-video)", default="auto")
     text_enabled = typer.prompt(
         "Enable text track", default=pipeline.get("text", {}).get("enabled", True)
     )

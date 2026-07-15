@@ -10,6 +10,7 @@ import os
 import time
 import warnings
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Literal, cast
 
 from structlog import get_logger
@@ -18,9 +19,14 @@ from automedia.core.config_loader import load_config
 from automedia.core.project import Project
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate, GateRegistry, _registry
+from automedia.hitl import HITLConfig
 from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5, verify_md5
 from automedia.hooks.protocol import GateHook
-from automedia.manifests.brand_profile_schema import BrandProfile, load_brand_profile
+from automedia.manifests.brand_profile_schema import (
+    BrandProfile,
+    load_brand_profile,
+    load_brand_profiles,
+)
 from automedia.pipelines.gate_engine import (
     AssetInfo,
     GateEngine,
@@ -28,6 +34,7 @@ from automedia.pipelines.gate_engine import (
     PipelineProgress,
     PipelineResult,
 )
+from automedia.pipelines.image_pipeline import ImagePipeline
 from automedia.pipelines.language_config import resolve_language_config
 
 log = get_logger(__name__)
@@ -53,6 +60,7 @@ _AUTO_GATE_NAMES: list[str] = [
     "V5",
     "V6",
     "V7",
+    "H0",
     "L1",
     "L2",
     "L3",
@@ -67,6 +75,7 @@ _TEXT_ONLY_GATE_NAMES: list[str] = [
     "G3",
     "G4",
     "G5",
+    "H0",
     "L1",
     "L2",
     "L3",
@@ -96,17 +105,118 @@ _QA_ONLY_GATE_NAMES: list[str] = [
     "V6",
 ]
 
+_IMAGE_CAROUSEL_GATE_NAMES: list[str] = [
+    "CW",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+]
+
+_TEXT_WITH_COVER_GATE_NAMES: list[str] = [
+    "CW",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+]
+
+_SOCIAL_THREAD_GATE_NAMES: list[str] = [
+    "CW",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+]
+
+_SHORT_VIDEO_GATE_NAMES: list[str] = [
+    "pre-gate",
+    "CW",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "V0",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+]
+
 _MODE_MAP: dict[str, list[str]] = {
     "auto": _AUTO_GATE_NAMES,
     "text_only": _TEXT_ONLY_GATE_NAMES,
+    "text_with_cover": _TEXT_WITH_COVER_GATE_NAMES,
     "video_only": _VIDEO_ONLY_GATE_NAMES,
     "qa_only": _QA_ONLY_GATE_NAMES,
+    "image-carousel": _IMAGE_CAROUSEL_GATE_NAMES,
+    "social-thread": _SOCIAL_THREAD_GATE_NAMES,
+    "short-video": _SHORT_VIDEO_GATE_NAMES,
+}
+
+# Platform → content-category mapping for auto-deriving pipeline mode.
+# Used by _derive_mode_from_platforms() when mode is not explicitly set.
+_PLATFORM_CATEGORIES: dict[str, str] = {
+    "wechat": "text-first",
+    "zhihu": "text-first",
+    "xiaohongshu": "mixed-social",
+    "feishu": "notification-only",
 }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _derive_mode_from_platforms(platforms: list[str]) -> str:
+    """Derive pipeline mode from a brand's platform list.
+
+    Returns ``"auto"`` when any platform is ``"mixed-social"``,
+    ``"text_only"`` when all platforms are ``"text-first"`` or
+    ``"notification-only"``, or ``""`` when *platforms* is empty.
+    ``"text_with_cover"`` must be set explicitly (not auto-derived).
+
+    Unknown platform names are treated as ``"text-first"``.
+    """
+    if not platforms:
+        return ""
+
+    has_mixed_social = any(
+        _PLATFORM_CATEGORIES.get(p, "text-first") == "mixed-social"
+        for p in platforms
+    )
+
+    return "auto" if has_mixed_social else "text_only"
 
 
 def _collect_assets(gate_context: GateContext | dict[str, Any]) -> list[AssetInfo]:
@@ -215,6 +325,8 @@ def run_full_pipeline(
     default_lang: str | None = None,
     force_provenance: bool = False,
     progress: PipelineProgress | None = None,
+    source_path: str = "",
+    source_url: str = "",
 ) -> PipelineResult:
     """Execute the full AutoMedia production pipeline.
 
@@ -228,7 +340,8 @@ def run_full_pipeline(
         Optional lifecycle hooks.
     mode:
         Pipeline execution mode — ``"auto"``, ``"text_only"``,
-        ``"video_only"``, or ``"qa_only"``.
+        ``"text_with_cover"``, ``"video_only"``, ``"qa_only"``,
+        ``"image-carousel"``, ``"social-thread"``, or ``"short-video"``.
     decision_mode:
         **DEPRECATED** — kept for backward compatibility only.
         No longer consumed by any gate and will be removed in a
@@ -251,6 +364,15 @@ def run_full_pipeline(
         Optional progress tracker.  When provided, ``GateEngine.run()``
         emits ``GateProgressEvent`` entries for each gate so agents
         polling via MCP can observe execution in real time.
+    source_path:
+        Path to a source document (``.md``, ``.txt``, or ``.pdf``).
+        Content is loaded and injected into
+        ``gate_context["source_content"]`` for downstream gates.
+        Falls back gracefully on error.
+    source_url:
+        URL to fetch source content from.  Content is loaded and
+        injected into ``gate_context["source_content"]``.  Falls back
+        gracefully on error.
 
     Returns
     -------
@@ -269,14 +391,37 @@ def run_full_pipeline(
         )
         log.warning("decision_mode parameter is deprecated, ignoring value: %s", decision_mode)
 
-    log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
-
     try:
         # 1. Load configuration
         config = load_config(config_dir=config_dir)
 
         # 2. Create project
         project = Project.init(topic, brand, tenant_id=tenant_id)
+
+        # 2.5 Resolve brand profile from multi-brand config or fallback
+        brand_profile: BrandProfile | None = None
+        profiles = load_brand_profiles()
+        if brand in profiles:
+            brand_profile = profiles[brand]
+        else:
+            brand_profile_path = os.path.join(project.project_dir, "brand-profile.yaml")
+            try:
+                brand_profile = load_brand_profile(brand_profile_path)
+            except (FileNotFoundError, ValueError):
+                brand_profile = None
+
+        # 2.75 Derive pipeline mode from brand platforms when not explicitly set
+        if mode == "auto" and brand_profile is not None and brand_profile.platforms:
+            derived = _derive_mode_from_platforms(brand_profile.platforms)
+            if derived:
+                mode = derived
+                log.info(
+                    "pipeline.mode_derived",
+                    mode=mode,
+                    platforms=brand_profile.platforms,
+                )
+
+        log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
 
         # 3. Build gate list
         #    Ensure gates module is imported so all gates are registered
@@ -301,23 +446,36 @@ def run_full_pipeline(
             _verify_resume_integrity(project.project_dir, resume_from, _MODE_MAP.get(mode, []))
 
         gates = _build_gates_from_names(gate_names)
+        if progress is not None:
+            progress.total_gates = len(gates)
         log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
 
         # 4. Instantiate engine
         engine = GateEngine(gates, hooks=hooks)
 
-        # 4.5 Resolve language configuration
-        brand_profile: BrandProfile | None = None
-        brand_profile_path = os.path.join(project.project_dir, "brand-profile.yaml")
-        try:
-            brand_profile = load_brand_profile(brand_profile_path)
-        except (FileNotFoundError, ValueError):
-            brand_profile = None
-
         lang_config = resolve_language_config(
             brand_profile=brand_profile,
             default_lang=default_lang,
         )
+
+        # 4.75 Load HITL config and inject into context
+        try:
+            hitl_cfg = HITLConfig()
+            hitl_config = {
+                "enabled_nodes": [
+                    n for n in hitl_cfg.list_nodes()
+                    if n.get("autoset") == "human"
+                ],
+                "default_executor": "agent",
+                "timeout_s": 86400,  # 24 hours
+            }
+        except Exception:
+            log.warning("pipeline.hitl_config_failed", hint="HITL config unavailable, using empty fallback")
+            hitl_config = {
+                "enabled_nodes": [],
+                "default_executor": "agent",
+                "timeout_s": 86400,
+            }
 
         # 5. Build initial context
         gate_context = GateContext(
@@ -328,10 +486,42 @@ def run_full_pipeline(
             config=config,
             tenant_id=tenant_id,
             lang_config=lang_config,
-            mode=config.get("mode", "auto"),
+            mode=mode,
             force_provenance=force_provenance,
             brand_profile=asdict(brand_profile) if brand_profile is not None else None,
         )
+
+        # 5.1 Inject brand platforms into context for downstream gates
+        gate_context["brand_platforms"] = (
+            list(brand_profile.platforms) if brand_profile is not None else []
+        )
+
+        # 4.76 Inject HITL config into context
+        gate_context["hitl_config"] = hitl_config
+
+        # 5.2 Source material loading
+        if source_path or source_url:
+            material = _resolve_source_material(
+                source_path=source_path, source_url=source_url
+            )
+            if material is None:
+                log.info("pipeline.source_material.empty", hint="Both source_path and source_url are empty — skipping")
+            elif "error" in material:
+                log.warning(
+                    "pipeline.source_material.failed",
+                    error=material["error"],
+                    hint="Falling back to LLM-only mode",
+                )
+                gate_context["source_content"] = ""
+            else:
+                gate_context["source_content"] = material["content"]
+                gate_context["source_material"] = material
+                log.info(
+                    "pipeline.source_material.loaded",
+                    type=material.get("type"),
+                    path=material.get("path"),
+                    content_len=len(material["content"]),
+                )
 
         # 5.5 Content fallback guard (Issue #14)
         #      When CW is not in the gate list (video_only / qa_only modes),
@@ -343,8 +533,65 @@ def run_full_pipeline(
             gate_context["draft"] = placeholder
             log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
 
+        # 5.6 Inject content format hint for social-thread / short-video mode
+        if mode == "social-thread":
+            gate_context["content_format"] = "social_thread"
+            log.info("pipeline.content_format", format="social_thread")
+        if mode == "short-video":
+            gate_context["content_format"] = "short_video"
+            log.info("pipeline.content_format", format="short_video")
+
         # 6. Execute
         success, results = engine.run(gate_context, progress=progress)
+
+        # 6.5 Generate carousel images for image-carousel mode
+        carousel_images: list[str] = []
+        if mode == "image-carousel":
+            try:
+                pipeline = ImagePipeline()
+                content = gate_context.get("content", topic)
+                project_dir_str = str(project.project_dir)
+                carousel_images = pipeline.generate_body_images(
+                    topic=content or topic,
+                    project_dir=project_dir_str,
+                    count=4,
+                    brand=brand,
+                )
+                gate_context["carousel_images"] = carousel_images
+                log.info(
+                    "pipeline.carousel_images_generated",
+                    count=len(carousel_images),
+                )
+            except Exception as exc:
+                log.warning(
+                    "pipeline.carousel_images_failed",
+                    error=str(exc),
+                    hint="Carousel image generation failed — continuing without images",
+                )
+
+        # 6.6 Generate cover image for text_with_cover mode
+        cover_image: str = ""
+        if mode == "text_with_cover":
+            try:
+                pipeline = ImagePipeline()
+                project_dir_str = (
+                    project.project_dir
+                    if isinstance(project.project_dir, str)
+                    else str(project.project_dir)
+                )
+                cover_image = pipeline.generate_single_cover(
+                    topic=topic,
+                    brand=brand,
+                    project_dir=project_dir_str,
+                )
+                gate_context["cover_image"] = cover_image
+                log.info("pipeline.cover_image_generated", path=cover_image)
+            except Exception as exc:
+                log.warning(
+                    "pipeline.cover_image_failed",
+                    error=str(exc),
+                    hint="Cover image generation failed — continuing without cover",
+                )
 
         # 7. Collect assets
         assets = _collect_assets(gate_context)
@@ -398,6 +645,97 @@ def run_full_pipeline(
 # ---------------------------------------------------------------------------
 # Internal helpers used by run_full_pipeline
 # ---------------------------------------------------------------------------
+
+
+def _resolve_source_material(
+    source_path: str = "",
+    source_url: str = "",
+) -> dict[str, Any] | None:
+    """Load source material from a file path and/or URL.
+
+    Returns a dict with ``"content"``, ``"type"``, ``"path"`` keys on
+    success, a dict with ``"error"`` on failure, or ``None`` when both
+    parameters are empty.
+
+    Supported file types: ``.md``, ``.txt``, ``.pdf`` (via OPPAdapter).
+    If *source_path* is a directory, it is scanned for the first
+    readable document (sorted alphabetically).
+    """
+    if not source_path and not source_url:
+        return None
+
+    contents: list[str] = []
+    warnings_: list[str] = []
+    result_type: str = ""
+    result_path: str = ""
+
+    # --- File path ---
+    if source_path:
+        path = Path(source_path)
+        try:
+            if path.is_dir():
+                readable = sorted(
+                    p
+                    for p in path.iterdir()
+                    if p.is_file() and p.suffix.lower() in (".md", ".txt", ".pdf")
+                )
+                if not readable:
+                    return {"error": "Source directory contains no readable documents"}
+                path = readable[0]
+
+            if not path.exists():
+                warnings_.append(f"Source path not found: {source_path}")
+            else:
+                ext = path.suffix.lower()
+                if ext == ".md":
+                    content = path.read_text(encoding="utf-8")
+                    result_type = "md"
+                elif ext == ".txt":
+                    content = path.read_text(encoding="utf-8")
+                    result_type = "txt"
+                elif ext == ".pdf":
+                    from automedia.omni.opp_adapter import OPPAdapter
+
+                    adapter = OPPAdapter()
+                    opp_result = adapter.extract(str(path))
+                    content = opp_result.md_content
+                    result_type = "pdf"
+                else:
+                    warnings_.append(f"Unsupported file type: {ext}")
+                    content = None
+
+                if content is not None:
+                    contents.append(content)
+                    result_path = str(path.resolve())
+        except Exception as exc:
+            warnings_.append(str(exc))
+
+    # --- URL ---
+    if source_url:
+        try:
+            import urllib.request
+
+            with urllib.request.urlopen(source_url, timeout=30) as resp:
+                content = resp.read().decode("utf-8")
+            contents.append(content)
+            if not result_type:
+                result_type = "url"
+            if not result_path:
+                result_path = source_url
+        except Exception as exc:
+            warnings_.append(f"Failed to fetch URL: {exc}")
+
+    if not contents:
+        return {"error": "; ".join(warnings_) if warnings_ else "No content could be loaded"}
+
+    result: dict[str, Any] = {
+        "content": "\n\n".join(contents),
+        "type": result_type,
+        "path": result_path,
+    }
+    if warnings_:
+        result["warnings"] = warnings_
+    return result
 
 
 def _build_gates_from_names(

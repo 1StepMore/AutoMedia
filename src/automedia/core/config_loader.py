@@ -134,6 +134,11 @@ def _env_to_config() -> dict:
         "llm_max_tokens": ["llm", "text_generation", "max_tokens"],
     }
 
+    # Non-LLM special key remapping (flatter nesting than generic split)
+    _extra_key_map: dict[str, list[str]] = {
+        "tavily_api_key": ["tavily", "api_key"],
+    }
+
     for key, value in os.environ.items():
         if not key.startswith(_ENV_PREFIX):
             continue
@@ -156,6 +161,15 @@ def _env_to_config() -> dict:
                 node[last_key] = typed_value
                 continue
             node[last_key] = value
+            continue
+
+        # Check for extra remapped keys (non-LLM, cleaner nesting)
+        extra_mapped = _extra_key_map.get(suffix.lower())
+        if extra_mapped is not None:
+            node = result
+            for part in extra_mapped[:-1]:
+                node = node.setdefault(part, {})
+            node[extra_mapped[-1]] = value
             continue
 
         # Generic split-key fallback

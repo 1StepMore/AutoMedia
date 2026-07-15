@@ -1,11 +1,17 @@
-"""Xiaohongshu (小红书 / RED) publisher adapter.
+"""Xiaohongshu (小红书 / RED) publisher adapter — manual publish only.
 
 Limitation
 ----------
 Xiaohongshu does **not** provide a public API for automated content
-publishing.  The adapter therefore documents the requirement and returns
-a ``"not_implemented"`` status — manual posting via the RED mobile
-app or web creator portal is required.
+publishing.  Publishing is **manual-only**: a human must post through
+the RED mobile app or web creator portal.
+
+The adapter serves as a placeholder: it validates credentials, documents
+the requirement, and returns ``"not_implemented"``.  No automated publish
+attempt is made.
+
+This is an **intentional divergence**.  See the F32 section of
+``docs/dev/founder-expectations.md`` for the documented rationale.
 
 Credentials are resolved via :func:`load_credential_or_env` with
 backward-compatible support for the legacy ``XHS_COOKIE`` environment
@@ -25,13 +31,14 @@ logger = structlog.get_logger(__name__)
 
 
 class XiaohongshuPublisher(BasePlatformAdapter):
-    """Publish content to Xiaohongshu (小红书 / RED).
+    """Publish content to Xiaohongshu (小红书 / RED) — manual-only.
 
     .. caution::
 
-       Xiaohongshu has **no public API**.  Publishing requires manual
-       intervention through the RED mobile app or web creator portal.
-       This adapter serves as a placeholder and dependency tracker.
+       Xiaohongshu has **no public API**.  Publishing is **manual-only**:
+       human intervention through the RED mobile app or web creator
+       portal is required.  This adapter is a placeholder that validates
+       credentials and documents the requirement.
     """
 
     @property
@@ -58,13 +65,18 @@ class XiaohongshuPublisher(BasePlatformAdapter):
         )
         return True
 
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
-        """Report that automated publishing is unavailable for Xiaohongshu.
+    def publish(
+        self,
+        artifact_dir: str,
+        project: dict[str, Any],
+        draft_only: bool = False,
+    ) -> PublishResult:
+        """Return ``"not_implemented"`` — Xiaohongshu is manual-only.
 
-        Returns a ``"not_implemented"`` status explaining that RED
-        has no public API for automated posting.
+        This is an intentional divergence: the platform has no public
+        API, so the adapter never attempts automated publishing.
         """
-        _ = artifact_dir, project  # mark parameters as used
+        _ = artifact_dir, project, draft_only  # mark parameters as used
         logger.info(
             "Xiaohongshu publish called — returning not_implemented",
             platform="xiaohongshu",
@@ -73,6 +85,6 @@ class XiaohongshuPublisher(BasePlatformAdapter):
         return {
             "status": "not_implemented",
             "platform": "xiaohongshu",
-            "reason": "Xiaohongshu has no public API for automated publishing. "
-            "Manual posting required.",
+            "reason": "Manual publish only — Xiaohongshu has no public API. "
+            "A human must post via the RED mobile app or web creator portal.",
         }

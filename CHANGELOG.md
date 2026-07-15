@@ -105,10 +105,10 @@ Total 15 top-level commands, 50+ subcommands.
 
 #### Documentation
 
-- **Developer Guide** (`docs/developer-guide.md`)
-- **API Reference** (`docs/api-reference.md`)
-- **CLI Reference** (`docs/cli-reference.md`)
-- **MCP Setup Guide** (`docs/mcp-setup.md`)
+- **Developer Guide** (`docs/dev/developer-guide.md`)
+- **API Reference** (`docs/user/api-reference.md`)
+- **CLI Reference** (`docs/user/cli-reference.md`)
+- **MCP Setup Guide** (`docs/user/mcp-setup.md`)
 - **Runbook**: Gate failure modes / Cron debugging / API pitfalls / Production workflow
 
 ### Changed

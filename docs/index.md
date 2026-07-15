@@ -55,15 +55,13 @@ automedia run --topic "..." --brand my-brand --mode text_only
 
 | Section | Description |
 |---------|-------------|
-| [Developer Guide](developer-guide.md) | Full setup and development guide |
-| [API Reference](api-reference.md) | Python SDK API documentation |
-| [CLI Reference](cli-reference.md) | Command-line interface reference |
-| [MCP Setup](mcp-setup.md) | MCP server setup for AI agents |
-| [Decision Layer](decision-layer.md) | Decision orchestration above the production pipeline |
-| [HITL Framework](hitl-framework.md) | Human-in-the-loop review gates |
-| [Omni Triad Integration](omni-integration.md) | OPP, OL, ORF adapter docs |
-| [SOP Runner](sop-runner.md) | Standard operating procedure runner |
-| [Asset Library](asset-library.md) | Persistent searchable asset storage |
+| [Developer Guide](dev/developer-guide.md) | Full setup and development guide |
+| [API Reference](user/api-reference.md) | Python SDK API documentation |
+| [CLI Reference](user/cli-reference.md) | Command-line interface reference |
+| [MCP Setup](user/mcp-setup.md) | MCP server setup for AI agents |
+| [HITL Framework](user/hitl-framework.md) | Human-in-the-loop review gates |
+| [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
+| [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
 
 ---
 

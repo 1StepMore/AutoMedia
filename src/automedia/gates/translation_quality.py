@@ -120,9 +120,93 @@ def _get_translation_md(translation_result: Any) -> str:  # noqa: ANN401
 # ---------------------------------------------------------------------------
 
 
+_CHECK_THRESHOLDS: dict[str, str] = {
+    "frontmatter_valid": "YAML frontmatter must contain source_lang and target_lang",
+    "language_match": "source_lang/target_lang in frontmatter must match expected values",
+    "no_garbled_text": "No replacement/control characters in translated content",
+    "non_empty": "Translated content must be non-empty and non-whitespace",
+}
+
+_SUGGESTIONS: dict[str, str] = {
+    "frontmatter_valid": (
+        "Ensure the translated markdown starts with '---' "
+        "and contains source_lang/target_lang fields"
+    ),
+    "language_match": (
+        "Verify that frontmatter source_lang/target_lang"
+        " match the expected translation direction"
+    ),
+    "no_garbled_text": (
+        "Re-run the translation — garbled text indicates encoding corruption"
+    ),
+    "non_empty": "Check that the translation pipeline produced actual content",
+}
+
+
 def _derive_expected(check_name: str) -> str:
     """Convert a snake_case check name to a human-readable expected statement."""
     return check_name.replace("_", " ").capitalize() + "."
+
+
+def _build_checks(gr: GateResult) -> list[dict[str, str | bool]]:
+    """Build a structured ``checks`` list from a ``GateResult``.
+
+    Each entry includes ``name``, ``passed``, ``detail``, ``suggestion``,
+    ``actual_value``, and ``threshold``.
+    """
+    checks: list[dict[str, str | bool]] = []
+    for name in _CHECK_NAMES:
+        passed = gr.check_results.get(name, False)
+        detail: str = ""
+        actual_value: str = ""
+        threshold: str = _CHECK_THRESHOLDS.get(name, "")
+        suggestion: str = _SUGGESTIONS.get(name, "")
+
+        if passed:
+            detail = f"{name.replace('_', ' ')} check passed"
+            actual_value = f"{name.replace('_', ' ')} is valid"
+        else:
+            # Try to find a matching failure or warning
+            found = False
+            for f in gr.failures:
+                fl = f.lower()
+                if name == "frontmatter_valid" and ("frontmatter" in fl or "yaml" in fl):
+                    detail = f
+                    actual_value = f
+                    found = True
+                    break
+                if name == "language_match" and (
+                    "language" in fl or "mismatch" in fl or "frontmatter" in fl
+                ):
+                    detail = f
+                    actual_value = f
+                    found = True
+                    break
+                if name == "non_empty" and ("empty" in fl or "whitespace" in fl):
+                    detail = f
+                    actual_value = f
+                    found = True
+                    break
+            if not found:
+                for w in gr.warnings:
+                    if name == "no_garbled_text" and "garbled" in w.lower():
+                        detail = w
+                        actual_value = "garbled characters detected"
+                        found = True
+                        break
+            if not found:
+                detail = f"{name.replace('_', ' ')} check failed"
+                actual_value = "check did not pass"
+
+        checks.append({
+            "name": name,
+            "passed": passed,
+            "detail": detail,
+            "actual_value": actual_value,
+            "threshold": threshold,
+            "suggestion": suggestion,
+        })
+    return checks
 
 
 class L4TranslationQuality(BaseGate):
@@ -158,12 +242,15 @@ class L4TranslationQuality(BaseGate):
             "actual": result.failures[0] if result.failures else "",
             "context": {},
         }
+        checks = _build_checks(result)
+
         return {
             "passed": result.passed,
             "gate": self.gate_name,
             "warnings": list(result.warnings),
             "failures": list(result.failures),
             "check_results": dict(result.check_results),
+            "checks": checks,
             "expected_vs_actual": expected_vs_actual,
         }
 

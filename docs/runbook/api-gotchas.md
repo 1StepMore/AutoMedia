@@ -113,10 +113,10 @@ Different modes execute different Gate subsets:
 
 | mode | Gates Included |
 |------|----------------|
-| `auto` | pre-gate, G0-G5, V0-V7, L1-L3 |
-| `text_only` | G0-G5, L1-L3 |
-| `video_only` | V0-V7, L1-L3 |
-| `qa_only` | G0, G2, G3, V1, V6 |
+| `auto` | D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4 |
+| `text_only` | D0 → CW → G0-G5 → L1-L4 |
+| `video_only` | D0 → V0-V7 → L1-L4 |
+| `qa_only` | D0 → G0 → G2 → G3 → V1 → V6 |
 
 **Gotcha:** `qa_only` only runs 5 Gates, far fewer than the full pipeline's
 18 Gates. Do not use `qa_only` results to judge whether the entire pipeline

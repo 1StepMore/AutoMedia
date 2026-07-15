@@ -5,6 +5,12 @@
 > 识别并制定移除不合理僵化/硬编码结构的路线图，
 > 代之以真正的 LLM 驱动 + Agent 优先模式。
 
+> **状态说明 (2026-07-15):** 本文的分析和建议已被 **D3 Gap Closure** 部分执行。
+> ✅ **已实施:** 决策层确定性 Agent 移除 (~9,500 LOC 死代码: tenant/、license/、sop/、platform_drafts/、decision 层的 orchestrator/dependency/preflight/build/scale/strategy)、
+> MCP 工具 `run_brand_strategy` + `run_pipeline_from_strategy` 上线、D0 Gate 移除、CLI 状态管理移除。
+> ❌ **尚未实施:** G0/G2 门 LLM 化改造、pool/scorer LLM 化、asset_library 简化、hitl/config 精简。
+> 如需跟进未实施项，请参考 [D3 Gap Closure Plan](.omo/plans/d3-gap-closure.md) 中的 Future Work 章节。
+
 ---
 
 ## 目录

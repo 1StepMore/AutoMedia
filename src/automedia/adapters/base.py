@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, TypedDict
 
 
 class PublishResult(TypedDict, total=False):
     """Result produced by adapter ``publish()``.
 
-    ``status`` (``"ok"`` or ``"error"``) is always present.
-    Platform-specific keys (``platform``, ``url``, ``article_id``,
-    ``draft_id``, ``publish_id``, ``message_id``) are optional.
+    ``status`` (``"ok"``, ``"error"``, or ``"draft_created"``) is always
+    present.  Platform-specific keys are optional.
+
+    When ``status == "draft_created"`` the result includes ``draft_url``
+    and ``draft_id`` for draft-only publishing flows.
     """
 
     status: str
@@ -21,6 +24,7 @@ class PublishResult(TypedDict, total=False):
     platform: str
     article_id: str
     draft_id: str
+    draft_url: str
     publish_id: str
     message_id: str
     access_token: str
@@ -40,6 +44,35 @@ class HealthResult(TypedDict, total=False):
     status: str
     healthy: bool
     reason: str
+
+
+# ---------------------------------------------------------------------------
+# Automation level constants
+# ---------------------------------------------------------------------------
+
+
+class AutomationLevel(str, Enum):
+    """Publish automation levels per platform.
+
+    Each platform (wechat, zhihu, xiaohongshu, feishu) can be configured
+    with one of these levels in the brand profile's ``automation`` dict.
+    """
+
+    AUTO = "auto"
+    """Publish immediately — normal flow."""
+    REVIEW = "review"
+    """Create a draft for human review instead of publishing directly."""
+    MANUAL = "manual"
+    """Skip entirely — do nothing for this platform."""
+
+
+AUTOMATION_DEFAULTS: dict[str, str] = {
+    "wechat": "auto",
+    "zhihu": "auto",
+    "xiaohongshu": "manual",
+    "feishu": "auto",
+}
+"""Default automation levels by platform when brand profile omits them."""
 
 
 class AnalyticsResult(TypedDict, total=False):
@@ -99,7 +132,12 @@ class BasePlatformAdapter(ABC):
     # Core contract
     # ------------------------------------------------------------------
     @abstractmethod
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
+    def publish(
+        self,
+        artifact_dir: str,
+        project: dict[str, Any],
+        draft_only: bool = False,
+    ) -> PublishResult:
         """Publish an artifact directory to this platform.
 
         Parameters
@@ -108,13 +146,17 @@ class BasePlatformAdapter(ABC):
             Path to the rendered artifact directory.
         project:
             Full project dict (topic, metadata, config, …).
+        draft_only:
+            When ``True``, create a draft without submitting for publish.
+            The returned ``status`` will be ``"draft_created"`` and a
+            ``draft_url`` will be provided.
 
         Returns
         -------
         dict
             A result dict that **must** include at least ``"status"``
-            (``"ok"`` or ``"error"``).  Additional keys are platform-
-            specific.
+            (``"ok"``, ``"error"``, or ``"draft_created"``).  Additional
+            keys are platform-specific.
         """
         ...
 

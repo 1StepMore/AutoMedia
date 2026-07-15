@@ -1,38 +1,51 @@
 """HotCollector — topic collection funnel.
 
 Layer 2: Tavily AI search on extracted keywords.
-Layer 3: AIHOT aggregator feed.
+Layer 3: AIHOT aggregator feed / LLM-based trending generator.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from automedia.omni.opp_adapter import ExtractionResult
 
+_TAVILY_API_URL = "https://api.tavily.com/search"
+
 
 class HotCollector:
-    """Collect hot topics from simulated sources.
+    """Collect hot topics from real sources.
 
     Parameters
     ----------
     seed_topics : list[dict] | None
         Optional pre-seeded topics to include.  Each dict must have at least
-        ``source``, ``title``, ``url``, ``heat_score``.  When *None* a default
-        synthetic dataset is produced.
+        ``source``, ``title``, ``url``, ``heat_score``.
+    tavily_api_key : str | None
+        Tavily Search API key.  Falls back to ``AUTOMEDIA_TAVILY_API_KEY``
+        environment variable when *None*.
     """
 
-    def __init__(self, seed_topics: list[dict] | None = None) -> None:
+    def __init__(
+        self,
+        seed_topics: list[dict] | None = None,
+        tavily_api_key: str | None = None,
+    ) -> None:
         """Initialize the hot topic collector.
 
         Args:
             seed_topics: Optional pre-seeded topics to include in the
                 collection funnel.
+            tavily_api_key: Tavily Search API key. Falls back to env var.
         """
         self._seed_topics = seed_topics or []
+        self._tavily_api_key = tavily_api_key or os.environ.get(
+            "AUTOMEDIA_TAVILY_API_KEY", ""
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -117,74 +130,142 @@ class HotCollector:
             )
 
     # ------------------------------------------------------------------
-    # Layer 2 — Tavily AI search (simulated)
+    # Layer 2 — Tavily AI search
     # ------------------------------------------------------------------
 
     def _search_tavily(self, keywords: list[str]) -> list[dict]:
-        """Simulate Tavily AI search based on extracted keywords.
+        """Search trending topics via Tavily Search API.
 
-        Returns synthetic results that match the keyword theme.
+        Requires ``AUTOMEDIA_TAVILY_API_KEY`` or *tavily_api_key* to be set.
+        Returns an empty list when the API key is not configured or when
+        the API call fails.
+
+        Parameters
+        ----------
+        keywords : list[str]
+            Search keywords extracted from seed topics.
+
+        Returns
+        -------
+        list[dict]
+            Each item has keys: ``source``, ``title``, ``url``,
+            ``heat_score``, ``collected_at``.
         """
-        now = _now_iso()
-        # Simulate keyword-driven results
-        results: list[dict] = []
-        keyword_set = {k.lower() for k in keywords}
+        if not self._tavily_api_key:
+            return []
+        query = " ".join(keywords[:5]).strip()
+        if not query:
+            return []
 
-        if any(k in keyword_set for k in ("ai", "人工智能", "大模型")):
-            results.append(
-                {
-                    "source": "tavily",
-                    "title": "OpenAI发布最新AI研究成果",
-                    "url": "https://tavily.com/search/openai-research",
-                    "heat_score": 8.7,
-                    "collected_at": now,
-                }
-            )
-        if any(k in keyword_set for k in ("视频", "sora", "ai视频")):
-            results.append(
-                {
-                    "source": "tavily",
-                    "title": "AI视频工具对比评测2025",
-                    "url": "https://tavily.com/search/ai-video-tools",
-                    "heat_score": 8.3,
-                    "collected_at": now,
-                }
-            )
-        if any(k in keyword_set for k in ("自媒体", "创作", "工具")):
-            results.append(
-                {
-                    "source": "tavily",
-                    "title": "自媒体运营效率提升方案",
-                    "url": "https://tavily.com/search/content-efficiency",
-                    "heat_score": 7.6,
-                    "collected_at": now,
-                }
-            )
+        try:
+            import httpx
+        except ImportError:
+            return []
+
+        now = _now_iso()
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(
+                    _TAVILY_API_URL,
+                    json={
+                        "api_key": self._tavily_api_key,
+                        "query": query,
+                        "search_depth": "basic",
+                        "max_results": 5,
+                    },
+                )
+                resp.raise_for_status()
+                data: dict[str, Any] = resp.json()
+        except Exception:
+            return []
+
+        results: list[dict] = []
+        for item in data.get("results", []):
+            title = (item.get("title") or "").strip()
+            url = (item.get("url") or "").strip()
+            if not title or not url:
+                continue
+            score = item.get("score", 0.5)
+            heat_score = round(min(float(score) * 10, 10.0), 1)
+            results.append({
+                "source": "tavily",
+                "title": title,
+                "url": url,
+                "heat_score": heat_score,
+                "collected_at": now,
+            })
         return results
 
     # ------------------------------------------------------------------
-    # Layer 3 — AIHOT aggregator (simulated)
+    # Layer 3 — AIHOT / LLM-based trending generator
     # ------------------------------------------------------------------
 
     def _fetch_aihot(self) -> list[dict]:
-        """Simulate AIHOT aggregator feed."""
+        """Fetch trending AI / creator-economy topics via LLM.
+
+        Uses the AutoMedia LLM client to generate a list of currently
+        trending topics.  Returns an empty list when the LLM is not
+        configured or on any failure.
+        """
+        try:
+            from automedia.core.llm_client import llm_complete
+        except ImportError:
+            return []
+
         now = _now_iso()
-        return [
-            {
+        prompt = (
+            "Generate a list of 5 currently trending hot topics in the AI "
+            "and creator-economy space. "
+            "Return ONLY a JSON array of objects with keys: "
+            "\"title\" (topic title in Chinese or English), "
+            "\"url\" (a relevant news or article URL), "
+            "and \"heat_score\" (float 0-10 indicating popularity)."
+        )
+
+        try:
+            response = llm_complete(
+                prompt=prompt,
+                system_prompt=(
+                    "You are a trending-topic researcher. "
+                    "Return ONLY valid JSON, no markdown, no explanation."
+                ),
+                temperature=0.7,
+                max_tokens=1024,
+            )
+        except Exception:
+            return []
+
+        text = response.strip()
+        if text.startswith("```"):
+            first_nl = text.find("\n")
+            if first_nl != -1:
+                text = text[first_nl + 1:]
+            if text.endswith("```"):
+                text = text[:-3].rstrip()
+
+        try:
+            items: list[Any] = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+        if not isinstance(items, list):
+            return []
+
+        results: list[dict] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            title = (item.get("title") or "").strip()
+            if not title:
+                continue
+            results.append({
                 "source": "aihot",
-                "title": "全球AI创业融资周报",
-                "url": "https://aihot.com/funding-weekly",
-                "heat_score": 7.0,
+                "title": title,
+                "url": item.get("url", ""),
+                "heat_score": float(item.get("heat_score", 5.0)),
                 "collected_at": now,
-            },
-            {
-                "source": "aihot",
-                "title": "AGI技术路线最新争论",
-                "url": "https://aihot.com/agi-debate",
-                "heat_score": 8.9,
-                "collected_at": now,
-            },
-        ]
+            })
+        return results
 
     # ------------------------------------------------------------------
     # Helpers

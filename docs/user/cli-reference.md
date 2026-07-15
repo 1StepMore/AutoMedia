@@ -1,9 +1,41 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 15 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 12 subcommands.
 ---
 
 # CLI Reference
+
+## MCP-CLI Naming Equivalences
+
+AutoMedia exposes the same functionality through both CLI commands and MCP
+tools. Some operations use different names depending on the interface:
+
+| Function | CLI Command | MCP Tool |
+|----------|-------------|----------|
+| Document extraction | `automedia omni extract` | `extract_brief` |
+| Content translation | `automedia omni translate` | `localize_content` |
+| Format conversion | `automedia omni convert` | `format_output` |
+
+These pairs are **semantically equivalent** — they call the same underlying
+implementation (:func:`automedia.pipelines.runner.run_full_pipeline` for
+pipeline operations; the Omni adapter layer for extract/translate/convert).
+
+## Commands Overview
+
+| Command | Description |
+|---------|-------------|
+| `automedia run` | Execute production pipeline |
+| `automedia pool` | Topic pool management (list, add, score) |
+| `automedia projects` | List and manage production projects |
+| `automedia adapter` | Platform adapter management |
+| `automedia cron` | Execute scheduled cron jobs |
+| `automedia account` | Platform account management |
+| `automedia archive` | Archive a project |
+| `automedia init` | Initialize AutoMedia configuration |
+| `automedia doctor` | Check system dependencies |
+| `automedia omni` | Omni Triad operations (extract, translate, convert) |
+| `automedia hitl` | Human-in-the-loop review operations |
+| `automedia onboard` | Onboarding wizard |
 
 ## Global
 
@@ -110,6 +142,12 @@ automedia run --topic "AI Video Generation Tool Comparison" --brand my-brand
 # Text-only mode
 automedia run --topic "..." --brand my-brand --mode text_only
 
+# Image carousel mode
+automedia run --topic "..." --brand my-brand --mode image-carousel
+
+# Short video mode
+automedia run --topic "..." --brand my-brand --mode short-video
+
 # Resume from a specific Gate
 automedia run --topic "..." --brand my-brand --resume-from G3
 
@@ -121,7 +159,7 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 |------|------|------|--------|------|
 | `--topic` | `-t` | `str` | required | Content topic |
 | `--brand` | `-b` | `str` | required | Brand identifier |
-| `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, video_only, qa_only |
+| `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video |
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate |
 
 ## `automedia pool`
@@ -339,6 +377,15 @@ Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items a
 
 Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF).
 
+Each CLI subcommand has a corresponding MCP tool with a different name (see the
+[MCP-CLI Naming Equivalences](#mcp-cli-naming-equivalences) table at the top of this page):
+
+| CLI Subcommand | MCP Equivalent |
+|----------------|----------------|
+| `automedia omni extract` | ``extract_brief`` |
+| `automedia omni translate` | ``localize_content`` |
+| `automedia omni convert` | ``format_output`` |
+
 ```bash
 # Extract content brief
 automedia omni ingest --file document.md
@@ -396,21 +443,6 @@ automedia tenant create --name my-tenant
 
 # Invite member
 automedia tenant invite --tenant-id <id> --email user@example.com
-```
-
-## `automedia solution`
-
-Decision layer solution management.
-
-```bash
-# View next node
-automedia solution next-node --solution-id <id>
-
-# Approve node
-automedia solution approve-node --node-id <id>
-
-# Preflight check
-automedia solution preflight-check --solution-id <id>
 ```
 
 ## `automedia onboard`

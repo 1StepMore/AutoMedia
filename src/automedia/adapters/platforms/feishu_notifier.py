@@ -54,8 +54,22 @@ class FeishuNotifier(BasePlatformAdapter):
     # ------------------------------------------------------------------
     # Publish
     # ------------------------------------------------------------------
-    def publish(self, artifact_dir: str, project: dict[str, Any]) -> PublishResult:
+    def publish(
+        self,
+        artifact_dir: str,
+        project: dict[str, Any],
+        draft_only: bool = False,
+    ) -> PublishResult:
         """POST an interactive card to the configured Feishu webhook.
+
+        Parameters
+        ----------
+        artifact_dir:
+            Path to the rendered artifact directory.
+        project:
+            Full project dict.
+        draft_only:
+            Ignored for Feishu (webhook notifications are not draftable).
 
         Returns
         -------
@@ -64,7 +78,7 @@ class FeishuNotifier(BasePlatformAdapter):
             on success, or ``{"status": "error", "platform": "feishu",
             "reason": …}`` on failure.
         """
-        _ = artifact_dir
+        _ = artifact_dir, draft_only
 
         # --- pre-flight: webhook URL -------------------------------------------
         webhook_url = load_credential_or_env("FEISHU_WEBHOOK_URL", "feishu_webhook_url")

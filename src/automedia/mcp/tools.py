@@ -16,6 +16,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from automedia.mcp._state import (
     _SERVER_START,
     _lock,
@@ -234,6 +236,8 @@ def run_pipeline(
     decision_mode: str = "build",
     tenant_id: str = "default",
     resume_from: str = "",
+    source_path: str = "",
+    source_url: str = "",
 ) -> dict[str, Any]:
     """Execute the full AutoMedia production pipeline in a background thread.
 
@@ -248,13 +252,22 @@ def run_pipeline(
     brand:
         Brand identifier.
     mode:
-        Pipeline mode — ``"auto"``, ``"text_only"``, ``"video_only"``,
-        or ``"qa_only"``.
+        Pipeline mode — ``"auto"``, ``"text_only"``,
+        ``"text_with_cover"``, ``"video_only"``, ``"qa_only"``,
+        ``"image-carousel"``, ``"social-thread"``, or
+        ``"short-video"``.
     tenant_id:
         Tenant / namespace identifier.
     resume_from:
         Gate name to resume from (skip preceding gates).  Empty
         runs from the beginning.
+    source_path:
+        Path to a source document (``.md``, ``.txt``, or ``.pdf``).
+        Content is loaded and injected into the pipeline gate context
+        for downstream gates to process.
+    source_url:
+        URL to fetch source content from.  Content is loaded and
+        injected into the pipeline gate context.
 
     Returns
     -------
@@ -263,12 +276,22 @@ def run_pipeline(
         ``{"status": "failed", "error": str}`` on immediate failure.
     """
     # Pre-validate mode to fail fast
-    valid_modes = ("auto", "text_only", "video_only", "qa_only")
+    valid_modes = ("auto", "text_only", "text_with_cover", "video_only", "qa_only", "image-carousel", "social-thread", "short-video")
     if mode not in valid_modes:
         return {
             "status": "failed",
             "error": f"Unknown pipeline mode {mode!r}. Choose from: {list(valid_modes)}",
         }
+
+    # Validate source_path against allowlist
+    # If the path is not allowed, log a warning and fall back gracefully
+    # rather than failing the pipeline start.
+    if source_path:
+        try:
+            _require_allowed(source_path, tool_name="run_pipeline")
+        except Exception as exc:
+            logger.warning("run_pipeline: source_path %s not in allowlist: %s", source_path, exc)
+            source_path = ""
 
     project_id = str(uuid.uuid4())[:12]
     progress = PipelineProgress(project_id=project_id)
@@ -287,6 +310,8 @@ def run_pipeline(
                 decision_mode=decision_mode,
                 tenant_id=tenant_id,
                 resume_from=resume_from or None,
+                source_path=source_path,
+                source_url=source_url,
             )
             progress.project_id = result.project_id
         except Exception as exc:
@@ -296,6 +321,72 @@ def run_pipeline(
     thread.start()
 
     return {"project_id": project_id, "status": "started"}
+
+
+def batch_run(
+    topics: list[str],
+    brand: str,
+    mode: str = "auto",
+) -> dict[str, Any]:
+    """Execute pipelines for multiple topics sequentially.
+
+    Iterates over *topics* and calls :func:`run_full_pipeline` for each
+    one.  A single topic failure does **not** stop the batch — errors
+    are collected and all remaining topics are processed.  Returns
+    per-topic results with a summary.
+
+    Parameters
+    ----------
+    topics:
+        List of content topics / subjects.
+    brand:
+        Brand identifier.
+    mode:
+        Pipeline mode — ``"auto"``, ``"text_only"``,
+        ``"text_with_cover"``, ``"video_only"``, ``"qa_only"``,
+        ``"image-carousel"``, ``"social-thread"``, or
+        ``"short-video"``.
+
+    Returns
+    -------
+    dict
+        ``{"results": [...], "total": int, "passed": int, "failed": int}``
+        where each result entry is ``{"topic": str, "status": str,
+        "project_id": str, "error": str | None}``.
+    """
+    from automedia.pipelines.runner import run_full_pipeline
+
+    results: list[dict[str, Any]] = []
+
+    for topic in topics:
+        try:
+            pipeline_result = run_full_pipeline(
+                topic=topic,
+                brand=brand,
+                mode=mode,
+            )
+            results.append({
+                "topic": topic,
+                "status": pipeline_result.status,
+                "project_id": pipeline_result.project_id,
+                "error": pipeline_result.error,
+            })
+        except Exception as exc:
+            results.append({
+                "topic": topic,
+                "status": "failed",
+                "project_id": "",
+                "error": str(exc),
+            })
+
+    passed = sum(1 for r in results if r["status"] == "success")
+    failed = len(results) - passed
+    return {
+        "results": results,
+        "total": len(results),
+        "passed": passed,
+        "failed": failed,
+    }
 
 
 def get_pipeline_progress(project_id: str) -> ProgressData:
@@ -556,11 +647,155 @@ def pool_add_topic(
         return {"error": str(exc)}
 
 
+# ---------------------------------------------------------------------------
+# Cron schedule management helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_jobs_yaml_path() -> Path:
+    """Resolve the path to ``cron/jobs.yaml`` in the automedia package."""
+    import automedia as _am_pkg
+
+    pkg_root = Path(_am_pkg.__file__).resolve().parent
+    return pkg_root / "cron" / "jobs.yaml"
+
+
+def _read_pipeline_schedules() -> list[dict[str, Any]]:
+    """Read ``pipeline_schedules`` from ``cron/jobs.yaml``."""
+    path = _get_jobs_yaml_path()
+    if not path.is_file():
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+        if not isinstance(data, dict):
+            return []
+        return data.get("pipeline_schedules", []) or []
+    except Exception:
+        return []
+
+
+def _write_pipeline_schedules(schedules: list[dict[str, Any]]) -> None:
+    """Write ``pipeline_schedules`` back to ``cron/jobs.yaml``, preserving existing keys."""
+    path = _get_jobs_yaml_path()
+    if path.is_file():
+        with open(path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    else:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data["pipeline_schedules"] = schedules
+    with open(path, "w", encoding="utf-8") as fh:
+        yaml.dump(data, fh, default_flow_style=False, allow_unicode=True)
+
+
+def add_cron_schedule(
+    name: str,
+    expression: str,
+    brand: str = "",
+    category: str = "",
+    count: int = 1,
+) -> dict[str, Any]:
+    """Add a cron schedule entry to ``cron/jobs.yaml``.
+
+    Parameters
+    ----------
+    name:
+        Unique name for the schedule entry.
+    expression:
+        Cron expression with 5 fields (min hour day month weekday).
+    brand:
+        Brand name to use when running the pipeline.
+    category:
+        Topic category filter.
+    count:
+        Number of topics to process (default 1).
+
+    Returns
+    -------
+    dict
+        ``{"added": True, "name": str}`` or ``{"error": str}``.
+    """
+    import re
+
+    if not re.match(r"^(\S+\s+){4}\S+$", expression.strip()):
+        return {
+            "error": f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+        }
+
+    schedules = _read_pipeline_schedules()
+
+    if any(s.get("name") == name for s in schedules):
+        return {"error": f"Schedule {name!r} already exists"}
+
+    schedules.append(
+        {
+            "name": name,
+            "expression": expression,
+            "brand": brand,
+            "category": category,
+            "count": count,
+        }
+    )
+
+    try:
+        _write_pipeline_schedules(schedules)
+        return {"added": True, "name": name}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def list_cron_schedules() -> dict[str, Any]:
+    """List all cron schedule entries from ``cron/jobs.yaml``.
+
+    Returns
+    -------
+    dict
+        ``{"schedules": [...], "count": int}``.
+    """
+    try:
+        schedules = _read_pipeline_schedules()
+        schedules.sort(key=lambda s: s.get("name", ""))
+        return {"schedules": schedules, "count": len(schedules)}
+    except Exception as exc:
+        return {"schedules": [], "error": str(exc)}
+
+
+def remove_cron_schedule(name: str) -> dict[str, Any]:
+    """Remove a cron schedule entry by name.
+
+    Parameters
+    ----------
+    name:
+        Name of the schedule entry to remove.
+
+    Returns
+    -------
+    dict
+        ``{"removed": True, "name": str}`` or ``{"error": str}``.
+    """
+    schedules = _read_pipeline_schedules()
+
+    before = len(schedules)
+    schedules = [s for s in schedules if s.get("name") != name]
+
+    if len(schedules) == before:
+        return {"error": f"Schedule {name!r} not found"}
+
+    try:
+        _write_pipeline_schedules(schedules)
+        return {"removed": True, "name": name}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 def publish_content(
     project_id: str,
     platform: str,
     account_id: str = "",
     base_dir: str = "",
+    mode: str = "auto",
 ) -> dict[str, Any]:
     """Publish a project to a platform.
 
@@ -574,12 +809,18 @@ def publish_content(
         Optional account identifier for PRD-4 account-aware publishing.
     base_dir:
         Root directory containing project directories.
+    mode:
+        Publish mode. ``"auto"`` (default) respects the brand profile's
+        automation level.  ``"publish"`` forces full publish regardless
+        of automation level (overrides ``"review"`` to ``"auto"``).
 
     Returns
     -------
     dict
-        ``{"published": bool, "platform": str, "url": str}``
-        or an error dict on failure.
+        ``{"published": bool, "platform": str, "url": str, …}``
+        or an error dict on failure.  When the automation level is
+        ``"review"`` and mode is ``"auto"``, the result includes
+        ``status: "draft_created"`` and ``draft_url``.
     """
     try:
         _require_allowed(base_dir, tool_name="publish_content")
@@ -595,21 +836,48 @@ def publish_content(
         proj = match[0]
         artifact_dir = proj["_dir"]
 
+        # Resolve per-platform automation levels from brand profile
+        from automedia.manifests.brand_profile_schema import load_brand_profiles  # noqa: PLC0415
+
+        automation: dict[str, str] | None = None
+        brand_name = proj.get("brand", "")
+        if brand_name:
+            profiles = load_brand_profiles()
+            profile = profiles.get(brand_name)
+            if profile is not None:
+                automation = dict(profile.automation) if profile.automation else {}
+
+        # mode="publish" overrides review → auto for the target platform
+        if mode == "publish":
+            if automation is None:
+                automation = {}
+            automation[platform] = "auto"
+
         engine = PublishEngine()
         account_ids = [account_id] if account_id else None
         result = engine.publish_all(
             artifact_dir=artifact_dir,
             project=proj,
             account_ids=account_ids,
+            automation=automation,
         )
 
         platform_result = result.get(platform, {})
-        success = platform_result.get("success", False) or platform_result.get("status") in ("ok", "published")
-        return {
+        status = platform_result.get("status", "")
+        success = platform_result.get("success", False) or status in ("ok", "published")
+        base_response: dict[str, Any] = {
             "published": success,
             "platform": platform,
             "url": platform_result.get("url", ""),
         }
+        if status == "draft_created":
+            base_response["status"] = "draft_created"
+            base_response["draft_url"] = platform_result.get("draft_url", "")
+            base_response["draft_id"] = platform_result.get("draft_id", "")
+        elif status == "error":
+            base_response["published"] = False
+            base_response["error"] = platform_result.get("reason", "unknown error")
+        return base_response
     except Exception as exc:
         return {"published": False, "error": str(exc)}
 
@@ -1060,10 +1328,145 @@ def health_check() -> dict[str, Any]:
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
-            "tools_count": 24,
+            "tools_count": 25,
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Config introspection tool
+# ---------------------------------------------------------------------------
+
+_SECRET_KEYWORDS: frozenset[str] = frozenset({"key", "secret", "password", "token"})
+
+
+def _has_secret_keyword(key: str) -> bool:
+    """Check if a key name contains any secret-related keyword (case-insensitive)."""
+    return any(kw in key.lower() for kw in _SECRET_KEYWORDS)
+
+
+def _redact_secrets(value: object) -> object:
+    """Recursively replace secret values with ``***REDACTED***``."""
+    if isinstance(value, dict):
+        return {
+            k: "***REDACTED***" if _has_secret_keyword(k) else _redact_secrets(v)
+            for k, v in value.items()
+        }
+    return value
+
+
+def _deep_get(data: dict, key_path: str) -> object | None:
+    """Traverse a nested dict using dot-notation key paths.
+
+    Parameters
+    ----------
+    data:
+        The nested dictionary to traverse.
+    key_path:
+        Dot-separated path such as ``"llm.text_generation.temperature"``.
+
+    Returns
+    -------
+    object | None
+        The value at the given path, or *None* if any segment is missing.
+    """
+    current: object = data
+    for part in key_path.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+        if current is None:
+            return None
+    return current
+
+
+def get_config(key: str = "") -> dict[str, Any]:
+    """Return merged configuration settings (excluding secrets).
+
+    When *key* is empty, returns all non-secret config keys.  When *key*
+    is specified, returns the value for that specific config key using
+    dot-notation traversal (e.g. ``llm.temperature``).
+
+    Parameters
+    ----------
+    key:
+        Dot-notation config key to look up.  Empty string returns all config.
+
+    Returns
+    -------
+    dict
+        ``{"config": {...}}`` with secrets redacted, or
+        ``{"value": ...}`` for a specific key lookup, or
+        ``{"error": "config key '...' not found"}``, or
+        ``{"error": "secret key not exposed"}`` when the key is secret.
+    """
+    try:
+        from automedia.core.config_loader import load_config
+
+        config = load_config()
+
+        if not key:
+            return {"config": _redact_secrets(config)}
+
+        # Reject direct access to secret keys
+        if _has_secret_keyword(key.split(".")[-1]):
+            return {"error": "secret key not exposed"}
+
+        value = _deep_get(config, key)
+        if value is None:
+            return {"error": f"config key '{key}' not found"}
+
+        # Redact any sub-values if the result is a dict
+        if isinstance(value, dict):
+            value = _redact_secrets(value)
+
+        return {"value": value}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Brand tools
+# ---------------------------------------------------------------------------
+
+
+def list_brands() -> dict[str, Any]:
+    """Return all configured brands with full profile metadata.
+
+    Reads from multi-brand config in ``~/.automedia/brand_profiles.yaml``
+    via :func:`automedia.manifests.brand_profile_schema.load_brand_profiles`.
+
+    Returns
+    -------
+    dict
+        ``{"brands": [...], "total": N, "error": str | None}`` —
+        never raises.  Each brand entry includes all fields from
+        :class:`~automedia.manifests.brand_profile_schema.BrandProfile`.
+    """
+    try:
+        from automedia.manifests.brand_profile_schema import load_brand_profiles
+
+        profiles = load_brand_profiles()
+        brands_list = [
+            {
+                "name": profile.brand_name,
+                "aliases": profile.aliases,
+                "cta_principles": profile.cta_principles,
+                "blocked_words": profile.blocked_words,
+                "tone_guidelines": profile.tone_guidelines,
+                "brand_identity": profile.brand_identity,
+                "languages": profile.languages,
+                "industry": profile.industry,
+                "target_audience": profile.target_audience,
+                "personality": profile.personality,
+                "platforms": profile.platforms,
+            }
+            for profile in profiles.values()
+        ]
+        return {"brands": brands_list, "total": len(brands_list), "error": None}
+    except Exception as exc:
+        return {"brands": [], "total": 0, "error": str(exc)}
 
 
 # ---------------------------------------------------------------------------
@@ -1164,8 +1567,10 @@ def run_pipeline_from_strategy(
     brand:
         Brand identifier.
     mode:
-        Pipeline mode — ``"auto"``, ``"text_only"``, ``"video_only"``,
-        or ``"qa_only"``.
+        Pipeline mode — ``"auto"``, ``"text_only"``,
+        ``"text_with_cover"``, ``"video_only"``, ``"qa_only"``,
+        ``"image-carousel"``, ``"social-thread"``, or
+        ``"short-video"``.
     strategy_context:
         Optional additional context or constraints for the strategy
         (e.g. target audience, tone, platform hints).

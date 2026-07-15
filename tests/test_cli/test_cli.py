@@ -88,7 +88,12 @@ class TestRunCommand:
         result = runner.invoke(app, ["run", "--topic", "test", "--brand", "test"])
         assert result.exit_code == 0
         assert "Pipeline finished: success" in result.output
-        mock_runner.assert_called_once_with("test", "test", mode="auto", decision_mode="build", resume_from=None)
+        mock_runner.assert_called_once()
+        args, kwargs = mock_runner.call_args
+        assert args == ("test", "test")
+        assert kwargs["mode"] == "auto"
+        assert kwargs["decision_mode"] == "build"
+        assert kwargs["resume_from"] is None
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_with_mode(self, mock_runner: MagicMock, _model_config_present: None) -> None:
@@ -98,7 +103,10 @@ class TestRunCommand:
         )
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b", "--mode", "text_only"])
         assert result.exit_code == 0
-        mock_runner.assert_called_once_with("t", "b", mode="text_only", decision_mode="build", resume_from=None)
+        mock_runner.assert_called_once()
+        args, kwargs = mock_runner.call_args
+        assert args == ("t", "b")
+        assert kwargs["mode"] == "text_only"
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_with_resume_from(
@@ -110,7 +118,10 @@ class TestRunCommand:
         )
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b", "--resume-from", "G3"])
         assert result.exit_code == 0
-        mock_runner.assert_called_once_with("t", "b", mode="auto", decision_mode="build", resume_from="G3")
+        mock_runner.assert_called_once()
+        args, kwargs = mock_runner.call_args
+        assert args == ("t", "b")
+        assert kwargs["resume_from"] == "G3"
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
     def test_run_failure_exits_1(self, mock_runner: MagicMock, _model_config_present: None) -> None:
@@ -131,7 +142,10 @@ class TestRunCommand:
         mock_runner.side_effect = RuntimeError("kaboom")
         result = runner.invoke(app, ["run", "--topic", "t", "--brand", "b"])
         assert result.exit_code == 1
-        assert "Pipeline failed" in result.output
+        # Should show user-friendly error, not raw "Pipeline failed: ..."
+        assert "Pipeline failed" not in result.output
+        assert "Pipeline stopped" in result.output
+        assert "kaboom" in result.output
 
     def test_run_missing_required_args(self) -> None:
         result = runner.invoke(app, ["run"])

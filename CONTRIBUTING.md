@@ -293,7 +293,7 @@ pre-commit run --all-files
 If your change affects user-facing behavior:
 
 - Update the relevant files in `docs/`
-- Add or update CLI command documentation in `docs/cli-reference.md`
+- Add or update CLI command documentation in `docs/user/cli-reference.md`
 - Update `AGENTS.md` if adding new gates or changing architecture
 - Run `make docs` to verify documentation builds correctly
 

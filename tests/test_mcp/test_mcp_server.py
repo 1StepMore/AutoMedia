@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -308,18 +309,23 @@ class TestServerCreation:
         tool_names = sorted(server._tool_manager._tools.keys())
         expected = sorted(
             [
+                "add_cron_schedule",
                 "archive_project",
+                "batch_run",
                 "connect_account",
                 "disconnect_account",
                 "evaluate_content_quality",
                 "extract_brief",
                 "format_output",
                 "get_account_health",
+                "get_config",
                 "get_pipeline_progress",
                 "get_pipeline_status",
                 "get_project_assets",
                 "health_check",
                 "list_accounts",
+                "list_brands",
+                "list_cron_schedules",
                 "list_projects",
                 "list_topic_pool",
                 "localize_content",
@@ -327,6 +333,7 @@ class TestServerCreation:
                 "pool_add_topic",
                 "publish_content",
                 "register_platform_adapter",
+                "remove_cron_schedule",
                 "research_topics",
                 "run_brand_strategy",
                 "run_pipeline",
@@ -827,3 +834,104 @@ class TestResources:
             assert "id" in item
             assert "status" in item
             assert "score" in item
+
+
+# ---------------------------------------------------------------------------
+# Tests for batch_run
+# ---------------------------------------------------------------------------
+
+
+class TestBatchRun:
+    """Tests for :func:`automedia.mcp.tools.batch_run`."""
+
+    @staticmethod
+    def _make_result(
+        status: str = "success",
+        project_id: str = "proj_001",
+        error: str | None = None,
+    ) -> Any:
+        from automedia.pipelines.gate_engine import PipelineResult
+        return PipelineResult(
+            status=status,  # pyright: ignore[reportArgumentType]
+            project_id=project_id,
+            project_dir=f"/tmp/{project_id}",
+            topic="test",
+            brand="TestBrand",
+        )
+
+    def test_all_success(self) -> None:
+        """All topics succeed — returns all results with passed=total."""
+        from automedia.mcp.tools import batch_run
+
+        with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
+            mock_run.side_effect = [
+                self._make_result(project_id="pid_001"),
+                self._make_result(project_id="pid_002"),
+                self._make_result(project_id="pid_003"),
+            ]
+            result = batch_run(
+                topics=["topic A", "topic B", "topic C"],
+                brand="TestBrand",
+                mode="auto",
+            )
+
+        assert result["total"] == 3
+        assert result["passed"] == 3
+        assert result["failed"] == 0
+        assert len(result["results"]) == 3
+        assert result["results"][0]["topic"] == "topic A"
+        assert result["results"][0]["project_id"] == "pid_001"
+        assert result["results"][1]["topic"] == "topic B"
+        assert result["results"][2]["topic"] == "topic C"
+
+    def test_partial_failure(self) -> None:
+        """One topic fails — batch continues and reports correctly."""
+        from automedia.mcp.tools import batch_run
+
+        with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
+            mock_run.side_effect = [
+                self._make_result(project_id="pid_001"),
+                Exception("Pipeline crashed"),
+                self._make_result(project_id="pid_003"),
+            ]
+            result = batch_run(
+                topics=["topic A", "topic B", "topic C"],
+                brand="TestBrand",
+                mode="auto",
+            )
+
+        assert result["total"] == 3
+        assert result["passed"] == 2
+        assert result["failed"] == 1
+        assert result["results"][1]["status"] == "failed"
+        assert result["results"][1]["error"] == "Pipeline crashed"
+        assert result["results"][2]["status"] == "success"
+        assert result["results"][2]["project_id"] == "pid_003"
+
+    def test_all_fail(self) -> None:
+        """All topics fail — passed=0, failed=total."""
+        from automedia.mcp.tools import batch_run
+
+        with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
+            mock_run.side_effect = Exception("always fails")
+            result = batch_run(
+                topics=["t1", "t2"],
+                brand="TestBrand",
+                mode="auto",
+            )
+
+        assert result["total"] == 2
+        assert result["passed"] == 0
+        assert result["failed"] == 2
+        for r in result["results"]:
+            assert r["status"] == "failed"
+
+    def test_empty_topics(self) -> None:
+        """Empty topic list — total=0."""
+        from automedia.mcp.tools import batch_run
+
+        result = batch_run(topics=[], brand="TestBrand", mode="auto")
+        assert result["total"] == 0
+        assert result["passed"] == 0
+        assert result["failed"] == 0
+        assert result["results"] == []

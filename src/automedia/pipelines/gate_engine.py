@@ -7,12 +7,14 @@ STOP the pipeline or continue on failure.
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 import traceback
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal, TypedDict
 
 import tenacity
@@ -27,6 +29,24 @@ log = get_logger(__name__)
 # Exception categorization for gate error handling.
 _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError)
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
+
+# HITL (Human-in-the-Loop) coordination state.
+_hitl_lock = threading.Lock()
+"""Lock protecting ``_hitl_waiters``."""
+
+_hitl_waiters: dict[str, Any] = {}
+"""Maps ``gate_name`` to a dict with ``event``, ``status``, and ``detail``.
+
+Structure::
+
+    {
+        gate_name: {
+            "event": threading.Event(),
+            "status": "awaiting" | "approved" | "rejected",
+            "detail": str,
+        }
+    }
+"""
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -105,7 +125,7 @@ class GateProgressEvent:
     """Event emitted when a gate starts, passes, fails, or is skipped."""
 
     gate_name: str
-    status: Literal["running", "passed", "failed", "skipped"]
+    status: Literal["running", "passed", "failed", "skipped", "awaiting_hitl"]
     duration_s: float = 0.0
     detail: str = ""
     timestamp: str = ""
@@ -129,7 +149,10 @@ class PipelineProgress:
         self.current_gate: str | None = None
         self._events: list[GateProgressEvent] = []
         self.error: str | None = None
+        self.total_gates: int = 0
         self._lock = threading.Lock()
+        self._hitl_event = threading.Event()
+        self._hitl_decision: bool | None = None
 
     # -- Mutators (called by GateEngine.run) --------------------------------
 
@@ -145,7 +168,9 @@ class PipelineProgress:
                 )
             )
 
-    def on_gate_end(self, gate_name: str, passed: bool, duration: float) -> None:
+    def on_gate_end(
+        self, gate_name: str, passed: bool, duration: float, detail: str = ""
+    ) -> None:
         """Record that *gate_name* completed with *passed*/duration."""
         with self._lock:
             self.current_gate = None
@@ -155,6 +180,7 @@ class PipelineProgress:
                     gate_name=gate_name,
                     status=status,
                     duration_s=duration,
+                    detail=detail,
                     timestamp=datetime.now().isoformat(),
                 )
             )
@@ -175,6 +201,109 @@ class PipelineProgress:
         """Return name of the currently-running gate, or *None*."""
         with self._lock:
             return self.current_gate
+
+    # -- HITL (Human-in-the-Loop) lifecycle --------------------------------
+
+    def on_gate_awaiting_hitl(self, gate_name: str, detail: str = "") -> None:
+        """Record that *gate_name* is awaiting human review.
+
+        Sets ``current_gate`` to *gate_name* and adds an event with
+        status ``"awaiting_hitl"``.  Registers this instance in
+        ``_hitl_waiters`` so external callers can signal it.
+        """
+        with self._lock:
+            self.current_gate = gate_name
+            self._events.append(
+                GateProgressEvent(
+                    gate_name=gate_name,
+                    status="awaiting_hitl",
+                    detail=detail,
+                    timestamp=datetime.now().isoformat(),
+                )
+            )
+        with _hitl_lock:
+            _hitl_waiters[self.project_id] = self
+
+    def approve_hitl(self, project_dir: str = "") -> None:
+        """Approve an awaiting HITL gate.
+
+        *In-memory mode* (no *project_dir*): signals the internal event.
+        *File mode* (*project_dir* given): writes ``.hitl_state.json``.
+
+        Removes this instance from ``_hitl_waiters``.
+        """
+        if project_dir:
+            state_file = Path(project_dir) / ".hitl_state.json"
+            state_file.write_text(
+                json.dumps({"decision": "approve"}), encoding="utf-8"
+            )
+        else:
+            self._hitl_decision = True
+            self._hitl_event.set()
+
+        with _hitl_lock:
+            _hitl_waiters.pop(self.project_id, None)
+
+    def reject_hitl(self, project_dir: str = "") -> None:
+        """Reject an awaiting HITL gate.
+
+        *In-memory mode* (no *project_dir*): signals the internal event.
+        *File mode* (*project_dir* given): writes ``.hitl_state.json``.
+
+        Removes this instance from ``_hitl_waiters``.
+        """
+        if project_dir:
+            state_file = Path(project_dir) / ".hitl_state.json"
+            state_file.write_text(
+                json.dumps({"decision": "reject"}), encoding="utf-8"
+            )
+        else:
+            self._hitl_decision = False
+            self._hitl_event.set()
+
+        with _hitl_lock:
+            _hitl_waiters.pop(self.project_id, None)
+
+    def wait_for_hitl(
+        self, project_dir: str = "", timeout: float = 86400.0
+    ) -> bool:
+        """Block the calling thread until HITL decision or *timeout*.
+
+        *In-memory mode* (no *project_dir*): waits on an internal
+        :class:`threading.Event` signalled by ``approve_hitl()`` /
+        ``reject_hitl()``.
+
+        *File mode* (*project_dir* given): polls
+        ``project_dir/.hitl_state.json`` for a decision.
+
+        On timeout the gate auto-approves (returns ``True``).
+
+        Returns
+        -------
+        bool
+            ``True`` for approve, ``False`` for reject.
+        """
+        if project_dir:
+            state_file = Path(project_dir) / ".hitl_state.json"
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                if state_file.is_file():
+                    try:
+                        data = json.loads(
+                            state_file.read_text(encoding="utf-8")
+                        )
+                        return data.get("decision") == "approve"
+                    except (json.JSONDecodeError, OSError):
+                        pass
+                time.sleep(0.5)
+            return True  # Timeout = auto-approve
+
+        triggered = self._hitl_event.wait(timeout=timeout)
+
+        if not triggered:
+            return True  # Timeout = auto-approve
+
+        return bool(self._hitl_decision)
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +327,17 @@ class GateEngine:
     retry_delay:
         Base delay in seconds for exponential backoff between retries.
         Actual delay = ``retry_delay * 2 ** (attempt - 1)``.  Default: 1.0.
+    max_quality_retries:
+        Maximum retry attempts for gates that return ``passed=False``
+        with ``failure_mode="retry"`` (level 1 quality-feedback retry).
+        The same gate is re-executed with the same content up to this
+        many times.  Default: 3.  Set to 0 to disable quality retry.
+    max_regenerations:
+        Maximum content regeneration attempts when level 1 quality retries
+        are exhausted for a gate with ``failure_mode="retry"``.  Each
+        regeneration re-runs the CW (content writer) gate with failure
+        feedback and executes all gates from CW onward.  Default: 2.
+        Set to 0 to disable level 2 regeneration.
     """
 
     def __init__(
@@ -206,6 +346,8 @@ class GateEngine:
         hooks: list[GateHook] | None = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
+        max_quality_retries: int = 3,
+        max_regenerations: int = 2,
     ) -> None:
         """Initialize the gate engine with an ordered list of gates.
 
@@ -214,11 +356,17 @@ class GateEngine:
             hooks: Optional lifecycle observers notified at each gate event.
             max_retries: Max retry attempts for gates with failure_mode="retry".
             retry_delay: Base delay in seconds for exponential backoff.
+            max_quality_retries: Max quality retry attempts for gates that
+                return ``passed=False`` with ``failure_mode='retry'``.
+            max_regenerations: Max content regeneration attempts when level 1
+                quality retries are exhausted.  Default: 2.
         """
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
         self._max_retries = max_retries
         self._retry_delay = retry_delay
+        self._max_quality_retries = max_quality_retries
+        self._max_regenerations = max_regenerations
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -307,6 +455,112 @@ class GateEngine:
         return result
 
     # ------------------------------------------------------------------
+    # Level 2: content regeneration (re-run from CW gate)
+    # ------------------------------------------------------------------
+
+    def _handle_level2_regeneration(
+        self,
+        gate_context: GateContext | dict[str, Any],
+        failed_gate_name: str,
+        failure_result: dict[str, Any],
+        progress: PipelineProgress | None = None,
+    ) -> tuple[bool, list[dict[str, Any]]]:
+        """Level 2 recovery — regenerate content by re-running from CW.
+
+        Increments ``gate_context["_regeneration_count"]`` and, when the
+        count is below ``_max_regenerations``, re-runs all gates from the
+        CW gate forward with ``gate_context["failure_feedback"]`` set so
+        the content writer receives information about what failed.
+
+        When the regeneration budget is exhausted, sets
+        ``gate_context["_level2_exhausted"] = True`` for Task 20
+        escalation.
+
+        Returns
+        -------
+        tuple[bool, list[dict]]
+            ``(all_ok, results_from_cw)`` where *results_from_cw* covers
+            gates from CW through the end of the pipeline.
+        """
+        current = gate_context.get("_regeneration_count", 0)
+        if current >= self._max_regenerations:
+            gate_context["_level2_exhausted"] = True
+
+            # Populate _escalated_gates for H0 human escalation (Task 20)
+            escalated: list[dict[str, Any]] = gate_context.setdefault(  # type: ignore[typeddict-unknown-key]
+                "_escalated_gates", []
+            )
+            escalated.append({
+                "gate_name": failed_gate_name,
+                "error": failure_result.get("error", "unknown"),
+                "regeneration_count": current,
+            })
+
+            log.warning(
+                "engine.level2.exhausted",
+                regenerations_attempted=current,
+                max_regenerations=self._max_regenerations,
+                failed_gate=failed_gate_name,
+                escalated_gates=list(escalated),
+            )
+            return False, []
+
+        new_count = current + 1
+        gate_context["_regeneration_count"] = new_count
+
+        feedback: dict[str, Any] = {
+            "failed_gate": failed_gate_name,
+            "error": failure_result.get("error", "unknown"),
+            "regeneration_attempt": new_count,
+            "max_regenerations": self._max_regenerations,
+        }
+        gate_context["failure_feedback"] = feedback
+
+        log.info(
+            "engine.level2.regeneration",
+            failed_gate=failed_gate_name,
+            attempt=new_count,
+            max_regenerations=self._max_regenerations,
+            error=feedback["error"],
+        )
+
+        # Locate the CW gate in the gate list
+        cw_idx = -1
+        for i, g in enumerate(self._gates):
+            if g.gate_name == "CW":
+                cw_idx = i
+                break
+
+        if cw_idx == -1:
+            log.error(
+                "engine.level2.no_cw_gate",
+                hint="Cannot regenerate without a CW gate in the list",
+            )
+            return False, []
+
+        # Clear content fields so CW regenerates fresh content
+        gate_context["content"] = ""
+        gate_context["draft"] = None
+
+        # Build a sub-engine with gates from CW onward and re-run
+        sub_gates = self._gates[cw_idx:]
+        sub_engine = GateEngine(
+            gates=sub_gates,
+            hooks=self._hooks,
+            max_retries=self._max_retries,
+            retry_delay=self._retry_delay,
+            max_quality_retries=self._max_quality_retries,
+            max_regenerations=self._max_regenerations,
+        )
+        sub_ok, sub_results = sub_engine._run(
+            gate_context,
+            early_stop=True,
+            progress=progress,
+        )
+
+        return sub_ok, sub_results  # type: ignore[return-value]
+
+    # ------------------------------------------------------------------
     # Private gate execution loop
     # ------------------------------------------------------------------
 
@@ -326,6 +580,7 @@ class GateEngine:
         for gate_idx, gate in enumerate(self._gates, 1):
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
+            gate_context["_quality_retry_count"] = 0  # Reset per gate for quality retry tracking
 
             # Backward compatibility: accept "rewrite" → map to "retry"
             fm = gate.failure_mode
@@ -359,11 +614,23 @@ class GateEngine:
                 result["duration_s"] = duration
                 results.append(result)
 
+                # HITL: when gate returns awaiting_hitl, pause for human review
+                if result.get("status") == "awaiting_hitl" and progress:
+                    timeout_s = result.get("timeout_s", 86400)
+                    progress.on_gate_awaiting_hitl(gate_name)
+                    hitl_ok = progress.wait_for_hitl(
+                        project_dir="", timeout=timeout_s,
+                    )
+                    result["_hitl_approved"] = hitl_ok
+
                 passed = result.get("passed", True)
                 if progress:
-                    progress.on_gate_end(gate_name, passed, duration)
+                    progress.on_gate_end(
+                        gate_name, passed, duration, detail=result.get("error", "")
+                    )
 
                 if passed:
+                    all_ok = True
                     log.info("gate.passed", gate_name=gate_name, duration_s=duration)
                     self._dispatch_after(gate_name, gate_context, result)
                 else:
@@ -377,8 +644,223 @@ class GateEngine:
                         if early_stop:
                             return False, results
                         return results
-                    # failure_mode == "retry" → continue
-                    self._dispatch_after(gate_name, gate_context, result)
+
+                    # Level 1: quality-feedback retry
+                    _quality_attempt = 0
+                    while _quality_attempt < self._max_quality_retries:
+                        _quality_attempt += 1
+                        gate_context["_quality_retry_count"] = _quality_attempt
+                        _remaining = self._max_quality_retries - _quality_attempt
+
+                        log.info(
+                            "gate.quality_retry",
+                            gate_name=gate_name,
+                            attempt=_quality_attempt,
+                            max_quality_retries=self._max_quality_retries,
+                            remaining=_remaining,
+                            failure_reason=result.get(
+                                "error", "quality check failed"
+                            ),
+                        )
+
+                        if progress:
+                            progress.on_gate_end(gate_name, False, 0.0)
+                            progress.on_gate_start(gate_name)
+
+                        start = time.monotonic()
+                        try:
+                            result = self._execute_gate_with_retry(
+                                gate, gate_context, fm, gate_name, progress,
+                            )
+                            duration = time.monotonic() - start
+                            result["duration_s"] = duration
+                            result["quality_retry_count"] = _quality_attempt
+                            results[-1] = result
+
+                            if (
+                                result.get("status") == "awaiting_hitl"
+                                and progress
+                            ):
+                                timeout_s = result.get("timeout_s", 86400)
+                                progress.on_gate_awaiting_hitl(gate_name)
+                                hitl_ok = progress.wait_for_hitl(
+                                    project_dir="", timeout=timeout_s,
+                                )
+                                result["_hitl_approved"] = hitl_ok
+
+                            passed = result.get("passed", True)
+                            if progress:
+                                progress.on_gate_end(
+                                    gate_name, passed, duration, detail=result.get("error", "")
+                                )
+
+                            if passed:
+                                all_ok = True
+                                log.info(
+                                    "gate.passed",
+                                    gate_name=gate_name,
+                                    duration_s=duration,
+                                )
+                                self._dispatch_after(
+                                    gate_name, gate_context, result
+                                )
+                                break
+
+                            log.warning(
+                                "gate.quality_retry.attempt_failed",
+                                gate_name=gate_name,
+                                attempt=_quality_attempt,
+                                remaining=_remaining,
+                            )
+
+                        except _PERMANENT_EXCEPTIONS as exc:
+                            duration = time.monotonic() - start
+                            all_ok = False
+                            tb = traceback.format_exc()
+                            log.error(
+                                "gate.quality_retry.error.permanent",
+                                gate_name=gate_name,
+                                duration_s=duration,
+                                error=str(exc),
+                                attempt=_quality_attempt,
+                                traceback=tb,
+                            )
+                            error_result = {
+                                "passed": False,
+                                "gate": gate_name,
+                                "error": str(exc),
+                                "duration_s": duration,
+                                "quality_retry_count": _quality_attempt,
+                            }
+                            results[-1] = error_result
+                            if progress:
+                                progress.on_gate_end(
+                                    gate_name, False, duration, detail=str(exc)
+                                )
+                            self._dispatch_failed(
+                                gate_name, gate_context, exc
+                            )
+                            if early_stop:
+                                return False, results
+                            return results
+
+                        except _TRANSIENT_EXCEPTIONS as exc:
+                            duration = time.monotonic() - start
+                            all_ok = False
+                            tb = traceback.format_exc()
+                            log.error(
+                                "gate.quality_retry.error.transient",
+                                gate_name=gate_name,
+                                duration_s=duration,
+                                error=str(exc),
+                                attempt=_quality_attempt,
+                                traceback=tb,
+                            )
+                            error_result = {
+                                "passed": False,
+                                "gate": gate_name,
+                                "error": str(exc),
+                                "duration_s": duration,
+                                "retry_count": self._max_retries,
+                                "retry_delay_s": self._retry_delay,
+                                "quality_retry_count": _quality_attempt,
+                            }
+                            results[-1] = error_result
+                            if progress:
+                                progress.on_gate_end(
+                                    gate_name, False, duration, detail=str(exc)
+                                )
+                            self._dispatch_failed(
+                                gate_name, gate_context, exc
+                            )
+                            break
+
+                        except Exception as exc:
+                            duration = time.monotonic() - start
+                            tb = traceback.format_exc()
+                            log.error(
+                                "gate.quality_retry.error.unknown",
+                                gate_name=gate_name,
+                                duration_s=duration,
+                                error=str(exc),
+                                attempt=_quality_attempt,
+                                traceback=tb,
+                            )
+                            error_result = {
+                                "passed": False,
+                                "gate": gate_name,
+                                "error": str(exc),
+                                "duration_s": duration,
+                                "quality_retry_count": _quality_attempt,
+                            }
+                            results[-1] = error_result
+                            if progress:
+                                progress.on_gate_end(
+                                    gate_name, False, duration, detail=str(exc)
+                                )
+                            self._dispatch_failed(
+                                gate_name, gate_context, exc
+                            )
+                            raise
+
+                    if not passed:
+                        all_ok = False
+                        level2 = gate_context.get("_level2_handler")
+                        if level2:
+                            log.info(
+                                "gate.quality_retry.level2",
+                                gate_name=gate_name,
+                                quality_retry_count=_quality_attempt,
+                                handler=str(level2),
+                            )
+                            regen_ok, regen_results = level2(
+                                gate_context=gate_context,
+                                failed_gate_name=gate_name,
+                                failure_result=result,
+                                progress=progress,
+                            )
+                            if regen_results:
+                                # Stitch regen results into full result list
+                                cw_result_idx = None
+                                for i_r, r in enumerate(results):
+                                    if r.get("gate") == "CW":
+                                        cw_result_idx = i_r
+                                        break
+                                if cw_result_idx is not None:
+                                    results = (
+                                        results[:cw_result_idx] + regen_results
+                                    )
+                                else:
+                                    results = results + regen_results
+                                all_ok = all(
+                                    r.get("passed", True)
+                                    for r in regen_results
+                                )
+                                # When level 2 is exhausted, check if H0
+                                # approved the escalation — if so, the
+                                # pipeline is successful despite earlier
+                                # gate failures.
+                                if gate_context.get("_level2_exhausted"):
+                                    h0_result = next(
+                                        (r for r in regen_results
+                                         if r.get("gate") == "H0"),
+                                        None,
+                                    )
+                                    if h0_result and h0_result.get("passed"):
+                                        all_ok = True
+                                if early_stop:
+                                    return all_ok, results
+                                return results
+                        else:
+                            log.info(
+                                "gate.quality_retry.exhausted",
+                                gate_name=gate_name,
+                                quality_retry_count=_quality_attempt,
+                                max_quality_retries=self._max_quality_retries,
+                            )
+                        self._dispatch_after(
+                            gate_name, gate_context, result
+                        )
 
             except _PERMANENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start
@@ -398,7 +880,7 @@ class GateEngine:
                 }
                 results.append(error_result)
                 if progress:
-                    progress.on_gate_end(gate_name, False, duration)
+                    progress.on_gate_end(gate_name, False, duration, detail=str(exc))
                 self._dispatch_failed(gate_name, gate_context, exc)
                 if early_stop:
                     return False, results
@@ -425,7 +907,7 @@ class GateEngine:
                     error_result["retry_delay_s"] = self._retry_delay
                 results.append(error_result)
                 if progress:
-                    progress.on_gate_end(gate_name, False, duration)
+                    progress.on_gate_end(gate_name, False, duration, detail=str(exc))
                 self._dispatch_failed(gate_name, gate_context, exc)
                 if fm == "stop":
                     if early_stop:
@@ -451,7 +933,7 @@ class GateEngine:
                 }
                 results.append(error_result)
                 if progress:
-                    progress.on_gate_end(gate_name, False, duration)
+                    progress.on_gate_end(gate_name, False, duration, detail=str(exc))
                 self._dispatch_failed(gate_name, gate_context, exc)
                 if fm == "stop":
                     if early_stop:
@@ -491,6 +973,9 @@ class GateEngine:
             every gate passed (or no ``failure_mode="stop"`` gate failed),
             and *results* is the list of per-gate result dicts.
         """
+        # Wire level 2 handler when regeneration is enabled
+        if self._max_regenerations > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]
+            gate_context["_level2_handler"] = self._handle_level2_regeneration  # type: ignore[arg-type]
         return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]
 
     def run_with_results(

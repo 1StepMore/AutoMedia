@@ -80,6 +80,31 @@ jobs:
         continue-on-error: ${{ matrix.python-version != '3.11' }}
         run: python3 -m pytest --cov=src/automedia --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=75 -q --tb=short
 
+  test-omni:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-omni-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies with [omni] extras
+        run: |
+          pip install -e ".[dev,omni]"
+      - name: Verify Omni packages are importable
+        run: python scripts/verify-omni-packages.py
+      - name: Run Omni adapter tests
+        continue-on-error: ${{ matrix.python-version != '3.11' }}
+        run: python3 -m pytest tests/test_omni/ -v --tb=short
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

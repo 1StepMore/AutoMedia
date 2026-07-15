@@ -351,6 +351,51 @@ class ImagePipeline:
         logger.info("Generated %d body images → %s", count, body_dir)
         return paths
 
+    def generate_single_cover(
+        self,
+        topic: str,
+        brand: str,
+        project_dir: str,
+        ratio: str = "16:9",
+    ) -> str:
+        """Generate a single cover image in the specified aspect ratio.
+
+        Writes the cover to ``02_images/cover/cover.png`` within
+        *project_dir*.  Falls back to a PIL placeholder when ComfyUI
+        is unavailable.
+
+        Parameters
+        ----------
+        topic:
+            Content topic used as the image prompt seed.
+        brand:
+            Brand identifier for watermark / style.
+        project_dir:
+            Root directory for the project.
+        ratio:
+            Aspect ratio label, one of ``"16:9"``, ``"9:16"``,
+            ``"3:4"``, ``"1:1"`` (default ``"16:9"``).
+
+        Returns
+        -------
+        str
+            Path to the generated cover image.
+        """
+        spec = COVER_SPECS.get(ratio, (1920, 1080))
+        cover_dir = os.path.join(project_dir, "02_images", "cover")
+        os.makedirs(cover_dir, exist_ok=True)
+
+        filename = "cover.png"
+        workflow: dict[str, Any] = {
+            "prompt": f"{topic} — {brand} cover {ratio}",
+            "width": spec[0],
+            "height": spec[1],
+            "filename": filename,
+        }
+        path = _run_comfyui(workflow, cover_dir)
+        logger.info("Generated single cover → %s", path)
+        return path
+
     def generate_fallback_frame(
         self,
         topic: str,

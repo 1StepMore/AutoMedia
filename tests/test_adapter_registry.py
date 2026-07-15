@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from automedia.adapters.base import BasePlatformAdapter
@@ -17,7 +19,7 @@ class _StubAdapterA(BasePlatformAdapter):
     def platform_name(self) -> str:
         return "stub_a"
 
-    def publish(self, artifact_dir: str, project: dict) -> dict:
+    def publish(self, artifact_dir: str, project: dict, **kwargs: Any) -> dict:
         return {"status": "ok"}
 
 
@@ -26,7 +28,7 @@ class _StubAdapterB(BasePlatformAdapter):
     def platform_name(self) -> str:
         return "stub_b"
 
-    def publish(self, artifact_dir: str, project: dict) -> dict:
+    def publish(self, artifact_dir: str, project: dict, **kwargs: Any) -> dict:
         return {"status": "ok"}
 
 
@@ -81,7 +83,7 @@ class TestRegister:
             def platform_name(self) -> str:
                 return "stub_a"  # same name
 
-            def publish(self, artifact_dir: str, project: dict) -> dict:
+            def publish(self, artifact_dir: str, project: dict, **kwargs: Any) -> dict:
                 return {"status": "ok"}
 
         AdapterRegistry.register(_StubAdapterA)
@@ -94,7 +96,7 @@ class TestRegister:
             def platform_name(self) -> str:
                 return ""
 
-            def publish(self, artifact_dir: str, project: dict) -> dict:
+            def publish(self, artifact_dir: str, project: dict, **kwargs: Any) -> dict:
                 return {"status": "ok"}
 
         with pytest.raises(ValueError, match="non-empty"):

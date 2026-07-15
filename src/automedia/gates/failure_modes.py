@@ -371,4 +371,21 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         ],
         "docstring_ref": "gates/translation_quality.py",
     },
+    "H0": {
+        "description": (
+            "Human Review Gate (HITL) — pauses pipeline before publish"
+            " to await human approval or rejection"
+        ),
+        "common_causes": [
+            "Pipeline has escalated gates that need human review",
+            "Content quality does not meet publish standards",
+            "Brand compliance requires manual sign-off",
+        ],
+        "fixes": [
+            "Run `automedia hitl approve <project_id> H0` to approve and continue",
+            "Run `automedia hitl reject <project_id> H0` to halt the pipeline",
+            "Use `--skip-review` flag to auto-pass H0 for automated workflows",
+        ],
+        "docstring_ref": "gates/h0_human_review.py",
+    },
 }

@@ -451,25 +451,25 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 
 | File | Content |
 |------|---------|
-| `docs/developer-guide.md` | Full developer guide |
-| `docs/api-reference.md` | SDK API reference |
-| `docs/cli-reference.md` | CLI command reference |
-| `docs/mcp-setup.md` | MCP server setup guide |
-| `docs/mcp-systemd-setup.md` | systemd deployment guide |
-| `docs/hitl-framework.md` | Human-in-the-loop framework docs |
-| `docs/omni-integration.md` | Omni Triad integration docs |
-| `docs/open-core.md` | Open-core licensing model |
-| `docs/enforcement-mechanisms.md` | Red line enforcement docs |
-| `docs/production-e2e-test-design.md` | E2E test design for production |
-| `docs/asset-library.md` | Asset library documentation |
+| `docs/dev/developer-guide.md` | Full developer guide |
+| `docs/user/api-reference.md` | SDK API reference |
+| `docs/user/cli-reference.md` | CLI command reference |
+| `docs/user/mcp-setup.md` | MCP server setup guide |
+| `docs/user/mcp-systemd-setup.md` | systemd deployment guide |
+| `docs/user/hitl-framework.md` | Human-in-the-loop framework docs |
+| `docs/user/omni-integration.md` | Omni Triad integration docs |
+| `docs/user/open-core.md` | Open-core licensing model |
+| `docs/dev/enforcement-mechanisms.md` | Red line enforcement docs |
+| `docs/archive/production-e2e-test-design.md` | E2E test design for production |
+| `docs/user/asset-library.md` | Asset library documentation |
 | `docs/runbook/gate-failure-modes.md` | Gate failure troubleshooting |
 | `docs/runbook/production-workflow.md` | Production operations guide |
 | `docs/runbook/cron-troubleshooting.md` | Cron job debugging |
 | `docs/runbook/api-gotchas.md` | Common API pitfalls |
 | `CHANGELOG.md` | Version history |
-| `docs/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
+| `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
 
-For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/agent-troubleshooting.md).
+For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/agent-troubleshooting.md).
 
 ---
 

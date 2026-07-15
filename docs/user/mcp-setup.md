@@ -32,37 +32,59 @@ Output:
 ```
 Registered MCP tools:
   - archive_project
+  - connect_account
+  - disconnect_account
+  - evaluate_content_quality
   - extract_brief
   - format_output
+  - get_account_health
   - get_pipeline_progress
   - get_pipeline_status
   - get_project_assets
+  - health_check
+  - list_accounts
   - list_projects
   - list_topic_pool
   - localize_content
   - localize_output
+  - pool_add_topic
+  - publish_content
   - register_platform_adapter
+  - research_topics
+  - run_brand_strategy
   - run_pipeline
+  - run_pipeline_from_strategy
   - select_topic
 ```
 
-## Available Tools (13)
+## Available Tools (24)
 
 | Tool | Description |
 |------|------|
 | `select_topic` | Select the highest-scored topic from the topic pool |
+| `research_topics` | Research trending topics using LLM |
 | `run_pipeline` | Execute full production pipeline (background async) |
+| `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
+| `run_brand_strategy` | Generate a brand strategy using LLM analysis |
 | `get_pipeline_progress` | Pull gate-by-gate progress of a running pipeline |
 | `get_pipeline_status` | Query project status |
 | `list_projects` | List all projects |
 | `get_project_assets` | Get project asset list |
 | `archive_project` | Archive a project (Red Line 8 constraint) |
 | `list_topic_pool` | View the topic pool |
+| `pool_add_topic` | Add a topic to the topic pool |
+| `publish_content` | Publish a project to a platform |
 | `register_platform_adapter` | Register a platform adapter |
 | `extract_brief` | Extract a content brief from a document (OPP) |
 | `localize_content` | Translate Markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
+| `evaluate_content_quality` | Score content quality against criteria |
+| `health_check` | Return server health status |
+| `connect_account` | Register a new platform account |
+| `list_accounts` | List all registered accounts |
+| `get_account_health` | Check an account's health status |
+| `disconnect_account` | Disconnect/remove a platform account |
 
 ## MCP Client Configuration
 
@@ -136,15 +158,23 @@ MCP server file access is restricted by an allowlist. The config file is located
 ~/.automedia/mcp_allowlist.yaml
 ```
 
-Example:
+The default allowlist (shipped at `src/automedia/mcp/mcp_allowlist.yaml`)
+includes paths for development, production, and Docker deployments:
 
 ```yaml
 allowed_directories:
-  - "/var/automedia/projects/"
-  - "/tmp/automedia/"
+  - /tmp/automedia/
+  - /app/data/
+  - /app/output/
+  - /app/projects/
+  - /opt/automedia/
 ```
 
-If the allowlist is empty, all paths are allowed access (permissive mode). It is recommended to configure a specific allowlist for production environments.
+- `/tmp/automedia/` — Temporary test data (always safe)
+- `/app/data/`, `/app/output/`, `/app/projects/` — Docker volume mount paths
+- `/opt/automedia/` — systemd service default `WorkingDirectory`
+
+If the allowlist is empty, all paths are blocked (fail‑closed). It is recommended to configure a specific allowlist for production environments. The path allowlist can also be overridden via the `AUTOMEDIA_MCP_ALLOWLIST_PATH` environment variable.
 
 ## Environment Variables
 

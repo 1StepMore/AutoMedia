@@ -28,9 +28,27 @@ class ORFAdapter(BaseOmniAdapter):
         output_path: str | None = None,
         **options: Any,  # noqa: ANN401 — pass-through
     ) -> dict[str, Any]:
-        """Convert a file to target format."""
-        from orf.converters.base import ConverterOptions
-        from orf.converters.chunked_md_converter import ChunkedMDConverter
+        """Convert a file to target format.
+
+        Returns a result dict.  If the ``orf`` package is not installed the
+        method logs a warning and returns an error result — it never raises.
+        """
+        try:
+            from orf.converters.base import ConverterOptions
+            from orf.converters.chunked_md_converter import ChunkedMDConverter
+        except ImportError:
+            from automedia.core._import_helpers import warn_missing_optional
+
+            warn_missing_optional("orf", feature="ORF format conversion disabled")
+            return {
+                "status": "error",
+                "output_path": "",
+                "success": False,
+                "errors": [
+                    "orf package not available — ORF conversion disabled. "
+                    "Install with: pip install automedia-pipeline[omni]"
+                ],
+            }
 
         converter = ChunkedMDConverter()
         opts: ConverterOptions | None = ConverterOptions(**options) if options else None

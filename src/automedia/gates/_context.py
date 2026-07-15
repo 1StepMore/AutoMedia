@@ -141,6 +141,10 @@ class GateContext:
     # Test / mock (used by all gates for deterministic testing)
     mock_results: dict[str, dict[str, Any]] | None = None
 
+    # Source material (set by runner when source_path/source_url provided)
+    source_content: str = ""
+    source_material: dict[str, Any] = field(default_factory=dict)
+
     # Catch-all for any unmapped keys
     extra: dict[str, Any] = field(default_factory=dict)
 

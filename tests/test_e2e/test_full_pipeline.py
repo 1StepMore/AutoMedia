@@ -364,8 +364,8 @@ class TestFullPipeline:
 
         success, results = engine.run(ctx)
 
-        # Overall success is False because G1 failed, but pipeline continued
-        assert success is False
+        # Pipeline completes successfully — H0 approves the escalation
+        assert success is True
         # All 18 gates should have run (G1 is rewrite mode, doesn't stop)
         assert len(results) == len(_AUTO_GATE_NAMES), (
             f"Expected {len(_AUTO_GATE_NAMES)} results (rewrite continues), got {len(results)}"
