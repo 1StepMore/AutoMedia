@@ -111,6 +111,9 @@ class ProgressData(TypedDict, total=False):
 
     project_id: str
     current_gate: str | None
+    gates_done: list[str]
+    gates_remaining: list[str]
+    total_gates: int
     events: list[dict[str, Any]]
     error: str | None
 
@@ -150,9 +153,22 @@ class PipelineProgress:
         self._events: list[GateProgressEvent] = []
         self.error: str | None = None
         self.total_gates: int = 0
+        self._gates_done: list[str] = []
+        self._gate_names: list[str] = []
         self._lock = threading.Lock()
         self._hitl_event = threading.Event()
         self._hitl_decision: bool | None = None
+
+    def set_gate_names(self, gate_names: list[str]) -> None:
+        """Store the ordered list of all gate names for the pipeline.
+
+        Also sets ``total_gates`` to the length of *gate_names*.
+
+        Args:
+            gate_names: Ordered list of gate names in execution order.
+        """
+        self._gate_names = list(gate_names)
+        self.total_gates = len(gate_names)
 
     # -- Mutators (called by GateEngine.run) --------------------------------
 
@@ -184,15 +200,23 @@ class PipelineProgress:
                     timestamp=datetime.now().isoformat(),
                 )
             )
+            # Track unique completed gates (retry may call on_gate_end
+            # multiple times for the same gate — only record once).
+            if gate_name not in self._gates_done:
+                self._gates_done.append(gate_name)
 
     # -- Accessors (called by MCP get_pipeline_progress) --------------------
 
     def get_progress(self) -> ProgressData:
         """Return current progress as a JSON-compatible dict."""
         with self._lock:
+            gates_remaining = self._gate_names[len(self._gates_done) :]
             return {
                 "project_id": self.project_id,
                 "current_gate": self.current_gate,
+                "gates_done": list(self._gates_done),
+                "gates_remaining": gates_remaining,
+                "total_gates": self.total_gates,
                 "events": [e.__dict__ for e in self._events],
                 "error": self.error,
             }

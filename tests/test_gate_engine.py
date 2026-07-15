@@ -14,6 +14,7 @@ from automedia.pipelines.gate_engine import (
     GateEngine,
     GateLogEntry,
     Pipeline,
+    PipelineProgress,
     PipelineResult,
 )
 
@@ -528,6 +529,91 @@ class TestExceptionCategorization:
 
         with pytest.raises(RuntimeError, match="unknown error type"):
             engine.run({})
+
+
+# =========================================================================
+# PipelineProgress tests (gates_done / gates_remaining / total_gates)
+# =========================================================================
+
+
+class TestPipelineProgress:
+    """PipelineProgress.gates_done / gates_remaining / total_gates."""
+
+    def test_initial_state(self) -> None:
+        """At init: gates_done empty, gates_remaining = all, total_gates set."""
+        progress = PipelineProgress(project_id="test-1")
+        progress.set_gate_names(["G0", "G1", "G2"])
+        p = progress.get_progress()
+        assert p["gates_done"] == []
+        assert p["gates_remaining"] == ["G0", "G1", "G2"]
+        assert p["total_gates"] == 3
+
+    def test_after_one_gate(self) -> None:
+        """After one gate completes: gates_done=[G0], remaining=[G1, G2]."""
+        progress = PipelineProgress(project_id="test-2")
+        progress.set_gate_names(["G0", "G1", "G2"])
+        progress.on_gate_start("G0")
+        progress.on_gate_end("G0", True, 1.0)
+        p = progress.get_progress()
+        assert p["gates_done"] == ["G0"]
+        assert p["gates_remaining"] == ["G1", "G2"]
+        assert p["total_gates"] == 3
+
+    def test_after_two_gates(self) -> None:
+        """After two gates complete: gates_done=[G0, G1], remaining=[G2]."""
+        progress = PipelineProgress(project_id="test-3")
+        progress.set_gate_names(["G0", "G1", "G2"])
+        progress.on_gate_start("G0")
+        progress.on_gate_end("G0", True, 1.0)
+        progress.on_gate_start("G1")
+        progress.on_gate_end("G1", False, 0.5)
+        p = progress.get_progress()
+        assert p["gates_done"] == ["G0", "G1"]
+        assert p["gates_remaining"] == ["G2"]
+        assert p["total_gates"] == 3
+
+    def test_all_gates_complete(self) -> None:
+        """All gates complete: gates_done all, gates_remaining empty."""
+        progress = PipelineProgress(project_id="test-4")
+        progress.set_gate_names(["G0", "G1", "G2"])
+        for g in ["G0", "G1", "G2"]:
+            progress.on_gate_start(g)
+            progress.on_gate_end(g, True, 1.0)
+        p = progress.get_progress()
+        assert p["gates_done"] == ["G0", "G1", "G2"]
+        assert p["gates_remaining"] == []
+        assert p["total_gates"] == 3
+
+    def test_retry_does_not_duplicate_gate(self) -> None:
+        """Retry calls on_gate_end multiple times for same gate — only one entry."""
+        progress = PipelineProgress(project_id="test-5")
+        progress.set_gate_names(["G0", "G1"])
+        # First attempt — fails
+        progress.on_gate_start("G0")
+        progress.on_gate_end("G0", False, 1.0)
+        # Retry — mark end of failed attempt, then start again
+        progress.on_gate_end("G0", False, 0.0)
+        progress.on_gate_start("G0")
+        progress.on_gate_end("G0", True, 2.0)
+        p = progress.get_progress()
+        assert p["gates_done"] == ["G0"], "retried gate should appear only once"
+        assert p["gates_remaining"] == ["G1"]
+        assert p["total_gates"] == 2
+
+    def test_set_gate_names_sets_total_gates(self) -> None:
+        """set_gate_names should set total_gates."""
+        progress = PipelineProgress()
+        assert progress.total_gates == 0
+        progress.set_gate_names(["pre-gate", "CW", "G0", "G1", "G2", "G3", "G4", "G5"])
+        assert progress.total_gates == 8
+
+    def test_default_total_gates_zero(self) -> None:
+        """Without calling set_gate_names, total_gates is 0."""
+        progress = PipelineProgress(project_id="test-6")
+        p = progress.get_progress()
+        assert p["total_gates"] == 0
+        assert p["gates_done"] == []
+        assert p["gates_remaining"] == []
 
 
 class TestTracebackLogging:

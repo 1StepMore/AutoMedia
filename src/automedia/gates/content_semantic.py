@@ -146,6 +146,9 @@ class V3ContentSemantic(BaseGate):
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V3 content semantic checks and return structured result."""
+        if not gate_context.get("hyperframes_available", True):
+            return {"passed": True, "gate": "V3", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+
         source_keywords: list[str] = gate_context.get("source_keywords", [])
         content_keywords: list[str] = gate_context.get("content_keywords", [])
         source_texts: list[str] = gate_context.get("source_texts", [])

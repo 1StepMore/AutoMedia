@@ -322,15 +322,31 @@ class TestG0RealLogic:
         ent = next(c for c in result["checks"] if c["name"] == "entities")
         assert ent["passed"] is False
 
-    def test_empty_source_data_all_pass(self) -> None:
-        """Empty source_data → all checks pass (nothing to verify)."""
+    def test_empty_source_data_skipped(self) -> None:
+        """Empty source_data with enable_llm=False → gate returns skipped status."""
+        ctx = _make_context(
+            content="Any content.",
+            source_data={},
+            config={"enable_llm": False},
+        )
+        result = G0FactCheck().execute(ctx)
+        assert result["passed"] is True
+        assert result["gate"] == "G0"
+        assert result["status"] == "skipped"
+        assert "reason" in result
+
+    def test_empty_source_data_skip_on_llm_failure(self) -> None:
+        """Empty source_data + LLM failure → gate returns skipped status."""
         ctx = _make_context(
             content="Any content.",
             source_data={},
         )
-        result = G0FactCheck().execute(ctx)
+        with mock_llm_failure():
+            result = G0FactCheck().execute(ctx)
         assert result["passed"] is True
-        assert result["confidence"] == 1.0
+        assert result["gate"] == "G0"
+        assert result["status"] == "skipped"
+        assert "reason" in result
 
 
 # =========================================================================
@@ -379,10 +395,13 @@ class TestG0EdgeCases:
     """Edge-case handling."""
 
     def test_missing_context_keys(self) -> None:
-        """Empty gate_context doesn't crash — uses defaults."""
-        result = G0FactCheck().execute({})
+        """Empty gate_context doesn't crash — returns skipped."""
+        ctx: dict[str, Any] = {"config": {"enable_llm": False}}
+        result = G0FactCheck().execute(ctx)
         assert result["gate"] == "G0"
-        assert isinstance(result["checks"], list)
+        assert result["passed"] is True
+        assert result["status"] == "skipped"
+        assert "reason" in result
 
     def test_red_line_gate_failure_returns_failed_status(self) -> None:
         """Red Line 1: gate failure is detectable via passed=False."""
@@ -525,6 +544,80 @@ class TestG0LlmIntegration:
         # Deterministic logic still works
         ent = next(c for c in result["checks"] if c["name"] == "entities")
         assert ent["passed"] is True
+
+    # ------------------------------------------------------------------
+    # LLM plausibility check (empty source_data + enable_llm=True)
+    # ------------------------------------------------------------------
+
+    def test_llm_plausibility_check_passes(self) -> None:
+        data = G0CheckResult(passed=True, issues=[], confidence=0.95)
+        ctx = _make_context(
+            content="The Earth revolves around the Sun.",
+            source_data={},
+            config={"enable_llm": True},
+        )
+        with mock_llm_response(data):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["gate"] == "G0"
+        assert result["passed"] is True
+        assert result.get("method") == "llm"
+        assert result.get("status") == "completed"
+        assert len(result["checks"]) == 1
+        assert result["checks"][0]["name"] == "plausibility_check"
+        assert result["checks"][0]["passed"] is True
+        assert result["confidence"] == 0.95
+
+    def test_llm_plausibility_check_fails(self) -> None:
+        data = G0CheckResult(
+            passed=False,
+            issues=["Claims 'Earth is flat' contradicts established scientific consensus"],
+            confidence=0.3,
+        )
+        ctx = _make_context(
+            content="The Earth is flat.",
+            source_data={},
+            config={"enable_llm": True},
+        )
+        with mock_llm_response(data):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["gate"] == "G0"
+        assert result["passed"] is False
+        assert result.get("method") == "llm"
+        assert result.get("status") == "completed"
+        assert len(result["checks"]) == 1
+        assert result["checks"][0]["name"] == "plausibility_check"
+        assert result["checks"][0]["passed"] is False
+        assert result["checks"][0]["detail"] == data.issues[0]
+        assert result["confidence"] == 0.3
+
+    def test_llm_plausibility_check_failure_falls_back_to_skipped(self) -> None:
+        ctx = _make_context(
+            content="Any content.",
+            source_data={},
+            config={"enable_llm": True},
+        )
+        with mock_llm_failure():
+            result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is True
+        assert result["gate"] == "G0"
+        assert result.get("status") == "skipped"
+        assert "reason" in result
+
+    def test_llm_plausibility_check_skipped_when_llm_disabled(self) -> None:
+        ctx = _make_context(
+            content="Any content.",
+            source_data={},
+            config={"enable_llm": False},
+        )
+        result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is True
+        assert result["gate"] == "G0"
+        assert result.get("status") == "skipped"
+        assert "reason" in result
 
     def test_enable_llm_false_skips_llm_even_when_mock_available(self) -> None:
         """When enable_llm=False, no LLM call is made."""

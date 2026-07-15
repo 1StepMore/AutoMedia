@@ -23,6 +23,7 @@ _DEPENDENCIES: list[dict[str, Any]] = [
     {"name": "ffmpeg", "check_cmd": ["ffmpeg", "-version"], "version_flag": "-version"},
     {"name": "whisper", "check_cmd": ["whisper", "--help"], "version_flag": None},
     {"name": "edge-tts", "check_cmd": ["edge-tts", "--help"], "version_flag": None},
+    {"name": "hyperframes", "check_cmd": ["hyperframes", "--version"], "version_flag": "--version"},
     {"name": "comfyui", "check_cmd": None, "version_flag": None},  # HTTP service check
     {"name": "chrome", "check_cmd": None, "version_flag": None},  # detected via shutil
     {"name": "llm_api", "check_cmd": None, "version_flag": None},  # API connectivity test
@@ -59,6 +60,11 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
         "Linux": "pip install edge-tts",
         "Darwin": "pip install edge-tts",
         "Windows": "pip install edge-tts",
+    },
+    "hyperframes": {
+        "Linux": "npm install -g hyperframes  # or: bun install -g hyperframes",
+        "Darwin": "npm install -g hyperframes  # or: bun install -g hyperframes",
+        "Windows": "npm install -g hyperframes  # or: bun install -g hyperframes",
     },
     "chrome": {
         "Linux": "sudo apt install google-chrome-stable  # or: sudo apt install chromium-browser",

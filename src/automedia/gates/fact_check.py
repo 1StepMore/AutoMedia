@@ -21,10 +21,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
+from automedia.gates.llm_helpers import G0CheckResult, LLMCheckResult, llm_check_with_fallback
+from automedia.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +217,71 @@ def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
 
 
 # ---------------------------------------------------------------------------
+# Plausibility check (no source material)
+# ---------------------------------------------------------------------------
+
+
+def _run_plausibility_check(content: str, topic: str) -> dict[str, Any] | None:
+    """Run LLM-based plausibility check when no source material is available.
+
+    Uses the LLM's general knowledge to flag factually questionable claims.
+
+    Parameters
+    ----------
+    content:
+        The generated content to evaluate.
+    topic:
+        The article topic (passed into the prompt for context).
+
+    Returns
+    -------
+    dict[str, Any] | None
+        A full ``build_gate_result`` dict on success, or ``None`` on failure
+        (the caller should fall back to ``"skipped"`` status).
+    """
+    try:
+        prompt = load_prompt(
+            "fact_check_g0_plausibility",
+            content=content,
+            topic=topic,
+        )
+
+        result = llm_complete_structured_safe(
+            prompt,
+            response_format=G0CheckResult,
+        )
+
+        check_name = "plausibility_check"
+
+        if result.passed:
+            detail = "All claims appear factually plausible based on general knowledge"
+        else:
+            detail = "; ".join(result.issues) if result.issues else "Questionable claims found"
+
+        check: CheckResult = {
+            "name": check_name,
+            "passed": result.passed,
+            "detail": detail,
+        }
+
+        return build_gate_result(
+            [check],
+            gate="G0",
+            expected_map={check_name: "All claims are factually plausible based on general knowledge"},
+            confidence=result.confidence,
+            method="llm",
+            status="completed",
+        )
+
+    except Exception:
+        logger.warning(
+            "LLM plausibility check failed, falling back to skipped",
+            exc_info=True,
+        )
+        return None
+
+
+# ---------------------------------------------------------------------------
 # G0FactCheck gate
 # ---------------------------------------------------------------------------
 
@@ -242,12 +309,28 @@ class G0FactCheck(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 5-step fact-check and return structured result."""
         content: str = gate_context.get("content", "")
-        source_data: dict[str, Any] = gate_context.get("source_data", {})
-        source_url: str = source_data.get("url", "")
-        mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
+        source_data: dict[str, Any] | None = gate_context.get("source_data")
+        source_url: str = (source_data or {}).get("url", "")
 
         config: dict[str, Any] = gate_context.get("config", {})
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
+
+        # When no source material is provided, attempt LLM plausibility check or skip
+        if not source_data:
+            if enable_llm:
+                topic: str = gate_context.get("topic", "")
+                plausibility_result = _run_plausibility_check(content, topic)
+                if plausibility_result is not None:
+                    return plausibility_result
+
+            return {
+                "passed": True,
+                "gate": "G0",
+                "status": "skipped",
+                "reason": "No source material provided — factual verification skipped",
+            }
+
+        mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
 
         if mock_results is not None:
             checks: list[CheckResult] = []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 import threading
 from dataclasses import asdict
@@ -140,6 +141,14 @@ def run_cmd(
             output_error("No topics provided after splitting --topics.")
             raise typer.Exit(code=1)
 
+        # Warn once if HyperFrames is missing and mode may need video
+        if mode != "text_only" and shutil.which("hyperframes") is None:
+            typer.secho(
+                "⚠ HyperFrames not detected. Video quality gates (V0-V7) will be skipped.",
+                fg=typer.colors.YELLOW,
+            )
+            typer.echo("   Install HyperFrames for full video QA, or use --mode text_only to skip video.")
+
         batch_results: list[dict[str, Any]] = []
         for t in topic_list:
             if get_output_mode() == OutputMode.TEXT:
@@ -216,6 +225,14 @@ def run_cmd(
             typer.echo(f"Source path: {source_path}")
         if source_url:
             typer.echo(f"Source URL: {source_url}")
+
+    # Warn if HyperFrames is missing and mode may need video
+    if mode != "text_only" and shutil.which("hyperframes") is None:
+        typer.secho(
+            "⚠ HyperFrames not detected. Video quality gates (V0-V7) will be skipped.",
+            fg=typer.colors.YELLOW,
+        )
+        typer.echo("   Install HyperFrames for full video QA, or use --mode text_only to skip video.")
 
     try:
         cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None

@@ -119,6 +119,9 @@ class V6SubtitleRender(BaseGate):
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V6 subtitle render checks and return structured result."""
+        if not gate_context.get("hyperframes_available", True):
+            return {"passed": True, "gate": "V6", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+
         avg_brightness: int = gate_context.get("avg_brightness", 0)
         contrast: int = gate_context.get("contrast", 0)
         opacity: float = gate_context.get("opacity", 0.0)

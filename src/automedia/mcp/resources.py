@@ -132,7 +132,9 @@ def pipeline_metrics_resource(project_id: str) -> str:
         {
             "project_id": project_id,
             "current_gate": progress_data.get("current_gate", ""),
-            "total_gates": len(events),
+            "gates_done": progress_data.get("gates_done", []),
+            "gates_remaining": progress_data.get("gates_remaining", []),
+            "total_gates": progress_data.get("total_gates", len(events)),
             "passed": sum(1 for e in events if e.get("status") == "passed"),
             "failed": sum(1 for e in events if e.get("status") == "failed"),
             "gate_metrics": gate_metrics,

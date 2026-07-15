@@ -405,7 +405,8 @@ def get_pipeline_progress(project_id: str) -> ProgressData:
     Returns
     -------
     dict
-        ``{"project_id", "current_gate", "events", "error"}`` or
+        ``{"project_id", "current_gate", "gates_done", "gates_remaining",
+        "total_gates", "events", "error"}`` or
         ``{"error": "not found"}``.
     """
     with _lock:

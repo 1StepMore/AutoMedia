@@ -121,6 +121,9 @@ class V4TTSBrandAsset(BaseGate):
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V4 TTS brand asset checks and return structured result."""
+        if not gate_context.get("hyperframes_available", True):
+            return {"passed": True, "gate": "V4", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+
         voice_id: str = gate_context.get("voice_id", "")
         expected_voice_id: str = gate_context.get("expected_voice_id", "")
         speaking_rate: float = gate_context.get("speaking_rate", 0.0)
