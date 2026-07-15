@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Cache pip
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-${{ hashFiles('pyproject.toml') }}
@@ -51,12 +51,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-${{ hashFiles('pyproject.toml') }}
       - name: Cache pytest
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pytest
           key: pytest-${{ runner.os }}
