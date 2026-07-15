@@ -69,6 +69,7 @@ from automedia.mcp.tools import (
     extract_brief,
     format_output,
     get_config,
+    get_cron_health,
     get_pipeline_progress,
     get_pipeline_status,
     get_project_assets,
@@ -87,7 +88,9 @@ from automedia.mcp.tools import (
     run_brand_strategy,
     run_pipeline,
     run_pipeline_from_strategy,
+    search_assets,
     select_topic,
+    test_cron_schedule,
 )
 
 # ---------------------------------------------------------------------------
@@ -121,10 +124,13 @@ __all__ = [
     "get_config",
     "health_check",
     "list_brands",
+    # Asset library tools
+    "search_assets",
     # Cron schedule tools
     "add_cron_schedule",
     "list_cron_schedules",
     "remove_cron_schedule",
+    "test_cron_schedule",
     # Account tools
     "connect_account",
     "list_accounts",
@@ -146,7 +152,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
     Returns
     -------
     FastMCP
-        A fully configured server with all 28 tools and 5 resources registered.
+        A fully configured server with all 29 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -156,7 +162,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-"28 MCP tools for topic selection, pipeline execution, project\n"
+"29 MCP tools for topic selection, pipeline execution, project\n"
              "management, Omni Triad document processing, brand strategy,\n"
              "cron schedule management, content quality evaluation, and server health.\n"
             "\n"
@@ -477,6 +483,26 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 
     mcp.tool(
         description=(
+            "Check cron system health. Validates cron/jobs.yaml schedule "
+            "definitions and reports schedule counts. Does not include "
+            "runtime monitoring data because AutoMedia has no built-in "
+            "cron daemon — scheduling is delegated to an external crond. "
+            "Returns jobs_valid, schedule_count, valid/invalid expression "
+            "counts, static job definitions, and a note about limitations."
+        ),
+    )(get_cron_health)
+
+    mcp.tool(
+        description=(
+            "Test and validate a cron expression. "
+            "Returns whether the 5-field expression is syntactically valid, "
+            "and if croniter is available, computes the next N trigger times. "
+            "Accepts an optional count parameter (default 5, max 20)."
+        ),
+    )(test_cron_schedule)
+
+    mcp.tool(
+        description=(
             "Publish a project to a platform. "
             "Takes project_id, platform name, optional account_id, and optional base_dir. "
             "Returns the publish result including URL."
@@ -592,6 +618,17 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "Returns empty list when no brands configured (not an error)."
         ),
     )(list_brands)
+
+    mcp.tool(
+        description=(
+            "Search the asset library for brand assets. "
+            "Performs combined SQLite keyword search and Chroma semantic search. "
+            "Takes query, brand, optional limit (default 10), and optional filters "
+            "(type, tags, lang, stage). "
+            "Returns ranked results with relevance scores, metadata, and content. "
+            "Empty query returns all assets filtered by other criteria (not an error)."
+        ),
+    )(search_assets)
 
     # ------------------------------------------------------------------
     # Account tools

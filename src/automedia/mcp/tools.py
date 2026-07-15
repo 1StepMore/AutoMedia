@@ -790,6 +790,166 @@ def remove_cron_schedule(name: str) -> dict[str, Any]:
         return {"error": str(exc)}
 
 
+def get_cron_health() -> dict[str, Any]:
+    """Check cron system health.
+
+    Validates the ``cron/jobs.yaml`` schedule definitions and reports
+    schedule counts.  Does **not** include run-time monitoring data
+    because AutoMedia has no built-in cron daemon — scheduling is
+    delegated to an external crond.
+
+    Returns
+    -------
+    dict
+        ``{"jobs_valid": bool, "schedule_count": int, "job_count": int,
+          "static_jobs": [...], "note": str}``.
+    """
+    path = _get_jobs_yaml_path()
+    if not path.is_file():
+        return {
+            "jobs_valid": False,
+            "schedule_count": 0,
+            "job_count": 0,
+            "static_jobs": [],
+            "note": "cron/jobs.yaml not found",
+        }
+
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except Exception as exc:
+        return {
+            "jobs_valid": False,
+            "schedule_count": 0,
+            "job_count": 0,
+            "static_jobs": [],
+            "note": f"parse error: {exc}",
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "jobs_valid": False,
+            "schedule_count": 0,
+            "job_count": 0,
+            "static_jobs": [],
+            "note": "jobs.yaml is not a valid dict",
+        }
+
+    pipeline_schedules = data.get("pipeline_schedules", []) or []
+    if not isinstance(pipeline_schedules, list):
+        pipeline_schedules = []
+
+    static_jobs = data.get("jobs", []) or []
+    if not isinstance(static_jobs, list):
+        static_jobs = []
+
+    import re
+
+    valid_count = 0
+    for sched in pipeline_schedules:
+        expr = sched.get("expression", "")
+        if isinstance(expr, str) and re.match(r"^(\S+\s+){4}\S+$", expr.strip()):
+            valid_count += 1
+
+    job_details: list[dict[str, Any]] = []
+    for job in static_jobs:
+        job_details.append(
+            {
+                "name": job.get("name", ""),
+                "schedule": job.get("schedule", ""),
+                "description": job.get("description", ""),
+            }
+        )
+
+    return {
+        "jobs_valid": True,
+        "schedule_count": len(pipeline_schedules),
+        "valid_expressions": valid_count,
+        "invalid_expressions": len(pipeline_schedules) - valid_count,
+        "job_count": len(static_jobs),
+        "static_jobs": job_details,
+        "note": (
+            "Health tracking infrastructure not available — "
+            "no cron daemon run history exists. "
+            "Scheduling is delegated to an external crond "
+            "that calls `automedia cron run <job>` at configured intervals."
+        ),
+    }
+
+
+def test_cron_schedule(
+    expression: str,
+    count: int = 5,
+) -> dict[str, Any]:
+    """Validate a cron expression and compute its next N trigger times.
+
+    Uses the same 5-field regex validation as :func:`add_cron_schedule`.
+    If *croniter* is installed, computes the next *count* trigger times.
+    Otherwise returns a validation-only result with a note.
+
+    Parameters
+    ----------
+    expression:
+        Cron expression with 5 fields (min hour day month weekday).
+    count:
+        Number of next trigger times to return (default 5, max 20).
+
+    Returns
+    -------
+    dict
+        ``{"valid": True, "expression": str, "next_triggers": [...],
+        "note": None}`` on success with *croniter*, or
+        ``{"valid": True, "expression": str, "next_triggers": None,
+        "note": "croniter not available..."}`` without *croniter*, or
+        ``{"valid": False, "expression": str, "error": str}`` on invalid
+        syntax or computation failure.
+    """
+    import re
+
+    if not re.match(r"^(\S+\s+){4}\S+$", expression.strip()):
+        return {
+            "valid": False,
+            "expression": expression,
+            "error": f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+        }
+
+    count = max(1, min(count, 20))
+
+    try:
+        import croniter
+        from datetime import datetime
+
+        cron = croniter.croniter(expression.strip(), datetime.now())
+        next_triggers: list[str] = []
+        for _ in range(count):
+            next_time = cron.get_next(datetime)
+            next_triggers.append(next_time.isoformat())
+
+        return {
+            "valid": True,
+            "expression": expression,
+            "next_triggers": next_triggers,
+            "note": None,
+        }
+    except ImportError:
+        return {
+            "valid": True,
+            "expression": expression,
+            "next_triggers": None,
+            "note": (
+                "croniter not available — install with 'pip install croniter' "
+                "to compute next trigger times. The expression format is valid."
+            ),
+        }
+    except Exception as exc:
+        return {
+            "valid": False,
+            "expression": expression,
+            "error": f"Cron expression {expression!r} is syntactically valid but "
+            f"croniter failed to compute next triggers: {exc}",
+        }
+
+
 def publish_content(
     project_id: str,
     platform: str,
@@ -1467,6 +1627,71 @@ def list_brands() -> dict[str, Any]:
         return {"brands": brands_list, "total": len(brands_list), "error": None}
     except Exception as exc:
         return {"brands": [], "total": 0, "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Asset library tools
+# ---------------------------------------------------------------------------
+
+
+def search_assets(
+    query: str,
+    brand: str,
+    limit: int = 10,
+    type: str | None = None,
+    tags: list[str] | None = None,
+    lang: str | None = None,
+    stage: str | None = None,
+) -> dict[str, Any]:
+    """Search the asset library for brand assets.
+
+    Wraps :func:`automedia.asset_library.search_assets` — delegates to
+    SQLite keyword search and Chroma semantic search, returns ranked
+    results with relevance scores.
+
+    Parameters
+    ----------
+    query : str
+        Search query (keyword + semantic).  Empty string returns all
+        assets filtered by the other criteria.
+    brand : str
+        Brand identifier to scope the search.
+    limit : int
+        Maximum number of results to return (default 10).
+    type : str or None
+        Optional asset type filter (e.g. ``"article"``, ``"brief"``).
+    tags : list[str] or None
+        Optional tag overlap filter.
+    lang : str or None
+        Optional language code filter (e.g. ``"zh"``, ``"en"``).
+    stage : str or None
+        Optional source-phase filter.
+
+    Returns
+    -------
+    dict
+        ``{"results": [...], "count": int, "error": str | None}`` —
+        never raises.  Each result is a dict with at least ``title``,
+        ``content``, ``_score``, and metadata keys.
+    """
+    try:
+        from automedia.asset_library import search_assets as _search_assets
+
+        filters: dict[str, Any] = {}
+        if type is not None:
+            filters["type"] = type
+        if tags is not None:
+            filters["tags"] = tags
+        if lang is not None:
+            filters["lang"] = lang
+        if stage is not None:
+            filters["phase"] = stage
+
+        raw_results = _search_assets(query=query, brand=brand, filters=filters or None)
+        limited = raw_results[:limit]
+        return {"results": limited, "count": len(limited), "error": None}
+    except Exception as exc:
+        return {"results": [], "count": 0, "error": str(exc)}
 
 
 # ---------------------------------------------------------------------------

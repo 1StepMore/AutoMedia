@@ -338,6 +338,7 @@ class TestServerCreation:
                 "run_brand_strategy",
                 "run_pipeline",
                 "run_pipeline_from_strategy",
+                "search_assets",
                 "select_topic",
             ]
         )

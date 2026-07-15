@@ -7,6 +7,7 @@ All tests use temporary YAML files — zero production data.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -16,9 +17,9 @@ import yaml
 # ---------------------------------------------------------------------------
 
 
-def _make_jobs_yaml(path: Path, schedules: list[dict] | None = None) -> Path:
+def _make_jobs_yaml(path: Path, schedules: list[dict[str, Any]] | None = None) -> Path:
     """Create a jobs.yaml with pipeline_schedules."""
-    data: dict = {}
+    data: dict[str, Any] = {}
     if schedules is not None:
         data["pipeline_schedules"] = schedules
     path.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
@@ -334,3 +335,131 @@ class TestServerRegistration:
 
         listed2 = list_cron_schedules()
         assert listed2["count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: test_cron_schedule
+# ---------------------------------------------------------------------------
+
+
+class TestTestCronSchedule:
+    """Tests for test_cron_schedule."""
+
+    def test_invalid_expression_too_few_fields(self) -> None:
+        """Invalid expression with <5 fields returns error."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 8 * *")  # 4 fields
+        assert result["valid"] is False
+        assert "must have exactly 5 fields" in result["error"]
+
+    def test_invalid_expression_too_many_fields(self) -> None:
+        """Invalid expression with >5 fields returns error."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 8 * * * *")  # 6 fields
+        assert result["valid"] is False
+        assert "must have exactly 5 fields" in result["error"]
+
+    def test_invalid_expression_empty_string(self) -> None:
+        """Empty expression returns error."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("")
+        assert result["valid"] is False
+        assert "must have exactly 5 fields" in result["error"]
+
+    def test_valid_expression_no_croniter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Valid expression but croniter not available."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _mock_import(
+            name: str,
+            globals: dict[str, Any] | None = None,  # noqa: A002
+            locals: dict[str, Any] | None = None,  # noqa: A002
+            fromlist: tuple[str, ...] | None = (),
+            level: int = 0,
+        ) -> object:
+            if name == "croniter":
+                msg = "No module named 'croniter'"
+                raise ImportError(msg)
+            return real_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", _mock_import)
+
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 8 * * *")
+        assert result["valid"] is True
+        assert result["next_triggers"] is None
+        assert result["note"] is not None
+        assert "croniter not available" in result["note"]
+
+    def test_expression_with_all_wildcards(self) -> None:
+        """All wildcards is valid."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("* * * * *")
+        assert result["valid"] is True
+
+    def test_count_clamping_low(self) -> None:
+        """Count below 1 is clamped to 1 (no crash)."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 8 * * *", count=0)
+        assert result["valid"] is True
+
+    def test_count_clamping_high(self) -> None:
+        """Count above 20 is clamped to 20 (no crash)."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 8 * * *", count=100)
+        assert result["valid"] is True
+
+    def test_expression_with_leading_trailing_whitespace(self) -> None:
+        """Leading/trailing whitespace is handled."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("  0 8 * * *  ")
+        assert result["valid"] is True
+
+    def test_step_values(self) -> None:
+        """Step values like */15 are valid."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("*/15 * * * *")
+        assert result["valid"] is True
+
+    def test_comma_lists(self) -> None:
+        """Comma-separated lists are valid."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0,30 8,9 * * *")
+        assert result["valid"] is True
+
+    def test_ranges(self) -> None:
+        """Range expressions like 9-17 are valid."""
+        from automedia.mcp.tools import test_cron_schedule
+
+        result = test_cron_schedule("0 9-17 * * *")
+        assert result["valid"] is True
+
+    def test_tool_is_registered_in_server(self) -> None:
+        """test_cron_schedule appears in the server's tool list."""
+        from automedia.mcp.server import create_server
+
+        server = create_server()
+        tool_names = server._tool_manager._tools.keys()
+        assert "test_cron_schedule" in tool_names
+
+    def test_can_be_called_via_server(self) -> None:
+        """test_cron_schedule works when called through server."""
+        from automedia.mcp.server import test_cron_schedule
+
+        result = test_cron_schedule("30 9 * * *")
+        assert result["valid"] is True
+        assert result["expression"] == "30 9 * * *"

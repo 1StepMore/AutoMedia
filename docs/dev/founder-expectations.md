@@ -201,6 +201,7 @@ Expectations are grouped by journey phase.
 | **Missing API key — agent** | `run_pipeline` returns `{"error": "LLM API key not configured. Ask human to set AUTOMEDIA_LLM_API_KEY."}`. Agent should relay to human. |
 | **Missing dependency** | If a gate needs a missing dependency, it reports the specific dependency and suggests install command. `text_only` mode does not check video deps. |
 | **MCP tool error** | Returns structured JSON error dict with `error` key containing human-readable message. Agent-friendly: error keys are consistent, actionable. |
+| **Implementation status** | ✅ Working — structured errors throughout; tracebacks only surface with `--verbose` flag. `automedia/cli/output_format.py` provides `output_formatted_error()` and `output_pipeline_error()` which replace raw Python tracebacks with concise, actionable messages. All MCP tools return structured JSON error dicts with a consistent `error` key. Full tracebacks are still captured by structlog for debugging and are shown only when the caller passes `--verbose`. |
 
 #### F10 — Project Output Location
 
@@ -417,7 +418,8 @@ Expectations are grouped by journey phase.
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Gate behavior** | G1 checks for AI patterns (repetitive structures, formal tone, lack of personality). Returns score + failing checks. |
+| **Gate behavior** | G1 uses **hybrid LLM-first + regex fallback** detection. Default (`enable_llm=True`): attempts LLM-based evaluation with structured output (`G1CheckResult` — 9 AI pattern categories). On LLM failure (timeout/API error), falls back to deterministic regex checks. The `method` field in the result dict indicates which path was used (`"llm"` or `"deterministic"`). |
+| **Detection method** | LLM path uses `humanizer_g1.j2` prompt template with few-shot examples — evaluates 9 categories (overused adverbs, hollow intros, vague subjects, filler connectors, long conjunctions, template conclusions, over-academic vocabulary, absolute assertions, repetitive structures). Deterministic fallback uses the same 9 categories via regex. |
 | **On failure — auto-recovery** | GateEngine 实现多层递增恢复（仅当 `failure_mode="retry"`）：**Level 1 quality-feedback retry** — 同一 gate 用同一内容重新执行，最多 3 次（`max_quality_retries`）。**Level 2 regeneration** — Level 1 耗尽后，重新执行 CW（内容写入）gate 并携带失败反馈，然后重新执行 CW 之后所有 gates，最多 2 轮（`max_regenerations`）。Level 2 仍失败 → HITL 审批兜底（H0 gate 可人工放行）。Level 0 另有 tenacity 重试处理网络超时等瞬态异常（最多 3 次，指数退避）。 |
 | **On failure — human sees** | Summary shows: `G1 ❌ stop — 人类感得分 4/10，低于阈值 7/10。建议: 增加口语化表达。` or `G1 ⚠️ retry 后通过 (quality retry 2 次)` if auto-recovery succeeded. |
 | **Human intervention** | Human can: approve as-is, request rewrite with specific instructions, or manually edit. |
@@ -430,7 +432,7 @@ Expectations are grouped by journey phase.
 |-----------|---------------|
 | **Gate behavior** | G0 checks factual claims in the article against provided source material. Reports each check as passed/failed with evidence. |
 | **No source material** | If no source material was provided, G0 does a lightweight LLM-based plausibility check instead of strict fact verification. Summary notes: "事实核查基于 LLM 知识（无源材料）"。 |
-| **On failure — auto-recovery** | Same escalating recovery as GateEngine default: Level 1 quality-feedback retry（最多 3 次，同一内容重新执行 G0），Level 2 regeneration（最多 2 轮，重跑 CW + 从 CW 之后所有 gates），HITL 兜底。 |
+| **On failure — auto-recovery** | G0 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. Pipeline halts on failed fact check — no quality retry or regeneration. |
 | **Human sees** | Summary includes: `G0 ✅ 全部通过 (12 项核查)` or `G0 ⚠️ 3/12 项存疑` with details available on request. |
 
 #### F26 — Brand Compliance
@@ -440,7 +442,7 @@ Expectations are grouped by journey phase.
 | UX Detail | Specification |
 |-----------|---------------|
 | **Gate behavior** | G3 checks: brand name appears correctly, CTA is present and correct, banned words not used, tone matches brand profile. |
-| **On failure — auto-recovery** | Same escalating recovery as GateEngine default. Brand violations are typically deterministic (pattern match) so retry usually succeeds on Level 1; Level 2 regeneration and HITL escalation are available if needed. |
+| **On failure — auto-recovery** | G3 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. This is correct because deterministic pattern matches are idempotent — re-running with same content produces same result. Pipeline halts on any brand compliance failure. |
 | **Human sees** | Summary: `G3 ✅ 品牌合规` or `G3 ❌ — CTA 缺失。品牌要求末尾包含官网链接。` |
 
 #### F27 — Video & Subtitle Quality
@@ -547,31 +549,31 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Mode determines production** | Pipeline mode (`auto`, `text_only`, `video_only`) determines what content is produced. The mode is the source of truth — platforms must adapt to what the mode produces, not the other way around. |
 | **Platform capability matching** | Each platform adapter declares what content types it accepts. The publish engine checks compatibility: |
 | | **Platform capability matrix**: |
-| | | Platform | Content Type | Accepts From Mode | Status |
-| | |----------|-------------|-------------------|--------|
-| | | WeChat Official Account | Long-form text + images | `auto`, `text_only` | ✅ API |
-| | | Zhihu | Long-form text | `auto`, `text_only` | ✅ API |
-| | | Xiaohongshu | Images + text, video | `auto` only (needs images) | ⚠️ Manual-only (no API) |
-| | | Douyin | Short video (9:16) | `auto`, `video_only` | ✅ API (user auth) |
-| | | Kuaishou | Short video | `auto`, `video_only` | ✅ API |
-| | | Weibo | Short text + images, video | `auto`, `text_only`, `video_only` | ✅ API |
-| | | Bilibili | Long video, text (column) | `auto`, `video_only` | ✅ API |
-| | | Toutiao | Long-form text, images | `auto`, `text_only` | ✅ API |
-| | | Baijiahao | Long-form text, video | `auto`, `text_only`, `video_only` | ✅ API |
-| | | YouTube | Long video (16:9) | `auto`, `video_only` | ✅ YouTube Data API v3 |
-| | | TikTok | Short video (9:16) | `auto`, `video_only` | ✅ Content Posting API |
-| | | Twitter/X | Short text + media | `auto`, `text_only`, `video_only` | ✅ API v2 |
-| | | Facebook | Text + images, video | `auto`, `text_only`, `video_only` | ✅ Graph API |
-| | | Instagram | Images, video, Reels | `auto` only (needs images) | ✅ Graph API |
-| | | Reddit | Text, link, images | `auto`, `text_only` | ✅ Reddit API |
-| | | WordPress | Blog posts | `auto`, `text_only` | ✅ XML-RPC / REST API |
-| | | Medium | Long-form text | `text_only` | ⚠️ Draft-only |
-| | | LinkedIn | Text, images, documents | `auto`, `text_only` | ✅ Marketing API |
-| | | Juejin | Tech articles (Markdown) | `text_only` | ❌ No public API |
+| | | Platform | Content Type | Accepts From Mode | Actual Status | Priority |
+| | |----------|-------------|-------------------|---------------|----------|
+| | | WeChat Official Account | Long-form text + images | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
+| | | Zhihu | Long-form text | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
+| | | Xiaohongshu | Images + text, video | `auto` only (needs images) | ⚠️ Manual-only (no public API, intentional) | P1 (stub) |
+| | | Douyin | Short video (9:16) | `auto`, `video_only` | ❌ Not implemented | P2 |
+| | | Bilibili | Long video, text (column) | `auto`, `video_only` | ❌ Not implemented | P2 |
+| | | Weibo | Short text + images, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P2 |
+| | | Toutiao | Long-form text, images | `auto`, `text_only` | ❌ Not implemented | P3 |
+| | | Baijiahao | Long-form text, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P3 |
+| | | Kuaishou | Short video | `auto`, `video_only` | ❌ Not implemented | P3 |
+| | | YouTube | Long video (16:9) | `auto`, `video_only` | ❌ Not implemented | P4 |
+| | | Twitter/X | Short text + media | `auto`, `text_only`, `video_only` | ❌ Not implemented | P4 |
+| | | Reddit | Text, link, images | `auto`, `text_only` | ❌ Not implemented | P4 |
+| | | TikTok | Short video (9:16) | `auto`, `video_only` | ❌ Not implemented | P5 |
+| | | Facebook | Text + images, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P5 |
+| | | Instagram | Images, video, Reels | `auto` only (needs images) | ❌ Not implemented | P5 |
+| | | LinkedIn | Text, images, documents | `auto`, `text_only` | ❌ Not implemented | P5 |
+| | | Medium | Long-form text | `text_only` | ❌ Not implemented | P5 |
+| | | WordPress | Blog posts | `auto`, `text_only` | ❌ Not implemented | P5 |
+| | | Juejin | Tech articles (Markdown) | `text_only` | ❌ Not implemented | P5 |
 | | | **If a platform's requirements conflict with the current mode, that platform is skipped** — the mode is never upgraded to accommodate a platform. E.g., `text_only` mode with Xiaohongshu bound → skip (XHS needs images, text_only has none). |
 | **Publish execution** | After pipeline completes: for each platform, respect its automation level. Auto → publish now. Review → create draft. Manual → skip. |
 | **Per-platform adaptation** | Same core content, adapted per platform (title tweaks, format changes, CTA adjustment). Brand config can specify per-platform overrides. |
-| **Implementation status** | ✅ Full implementation. Brand config declares platform bindings (`brands.my-brand.platforms`). Content type matching logic is documented above. Partial failure isolation (one platform failure never blocks others). |
+| **Implementation status** | ⚠️ Partial — brand config binding works, content type matching documented, publish engine with retry works. Platform adapter implementations: WeChat ✅ full, Zhihu ✅ full, Xiaohongshu ⚠️ manual-only stub. Remaining 16 platforms ❌ not yet implemented (see Priority column above). |
 | **Partial failure** | One platform failure doesn't block others. Skipped/failed platforms reported in summary. |
 
 #### F35 — Publish Error Handling
@@ -796,13 +798,13 @@ Reality:  I give a topic → AutoMedia writes and checks (text_only works)
 
 ```
 Promise:  20 automated gates check every aspect of content quality
-Reality:  20 gates exist, but many do lightweight checks (regex, not LLM)
+Reality:  20 gates exist. G0/G1/G2 use hybrid LLM-first + fallback; others are deterministic/regex
 ```
 
 | Aspect | Status | Gap |
 |--------|--------|-----|
 | Fact checking (G0) | ✅ Works | Deterministic checks on structured data |
-| AI-sound check (G1) | ⚠️ Partial | Pattern-based, not LLM-based detection |
+| AI-sound check (G1) | ✅ Works | Hybrid LLM-first + regex fallback detection |
 | Copy review (G2) | ⚠️ Partial | Structure check, not semantic quality |
 | Brand CTA (G3) | ✅ Works | Pattern matching on known terms |
 | WeChat format (G4) | ✅ Works | Length/count checks |
@@ -867,9 +869,9 @@ Not all expectations are equal. This matrix ranks all 48 expectations by **impor
 
 | Quadrant | Importance | Gap | Expectations |
 |----------|-----------|-----|--------------|
-| **🔴 Immediate fix** | HIGH | HIGH | **F24** (G1 not-AI check is pattern-only), **F27** (video/subtitle degraded without HyperFrames) |
-| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F09** (some errors still Python traces), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F25** (G0 lightweight without sources), **F29** (3-level automation works for API platforms, manual-only for others), **F34** (platform capability matrix documented, adapter integration in progress), **F37** (needs external crond), **F37** (get_cron_health + test_cron_schedule not implemented), **F42** (search_assets tool not implemented) |
-| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F35** (PublishEngine retry), **F47** (2047 tests) |
+| **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
+| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F25** (G0 lightweight without sources), **F29** (3-level automation works for API platforms, manual-only for others), **F37** (needs external crond), **F37** (get_cron_health + test_cron_schedule not implemented), **F42** (search_assets tool not implemented) |
+| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (platform matrix corrected to honest status; adapters aspirational), **F35** (PublishEngine retry), **F47** (2047 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
 | **👀 Watch** | MEDIUM | MODERATE | **F42** (search_assets MCP missing — medium impact), **F37** (external crond dependency) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
@@ -879,11 +881,9 @@ Not all expectations are equal. This matrix ranks all 48 expectations by **impor
 
 | Priority | Item | Why | What's needed |
 |----------|------|-----|---------------|
-| 🔴 P0 | **F24**: G1 AI-sound detection | Pattern-only, misses 30%+ of AI writing patterns | Upgrade to LLM-based detection or better pattern set |
 | 🔴 P0 | **F27**: Video without HyperFrames | Subtitle/V0-V7 gates degrade without external renderer | Improve fallback path or document minimum viable setup |
 | 🟡 P1 | **F42**: search_assets tool | Agent cannot query produced content | Expose asset search as a tool |
-| 🟡 P1 | **F09**: Structured errors everywhere | Some errors still leak Python traces | Audit and replace all raw tracebacks with structured gate error format |
-| 🟡 P1 | **F34**: Platform adapters | Matrix documented adapters need integration work | Implement missing adapters per priority order |
+| 🟡 P1 | **F34**: Platform adapters | 16 of 19 platforms have no adapter implementation | Build adapters per priority order: P2 (Douyin, Bilibili, Weibo) → P3 (Toutiao, Baijiahao, Kuaishou) → P4 (YouTube, Twitter/X, Reddit) → P5 (remaining) |
 
 ---
 
@@ -977,7 +977,7 @@ This flow works. It's the project's strongest path.
 |---------|--------|--------|
 | Xiaohongshu publish | ⚠️ Manual only (intentional divergence — no public API) | Human must post through RED app/web portal |
 | Full auto mode (topic→published) | ⚠️ Partial | Video deps + platform gaps break the chain |
-| LLM-based quality gates | ⚠️ Partial | Most gates are regex, not LLM |
+| LLM-based quality gates | ⚠️ Partial | G0/G1/G2 use LLM-first with fallback; other gates are regex-based |
 | Video without HyperFrames | ⚠️ Degraded | Subtitles check requires external renderer |
 | Discord notifications | ⏭️ Out of scope (intentional divergence) | Not implemented — no request for this feature |
 
@@ -996,6 +996,8 @@ This flow works. It's the project's strongest path.
 | Publish error recovery | ✅ Implemented | Retry + credential refresh + platform isolation |
 | Cron MCP tools | ✅ Implemented | `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule` |
 | Config introspection | ✅ Implemented | `get_config` and `list_brands` MCP tools |
+| F09 doc correction | ✅ Documented | F09 status corrected from "some errors still Python traces" to "structured errors throughout; tracebacks only on --verbose". Confirmed via `cli/output_format.py` implementation and MCP tools' consistent structured error dicts. |
+| F34 doc correction | ✅ Documented | Platform capability matrix corrected to honest actual status. Only WeChat and Zhihu have real API adapters; Xiaohongshu is manual-only; remaining 16 platforms documented as ❌ Not implemented with priority order. Feishu confirmed out of scope per F32 (IM notifier, not publish platform). |
 
 ---
 
