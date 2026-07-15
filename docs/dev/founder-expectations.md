@@ -870,11 +870,11 @@ Not all expectations are equal. This matrix ranks all 48 expectations by **impor
 | Quadrant | Importance | Gap | Expectations |
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
-| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F25** (G0 lightweight without sources), **F29** (3-level automation works for API platforms, manual-only for others), **F37** (needs external crond), **F37** (get_cron_health + test_cron_schedule not implemented), **F42** (search_assets tool not implemented) |
+| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F25** (G0 lightweight without sources), **F29** (3-level automation works for API platforms, manual-only for others), **F37** (needs external crond) |
 | **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (platform matrix corrected to honest status; adapters aspirational), **F35** (PublishEngine retry), **F47** (2047 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
-| **👀 Watch** | MEDIUM | MODERATE | **F42** (search_assets MCP missing — medium impact), **F37** (external crond dependency) |
-| **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
+| **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
+| **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
 | **💤 Low priority** | LOW | LOW / MODERATE | **F22** (perf — no hard target), **F38** (no plugin system — by design), **F46** (override system — works for YAML/prompts), **F48** (v1 readable only — adequate) |
 
 ### Immediate Action Items (top priorities)
@@ -882,7 +882,6 @@ Not all expectations are equal. This matrix ranks all 48 expectations by **impor
 | Priority | Item | Why | What's needed |
 |----------|------|-----|---------------|
 | 🔴 P0 | **F27**: Video without HyperFrames | Subtitle/V0-V7 gates degrade without external renderer | Improve fallback path or document minimum viable setup |
-| 🟡 P1 | **F42**: search_assets tool | Agent cannot query produced content | Expose asset search as a tool |
 | 🟡 P1 | **F34**: Platform adapters | 16 of 19 platforms have no adapter implementation | Build adapters per priority order: P2 (Douyin, Bilibili, Weibo) → P3 (Toutiao, Baijiahao, Kuaishou) → P4 (YouTube, Twitter/X, Reddit) → P5 (remaining) |
 
 ---
@@ -994,8 +993,9 @@ This flow works. It's the project's strongest path.
 | Publish automation model | ✅ Implemented | Three levels (auto/review/manual) per platform with credential refresh |
 | Brand→platform binding | ✅ Implemented | Brand config declares platforms; content type auto-derived |
 | Publish error recovery | ✅ Implemented | Retry + credential refresh + platform isolation |
-| Cron MCP tools | ✅ Implemented | `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule` |
+| Cron MCP tools | ✅ Implemented | `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule`, `get_cron_health`, `test_cron_schedule` — full CRUD + health + validation |
 | Config introspection | ✅ Implemented | `get_config` and `list_brands` MCP tools |
+| **Asset search** | ✅ **Implemented** | `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. Exposes existing asset library capability. |
 | F09 doc correction | ✅ Documented | F09 status corrected from "some errors still Python traces" to "structured errors throughout; tracebacks only on --verbose". Confirmed via `cli/output_format.py` implementation and MCP tools' consistent structured error dicts. |
 | F34 doc correction | ✅ Documented | Platform capability matrix corrected to honest actual status. Only WeChat and Zhihu have real API adapters; Xiaohongshu is manual-only; remaining 16 platforms documented as ❌ Not implemented with priority order. Feishu confirmed out of scope per F32 (IM notifier, not publish platform). |
 
@@ -1033,7 +1033,7 @@ For each expectation in the catalog:
 | **v1 Full** | Auto mode works: topic → article → video → lifecycle | +F12, F21-F22, F27, F43 |
 | **v1 Publish** | Multi-platform publish: WeChat + Zhihu + key global platforms | +F29-F35 (excluding F32 — known divergences), F46 |
 | **v1 Scale** | Batch, cron, topic pool, asset library, scheduling | +F13-F16, F36-F39, F42, F48 |
-| **v1 Mature** | HITL in pipeline, config introspection, True Test pass | +F28, F42 (search_assets MCP tool) |
+| **v1 Mature** | HITL in pipeline, config introspection, search_assets, True Test pass | +F28, F42 (config introspection + search_assets MCP tools) |
 
 ### 8.3 The True Test
 
@@ -1079,7 +1079,7 @@ An AI agent can evaluate the True Test by running each criterion and reporting P
 | End-to-end flow test (text_only) | ❓ Not performed |
 | End-to-end flow test (auto) | ❓ Not performed |
 | End-to-end flow test (publish) | ❓ Not performed |
-| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (8 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F42 (search_assets MCP gap), F48 (v1 readable only) |
+| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (8 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F37 (cron tools: add/list/remove/get_cron_health/test_cron_schedule), F42 (config introspection + search_assets MCP), F48 (v1 readable only) |
 | Intentional divergences documented | ✅ Xiaohongshu manual-only (F32), IM notifications out of scope (agent framework responsibility) |
 | Milestone mapping | ✅ Defined and aligned with current scope |
 | True Test | ✅ Defined with 10-point agent-verifiable PASS/FAIL checklist |
