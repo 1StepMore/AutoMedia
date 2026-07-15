@@ -559,7 +559,10 @@ class TestEdgeCases:
         lock_b = manager._get_lock("acc_b")
 
         assert lock_a is not lock_b
-        assert isinstance(lock_a, threading.Lock)
+        # threading.Lock is a factory function, not a class — isinstance would
+        # raise TypeError.  Verify lock-like behaviour instead.
+        assert hasattr(lock_a, "acquire")
+        assert hasattr(lock_a, "release")
 
     def test_get_lock_is_reentrant(self) -> None:
         """Calling _get_lock for the same account returns the same lock."""
