@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import typer
 
@@ -52,7 +53,7 @@ def archive_cmd(
             f"Use --force to override (Red Line 8)."
         )
 
-    assert project_dir is not None  # output_error() raises SystemExit
+    project_dir = cast(Path, project_dir)
     if project_dir.name.endswith("_archived"):
         output_error(
             f"Refused: project directory {project_dir.name!r} is already archived. "
