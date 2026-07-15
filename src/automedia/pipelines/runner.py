@@ -220,18 +220,32 @@ def _derive_mode_from_platforms(platforms: list[str]) -> str:
     return "auto" if has_mixed_social else "text_only"
 
 
-def _check_hyperframes() -> bool:
+def _check_hyperframes(mode: str) -> bool:
     """Check if the HyperFrames CLI tool is available on the system.
 
     HyperFrames is an external CLI tool for video rendering. This check
     looks for the ``hyperframes`` command in ``PATH``.
 
+    When *mode* is ``"auto"`` or ``"video_only"`` and HyperFrames is
+    missing, raises ``RuntimeError`` with install instructions — these
+    modes require video production.
+
+    For all other modes, returns ``False`` silently when HyperFrames is
+    missing (video gates will skip individually).
+
     Returns ``True`` when the command is found, ``False`` otherwise.
     """
     try:
-        return shutil.which("hyperframes") is not None
+        available = shutil.which("hyperframes") is not None
     except Exception:
-        return False
+        available = False
+
+    if not available and mode in ("auto", "video_only"):
+        raise RuntimeError(
+            f"HyperFrames is required for video production (mode={mode}). "
+            "Install: npm install -g hyperframes, or use --mode text_only to skip video."
+        )
+    return available
 
 
 def _collect_assets(gate_context: GateContext | dict[str, Any]) -> list[AssetInfo]:
@@ -515,22 +529,16 @@ def run_full_pipeline(
         gate_context["hitl_config"] = hitl_config
 
         # 4.77 HyperFrames availability detection
-        #      Skip check in text_only mode (video not needed).
+        #      Raises RuntimeError in auto/video_only mode when missing.
         #      Video gates (V0-V7) use this flag to decide whether to skip.
-        if mode == "text_only":
-            gate_context["hyperframes_available"] = False
-            log.info("pipeline.hyperframes.skip", reason="text_only mode")
+        gate_context["hyperframes_available"] = _check_hyperframes(mode=mode)
+        if gate_context["hyperframes_available"]:
+            log.info("pipeline.hyperframes.check", available=True)
         else:
-            gate_context["hyperframes_available"] = _check_hyperframes()
             log.info(
-                "pipeline.hyperframes.check",
-                available=gate_context["hyperframes_available"],
+                "pipeline.hyperframes.skip",
+                reason=f"{mode} mode (hyperframes not required)",
             )
-            if not gate_context["hyperframes_available"]:
-                log.warning(
-                    "pipeline.hyperframes.missing",
-                    hint="Install HyperFrames for full video QA, or use --mode text_only to skip video.",
-                )
 
         # 5.2 Source material loading
         if source_path or source_url:

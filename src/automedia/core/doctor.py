@@ -62,9 +62,9 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
         "Windows": "pip install edge-tts",
     },
     "hyperframes": {
-        "Linux": "npm install -g hyperframes  # or: bun install -g hyperframes",
-        "Darwin": "npm install -g hyperframes  # or: bun install -g hyperframes",
-        "Windows": "npm install -g hyperframes  # or: bun install -g hyperframes",
+        "Linux": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
+        "Darwin": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
+        "Windows": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
     },
     "chrome": {
         "Linux": "sudo apt install google-chrome-stable  # or: sudo apt install chromium-browser",

@@ -506,8 +506,11 @@ class GateEngine:
             ``(all_ok, results_from_cw)`` where *results_from_cw* covers
             gates from CW through the end of the pipeline.
         """
+        _local_max_regen = gate_context.get(
+            "max_regenerations", self._max_regenerations
+        )
         current = gate_context.get("_regeneration_count", 0)
-        if current >= self._max_regenerations:
+        if current >= _local_max_regen:
             gate_context["_level2_exhausted"] = True
 
             # Populate _escalated_gates for H0 human escalation (Task 20)
@@ -523,7 +526,7 @@ class GateEngine:
             log.warning(
                 "engine.level2.exhausted",
                 regenerations_attempted=current,
-                max_regenerations=self._max_regenerations,
+                max_regenerations=_local_max_regen,
                 failed_gate=failed_gate_name,
                 escalated_gates=list(escalated),
             )
@@ -536,7 +539,7 @@ class GateEngine:
             "failed_gate": failed_gate_name,
             "error": failure_result.get("error", "unknown"),
             "regeneration_attempt": new_count,
-            "max_regenerations": self._max_regenerations,
+            "max_regenerations": _local_max_regen,
         }
         gate_context["failure_feedback"] = feedback
 
@@ -544,7 +547,7 @@ class GateEngine:
             "engine.level2.regeneration",
             failed_gate=failed_gate_name,
             attempt=new_count,
-            max_regenerations=self._max_regenerations,
+            max_regenerations=_local_max_regen,
             error=feedback["error"],
         )
 
@@ -574,7 +577,7 @@ class GateEngine:
             max_retries=self._max_retries,
             retry_delay=self._retry_delay,
             max_quality_retries=self._max_quality_retries,
-            max_regenerations=self._max_regenerations,
+            max_regenerations=_local_max_regen,
         )
         sub_ok, sub_results = sub_engine._run(
             gate_context,
@@ -670,17 +673,20 @@ class GateEngine:
                         return results
 
                     # Level 1: quality-feedback retry
+                    _local_max_quality = gate_context.get(
+                        "max_quality_retries", self._max_quality_retries
+                    )
                     _quality_attempt = 0
-                    while _quality_attempt < self._max_quality_retries:
+                    while _quality_attempt < _local_max_quality:
                         _quality_attempt += 1
                         gate_context["_quality_retry_count"] = _quality_attempt
-                        _remaining = self._max_quality_retries - _quality_attempt
+                        _remaining = _local_max_quality - _quality_attempt
 
                         log.info(
                             "gate.quality_retry",
                             gate_name=gate_name,
                             attempt=_quality_attempt,
-                            max_quality_retries=self._max_quality_retries,
+                            max_quality_retries=_local_max_quality,
                             remaining=_remaining,
                             failure_reason=result.get(
                                 "error", "quality check failed"
@@ -880,7 +886,7 @@ class GateEngine:
                                 "gate.quality_retry.exhausted",
                                 gate_name=gate_name,
                                 quality_retry_count=_quality_attempt,
-                                max_quality_retries=self._max_quality_retries,
+                                max_quality_retries=_local_max_quality,
                             )
                         self._dispatch_after(
                             gate_name, gate_context, result
@@ -998,7 +1004,10 @@ class GateEngine:
             and *results* is the list of per-gate result dicts.
         """
         # Wire level 2 handler when regeneration is enabled
-        if self._max_regenerations > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]
+        _local_max_regen = gate_context.get(  # type: ignore[typeddict-unknown-key]
+            "max_regenerations", self._max_regenerations
+        )
+        if _local_max_regen > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]
             gate_context["_level2_handler"] = self._handle_level2_regeneration  # type: ignore[arg-type]
         return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]
 

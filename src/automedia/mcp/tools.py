@@ -802,8 +802,13 @@ def get_cron_health() -> dict[str, Any]:
     Returns
     -------
     dict
-        ``{"jobs_valid": bool, "schedule_count": int, "job_count": int,
-          "static_jobs": [...], "note": str}``.
+        ``{"jobs_valid": bool, "schedule_count": int,
+          "valid_expressions": int, "invalid_expressions": int,
+          "schedules": [...], "job_count": int, "static_jobs": [...],
+          "note": str}``.
+        Each schedule entry includes ``name``, ``expression``, ``valid``,
+        ``next_triggers`` (list of 5 ISO-8601 timestamps, or ``None``),
+        and ``next_triggers_note``.
     """
     path = _get_jobs_yaml_path()
     if not path.is_file():
@@ -852,6 +857,54 @@ def get_cron_health() -> dict[str, Any]:
         if isinstance(expr, str) and re.match(r"^(\S+\s+){4}\S+$", expr.strip()):
             valid_count += 1
 
+    schedules: list[dict[str, Any]] = []
+    croniter_note: str | None = None
+    for sched in pipeline_schedules:
+        name = sched.get("name", "")
+        expr = sched.get("expression", "")
+        valid = isinstance(expr, str) and bool(
+            re.match(r"^(\S+\s+){4}\S+$", expr.strip())
+        )
+
+        entry: dict[str, Any] = {
+            "name": name,
+            "expression": expr,
+            "valid": valid,
+        }
+
+        if valid:
+            try:
+                import croniter  # type: ignore[import-untyped]
+                from datetime import datetime
+
+                cron = croniter.croniter(expr.strip(), datetime.now())
+                next_triggers: list[str] = []
+                for _ in range(5):
+                    next_time = cron.get_next(datetime)
+                    next_triggers.append(next_time.isoformat())
+                entry["next_triggers"] = next_triggers
+                entry["next_triggers_note"] = None
+            except ImportError:
+                entry["next_triggers"] = None
+                croniter_note = (
+                    "croniter not available — install with 'pip install croniter' "
+                    "to compute next trigger times. Expression format is valid."
+                )
+                entry["next_triggers_note"] = croniter_note
+            except Exception:
+                entry["next_triggers"] = None
+                entry["next_triggers_note"] = (
+                    "Cron expression is syntactically valid but "
+                    "croniter failed to compute next triggers."
+                )
+        else:
+            entry["next_triggers"] = None
+            entry["next_triggers_note"] = (
+                "Expression does not match 5-field cron syntax."
+            )
+
+        schedules.append(entry)
+
     job_details: list[dict[str, Any]] = []
     for job in static_jobs:
         job_details.append(
@@ -862,19 +915,24 @@ def get_cron_health() -> dict[str, Any]:
             }
         )
 
+    notes: list[str] = [
+        "Health tracking infrastructure not available — "
+        "no cron daemon run history exists. "
+        "Scheduling is delegated to an external crond "
+        "that calls `automedia cron run <job>` at configured intervals.",
+    ]
+    if croniter_note:
+        notes.append(croniter_note)
+
     return {
         "jobs_valid": True,
         "schedule_count": len(pipeline_schedules),
         "valid_expressions": valid_count,
         "invalid_expressions": len(pipeline_schedules) - valid_count,
+        "schedules": schedules,
         "job_count": len(static_jobs),
         "static_jobs": job_details,
-        "note": (
-            "Health tracking infrastructure not available — "
-            "no cron daemon run history exists. "
-            "Scheduling is delegated to an external crond "
-            "that calls `automedia cron run <job>` at configured intervals."
-        ),
+        "note": " ".join(notes),
     }
 
 
