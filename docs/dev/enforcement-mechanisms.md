@@ -147,7 +147,7 @@ completed_nodes:
 | 生命周期 | L3 | 平台完整性 | stop |
 | 生命周期 | L4 | 翻译质量 | retry |
 
-四种模式（auto / text_only / video_only / qa_only）选择不同的关卡子集，
+八种模式（auto / text_only / text_with_cover / video_only / qa_only / image-carousel / social-thread / short-video）选择不同的关卡子集，
 定义在 `automedia/pipelines/runner.py` 的 `_MODE_MAP` 中。
 
 ---

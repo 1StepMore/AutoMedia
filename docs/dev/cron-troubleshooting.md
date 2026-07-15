@@ -135,13 +135,6 @@ trap 'rm -f "$LOCKFILE"' EXIT
 automedia cron run "$JOB_NAME"
 ```
 
-### Feishu Notification Not Triggering
-
-- Confirm the `FEISHU_WEBHOOK_URL` environment variable is set
-- Test the webhook:
-  `curl -X POST -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"test"}}' $FEISHU_WEBHOOK_URL`
-- If using systemd timer, configure `Environment=` in the service file
-
 ### Multi-Environment Consistency
 
 The crontab syntax is consistent across environments. Cross-platform notes:

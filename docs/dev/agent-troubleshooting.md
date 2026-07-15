@@ -336,7 +336,7 @@ This scans directories for `00_project_info.json` files and reads metadata from 
 |-------|-------|----------|
 | `AUTOMEDIA_LLM_API_KEY` not set | Missing required environment variable | Set the API key: `export AUTOMEDIA_LLM_API_KEY=sk-...` or pass it in MCP config `env` |
 | Gate returns `"passed": False` with no error message | Gate completed but found issues in content (e.g. fact check failed) | Check the `result` dict gate-specific details. See section 4 above and `docs/runbook/gate-failure-modes.md` |
-| `ValueError: Unknown pipeline mode '...'` | Invalid mode string passed to `run_full_pipeline()` | Use one of: `"auto"`, `"text_only"`, `"video_only"`, `"qa_only"` |
+| `ValueError: Unknown pipeline mode '...'` | Invalid mode string passed to `run_full_pipeline()` | Use one of: `"auto"`, `"text_only"`, `"text_with_cover"`, `"video_only"`, `"qa_only"`, `"image-carousel"`, `"social-thread"`, `"short-video"` |
 | `ValueError: resume_from gate '...' not found in mode '...' gate list` | `resume_from` value does not match any gate name for the current mode | Check the mode's gate list in `automedia/pipelines/runner.py` (`_AUTO_GATE_NAMES`, etc.) |
 | `ModuleNotFoundError: No module named 'mcp'` | MCP dependencies not installed | Install with `pip install -e ".[mcp]"` |
 | `Permission denied` when accessing files via MCP | Path is not in `mcp_allowlist.yaml` | Ask the user to add the path to the allowlist, or use a path under `/tmp/automedia/` |

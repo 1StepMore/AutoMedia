@@ -5,6 +5,14 @@
 > **代码库:** 86,905 LOC · 442 个 Python 文件 · 23,118 LOC（automedia/ 核心）  
 > **测试:** 2,047 个测试（0 失败）  
 > **版本:** 1.0.0+（PRD-4 账户管理已发布）
+>
+> **状态说明 (2026-07-15):** 本文撰写于 D3 Gap Closure 之前。后续已完成：
+> - 决策层（`automedia/decision/` ~3,681 LOC）已移除，代之以 `run_brand_strategy` + `run_pipeline_from_strategy` MCP 工具
+> - D0 Gate 已移除
+> - `automedia solution` CLI 已移除
+> - H0 人工审核门已集成到管线中
+> - GateEngine 新增 quality retry + regeneration 多层恢复
+> - 本文档中关于已移除组件的引用保留为历史记录，标注 ~~删除线~~
 
 ---
 
@@ -46,9 +54,9 @@
   |  credential    audio        G0-G5(文案)      |
   |  project       image        V0-V7(视频)      |
   |  doctor       language     L1-L4(生命周期)   |
-  |  overrides                  D0 + pre-gate    |
-  |                                             |
-  |  适配器层      Omni 层     决策层             |
+|  overrides                  pre-gate         |
+|                                             |
+|  适配器层      Omni 层      ~~决策层~~        |
   |  WeChat(真)    OPP(提取)    Diagnostic       |
   |  Zhihu(真)     OL(翻译)     Build(4 代理)    |
   |  Xiaohongshu   ORF(转换)    Scale(5 代理)    |
@@ -97,7 +105,7 @@
 
 | 模块 | 文件 | LOC | 状态 | 能力 |
 |--------|------|-----|--------|-----------|
-| 运行器 | `runner.py` | 423 | ✅ 生产就绪 | `run_full_pipeline()` — 所有三个入口点的共享入口点。4 种模式（auto/text_only/video_only/qa_only）。`resume_from` 支持。 |
+| 运行器 | `runner.py` | 423 | ✅ 生产就绪 | `run_full_pipeline()` — 所有三个入口点的共享入口点。8 种模式（auto/text_only/text_with_cover/video_only/qa_only/image-carousel/social-thread/short-video）。`resume_from` 支持。 |
 | 门引擎 | `gate_engine.py` | 470 | ✅ 生产就绪 | 顺序门执行器。Stop/Retry 故障模式。钩子分发。`PipelineProgress`（线程安全）供 MCP 轮询。 |
 | 音频管线 | `audio_pipeline.py` | 448 | ✅ 生产就绪 | edge-tts TTS → Whisper ASR → SRT 生成。品牌名称校对。 |
 | 图像管线 | `image_pipeline.py` | 556 | ⚠️ 有回退 | ComfyUI HTTP API 用于封面/正文/备用帧。**静默降级到纯灰色 PIL 占位符**如果没有 ComfyUI 或 httpx。 |
@@ -134,7 +142,7 @@
 | `license` | 许可证管理（检查/功能） | ✅ |
 | `sop` | SOP 文档生成 | ✅ |
 | `tenant` | 多租户管理（创建/列出/删除/邀请/成员/审计） | ✅ |
-| `solution` | 决策层操作（下一节点/审批节点/完成节点/预检/验证工件） | ✅ |
+| ~~`solution`~~ | ~~决策层操作（下一节点/审批节点/完成节点/预检/验证工件）~~ | ~~✅~~ 已移除 |
 | `onboard` | 入门向导 | ✅ |
 
 ---
@@ -171,7 +179,7 @@
 | **1.1** | **无视频生成引擎** | 无视频输出（auto/video_only 模式损坏） | 大（周） | V0-V7 门验证但**不生成**视频。实际的 MP4 渲染取决于外部 HyperFrames（不在本仓库）。需要运行 Runway/Pika/Kling API 或基于 FFmpeg 的组装。 |
 | **1.2** | **图像生成的 ComfyUI 降级** | 无 ComfyUI 时为纯灰色占位符（静默失败） | 中（天） | `ImagePipeline` 在 ComfyUI 不可达时，不是重试或警告，而是返回 `(30,30,30)` RGB 图像。管线继续使用垃圾图像。 |
 | **1.3** | **话题收集完全是模拟的** | 无法发现真实趋势 | 中（周） | `HotCollector` 中的每个 `_collect_*` 方法都返回硬编码的合成数据。无真正的 Weibo/Zhihu/Douyin/Bilibili/Tavily/AIHOT API 调用。 |
-| **1.4** | **决策层是确定性模板** | "策略"输出模板化，无可操作见解 | 中（天） | 全部 11 个决策代理使用无 LLM 调用的纯 Python。品牌定位输出 `"To become the most trusted {idea} ecosystem..."`。 |
+| **1.4** | ~~**决策层是确定性模板**~~ | ~~"策略"输出模板化，无可操作见解~~ | — | ⚠️ **已过时** — 决策层已移除，代之以 LLM 驱动的 `run_brand_strategy` MCP 工具。 |
 
 #### 🔴 第 2 层：无法自主发布
 
@@ -189,7 +197,7 @@
 
 | # | 差距 | 影响 | 努力 | 细节 |
 |---|------|--------|------|---------|
-| **3.1** | **管线门中无 HITL 集成** | 门失败时管线以无人工升级路径终止 | 中（天） | HITL 框架仅适用于决策层节点。门引擎无 `human_review` 故障模式。 |
+| **3.1** | **管线门中无 HITL 集成** | ~~门失败时管线以无人工升级路径终止~~ | — | ⚠️ **已过时**。H0 门已集成到管线中（`h0_human_review.py`），GateEngine 支持 approve/reject 生命周期。详见 F28。 |
 | **3.2** | **无门级重试+重新检查循环** | G1/G2 一次写入 `modified_content` 未经重新验证 | 中（天） | 门检测问题、重写内容，但不重新运行自身。管线继续可能仍有问题的内容。 |
 | **3.3** | **租户/审计仅为内存** | 重启时数据丢失 | 小（天） | `TenantManager._workspaces` 和 `AuditLog._entries` 是字典。注释说"未来的生产迭代应替换为数据库"。 |
 | **3.4** | **MCP 服务器单体** | 538 行单体 | 小（天） | ADR-004 已接受但未实现。`mcp/server.py` 需要分解。 |
@@ -239,7 +247,7 @@
 | **微信** | `api.weixin.qq.com/cgi-bin/*` | `adapters/platforms/wechat_publisher.py` | ✅ 生产就绪 | 完整 3 步：令牌 → 草稿 → 发布。 |
 | **知乎** | `zhihu.com/api/v4/drafts` | `adapters/platforms/zhihu_publisher.py` | ✅ 生产就绪 | 基于 Cookie 的认证。HTML + Markdown 支持。 |
 | **小红书** | 小红书（无公开 API） | `adapters/platforms/xiaohongshu_publisher.py` | ❌ 存根 | 返回 `not_implemented`。需要手动发帖。 |
-| **飞书** | 飞书 Webhook | `adapters/platforms/feishu_notifier.py` | ✅ 生产就绪 | 交互式卡片通知。 |
+| **飞书** | 飞书 Webhook | `adapters/platforms/feishu_notifier.py` | ⏭️ 已移除（out of scope） | IM 通知属于 agent 框架责任范围，非 AutoMedia 职责。 |
 | **YouTube** | 无适配器 | — | ❌ 缺失 | OAuth2 流就绪但无 YouTube 适配器开发。 |
 | **TikTok** | 无适配器 | — | ❌ 缺失 | 在 defaults.yaml 中声明。零代码。 |
 | **Twitter/X** | 无适配器 | — | ❌ 缺失 | 在 defaults.yaml 中声明。零代码。 |
@@ -302,10 +310,10 @@ Publish Engine                       ← 迭代适配器：验证 → 发布
 
 | 模式 | 门 | 当前状态 |
 |------|------|---------------|
-| `auto` | D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4 | ✅ 顺序结构，V 门验证无输出 |
-| `text_only` | D0 → CW → G0-G5 → L1-L4 | ✅ 功能完整 |
-| `video_only` | D0 → V0-V7 → L1-L4 | ⚠️ V 门验证不存在的内容 |
-| `qa_only` | D0 → G0 → G2 → G3 → V1 → V6 | ✅ 适用于现有项目 |
+| `auto` | ~~D0 →~~ pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4 | ✅ 顺序结构，V 门验证无输出 |
+| `text_only` | ~~D0 →~~ CW → G0-G5 → H0 → L1-L4 | ✅ 功能完整 |
+| `video_only` | ~~D0 →~~ V0-V7 → H0 → L1-L4 | ⚠️ V 门验证不存在的内容 |
+| `qa_only` | ~~D0 →~~ G0 → G2 → G3 → V1 → V6 | ✅ 适用于现有项目 |
 
 ### 5.3 故障模式
 
@@ -318,7 +326,7 @@ Publish Engine                       ← 迭代适配器：验证 → 发布
 | 管道级错误 | 被 `run_full_pipeline()` 捕获 → `PipelineResult(status="failed")` | **无恢复** |
 | LLM API 错误 | 最多 3 次重试，然后传播 | **自动**但有限的尝试 |
 
-**问题:** 没有"重试直到通过 N 次"或"降级并继续"或"暂停等待人工审查"的故障模式。只有"停止"或"重试"。
+**当前能力:** GateEngine 已实现多层递增恢复：Level 1 quality-feedback retry（同一 gate 同一内容最多重试 3 次），Level 2 regeneration（重跑 CW + 之后所有 gates 最多 2 轮），HITL 兜底。详见 F24 描述。
 
 ### 5.4 关键流程观察
 
@@ -332,7 +340,7 @@ Publish Engine                       ← 迭代适配器：验证 → 发布
 
 ## 6. 门系统深度分析
 
-### 6.1 所有 20 个门 + D0
+### 6.1 所有 20 个门（~~D0 已移除~~）
 
 #### 复制/内容门（G0–G5）
 
@@ -375,11 +383,15 @@ Publish Engine                       ← 迭代适配器：验证 → 发布
 2. **G1/G2 是单次写入修复** — 无重新验证循环。
 3. **V 门验证外部输出** — 不生成媒体。如果外部系统（HyperFrames/ComfyUI）不运行，则门失败。
 4. **L1 平台枚举包括缺失的平台** — YouTube、Twitter、Bilibili、Weibo、Douyin 在模式中但无适配器。
-5. **无 `human_review` 故障模式** — HITL 框架集成在决策层，而非门引擎。
+5. ~~**无 `human_review` 故障模式** — HITL 框架集成在决策层，而非门引擎。~~ ⚠️ **已过时** — H0 门已集成，支持 `awaiting_hitl` → approve/reject 生命周期。
 
 ---
 
 ## 7. 决策层现状
+
+> **已移除 (2026-07-15):** 整个 `automedia/decision/` 包（~3,681 LOC）已在 D3 Gap Closure 中删除，
+> 代之以 `run_brand_strategy` + `run_pipeline_from_strategy` MCP 工具。
+> 本节内容保留为历史记录。
 
 ### 7.1 架构
 
@@ -436,7 +448,7 @@ Publish Engine                       ← 迭代适配器：验证 → 发布
 | **微信** | `WechatPublisher` | 508 | ✅ OAuth2 令牌 | ✅ 草稿 + 发布 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 |
 | **知乎** | `ZhihuPublisher` | 264 | ✅ Cookie | ✅ 草稿 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 |
 | **小红书** | `XiaohongshuPublisher` | 78 | ⚠️ 已存根 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 |
-| **飞书** | `FeishuNotifier` | 147 | ✅ Webhook | ✅ 通知 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 |
+| ~~**飞书**~~ | ~~`FeishuNotifier`~~ | ~~147~~ | ⏭️ out of scope | IM 通知属 agent 框架职责 | — | — | — |
 | **YouTube** | — | 0 | ⚠️ OAuth2 就绪 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 |
 | **TikTok** | — | 0 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 |
 | **Twitter/X** | — | 0 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 |
@@ -460,7 +472,7 @@ PublishEngine.publish_all()
 
 ### 8.3 关键发布发现
 
-1. **仅 2 个真正的发布目标**（微信、知乎）+ 1 个通知器（飞书）。5+ 个平台有配置条目但零代码。
+1. **仅 2 个真正的发布目标**（微信、知乎）。~~+ 1 个通知器（飞书）~~（飞书已标记 out of scope）。5+ 个平台有配置条目但零代码。
 2. **所有适配器缺失 `check_health()`、`get_analytics()`、`refresh_session()`** — PRD-4 添加了这些方法但基类默认返回 `"not_implemented"`。
 3. **适配器不会自动注册** — 必须由 MCP 工具显式注册或手动导入。
 4. **小红书需要浏览器自动化** — 无公共 API。Playwright 登录 + Cookie 管理是唯一路径。
@@ -585,7 +597,7 @@ PublishEngine.publish_all()
 1.2 真实话题收集 API      [3-5 天/来源]
                                     用真正的 HTTP 客户端替换 HotCollector 模拟
                                     （微博/知乎/抖音/Bilibili 热搜 API 或爬虫）
-1.3 决策层 LLM 集成       [5-7 天]   用 LLM 调用替换 11 个确定性代理
+~~1.3 决策层 LLM 集成~~       [~~5-7 天~~]   ✅ **已完成** — 决策层移除，`run_brand_strategy` + `run_pipeline_from_strategy` MCP 工具已上线
                                     以获得真正的市场/品牌/受众洞察
 1.4 语音克隆/自定义 TTS   [3-5 天]   添加 ElevenLabs/Fish Audio/CosyVoice
                                     超越单一的微软语音
@@ -644,8 +656,7 @@ PublishEngine.publish_all()
 中期
   ├── 跨平台内容改编
   ├── Bilibili + Weibo 适配器
-  ├── 语音克隆
-  └── 管线中的 HITL 集成
+  └── 语音克隆
 
 长期
   ├── 持久租户/审计
@@ -664,7 +675,7 @@ PublishEngine.publish_all()
 | **核心入口点** | `src/automedia/__init__.py`, `src/automedia/__main__.py`, `src/automedia/_version.py` |
 | **核心层** | `config_loader.py`, `project.py`, `credential_loader.py`, `llm_client.py`, `doctor.py`, `overrides.py`, `logging.py`, `registry.py` |
 | **管线** | `runner.py`, `gate_engine.py`, `audio_pipeline.py`, `image_pipeline.py`, `language_config.py` |
-| **门（20 个 + D0）** | `base.py`, `failure_modes.py`, `topic_selection.py`, `content_writer.py`, `fact_check.py`, `humanizer.py`, `copy_review.py`, `brand_cta.py`, `wechat_checklist.py`, `html_hard.py`, `lint.py`, `vision_qa.py`, `pre_send_whisper.py`, `content_semantic.py`, `tts_brand_asset.py`, `mp3_vs_srt.py`, `subtitle_render.py`, `six_step_hard.py`, `publish_log_schema.py`, `archive_validation.py`, `platform_integrity.py`, `translation_quality.py` |
+| **门（20 个，~~+ D0~~ 已移除）** | `base.py`, `failure_modes.py`, `topic_selection.py`, `content_writer.py`, `fact_check.py`, `humanizer.py`, `copy_review.py`, `brand_cta.py`, `wechat_checklist.py`, `html_hard.py`, `lint.py`, `vision_qa.py`, `pre_send_whisper.py`, `content_semantic.py`, `tts_brand_asset.py`, `mp3_vs_srt.py`, `subtitle_render.py`, `six_step_hard.py`, `h0_human_review.py`, `publish_log_schema.py`, `archive_validation.py`, `platform_integrity.py`, `translation_quality.py` |
 | **适配器** | `base.py`, `registry.py`, `publish_engine.py`, `platforms/wechat_publisher.py`, `platforms/zhihu_publisher.py`, `platforms/xiaohongshu_publisher.py`, `platforms/feishu_notifier.py` |
 | **MCP 服务器** | `server.py`, `tools.py`, `accounts.py`, `allowlist.py`, `resources.py`, `parallel.py`, `mcp_allowlist.yaml`, `_state.py` |
 | **CLI** | `app.py`, `commands/run.py`, `commands/pool.py`, `commands/projects.py`, `commands/adapter.py`, `commands/cron.py`, `commands/archive.py`, `commands/init_cmd.py`, `commands/doctor.py`, `commands/omni.py`, `commands/hitl.py`, `commands/license.py`, `commands/sop.py`, `commands/tenant.py`, `commands/onboard.py`, `commands/account.py` |
@@ -706,7 +717,7 @@ PublishEngine.publish_all()
 | `WX_APPSECRET` | （旧版） | 微信应用密钥 |
 | `ZHIHU_COOKIE` | （旧版） | 知乎 Cookie |
 | `XHS_COOKIE` | （旧版） | 小红书 Cookie |
-| `FEISHU_WEBHOOK_URL` | （旧版） | 飞书 Webhook |
+| ~~`FEISHU_WEBHOOK_URL`~~ | ~~（旧版）~~ | ~~飞书 Webhook~~ ⏭️ out of scope |
 
 ---
 
@@ -717,7 +728,7 @@ PublishEngine.publish_all()
 | 微信 | `client_credential` | ✅ 服务器到服务器 | ❌ | ❌ | ❌ | 令牌 TTL 2h |
 | 知乎 | Cookie | ❌ | ✅ | ❌ | ✅ | 无官方 OAuth |
 | 小红书 | Cookie | ❌ | ✅ | ❌ | ✅ | 无公共 API |
-| 飞书 | Webhook URL | ❌ | ❌ | ✅ | ❌ | Webhook 中简单的 API 密钥 |
+| ~~飞书~~ | ~~Webhook URL~~ | ⏭️ out of scope | — | — | — | IM 通知属 agent 框架职责 |
 | YouTube | OAuth2 | ✅ authorization_code | ❌ | ❌ | ❌ | 标准 Google OAuth |
 | Twitter/X | OAuth2 | ✅ OAuth 2.0 PKCE | ❌ | ❌ | ❌ | Twitter API v2 |
 | TikTok | OAuth2 | ✅ authorization_code | ❌ | ❌ | ❌ | TikTok 开发者 OAuth |

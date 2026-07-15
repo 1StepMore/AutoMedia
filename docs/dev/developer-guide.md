@@ -288,7 +288,7 @@ class MyNewGate(BaseGate):
 
 ### Pipeline Modes
 
-The pipeline supports four modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
+The pipeline supports eight modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|

@@ -62,7 +62,7 @@ PRD-2 is intentionally **not** a consumer of PRD-4 — Omni adapters (OPP, OL, O
 | WeChat | `client_credential` OAuth (server-to-server) | ❌ Token fetched fresh per publish, no caching | ❌ Single account only | ❌ None |
 | Zhihu | Static cookie from env var | ❌ None — cookie expires silently | ❌ Single account only | ❌ None |
 | Xiaohongshu | Static cookie (stub — not implemented) | ❌ N/A | ❌ N/A | ❌ N/A |
-| Feishu | Static webhook URL | ❌ None | ❌ Single URL only | ❌ None |
+| Feishu | _(out of scope — IM notifications handled by agent framework)_ | ❌ N/A | ❌ N/A | ❌ N/A |
 | YouTube | No adapter | ❌ N/A | ❌ N/A | ❌ N/A |
 | TikTok | No adapter | ❌ N/A | ❌ N/A | ❌ N/A |
 | Twitter/X | No adapter | ❌ N/A | ❌ N/A | ❌ N/A |
@@ -357,7 +357,7 @@ Each platform requires adapter-level support for PRD-4. The following table maps
 | WeChat | `client_credential` | ✅ Server-to-server | ❌ | ❌ | ❌ | Token TTL 2h; refresh before expiry |
 | Zhihu | Cookie | ❌ | ✅ | ❌ | ✅ | No official OAuth; browser login + cookie capture |
 | Xiaohongshu | Cookie | ❌ | ✅ | ❌ | ✅ | No public API; Playwright automation required |
-| Feishu | Webhook URL | ❌ | ❌ | ✅ | ❌ | Simple webhook; API key in URL |
+| ~~Feishu~~ | ~~Webhook URL~~ | ⏭️ out of scope | — | — | — | IM notifications handled by agent framework |
 | YouTube | OAuth2 | ✅ authorization_code | ❌ | ❌ | ❌ | Standard Google OAuth; requires redirect URI |
 | Twitter/X | OAuth2 | ✅ OAuth 2.0 PKCE | ❌ | ❌ | ❌ | Twitter API v2 OAuth 2.0 |
 | TikTok | OAuth2 | ✅ authorization_code | ❌ | ❌ | ❌ | TikTok for Developers OAuth |

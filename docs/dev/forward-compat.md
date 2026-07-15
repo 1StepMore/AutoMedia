@@ -22,7 +22,9 @@ re-runnable comes second, auto-migration comes third.
 
 Forward compatibility is defined in three tiers. Each tier is a superset of the
 one before it. The current codebase targets **v1 (Readable)** as the stable
-contract. v2 and v3 are future milestones.
+contract. v2 (Re-runnable) and v3 (Auto-migration) are **aspirational** — they
+are documented as design intent but have no concrete implementation plan or
+scheduled delivery.
 
 ### v1: Readable (Current Stable)
 
