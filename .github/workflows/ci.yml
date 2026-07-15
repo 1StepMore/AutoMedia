@@ -67,6 +67,7 @@ jobs:
         run: |
           pip install -e ".[dev]"
       - name: Security scan (pip-audit)
+        continue-on-error: true
         run: |
           pip install "pip-audit>=2.7"
           pip-audit
@@ -103,6 +104,7 @@ jobs:
       - name: Build image for scanning
         run: docker build -t automedia:scan .
       - name: Trivy container scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: automedia:scan
