@@ -30,7 +30,7 @@ result = run_full_pipeline(
 | `topic` | `str` | (required) | Content topic/theme |
 | `brand` | `str` | (required) | Brand identifier, corresponds to brand-profile.yaml |
 | `hooks` | `list[GateHook] \| None` | `None` | List of GateHook observers |
-| `mode` | `str` | `"auto"` | Run mode: `auto`, `text_only`, `video_only`, `qa_only` |
+| `mode` | `str` | `"auto"` | Run mode: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video` |
 | `resume_from` | `str \| None` | `None` | Resume from a specific Gate (skip preceding Gates) |
 | `config_dir` | `str \| None` | `None` | Path to project `.automedia/` config directory |
 | `tenant_id` | `str` | `"default"` | Tenant/namespace identifier |

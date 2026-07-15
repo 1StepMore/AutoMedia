@@ -26,11 +26,11 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (12 commands) / MCP Server (22 tools)
+- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (29 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
-- **Platform adapter system**: Extensible publish targets
+- **Platform adapter system**: Extensible publish targets — 20 registered adapters (13 real API + 7 documented manual-only stubs)
 - **Account & credential management**: AES-256-GCM encrypted store, OAuth2/Cookie/API Key auth flows, session management
 - **Omni Triad**: OPP (extraction), OL (localization), ORF (format conversion)
 - **Human-in-the-loop**: Review gates for content and video quality approval
@@ -262,7 +262,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (12 commands)
+### CLI (16 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -278,8 +278,10 @@ result = run_full_pipeline(
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
+| `automedia asset` | Asset library management (ingest, search, list, get, delete) |
+| `automedia solution` | Decision layer solution operations |
 
-### MCP Server (22 tools)
+### MCP Server (29 tools)
 
 Start:
 
@@ -295,19 +297,30 @@ python -m automedia.mcp.server
 | `run_brand_strategy` | Generate a brand strategy using LLM analysis |
 | `run_pipeline` | Execute full production pipeline (background, async) |
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
-| `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress |
+| `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress (returns gates_done, gates_remaining, total_gates) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects under a base directory |
 | `get_project_assets` | List asset files in a project directory |
 | `archive_project` | Archive a project (enforces Red Line 8) |
 | `list_topic_pool` | List topics in the pool with optional filters |
+| `pool_add_topic` | Add a topic to the topic pool |
+| `publish_content` | Publish a project to a platform (supports auto/review/manual modes) |
 | `register_platform_adapter` | Register a publish adapter stub |
 | `extract_brief` | Extract content brief from document (OPP) |
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
-| `evaluate_content_quality` | Score content quality against criteria (clarity, accuracy, brand voice, etc.) |
-| `connect_account` | Register a new platform account for publishing |
+| `evaluate_content_quality` | Score content quality against criteria |
+| `batch_run` | Run pipeline sequentially for multiple topics |
+| `add_cron_schedule` | Add a cron schedule entry |
+| `list_cron_schedules` | List all cron schedules |
+| `remove_cron_schedule` | Remove a cron schedule entry |
+| `get_cron_health` | Check cron job configuration health |
+| `test_cron_schedule` | Validate cron expression and compute next trigger times |
+| `search_assets` | Search produced content via keyword + semantic search |
+| `list_brands` | Return all configured brands with profile metadata |
+| `get_config` | Return merged configuration (secrets redacted) |
+| `connect_account` | Register a new platform account |
 | `list_accounts` | List all registered accounts with optional filters |
 | `get_account_health` | Check an account's health status |
 | `disconnect_account` | Disconnect/remove a platform account |
@@ -393,7 +406,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  22 tools      |     |  12 commands       |
+  |  29 tools      |     |  16 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+

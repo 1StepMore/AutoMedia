@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 12 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 16 subcommands.
 ---
 
 # CLI Reference
@@ -24,7 +24,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 
 | Command | Description |
 |---------|-------------|
-| `automedia run` | Execute production pipeline |
+| `automedia run` | Execute production pipeline (single topic or batch via `--topics`) |
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
@@ -36,6 +36,8 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
+| `automedia asset` | Asset library management (ingest, search, list, get, delete) |
+| `automedia solution` | Decision layer solution operations |
 
 ## Global
 

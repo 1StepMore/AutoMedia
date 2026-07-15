@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Founder Gap Closure — F27 (Video Without HyperFrames)**: Pipeline now detects HyperFrames at startup via `shutil.which()`. When absent, V0-V7 video gates return `status="skipped"` with a clear warning and suggestion to use `--mode text_only`. Doctor checks for HyperFrames availability.
+
+- **Founder Gap Closure — F18 (Progress API)**: `get_progress()` now returns `gates_done[]`, `gates_remaining[]`, and `total_gates` fields. Agents no longer need to parse events to compute remaining gates.
+
+- **Founder Gap Closure — F25 (G0 Without Source Material)**: G0 fact-check gate now returns `status="skipped"` when no source data is provided (instead of trivially passing all checks). Added LLM plausibility check via `fact_check_g0_plausibility.j2` prompt when LLM is enabled.
+
+- **Founder Gap Closure — F42 (Asset Search MCP Tool)**: `search_assets(query, brand, limit, filters)` MCP tool exposing combined SQLite keyword + Chroma semantic search across produced content.
+
+- **Founder Gap Closure — F37 (Cron Health MCP Tools)**: `get_cron_health()` reports cron job validation status. `test_cron_schedule(expression, count)` validates cron expressions and computes next N trigger times.
+
+- **Founder Gap Closure — F24 (G1 LLM Path Verification)**: Verified G1 humanizer's LLM-first detection path works end-to-end. F24 priority downgraded from 🔴 P0 to 🟢 Working well.
+
+- **9 New Platform Adapters**: YouTube Data API v3, Twitter/X API v2, Reddit API, TikTok Content Posting API, Facebook Graph API, Instagram Graph API, LinkedIn Posts API v2, Medium API, WordPress REST API — all following the `wechat_publisher.py` pattern with `httpx`, registered in `AdapterRegistry`.
+
+- **7 Manual-Only Platform Stubs**: Douyin, Bilibili, Weibo, Toutiao, Baijiahao, Kuaishou, Juejin — all documented as intentional divergences (no public API for automated publishing).
+
+- **Pipeline Mode Expansion**: 8 modes fully implemented: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`.
+
+- **Batch Production**: `--topics` flag for `automedia run` and `batch_run` MCP tool for sequential multi-topic execution.
+
+- **Config Introspection**: `get_config(key)` MCP tool with secret redaction and dot-notation traversal.
+
+- **Cron Schedule Management**: `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule` MCP tools for dynamic cron management.
+
+### Changed
+
+- **founder-expectations.md**: Complete D3 review pass. F07 (8 modes), F09 (structured errors), F24 (G1 hybrid LLM), F25/F26 (stop-mode recovery corrected), F32 (removed IM notifiers), F34 (platform matrix honest statuses), F35 (PublishEngine retry), F37 (cron tools), F42 (config + search tools), F48 (v1 readable) all updated. Priority matrix and action items refreshed.
+
+- **Error Formatting**: Tracebacks suppressed in user-facing output. `--verbose` flag added to CLI commands for debug tracebacks. MCP tools return structured dicts with `str(exc)`.
+
+- **`AUTOMATION_DEFAULTS`**: Extended to include all 20 registered platform adapters with appropriate auto/manual defaults.
+
 ### Changed
 
 - **G2 (Copy Review)**: `enable_llm` default changed from `False` to `True` to match G0 behavior. LLM-based review is now enabled by default. Set `enable_llm: false` in gate config to disable. Added `isinstance(config, dict)` guard for robustness.
