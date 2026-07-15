@@ -45,7 +45,7 @@ class AdapterRegistry(BaseRegistry):
     # ------------------------------------------------------------------
 
     @classmethod
-    def register(cls, adapter_cls: type[BasePlatformAdapter]) -> None:
+    def register(cls, adapter_cls: type[BasePlatformAdapter]) -> None:  # type: ignore[override]
         """Register an adapter class keyed by its ``platform_name``."""
         # Instantiate a temporary adapter to evaluate the @property.
         name = adapter_cls().platform_name

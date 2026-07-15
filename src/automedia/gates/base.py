@@ -10,9 +10,9 @@ from typing import Any
 from automedia.core.registry import BaseRegistry
 from automedia.gates._context import GateContext
 
-_VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|CW|pre-gate)$")
+_VALID_GATE_NAME_RE = re.compile(r"^(D\d+|G\d+|V\d+|L\d+|H\d+|CW|pre-gate)$")
 """Regex for RL6-enforced gate naming convention: ``G0``–``G5``, ``V0``–``V7``,
-``L1``–``L4``, ``CW``, ``pre-gate``."""
+``L1``–``L4``, ``H0``, ``CW``, ``pre-gate``."""
 
 
 class GateRegistry(BaseRegistry):
@@ -62,7 +62,7 @@ class GateRegistry(BaseRegistry):
     # Public API
     # ------------------------------------------------------------------
 
-    def register(self, gate_cls: type[BaseGate]) -> None:
+    def register(self, gate_cls: type[BaseGate]) -> None:  # type: ignore[override]
         """Register a BaseGate subclass under its ``gate_name``.
 
         Validates the gate name convention (RL6) and checks that a

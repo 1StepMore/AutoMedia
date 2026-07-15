@@ -198,9 +198,9 @@ class OAuth2LocalhostServer:
             raise RuntimeError("Server not started. Call start() first.")
         while time.monotonic() < deadline:
             if self._server.last_error:  # type: ignore[attr-defined]
-                raise RuntimeError(f"OAuth2 error: {self._server.last_error}")
+                raise RuntimeError(f"OAuth2 error: {self._server.last_error}")  # type: ignore[attr-defined]
             if self._server.auth_code:  # type: ignore[attr-defined]
-                return (self._server.auth_code, self._server.auth_state)
+                return (self._server.auth_code, self._server.auth_state)  # type: ignore[attr-defined]
             time.sleep(0.1)
         raise TimeoutError(f"No OAuth2 callback received within {timeout}s")
 

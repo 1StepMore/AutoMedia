@@ -323,7 +323,7 @@ def _structured_completion_with_fallback(
     raw_text: str = response.choices[0].message.content or ""
 
     try:
-        return response_format.model_validate_json(raw_text)
+        return response_format.model_validate_json(raw_text)  # type: ignore[attr-defined]
     except Exception as exc:
         raise LLMError(
             f"Failed to parse LLM response as {response_format.__name__}: {exc}"

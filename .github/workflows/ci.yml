@@ -69,7 +69,7 @@ jobs:
       - name: Security scan (pip-audit)
         run: |
           pip install "pip-audit>=2.7"
-          pip-audit --fail-on CRITICAL
+          pip-audit
       - name: Security scan (bandit)
         continue-on-error: true
         run: |

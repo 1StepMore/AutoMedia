@@ -88,7 +88,7 @@ class PublishEngine:
             # Legacy path: unchanged behavior
             for name in self.registry_class.list():
                 adapter_cls = self.registry_class.get(name)
-                adapter: BasePlatformAdapter = adapter_cls()
+                adapter = adapter_cls()
 
                 if not adapter.enabled:
                     continue

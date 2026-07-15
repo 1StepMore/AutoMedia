@@ -41,7 +41,7 @@ class OmniToolRegistry(BaseRegistry):
     # ------------------------------------------------------------------
 
     @classmethod
-    def register(cls, adapter: BaseOmniAdapter) -> None:
+    def register(cls, adapter: BaseOmniAdapter) -> None:  # type: ignore[override]
         """Register an omni adapter instance under its ``name``."""
         name = adapter.name
         inst = cls()
