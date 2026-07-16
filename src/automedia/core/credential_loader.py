@@ -19,6 +19,8 @@ from pathlib import Path
 
 import yaml
 
+from automedia.core.paths import get_user_config_dir
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -29,7 +31,7 @@ try:
     from dotenv import load_dotenv
 
     _dotenv_path = os.environ.get("AUTOMEDIA_DOTENV_PATH")
-    _env_path = Path(_dotenv_path) if _dotenv_path else Path.home() / ".automedia" / ".env"
+    _env_path = Path(_dotenv_path) if _dotenv_path else get_user_config_dir() / ".env"
     if _env_path.is_file():
         load_dotenv(_env_path, override=False)
 except ImportError:
@@ -60,7 +62,7 @@ except ImportError:
 
 def _cred_dir() -> Path:
     """Return the ``~/.automedia`` directory (resolved lazily)."""
-    return Path.home() / ".automedia"
+    return get_user_config_dir()
 
 
 def _env_var_name(key_name: str) -> str:

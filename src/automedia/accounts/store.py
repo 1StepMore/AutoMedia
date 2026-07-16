@@ -36,6 +36,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from structlog import get_logger
 
 from automedia.accounts.models import AccountInfo
+from automedia.core.paths import get_user_config_dir
 
 log = get_logger(__name__)
 
@@ -69,7 +70,7 @@ class AccountStore:
         ValueError
             When no master key is available via either argument or environment.
         """
-        self._store_dir: Path = Path(store_dir or Path.home() / ".automedia" / "accounts")
+        self._store_dir: Path = Path(store_dir or get_user_config_dir() / "accounts")
         key_str = master_key or os.environ.get("AUTOMEDIA_MASTER_KEY", "")
         if not key_str:
             raise ValueError(
