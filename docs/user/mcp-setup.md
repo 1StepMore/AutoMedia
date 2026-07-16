@@ -31,18 +31,24 @@ Output:
 
 ```
 Registered MCP tools:
+  - add_cron_schedule
   - archive_project
+  - batch_run
   - connect_account
   - disconnect_account
   - evaluate_content_quality
   - extract_brief
   - format_output
   - get_account_health
+  - get_config
+  - get_cron_health
   - get_pipeline_progress
   - get_pipeline_status
   - get_project_assets
   - health_check
   - list_accounts
+  - list_brands
+  - list_cron_schedules
   - list_projects
   - list_topic_pool
   - localize_content
@@ -50,14 +56,17 @@ Registered MCP tools:
   - pool_add_topic
   - publish_content
   - register_platform_adapter
+  - remove_cron_schedule
   - research_topics
   - run_brand_strategy
   - run_pipeline
   - run_pipeline_from_strategy
+  - search_assets
   - select_topic
+  - test_cron_schedule
 ```
 
-## Available Tools (24)
+## Available Tools (33)
 
 | Tool | Description |
 |------|------|
@@ -85,6 +94,15 @@ Registered MCP tools:
 | `list_accounts` | List all registered accounts |
 | `get_account_health` | Check an account's health status |
 | `disconnect_account` | Disconnect/remove a platform account |
+| `batch_run` | Run pipeline sequentially for multiple topics |
+| `add_cron_schedule` | Add a cron schedule entry |
+| `list_cron_schedules` | List all cron schedules |
+| `remove_cron_schedule` | Remove a cron schedule entry |
+| `get_cron_health` | Check cron job configuration health |
+| `test_cron_schedule` | Validate cron expression and compute next trigger times |
+| `search_assets` | Search produced content via keyword + semantic search |
+| `list_brands` | Return all configured brands with profile metadata |
+| `get_config` | Return merged configuration (secrets redacted) |
 
 ## MCP Client Configuration
 
@@ -108,7 +126,7 @@ Edit `claude_desktop_config.json`:
 
 ### OpenCode
 
-Edit `opencode.json` or the project-level config file:
+Edit `.opencode/package.json` or the project-level config file:
 
 ```json
 {
@@ -129,7 +147,9 @@ Or through `~/.config/opencode/mcp.json`:
     "automedia": {
       "command": "python",
       "args": ["-m", "automedia.mcp.server"],
-      "env": {}
+      "env": {
+        "AUTOMEDIA_LLM_API_KEY": "sk-xxx"
+      }
     }
   }
 }
@@ -158,23 +178,20 @@ MCP server file access is restricted by an allowlist. The config file is located
 ~/.automedia/mcp_allowlist.yaml
 ```
 
-The default allowlist (shipped at `src/automedia/mcp/mcp_allowlist.yaml`)
-includes paths for development, production, and Docker deployments:
+The default allowlist (shipped at `automedia/mcp/mcp_allowlist.yaml`)
+only includes `/tmp/automedia/`. Additional paths must be uncommented or
+added as needed:
 
 ```yaml
 allowed_directories:
   - /tmp/automedia/
-  - /app/data/
-  - /app/output/
-  - /app/projects/
-  - /opt/automedia/
+  # - /app/data/
+  # - /app/output/
+  # - /app/projects/
+  # - /opt/automedia/
 ```
 
-- `/tmp/automedia/` — Temporary test data (always safe)
-- `/app/data/`, `/app/output/`, `/app/projects/` — Docker volume mount paths
-- `/opt/automedia/` — systemd service default `WorkingDirectory`
-
-If the allowlist is empty, all paths are blocked (fail‑closed). It is recommended to configure a specific allowlist for production environments. The path allowlist can also be overridden via the `AUTOMEDIA_MCP_ALLOWLIST_PATH` environment variable.
+If the allowlist is empty, all paths are blocked (fail‑closed). It is recommended to configure a specific allowlist for production environments. The path allowlist can also be overridden via the `AUTOMEDIA_MCP_ALLOWLIST_PATH` environment variable (see [Environment Variables](#environment-variables)).
 
 ## Environment Variables
 
@@ -184,6 +201,12 @@ The MCP server supports the following environment variables:
 |------|------|
 | `AUTOMEDIA_LLM_API_KEY` | LLM API key |
 | `AUTOMEDIA_LLM_BASE_URL` | Custom API endpoint |
+| `AUTOMEDIA_LLM_PROVIDER` | LLM provider name |
+| `AUTOMEDIA_LLM_MODEL` | Model identifier |
+| `AUTOMEDIA_PROJECTS_DIR` | Projects root directory override |
+| `AUTOMEDIA_MCP_ALLOWLIST_PATH` | Custom allowlist path override |
+| `AUTOMEDIA_MASTER_KEY` | Master key for credential encryption |
+| `AUTOMEDIA_LOG_LEVEL` | Log level (DEBUG, INFO, WARNING, ERROR) |
 | `FEISHU_WEBHOOK_URL` | Feishu notification webhook |
 | `WX_APPID` | WeChat Official Account AppID |
 | `WX_APPSECRET` | WeChat Official Account AppSecret |
@@ -193,7 +216,7 @@ The MCP server supports the following environment variables:
 - The `archive_project` tool follows Red Line 8: archiving is only allowed when project status is `published` or `force=True`
 - The path allowlist prevents malicious agents from reading files outside the project directory
 - It is recommended to use dedicated API keys and environment variables for the MCP server
-- All file operations are read-only by default (path check without modification)
+- All file operations are gated by the path allowlist — files outside allowed directories return `PermissionError`. Some tools (e.g. `archive_project`, `publish_content`, `format_output`) perform write operations within allowed directories.
 
 ## Example: Calling MCP Tools Directly in Python
 

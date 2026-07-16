@@ -9,7 +9,7 @@ This is the first file an AI coding agent reads to understand the AutoMedia code
 AutoMedia is an automated media production pipeline. It handles the full content lifecycle: topic selection, draft writing, video generation, subtitle rendering, and multi-platform publishing.
 
 - **Language:** Python 3.11+
-- **Size:** 23,118 LOC across 142 Python files (automedia/ core) · 86,905 LOC across 442 Python files (entire repo)
+- **Size:** 33,619 LOC across 150 Python files (automedia/ core) · ~90,000+ LOC across 442+ Python files (entire repo)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 
@@ -19,8 +19,8 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 22 tools |
-| CLI | `automedia <subcommand>` | 16 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 33 tools |
+| CLI | `automedia <subcommand>` | 12 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -32,7 +32,7 @@ All three share the same `run_full_pipeline()` implementation in `automedia/pipe
 ```
 AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (23,118 LOC)
+│   └── automedia/              # Core Python package (33,619 LOC)
 │       ├── __init__.py             # Public API surface
 │       ├── __main__.py             # `python -m automedia`
 │       ├── _version.py             # Version string
@@ -83,7 +83,7 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│       │   └── commands/           # 13 command modules
+│   │       └── commands/           # 12 command modules
 │       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
@@ -99,7 +99,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 22 tools
+│       │   ├── server.py           # FastMCP server — 33 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -174,23 +174,36 @@ AutoMedia/
 │           ├── vector_store.py
 │           └── migrate.py
 │
-├── docs/                       # Documentation (17 files)
-│   ├── developer-guide.md
-│   ├── api-reference.md
-│   ├── cli-reference.md
-│   ├── mcp-setup.md
-│   ├── mcp-systemd-setup.md
-│   ├── hitl-framework.md
-│   ├── omni-integration.md
-│   ├── open-core.md
-│   ├── enforcement-mechanisms.md
-│   ├── production-e2e-test-design.md
-│   ├── asset-library.md
-│   └── runbook/                # Troubleshooting guides (4 files)
-│       ├── gate-failure-modes.md
-│       ├── production-workflow.md
-│       ├── cron-troubleshooting.md
-│       └── api-gotchas.md
+├── docs/                       # Documentation (25 files)
+│   ├── index.md                # Documentation site home
+│   ├── d3-gap-analysis.md      # D3 gap closure analysis
+│   │
+│   ├── dev/                    # Developer-oriented docs
+│   │   ├── adr/architecture-decisions.md
+│   │   ├── agent-troubleshooting.md
+│   │   ├── api-gotchas.md
+│   │   ├── cron-troubleshooting.md
+│   │   ├── developer-guide.md
+│   │   ├── enforcement-mechanisms.md
+│   │   ├── evaluation-matrix-principles.md
+│   │   ├── forward-compat.md
+│   │   ├── founder-expectations.md
+│   │   ├── gate-failure-modes.md
+│   │   ├── PRD-4.md
+│   │   ├── project-audit.md
+│   │   ├── project-validation-framework.md
+│   │   └── video-synthesis-design.md
+│   │
+│   ├── user/                   # User-facing docs
+│   │   ├── api-reference.md
+│   │   ├── asset-library.md
+│   │   ├── cli-reference.md
+│   │   ├── hitl-framework.md
+│   │   ├── mcp-setup.md
+│   │   ├── mcp-systemd-setup.md
+│   │   ├── omni-integration.md
+│   │   ├── production-workflow.md
+│   │   └── user-introduction.md
 │
 ├── scripts/                    # Build and utility scripts
 │   ├── setup.sh                # One-command venv + install + init
@@ -214,7 +227,7 @@ AutoMedia/
 │   ├── test_decision_layer/    # Decision layer tests
 │   ├── test_hooks/             # Hook tests
 │   ├── test_enforcement/       # Red line enforcement tests
-│   └── [97 test files]
+│   └── [130+ test files]
 │
 ├── deploy/                     # systemd deployment files
 ├── .github/workflows/          # CI pipeline
@@ -375,7 +388,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (22 tools)
+## 9. MCP Tools Quick Reference (33 tools)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -403,10 +416,21 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `list_accounts` | platform, status | List registered accounts with optional filters |
 | `get_account_health` | account_id | Check an account's health status |
 | `disconnect_account` | account_id | Remove a platform account |
+| `pool_add_topic` | topic, category, source | Add a topic to the topic pool |
+| `publish_content` | project_id, platform, mode | Publish a project to a platform |
+| `batch_run` | topics, brand, mode | Run pipeline sequentially for multiple topics |
+| `add_cron_schedule` | schedule, command | Add a cron schedule entry |
+| `list_cron_schedules` | — | List all cron schedules |
+| `remove_cron_schedule` | schedule_id | Remove a cron schedule entry |
+| `get_cron_health` | — | Check cron job configuration health |
+| `test_cron_schedule` | expression, count | Validate cron expression and compute next trigger times |
+| `search_assets` | query, brand, limit, filters | Search produced content via keyword + semantic search |
+| `list_brands` | — | Return all configured brands with profile metadata |
+| `get_config` | key | Return merged configuration (secrets redacted) |
 
 ---
 
-## 10. CLI Commands Quick Reference (13 commands)
+## 10. CLI Commands Quick Reference (12 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -421,7 +445,6 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia doctor` | Check system dependencies and environment health |
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
-| `automedia solution` | Decision layer solution operations |
 | `automedia onboard` | Onboarding wizard |
 
 ---

@@ -13,7 +13,7 @@ This README serves **both human developers and AI coding agents** (OpenCode, Cla
 
 AutoMedia automates content production from topic selection through draft writing, video generation, subtitle rendering, and multi-platform publishing. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-23,118 LOC (core) · 86,905 LOC (total) · 442 Python files · Python 3.11+ · 2,047 tests (0 failing) · MIT License
+33,619 LOC (core) · ~90,000+ LOC (total) · 442+ Python files · Python 3.11+ · 2,634 tests (6 pre-existing failures) · MIT License
 
 ### For AI Agents
 
@@ -21,12 +21,12 @@ If you are an AI coding agent entering this codebase:
 
 1. **Read [AGENTS.md](https://github.com/1stepmore/automedia/blob/main/AGENTS.md)** — agent-role context, constraints, directory layout, MCP/CLI references, red lines
 2. **Connect MCP** — Start the MCP server (`python -m automedia.mcp.server`) or configure your tool's MCP client (see [Three-Layer API](#three-layer-api))
-3. **Explore config files** — `opencode.json`, `.claude/`, `.env.example` for tool-specific setup
+3. **Explore config files** — `.opencode/`, `.claude/`, `.env.example` for tool-specific setup
 4. **Find tests** — `tests/` directory, run with `make test` or `pytest`
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (16 commands) / MCP Server (29 tools)
+- **Three-layer API**: SDK / CLI (12 commands) / MCP Server (33 tools)
 - **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
@@ -230,7 +230,7 @@ New to this codebase? Here's your orientation path:
 
 ```
 Step 1: Read AGENTS.md       → Codebase map, constraints, red lines (10 MUST/MUST NOT)
-Step 2: Review agent config  → opencode.json (OpenCode), .claude/ (Claude Code)
+Step 2: Review agent config  → .opencode/ (OpenCode), .claude/ (Claude Code)
 Step 3: Start MCP server     → python -m automedia.mcp.server
 Step 4: Verify setup         → automedia doctor
 Step 5: Try a pipeline       → automedia run --topic "..." --brand my-brand --mode text_only
@@ -241,7 +241,7 @@ Step 5: Try a pipeline       → automedia run --topic "..." --brand my-brand --
 | File | Purpose | Read by |
 |------|---------|---------|
 | `AGENTS.md` | Universal agent context (constraints, layout, MCP/CLI refs, red lines) | OpenCode, Claude Code, Codex CLI, Hermes Agent |
-| `opencode.json` | OpenCode MCP server binding + agent instructions | OpenCode |
+| `.opencode/` | OpenCode MCP plugin config + skills | OpenCode |
 | `.claude/settings.json` | Claude Code MCP server config | Claude Code |
 | `.claude/rules.md` | Claude Code project rules | Claude Code |
 | `.env.example` | Environment variable reference | All tools |
@@ -262,7 +262,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (16 commands)
+### CLI (12 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -271,17 +271,15 @@ result = run_full_pipeline(
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
-| `automedia account` | Platform account management (connect, list, health, disconnect, refresh) |
+| `automedia account` | Platform account management (connect, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |
-| `automedia omni` | Omni Triad operations (extract, translate, convert) |
+| `automedia omni` | Omni Triad operations (ingest, localize, format-output) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
-| `automedia asset` | Asset library management (ingest, search, list, get, delete) |
-| `automedia solution` | Decision layer solution operations |
 
-### MCP Server (29 tools)
+### MCP Server (33 tools)
 
 Start:
 
@@ -341,7 +339,7 @@ python -m automedia.mcp.server
 }
 ```
 
-**OpenCode** (in `opencode.json`):
+**OpenCode** (configured via `.opencode/package.json`):
 
 ```json
 {
@@ -389,7 +387,7 @@ The project ships agent-specific config files at the repository root:
 
 | File | Tool | What it does |
 |------|------|-------------|
-| `opencode.json` | OpenCode | MCP server binding + agent instructions for Build/Plan modes |
+| `.opencode/` | OpenCode | MCP plugin config + agent skill files |
 | `.claude/settings.json` | Claude Code | MCP server configuration |
 | `.claude/rules.md` | Claude Code | Project-level rules, constraints, and conventions |
 | `AGENTS.md` | Universal | Codebase map, 10 agent constraints, MCP/CLI references, red lines |
@@ -406,7 +404,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  29 tools      |     |  16 commands       |
+  |  33 tools      |     |  12 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -461,7 +459,7 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 | V0-V7 | 8 | Video gates: lint, vision QA, Whisper, content semantic, TTS brand asset, MP3×SRT, subtitle render, six-step hard check |
 | L1-L4 | 4 | Lifecycle gates: publish log schema, archive validation, platform integrity, translation quality |
 
-**Total: 20 gates.** Gate order: D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4.
+**Total: 19 gates.** Gate order: pre-gate → CW → G0-G5 → V0-V7 → L1-L4.
 
 ## Security
 
@@ -526,7 +524,7 @@ pytest tests/test_mcp/ -v
 
 ## Project Status
 
-Active development. 2,047 tests passing, 0 failing. 86,905 LOC across 442 Python files (23,118 LOC in automedia/ core).
+Active development. 2,634 tests (6 pre-existing failures). ~90,000+ LOC across 442+ Python files (33,619 LOC in automedia/ core).
 
 ## License
 

@@ -190,7 +190,7 @@ To work around allowlist restrictions:
 If an MCP tool call returns "tool not found":
 
 1. Verify the server is running: check that `python -m automedia.mcp.server` is still running
-2. Check the tool name against the 25 tools listed in AGENTS.md section 9
+2. Check the tool name against the 33 tools listed in AGENTS.md section 9
 3. Restart the server: kill the process and start it again
 
 ### Testing MCP tools directly
@@ -226,7 +226,7 @@ For detailed mode-by-mode troubleshooting of each gate, see `docs/runbook/gate-f
 
 ### H0 — Human Review Gate (Pre-Publish)
 
-H0 is a pre-publish HITL gate. Failure means the pipeline is paused waiting for human review. Approve with `automedia hitl approve --project <project-id>` or pass `auto_publish=True` to skip HITL.
+H0 is a pre-publish HITL gate. Failure means the pipeline is paused waiting for human review. Approve via the decision layer SDK (`from automedia.hitl import NodeExecutor; executor.approve_node(...)`) or pass `auto_publish=True` to skip HITL.
 
 ### CW — Content Writer Gate
 
@@ -541,27 +541,20 @@ Beyond the core variables in AGENTS.md section 11, the following variables are a
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `AUTOMEDIA_MCP_ALLOWLIST_PATH` | Path to MCP allowlist YAML file | `<module_dir>/mcp_allowlist.yaml` |
-| `AUTOMEDIA_MCP_HOST` | Network bind address (stdio-only when unset) | (stdio) |
-| `AUTOMEDIA_MCP_PORT` | Network port number | `8100` |
 
 ### Credential Store
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `AUTOMEDIA_MASTER_KEY` | AES-256-GCM master key for encrypted credential storage | (required for accounts) |
-| `AUTOMEDIA_KEYRING_BACKEND` | Keyring preference: `auto`, `secret-service`, `kwallet` | `auto` |
-| `AUTOMEDIA_VAULT_TYPE` | Credential vault backend: `file` or `keyring` | `file` |
 
 ### Pipeline Configuration
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `AUTOMEDIA_DEFAULT_MODE` | Default pipeline mode: `auto`, `text_only`, `video_only`, `qa_only` | `auto` |
+| `AUTOMEDIA_DEFAULT_BRAND` | Default brand for pipelines | `my-brand` |
 | `AUTOMEDIA_PROJECTS_DIR` | Root directory for projects (overrides working directory) | (auto) |
 | `AUTOMEDIA_POOL_DB` | Path to the topic pool SQLite database | `./data/pool.db` |
-| `AUTOMEDIA_CACHE_DIR` | Cache directory for intermediate artifacts | `./cache` |
-| `AUTOMEDIA_LOG_DIR` | Log directory for file-based logging | `./logs` |
-| `AUTOMEDIA_FFMPEG_ENCODER` | FFmpeg video encoder override (e.g., `h264_nvenc` for GPU) | `libx264` |
 
 ---
 

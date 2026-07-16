@@ -13,13 +13,13 @@ Automated Media Production Pipeline — for content teams and AI coding agents.
 
 AutoMedia automates content production from **topic selection** through **draft writing**, **video generation**, **subtitle rendering**, and **multi-platform publishing**. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-**Stats:** 24,431 LOC (core) · 91,048 LOC (total) · 449 Python files · Python 3.11+ · MIT License
+**Stats:** 33,619 LOC (core) · ~90,000+ LOC (total) · 442+ Python files · Python 3.11+ · MIT License
 
 ---
 
 ## Features
 
-- **Three-layer API** — Python SDK / CLI (15 commands) / MCP Server (13 tools)
+- **Three-layer API** — Python SDK / CLI (12 commands) / MCP Server (33 tools)
 - **20 quality gates** — G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle)
 - **6-layer configuration** — defaults → project → user → overrides → prompts → env vars
 - **Topic pool** — SQLite-backed with scoring, dedup, scheduling
@@ -71,10 +71,10 @@ Troubleshooting and operational guides:
 
 | Guide | Description |
 |-------|-------------|
-| [Gate Failure Modes](runbook/gate-failure-modes.md) | Diagnosing and fixing gate failures |
-| [Production Workflow](runbook/production-workflow.md) | Daily production operations |
-| [Cron Troubleshooting](runbook/cron-troubleshooting.md) | Debugging scheduled jobs |
-| [API Gotchas](runbook/api-gotchas.md) | Common API pitfalls and solutions |
+| [Gate Failure Modes](dev/gate-failure-modes.md) | Diagnosing and fixing gate failures |
+| [Production Workflow](user/production-workflow.md) | Daily production operations |
+| [Cron Troubleshooting](dev/cron-troubleshooting.md) | Debugging scheduled jobs |
+| [API Gotchas](dev/api-gotchas.md) | Common API pitfalls and solutions |
 
 ---
 

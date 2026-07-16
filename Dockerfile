@@ -50,6 +50,9 @@ USER automedia
 
 # Default entrypoint
 ENTRYPOINT ["automedia"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD pgrep -f "automedia" || exit 1
+
 CMD ["doctor"]
 
 # ==============================================================================

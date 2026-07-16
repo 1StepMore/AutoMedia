@@ -11,7 +11,7 @@ Omni Triad is a set of three companion tools that work alongside the
 AutoMedia production pipeline as a **side-channel adapter**.  Omni is
 **not embedded** in the main pipeline — it runs before (OPP document
 extraction) and after (OL translation + ORF format re-flow) the core
-gate chain, leaving the 20-gate production sequence unchanged.
+gate chain, leaving the 19-gate production sequence unchanged.
 
 | Tool | Package | Role |
 |------|---------|------|
@@ -26,9 +26,9 @@ even though they call the same underlying implementation:
 
 | Function | CLI Command | MCP Tool |
 |----------|-------------|----------|
-| Document extraction | `automedia omni extract` | `extract_brief` |
-| Content translation | `automedia omni translate` | `localize_content` |
-| Format conversion | `automedia omni convert` | `format_output` |
+| Document extraction | `automedia omni ingest` | `extract_brief` |
+| Content translation | `automedia omni localize` | `localize_content` |
+| Format conversion | `automedia omni format-output` | `format_output` |
 
 These pairs are **semantically equivalent**.  The CLI and MCP interfaces
 share the same Omni adapter layer (:class:`~automedia.omni.OPPAdapter`,

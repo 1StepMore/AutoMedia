@@ -139,28 +139,32 @@ with AssetLibrary(brand="EcoBrand") as lib:
 
 ---
 
-## CLI Commands
+## SDK Usage
 
-The following CLI commands are available for Asset Library management:
+The Asset Library is available via the Python SDK — there is no dedicated
+``automedia asset`` CLI command. Use the SDK for direct management:
 
-```bash
-# Ingest project artifacts into the Asset Library
-automedia asset ingest --project-dir ./my-project --brand EcoBrand
+```python
+from automedia.asset_library import AssetDatabase
+
+db = AssetDatabase(brand="EcoBrand")
+
+# Ingest project artifacts
+db.ingest_project("./my-project")
 
 # Search the Asset Library
-automedia asset search --brand EcoBrand --query "packaging design"
+results = db.search("packaging design")
 
 # List all assets for a brand
-automedia asset list --brand EcoBrand
+assets = db.list_assets()
 
 # Delete an asset
-automedia asset delete --doc-id <uuid>
+db.delete_asset("doc-uuid-here")
 ```
 
-These commands are fully implemented and registered under ``automedia asset``.
-Note that ``automedia run`` also automatically ingests artifacts as part of the
-pipeline — you only need the explicit ``asset ingest`` command for standalone
-ingestion outside a pipeline run.
+Note that ``automedia run`` and ``run_full_pipeline()`` automatically ingest
+artifacts as part of the pipeline — you only need the explicit SDK calls for
+standalone ingestion outside a pipeline run.
 
 ---
 
@@ -329,7 +333,8 @@ Database schema migrations live in ``automedia/asset_library/schema.py``.
 Run migrations with:
 
 ```bash
-automedia asset migrate --brand EcoBrand
+# Migrations run automatically on first access; manual trigger:
+python -c "from automedia.asset_library.db import AssetDatabase; AssetDatabase(brand='EcoBrand')"
 ```
 
 Current migration versions:

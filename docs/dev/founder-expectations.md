@@ -753,7 +753,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Current status** | ✅ 2,047 tests passing, 0 failing. CI runs on every push. |
+| **Current status** | ✅ 2,634 tests passing (6 pre-existing failures). CI runs on every push. |
 | **Test coverage** | Unit tests per gate, integration tests for pipeline, CLI tests, MCP tests, red line enforcement tests, E2E tests. |
 | **Adding new gates** | Each new gate must include tests. The `add-new-gate` skill enforces test creation. |
 | **Pre-commit hooks** | Ruff, mypy, and pre-commit checks run before every commit. |

@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 16 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 12 subcommands.
 ---
 
 # CLI Reference
@@ -12,9 +12,9 @@ tools. Some operations use different names depending on the interface:
 
 | Function | CLI Command | MCP Tool |
 |----------|-------------|----------|
-| Document extraction | `automedia omni extract` | `extract_brief` |
-| Content translation | `automedia omni translate` | `localize_content` |
-| Format conversion | `automedia omni convert` | `format_output` |
+| Document extraction | `automedia omni ingest` | `extract_brief` |
+| Content translation | `automedia omni localize` | `localize_content` |
+| Format conversion | `automedia omni format-output` | `format_output` |
 
 These pairs are **semantically equivalent** — they call the same underlying
 implementation (:func:`automedia.pipelines.runner.run_full_pipeline` for
@@ -36,8 +36,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
-| `automedia asset` | Asset library management (ingest, search, list, get, delete) |
-| `automedia solution` | Decision layer solution operations |
+
 
 ## Global
 
@@ -69,8 +68,7 @@ automedia account disconnect acc_wechat_a1b2c3d4
 # Force disconnect without confirmation
 automedia account disconnect acc_wechat_a1b2c3d4 --yes
 
-# Refresh an account session
-automedia account refresh acc_wechat_a1b2c3d4
+
 ```
 
 ### Subcommands
@@ -81,7 +79,7 @@ automedia account refresh acc_wechat_a1b2c3d4
 | `list` | List registered accounts, supports `--platform` and `--status` filtering |
 | `health` | Check an account's health status and last check time |
 | `disconnect` | Remove a platform account (requires confirmation unless `--yes`) |
-| `refresh` | Force refresh an account session |
+
 
 ### account connect Arguments
 
@@ -127,12 +125,6 @@ After running the command, enter credentials as `key=value` pairs (one per line,
 | Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
 | `--yes` | `-y` | `bool` | `False` | Skip confirmation prompt |
-
-### account refresh Arguments
-
-| Argument | Type | Description |
-|------|------|------|
-| `account_id` | `str` | Account ID (required) |
 
 ## `automedia run`
 
@@ -336,10 +328,10 @@ automedia cron check-health
 
 Run a 4-step health check:
 
-1. Python >= 3.11
-2. ffmpeg available
-3. `.automedia/` config directory exists
-4. `pool.db` accessible
+1. `.automedia/` config directory exists
+2. `pool.db` accessible
+3. Core dependencies: Python >= 3.11, ffmpeg available
+4. `jobs.yaml` valid
 
 ## `automedia init`
 
@@ -384,9 +376,9 @@ Each CLI subcommand has a corresponding MCP tool with a different name (see the
 
 | CLI Subcommand | MCP Equivalent |
 |----------------|----------------|
-| `automedia omni extract` | ``extract_brief`` |
-| `automedia omni translate` | ``localize_content`` |
-| `automedia omni convert` | ``format_output`` |
+| `automedia omni ingest` | ``extract_brief`` |
+| `automedia omni localize` | ``localize_content`` |
+| `automedia omni format-output` | ``format_output`` |
 
 ```bash
 # Extract content brief
@@ -408,43 +400,7 @@ Human-in-the-loop review management.
 automedia hitl config
 
 # List presets
-automedia hitl preset list
-```
-
-## `automedia license`
-
-License management.
-
-```bash
-# Check license status
-automedia license check
-
-# View available features
-automedia license features
-```
-
-## `automedia sop`
-
-SOP (Standard Operating Procedure) execution.
-
-```bash
-# Generate SOP report
-automedia sop generate --project-dir ./project
-```
-
-## `automedia tenant`
-
-Multi-tenant management.
-
-```bash
-# List tenants
-automedia tenant list
-
-# Create tenant
-automedia tenant create --name my-tenant
-
-# Invite member
-automedia tenant invite --tenant-id <id> --email user@example.com
+automedia hitl preset --list
 ```
 
 ## `automedia onboard`

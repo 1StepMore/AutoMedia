@@ -113,10 +113,6 @@ automedia hitl config
 
 # Record human approval for a node
 # (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)
-# CLI: automedia hitl approve --node brand_positioning --by "alice@example.com"
-
-# Show next pending node (exit code 1 if node requires HITL)
-# CLI: automedia hitl next --mode build --block-on-hitl
 ```
 
 ---
@@ -145,15 +141,16 @@ Multiple override files can coexist — they are applied in alphabetical order.
 
 ---
 
-## Integration with DecisionOrchestrator
+## Integration with HITL SDK
 
 ```python
-from automedia.hitl import HITLConfig
-from automedia.decision import DecisionOrchestrator
+from automedia.hitl import HITLConfig, NodeExecutor
+from automedia.decision.base import BaseDecisionAgent
 
 cfg = HITLConfig(preset_name="semi-automated")
-orch = DecisionOrchestrator(hitl_config=cfg)
+executor = NodeExecutor(cfg)
 
-artifacts = orch.run_build_mode("Product idea", "BrandName")
-# Human nodes block until approved via CLI or API
+agent = BaseDecisionAgent()
+result = executor.execute("my_node", agent, context)
+# Human-approved nodes block until manually approved via CLI
 ```

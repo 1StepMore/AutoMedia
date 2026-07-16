@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  41 tools
+   │   select_topic, run_pipeline, ...    │  33 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐

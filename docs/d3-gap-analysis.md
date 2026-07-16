@@ -243,7 +243,7 @@ Gate registry per pipeline run. Brand profile per project (but single-brand limi
 6-layer config hierarchy with `overrides/rules/` and `overrides/prompts/`.
 
 ### F46 — Test Coverage ⚠️
-2,047 tests passing. D3 doc mentions this number. Tests cover gates, pipelines, CLI, MCP, Omni, hooks, accounts. Gate naming convention (`G\d+`, `V\d+`, `L\d+`, `CW`, `pre-gate`) is enforced by `_VALID_GATE_NAME_RE` — broad enough to cover all current and future gates.
+2,634 tests passing (6 pre-existing failures). D3 doc mentions this number. Tests cover gates, pipelines, CLI, MCP, Omni, hooks, accounts. Gate naming convention (`G\d+`, `V\d+`, `L\d+`, `CW`, `pre-gate`) is enforced by `_VALID_GATE_NAME_RE` — broad enough to cover all current and future gates.
 
 ### F47 — Forward Compatibility ⚠️
 `deprecated` warnings for `decision_mode` and `force_provenance`. Runner loads gates module dynamically (`import automedia.gates`). `rewrite` → `retry` mapping. Good but no formal deprecation policy document.

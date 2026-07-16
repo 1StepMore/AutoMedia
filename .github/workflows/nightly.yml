@@ -40,6 +40,12 @@ jobs:
           uv pip install bandit
           uv run bandit -r src/automedia/ -ll
 
+      - name: Safety check (vulnerability database)
+        continue-on-error: true
+        run: |
+          uv pip install safety
+          uv run safety check --full-report
+
       - name: IaC scan (checkov)
         run: |
           uv pip install checkov

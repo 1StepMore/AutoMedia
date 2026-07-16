@@ -3,7 +3,9 @@
     "automedia": {
       "command": "python",
       "args": ["-m", "automedia.mcp.server"],
-      "env": {}
+      "env": {
+        "AUTOMEDIA_LLM_API_KEY": "sk-your-key-here"
+      }
     }
   },
   "projectRules": true
