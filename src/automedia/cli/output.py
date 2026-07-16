@@ -13,7 +13,15 @@ from typing import Any
 
 import structlog
 import typer
-from typer._click.globals import get_current_context
+
+try:
+    # typer >= 0.12 vendors click as typer._click — uses its own context
+    # stack that is separate from the externally installed click package.
+    from typer._click.globals import get_current_context
+except ImportError:
+    # typer < 0.12 — click is an external dependency; context stack is
+    # shared between typer and the externally installed click package.
+    from click import get_current_context
 
 logger = structlog.get_logger()
 
