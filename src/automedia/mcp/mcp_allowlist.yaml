@@ -34,3 +34,9 @@
 #
 allowed_directories:
   - /tmp/automedia/
+  # Development / Local — uncommented for multi-env support
+  - ./data/
+  - ./output/
+  - ./projects/
+  # Current workspace (resolves when MCP server runs from project root)
+  - ./
