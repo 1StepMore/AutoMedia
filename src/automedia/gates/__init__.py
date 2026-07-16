@@ -3,36 +3,71 @@
 Gate naming convention: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), CW (content writer), pre-gate.
 """
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 # Text-track gates (G0-G5)
-from automedia.gates._context import GateContext  # noqa: F401
-from automedia.gates.archive_validation import L2ArchiveValidation  # noqa: F401
-from automedia.gates.brand_cta import G3BrandCTA  # noqa: F401
-from automedia.gates.content_semantic import V3ContentSemantic  # noqa: F401
+from automedia.gates._context import GateContext
+from automedia.gates.archive_validation import L2ArchiveValidation
+from automedia.gates.brand_cta import G3BrandCTA
+from automedia.gates.content_semantic import V3ContentSemantic
 
 # Content writer gate (between pre-gate and G0)
-from automedia.gates.content_writer import ContentWriterGate  # noqa: F401
-from automedia.gates.copy_review import G2CopyReview  # noqa: F401
-from automedia.gates.fact_check import G0FactCheck  # noqa: F401
-from automedia.gates.html_hard import G5HtmlHard  # noqa: F401
-from automedia.gates.humanizer import G1Humanizer  # noqa: F401
-
-# Video-track gates (V0-V7)
-from automedia.gates.lint import V0Lint  # noqa: F401
-from automedia.gates.mp3_vs_srt import V5Mp3VsSrt  # noqa: F401
-from automedia.gates.platform_integrity import L3PlatformIntegrity  # noqa: F401
-from automedia.gates.pre_send_whisper import V2PreSendWhisper  # noqa: F401
-
-# Lifecycle gates (L1-L3)
-from automedia.gates.publish_log_schema import L1PublishLogSchema  # noqa: F401
-from automedia.gates.six_step_hard import V7SixStepHard  # noqa: F401
-from automedia.gates.subtitle_render import V6SubtitleRender  # noqa: F401
+from automedia.gates.content_writer import ContentWriterGate
+from automedia.gates.copy_review import G2CopyReview
+from automedia.gates.fact_check import G0FactCheck
 
 # HITL gates
-from automedia.gates.h0_human_review import H0HumanReviewGate  # noqa: F401
+from automedia.gates.h0_human_review import H0HumanReviewGate
+from automedia.gates.html_hard import G5HtmlHard
+from automedia.gates.humanizer import G1Humanizer
+
+# Video-track gates (V0-V7)
+from automedia.gates.lint import V0Lint
+from automedia.gates.mp3_vs_srt import V5Mp3VsSrt
+from automedia.gates.platform_integrity import L3PlatformIntegrity
+from automedia.gates.pre_send_whisper import V2PreSendWhisper
+
+# Lifecycle gates (L1-L3)
+from automedia.gates.publish_log_schema import L1PublishLogSchema
+from automedia.gates.six_step_hard import V7SixStepHard
+from automedia.gates.subtitle_render import V6SubtitleRender
 
 # Pre-gates
-from automedia.gates.topic_selection import TopicSelectionGate  # noqa: F401
-from automedia.gates.translation_quality import L4TranslationQuality  # noqa: F401
-from automedia.gates.tts_brand_asset import V4TTSBrandAsset  # noqa: F401
-from automedia.gates.vision_qa import V1VisionQA  # noqa: F401
-from automedia.gates.wechat_checklist import G4WechatChecklist  # noqa: F401
+from automedia.gates.topic_selection import TopicSelectionGate
+from automedia.gates.translation_quality import L4TranslationQuality
+from automedia.gates.tts_brand_asset import V4TTSBrandAsset
+from automedia.gates.vision_qa import V1VisionQA
+from automedia.gates.wechat_checklist import G4WechatChecklist
+
+__all__ = [
+    # Text-track gates (G0-G5)
+    "G0FactCheck",
+    "G1Humanizer",
+    "G2CopyReview",
+    "G3BrandCTA",
+    "G4WechatChecklist",
+    "G5HtmlHard",
+    # Video-track gates (V0-V7)
+    "V0Lint",
+    "V1VisionQA",
+    "V2PreSendWhisper",
+    "V3ContentSemantic",
+    "V4TTSBrandAsset",
+    "V5Mp3VsSrt",
+    "V6SubtitleRender",
+    "V7SixStepHard",
+    # Lifecycle gates
+    "L1PublishLogSchema",
+    "L2ArchiveValidation",
+    "L3PlatformIntegrity",
+    "L4TranslationQuality",
+    # Content writer & pre-gate
+    "ContentWriterGate",
+    "TopicSelectionGate",
+    # HITL gate
+    "H0HumanReviewGate",
+    # Context
+    "GateContext",
+]

@@ -18,10 +18,14 @@ import json
 import re
 from typing import Any, cast
 
+from structlog import get_logger
+
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -546,7 +550,7 @@ class G2CopyReview(BaseGate):
                 text=content,
                 check_type="copy_review",
                 prompt_template_name="copy_review_g2",
-                deterministic_fn=lambda text: cast(LLMCheckResult, self._run_deterministic(  # type: ignore[arg-type]
+                deterministic_fn=lambda text: cast(LLMCheckResult, self._run_deterministic(  # type: ignore[arg-type]  # lambda captures brand_profile from closure; mypy cannot verify Callable[[str], LLMCheckResult] match
                     text, brand_profile, None,
                 )),
                 brand_guidelines=brand_guidelines,

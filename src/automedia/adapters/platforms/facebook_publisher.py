@@ -218,7 +218,7 @@ class FacebookPublisher(BasePlatformAdapter):
         # Resolve page_id: project config > credential_loader
         resolved_page_id = (
             project.get("facebook_page_id")
-            or (project.get("config", {}) if isinstance(project.get("config"), dict) else {}).get("facebook_page_id")  # type: ignore[union-attr]
+            or (project.get("config", {}) if isinstance(project.get("config"), dict) else {}).get("facebook_page_id")  # type: ignore[union-attr]  # project is dict[str,Any] but .get("config") may return non-dict; isinstance narrows at runtime only
             or page_id
         )
         if not resolved_page_id:
@@ -244,7 +244,7 @@ class FacebookPublisher(BasePlatformAdapter):
         # --- read content ------------------------------------------------------
         content_result = self._read_content(artifact_dir, project)
         if content_result.get("status") != "ok":
-            return content_result  # type: ignore[return-value]
+            return content_result  # type: ignore[return-value]  # content_result is dict[str,Any]; PublishResult TypedDict expected
 
         message = content_result["text"]
         if not message:

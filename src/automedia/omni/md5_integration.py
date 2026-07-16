@@ -14,6 +14,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 OMNI_MD5_FILENAME = "pipeline_md5.json"
 
 _OMNI_SECTIONS = ("omni_inputs", "omni_extraction", "omni_translation", "omni_orf_outputs")

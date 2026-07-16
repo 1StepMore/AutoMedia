@@ -16,8 +16,13 @@ typed attributes for all commonly-used context keys while remaining
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar
+
+from structlog import get_logger
+
+log = get_logger(__name__)
 
 
 @dataclass
@@ -40,6 +45,7 @@ class GateContext:
     brand: str = ""
     project_id: str = ""
     project_dir: str = ""
+    correlation_id: str = ""
     config: dict[str, Any] = field(default_factory=dict)
     tenant_id: str = "default"
     lang_config: dict[str, Any] = field(default_factory=dict)
@@ -120,7 +126,7 @@ class GateContext:
     output_dir: str = ""
 
     # L4 — translation quality
-    translation_result: Any = None
+    translation_result: dict[str, Any] | None = None  # OL pipeline returns dict
     source_lang: str = ""
     target_lang: str = ""
 
@@ -223,7 +229,7 @@ class GateContext:
         result.extend(self.extra.items())
         return result
 
-    def __iter__(self) -> Any:  # noqa: ANN401 — dict-compat
+    def __iter__(self) -> Iterator[str]:
         """Iterate over keys (for dict.update() compatibility)."""
         return iter(self.keys())
 

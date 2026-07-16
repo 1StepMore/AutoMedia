@@ -157,7 +157,7 @@ def _env_to_config() -> dict:
                         int(value) if last_key == "max_tokens" else float(value)
                     )
                 except ValueError:
-                    typed_value = value  # type: ignore[assignment]
+                    typed_value = value  # type: ignore[assignment]  # value is str; typed_value expects int|float but fallback keeps str type
                 node[last_key] = typed_value
                 continue
             node[last_key] = value

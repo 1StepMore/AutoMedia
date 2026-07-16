@@ -10,7 +10,11 @@ from __future__ import annotations
 import threading
 import time
 
+from structlog import get_logger
+
 from automedia.pipelines.gate_engine import PipelineProgress
+
+log = get_logger(__name__)
 
 # Global tracker: project_id → PipelineProgress for agent polling.
 # Thread-safe via _lock (background pipeline thread vs. MCP query thread).

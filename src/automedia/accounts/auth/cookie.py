@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 
-logger = logging.getLogger(__name__)
+from structlog import get_logger
+
+log = get_logger(__name__)
 
 
 class CookieAuth:
@@ -37,7 +38,8 @@ class CookieAuth:
             try:
                 return health_check_fn(cookie_str)
             except Exception:
-                logger.warning("Cookie health check failed", exc_info=True)
+                # Catch-all for health_check_fn errors — treat cookie as invalid
+                log.warning("Cookie health check failed", exc_info=True)
                 return False
 
         # Basic format check: should contain at least one key=value pair

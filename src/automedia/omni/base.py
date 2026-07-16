@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 class BaseOmniAdapter(ABC):
     @property

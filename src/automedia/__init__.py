@@ -1,6 +1,14 @@
 """AutoMedia — automated media production pipeline."""
 
 from automedia._version import __version__
+from automedia.exceptions import (
+    AccountError,
+    AdapterError,
+    AutoMediaError,
+    ConfigError,
+    GateError,
+    PipelineError,
+)
 
 # Configure structured logging at import time.
 try:
@@ -24,13 +32,19 @@ from automedia.pipelines.gate_engine import (
 from automedia.pipelines.runner import run_full_pipeline
 
 __all__ = [
+    "AccountError",
+    "AdapterError",
     "AssetInfo",
-    "GateRegistry",
+    "AutoMediaError",
+    "ConfigError",
     "DecisionArtifact",
     "GateEngine",
+    "GateError",
     "GateHook",
     "GateLogEntry",
+    "GateRegistry",
     "Pipeline",
+    "PipelineError",
     "PipelineProgress",
     "PipelineResult",
     "run_full_pipeline",

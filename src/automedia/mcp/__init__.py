@@ -4,7 +4,11 @@ Exposes 22 tools for pipeline execution, topic management, Omni Triad
 operations, account management, and platform adapter registration.
 """
 
+from structlog import get_logger
+
 from automedia.mcp.parallel import start_parallel_servers, stop_parallel_servers
+
+log = get_logger(__name__)
 from automedia.mcp.server import (
     archive_project,
     create_server,

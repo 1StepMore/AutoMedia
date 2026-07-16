@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import time
 from datetime import UTC, datetime
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.hooks.protocol import GateObserver
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 METRICS_FILENAME = "production_metrics.json"
 
@@ -102,7 +103,7 @@ class MetricsHook(GateObserver):
         """
         project_dir = self._project_dir
         if project_dir is None:
-            logger.warning("MetricsHook: project_dir not set; skipping write")
+            log.warning("MetricsHook: project_dir not set; skipping write")
             return
 
         path = _metrics_path(project_dir)
@@ -112,4 +113,4 @@ class MetricsHook(GateObserver):
                 json.dump(payload, fh, indent=2, ensure_ascii=False)
                 fh.write("\n")
         except OSError:
-            logger.exception("MetricsHook: failed to write %s", path)
+            log.exception("MetricsHook: failed to write %s", path)

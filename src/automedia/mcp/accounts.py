@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.accounts.registry import AccountRegistry
+
+log = get_logger(__name__)
 
 _registry: AccountRegistry | None = None
 

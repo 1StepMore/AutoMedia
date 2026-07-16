@@ -49,7 +49,7 @@ class HITLConfig:
         self,
         preset_name: str = "automated",
         overrides_dir: str | None = None,
-        node_provider: Any = None,  # noqa: ANN401 — kept for backward compat
+        node_provider: object = None,  # deprecated, kept for backward compat
     ) -> None:
         """Initialize from a preset, then merge user overrides.
 

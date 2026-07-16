@@ -20,6 +20,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # Built-in type taxonomy
 # ---------------------------------------------------------------------------

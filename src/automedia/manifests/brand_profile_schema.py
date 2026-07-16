@@ -71,7 +71,7 @@ _REQUIRED_KEYS: tuple[str, ...] = ("brand_name",)
 # ---------------------------------------------------------------------------
 
 
-def _extract_platforms(raw: Any) -> list[str]:
+def _extract_platforms(raw: object) -> list[str]:
     """Extract a list of platform names from a raw YAML value.
 
     Supports both the new ``list[str]`` format and the legacy ``dict``
@@ -86,7 +86,7 @@ def _extract_platforms(raw: Any) -> list[str]:
     return []
 
 
-def _extract_automation(raw: Any) -> dict[str, str]:
+def _extract_automation(raw: object) -> dict[str, str]:
     """Extract a dict of platform -> automation level from a raw YAML value.
 
     Returns a dict with only valid automation values (``"auto"``, ``"review"``,

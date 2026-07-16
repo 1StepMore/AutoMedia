@@ -17,6 +17,9 @@ import os
 from pathlib import Path
 
 import yaml
+from structlog import get_logger
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Allowlist constants
@@ -88,7 +91,7 @@ def _reset_allowlist_cache() -> None:
     try:
         from automedia.mcp import server as _srv
 
-        _srv._cached_allowlist = None  # type: ignore[attr-defined]
+        _srv._cached_allowlist = None  # type: ignore[attr-defined]  # _cached_allowlist is a private cache set dynamically on the server module
     except ImportError:
         pass
 
@@ -145,10 +148,10 @@ def check_path_allowed(path: str, *, allowlist: list[str] | None = None) -> bool
 
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
-    """Raise ``ValueError`` if *path* is not in the allowlist."""
+    """Raise ``PermissionError`` if *path* is not in the allowlist."""
     if not check_path_allowed(path):
         prefix = f"[{tool_name}] " if tool_name else ""
-        raise ValueError(
+        raise PermissionError(
             f"{prefix}Path {path!r} is not within any allowed directory. "
             f"Configure allowed_directories in mcp_allowlist.yaml."
         )

@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from structlog import get_logger
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Dataclass

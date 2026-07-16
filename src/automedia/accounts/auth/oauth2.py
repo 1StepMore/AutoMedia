@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 import secrets
 import threading
 import time
@@ -14,10 +13,11 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
+from structlog import get_logger
 
 from automedia.accounts.models import SessionToken
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class OAuth2ClientCredentialsFlow:
@@ -121,19 +121,19 @@ class _RedirectHandler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             self.wfile.write(f"Authentication failed: {error}".encode())
-            self.server.last_error = error  # type: ignore[attr-defined]
+            self.server.last_error = error  # type: ignore[attr-defined]  # HTTPServer has no such attribute; set dynamically at runtime
         elif code:
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b"Authentication successful! You may close this tab.")
-            self.server.auth_code = code  # type: ignore[attr-defined]
-            self.server.auth_state = state  # type: ignore[attr-defined]
+            self.server.auth_code = code  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+            self.server.auth_state = state  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
         else:
             self.send_response(400)
             self.end_headers()
             self.wfile.write(b"No authorization code received.")
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: ANN401
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: ANN401 — BaseHTTPRequestHandler protocol
         """Suppress default HTTP server logging."""
         return  # Quiet mode
 
@@ -171,9 +171,9 @@ class OAuth2LocalhostServer:
         Returns the redirect URI that the OAuth2 provider should redirect to.
         """
         self._server = HTTPServer((self._host, self._port), _RedirectHandler)
-        self._server.auth_code = None  # type: ignore[attr-defined]
-        self._server.auth_state = None  # type: ignore[attr-defined]
-        self._server.last_error = None  # type: ignore[attr-defined]
+        self._server.auth_code = None  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+        self._server.auth_state = None  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+        self._server.last_error = None  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
 
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
@@ -197,10 +197,10 @@ class OAuth2LocalhostServer:
         if self._server is None:
             raise RuntimeError("Server not started. Call start() first.")
         while time.monotonic() < deadline:
-            if self._server.last_error:  # type: ignore[attr-defined]
-                raise RuntimeError(f"OAuth2 error: {self._server.last_error}")  # type: ignore[attr-defined]
-            if self._server.auth_code:  # type: ignore[attr-defined]
-                return (self._server.auth_code, self._server.auth_state)  # type: ignore[attr-defined]
+            if self._server.last_error:  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+                raise RuntimeError(f"OAuth2 error: {self._server.last_error}")  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+            if self._server.auth_code:  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
+                return (self._server.auth_code, self._server.auth_state)  # type: ignore[attr-defined]  # dynamic attribute set on HTTPServer at runtime
             time.sleep(0.1)
         raise TimeoutError(f"No OAuth2 callback received within {timeout}s")
 
@@ -215,7 +215,7 @@ class OAuth2LocalhostServer:
         self.start()
         return self
 
-    def __exit__(self, *args: Any) -> None:  # noqa: ANN401
+    def __exit__(self, *args: Any) -> None:  # noqa: ANN401 — context manager protocol
         self.stop()
 
 

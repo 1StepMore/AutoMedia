@@ -2,6 +2,10 @@
 
 from typing import Any, Protocol, runtime_checkable
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 @runtime_checkable
 class GateHook(Protocol):

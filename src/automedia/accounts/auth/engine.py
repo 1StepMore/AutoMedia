@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+from structlog import get_logger
 
 from automedia.accounts.auth.api_key import ApiKeyAuth
 from automedia.accounts.auth.cookie import CookieAuth
@@ -17,7 +18,7 @@ from automedia.accounts.auth.oauth2 import (
 )
 from automedia.accounts.models import AuthType, SessionToken
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 @dataclass
@@ -80,10 +81,49 @@ class AuthFlowEngine:
             return key
 
         elif auth_type == AuthType.OAUTH2_AUTH_CODE:
-            raise NotImplementedError(
-                "OAuth2 authorization_code requires start_oauth2_auth_code_flow() "
-                "for the multi-step redirect process."
+            token_url = credentials.get("token_url", "")
+            auth_url = credentials.get("auth_url", "")
+            client_id = credentials.get("client_id", "")
+            client_secret = credentials.get("client_secret")
+            scope = credentials.get("scope", "")
+            platform = credentials.get("platform", "unknown")
+
+            flow_info = self.start_oauth2_auth_code_flow(
+                platform=platform,
+                auth_url=auth_url,
+                client_id=client_id,
+                scope=scope,
             )
+
+            local_server: OAuth2LocalhostServer | None = flow_info.get("local_server")  # type: ignore[assignment]
+            session_id: str | None = flow_info.get("session_id")  # type: ignore[assignment]
+            authorization_url: str | None = flow_info.get("authorization_url")  # type: ignore[assignment]
+
+            log.info(
+                "oauth2.auth_code.flow_started",
+                session_id=session_id,
+                authorization_url=authorization_url,
+                redirect_uri=flow_info.get("redirect_uri"),
+            )
+
+            try:
+                if local_server is None or session_id is None:
+                    raise ValueError(
+                        "Localhost server and session required for OAuth2 authorization_code flow. "
+                        + "Provide a redirect_uri or allow the server to create one."
+                    )
+                code, _state = local_server.wait_for_code(timeout=300)
+
+                return self.complete_oauth2_flow(
+                    session_id=session_id,
+                    code=code,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    token_url=token_url,
+                )
+            finally:
+                if local_server is not None:
+                    local_server.stop()
 
         else:
             raise ValueError(f"Unsupported auth type: {auth_type}")

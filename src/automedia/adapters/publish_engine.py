@@ -190,7 +190,7 @@ def build_error_result(
     error_code: str,
     error_message: str,
     exception: Exception | None = None,
-) -> dict[str, Any]:
+) -> PublishResult:
     """Build a structured error result dict for publish failures.
 
     The returned dict includes backward-compatible keys (``status``,
@@ -218,7 +218,7 @@ def build_error_result(
         error_code,
         (False, None, "investigate"),
     )
-    result: dict[str, Any] = {
+    result: PublishResult = {  # type: ignore[typeddict-item]  # error_code, error_message, retryable, action are not defined in PublishResult TypedDict
         "status": "error",
         "platform": platform,
         "reason": error_message,
@@ -228,9 +228,9 @@ def build_error_result(
         "action": action,
     }
     if max_retries is not None:
-        result["max_retries"] = max_retries
+        result["max_retries"] = max_retries  # type: ignore[typeddict-item]  # max_retries not a defined PublishResult key
     if exception is not None:
-        result["exception"] = type(exception).__name__
+        result["exception"] = type(exception).__name__  # type: ignore[typeddict-item]  # exception not a defined PublishResult key
     return result
 
 
@@ -251,7 +251,7 @@ def _publish_with_retry(
     project: dict[str, Any],
     platform: str,
     refresh_fn: Callable[[], bool] | None = None,
-) -> Any:
+) -> PublishResult:
     """Publish through *adapter* with automatic retry for transient errors.
 
     Retry policies:
@@ -298,6 +298,7 @@ def _publish_with_retry(
         try:
             result = adapter.publish(artifact_dir, project)
         except Exception as exc:
+            # Unknown adapter error — classify and decide retry strategy
             last_exception = exc
             last_reason = str(exc)
             last_error_code = classify_publish_error(exception=exc)
@@ -441,6 +442,7 @@ def _try_credential_refresh(
             log.warning("publish.engine.refresh.failed", platform=platform)
         return bool(success)
     except Exception as exc:
+        # Catch-all for credential refresh function errors
         log.error(
             "publish.engine.refresh.error",
             platform=platform,
@@ -513,7 +515,7 @@ class PublishEngine:
             )
             return False
 
-        platform = info.get("platform", "")  # type: ignore[typeddict-item]
+        platform = info.get("platform", "")  # type: ignore[typeddict-item]  # AccountInfo TypedDict may not define 'platform' as optional get() key
         auth_type = info.get("auth_type", "")
 
         # --- oauth2_client_cred (WeChat) — re-exchange via stored creds ---
@@ -566,6 +568,7 @@ class PublishEngine:
                 )
                 return True
             except Exception as exc:
+                # Catch-all for OAuth2 flow / session store errors during refresh
                 log.error(
                     "publish.engine.refresh.error",
                     platform=platform,
@@ -693,6 +696,7 @@ class PublishEngine:
                         )
                     results[account_id] = result
                 except Exception as exc:
+                    # Catch-all for per-account adapter instantiation/publish errors
                     results[account_id] = {"status": "error", "reason": str(exc)}
         else:
             # Legacy path: platform-based publishing
@@ -731,6 +735,7 @@ class PublishEngine:
                         )
                     results[name] = result
                 except Exception as exc:
+                    # Catch-all for legacy adapter publish errors
                     results[name] = {"status": "error", "reason": str(exc)}
 
         return results

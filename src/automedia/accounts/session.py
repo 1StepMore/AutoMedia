@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import logging
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from structlog import get_logger
+
 from automedia.accounts.models import HealthStatus, SessionToken
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 @dataclass
@@ -80,7 +81,7 @@ class SessionManager:
     def handle_rate_limit(self, account_id: str, retry_after: float = 60.0) -> None:
         """Mark an account as rate-limited with a cooldown period."""
         self._cooldowns[account_id] = time.monotonic() + retry_after
-        logger.warning(
+        log.warning(
             "Rate-limit applied to %s, cooldown %ss",
             account_id,
             retry_after,
@@ -93,13 +94,13 @@ class SessionManager:
     def set_token(self, account_id: str, token: SessionToken) -> None:
         """Set or update a cached token for an account."""
         self._sessions[account_id] = CachedSession(token=token)
-        logger.debug("Token cached for %s (expires at %s)", account_id, token.expires_at)
+        log.debug("Token cached for %s (expires at %s)", account_id, token.expires_at)
 
     def invalidate(self, account_id: str) -> None:
         """Invalidate cached token for an account."""
         _ = self._sessions.pop(account_id, None)
         _ = self._cooldowns.pop(account_id, None)
-        logger.debug("Session invalidated for %s", account_id)
+        log.debug("Session invalidated for %s", account_id)
 
     def get_token(
         self,
@@ -119,7 +120,7 @@ class SessionManager:
         if self._is_in_cooldown(account_id):
             cached = self._sessions.get(account_id)
             if cached:
-                logger.warning("Returning stale token for %s (in cooldown)", account_id)
+                log.warning("Returning stale token for %s (in cooldown)", account_id)
                 return cached.token
             return None
 
@@ -173,7 +174,8 @@ class SessionManager:
                     cached.refresh_count += 1
                 return new_token
             except Exception as e:
-                logger.error("Token refresh failed for %s: %s", account_id, e)
+                # Catch-all for refresh_fn errors — log and return None
+                log.error("Token refresh failed for %s: %s", account_id, e)
                 cached = self._sessions.get(account_id)
                 if cached:
                     cached.is_refreshing = False

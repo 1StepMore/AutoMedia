@@ -25,7 +25,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from automedia.asset_library.search import AssetLibrary
     from automedia.decision.base import DecisionArtifact
+    from automedia.hitl.config import HITLConfig
 
 
 class NodeExecutor:
@@ -38,7 +40,7 @@ class NodeExecutor:
         via ``get_executor(node_name)``.
     """
 
-    def __init__(self, hitl_config: Any) -> None:  # noqa: ANN401
+    def __init__(self, hitl_config: HITLConfig) -> None:
         """Initialize the executor with a HITL configuration instance."""
         self._config = hitl_config
         self._pending: dict[str, Any] = {}
@@ -50,9 +52,9 @@ class NodeExecutor:
     def execute(
         self,
         node_name: str,
-        agent: Any,  # noqa: ANN401
+        agent: Any,  # noqa: ANN401 — duck-typed: any object with execute(context, asset_library)
         context: dict[str, Any],
-        asset_library: Any = None,  # noqa: ANN401
+        asset_library: AssetLibrary | None = None,
     ) -> DecisionArtifact | None:
         """Execute *node_name* via *agent*.
 

@@ -15,14 +15,15 @@ The search pipeline
 
 from __future__ import annotations
 
-import logging
 from typing import Any
+
+from structlog import get_logger
 
 from automedia.asset_library.db import AssetDatabase
 from automedia.asset_library.ingest import IngestResult, ingest_artifacts
 from automedia.asset_library.vector_store import VectorStore
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -317,7 +318,7 @@ class AssetLibrary:
 
 
 def _has_tag_overlap(
-    asset_tags: Any,  # noqa: ANN401 — JSON-deserialized, type varies
+    asset_tags: object,  # JSON-deserialized, type varies
     filter_tags: set[str],
 ) -> bool:
     """Check whether any of *filter_tags* appear in the asset's tags."""

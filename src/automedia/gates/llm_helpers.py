@@ -18,18 +18,18 @@ Usage
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field
+from structlog import get_logger
 
 from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.prompts import load_prompt
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class LLMCheckResult(TypedDict, total=False):
@@ -128,7 +128,7 @@ def llm_check_with_fallback(
     prompt_template_name: str,
     deterministic_fn: Callable[[str], LLMCheckResult],
     timeout: int = 30,
-    **kwargs: Any,  # noqa: ANN401  — passthrough to LLM call
+    **kwargs: Any,  # noqa: ANN401 — passthrough to load_prompt()
 ) -> LLMCheckResult:
     """Run an LLM-based check with deterministic fallback.
 
@@ -202,7 +202,7 @@ def llm_check_with_fallback(
             response["brand_compliance"] = result.brand_compliance
 
         _llm_success_count += 1
-        logger.info(
+        log.info(
             "LLM check succeeded for %s (total: llm=%d, fallback=%d)",
             check_type,
             _llm_success_count,
@@ -212,14 +212,14 @@ def llm_check_with_fallback(
 
     except FutureTimeoutError:
         _fallback_count += 1
-        logger.warning(
+        log.warning(
             "LLM check timed out for %s after %ds, falling back to deterministic",
             check_type,
             timeout,
         )
     except Exception as exc:
         _fallback_count += 1
-        logger.warning(
+        log.warning(
             "LLM check failed for %s, falling back to deterministic: %s",
             check_type,
             exc,
@@ -229,7 +229,7 @@ def llm_check_with_fallback(
     det_result = deterministic_fn(text)
     det_result["method"] = "deterministic"
 
-    logger.info(
+    log.info(
         "Deterministic fallback used for %s (total: llm=%d, fallback=%d)",
         check_type,
         _llm_success_count,
@@ -291,7 +291,7 @@ def run_deep_check(
             "method": "llm",
         }
     except Exception:
-        logger.debug("LLM deep-check failed (advisory, suppressed)", exc_info=True)
+        log.debug("LLM deep-check failed (advisory, suppressed)", exc_info=True)
         return {
             "passed": True,
             "issues": [],

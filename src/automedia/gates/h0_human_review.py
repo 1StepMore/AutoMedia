@@ -22,7 +22,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from structlog import get_logger
+
+from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+
+log = get_logger(__name__)
 
 # Default HITL timeout: 24 hours
 _DEFAULT_HITL_TIMEOUT_S: int = 86400
@@ -38,7 +43,7 @@ class H0HumanReviewGate(BaseGate):
     _gate_name = "H0"
     _failure_mode = "stop"
 
-    def execute(self, gate_context: Any) -> dict[str, Any]:  # noqa: ANN401 — gate_context is dict-like
+    def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Execute the H0 gate.
 
         Parameters

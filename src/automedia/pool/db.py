@@ -9,6 +9,10 @@ import sqlite3
 from pathlib import Path
 from typing import Any, TypedDict
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 class TopicRecord(TypedDict, total=False):
     """A single topic row from the pool database."""
@@ -163,7 +167,7 @@ class PoolDB:
         row = cur.fetchone()
         if row is None:
             return None
-        return dict(row)  # type: ignore[return-value]
+        return TopicRecord(**row)
 
     def list_topics(self, status: str | None = None) -> list[TopicRecord]:
         """Return all topics, optionally filtered by *status*."""
@@ -171,7 +175,7 @@ class PoolDB:
             cur = self.conn.execute("SELECT * FROM topics WHERE status = ? ORDER BY id", (status,))
         else:
             cur = self.conn.execute("SELECT * FROM topics ORDER BY id")
-        return [dict(r) for r in cur.fetchall()]  # type: ignore[misc]
+        return [TopicRecord(**r) for r in cur.fetchall()]
 
     def mark_selected(self, topic_id: int) -> None:
         """Update a topic's status to ``'selected'``."""

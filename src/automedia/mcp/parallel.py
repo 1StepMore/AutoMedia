@@ -27,15 +27,16 @@ Usage::
 from __future__ import annotations
 
 import contextlib
-import logging
 import signal
 import subprocess
 import sys
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.omni.config import load_omni_config
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Server definitions
@@ -87,7 +88,7 @@ def _terminate_all_children() -> None:
     """Terminate all tracked child processes gracefully."""
     for name, proc in list(_children.items()):
         if proc.poll() is None:
-            logger.info("Terminating [%s] PID %d", name, proc.pid)
+            log.info("Terminating [%s] PID %d", name, proc.pid)
             with contextlib.suppress(OSError):
                 proc.terminate()
     # Wait briefly for graceful shutdown, then force-kill survivors
@@ -95,15 +96,15 @@ def _terminate_all_children() -> None:
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            logger.warning("Force-killing [%s] PID %d", name, proc.pid)
+            log.warning("Force-killing [%s] PID %d", name, proc.pid)
             with contextlib.suppress(OSError):
                 proc.kill()
     _children.clear()
 
 
-def _signal_handler(signum: int, frame: Any) -> None:  # noqa: ANN401 — signal handler
+def _signal_handler(signum: int, frame: object) -> None:  # noqa: ANN401 — signal handler frame is untyped
     """Signal handler that terminates all children and exits."""
-    logger.info("Received signal %d — shutting down all servers", signum)
+    log.info("Received signal %d — shutting down all servers", signum)
     _terminate_all_children()
     raise SystemExit(0)
 
@@ -152,7 +153,7 @@ def start_parallel_servers(mode: str | None = None) -> dict[str, subprocess.Pope
             "-m",
             defn["module"],
         ]
-        logger.info("Starting [%s] — %s (port %d)", name, defn["description"], defn["port"])
+        log.info("Starting [%s] — %s (port %d)", name, defn["description"], defn["port"])
 
         proc = subprocess.Popen(  # noqa: S603 — trusted internal command
             cmd,
@@ -161,7 +162,7 @@ def start_parallel_servers(mode: str | None = None) -> dict[str, subprocess.Pope
             stderr=subprocess.PIPE,
         )
         _children[name] = proc
-        logger.info("[%s] started (PID: %d)", name, proc.pid)
+        log.info("[%s] started (PID: %d)", name, proc.pid)
 
     return dict(_children)
 
@@ -176,14 +177,14 @@ def stop_parallel_servers(servers: dict[str, subprocess.Popen[bytes]]) -> None:
     """
     for name, proc in servers.items():
         if proc.poll() is None:
-            logger.info("Stopping [%s] PID %d", name, proc.pid)
+            log.info("Stopping [%s] PID %d", name, proc.pid)
             with contextlib.suppress(OSError):
                 proc.terminate()
     for name, proc in servers.items():
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            logger.warning("Force-killing [%s] PID %d", name, proc.pid)
+            log.warning("Force-killing [%s] PID %d", name, proc.pid)
             with contextlib.suppress(OSError):
                 proc.kill()
 

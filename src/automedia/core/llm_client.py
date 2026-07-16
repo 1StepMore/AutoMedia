@@ -7,8 +7,10 @@ Config is read from the merged AutoMedia config dict at call time.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -17,9 +19,142 @@ from tenacity import (
 )
 
 from automedia.core.credential_loader import resolve_api_key
+from automedia.exceptions import AutoMediaError
 
 if TYPE_CHECKING:
     from openai import OpenAI
+    from openai.types.chat import ChatCompletion, ParsedChatCompletion
+
+
+# ---------------------------------------------------------------------------
+# Token usage tracker (thread-local, module-level)
+# ---------------------------------------------------------------------------
+
+
+class _UsageTracker:
+    """Thread-local accumulator for LLM token usage.
+
+    Thread safety comes from :class:`threading.local` — each thread gets
+    its own call list and counters.  No locks needed.
+    """
+
+    def __init__(self) -> None:
+        self._local = threading.local()
+
+    def reset(self) -> None:
+        """Clear accumulated usage for the current thread."""
+        self._local.calls = []
+        self._local.prompt_tokens = 0
+        self._local.completion_tokens = 0
+        self._local.total_tokens = 0
+
+    def record(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+        model: str,
+    ) -> None:
+        """Record a single LLM call's token usage."""
+        if not hasattr(self._local, "calls"):
+            self.reset()
+        self._local.calls.append({
+            "model": model,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        })
+        self._local.prompt_tokens += prompt_tokens
+        self._local.completion_tokens += completion_tokens
+        self._local.total_tokens += total_tokens
+
+    def snapshot(self) -> dict[str, Any]:
+        """Return a snapshot of all accumulated usage.
+
+        Returns
+        -------
+        dict
+            Keys: ``calls`` (list of per-call dicts), ``prompt_tokens``,
+            ``completion_tokens``, ``total_tokens``.
+        """
+        if not hasattr(self._local, "calls"):
+            return {
+                "calls": [],
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            }
+        return {
+            "calls": list(self._local.calls),
+            "prompt_tokens": self._local.prompt_tokens,
+            "completion_tokens": self._local.completion_tokens,
+            "total_tokens": self._local.total_tokens,
+        }
+
+    def delta_from(self, previous: dict[str, Any]) -> dict[str, Any]:
+        """Return usage delta since *previous* snapshot.
+
+        Parameters
+        ----------
+        previous:
+            A snapshot dict previously returned by :meth:`snapshot`.
+
+        Returns
+        -------
+        dict
+            Keys: ``calls`` (new calls only), ``prompt_tokens``,
+            ``completion_tokens``, ``total_tokens``.
+        """
+        current = self.snapshot()
+        prev_count = len(previous.get("calls", []))
+        return {
+            "calls": current["calls"][prev_count:],
+            "prompt_tokens": current["prompt_tokens"] - previous.get("prompt_tokens", 0),
+            "completion_tokens": current["completion_tokens"] - previous.get("completion_tokens", 0),
+            "total_tokens": current["total_tokens"] - previous.get("total_tokens", 0),
+        }
+
+
+_usage_tracker = _UsageTracker()
+
+
+def reset_usage_tracking() -> None:
+    """Reset the thread-local usage tracker.
+
+    Call at the start of each pipeline run so that per-pipeline
+    accumulations do not leak across runs in the same thread.
+    """
+    _usage_tracker.reset()
+
+
+def get_usage_summary() -> dict[str, Any]:
+    """Return the current accumulated usage snapshot.
+
+    Returns
+    -------
+    dict
+        Keys: ``calls`` (list of dicts with ``model``, ``prompt_tokens``,
+        ``completion_tokens``, ``total_tokens``), ``prompt_tokens``,
+        ``completion_tokens``, ``total_tokens``.
+    """
+    return _usage_tracker.snapshot()
+
+
+def get_usage_delta(previous: dict[str, Any]) -> dict[str, Any]:
+    """Return usage delta since *previous* snapshot.
+
+    Parameters
+    ----------
+    previous:
+        A snapshot dict previously returned by :func:`get_usage_summary`.
+
+    Returns
+    -------
+    dict
+        Keys: ``calls`` (new calls only), ``prompt_tokens``,
+        ``completion_tokens``, ``total_tokens``.
+    """
+    return _usage_tracker.delta_from(previous)
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +186,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class LLMError(Exception):
+class LLMError(AutoMediaError):
     """Raised when the LLM provider returns an error or is unreachable."""
 
 
@@ -130,14 +265,17 @@ def _build_client(
 def _llm_chat_completion_with_retry(
     client: OpenAI,
     model: str,
-    messages: list[dict[str, str]],  # type: ignore[type-arg]
+    messages: list[dict[str, str]],  # type: ignore[type-arg]  # OpenAI expects ChatCompletionMessageParam, not plain dict[str, str]
     temperature: float,
     max_tokens: int,
-) -> Any:  # noqa: ANN401 — LLM response type varies by provider
+) -> ChatCompletion:
     """Call ``client.chat.completions.create`` with exponential-backoff retry.
 
     Retries on transient OpenAI errors (rate-limit, timeout, connection).
     Non-retryable errors propagate immediately.
+
+    Token usage from the response is automatically recorded in the
+    thread-local :class:`_UsageTracker`.
     """
 
     @retry(
@@ -146,29 +284,43 @@ def _llm_chat_completion_with_retry(
         retry=retry_if_exception_type(_RETRYABLE_ERRORS),
         reraise=True,
     )
-    def _call() -> Any:  # noqa: ANN401 — inner retry helper
+    def _call() -> ChatCompletion:
         return client.chat.completions.create(
             model=model,
-            messages=messages,  # type: ignore[arg-type]
+            messages=messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
             temperature=temperature,
             max_tokens=max_tokens,
         )
 
-    return _call()
+    response = _call()
+
+    # Capture token usage — .usage may be None for some providers
+    if response.usage is not None:
+        _usage_tracker.record(
+            prompt_tokens=response.usage.prompt_tokens or 0,
+            completion_tokens=response.usage.completion_tokens or 0,
+            total_tokens=response.usage.total_tokens or 0,
+            model=model,
+        )
+
+    return response
 
 
 def _llm_structured_completion_with_retry(
     client: OpenAI,
     model: str,
-    messages: list[dict[str, str]],  # type: ignore[type-arg]
+    messages: list[dict[str, str]],  # type: ignore[type-arg]  # OpenAI expects ChatCompletionMessageParam, not plain dict[str, str]
     response_format: type,
     temperature: float,
     max_tokens: int,
-) -> Any:  # noqa: ANN401 — LLM response type varies by provider
+) -> ParsedChatCompletion:
     """Call ``client.beta.chat.completions.parse`` with exponential-backoff retry.
 
     Retries on transient OpenAI errors (rate-limit, timeout, connection).
     Non-retryable errors propagate immediately.
+
+    Token usage from the response is automatically recorded in the
+    thread-local :class:`_UsageTracker`.
     """
 
     @retry(
@@ -177,16 +329,26 @@ def _llm_structured_completion_with_retry(
         retry=retry_if_exception_type(_RETRYABLE_ERRORS),
         reraise=True,
     )
-    def _call() -> Any:  # noqa: ANN401 — inner retry helper
+    def _call() -> ParsedChatCompletion:
         return client.beta.chat.completions.parse(
             model=model,
-            messages=messages,  # type: ignore[arg-type]
+            messages=messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
             response_format=response_format,
             temperature=temperature,
             max_tokens=max_tokens,
         )
 
-    return _call()
+    response = _call()
+
+    if response.usage is not None:
+        _usage_tracker.record(
+            prompt_tokens=response.usage.prompt_tokens or 0,
+            completion_tokens=response.usage.completion_tokens or 0,
+            total_tokens=response.usage.total_tokens or 0,
+            model=model,
+        )
+
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +387,7 @@ def _structured_completion_with_fallback(
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> Any:  # noqa: ANN401
+) -> BaseModel:
     """Try structured completion; fall back to manual JSON parse.
 
     Attempts the OpenAI ``beta.chat.completions.parse`` endpoint first.
@@ -323,7 +485,7 @@ def _structured_completion_with_fallback(
     raw_text: str = response.choices[0].message.content or ""
 
     try:
-        return response_format.model_validate_json(raw_text)  # type: ignore[attr-defined]
+        return response_format.model_validate_json(raw_text)  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
     except Exception as exc:
         raise LLMError(
             f"Failed to parse LLM response as {response_format.__name__}: {exc}"
@@ -340,7 +502,7 @@ def llm_complete_structured_safe(
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> Any:  # noqa: ANN401
+) -> BaseModel:
     """Send a structured completion request with automatic fallback.
 
     Wraps :func:`_structured_completion_with_fallback` to provide a
@@ -488,7 +650,7 @@ def llm_complete_structured(
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> Any:  # noqa: ANN401 — LLM response type varies
+) -> BaseModel:
     """Send a chat-completion request with structured output (JSON schema).
 
     Uses OpenAI's ``response_format`` parameter with ``json_schema`` type.

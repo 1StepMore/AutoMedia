@@ -12,13 +12,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 from typing import Any
+
+from structlog import get_logger
 
 from automedia.asset_library.db import AssetDatabase
 from automedia.asset_library.vector_store import VectorStore
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -96,7 +97,7 @@ def migrate_assets(
         vs = VectorStore(brand=brand)
         embeddings = vs.get_all_embeddings()
     except Exception as exc:
-        logger.warning("Could not read Chroma embeddings for '%s': %s", brand, exc)
+        log.warning("Could not read Chroma embeddings for '%s': %s", brand, exc)
         # Non-fatal — we proceed with zero embeddings
     report["embedding_count"] = len(embeddings)
 
@@ -197,7 +198,7 @@ def _insert_into_pg(
 
     Creates the schema and table if they do not exist.
     """
-    import psycopg2  # type: ignore[import-untyped]
+    import psycopg2  # type: ignore[import-untyped]  # psycopg2 has no type stubs
 
     conn = psycopg2.connect(uri)
     try:

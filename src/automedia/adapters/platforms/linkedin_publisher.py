@@ -179,7 +179,7 @@ class LinkedInPublisher(BasePlatformAdapter):
         # --- read content ------------------------------------------------------
         content_result = self._read_content(artifact_dir, project)
         if content_result.get("status") != "ok":
-            return content_result  # type: ignore[return-value]
+            return content_result  # type: ignore[return-value]  # content_result is dict[str,Any]; PublishResult TypedDict expected
 
         post_text = content_result["text"]
         if not post_text:

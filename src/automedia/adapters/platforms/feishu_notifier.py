@@ -8,6 +8,7 @@ credential.
 
 from __future__ import annotations
 
+from types import ModuleType
 from typing import Any
 
 from structlog import get_logger
@@ -18,15 +19,17 @@ from automedia.core.credential_loader import load_credential_or_env
 log = get_logger(__name__)
 
 # httpx is an optional dependency; fall back gracefully when unavailable
-_httpx_module: Any = None
+_httpx_module: ModuleType | None
 _has_httpx = False
 try:
-    import httpx as _httpx_module  # type: ignore[assignment]
+    import httpx
 
+    _httpx_module = httpx
     _has_httpx = True
 except ImportError:  # pragma: no cover
     from automedia.core._import_helpers import warn_missing_optional
 
+    _httpx_module = None
     warn_missing_optional("httpx", feature="Feishu notifications disabled")
 
 
@@ -131,6 +134,7 @@ class FeishuNotifier(BasePlatformAdapter):
         }
 
         # --- POST ---------------------------------------------------------------
+        assert _httpx_module is not None  # guarded by _has_httpx check above
         try:
             resp = _httpx_module.post(
                 webhook_url,

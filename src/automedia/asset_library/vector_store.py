@@ -12,12 +12,16 @@ gracefully by returning empty results from search operations.
 from __future__ import annotations
 
 import contextlib
-import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    import chromadb
+
+from structlog import get_logger
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Chroma availability check
@@ -59,8 +63,8 @@ class VectorStore:
     def __init__(self, brand: str) -> None:
         self._brand = brand
         self._collection_name = f"automedia_{brand}"
-        self._client: Any = None  # chromadb.PersistentClient | None
-        self._collection: Any = None  # chromadb.Collection | None
+        self._client: chromadb.PersistentClient | None = None
+        self._collection: chromadb.Collection | None = None
         self._chroma_dir = (
             Path(os.path.expanduser("~/.automedia/asset-library/")) / brand / "chroma"
         )
@@ -69,7 +73,7 @@ class VectorStore:
             try:
                 self._init_client()
             except Exception as exc:
-                logger.warning(
+                log.warning(
                     "Failed to initialise Chroma client for brand '%s': %s",
                     brand,
                     exc,
@@ -141,7 +145,7 @@ class VectorStore:
             available returns an empty string.
         """
         if not self.available:
-            logger.debug("Chroma unavailable — skipping embedding for %s", doc_id)
+            log.debug("Chroma unavailable — skipping embedding for %s", doc_id)
             return ""
 
         vec_id = str(doc_id)
@@ -154,7 +158,7 @@ class VectorStore:
                 metadatas=[meta],
             )
         except Exception as exc:
-            logger.error("Failed to add embedding for %s: %s", doc_id, exc)
+            log.error("Failed to add embedding for %s: %s", doc_id, exc)
             return ""
 
         return vec_id
@@ -181,7 +185,7 @@ class VectorStore:
             not available or the search fails.
         """
         if not self.available:
-            logger.debug("Chroma unavailable — returning empty search results")
+            log.debug("Chroma unavailable — returning empty search results")
             return []
 
         try:
@@ -190,7 +194,7 @@ class VectorStore:
                 n_results=n_results,
             )
         except Exception as exc:
-            logger.error("Vector search failed: %s", exc)
+            log.error("Vector search failed: %s", exc)
             return []
 
         return self._format_results(results)
@@ -230,7 +234,7 @@ class VectorStore:
         try:
             self._collection.delete(ids=[vector_id])
         except Exception as exc:
-            logger.error("Failed to delete embedding %s: %s", vector_id, exc)
+            log.error("Failed to delete embedding %s: %s", vector_id, exc)
 
     # -- Bulk operations ------------------------------------------------------
 
@@ -245,13 +249,13 @@ class VectorStore:
         data from Chroma before migrating to pgvector.
         """
         if not self.available:
-            logger.debug("Chroma unavailable — returning empty embedding list")
+            log.debug("Chroma unavailable — returning empty embedding list")
             return []
 
         try:
-            raw = self._collection.get(limit=None)  # noqa: E501  # type: ignore[arg-type]
+            raw = self._collection.get(limit=None)  # noqa: E501  # type: ignore[arg-type]  # chromadb.Collection.get() expects int for limit, None is valid at runtime but typing doesn't allow it
         except Exception as exc:
-            logger.error("Failed to get all embeddings: %s", exc)
+            log.error("Failed to get all embeddings: %s", exc)
             return []
 
         formatted: list[dict[str, Any]] = []
@@ -277,7 +281,7 @@ class VectorStore:
         try:
             return self._collection.count()
         except (ValueError, RuntimeError):
-            logger.debug("VectorStore.count() failed, returning 0")
+            log.debug("VectorStore.count() failed, returning 0")
             return 0
 
     def reset(self) -> None:
@@ -291,7 +295,7 @@ class VectorStore:
                 name=self._collection_name,
             )
         except Exception as exc:
-            logger.error("Failed to reset collection: %s", exc)
+            log.error("Failed to reset collection: %s", exc)
             self._collection = None
 
     # -- Context manager ------------------------------------------------------

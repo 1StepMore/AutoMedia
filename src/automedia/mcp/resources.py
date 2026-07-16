@@ -11,8 +11,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.mcp._state import _lock, _pipeline_tracker
 from automedia.mcp.tools import _discover_projects, _resolve_projects_dir
+
+log = get_logger(__name__)
 
 
 def list_projects_resource() -> str:

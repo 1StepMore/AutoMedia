@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TypedDict
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 class AuthType(enum.StrEnum):
     """Authentication methods supported by platform accounts."""

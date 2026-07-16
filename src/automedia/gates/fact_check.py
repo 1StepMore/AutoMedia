@@ -18,8 +18,9 @@ falling back to the deterministic substring-matching logic.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
+
+from structlog import get_logger
 
 from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.gates._context import GateContext
@@ -28,7 +29,7 @@ from automedia.gates.base import BaseGate
 from automedia.gates.llm_helpers import G0CheckResult, LLMCheckResult, llm_check_with_fallback
 from automedia.prompts import load_prompt
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -274,7 +275,7 @@ def _run_plausibility_check(content: str, topic: str) -> dict[str, Any] | None:
         )
 
     except Exception:
-        logger.warning(
+        log.warning(
             "LLM plausibility check failed, falling back to skipped",
             exc_info=True,
         )
@@ -400,7 +401,7 @@ class G0FactCheck(BaseGate):
                     4,
                 )
 
-            logger.info("G0 fact-check method=%s passed=%s", method, llm_result["passed"])
+            log.info("G0 fact-check method=%s passed=%s", method, llm_result["passed"])
 
             return build_gate_result(
                 checks,

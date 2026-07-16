@@ -1,8 +1,9 @@
 """Structured logging configuration using structlog.
 
-Provides :func:`configure_structlog` for one-time setup and
+Provides :func:`configure_structlog` for one-time setup,
 :func:`get_logger` as a convenience wrapper around
-``structlog.get_logger``.
+``structlog.get_logger``, and :func:`bind_correlation_id` for
+distributed tracing.
 
 When ``AUTOMEDIA_LOG_FORMAT`` is set to ``"json"``, logs are rendered
 as single-line JSON (suitable for production / log aggregators).
@@ -14,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 
 import structlog
 
@@ -80,6 +82,21 @@ def configure_structlog() -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
+
+
+def bind_correlation_id(correlation_id: str | None = None) -> str:
+    """Generate a short hex correlation ID and bind it to the structlog context.
+
+    Uses ``uuid.uuid4().hex[:12]`` for compact, readable trace IDs.
+    When *correlation_id* is provided it is used as-is (for resuming an
+    existing trace across sub-pipelines or retries).
+
+    Returns the correlation ID so callers can store or forward it.
+    """
+    if correlation_id is None:
+        correlation_id = uuid.uuid4().hex[:12]
+    structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
+    return correlation_id
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:

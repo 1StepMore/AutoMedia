@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 from automedia.core.registry import BaseRegistry
 from automedia.gates._context import GateContext
@@ -52,9 +52,9 @@ class GateRegistry(BaseRegistry):
                     stacklevel=2,
                 )
         except ImportError:
-            import logging
+            from structlog import get_logger
 
-            logging.getLogger(__name__).debug(
+            get_logger(__name__).debug(
                 "Could not import failure_modes — RL7 check skipped"
             )
 
@@ -62,13 +62,13 @@ class GateRegistry(BaseRegistry):
     # Public API
     # ------------------------------------------------------------------
 
-    def register(self, gate_cls: type[BaseGate]) -> None:  # type: ignore[override]
+    def register(self, gate_cls: type[BaseGate]) -> None:  # type: ignore[override]  # narrower signature than BaseRegistry.register(key, value)
         """Register a BaseGate subclass under its ``gate_name``.
 
         Validates the gate name convention (RL6) and checks that a
         failure-mode entry exists (RL7).
         """
-        name: str = gate_cls._gate_name  # type: ignore[attr-defined]
+        name: str = gate_cls._gate_name
         super().register(name, gate_cls)
 
     def get(self, gate_name: str) -> type[BaseGate]:
@@ -103,11 +103,16 @@ class BaseGate(ABC):
     ``_registry`` singleton via ``__init_subclass__``.
     """
 
+    # Declared here so mypy knows subclasses define these; no default value
+    # so hasattr() in __init_subclass__ still works correctly.
+    _gate_name: ClassVar[str]
+    _failure_mode: ClassVar[str]
+
     @property
     def gate_name(self) -> str:
         """Human/short identifier for this gate (e.g. ``"G0"``)."""
         try:
-            return self._gate_name  # type: ignore[attr-defined]
+            return self._gate_name
         except AttributeError as err:
             raise NotImplementedError(
                 f"{type(self).__name__} must define class-level '_gate_name'"
@@ -121,7 +126,7 @@ class BaseGate(ABC):
     def failure_mode(self) -> str:
         """Behaviour when this gate fails — ``"stop"`` aborts the pipeline."""
         try:
-            return self._failure_mode  # type: ignore[attr-defined]
+            return self._failure_mode
         except AttributeError as err:
             raise NotImplementedError(
                 f"{type(self).__name__} must define class-level '_failure_mode'"
@@ -150,7 +155,7 @@ class BaseGate(ABC):
 
     # -- Automatic registration -------------------------------------------
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401 — pass-through
+    def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401 — pass-through to super().__init_subclass__
         """Auto-register concrete subclasses in the global registry."""
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "_gate_name") and hasattr(cls, "_failure_mode"):

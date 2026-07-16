@@ -13,10 +13,14 @@ Top-level exports
 
 from __future__ import annotations
 
+from structlog import get_logger
+
 from automedia.asset_library.db import ASSET_TYPES, AssetDatabase, AssetDoc
 from automedia.asset_library.ingest import IngestResult, ingest_artifacts
 from automedia.asset_library.search import AssetLibrary, search_assets
 from automedia.asset_library.vector_store import VectorStore
+
+log = get_logger(__name__)
 
 __all__ = [
     "ASSET_TYPES",

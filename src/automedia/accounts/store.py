@@ -33,8 +33,11 @@ from pathlib import Path
 from typing import Any
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from structlog import get_logger
 
 from automedia.accounts.models import AccountInfo
+
+log = get_logger(__name__)
 
 
 class AccountStore:

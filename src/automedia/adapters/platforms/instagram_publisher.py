@@ -382,20 +382,20 @@ class InstagramPublisher(BasePlatformAdapter):
                 "platform": "instagram",
                 "caption_preview": caption,
                 "media_url": media_url,
-            }  # type: ignore[typeddict-item]
+            }  # type: ignore[typeddict-item]  # caption_preview and media_url are not defined in PublishResult TypedDict
 
         # 1. Create media container
         container_result = self._create_media_container(
             token, user_id, media_type, media_url, caption
         )
         if container_result.get("status") != "ok":
-            return container_result  # type: ignore[return-value]
+            return container_result  # type: ignore[return-value]  # container_result is dict[str,Any]; PublishResult expected but dict literal OK at runtime
         creation_id = container_result["creation_id"]
 
         # 2. Publish the container
         publish_result = self._publish_container(token, user_id, creation_id)
         if publish_result.get("status") != "ok":
-            return publish_result  # type: ignore[return-value]
+            return publish_result  # type: ignore[return-value]  # publish_result is dict[str,Any]; PublishResult TypedDict expected
         published_media_id = publish_result["media_id"]
 
         # Build the Instagram post URL
@@ -411,7 +411,7 @@ class InstagramPublisher(BasePlatformAdapter):
             "platform": "instagram",
             "media_id": published_media_id,
             "url": post_url,
-        }  # type: ignore[typeddict-item]
+        }  # type: ignore[typeddict-item]  # media_id and url are defined in PublishResult but out-of-order key assignment confuses mypy
 
     # ------------------------------------------------------------------
     # Internal helpers

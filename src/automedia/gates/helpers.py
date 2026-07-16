@@ -10,7 +10,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.gates._result import CheckResult
+
+log = get_logger(__name__)
 
 
 def apply_mock_overrides(

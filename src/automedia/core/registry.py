@@ -25,7 +25,7 @@ class BaseRegistry:
     # Singleton plumbing
     # ------------------------------------------------------------------
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401
+    def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401 — pass-through to super().__init_subclass__
         """Initialize per-subclass singleton state when a subclass is created."""
         super().__init_subclass__(**kwargs)
         # Each concrete subclass gets its own singleton state.

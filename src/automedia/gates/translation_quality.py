@@ -17,9 +17,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import yaml
+from structlog import get_logger
 
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Garbled-text regex — matches Unicode replacement / noncharacters and low
@@ -105,10 +108,10 @@ def _parse_frontmatter(
     return True, data, None
 
 
-def _get_translation_md(translation_result: Any) -> str:  # noqa: ANN401
+def _get_translation_md(translation_result: dict[str, Any] | None) -> str:
     """Extract ``translated_md`` from *translation_result*.
 
-    Accepts either a dict or an object with a ``translated_md`` attribute.
+    Accepts a dict with a ``translated_md`` key or None.
     """
     if isinstance(translation_result, dict):
         return translation_result.get("translated_md", "")

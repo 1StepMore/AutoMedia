@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 class CheckResult(TypedDict):
     """Individual check dict produced by a gate check function.
@@ -116,7 +120,7 @@ def build_gate_result(
     error: str | None = None,
     expected_map: dict[str, str] | None = None,
     expected_suffix: str = "",
-    **extra: Any,  # noqa: ANN401 — pass-through to result dict
+    **extra: Any,  # noqa: ANN401 — pass-through to result dict; gate-specific keys vary
 ) -> dict[str, Any]:
     """Assemble the final gate result dict from individual *checks*.
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
+from structlog import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class ApiKeyAuth:

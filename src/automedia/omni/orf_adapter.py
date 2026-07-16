@@ -6,7 +6,11 @@ import os
 from pathlib import Path
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.omni.base import BaseOmniAdapter
+
+log = get_logger(__name__)
 
 
 class ORFAdapter(BaseOmniAdapter):
@@ -26,7 +30,7 @@ class ORFAdapter(BaseOmniAdapter):
         self,
         file_path: str,
         output_path: str | None = None,
-        **options: Any,  # noqa: ANN401 — pass-through
+        **options: Any,  # noqa: ANN401 — pass-through to orf library
     ) -> dict[str, Any]:
         """Convert a file to target format.
 

@@ -6,9 +6,12 @@ import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from structlog import get_logger
 from typing_extensions import override
 
 from automedia.omni.base import BaseOmniAdapter
+
+log = get_logger(__name__)
 
 
 @dataclass

@@ -176,7 +176,7 @@ class WordPressPublisher(BasePlatformAdapter):
 
         # 4. Optional: resolve categories
         category_ids: list[int] = []
-        raw_categories: Any = project.get("wordpress_categories") or project.get(
+        raw_categories: Any = project.get("wordpress_categories") or project.get(  # noqa: ANN401 — JSON-deserialized, type varies
             "categories"
         )
         if raw_categories:
@@ -313,7 +313,7 @@ class WordPressPublisher(BasePlatformAdapter):
         self,
         site_url: str,
         auth_header: dict[str, str],
-        raw_categories: Any,
+        raw_categories: Any,  # noqa: ANN401 — JSON-deserialized, type varies
     ) -> list[int]:
         """Resolve category names/IDs to WordPress category IDs.
 

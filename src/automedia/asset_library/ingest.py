@@ -21,16 +21,17 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.asset_library.db import ASSET_TYPES, AssetDatabase, AssetDoc
 from automedia.asset_library.vector_store import VectorStore
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Public dataclass
@@ -123,7 +124,7 @@ def ingest_artifacts(project_dir: str, brand: str) -> IngestResult:
     try:
         artifacts = _discover_artifacts(root)
         if not artifacts:
-            logger.info("No ingestible artifacts found in %s", root)
+            log.info("No ingestible artifacts found in %s", root)
             return result
 
         for file_path, hints in artifacts:
@@ -136,7 +137,7 @@ def ingest_artifacts(project_dir: str, brand: str) -> IngestResult:
 
             # Skip duplicate content (same checksum already ingested).
             if db.asset_exists_by_checksum(doc.checksum):
-                logger.debug("Skipping duplicate: %s", file_path)
+                log.debug("Skipping duplicate: %s", file_path)
                 result.success_count += 1  # count as success (idempotent)
                 continue
 
@@ -170,7 +171,7 @@ def ingest_artifacts(project_dir: str, brand: str) -> IngestResult:
                     db.conn.commit()
 
             result.success_count += 1
-            logger.info("Ingested: %s (%s)", file_path.name, doc.type)
+            log.info("Ingested: %s (%s)", file_path.name, doc.type)
 
     finally:
         db.close()

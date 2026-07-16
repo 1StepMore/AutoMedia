@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import logging
 import os
 import threading
 import time
@@ -17,7 +16,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from structlog import get_logger
 
+from automedia.core.logging import bind_correlation_id
 from automedia.mcp._state import (
     _SERVER_START,
     _lock,
@@ -26,7 +27,8 @@ from automedia.mcp._state import (
 from automedia.mcp.allowlist import (
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.pipelines.gate_engine import PipelineProgress, ProgressData
+from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult, ProgressData
+from automedia.pipelines.runner import VALID_MODES
 
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
@@ -39,7 +41,7 @@ def _require_allowed(path: str, *, tool_name: str = "") -> None:
 
     _srv._require_allowed(path, tool_name=tool_name)
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +101,7 @@ def _project_assets(project_dir: str) -> list[dict[str, Any]]:
     return assets
 
 
-def _pipeline_result_to_dict(result: Any) -> dict[str, Any]:  # noqa: ANN401
+def _pipeline_result_to_dict(result: PipelineResult) -> dict[str, Any]:
     """Convert a :class:`PipelineResult` dataclass to a plain dict."""
     from dataclasses import asdict
 
@@ -171,6 +173,7 @@ def select_topic(
         return {"selected": chosen, "remaining_count": len(topics) - 1}
 
     except Exception as exc:
+        # MCP boundary: catch-all to return error dict for any pool/DB failure
         return {"selected": None, "error": str(exc)}
 
 
@@ -225,6 +228,7 @@ def research_topics(
         )
         return result.model_dump()
     except Exception as exc:
+        # MCP boundary: catch-all for LLM/prompt/template errors
         return {"topics": [], "category": category, "total_found": 0, "error": str(exc)}
 
 
@@ -276,11 +280,11 @@ def run_pipeline(
         ``{"status": "failed", "error": str}`` on immediate failure.
     """
     # Pre-validate mode to fail fast
-    valid_modes = ("auto", "text_only", "text_with_cover", "video_only", "qa_only", "image-carousel", "social-thread", "short-video")
-    if mode not in valid_modes:
+    # Uses VALID_MODES shared constant from runner.py (single source of truth)
+    if mode not in VALID_MODES:
         return {
             "status": "failed",
-            "error": f"Unknown pipeline mode {mode!r}. Choose from: {list(valid_modes)}",
+            "error": f"Unknown pipeline mode {mode!r}. Choose from: {list(VALID_MODES)}",
         }
 
     # Validate source_path against allowlist
@@ -290,7 +294,8 @@ def run_pipeline(
         try:
             _require_allowed(source_path, tool_name="run_pipeline")
         except Exception as exc:
-            logger.warning("run_pipeline: source_path %s not in allowlist: %s", source_path, exc)
+            # Allowlist check failed — fall back gracefully rather than failing startup
+            log.warning("run_pipeline: source_path %s not in allowlist: %s", source_path, exc)
             source_path = ""
 
     project_id = str(uuid.uuid4())[:12]
@@ -302,6 +307,9 @@ def run_pipeline(
         """Background thread — wraps pipeline execution in try/except."""
         try:
             from automedia.pipelines.runner import run_full_pipeline
+
+            # Bind correlation_id for distributed tracing in this thread
+            bind_correlation_id()
 
             result = run_full_pipeline(
                 topic=topic,
@@ -315,6 +323,7 @@ def run_pipeline(
             )
             progress.project_id = result.project_id
         except Exception as exc:
+            # Background thread catch-all — pipeline errors stored in progress
             progress.error = str(exc)
 
     thread = threading.Thread(target=_run, daemon=True)
@@ -360,6 +369,7 @@ def batch_run(
 
     for topic in topics:
         try:
+            bind_correlation_id()
             pipeline_result = run_full_pipeline(
                 topic=topic,
                 brand=brand,
@@ -372,6 +382,7 @@ def batch_run(
                 "error": pipeline_result.error,
             })
         except Exception as exc:
+            # MCP boundary: per-topic catch-all so one failure doesn't stop the batch
             results.append({
                 "topic": topic,
                 "status": "failed",
@@ -453,6 +464,7 @@ def get_pipeline_status(
         return {"project": proj, "subdirs": subdirs}
 
     except Exception as exc:
+        # MCP boundary: catch-all for file/allowlist errors
         return {"error": str(exc)}
 
 
@@ -482,6 +494,7 @@ def list_projects(
         return {"projects": projects, "count": len(projects)}
 
     except Exception as exc:
+        # MCP boundary: catch-all for file-scan/allowlist errors
         return {"projects": [], "error": str(exc)}
 
 
@@ -506,6 +519,7 @@ def get_project_assets(
         return {"assets": assets, "count": len(assets)}
 
     except Exception as exc:
+        # MCP boundary: catch-all for file-scan/allowlist errors
         return {"assets": [], "error": str(exc)}
 
 
@@ -562,6 +576,7 @@ def archive_project(
         return {"archived": True, "archive_dir": str(archive_dir)}
 
     except Exception as exc:
+        # MCP boundary: catch-all for file/allowlist/rename errors
         return {"archived": False, "error": str(exc)}
 
 
@@ -602,6 +617,7 @@ def list_topic_pool(
         return {"topics": topics, "count": len(topics)}
 
     except Exception as exc:
+        # MCP boundary: catch-all for PoolDB errors
         return {"topics": [], "error": str(exc)}
 
 
@@ -645,6 +661,7 @@ def pool_add_topic(
             "status": "pending",
         }
     except Exception as exc:
+        # MCP boundary: catch-all for PoolDB errors
         return {"error": str(exc)}
 
 
@@ -673,6 +690,7 @@ def _read_pipeline_schedules() -> list[dict[str, Any]]:
             return []
         return data.get("pipeline_schedules", []) or []
     except Exception:
+        # YAML parse errors are non-fatal — return empty schedule list
         return []
 
 
@@ -744,6 +762,7 @@ def add_cron_schedule(
         _write_pipeline_schedules(schedules)
         return {"added": True, "name": name}
     except Exception as exc:
+        # MCP boundary: catch-all for YAML write errors
         return {"error": str(exc)}
 
 
@@ -760,6 +779,7 @@ def list_cron_schedules() -> dict[str, Any]:
         schedules.sort(key=lambda s: s.get("name", ""))
         return {"schedules": schedules, "count": len(schedules)}
     except Exception as exc:
+        # MCP boundary: catch-all for YAML read errors
         return {"schedules": [], "error": str(exc)}
 
 
@@ -788,6 +808,7 @@ def remove_cron_schedule(name: str) -> dict[str, Any]:
         _write_pipeline_schedules(schedules)
         return {"removed": True, "name": name}
     except Exception as exc:
+        # MCP boundary: catch-all for YAML write errors
         return {"error": str(exc)}
 
 
@@ -824,6 +845,7 @@ def get_cron_health() -> dict[str, Any]:
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     except Exception as exc:
+        # MCP boundary: YAML parse errors are non-fatal
         return {
             "jobs_valid": False,
             "schedule_count": 0,
@@ -874,8 +896,9 @@ def get_cron_health() -> dict[str, Any]:
 
         if valid:
             try:
-                import croniter  # type: ignore[import-untyped]
                 from datetime import datetime
+
+                import croniter  # type: ignore[import-untyped]  # croniter has no type stubs
 
                 cron = croniter.croniter(expr.strip(), datetime.now())
                 next_triggers: list[str] = []
@@ -892,6 +915,7 @@ def get_cron_health() -> dict[str, Any]:
                 )
                 entry["next_triggers_note"] = croniter_note
             except Exception:
+                # croniter failure on a syntactically valid expression
                 entry["next_triggers"] = None
                 entry["next_triggers_note"] = (
                     "Cron expression is syntactically valid but "
@@ -975,8 +999,9 @@ def test_cron_schedule(
     count = max(1, min(count, 20))
 
     try:
-        import croniter
         from datetime import datetime
+
+        import croniter
 
         cron = croniter.croniter(expression.strip(), datetime.now())
         next_triggers: list[str] = []
@@ -1001,6 +1026,7 @@ def test_cron_schedule(
             ),
         }
     except Exception as exc:
+        # MCP boundary: croniter computation failures are non-fatal
         return {
             "valid": False,
             "expression": expression,
@@ -1098,6 +1124,7 @@ def publish_content(
             base_response["error"] = platform_result.get("reason", "unknown error")
         return base_response
     except Exception as exc:
+        # MCP boundary: catch-all for publish-engine / allowlist errors
         return {"published": False, "error": str(exc)}
 
 
@@ -1216,6 +1243,7 @@ def register_platform_adapter(
         }
 
     except Exception as exc:
+        # MCP boundary: catch-all for dynamic import / registry errors
         return {"registered": False, "error": str(exc)}
 
 
@@ -1257,6 +1285,7 @@ def extract_brief(
             "warnings": result.warnings,
         }
     except Exception as exc:
+        # MCP boundary: catch-all for OPP extraction errors
         return {"md_content": "", "manifest_json": {}, "warnings": [str(exc)]}
 
 
@@ -1297,6 +1326,7 @@ def localize_content(
             "warnings": result.warnings,
         }
     except Exception as exc:
+        # MCP boundary: catch-all for OL translation errors
         return {"translated_md": "", "xliff_path": None, "warnings": [str(exc)]}
 
 
@@ -1375,6 +1405,7 @@ def localize_output(
                     output_file.write_text(trans_result.translated_md, encoding="utf-8")
                     results.setdefault(lang, []).append(str(output_file))
                 except Exception as exc:
+                    # Per-file catch-all: one file failure doesn't stop other translations
                     warnings.append(f"Translation failed for {md_file.name} → {lang}: {exc}")
 
         return {
@@ -1383,6 +1414,7 @@ def localize_output(
             "warnings": warnings,
         }
     except Exception as exc:
+        # MCP boundary: catch-all for file I/O / translation errors
         return {
             "project_dir": project_dir,
             "results": {},
@@ -1393,7 +1425,7 @@ def localize_output(
 def format_output(
     content: str,
     target_format: str,
-    **options: Any,  # noqa: ANN401 — pass-through
+    **options: Any,  # noqa: ANN401 — pass-through to ORFAdapter.convert()
 ) -> dict[str, Any]:
     """Convert content to the specified output format.
 
@@ -1451,13 +1483,14 @@ def format_output(
             "warnings": errors if errors else [],
         }
     except Exception as exc:
+        # MCP boundary: catch-all for ORF conversion errors
         return {"output_path": "", "output_format": target_format, "warnings": [str(exc)]}
     finally:
         if temp_path is not None:
             try:
                 os.unlink(temp_path)
             except OSError:
-                logger.warning("Failed to clean up temp file %s", temp_path)
+                log.warning("Failed to clean up temp file %s", temp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1516,6 +1549,7 @@ def evaluate_content_quality(
         )
         return result.model_dump()
     except Exception as exc:
+        # MCP boundary: catch-all for LLM/prompt errors
         return {
             "quality_score": 0.0,
             "issues": [],
@@ -1550,6 +1584,7 @@ def health_check() -> dict[str, Any]:
             "tools_count": 25,
         }
     except Exception as exc:
+        # MCP boundary: catch-all for version import errors
         return {"status": "error", "error": str(exc)}
 
 
@@ -1642,6 +1677,7 @@ def get_config(key: str = "") -> dict[str, Any]:
 
         return {"value": value}
     except Exception as exc:
+        # MCP boundary: catch-all for config load errors
         return {"error": str(exc)}
 
 
@@ -1685,6 +1721,7 @@ def list_brands() -> dict[str, Any]:
         ]
         return {"brands": brands_list, "total": len(brands_list), "error": None}
     except Exception as exc:
+        # MCP boundary: catch-all for brand profile load errors
         return {"brands": [], "total": 0, "error": str(exc)}
 
 
@@ -1750,6 +1787,7 @@ def search_assets(
         limited = raw_results[:limit]
         return {"results": limited, "count": len(limited), "error": None}
     except Exception as exc:
+        # MCP boundary: catch-all for asset library search errors
         return {"results": [], "count": 0, "error": str(exc)}
 
 
@@ -1824,6 +1862,7 @@ def run_brand_strategy(
         )
         return result.model_dump()
     except Exception as exc:
+        # MCP boundary: catch-all for LLM/strategy generation errors
         return {"error": str(exc)}
 
 
@@ -1897,6 +1936,7 @@ def run_pipeline_from_strategy(
             response_format=PipelineStrategyOutput,
         )
 
+        bind_correlation_id()
         pipeline_result = run_full_pipeline(
             topic=topic,
             brand=brand,
@@ -1908,4 +1948,5 @@ def run_pipeline_from_strategy(
             "pipeline_result": _pipeline_result_to_dict(pipeline_result),
         }
     except Exception as exc:
+        # MCP boundary: catch-all for strategy generation + pipeline errors
         return {"error": str(exc)}

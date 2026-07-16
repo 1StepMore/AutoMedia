@@ -272,7 +272,7 @@ class RedditPublisher(BasePlatformAdapter):
         # 2. Read content from artifact directory
         content_result = self._read_content(artifact_dir, project)
         if content_result.get("status") != "ok":
-            return content_result  # type: ignore[return-value]
+            return content_result  # type: ignore[return-value]  # content_result is dict[str,Any]; PublishResult TypedDict expected
         title = content_result["title"]
         body_text = content_result["body_text"]
         post_url = content_result.get("url", "")

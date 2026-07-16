@@ -139,16 +139,4 @@ def disconnect(
     console.print(f"[green]Account disconnected: {account_id}[/green]")
 
 
-@app.command()
-def refresh(
-    account_id: str = typer.Argument(..., help="Account ID"),
-) -> None:
-    """Force refresh an account session."""
-    info = _get_registry().get(account_id)
-    if not info:
-        console.print(f"[red]Account not found: {account_id}[/red]")
-        raise typer.Exit(1)
 
-    # Actual refresh logic requires AuthFlowEngine integration (Wave 6+)
-    console.print(f"[yellow]Session refresh requested for {account_id}[/yellow]")
-    console.print("Full refresh integration requires AuthFlowEngine (Wave 6+).")

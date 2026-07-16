@@ -14,10 +14,14 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
+from structlog import get_logger
+
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.prompts import load_prompt
+
+log = get_logger(__name__)
 
 _EXPECTED_MAP: dict[str, str] = {
     "topic_present": "Topic is provided in gate_context",

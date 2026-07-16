@@ -16,6 +16,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # OPP – Omni Pre-Processor  (extraction)
 # ---------------------------------------------------------------------------

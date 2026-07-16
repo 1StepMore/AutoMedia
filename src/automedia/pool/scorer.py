@@ -10,13 +10,13 @@ semantic augmentation controlled by the ``enable_llm_scoring`` config flag.
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
+from structlog import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +277,7 @@ class TopicScorer:
             score = float(result.relevance_score)
             return max(0.0, min(1.0, score))
         except Exception:
-            logger.warning(
+            log.warning(
                 "LLM semantic scoring failed for topic=%r; "
                 "falling back to keyword-only correlation",
                 topic,

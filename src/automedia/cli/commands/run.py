@@ -9,12 +9,14 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+import click
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.cli.output_format import output_formatted_error, output_pipeline_error
+from automedia.core.logging import bind_correlation_id
 from automedia.pipelines.gate_engine import PipelineProgress
-from automedia.pipelines.runner import run_full_pipeline
+from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
 _MODEL_CONFIG_PATH = Path.home() / ".automedia" / "model_config.yaml"
 
@@ -87,6 +89,7 @@ def run_cmd(
         "auto",
         "--mode",
         "-m",
+        click_type=click.Choice(list(VALID_MODES)),
         help=(
             "Pipeline mode: auto, text_only, text_with_cover, "
             "video_only, qa_only, image-carousel, social-thread, "
@@ -157,6 +160,7 @@ def run_cmd(
                 typer.echo(f"{'='*60}")
 
             try:
+                bind_correlation_id()
                 cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
                 result = run_full_pipeline(
                     t,
@@ -235,6 +239,7 @@ def run_cmd(
         typer.echo("   Install HyperFrames for full video QA, or use --mode text_only to skip video.")
 
     try:
+        bind_correlation_id()
         cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
         result = run_full_pipeline(
             topic,

@@ -20,6 +20,7 @@ from typing import Any, Literal, TypedDict
 import tenacity
 from structlog import get_logger
 
+from automedia.exceptions import GateError
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateHook
@@ -27,7 +28,7 @@ from automedia.hooks.protocol import GateHook
 log = get_logger(__name__)
 
 # Exception categorization for gate error handling.
-_PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError)
+_PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError, GateError)
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
 # HITL (Human-in-the-Loop) coordination state.
@@ -88,6 +89,7 @@ class PipelineResult:
     end_time: float = 0.0
     total_duration_s: float = 0.0
     error: str | None = None
+    usage: dict[str, Any] = field(default_factory=dict)
 
 
 class GateErrorResult(TypedDict, total=False):
@@ -514,7 +516,7 @@ class GateEngine:
             gate_context["_level2_exhausted"] = True
 
             # Populate _escalated_gates for H0 human escalation (Task 20)
-            escalated: list[dict[str, Any]] = gate_context.setdefault(  # type: ignore[typeddict-unknown-key]
+            escalated: list[dict[str, Any]] = gate_context.setdefault(  # type: ignore[typeddict-unknown-key]  # _escalated_gates is not a key in GateContext TypedDict
                 "_escalated_gates", []
             )
             escalated.append({
@@ -585,7 +587,7 @@ class GateEngine:
             progress=progress,
         )
 
-        return sub_ok, sub_results  # type: ignore[return-value]
+        return sub_ok, sub_results  # type: ignore[return-value]  # sub_engine._run() returns union; cannot narrow on early_stop param
 
     # ------------------------------------------------------------------
     # Private gate execution loop
@@ -806,6 +808,7 @@ class GateEngine:
                             break
 
                         except Exception as exc:
+                            # Unknown error during quality retry — log, record, and re-raise
                             duration = time.monotonic() - start
                             tb = traceback.format_exc()
                             log.error(
@@ -946,6 +949,7 @@ class GateEngine:
                 # failure_mode == "retry" → transient error, exhausted retries, continue
 
             except Exception as exc:
+                # Unknown error during gate execution — log, record, stop pipeline
                 duration = time.monotonic() - start
                 all_ok = False
                 tb = traceback.format_exc()
@@ -1004,12 +1008,12 @@ class GateEngine:
             and *results* is the list of per-gate result dicts.
         """
         # Wire level 2 handler when regeneration is enabled
-        _local_max_regen = gate_context.get(  # type: ignore[typeddict-unknown-key]
+        _local_max_regen = gate_context.get(  # type: ignore[typeddict-unknown-key]  # max_regenerations not a known key in GateContext TypedDict
             "max_regenerations", self._max_regenerations
         )
-        if _local_max_regen > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]
-            gate_context["_level2_handler"] = self._handle_level2_regeneration  # type: ignore[arg-type]
-        return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]
+        if _local_max_regen > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]  # _local_max_regen is Any from TypedDict.get(); "in" not valid on TypedDict
+            gate_context["_level2_handler"] = self._handle_level2_regeneration  # type: ignore[arg-type]  # dynamic key not defined in GateContext TypedDict
+        return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
 
     def run_with_results(
         self,
@@ -1022,7 +1026,7 @@ class GateEngine:
         Unlike :meth:`run`, this always returns the full result list
         regardless of early-stop.
         """
-        return self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]
+        return self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
 
 
 # Keep a backward-compatible alias so existing ``from ... import Pipeline``

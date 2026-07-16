@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 
 class TopicDeduplicator:
     """Deduplicate topics by title similarity.

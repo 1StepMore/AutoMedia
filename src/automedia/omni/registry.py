@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from structlog import get_logger
+
 from automedia.core.registry import BaseRegistry
+
+log = get_logger(__name__)
 
 if TYPE_CHECKING:
     from automedia.omni.base import BaseOmniAdapter
@@ -41,7 +45,7 @@ class OmniToolRegistry(BaseRegistry):
     # ------------------------------------------------------------------
 
     @classmethod
-    def register(cls, adapter: BaseOmniAdapter) -> None:  # type: ignore[override]
+    def register(cls, adapter: BaseOmniAdapter) -> None:  # type: ignore[override]  # classmethod with narrower signature than BaseRegistry.register(key, value)
         """Register an omni adapter instance under its ``name``."""
         name = adapter.name
         inst = cls()

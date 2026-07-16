@@ -9,7 +9,11 @@ The Omni package provides a clean adapter layer over three external tools:
 
 from __future__ import annotations
 
+from structlog import get_logger
+
 from automedia.omni.allowlist import AllowlistConfig, is_read_only, load_allowlist, validate_path
+
+log = get_logger(__name__)
 from automedia.omni.base import BaseOmniAdapter
 from automedia.omni.config import OmniConfig, load_omni_config
 from automedia.omni.md5_integration import (

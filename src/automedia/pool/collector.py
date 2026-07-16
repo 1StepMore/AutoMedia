@@ -11,6 +11,10 @@ import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 if TYPE_CHECKING:
     from automedia.omni.opp_adapter import ExtractionResult
 

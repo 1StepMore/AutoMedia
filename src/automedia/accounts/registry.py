@@ -6,13 +6,14 @@ and business-level operations beyond raw CRUD.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
+
+from structlog import get_logger
 
 from automedia.accounts.models import AccountInfo
 from automedia.accounts.store import AccountStore
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class AccountRegistry:

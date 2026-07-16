@@ -11,10 +11,14 @@ Wave structure
 - **Wave 4**: Publishing integration with platform adapters
 """
 
+from structlog import get_logger
+
 from automedia.accounts.auth import AuthFlowEngine
 from automedia.accounts.registry import AccountRegistry
 from automedia.accounts.session import SessionManager
 from automedia.accounts.store import AccountStore
+
+log = get_logger(__name__)
 
 __all__ = [
     "AccountRegistry",

@@ -6,6 +6,10 @@ recommended fixes — serving as a quick-reference for debugging.
 
 from __future__ import annotations
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
 FAILURE_MODES: dict[str, dict[str, object]] = {
     "G0": {
         "description": (

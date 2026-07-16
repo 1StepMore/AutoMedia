@@ -51,7 +51,7 @@ except ImportError:
     from automedia.core._import_helpers import warn_missing_optional
 
     warn_missing_optional("keyring", install_command="pip install keyring")
-    _keyring = None  # type: ignore[assignment]
+    _keyring = None  # type: ignore[assignment]  # _keyring was a module from `import keyring`; reassigning to None changes the type
 
 # ---------------------------------------------------------------------------
 # Helpers
