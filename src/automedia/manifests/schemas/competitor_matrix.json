@@ -1,0 +1,1 @@
+{"required": ["competitors", "top_opportunities", "white_space_recommendations"], "properties": {"competitors": "array", "top_opportunities": "array", "white_space_recommendations": "array"}}

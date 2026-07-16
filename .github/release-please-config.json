@@ -3,7 +3,7 @@
     ".": {
       "release-type": "python",
       "package-name": "automedia",
-      "version-file": "automedia/_version.py",
+      "version-file": "src/automedia/_version.py",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,

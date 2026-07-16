@@ -1,0 +1,1 @@
+{"required": ["market_size", "consumer_profile", "cultural_taboos", "compliance_requirements"], "properties": {"market_size": "string", "consumer_profile": "object", "cultural_taboos": "array", "compliance_requirements": "array", "competitors_overview": "string"}}

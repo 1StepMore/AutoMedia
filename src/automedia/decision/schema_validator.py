@@ -1,7 +1,7 @@
 """Schema validation for Decision Artifacts.
 
 Validates structured output against JSON Schema files.
-Schemas are stored in ``solution-wise/schemas/``.
+Schemas are stored in ``manifests/schemas/``.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-_SCHEMA_DIR = Path(__file__).resolve().parent.parent.parent / "solution-wise" / "schemas"
+_SCHEMA_DIR = Path(__file__).resolve().parent.parent / "manifests" / "schemas"
 
 
 def validate_artifact(

@@ -4,7 +4,7 @@
 /solution-wise/
 /projects/
 /test-*/
-20260707_*/
+202607*/
 PRD/
 
 # ===== Internal / Developer-Only Docs =====
@@ -83,9 +83,7 @@ tests/fixtures/synth/**/api_key*
 *.gguf
 *.h5
 *.parquet
-20260708_*
-20260709_*
-20260710_test-topic/
+
 site/
 "=6"
 "ave 1                    Wave 2                          Wave 3\\\\"

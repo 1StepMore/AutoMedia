@@ -27,6 +27,9 @@ jobs:
           pip install -e ".[dev]"
       - name: Ruff
         run: ruff check src/automedia/ --ignore E501,E402,N806,E741
+      - name: Docstring coverage (interrogate)
+        continue-on-error: true
+        run: interrogate src/automedia/
       - name: Dead code detection (vulture)
         continue-on-error: true
         run: vulture src/automedia/ --min-confidence 80
@@ -100,7 +103,7 @@ jobs:
         run: |
           pip install -e ".[dev,omni]"
       - name: Verify Omni packages are importable
-        run: python scripts/verify-omni-packages.py
+        run: python -c "import opp; import ol_mcp; import orf; print('All Omni packages OK')"
       - name: Run Omni adapter tests
         continue-on-error: ${{ matrix.python-version != '3.11' }}
         run: python3 -m pytest tests/test_omni/ -v --tb=short

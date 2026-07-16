@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 25 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 33 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -28,7 +28,14 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
+
+from structlog import get_logger
+
+if TYPE_CHECKING:
+    from mcp.server.fastmcp import FastMCP
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
@@ -146,13 +153,13 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def create_server() -> Any:  # noqa: ANN401 — FastMCP type
+def create_server() -> FastMCP:
     """Create and configure the FastMCP server instance.
 
     Returns
     -------
     FastMCP
-        A fully configured server with all 29 tools and 5 resources registered.
+        A fully configured server with all 33 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -162,7 +169,7 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-"29 MCP tools for topic selection, pipeline execution, project\n"
+"33 MCP tools for topic selection, pipeline execution, project\n"
              "management, Omni Triad document processing, brand strategy,\n"
              "cron schedule management, content quality evaluation, and server health.\n"
             "\n"
@@ -698,13 +705,29 @@ def create_server() -> Any:  # noqa: ANN401 — FastMCP type
 # ---------------------------------------------------------------------------
 
 
+def _shutdown_handler(signum: int, frame: object) -> None:  # noqa: ANN401 — signal handler frame is untyped
+    """Clean shutdown on SIGTERM/SIGINT."""
+    import signal
+
+    from automedia.core.logging import get_logger
+
+    log = get_logger(__name__)
+    log.info("server.shutdown", signal=signum, hint="Shutting down MCP server")
+    signal.signal(signum, signal.SIG_DFL)
+    raise SystemExit(0)
+
+
 def main() -> None:
     """Run the AutoMedia MCP server (stdio transport)."""
     import argparse
+    import signal
+
+    signal.signal(signal.SIGTERM, _shutdown_handler)
+    signal.signal(signal.SIGINT, _shutdown_handler)
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 25 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 33 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",
