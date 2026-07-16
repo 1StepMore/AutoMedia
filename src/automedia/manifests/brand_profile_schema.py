@@ -20,13 +20,15 @@ from typing import Any
 
 import yaml
 
+from automedia.core.paths import get_user_config_dir
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Path constant (patched in tests)
 # ---------------------------------------------------------------------------
 
-_BRAND_PROFILES_PATH: Path = Path.home() / ".automedia" / "brand_profiles.yaml"
+_BRAND_PROFILES_PATH: Path = get_user_config_dir() / "brand_profiles.yaml"
 
 # ---------------------------------------------------------------------------
 # Dataclass

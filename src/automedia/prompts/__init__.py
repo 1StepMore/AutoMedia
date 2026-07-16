@@ -20,12 +20,14 @@ from pathlib import Path
 
 from jinja2 import Template
 
+from automedia.core.paths import get_user_config_dir
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
 _PROMPTS_DIR = Path(__file__).parent
-_OVERRIDE_DIR = Path.home() / ".automedia" / "overrides" / "prompts"
+_OVERRIDE_DIR = get_user_config_dir() / "overrides" / "prompts"
 
 # ---------------------------------------------------------------------------
 # Public API

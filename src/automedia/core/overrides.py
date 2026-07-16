@@ -17,6 +17,8 @@ from pathlib import Path
 
 import yaml
 
+from automedia.core.paths import get_user_config_dir
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -24,7 +26,7 @@ import yaml
 
 def _default_overrides_dir() -> Path:
     """Return ``~/.automedia/overrides`` (resolved lazily)."""
-    return Path.home() / ".automedia" / "overrides"
+    return get_user_config_dir() / "overrides"
 
 
 def _load_yaml_files(directory: Path) -> list[dict]:
