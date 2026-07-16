@@ -14,6 +14,8 @@ from pathlib import Path
 import yaml
 from structlog import get_logger
 
+from automedia.core.paths import get_user_config_dir
+
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -60,7 +62,7 @@ def load_omni_config(config_path: Path | None = None) -> OmniConfig:
         A populated config with defaults for missing keys.
     """
     path = (
-        config_path if config_path is not None else Path.home() / ".automedia" / "omni_config.yaml"
+        config_path if config_path is not None else get_user_config_dir() / "omni_config.yaml"
     )
 
     if not path.is_file():

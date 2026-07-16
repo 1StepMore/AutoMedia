@@ -9,10 +9,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+from automedia.core.paths import get_user_config_dir
+
 
 def _audit_log_path() -> Path:
     """Return the path to the force-provenance audit log."""
-    return Path.home() / ".automedia" / "audit" / "force_provenance.log"
+    return get_user_config_dir() / "audit" / "force_provenance.log"
 
 
 def log_force_provenance(

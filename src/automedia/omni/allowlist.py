@@ -16,6 +16,8 @@ from pathlib import Path
 import yaml
 from structlog import get_logger
 
+from automedia.core.paths import get_user_config_dir
+
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -63,7 +65,7 @@ def load_allowlist(path: Path | None = None) -> AllowlistConfig:
     AllowlistConfig
         A populated allowlist, or an empty one when the file is missing.
     """
-    p = path if path is not None else Path.home() / ".automedia" / "omni_allowlist.yaml"
+    p = path if path is not None else get_user_config_dir() / "omni_allowlist.yaml"
 
     if not p.is_file():
         return AllowlistConfig()

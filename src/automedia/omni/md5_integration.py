@@ -16,6 +16,8 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.paths import get_user_config_dir
+
 log = get_logger(__name__)
 
 OMNI_MD5_FILENAME = "pipeline_md5.json"
@@ -25,7 +27,7 @@ _OMNI_SECTIONS = ("omni_inputs", "omni_extraction", "omni_translation", "omni_or
 
 def _default_state_dir() -> Path:
     """Return the default state directory (``~/.automedia``)."""
-    return Path.home() / ".automedia"
+    return get_user_config_dir()
 
 
 def compute_md5(file_path: str | Path) -> str:
