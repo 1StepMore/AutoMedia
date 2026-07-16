@@ -146,7 +146,7 @@ def test_cruel_e_mcp_allowlist_clear_error() -> None:
 
     _reset_allowlist_cache()
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(PermissionError) as excinfo:
         _require_allowed("/etc/passwd")
 
     msg = str(excinfo.value)

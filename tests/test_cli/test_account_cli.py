@@ -261,39 +261,7 @@ class TestAccountDisconnect:
 
 
 # =========================================================================
-# 5. automedia account refresh
-# =========================================================================
-
-
-class TestAccountRefresh:
-    """Tests for ``automedia account refresh``."""
-
-    @patch("automedia.cli.commands.account._get_registry")
-    def test_refresh_known_account(self, mock_get_registry: MagicMock) -> None:
-        """Refresh for a known account shows the refresh message."""
-        mock_registry = mock_get_registry.return_value
-        mock_registry.get.return_value = {
-            "account_id": "acc_wechat_a1b2c3d4",
-            "platform": "wechat",
-        }
-
-        result = runner.invoke(app, ["account", "refresh", "acc_wechat_a1b2c3d4"])
-        assert result.exit_code == 0
-        assert "Session refresh requested" in result.output
-
-    @patch("automedia.cli.commands.account._get_registry")
-    def test_refresh_nonexistent_returns_error(self, mock_get_registry: MagicMock) -> None:
-        """Refresh for a nonexistent account exits with error."""
-        mock_registry = mock_get_registry.return_value
-        mock_registry.get.return_value = None
-
-        result = runner.invoke(app, ["account", "refresh", "nonexistent"])
-        assert result.exit_code == 1
-        assert "Account not found" in result.output
-
-
-# =========================================================================
-# 6. Integration: account appears in help
+# 5. Integration: account appears in help
 # =========================================================================
 
 

@@ -215,7 +215,7 @@ class TestAllowlist:
 
         allowed = str(tmp_path / "allowed")
         Path(allowed).mkdir(parents=True)
-        with pytest.raises(ValueError, match="not within any allowed directory"):
+        with pytest.raises(PermissionError, match="not within any allowed directory"):
             _require_allowed(".", tool_name="test_tool")
 
     def test_etc_outside_allowlist(self, tmp_path: Path) -> None:

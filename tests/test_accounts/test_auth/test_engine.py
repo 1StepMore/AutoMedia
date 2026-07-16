@@ -77,17 +77,39 @@ class TestAuthFlowEngineAuthenticate:
         )
         assert result == "https://hook.example.com/callback"
 
-    def test_oauth2_auth_code_raises(self) -> None:
-        """OAUTH2_AUTH_CODE raises NotImplementedError with guidance."""
+    @patch("automedia.accounts.auth.engine.OAuth2AuthCodeFlow")
+    @patch("automedia.accounts.auth.engine.OAuth2LocalhostServer")
+    def test_oauth2_auth_code_returns_token(
+        self, mock_server_class: MagicMock, mock_flow_class: MagicMock
+    ) -> None:
+        """OAUTH2_AUTH_CODE now completes the full flow and returns a SessionToken."""
+        mock_server = MagicMock()
+        mock_server_class.return_value = mock_server
+        mock_server.start.return_value = "http://127.0.0.1:9999/callback"
+        mock_server.wait_for_code.return_value = ("auth_code_xyz", "state")
+
+        mock_flow_instance = MagicMock()
+        mock_flow_class.return_value = mock_flow_instance
+        expected_token = SessionToken(
+            access_token="exchanged_token",
+            refresh_token="new_refresh",
+        )
+        mock_flow_instance.exchange_code.return_value = expected_token
+
         engine = AuthFlowEngine()
-        with pytest.raises(NotImplementedError, match="start_oauth2_auth_code_flow"):
-            engine.authenticate(
-                AuthType.OAUTH2_AUTH_CODE,
-                {
-                    "auth_url": "https://accounts.example.com/auth",
-                    "client_id": "cid",
-                },
-            )
+        token = engine.authenticate(
+            AuthType.OAUTH2_AUTH_CODE,
+            {
+                "auth_url": "https://accounts.example.com/auth",
+                "client_id": "cid",
+                "client_secret": "cs",
+                "token_url": "https://api.example.com/token",
+            },
+        )
+        assert isinstance(token, SessionToken)
+        assert token.access_token == "exchanged_token"
+        mock_server.wait_for_code.assert_called_once()
+        mock_server.stop.assert_called_once()
 
     def test_unsupported_auth_type_raises(self) -> None:
         """Unknown auth type raises ValueError."""

@@ -312,7 +312,7 @@ class TestRateLimitCooldown:
         """handle_rate_limit emits a warning log."""
         manager = SessionManager()
 
-        with patch("automedia.accounts.session.logger") as mock_logger:
+        with patch("automedia.accounts.session.log") as mock_logger:
             manager.handle_rate_limit("acc_1", retry_after=60.0)
 
             mock_logger.warning.assert_called_once()
@@ -414,7 +414,7 @@ class TestMissingToken:
             msg = "Network error"
             raise ConnectionError(msg)
 
-        with patch("automedia.accounts.session.logger") as mock_logger:
+        with patch("automedia.accounts.session.log") as mock_logger:
             result = manager.get_token("acc_1", refresh_fn=failing_refresh)
 
             assert result is None
