@@ -25,8 +25,9 @@ import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.config_loader import load_config
+from automedia.core.paths import get_user_config_dir
 
-_USER_CFG_DIR = Path.home() / ".automedia"
+_USER_CFG_DIR = get_user_config_dir()
 _MANIFESTS_DIR = Path(__file__).resolve().parent.parent.parent / "manifests"
 _PIPELINE_DIR = Path(__file__).resolve().parent.parent.parent / "pipelines"
 _CRON_DIR = Path(__file__).resolve().parent.parent.parent / "cron"

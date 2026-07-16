@@ -6,7 +6,6 @@ import shutil
 import sys
 import threading
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any
 
 import click
@@ -15,10 +14,11 @@ import typer
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.cli.output_format import output_formatted_error, output_pipeline_error
 from automedia.core.logging import bind_correlation_id
+from automedia.core.paths import get_user_config_dir
 from automedia.pipelines.gate_engine import PipelineProgress
 from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
-_MODEL_CONFIG_PATH = Path.home() / ".automedia" / "model_config.yaml"
+_MODEL_CONFIG_PATH = get_user_config_dir() / "model_config.yaml"
 
 
 class CLIPipelineProgress(PipelineProgress):

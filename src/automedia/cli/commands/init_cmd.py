@@ -14,8 +14,9 @@ import typer
 import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+from automedia.core.paths import get_user_config_dir
 
-_USER_CFG_DIR = Path.home() / ".automedia"
+_USER_CFG_DIR = get_user_config_dir()
 _MODEL_CONFIG_FILE = _USER_CFG_DIR / "model_config.yaml"
 _MANIFESTS_DIR = Path(__file__).resolve().parent.parent.parent / "manifests"
 

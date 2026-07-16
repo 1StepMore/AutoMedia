@@ -16,6 +16,7 @@ import typer
 import yaml
 
 from automedia.cli.output import output_error, output_text
+from automedia.core.paths import get_user_config_dir
 from automedia.hitl.config import HITLConfig
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(name="hitl", help="Manage Human-In-The-Loop configuration.")
 
 _PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "hitl" / "presets"
-_ACTIVE_PRESET_PATH = Path.home() / ".automedia" / "hitl" / "active_preset.yaml"
+_ACTIVE_PRESET_PATH = get_user_config_dir() / "hitl" / "active_preset.yaml"
 
 # Built-in presets that do not have a file on disk (defined in Python)
 _BUILTIN_PRESETS: set[str] = {"test_automated"}
