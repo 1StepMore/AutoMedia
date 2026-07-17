@@ -84,6 +84,8 @@ engines:
       port: 8188
       protocol: http
       timeout: 300
+      negative_prompt: blurry, low quality, distorted
+      workflow_path: null
   video:
     default: hyperframes
     hyperframes:
