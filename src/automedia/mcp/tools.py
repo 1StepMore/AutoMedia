@@ -163,7 +163,8 @@ def select_topic(
     -------
     dict
         ``{"selected": {...}, "remaining_count": int}`` or
-        ``{"selected": null, "error": str}``.
+        ``{"selected": null, "remaining_count": 0, "error": {...}}``
+        where the error dict contains ``code``, ``message``, ``resolution`` keys.
     """
     try:
         from automedia.pool.db import PoolDB
@@ -184,10 +185,11 @@ def select_topic(
             return {
                 "selected": None,
                 "remaining_count": 0,
-                "error": "No pending topics found",
-                "success": False,
-                "error_code": "NOT_FOUND",
-                "error_resolution": "Add topics to the pool first",
+                **error_response(
+                    MCPErrorCode.NOT_FOUND,
+                    "No pending topics found",
+                    "Add topics to the pool first",
+                ),
             }
 
         # Sort by score descending
@@ -367,7 +369,8 @@ def run_pipeline(
     -------
     dict
         ``{"project_id": str, "status": "started"}`` on success, or
-        ``{"status": "failed", "error": str}`` on immediate failure.
+        ``{"status": "failed", "error": {"code": ..., "message": ..., "resolution": ...}}``
+        on immediate failure.
     """
     # Pre-validate mode to fail fast
     # Uses VALID_MODES shared constant from runner.py (single source of truth)
@@ -455,7 +458,7 @@ def batch_run(
     dict
         ``{"results": [...], "total": int, "passed": int, "failed": int}``
         where each result entry is ``{"topic": str, "status": str,
-        "project_id": str, "error": str | None}``.
+        "project_id": str, "error": dict | None}``.
     """
     from automedia.pipelines.runner import run_full_pipeline
 
@@ -512,7 +515,7 @@ def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
     dict
         ``{"project_id", "current_gate", "gates_done", "gates_remaining",
         "total_gates", "events", "error"}`` or
-        ``{"error": "not found"}``.
+        ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     with _lock:
         progress = _pipeline_tracker.get(project_id)
@@ -846,7 +849,7 @@ def add_cron_schedule(
     Returns
     -------
     dict
-        ``{"added": True, "name": str}`` or ``{"error": str}``.
+        ``{"added": True, "name": str}`` or ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     import re
 
@@ -910,7 +913,7 @@ def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
     Returns
     -------
     dict
-        ``{"removed": True, "name": str}`` or ``{"error": str}``.
+        ``{"removed": True, "name": str}`` or ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     schedules = _read_pipeline_schedules()
 
@@ -1104,7 +1107,7 @@ def test_cron_schedule(
         "note": None}`` on success with *croniter*, or
         ``{"valid": True, "expression": str, "next_triggers": None,
         "note": "croniter not available..."}`` without *croniter*, or
-        ``{"valid": False, "expression": str, "error": str}`` on invalid
+        ``{"valid": False, "expression": str, "error": {"code": ..., "message": ..., "resolution": ...}}`` on invalid
         syntax or computation failure.
     """
     import re
@@ -1443,7 +1446,7 @@ def register_platform_adapter(
         "class": str}`` on success.
         Without ``adapter_class``: ``{"registered": False, "stub": True,
         "platform": str, "message": str, "instructions": str}``.
-        On error: ``{"registered": False, "error": str}``.
+        On error: ``{"registered": False, "error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     import re
 
@@ -1870,7 +1873,7 @@ def health_check() -> dict[str, Any]:
     -------
     dict
         ``{"status": "ok", "version": str, "uptime_s": float, "tools_count": int}``
-        or ``{"status": "error", "error": str}`` on failure.
+        or ``{"status": "error", "error": {"code": ..., "message": ..., "resolution": ...}}`` on failure.
     """
     try:
         from automedia._version import __version__
@@ -1951,8 +1954,8 @@ def get_config(key: str = "") -> dict[str, Any]:
     dict
         ``{"config": {...}}`` with secrets redacted, or
         ``{"value": ...}`` for a specific key lookup, or
-        ``{"error": "config key '...' not found"}``, or
-        ``{"error": "secret key not exposed"}`` when the key is secret.
+        ``{"error": {"code": "NOT_FOUND", "message": "config key '...' not found"}}``, or
+        ``{"error": {"code": "ALLOWLIST_DENIED", "message": "secret key not exposed"}}`` when the key is secret.
     """
     try:
         from automedia.core.config_loader import load_config
@@ -2279,7 +2282,7 @@ def update_engine_config(
     -------
     dict
         ``{"status": "ok", "modality": str, "setting": str, "value": str, "file": str}``
-        or ``{"error": str}`` on failure.
+        or ``{"error": {"code": ..., "message": ..., "resolution": ...}}`` on failure.
     """
     from datetime import datetime
 
@@ -2329,7 +2332,7 @@ def engine_health() -> dict[str, Any]:
     -------
     dict
         ``{"engines": [...], "healthy_count": int, "unhealthy_count": int}``
-        or ``{"error": str}`` on failure.
+        or ``{"error": {"code": ..., "message": ..., "resolution": ...}}`` on failure.
     """
     try:
         from automedia.core.doctor import Doctor

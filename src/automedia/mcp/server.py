@@ -170,7 +170,7 @@ __all__ = [
 # Tool registry cache for mcp_help — populated at registration time
 # ---------------------------------------------------------------------------
 
-_tool_registry: dict[str, dict[str, str]] = {}
+_tool_registry: dict[str, dict[str, Any]] = {}
 
 # Prefix → category mapping for dynamic tool grouping.
 # The first matching prefix determines the category; unmatched tools fall
@@ -223,12 +223,14 @@ def mcp_help() -> dict[str, Any]:
         where *categories* maps category name → list of ``{name, description}``
         objects sorted alphabetically within each group.
     """
-    categorized: dict[str, list[dict[str, str]]] = {}
+    categorized: dict[str, list[dict[str, Any]]] = {}
     for name, info in _tool_registry.items():
         category = _categorize_tool(name)
-        categorized.setdefault(category, []).append(
-            {"name": name, "description": info["description"]}
-        )
+        categorized.setdefault(category, []).append({
+            "name": name,
+            "description": info["description"],
+            "parameters": info.get("parameters"),
+        })
 
     sorted_categories: dict[str, list[dict[str, str]]] = {}
     for cat in sorted(categorized):
@@ -842,6 +844,7 @@ def create_server() -> FastMCP:
         _tool_registry[_name] = {
             "name": _name,
             "description": _tool.description,
+            "parameters": _tool.parameters,
         }
 
     # Set dynamic tool count for health_check
