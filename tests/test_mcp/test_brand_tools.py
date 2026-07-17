@@ -113,4 +113,4 @@ class TestListBrands:
         assert result["total"] == 0
         assert result["brands"] == []
         assert "error" in result
-        assert "Failed to load brand profiles" in result["error"]
+        assert "Failed to load brand profiles" in result["error"]["message"]

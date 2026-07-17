@@ -105,7 +105,7 @@ class TestConnectAccount:
         )
 
         assert "error" in result
-        assert "Label 'My WeChat' already exists" in result["error"]
+        assert "Label 'My WeChat' already exists" in result["error"]["message"]
 
     @patch("automedia.mcp.accounts._get_registry")
     def test_invalid_auth_type(self, mock_get_registry: MagicMock) -> None:
@@ -126,7 +126,7 @@ class TestConnectAccount:
         )
 
         assert "error" in result
-        assert "Invalid auth_type" in result["error"]
+        assert "Invalid auth_type" in result["error"]["message"]
 
 
 # ===================================================================
@@ -232,7 +232,7 @@ class TestGetAccountHealth:
         result = get_account_health("nonexistent")
 
         assert "error" in result
-        assert "Account not found" in result["error"]
+        assert "Account not found" in result["error"]["message"]
 
 
 # ===================================================================
@@ -268,5 +268,5 @@ class TestDisconnectAccount:
         result = disconnect_account("nonexistent")
 
         assert "error" in result
-        assert "Account not found" in result["error"]
+        assert "Account not found" in result["error"]["message"]
         mock_registry.delete.assert_not_called()

@@ -93,7 +93,7 @@ class TestConnectAccount:
         result = connect_account(platform="wechat", credentials=None)
 
         assert "error" in result
-        assert "credentials must be provided" in result["error"]
+        assert "credentials must be provided" in result["error"]["message"]
         mock_get_registry.assert_not_called()
 
     @patch("automedia.mcp.accounts._get_registry")
@@ -112,7 +112,7 @@ class TestConnectAccount:
         )
 
         assert "error" in result
-        assert "Label 'My WeChat' already exists" in result["error"]
+        assert "Label 'My WeChat' already exists" in result["error"]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ class TestGetAccountHealth:
         result = get_account_health("nonexistent")
 
         assert "error" in result
-        assert "Account not found" in result["error"]
+        assert "Account not found" in result["error"]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -232,5 +232,5 @@ class TestDisconnectAccount:
         result = disconnect_account("nonexistent")
 
         assert "error" in result
-        assert "Account not found" in result["error"]
+        assert "Account not found" in result["error"]["message"]
         mock_registry.delete.assert_not_called()

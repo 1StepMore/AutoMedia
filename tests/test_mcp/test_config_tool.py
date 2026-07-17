@@ -166,7 +166,7 @@ class TestGetConfigByKey:
         result = get_config(key="nonexistent.setting")
 
         assert "error" in result
-        assert "not found" in result["error"]
+        assert "not found" in result["error"]["message"]
 
     @patch("automedia.core.config_loader.load_config")
     def test_partial_path_missing(self, mock_load: MagicMock) -> None:
@@ -176,7 +176,7 @@ class TestGetConfigByKey:
         result = get_config(key="content.nonexistent")
 
         assert "error" in result
-        assert "not found" in result["error"]
+        assert "not found" in result["error"]["message"]
 
     @patch("automedia.core.config_loader.load_config")
     def test_secret_key_rejected(self, mock_load: MagicMock) -> None:
@@ -186,16 +186,16 @@ class TestGetConfigByKey:
         result = get_config(key="llm.text_generation.api_key")
 
         assert "error" in result
-        assert result["error"] == "secret key not exposed"
+        assert result["error"]["message"] == "secret key not exposed"
 
     @patch("automedia.core.config_loader.load_config")
     def test_other_secret_keywords_rejected(self, mock_load: MagicMock) -> None:
         """All secret keywords (key, secret, password, token) are rejected."""
         mock_load.return_value = MOCK_CONFIG
 
-        assert get_config(key="platforms.wechat.app_secret")["error"] == "secret key not exposed"
-        assert get_config(key="platforms.wechat.access_token")["error"] == "secret key not exposed"
-        assert get_config(key="pool.redis_password")["error"] == "secret key not exposed"
+        assert get_config(key="platforms.wechat.app_secret")["error"]["message"] == "secret key not exposed"
+        assert get_config(key="platforms.wechat.access_token")["error"]["message"] == "secret key not exposed"
+        assert get_config(key="pool.redis_password")["error"]["message"] == "secret key not exposed"
 
 
 # ===================================================================
@@ -214,7 +214,7 @@ class TestGetConfigErrors:
         result = get_config()
 
         assert "error" in result
-        assert "boom" in result["error"]
+        assert "boom" in result["error"]["message"]
 
     @patch("automedia.core.config_loader.load_config")
     def test_load_config_raises_with_key(self, mock_load: MagicMock) -> None:
@@ -224,4 +224,4 @@ class TestGetConfigErrors:
         result = get_config(key="project")
 
         assert "error" in result
-        assert "bad config" in result["error"]
+        assert "bad config" in result["error"]["message"]

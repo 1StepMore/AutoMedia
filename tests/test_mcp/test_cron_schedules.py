@@ -77,7 +77,7 @@ class TestAddCronSchedule:
         add_cron_schedule(name="dup-job", expression="0 8 * * *")
         result = add_cron_schedule(name="dup-job", expression="30 9 * * *")
         assert "error" in result
-        assert "already exists" in result["error"]
+        assert "already exists" in result["error"]["message"]
 
     def test_invalid_cron_expression(self) -> None:
         """Invalid cron expression (wrong field count) returns error."""
@@ -85,7 +85,7 @@ class TestAddCronSchedule:
 
         result = add_cron_schedule(name="bad", expression="0 8 * *")  # only 4 fields
         assert "error" in result
-        assert "Invalid cron expression" in result["error"]
+        assert "Invalid cron expression" in result["error"]["message"]
 
     def test_invalid_cron_expression_six_fields(self) -> None:
         """Six-field cron expression returns error."""
@@ -93,7 +93,7 @@ class TestAddCronSchedule:
 
         result = add_cron_schedule(name="bad6", expression="0 8 * * * *")  # 6 fields
         assert "error" in result
-        assert "Invalid cron expression" in result["error"]
+        assert "Invalid cron expression" in result["error"]["message"]
 
     def test_add_with_defaults(self) -> None:
         """Adding with only name and expression uses defaults."""
@@ -180,7 +180,7 @@ class TestRemoveCronSchedule:
 
         result = remove_cron_schedule(name="i-dont-exist")
         assert "error" in result
-        assert "not found" in result["error"]
+        assert "not found" in result["error"]["message"]
 
     def test_remove_one_of_many(self) -> None:
         """Removing one schedule leaves others intact."""
@@ -351,7 +351,7 @@ class TestTestCronSchedule:
 
         result = test_cron_schedule("0 8 * *")  # 4 fields
         assert result["valid"] is False
-        assert "must have exactly 5 fields" in result["error"]
+        assert "must have exactly 5 fields" in result["error"]["message"]
 
     def test_invalid_expression_too_many_fields(self) -> None:
         """Invalid expression with >5 fields returns error."""
@@ -359,7 +359,7 @@ class TestTestCronSchedule:
 
         result = test_cron_schedule("0 8 * * * *")  # 6 fields
         assert result["valid"] is False
-        assert "must have exactly 5 fields" in result["error"]
+        assert "must have exactly 5 fields" in result["error"]["message"]
 
     def test_invalid_expression_empty_string(self) -> None:
         """Empty expression returns error."""
@@ -367,7 +367,7 @@ class TestTestCronSchedule:
 
         result = test_cron_schedule("")
         assert result["valid"] is False
-        assert "must have exactly 5 fields" in result["error"]
+        assert "must have exactly 5 fields" in result["error"]["message"]
 
     def test_valid_expression_no_croniter(
         self, monkeypatch: pytest.MonkeyPatch
