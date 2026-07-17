@@ -30,15 +30,15 @@ class TestGateRegistryBasics:
         class _UniqueGateA(  # type: ignore[no-redef]
             BaseGate
         ):
-            _gate_name = "G99"
+            _gate_name = "G89"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
-        registered_cls = registry.get("G99")
+        registered_cls = registry.get("G89")
         assert registered_cls is _UniqueGateA
-        assert registered_cls._gate_name == "G99"  # class-level access
+        assert registered_cls._gate_name == "G89"  # class-level access
 
     def test_get_unknown(self) -> None:
         """get() on unknown name raises KeyError."""
@@ -80,7 +80,7 @@ class TestGateRegistryBasics:
         """list() includes the classes we registered above."""
         registry = GateRegistry()
         names = registry.list()
-        assert "G99" in names
+        assert "G89" in names
         assert "G98" in names
 
     def test_get_all(self) -> None:
@@ -88,19 +88,19 @@ class TestGateRegistryBasics:
         registry = GateRegistry()
         all_gates = registry.get_all()
         assert isinstance(all_gates, dict)
-        assert "G99" in all_gates
+        assert "G89" in all_gates
 
     def test_get_all_is_copy(self) -> None:
         """Modifying get_all() dict does not affect the registry."""
         registry = GateRegistry()
         snapshot = registry.get_all()
         snapshot.clear()
-        assert "G99" in registry.get_all()
+        assert "G89" in registry.get_all()
 
     def test_contains(self) -> None:
         """__contains__ works."""
         registry = GateRegistry()
-        assert "G99" in registry
+        assert "G89" in registry
         assert "NONEXISTENT" not in registry
 
     def test_len(self) -> None:

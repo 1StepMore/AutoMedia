@@ -524,7 +524,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": None}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G99"
+            _gate_name = "G83"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -549,7 +549,7 @@ class TestFallbackCompat:
         finally:
             # Clean up registry to avoid polluting other tests
             try:
-                del _registry._registry["G99"]
+                del _registry._registry["G83"]
             except KeyError:
                 pass
 
@@ -588,7 +588,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": None}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G98"
+            _gate_name = "G84"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -611,7 +611,7 @@ class TestFallbackCompat:
             mock_load_single.assert_called_once()
         finally:
             try:
-                del _registry._registry["G98"]
+                del _registry._registry["G84"]
             except KeyError:
                 pass
 
@@ -645,7 +645,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": "UNSET"}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G97"
+            _gate_name = "G85"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -661,7 +661,7 @@ class TestFallbackCompat:
             assert captured["brand_profile"] is None
         finally:
             try:
-                del _registry._registry["G97"]
+                del _registry._registry["G85"]
             except KeyError:
                 pass
 
@@ -705,7 +705,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": None}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G96"
+            _gate_name = "G86"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -721,7 +721,7 @@ class TestFallbackCompat:
             assert bp is not None
         finally:
             try:
-                del _registry._registry["G96"]
+                del _registry._registry["G86"]
             except KeyError:
                 pass
         if isinstance(bp, dict):
