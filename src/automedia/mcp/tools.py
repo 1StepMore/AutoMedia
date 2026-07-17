@@ -27,7 +27,16 @@ from automedia.mcp._state import (
 from automedia.mcp.allowlist import (
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult, ProgressData
+from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
+from automedia.mcp.server_types import (
+    CronExpression,
+    EngineModality,
+    NonEmptyStr,
+    PipelineMode,
+    ProjectStatusFilter,
+    ResearchPattern,
+)
+from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
 from automedia.pipelines.runner import VALID_MODES
 
 # Track registered tool count (set dynamically by server.py after registration)
@@ -172,18 +181,25 @@ def select_topic(
             topics = [t for t in topics if t.get("tenant_id") == tenant_id]
 
         if not topics:
-            return {"selected": None, "remaining_count": 0, "error": "No pending topics found"}
+            return {
+                "selected": None,
+                "remaining_count": 0,
+                "error": "No pending topics found",
+                "success": False,
+                "error_code": "NOT_FOUND",
+                "error_resolution": "Add topics to the pool first",
+            }
 
         # Sort by score descending
         topics.sort(key=lambda t: t.get("score", 0.0), reverse=True)
         chosen = topics[0]
         db.mark_selected(chosen["id"])
         db.close()
-        return {"selected": chosen, "remaining_count": len(topics) - 1}
+        return success_response({"selected": chosen, "remaining_count": len(topics) - 1})
 
     except Exception as exc:
         # MCP boundary: catch-all to return error dict for any pool/DB failure
-        return {"selected": None, "error": str(exc)}
+        return {"selected": None, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def _fetch_tavily_trending(category: str) -> str:
@@ -233,7 +249,7 @@ def research_topics(
     category: str,
     count: int = 5,
     trending_data: str = "",
-    pattern: str = "b",
+    pattern: ResearchPattern = "b",
 ) -> dict[str, Any]:
     """Research trending or high-potential topics within a category using LLM.
 
@@ -268,7 +284,10 @@ def research_topics(
         or an error dict on failure.
     """
     if pattern == "a":
-        return {"topics": [], "category": category, "total_found": 0, "note": "pattern_a_raw_data"}
+        return success_response({
+            "topics": [], "category": category,
+            "total_found": 0, "note": "pattern_a_raw_data",
+        })
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import TopicResearchOutput
@@ -292,16 +311,21 @@ def research_topics(
             prompt,
             response_format=TopicResearchOutput,
         )
-        return result.model_dump()
+        return success_response(result.model_dump())
     except Exception as exc:
         # MCP boundary: catch-all for LLM/prompt/template errors
-        return {"topics": [], "category": category, "total_found": 0, "error": str(exc)}
+        return {
+            "topics": [],
+            "category": category,
+            "total_found": 0,
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
 
 
 def run_pipeline(
-    topic: str,
-    brand: str,
-    mode: str = "auto",
+    topic: NonEmptyStr,
+    brand: NonEmptyStr,
+    mode: PipelineMode = "auto",
     # DEPRECATED — kept for backward compatibility, scheduled for removal
     decision_mode: str = "build",
     tenant_id: str = "default",
@@ -348,9 +372,13 @@ def run_pipeline(
     # Pre-validate mode to fail fast
     # Uses VALID_MODES shared constant from runner.py (single source of truth)
     if mode not in VALID_MODES:
+        valid_modes = list(VALID_MODES)
         return {
             "status": "failed",
-            "error": f"Unknown pipeline mode {mode!r}. Choose from: {list(VALID_MODES)}",
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"Unknown pipeline mode {mode!r}. Choose from: {valid_modes}",
+            ),
         }
 
     # Validate source_path against allowlist
@@ -395,13 +423,13 @@ def run_pipeline(
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
 
-    return {"project_id": project_id, "status": "started"}
+    return success_response({"project_id": project_id, "status": "started"})
 
 
 def batch_run(
     topics: list[str],
-    brand: str,
-    mode: str = "auto",
+    brand: NonEmptyStr,
+    mode: PipelineMode = "auto",
 ) -> dict[str, Any]:
     """Execute pipelines for multiple topics sequentially.
 
@@ -458,15 +486,15 @@ def batch_run(
 
     passed = sum(1 for r in results if r["status"] == "success")
     failed = len(results) - passed
-    return {
+    return success_response({
         "results": results,
         "total": len(results),
         "passed": passed,
         "failed": failed,
-    }
+    })
 
 
-def get_pipeline_progress(project_id: str) -> ProgressData:
+def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
     """Get current progress of a running pipeline by project_id.
 
     Poll this after ``run_pipeline`` to observe gate execution in real
@@ -489,12 +517,16 @@ def get_pipeline_progress(project_id: str) -> ProgressData:
     with _lock:
         progress = _pipeline_tracker.get(project_id)
     if not progress:
-        return {"error": f"No active pipeline found for project_id {project_id!r}"}
-    return progress.get_progress()
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    return success_response(dict(progress.get_progress()))
 
 
 def get_pipeline_status(
-    project_id: str,
+    project_id: NonEmptyStr,
     base_dir: str = ".",
 ) -> dict[str, Any]:
     """Return the current status / progress of a pipeline run.
@@ -519,7 +551,11 @@ def get_pipeline_status(
         projects = _discover_projects(base_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
-            return {"error": f"Project {project_id!r} not found"}
+            return error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"Project {project_id!r} not found",
+                "Verify project_id",
+            )
         proj = match[0]
         proj_dir = proj.get("_dir", "")
         subdirs = []
@@ -527,16 +563,16 @@ def get_pipeline_status(
             subdirs = sorted(
                 str(p.relative_to(proj_dir)) for p in Path(proj_dir).iterdir() if p.is_dir()
             )
-        return {"project": proj, "subdirs": subdirs}
+        return success_response({"project": proj, "subdirs": subdirs})
 
     except Exception as exc:
         # MCP boundary: catch-all for file/allowlist errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def list_projects(
     base_dir: str = ".",
-    status: str = "",
+    status: ProjectStatusFilter = "",
 ) -> dict[str, Any]:
     """List all projects found under *base_dir*.
 
@@ -557,11 +593,11 @@ def list_projects(
         projects = _discover_projects(base_dir)
         if status:
             projects = [p for p in projects if p.get("status", "") == status]
-        return {"projects": projects, "count": len(projects)}
+        return success_response({"projects": projects, "count": len(projects)})
 
     except Exception as exc:
         # MCP boundary: catch-all for file-scan/allowlist errors
-        return {"projects": [], "error": str(exc)}
+        return {"projects": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def get_project_assets(
@@ -582,15 +618,15 @@ def get_project_assets(
     try:
         _require_allowed(project_dir, tool_name="get_project_assets")
         assets = _project_assets(project_dir)
-        return {"assets": assets, "count": len(assets)}
+        return success_response({"assets": assets, "count": len(assets)})
 
     except Exception as exc:
         # MCP boundary: catch-all for file-scan/allowlist errors
-        return {"assets": [], "error": str(exc)}
+        return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def archive_project(
-    project_id: str,
+    project_id: NonEmptyStr,
     base_dir: str = ".",
     force: bool = False,
 ) -> dict[str, Any]:
@@ -620,30 +656,40 @@ def archive_project(
         projects = _discover_projects(base_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
-            return {"archived": False, "error": f"Project {project_id!r} not found"}
+            return {"archived": False, **error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"Project {project_id!r} not found",
+                "Verify project_id",
+            )}
 
         proj = match[0]
         status_val = str(proj.get("status", ""))
         if status_val != "published" and not force:
             return {
                 "archived": False,
-                "error": (
+                **error_response(MCPErrorCode.INVALID_PARAM, (
                     f"Refused: project status is '{status_val}', not 'published'. "
                     f"Set force=True to override (Red Line 8)."
-                ),
+                )),
             }
 
         project_dir = Path(proj["_dir"])
         archive_dir = project_dir.parent / f"{project_dir.name}_archived"
         if archive_dir.exists():
-            return {"archived": False, "error": f"Archive target already exists: {archive_dir}"}
+            return {
+                "archived": False,
+                **error_response(
+                    MCPErrorCode.INVALID_PARAM,
+                    f"Archive target already exists: {archive_dir}",
+                ),
+            }
 
         project_dir.rename(archive_dir)
-        return {"archived": True, "archive_dir": str(archive_dir)}
+        return success_response({"archived": True, "archive_dir": str(archive_dir)})
 
     except Exception as exc:
         # MCP boundary: catch-all for file/allowlist/rename errors
-        return {"archived": False, "error": str(exc)}
+        return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def list_topic_pool(
@@ -680,11 +726,11 @@ def list_topic_pool(
         if category:
             topics = [t for t in topics if t.get("category") == category]
         db.close()
-        return {"topics": topics, "count": len(topics)}
+        return success_response({"topics": topics, "count": len(topics)})
 
     except Exception as exc:
         # MCP boundary: catch-all for PoolDB errors
-        return {"topics": [], "error": str(exc)}
+        return {"topics": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def pool_add_topic(
@@ -720,15 +766,15 @@ def pool_add_topic(
 
         topic_id = db.add_topic(data={"title": title, "category": category})
         db.close()
-        return {
+        return success_response({
             "id": topic_id,
             "title": title,
             "category": category,
             "status": "pending",
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for PoolDB errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -776,8 +822,8 @@ def _write_pipeline_schedules(schedules: list[dict[str, Any]]) -> None:
 
 
 def add_cron_schedule(
-    name: str,
-    expression: str,
+    name: NonEmptyStr,
+    expression: CronExpression,
     brand: str = "",
     category: str = "",
     count: int = 1,
@@ -805,14 +851,18 @@ def add_cron_schedule(
     import re
 
     if not re.match(r"^(\S+\s+){4}\S+$", expression.strip()):
-        return {
-            "error": f"Invalid cron expression {expression!r}: must have exactly 5 fields",
-        }
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+        )
 
     schedules = _read_pipeline_schedules()
 
     if any(s.get("name") == name for s in schedules):
-        return {"error": f"Schedule {name!r} already exists"}
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"Schedule {name!r} already exists",
+        )
 
     schedules.append(
         {
@@ -826,10 +876,10 @@ def add_cron_schedule(
 
     try:
         _write_pipeline_schedules(schedules)
-        return {"added": True, "name": name}
+        return success_response({"added": True, "name": name})
     except Exception as exc:
         # MCP boundary: catch-all for YAML write errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def list_cron_schedules() -> dict[str, Any]:
@@ -843,13 +893,13 @@ def list_cron_schedules() -> dict[str, Any]:
     try:
         schedules = _read_pipeline_schedules()
         schedules.sort(key=lambda s: s.get("name", ""))
-        return {"schedules": schedules, "count": len(schedules)}
+        return success_response({"schedules": schedules, "count": len(schedules)})
     except Exception as exc:
         # MCP boundary: catch-all for YAML read errors
-        return {"schedules": [], "error": str(exc)}
+        return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
-def remove_cron_schedule(name: str) -> dict[str, Any]:
+def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
     """Remove a cron schedule entry by name.
 
     Parameters
@@ -868,14 +918,18 @@ def remove_cron_schedule(name: str) -> dict[str, Any]:
     schedules = [s for s in schedules if s.get("name") != name]
 
     if len(schedules) == before:
-        return {"error": f"Schedule {name!r} not found"}
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"Schedule {name!r} not found",
+            "Check schedule name",
+        )
 
     try:
         _write_pipeline_schedules(schedules)
-        return {"removed": True, "name": name}
+        return success_response({"removed": True, "name": name})
     except Exception as exc:
         # MCP boundary: catch-all for YAML write errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def get_cron_health() -> dict[str, Any]:
@@ -899,35 +953,35 @@ def get_cron_health() -> dict[str, Any]:
     """
     path = _get_jobs_yaml_path()
     if not path.is_file():
-        return {
+        return success_response({
             "jobs_valid": False,
             "schedule_count": 0,
             "job_count": 0,
             "static_jobs": [],
             "note": "cron/jobs.yaml not found",
-        }
+        })
 
     try:
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     except Exception as exc:
         # MCP boundary: YAML parse errors are non-fatal
-        return {
+        return success_response({
             "jobs_valid": False,
             "schedule_count": 0,
             "job_count": 0,
             "static_jobs": [],
             "note": f"parse error: {exc}",
-        }
+        })
 
     if not isinstance(data, dict):
-        return {
+        return success_response({
             "jobs_valid": False,
             "schedule_count": 0,
             "job_count": 0,
             "static_jobs": [],
             "note": "jobs.yaml is not a valid dict",
-        }
+        })
 
     pipeline_schedules = data.get("pipeline_schedules", []) or []
     if not isinstance(pipeline_schedules, list):
@@ -1014,7 +1068,7 @@ def get_cron_health() -> dict[str, Any]:
     if croniter_note:
         notes.append(croniter_note)
 
-    return {
+    return success_response({
         "jobs_valid": True,
         "schedule_count": len(pipeline_schedules),
         "valid_expressions": valid_count,
@@ -1023,11 +1077,11 @@ def get_cron_health() -> dict[str, Any]:
         "job_count": len(static_jobs),
         "static_jobs": job_details,
         "note": " ".join(notes),
-    }
+    })
 
 
 def test_cron_schedule(
-    expression: str,
+    expression: CronExpression,
     count: int = 5,
 ) -> dict[str, Any]:
     """Validate a cron expression and compute its next N trigger times.
@@ -1059,7 +1113,10 @@ def test_cron_schedule(
         return {
             "valid": False,
             "expression": expression,
-            "error": f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+            ),
         }
 
     count = max(1, min(count, 20))
@@ -1075,14 +1132,14 @@ def test_cron_schedule(
             next_time = cron.get_next(datetime)
             next_triggers.append(next_time.isoformat())
 
-        return {
+        return success_response({
             "valid": True,
             "expression": expression,
             "next_triggers": next_triggers,
             "note": None,
-        }
+        })
     except ImportError:
-        return {
+        return success_response({
             "valid": True,
             "expression": expression,
             "next_triggers": None,
@@ -1090,19 +1147,22 @@ def test_cron_schedule(
                 "croniter not available — install with 'pip install croniter' "
                 "to compute next trigger times. The expression format is valid."
             ),
-        }
+        })
     except Exception as exc:
         # MCP boundary: croniter computation failures are non-fatal
         return {
             "valid": False,
             "expression": expression,
-            "error": f"Cron expression {expression!r} is syntactically valid but "
-            f"croniter failed to compute next triggers: {exc}",
+            **error_response(
+                MCPErrorCode.UNKNOWN,
+                f"Cron expression {expression!r} is syntactically valid but "
+                f"croniter failed to compute next triggers: {exc}",
+            ),
         }
 
 
 def publish_content(
-    project_id: str,
+    project_id: NonEmptyStr,
     platform: str,
     account_id: str = "",
     base_dir: str = "",
@@ -1142,7 +1202,11 @@ def publish_content(
         projects = _discover_projects(projects_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
-            return {"published": False, "error": f"Project {project_id!r} not found"}
+            return {"published": False, **error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"Project {project_id!r} not found",
+                "Verify project_id",
+            )}
 
         proj = match[0]
         artifact_dir = proj["_dir"]
@@ -1188,10 +1252,153 @@ def publish_content(
         elif status == "error":
             base_response["published"] = False
             base_response["error"] = platform_result.get("reason", "unknown error")
-        return base_response
+        return success_response(base_response)
     except Exception as exc:
         # MCP boundary: catch-all for publish-engine / allowlist errors
-        return {"published": False, "error": str(exc)}
+        return {"published": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
+
+
+def cancel_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+    """Cancel a running pipeline by project_id.
+
+    Sets the pipeline's cancellation flag so that the next gate
+    boundary will exit early.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+
+    Returns
+    -------
+    dict
+        ``{"cancelled": True, "project_id": str}`` or error.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    progress.cancel()
+    return success_response({"cancelled": True, "project_id": project_id})
+
+
+def pause_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+    """Pause a running pipeline by project_id.
+
+    Signals the pipeline to pause after the current gate completes.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+
+    Returns
+    -------
+    dict
+        ``{"paused": True, "project_id": str}`` or error.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    progress.pause()
+    return success_response({"paused": True, "project_id": project_id})
+
+
+def resume_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+    """Resume a paused pipeline by project_id.
+
+    Resumes execution of a previously paused pipeline.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+
+    Returns
+    -------
+    dict
+        ``{"resumed": True, "project_id": str}`` or error.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    progress.resume()
+    return success_response({"resumed": True, "project_id": project_id})
+
+
+def retry_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any]:
+    """Mark a specific gate for retry in a running pipeline.
+
+    Tells the pipeline to re-execute the named gate on its next
+    iteration.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+    gate_name:
+        Name of the gate to retry (e.g. ``"G0"``, ``"V3"``).
+
+    Returns
+    -------
+    dict
+        ``{"retrying": True, "project_id": str, "gate_name": str}``
+        or error.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    progress.mark_retry_gate(gate_name)
+    return success_response({"retrying": True, "project_id": project_id, "gate_name": gate_name})
+
+
+def skip_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any]:
+    """Mark a specific gate for skipping in a running pipeline.
+
+    Tells the pipeline to skip the named gate on its next iteration.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+    gate_name:
+        Name of the gate to skip (e.g. ``"G0"``, ``"V3"``).
+
+    Returns
+    -------
+    dict
+        ``{"skipping": True, "project_id": str, "gate_name": str}``
+        or error.
+    """
+    with _lock:
+        progress = _pipeline_tracker.get(project_id)
+    if not progress:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active pipeline found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    progress.mark_skip_gate(gate_name)
+    return success_response({"skipping": True, "project_id": project_id, "gate_name": gate_name})
 
 
 def register_platform_adapter(
@@ -1243,15 +1450,18 @@ def register_platform_adapter(
     if not platform_name or not isinstance(platform_name, str):
         return {
             "registered": False,
-            "error": "platform_name must be a non-empty string.",
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                "platform_name must be a non-empty string.",
+            ),
         }
     if not re.match(r"^[a-zA-Z0-9_-]+$", platform_name):
         return {
             "registered": False,
-            "error": (
+            **error_response(MCPErrorCode.INVALID_PARAM, (
                 f"Invalid platform_name {platform_name!r}. "
                 f"Use only letters, digits, underscores, and hyphens."
-            ),
+            )),
         }
 
     try:
@@ -1262,33 +1472,37 @@ def register_platform_adapter(
             if not module_path:
                 return {
                     "registered": False,
-                    "error": (
+                    **error_response(MCPErrorCode.INVALID_PARAM, (
                         f"Invalid adapter_class {adapter_class!r}: "
                         f"must be a dotted path (e.g. 'pkg.mod.ClassName')."
-                    ),
+                    )),
                 }
             if not module_path.startswith("automedia.adapters."):
                 return {
                     "registered": False,
-                    "error": (
+                    **error_response(MCPErrorCode.INVALID_PARAM, (
                         f"Invalid adapter class: {adapter_class!r}. "
                         f"Must be in automedia.adapters.* namespace"
-                    ),
+                    )),
                 }
             if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", class_name):
                 return {
                     "registered": False,
-                    "error": (
+                    **error_response(MCPErrorCode.INVALID_PARAM, (
                         f"Invalid class name in {adapter_class!r}. "
                         f"Class name must match [A-Za-z_][A-Za-z0-9_]*."
-                    ),
+                    )),
                 }
             mod = importlib.import_module(module_path)
             cls = getattr(mod, class_name)
             AdapterRegistry.register(cls)
-            return {"registered": True, "platform": platform_name, "class": adapter_class}
+            return success_response({
+                "registered": True,
+                "platform": platform_name,
+                "class": adapter_class,
+            })
 
-        return {
+        return success_response({
             "registered": False,
             "platform": platform_name,
             "stub": True,
@@ -1306,11 +1520,11 @@ def register_platform_adapter(
                 f"     )\n"
                 f"  3. The adapter will be registered with AdapterRegistry."
             ),
-        }
+        })
 
     except Exception as exc:
         # MCP boundary: catch-all for dynamic import / registry errors
-        return {"registered": False, "error": str(exc)}
+        return {"registered": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def extract_brief(
@@ -1345,14 +1559,18 @@ def extract_brief(
 
         adapter = OPPAdapter()
         result = adapter.extract(file_path, source_lang, target_lang)
-        return {
+        return success_response({
             "md_content": result.md_content,
             "manifest_json": result.manifest,
             "warnings": result.warnings,
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for OPP extraction errors
-        return {"md_content": "", "manifest_json": {}, "warnings": [str(exc)]}
+        return {
+            "md_content": "", "manifest_json": {},
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
 
 
 def localize_content(
@@ -1386,14 +1604,18 @@ def localize_content(
 
         adapter = OLAdapter()
         result = adapter.translate(md_content, source_lang, target_lang)
-        return {
+        return success_response({
             "translated_md": result.translated_md,
             "xliff_path": result.xliff_path,
             "warnings": result.warnings,
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for OL translation errors
-        return {"translated_md": "", "xliff_path": None, "warnings": [str(exc)]}
+        return {
+            "translated_md": "", "xliff_path": None,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
 
 
 def localize_output(
@@ -1432,27 +1654,27 @@ def localize_output(
         warnings: list[str] = []
 
         if not drafts_dir.is_dir():
-            return {
+            return success_response({
                 "project_dir": project_dir,
                 "results": results,
                 "warnings": [f"Drafts directory not found: {drafts_dir}"],
-            }
+            })
 
         langs = [lang.strip() for lang in target_langs.split(",") if lang.strip()]
         if not langs:
-            return {
+            return success_response({
                 "project_dir": project_dir,
                 "results": results,
                 "warnings": ["No target languages specified"],
-            }
+            })
 
         md_files = sorted(drafts_dir.glob("*.md"))
         if not md_files:
-            return {
+            return success_response({
                 "project_dir": project_dir,
                 "results": results,
                 "warnings": [f"No markdown files found in {drafts_dir}"],
-            }
+            })
 
         adapter = OLAdapter()
 
@@ -1474,17 +1696,18 @@ def localize_output(
                     # Per-file catch-all: one file failure doesn't stop other translations
                     warnings.append(f"Translation failed for {md_file.name} → {lang}: {exc}")
 
-        return {
+        return success_response({
             "project_dir": project_dir,
             "results": results,
             "warnings": warnings,
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for file I/O / translation errors
         return {
             "project_dir": project_dir,
             "results": {},
             "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
 
 
@@ -1515,10 +1738,13 @@ def format_output(
         or an error dict on failure.
     """
     if "/" in target_format or "\\" in target_format or ".." in target_format:
-        return {"error": f"Invalid format: {target_format!r} — path separators not allowed"}
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"Invalid format: {target_format!r} — path separators not allowed",
+        )
 
     if target_format not in _ALLOWED_OUTPUT_FORMATS:
-        return {"error": f"Unsupported format: {target_format!r}"}
+        return error_response(MCPErrorCode.INVALID_PARAM, f"Unsupported format: {target_format!r}")
 
     import tempfile
 
@@ -1543,14 +1769,18 @@ def format_output(
             **options,
         )
         errors = result.get("errors", [])
-        return {
+        return success_response({
             "output_path": output_path,
             "output_format": target_format,
             "warnings": errors if errors else [],
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for ORF conversion errors
-        return {"output_path": "", "output_format": target_format, "warnings": [str(exc)]}
+        return {
+            "output_path": "", "output_format": target_format,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
     finally:
         if temp_path is not None:
             try:
@@ -1568,7 +1798,7 @@ def evaluate_content_quality(
     content: str,
     criteria: str = "general",
     brand: str = "",
-    pattern: str = "b",
+    pattern: ResearchPattern = "b",
 ) -> dict[str, Any]:
     """Evaluate content quality using an LLM with structured output.
 
@@ -1597,7 +1827,10 @@ def evaluate_content_quality(
         or an error dict on failure.
     """
     if pattern == "a":
-        return {"quality_score": 0.5, "note": "pattern_a_raw_data", "criteria": criteria}
+        return success_response({
+            "quality_score": 0.5, "note": "pattern_a_raw_data",
+            "criteria": criteria,
+        })
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import ContentQualityOutput
@@ -1613,7 +1846,7 @@ def evaluate_content_quality(
             prompt,
             response_format=ContentQualityOutput,
         )
-        return result.model_dump()
+        return success_response(result.model_dump())
     except Exception as exc:
         # MCP boundary: catch-all for LLM/prompt errors
         return {
@@ -1621,7 +1854,7 @@ def evaluate_content_quality(
             "issues": [],
             "suggestions": [],
             "overall_assessment": "",
-            "error": str(exc),
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
 
 
@@ -1643,15 +1876,15 @@ def health_check() -> dict[str, Any]:
         from automedia._version import __version__
 
         uptime_s = time.monotonic() - _SERVER_START
-        return {
+        return success_response({
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
             "tools_count": _tools_count,
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for version import errors
-        return {"status": "error", "error": str(exc)}
+        return {"status": "error", **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 # ---------------------------------------------------------------------------
@@ -1727,24 +1960,28 @@ def get_config(key: str = "") -> dict[str, Any]:
         config = load_config()
 
         if not key:
-            return {"config": _redact_secrets(config)}
+            return success_response({"config": _redact_secrets(config)})
 
         # Reject direct access to secret keys
         if _has_secret_keyword(key.split(".")[-1]):
-            return {"error": "secret key not exposed"}
+            return error_response(MCPErrorCode.ALLOWLIST_DENIED, "secret key not exposed")
 
         value = _deep_get(config, key)
         if value is None:
-            return {"error": f"config key '{key}' not found"}
+            return error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"config key '{key}' not found",
+                "Check config key name",
+            )
 
         # Redact any sub-values if the result is a dict
         if isinstance(value, dict):
             value = _redact_secrets(value)
 
-        return {"value": value}
+        return success_response({"value": value})
     except Exception as exc:
         # MCP boundary: catch-all for config load errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -1785,10 +2022,10 @@ def list_brands() -> dict[str, Any]:
             }
             for profile in profiles.values()
         ]
-        return {"brands": brands_list, "total": len(brands_list), "error": None}
+        return success_response({"brands": brands_list, "total": len(brands_list), "error": None})
     except Exception as exc:
         # MCP boundary: catch-all for brand profile load errors
-        return {"brands": [], "total": 0, "error": str(exc)}
+        return {"brands": [], "total": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 # ---------------------------------------------------------------------------
@@ -1798,7 +2035,7 @@ def list_brands() -> dict[str, Any]:
 
 def search_assets(
     query: str,
-    brand: str,
+    brand: NonEmptyStr,
     limit: int = 10,
     type: str | None = None,
     tags: list[str] | None = None,
@@ -1851,10 +2088,10 @@ def search_assets(
 
         raw_results = _search_assets(query=query, brand=brand, filters=filters or None)
         limited = raw_results[:limit]
-        return {"results": limited, "count": len(limited), "error": None}
+        return success_response({"results": limited, "count": len(limited), "error": None})
     except Exception as exc:
         # MCP boundary: catch-all for asset library search errors
-        return {"results": [], "count": 0, "error": str(exc)}
+        return {"results": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 # ---------------------------------------------------------------------------
@@ -1867,7 +2104,7 @@ def run_brand_strategy(
     industry: str,
     target_audience: str,
     context: str = "",
-    pattern: str = "b",
+    pattern: ResearchPattern = "b",
 ) -> dict[str, Any]:
     """Generate a brand strategy using LLM-driven analysis.
 
@@ -1901,7 +2138,7 @@ def run_brand_strategy(
         ``"error"`` key instead.
     """
     if pattern == "a":
-        return {
+        return success_response({
             "note": "pattern_a_raw_data",
             "input": {
                 "brand_name": brand_name,
@@ -1909,7 +2146,7 @@ def run_brand_strategy(
                 "target_audience": target_audience,
                 "context": context,
             },
-        }
+        })
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import BrandStrategyOutput
@@ -1926,18 +2163,18 @@ def run_brand_strategy(
             prompt,
             response_format=BrandStrategyOutput,
         )
-        return result.model_dump()
+        return success_response(result.model_dump())
     except Exception as exc:
         # MCP boundary: catch-all for LLM/strategy generation errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def run_pipeline_from_strategy(
-    topic: str,
-    brand: str,
-    mode: str = "auto",
+    topic: NonEmptyStr,
+    brand: NonEmptyStr,
+    mode: PipelineMode = "auto",
     strategy_context: str = "",
-    pattern: str = "b",
+    pattern: ResearchPattern = "b",
 ) -> dict[str, Any]:
     """Generate a content strategy via LLM then execute the production pipeline.
 
@@ -1975,7 +2212,7 @@ def run_pipeline_from_strategy(
         failure description.
     """
     if pattern == "a":
-        return {
+        return success_response({
             "note": "pattern_a_raw_data",
             "input": {
                 "topic": topic,
@@ -1983,7 +2220,7 @@ def run_pipeline_from_strategy(
                 "mode": mode,
                 "strategy_context": strategy_context,
             },
-        }
+        })
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import PipelineStrategyOutput
@@ -2009,17 +2246,17 @@ def run_pipeline_from_strategy(
             mode=mode,
         )
 
-        return {
+        return success_response({
             "strategy": strategy.model_dump(),
             "pipeline_result": _pipeline_result_to_dict(pipeline_result),
-        }
+        })
     except Exception as exc:
         # MCP boundary: catch-all for strategy generation + pipeline errors
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def update_engine_config(
-    modality: str,
+    modality: EngineModality,
     setting: str,
     value: str,
 ) -> dict[str, Any]:
@@ -2044,14 +2281,16 @@ def update_engine_config(
         ``{"status": "ok", "modality": str, "setting": str, "value": str, "file": str}``
         or ``{"error": str}`` on failure.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    _VALID_MODALITIES = {"tts", "asr", "image", "video"}
+    valid_modalities = {"tts", "asr", "image", "video"}
 
-    if modality not in _VALID_MODALITIES:
-        return {
-            "error": f"Invalid modality '{modality}'. Valid: {', '.join(sorted(_VALID_MODALITIES))}",
-        }
+    if modality not in valid_modalities:
+        valid_str = ", ".join(sorted(valid_modalities))
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"Invalid modality '{modality}'. Valid: {valid_str}",
+        )
 
     try:
         overrides_dir = Path.home() / ".automedia" / "overrides" / "rules"
@@ -2065,22 +2304,22 @@ def update_engine_config(
             },
         }
 
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        ts = datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S")
         filename = f"engine-override-{modality}-{ts}.yaml"
         filepath = overrides_dir / filename
 
         with open(filepath, "w", encoding="utf-8") as f:
             yaml.dump(override_data, f, default_flow_style=False)
 
-        return {
+        return success_response({
             "status": "ok",
             "modality": modality,
             "setting": setting,
             "value": value,
             "file": str(filepath),
-        }
+        })
     except Exception as exc:
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
 def engine_health() -> dict[str, Any]:
@@ -2095,17 +2334,18 @@ def engine_health() -> dict[str, Any]:
     try:
         from automedia.core.doctor import Doctor
 
-        _ENGINE_DEPS = {"comfyui", "whisper", "edge-tts", "hyperframes", "chrome", "ffmpeg", "bun", "llm_api"}
+        engine_deps_set = {"comfyui", "whisper", "edge-tts", "hyperframes",
+                           "chrome", "ffmpeg", "bun", "llm_api"}
 
         all_deps = Doctor().check_dependencies()
-        engine_deps = [d for d in all_deps if d["name"] in _ENGINE_DEPS]
+        engine_deps = [d for d in all_deps if d["name"] in engine_deps_set]
         healthy = sum(1 for d in engine_deps if d["installed"])
         unhealthy = len(engine_deps) - healthy
 
-        return {
+        return success_response({
             "engines": engine_deps,
             "healthy_count": healthy,
             "unhealthy_count": unhealthy,
-        }
+        })
     except Exception as exc:
-        return {"error": str(exc)}
+        return error_response(MCPErrorCode.UNKNOWN, str(exc))

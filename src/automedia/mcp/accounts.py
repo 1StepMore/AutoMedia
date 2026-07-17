@@ -7,6 +7,8 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.accounts.registry import AccountRegistry
+from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
+from automedia.mcp.server_types import NonEmptyStr
 
 log = get_logger(__name__)
 
@@ -39,7 +41,7 @@ def connect_account(
         Account metadata including account_id
     """
     if not credentials:
-        return {"error": "credentials must be provided"}
+        return error_response(MCPErrorCode.INVALID_PARAM, "credentials must be provided")
 
     try:
         meta = _get_registry().register(
@@ -50,7 +52,7 @@ def connect_account(
         )
         return {"success": True, "account": meta}
     except ValueError as e:
-        return {"error": str(e)}
+        return error_response(MCPErrorCode.INVALID_PARAM, str(e), "Check credentials values")
 
 
 def list_accounts(
@@ -67,10 +69,10 @@ def list_accounts(
         List of account metadata dicts
     """
     accounts = _get_registry().list(platform=platform, status=status)
-    return {"accounts": accounts, "count": len(accounts)}
+    return success_response({"accounts": accounts, "count": len(accounts)})
 
 
-def get_account_health(account_id: str) -> dict[str, Any]:
+def get_account_health(account_id: NonEmptyStr) -> dict[str, Any]:
     """Check an account's health status.
 
     Args:
@@ -81,18 +83,22 @@ def get_account_health(account_id: str) -> dict[str, Any]:
     """
     info = _get_registry().get(account_id)
     if not info:
-        return {"error": f"Account not found: {account_id}"}
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"Account not found: {account_id}",
+            "Verify account_id",
+        )
 
-    return {
+    return success_response({
         "account_id": account_id,
         "platform": info.get("platform"),
         "label": info.get("label"),
         "status": info.get("status"),
         "last_health_check": str(info.get("last_health_check", "")),
-    }
+    })
 
 
-def disconnect_account(account_id: str) -> dict[str, Any]:
+def disconnect_account(account_id: NonEmptyStr) -> dict[str, Any]:
     """Remove a platform account.
 
     Args:
@@ -103,7 +109,11 @@ def disconnect_account(account_id: str) -> dict[str, Any]:
     """
     info = _get_registry().get(account_id)
     if not info:
-        return {"error": f"Account not found: {account_id}"}
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"Account not found: {account_id}",
+            "Verify account_id",
+        )
 
     _get_registry().delete(account_id)
     return {"success": True, "account_id": account_id, "platform": info.get("platform")}
