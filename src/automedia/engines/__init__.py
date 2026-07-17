@@ -40,7 +40,10 @@ log = get_logger(__name__)
 try:
     import automedia.engines.implementations  # noqa: F401
 except ImportError:
-    log.warning("No engine implementations found — auto-registration skipped")
+    log.exception(
+        "Failed to import engine implementations — auto-registration skipped. "
+        "Check for missing dependencies (e.g. comfyui, faster-whisper, edge-tts).",
+    )
 
 
 # ---------------------------------------------------------------------------

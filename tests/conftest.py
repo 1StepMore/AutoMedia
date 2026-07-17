@@ -5,6 +5,7 @@ All fixtures produce synthetic data — zero production project data.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -33,6 +34,25 @@ def pytest_configure(config: pytest.Config) -> None:
 # ---------------------------------------------------------------------------
 # Directory fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _gate_registry_isolation() -> Generator[None, None, None]:
+    """Save and restore :class:`GateRegistry` state between tests.
+
+    ``GateRegistry`` is a singleton — concrete :class:`BaseGate` subclasses
+    (including test-only ones like ``_AlwaysPassGate``) register themselves
+    via ``__init_subclass__``.  Without isolation the registry state leaks
+    across test files, causing false ``KeyError`` duplicates or phantom
+    registrations.
+    """
+    from automedia.gates.base import GateRegistry
+
+    registry = GateRegistry()
+    saved = dict(registry._registry)  # noqa: SLF001  # intentional test isolation
+    yield
+    registry._registry.clear()
+    registry._registry.update(saved)
 
 
 @pytest.fixture()

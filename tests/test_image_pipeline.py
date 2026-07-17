@@ -19,6 +19,47 @@ from automedia.pipelines.image_pipeline import (
 )
 
 # ---------------------------------------------------------------------------
+# Autouse fixture — mock the image engine so tests don't need a real ComfyUI
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock ``resolve_engine`` to return a stub engine that creates real PNGs.
+
+    Without this fixture every :class:`ImagePipeline` method call would
+    attempt to resolve a *comfyui* engine and fail with
+    :class:`EngineUnavailableError` when ComfyUI is not running.
+    """
+
+    class _MockImageEngine:
+        """Stub engine that writes a minimal valid PNG for any generate call."""
+
+        def generate(  # noqa: PLR6301  # intentional stub
+            self,
+            prompt: str,
+            width: int,
+            height: int,
+            output_path: str,
+        ) -> str:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            Image.new("RGB", (width, height), color=(100, 150, 200)).save(
+                output_path, "PNG",
+            )
+            return output_path
+
+    def _mock_resolve(modality: str, config: dict | None = None) -> _MockImageEngine:  # noqa: ARG001
+        if modality != "image":
+            msg = f"Unexpected modality: {modality}"
+            raise ValueError(msg)
+        return _MockImageEngine()
+
+    monkeypatch.setattr(
+        "automedia.pipelines.image_pipeline.resolve_engine", _mock_resolve,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
