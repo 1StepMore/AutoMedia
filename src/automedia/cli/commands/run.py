@@ -95,6 +95,13 @@ class CLIPipelineProgress(PipelineProgress):
             sys.stdout.flush()
 
 
+def _validate_brand(value: str) -> str:
+    """Validate brand identifier is non-empty."""
+    if not value or not value.strip():
+        raise typer.BadParameter("Brand identifier must not be empty")
+    return value
+
+
 def run_cmd(
     topic: str | None = typer.Option(None, "--topic", "-t", help="Content topic / subject."),
     topics: str | None = typer.Option(
@@ -102,7 +109,11 @@ def run_cmd(
         "--topics",
         help="Comma-separated topics for batch mode (overrides --topic).",
     ),
-    brand: str = typer.Option(..., "--brand", "-b", help="Brand identifier."),
+    brand: str = typer.Option(
+        ..., "--brand", "-b",
+        callback=_validate_brand,
+        help="Brand identifier.",
+    ),
     mode: str = typer.Option(
         "auto",
         "--mode",

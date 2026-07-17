@@ -142,8 +142,9 @@ class Project:
             raise ValueError(f"topic_slug {topic_slug!r} produces empty slug after sanitisation")
 
         # Validate brand for path safety (call has side effect — raises ValueError)
-        if brand != "":
-            sanitize_path(brand)
+        if not brand:
+            raise ValueError(f"brand must not be empty, got {brand!r}")
+        sanitize_path(brand)
 
         if base_dir is None:
             base_dir = os.getcwd()

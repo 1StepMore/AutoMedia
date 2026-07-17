@@ -147,6 +147,11 @@ class TestRunCommand:
         assert "Pipeline stopped" in result.output
         assert "kaboom" in result.output
 
+    def test_run_empty_brand_rejected(self, _model_config_present: None) -> None:
+        """--brand '' must be rejected with non-zero exit code."""
+        result = runner.invoke(app, ["run", "--brand", "", "--topic", "test", "--mode", "text_only"])
+        assert result.exit_code != 0, f"Expected non-zero exit, got 0: {result.output}"
+
     def test_run_missing_required_args(self) -> None:
         result = runner.invoke(app, ["run"])
         assert result.exit_code != 0
