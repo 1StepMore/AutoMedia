@@ -12,6 +12,7 @@ Layer priority (lowest → highest):
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 import yaml
@@ -210,6 +211,8 @@ def load_config(
     """
     # Layer 1 – built-in defaults
     config = _load_yaml_file(_DEFAULTS_PATH)
+    # Snapshot default engines for backward-compat detection
+    _engines_default = config.get("engines", {})
 
     # Layer 2 – project .automedia/
     project_dir = config_dir if config_dir is not None else os.path.join(os.getcwd(), ".automedia")
@@ -233,5 +236,20 @@ def load_config(
     # Layer 6b – explicit overrides (highest priority)
     if overrides:
         config = deep_merge(config, overrides)
+
+    # Backward-compat: migrate old pipeline.image.comfyui.* → engines.image.comfyui.*
+    old_comfyui = config.get("pipeline", {}).get("image", {}).get("comfyui")
+    if old_comfyui:
+        new_comfyui = config.get("engines", {}).get("image", {}).get("comfyui")
+        default_comfyui = _engines_default.get("image", {}).get("comfyui")
+        # Identity check: if new_comfyui is still the same object as the default,
+        # the user hasn't explicitly configured the new path — migrate old values.
+        if new_comfyui is default_comfyui:
+            warnings.warn(
+                "pipeline.image.comfyui.* is deprecated, use engines.image.comfyui.*",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            config["engines"]["image"]["comfyui"] = dict(old_comfyui)
 
     return config

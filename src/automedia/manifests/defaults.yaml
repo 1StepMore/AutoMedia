@@ -67,6 +67,28 @@ gate_engine:
   max_retries: 3
   retry_delay: 1.0
 
+engines:
+  tts:
+    default: edge-tts
+    edge-tts:
+      voice: zh-CN-YunxiNeural
+  asr:
+    default: whisper
+    whisper:
+      model: tiny
+      language: zh
+  image:
+    default: comfyui
+    comfyui:
+      host: 127.0.0.1
+      port: 8188
+      protocol: http
+      timeout: 300
+  video:
+    default: hyperframes
+    hyperframes:
+      quality: high
+
 pipeline:
   video:
     enabled: true
