@@ -27,6 +27,7 @@ readme = "README.md"
 dependencies = [
     "python-dotenv>=1.0",
     "typer>=0.9,<1",
+    "click>=8.1",
     "pydantic>=2,<3",
     "pyyaml>=6.0.2",
     "tenacity>=8",

@@ -12,7 +12,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
-import httpx
 from structlog import get_logger
 
 from automedia.accounts.models import SessionToken
@@ -35,7 +34,12 @@ class OAuth2ClientCredentialsFlow:
 
     def __init__(self, http_client: httpx.Client | None = None) -> None:
         """Initialize the client credentials flow with an optional HTTP client."""
-        self._http = http_client or httpx.Client(timeout=30)
+        if http_client is not None:
+            self._http = http_client
+        else:
+            import httpx as _httpx
+
+            self._http = _httpx.Client(timeout=30)
 
     def exchange(
         self,
@@ -302,7 +306,12 @@ class OAuth2AuthCodeFlow:
 
         Verifies the code verifier against the stored challenge (PKCE).
         """
-        http = http_client or httpx.Client(timeout=30)
+        if http_client is not None:
+            http = http_client
+        else:
+            import httpx as _httpx
+
+            http = _httpx.Client(timeout=30)
 
         data: dict[str, str] = {
             "grant_type": "authorization_code",
