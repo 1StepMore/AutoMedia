@@ -38,7 +38,7 @@ from automedia.pipelines.gate_engine import GateEngine, PipelineProgress
 # Mock gate helpers
 # ---------------------------------------------------------------------------
 
-# Use gate names G70+ to avoid collisions with existing test gates (G73-G85)
+# Use gate names outside the G73-G85 range to avoid collisions
 
 
 class _PassGate(BaseGate):
@@ -68,7 +68,7 @@ class _FailRetryThenPassGate(BaseGate):
     how the engine re-executes the same gate instance).
     """
 
-    _gate_name = "G76"
+    _gate_name = "G59"
     _failure_mode = "retry"
     _call_count: int = 0
 
@@ -92,7 +92,7 @@ class _TransientRetryGate(BaseGate):
 class _PermanentErrorOnRetryGate(BaseGate):
     """Returns passed=False first, then raises ValueError on quality retry."""
 
-    _gate_name = "G77"
+    _gate_name = "G62"
     _failure_mode = "retry"
     _call_count: int = 0
 
@@ -106,7 +106,7 @@ class _PermanentErrorOnRetryGate(BaseGate):
 class _TransientErrorOnRetryGate(BaseGate):
     """Returns passed=False first, then raises ConnectionError on quality retry."""
 
-    _gate_name = "G78"
+    _gate_name = "G63"
     _failure_mode = "retry"
     _call_count: int = 0
 
@@ -120,7 +120,7 @@ class _TransientErrorOnRetryGate(BaseGate):
 class _UnknownErrorOnRetryGate(BaseGate):
     """Returns passed=False first, then raises RuntimeError on quality retry."""
 
-    _gate_name = "G79"
+    _gate_name = "G64"
     _failure_mode = "retry"
     _call_count: int = 0
 
@@ -134,7 +134,7 @@ class _UnknownErrorOnRetryGate(BaseGate):
 class _SkipDetectGate(BaseGate):
     """Records whether execute was called."""
 
-    _gate_name = "G75"
+    _gate_name = "G58"
     _failure_mode = "stop"
 
     def __init__(self) -> None:
@@ -148,7 +148,7 @@ class _SkipDetectGate(BaseGate):
 class _SecondPassGate(BaseGate):
     """Always passes, distinct gate name for multi-gate tests."""
 
-    _gate_name = "G80"
+    _gate_name = "G65"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -483,7 +483,7 @@ class TestRetryGateFlagWithEngine:
         ok, results = engine.run({}, progress=progress)
 
         assert ok is True
-        # G70 executed twice (initial + retry), G80 executed once
+        # G70 executed twice (initial + retry), G65 executed once
         assert len(results) == 3
 
     def test_retry_flag_calls_on_gate_end_for_rerun(self) -> None:
@@ -527,7 +527,7 @@ class TestSkipGateFlagWithEngine:
         progress = MagicMock(spec=PipelineProgress)
         progress.is_cancelled.return_value = False
         progress.wait_if_paused.return_value = True
-        progress.consume_skip_gate.return_value = "G75"
+        progress.consume_skip_gate.return_value = "G58"
         progress.consume_retry_gate.return_value = None
 
         engine = GateEngine(
@@ -544,7 +544,7 @@ class TestSkipGateFlagWithEngine:
         progress = MagicMock(spec=PipelineProgress)
         progress.is_cancelled.return_value = False
         progress.wait_if_paused.return_value = True
-        # Only skip the first gate (G70), not the second (G80)
+        # Only skip the first gate (G70), not the second (G65)
         progress.consume_skip_gate.side_effect = ["G70", None]
         progress.consume_retry_gate.return_value = None
 

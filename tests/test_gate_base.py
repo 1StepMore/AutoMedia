@@ -306,17 +306,17 @@ class TestAutoRegistration:
     def test_subclass_auto_registered(self) -> None:
         """A concrete BaseGate subclass is automatically in _registry."""
         class _AutoA(BaseGate):
-            _gate_name = "G71"
+            _gate_name = "G66"
             _failure_mode = "stop"
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
         class _AutoB(BaseGate):
-            _gate_name = "G72"
+            _gate_name = "G67"
             _failure_mode = "stop"
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
-        assert "G71" in _registry
-        assert "G72" in _registry
+        assert "G66" in _registry
+        assert "G67" in _registry
 
     def test_registry_get_returns_class_not_instance(self) -> None:
         """registry.get() returns the class, usable for instantiation."""
