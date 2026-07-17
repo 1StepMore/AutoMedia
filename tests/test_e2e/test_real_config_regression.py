@@ -31,6 +31,7 @@ _ALLOWLIST = {
     "content",
     "platforms",
     "cron",
+    "engines",
     "pool",
     "pipeline",
     "prompts",

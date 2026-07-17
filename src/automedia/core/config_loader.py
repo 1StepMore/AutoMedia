@@ -237,7 +237,18 @@ def load_config(
     if overrides:
         config = deep_merge(config, overrides)
 
-    # Backward-compat: migrate old pipeline.image.comfyui.* → engines.image.comfyui.*
+    # ------------------------------------------------------------------
+    # ComfyUI config migration: pipeline.image.comfyui.* → engines.image.comfyui.*
+    #
+    # The engine abstraction layer moved ComfyUI settings from
+    # ``pipeline.image.comfyui.*`` to ``engines.image.comfyui.*``.
+    # This block auto-migrates old values as long as the user hasn't
+    # explicitly configured the new path.  Users should update their
+    # project config (~/.automedia/ or .automedia/) to use the new keys.
+    #
+    # Deprecated since: engine-abstraction-layer (July 2026)
+    # Removal target: engine-abstraction-layer+3 months
+    # ------------------------------------------------------------------
     old_comfyui = config.get("pipeline", {}).get("image", {}).get("comfyui")
     if old_comfyui:
         new_comfyui = config.get("engines", {}).get("image", {}).get("comfyui")
