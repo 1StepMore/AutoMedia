@@ -38,6 +38,13 @@ from automedia.pipelines.gate_engine import (
     PipelineProgress,
     PipelineResult,
 )
+from automedia.engines import resolve_engine
+from automedia.engines.base import BaseVideoEngine
+from automedia.engines.errors import (
+    EngineExecutionError,
+    EngineNotFoundError,
+    EngineUnavailableError,
+)
 from automedia.pipelines.image_pipeline import ImagePipeline
 from automedia.pipelines.language_config import resolve_language_config
 
@@ -542,7 +549,15 @@ def run_full_pipeline(
         #      Sets a boolean flag; video gates (V0-V7) use it to decide
         #      whether to skip or degrade gracefully.  Never blocks the
         #      pipeline — that decision belongs inside the gate chain.
-        gate_context["hyperframes_available"] = _check_hyperframes(mode=mode)
+        #      Also checks the video engine (includes FFmpeg fallback).
+        hyperframes_available = _check_hyperframes(mode=mode)
+        video_engine_available: bool = False
+        try:
+            resolve_engine("video", config)
+            video_engine_available = True
+        except (EngineNotFoundError, EngineExecutionError, EngineUnavailableError):
+            pass
+        gate_context["hyperframes_available"] = hyperframes_available or video_engine_available
         if gate_context["hyperframes_available"]:
             log.info("pipeline.hyperframes.check", available=True)
         elif mode in ("auto", "video_only"):
@@ -607,7 +622,7 @@ def run_full_pipeline(
         carousel_images: list[str] = []
         if mode == "image-carousel":
             try:
-                pipeline = ImagePipeline()
+                pipeline = ImagePipeline(config=config)
                 content = gate_context.get("content", topic)
                 project_dir_str = str(project.project_dir)
                 carousel_images = pipeline.generate_body_images(
@@ -632,7 +647,7 @@ def run_full_pipeline(
         cover_image: str = ""
         if mode == "text_with_cover":
             try:
-                pipeline = ImagePipeline()
+                pipeline = ImagePipeline(config=config)
                 project_dir_str = (
                     project.project_dir
                     if isinstance(project.project_dir, str)
@@ -651,6 +666,24 @@ def run_full_pipeline(
                     error=str(exc),
                     hint="Cover image generation failed — continuing without cover",
                 )
+
+        # 6.5 Video production — produce MP4 from accumulated assets
+        video_path: str = ""
+        if mode in ("auto", "video_only", "short-video"):
+            video_assets = _collect_video_assets(gate_context, project)
+            if video_assets:
+                try:
+                    video_engine = cast(BaseVideoEngine, resolve_engine("video", config))
+                    video_path = video_engine.render(
+                        video_assets,
+                        os.path.join(project.project_dir, "03_video", "output.mp4"),
+                    )
+                    gate_context["video_path"] = video_path
+                    log.info("pipeline.video_produced", path=video_path)
+                except (EngineExecutionError, EngineNotFoundError) as exc:
+                    log.warning("pipeline.video_production_failed", error=str(exc))
+                except Exception as exc:
+                    log.warning("pipeline.video_production_unexpected_error", error=str(exc))
 
         # 7. Collect assets
         assets = _collect_assets(gate_context)
@@ -825,3 +858,36 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
             )
         )
     return entries
+
+
+def _collect_video_assets(gate_context: GateContext | dict[str, Any], project: Project) -> dict[str, Any]:
+    """Collect video assets from gate_context into HyperFramesVideoEngine format."""
+    # Gather images from gate_context (covers, body)
+    images = []
+    # Check for cover images
+    cover_image = gate_context.get("cover_image", "")
+    if cover_image and os.path.isfile(cover_image):
+        images.append(cover_image)
+    # Check for carousel/body images
+    carousel_images = gate_context.get("carousel_images", [])
+    images.extend(carousel_images)
+    # Check for fallback frame
+    fallback_frame = gate_context.get("fallback_frame", "")
+    if fallback_frame and os.path.isfile(fallback_frame):
+        images.append(fallback_frame)
+
+    audio_path = gate_context.get("audio_path", "")
+    subtitles_path = gate_context.get("subtitles_path", "")
+    content = gate_context.get("content", "")
+
+    # Only return if we have at least images + audio (minimum for video)
+    if not images or not audio_path:
+        return {}
+
+    return {
+        "images": images,
+        "audio": audio_path,
+        "subtitles": subtitles_path or "",
+        "template_dir": "",
+        "content": content,
+    }
