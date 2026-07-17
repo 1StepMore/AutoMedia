@@ -20,7 +20,7 @@ class TestAdapterClassSecurity:
         )
         assert result["registered"] is False
         assert "error" in result
-        assert "automedia.adapters" in result["error"]
+        assert "automedia.adapters" in result["error"]["message"]
 
     def test_accept_valid_adapter(self) -> None:
         """Valid automedia.adapters.* path should be accepted
@@ -57,7 +57,7 @@ class TestAdapterClassSecurity:
         )
         assert result["registered"] is False
         assert "error" in result
-        assert "automedia.adapters" in result["error"]
+        assert "automedia.adapters" in result["error"]["message"]
 
     def test_reject_os_path(self) -> None:
         """adapter_class='os.path.join' must be rejected."""
@@ -69,4 +69,4 @@ class TestAdapterClassSecurity:
         )
         assert result["registered"] is False
         assert "error" in result
-        assert "automedia.adapters" in result["error"]
+        assert "automedia.adapters" in result["error"]["message"]

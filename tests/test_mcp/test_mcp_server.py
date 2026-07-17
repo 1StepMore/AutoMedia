@@ -278,7 +278,7 @@ class TestAllowlist:
 
         result = list_projects(base_dir=".")
         assert "error" in result
-        assert "not within any allowed directory" in result["error"]
+        assert "not within any allowed directory" in result["error"]["message"]
 
     def test_dot_default_rejected_in_archive_project(self) -> None:
         """archive_project(base_dir='.') returns error when CWD not in allowlist."""
@@ -286,7 +286,7 @@ class TestAllowlist:
 
         result = archive_project(project_id="test", base_dir=".")
         assert "error" in result
-        assert "not within any allowed directory" in result["error"]
+        assert "not within any allowed directory" in result["error"]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +312,7 @@ class TestServerCreation:
                 "add_cron_schedule",
                 "archive_project",
                 "batch_run",
+                "cancel_pipeline",
                 "connect_account",
                 "disconnect_account",
                 "engine_health",
@@ -332,16 +333,21 @@ class TestServerCreation:
                 "list_topic_pool",
                 "localize_content",
                 "localize_output",
+                "mcp_help",
+                "pause_pipeline",
                 "pool_add_topic",
                 "publish_content",
                 "register_platform_adapter",
                 "remove_cron_schedule",
                 "research_topics",
+                "resume_pipeline",
+                "retry_gate",
                 "run_brand_strategy",
                 "run_pipeline",
                 "run_pipeline_from_strategy",
                 "search_assets",
                 "select_topic",
+                "skip_gate",
                 "test_cron_schedule",
                 "update_engine_config",
             ]
@@ -539,8 +545,8 @@ class TestArchiveProject:
             project_id="dra123abc456", base_dir=str(draft_project), force=False
         )
         assert result["archived"] is False
-        assert "Refused" in result["error"]
-        assert "Red Line 8" in result["error"]
+        assert "Refused" in result["error"]["message"]
+        assert "Red Line 8" in result["error"]["message"]
 
     def test_force_overrides_red_line_8(self, draft_project: Path) -> None:
         """force=True overrides the published-status check."""

@@ -22,9 +22,9 @@ class TestFormatOutputSecurity:
         result = format_output(content="test", target_format="../../etc/passwd")
         assert "error" in result, f"Expected error key, got: {result}"
         assert (
-            "unsupported" in result["error"].lower()
-            or "invalid" in result["error"].lower()
-            or "not allowed" in result["error"].lower()
+            "unsupported" in result["error"]["message"].lower()
+            or "invalid" in result["error"]["message"].lower()
+            or "not allowed" in result["error"]["message"].lower()
         )
 
     @staticmethod
@@ -46,7 +46,7 @@ class TestFormatOutputSecurity:
         """Unsupported format identifier must return an error dict."""
         result = format_output(content="test", target_format="exe")
         assert "error" in result, f"Expected error key, got: {result}"
-        assert "exe" in result["error"]
+        assert "exe" in result["error"]["message"]
 
     @staticmethod
     def test_reject_dot_dot() -> None:

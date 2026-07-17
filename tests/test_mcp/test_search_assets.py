@@ -140,4 +140,4 @@ class TestSearchAssets:
         assert result["results"] == []
         assert result["count"] == 0
         assert "error" in result
-        assert "Database connection failed" in result["error"]
+        assert "Database connection failed" in result["error"]["message"]
