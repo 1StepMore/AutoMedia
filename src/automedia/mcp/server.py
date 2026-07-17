@@ -28,7 +28,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from structlog import get_logger
 
@@ -91,6 +91,11 @@ from automedia.mcp.tools import (
     localize_content,
     localize_output,
     pool_add_topic,
+    cancel_pipeline,
+    pause_pipeline,
+    resume_pipeline,
+    retry_gate,
+    skip_gate,
     publish_content,
     register_platform_adapter,
     remove_cron_schedule,
@@ -149,9 +154,94 @@ __all__ = [
     "list_accounts",
     "get_account_health",
     "disconnect_account",
+    # Pipeline control tools
+    "cancel_pipeline",
+    "pause_pipeline",
+    "resume_pipeline",
+    "retry_gate",
+    "skip_gate",
     # Allowlist helpers
     "_require_allowed",
+    "mcp_help",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Tool registry cache for mcp_help — populated at registration time
+# ---------------------------------------------------------------------------
+
+_tool_registry: dict[str, dict[str, str]] = {}
+
+# Prefix → category mapping for dynamic tool grouping.
+# The first matching prefix determines the category; unmatched tools fall
+# to "Other".  Ordered with more-specific prefixes first where needed.
+_CATEGORY_PREFIXES: list[tuple[str, str]] = [
+    ("disconnect_", "Account Management"),
+    ("connect_", "Account Management"),
+    ("get_", "Get / Query"),
+    ("list_", "List / Browse"),
+    ("run_", "Run / Execute"),
+    ("add_", "Add / Create"),
+    ("remove_", "Remove / Delete"),
+    ("test_", "Test / Validate"),
+    ("pool_", "Topic Pool"),
+    ("search_", "Search"),
+    ("publish_", "Publishing"),
+    ("select_", "Topic Selection"),
+    ("register_", "Registration"),
+    ("extract_", "Document Processing"),
+    ("localize_", "Document Processing"),
+    ("format_", "Document Processing"),
+    ("evaluate_", "Content Quality"),
+    ("batch_", "Batch Operations"),
+    ("health_", "Server / Engine"),
+    ("engine_", "Server / Engine"),
+    ("research_", "Research"),
+    ("archive_", "Archive"),
+    ("update_", "Update"),
+]
+
+
+def _categorize_tool(name: str) -> str:
+    """Determine the display category for a tool based on its name prefix."""
+    for prefix, category in _CATEGORY_PREFIXES:
+        if name.startswith(prefix):
+            return category
+    return "Other"
+
+
+def mcp_help() -> dict[str, Any]:
+    """Get a categorized listing of all available MCP tools with descriptions.
+
+    Use this to discover what tools are available at runtime — the output is
+    dynamically generated from the registered tool set rather than hardcoded.
+
+    Returns
+    -------
+    dict
+        ``{"categories": {...}, "tool_count": int, "hint": str}``
+        where *categories* maps category name → list of ``{name, description}``
+        objects sorted alphabetically within each group.
+    """
+    categorized: dict[str, list[dict[str, str]]] = {}
+    for name, info in _tool_registry.items():
+        category = _categorize_tool(name)
+        categorized.setdefault(category, []).append(
+            {"name": name, "description": info["description"]}
+        )
+
+    sorted_categories: dict[str, list[dict[str, str]]] = {}
+    for cat in sorted(categorized):
+        sorted_categories[cat] = sorted(categorized[cat], key=lambda t: t["name"])
+
+    return {
+        "categories": sorted_categories,
+        "tool_count": len(_tool_registry),
+        "hint": (
+            "Call a tool by name from the categories above. "
+            "Use get_pipeline_progress to poll async tasks."
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -674,6 +764,48 @@ def create_server() -> FastMCP:
         ),
     )(disconnect_account)
 
+    # ------------------------------------------------------------------
+    # Pipeline control tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Cancel a running pipeline by project_id. "
+            "Sets the cancellation flag so the pipeline exits after the "
+            "current gate completes."
+        ),
+    )(cancel_pipeline)
+
+    mcp.tool(
+        description=(
+            "Pause a running pipeline by project_id. "
+            "Signals the pipeline to pause after the current gate completes."
+        ),
+    )(pause_pipeline)
+
+    mcp.tool(
+        description=(
+            "Resume a paused pipeline by project_id. "
+            "Resumes execution of a previously paused pipeline."
+        ),
+    )(resume_pipeline)
+
+    mcp.tool(
+        description=(
+            "Mark a specific gate for retry in a running pipeline. "
+            "Takes project_id and gate_name (e.g. 'G0', 'V3'). "
+            "The pipeline will re-execute the named gate on its next iteration."
+        ),
+    )(retry_gate)
+
+    mcp.tool(
+        description=(
+            "Mark a specific gate for skipping in a running pipeline. "
+            "Takes project_id and gate_name (e.g. 'G0', 'V3'). "
+            "The pipeline will skip the named gate on its next iteration."
+        ),
+    )(skip_gate)
+
     mcp.tool(
         description=(
             "Check all engine-related dependencies (ComfyUI, hyperframes, "
@@ -690,6 +822,25 @@ def create_server() -> FastMCP:
             "Setting: e.g. default, voice, host, port, model."
         ),
     )(update_engine_config)
+
+    # ------------------------------------------------------------------
+    # Help/introspection tool
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Get a categorized listing of all available MCP tools with descriptions. "
+            "Use this to discover what tools are available."
+        ),
+    )(mcp_help)
+
+    # Populate tool registry for mcp_help to introspect at call time
+    _tool_registry.clear()
+    for _name, _tool in mcp._tool_manager._tools.items():
+        _tool_registry[_name] = {
+            "name": _name,
+            "description": _tool.description,
+        }
 
     # Set dynamic tool count for health_check
     from automedia.mcp.tools import set_tools_count
