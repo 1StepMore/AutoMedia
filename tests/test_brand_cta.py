@@ -412,3 +412,17 @@ class TestG3EdgeCases:
         checks[2] = {"name": "brand_identity", "passed": False, "detail": "bad"}
         result = build_gate_result(checks, gate="G3")
         assert result["passed"] is False
+
+
+def test_none_brand_profile_skips_gracefully() -> None:
+    """GateContext with brand_profile=None returns passed=True without crashing."""
+    from automedia.gates._context import GateContext
+    from automedia.gates.brand_cta import G3BrandCTA
+
+    ctx = GateContext(
+        content="Test content for brand check that would normally pass.",
+        brand_profile=None,
+    )
+    result = G3BrandCTA().execute(ctx)
+    assert result["gate"] == "G3"
+    assert result["passed"] is True

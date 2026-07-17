@@ -409,9 +409,17 @@ class G3BrandCTA(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 6-point brand & CTA compliance check and return structured result."""
         content: str = gate_context.get("content", "")
-        brand_profile: dict[str, Any] = gate_context.get("brand_profile", {})
+        brand_profile: dict[str, Any] | None = gate_context.get("brand_profile", {})
         video_script: str | None = gate_context.get("video_script")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
+
+        if brand_profile is None:
+            return {
+                "passed": True,
+                "gate": "G3",
+                "checks": [],
+                "error": None,
+            }
 
         check_fns: list[tuple[str, Any]] = [
             ("brand_name_present", lambda: _check_brand_name_present(content, brand_profile)),
