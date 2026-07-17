@@ -30,6 +30,15 @@ from automedia.mcp.allowlist import (
 from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult, ProgressData
 from automedia.pipelines.runner import VALID_MODES
 
+# Track registered tool count (set dynamically by server.py after registration)
+_tools_count: int = 0
+
+
+def set_tools_count(count: int) -> None:
+    """Set the registered tool count (called from server.py after registration)."""
+    global _tools_count
+    _tools_count = count
+
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
     """Delegate to the server module's ``_require_allowed`` at call time.
@@ -1581,7 +1590,7 @@ def health_check() -> dict[str, Any]:
             "status": "ok",
             "version": __version__,
             "uptime_s": round(uptime_s, 2),
-            "tools_count": 25,
+            "tools_count": _tools_count,
         }
     except Exception as exc:
         # MCP boundary: catch-all for version import errors
@@ -1949,4 +1958,97 @@ def run_pipeline_from_strategy(
         }
     except Exception as exc:
         # MCP boundary: catch-all for strategy generation + pipeline errors
+        return {"error": str(exc)}
+
+
+def update_engine_config(
+    modality: str,
+    setting: str,
+    value: str,
+) -> dict[str, Any]:
+    """Update an engine configuration setting.
+
+    Writes a YAML override file to ``~/.automedia/overrides/rules/``.
+    The change takes effect on the next config load (pipeline run).
+
+    Parameters
+    ----------
+    modality:
+        Engine modality: ``"tts"``, ``"asr"``, ``"image"``, or ``"video"``.
+    setting:
+        Setting name within the modality (e.g. ``"default"``, ``"voice"``,
+        ``"host"``, ``"port"``, ``"model"``).
+    value:
+        Setting value (string). Numeric values will be auto-converted.
+
+    Returns
+    -------
+    dict
+        ``{"status": "ok", "modality": str, "setting": str, "value": str, "file": str}``
+        or ``{"error": str}`` on failure.
+    """
+    from datetime import datetime, timezone
+
+    _VALID_MODALITIES = {"tts", "asr", "image", "video"}
+
+    if modality not in _VALID_MODALITIES:
+        return {
+            "error": f"Invalid modality '{modality}'. Valid: {', '.join(sorted(_VALID_MODALITIES))}",
+        }
+
+    try:
+        overrides_dir = Path.home() / ".automedia" / "overrides" / "rules"
+        overrides_dir.mkdir(parents=True, exist_ok=True)
+
+        override_data = {
+            "engines": {
+                modality: {
+                    setting: value,
+                },
+            },
+        }
+
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        filename = f"engine-override-{modality}-{ts}.yaml"
+        filepath = overrides_dir / filename
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            yaml.dump(override_data, f, default_flow_style=False)
+
+        return {
+            "status": "ok",
+            "modality": modality,
+            "setting": setting,
+            "value": value,
+            "file": str(filepath),
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def engine_health() -> dict[str, Any]:
+    """Check all engine-related dependencies and return their health status.
+
+    Returns
+    -------
+    dict
+        ``{"engines": [...], "healthy_count": int, "unhealthy_count": int}``
+        or ``{"error": str}`` on failure.
+    """
+    try:
+        from automedia.core.doctor import Doctor
+
+        _ENGINE_DEPS = {"comfyui", "whisper", "edge-tts", "hyperframes", "chrome", "ffmpeg", "bun", "llm_api"}
+
+        all_deps = Doctor().check_dependencies()
+        engine_deps = [d for d in all_deps if d["name"] in _ENGINE_DEPS]
+        healthy = sum(1 for d in engine_deps if d["installed"])
+        unhealthy = len(engine_deps) - healthy
+
+        return {
+            "engines": engine_deps,
+            "healthy_count": healthy,
+            "unhealthy_count": unhealthy,
+        }
+    except Exception as exc:
         return {"error": str(exc)}

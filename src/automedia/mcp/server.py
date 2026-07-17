@@ -32,6 +32,8 @@ from typing import TYPE_CHECKING
 
 from structlog import get_logger
 
+from automedia._version import __version__ as _automedia_version
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -72,6 +74,7 @@ from automedia.mcp.tools import (
     add_cron_schedule,
     archive_project,
     batch_run,
+    engine_health,
     evaluate_content_quality,
     extract_brief,
     format_output,
@@ -98,6 +101,7 @@ from automedia.mcp.tools import (
     search_assets,
     select_topic,
     test_cron_schedule,
+    update_engine_config,
 )
 
 # ---------------------------------------------------------------------------
@@ -138,6 +142,8 @@ __all__ = [
     "list_cron_schedules",
     "remove_cron_schedule",
     "test_cron_schedule",
+    # Engine health tool
+    "engine_health",
     # Account tools
     "connect_account",
     "list_accounts",
@@ -668,6 +674,28 @@ def create_server() -> FastMCP:
         ),
     )(disconnect_account)
 
+    mcp.tool(
+        description=(
+            "Check all engine-related dependencies (ComfyUI, hyperframes, "
+            "edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return "
+            "their installation and health status."
+        ),
+    )(engine_health)
+
+    mcp.tool(
+        description=(
+            "Update an engine configuration setting. "
+            "Writes a YAML override to ~/.automedia/overrides/rules/. "
+            "Modality: tts, asr, image, or video. "
+            "Setting: e.g. default, voice, host, port, model."
+        ),
+    )(update_engine_config)
+
+    # Set dynamic tool count for health_check
+    from automedia.mcp.tools import set_tools_count
+
+    set_tools_count(len(mcp._tool_manager._tools))
+
     # ------------------------------------------------------------------
     # MCP resources
     # ------------------------------------------------------------------
@@ -696,6 +724,9 @@ def create_server() -> FastMCP:
     def _gate_info(gate_name: str) -> str:
         """Get gate description, failure mode, common causes, and fixes."""
         return gate_info_resource(gate_name)
+
+    # Pass AutoMedia version to MCP protocol-level server info
+    mcp._mcp_server.version = _automedia_version
 
     return mcp
 

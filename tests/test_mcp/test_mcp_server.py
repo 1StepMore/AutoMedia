@@ -314,11 +314,13 @@ class TestServerCreation:
                 "batch_run",
                 "connect_account",
                 "disconnect_account",
+                "engine_health",
                 "evaluate_content_quality",
                 "extract_brief",
                 "format_output",
                 "get_account_health",
                 "get_config",
+                "get_cron_health",
                 "get_pipeline_progress",
                 "get_pipeline_status",
                 "get_project_assets",
@@ -340,6 +342,8 @@ class TestServerCreation:
                 "run_pipeline_from_strategy",
                 "search_assets",
                 "select_topic",
+                "test_cron_schedule",
+                "update_engine_config",
             ]
         )
         assert tool_names == expected
