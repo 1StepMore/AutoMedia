@@ -9,6 +9,40 @@ import pytest
 
 from automedia.gates.base import BaseGate, GateRegistry, _registry
 
+# ---------------------------------------------------------------------------
+# Module-level test gate classes
+#
+# These are registered at *import time* (via __init_subclass__), which means
+# they exist *before* the conftest ``_gate_registry_isolation`` autouse
+# fixture saves GateRegistry state.  Consequently they survive the fixture's
+# save/restore cycle and remain available to any test that references them
+# by name — without depending on cross-test state leakage.
+#
+# Only the gate names needed by state-dependent tests live here.  Tests
+# that define their *own* gate classes (``test_register_and_get``,
+# ``TestBaseGateConcrete``, etc.) use names (G7x–G9x, G80–G89, G71–G73)
+# that are distinct from these module-level entries (G50–G51).
+# ---------------------------------------------------------------------------
+
+
+class _ModLevelGate50(BaseGate):
+    """Module-level G50 fixture — used by list/get/contains tests."""
+    _gate_name = "G50"
+    _failure_mode = "stop"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True}
+
+
+class _ModLevelGate51(BaseGate):
+    """Module-level G51 fixture — used by list/duplicate tests."""
+    _gate_name = "G51"
+    _failure_mode = "stop"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True}
+
+
 # =========================================================================
 # GateRegistry — unit tests
 # =========================================================================
@@ -30,15 +64,15 @@ class TestGateRegistryBasics:
         class _UniqueGateA(  # type: ignore[no-redef]
             BaseGate
         ):
-            _gate_name = "G89"
+            _gate_name = "G52"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
-        registered_cls = registry.get("G89")
+        registered_cls = registry.get("G52")
         assert registered_cls is _UniqueGateA
-        assert registered_cls._gate_name == "G89"  # class-level access
+        assert registered_cls._gate_name == "G52"  # class-level access
 
     def test_get_unknown(self) -> None:
         """get() on unknown name raises KeyError."""
@@ -51,18 +85,18 @@ class TestGateRegistryBasics:
         GateRegistry()
 
         class _UniqueGateB1(BaseGate):
-            _gate_name = "G98"
+            _gate_name = "G53"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
 
-        with pytest.raises(KeyError, match="G98"):
+        with pytest.raises(KeyError, match="G53"):
 
             class _UniqueGateB2(  # type: ignore[unused-variable]
                 BaseGate
             ):
-                _gate_name = "G98"
+                _gate_name = "G53"
                 _failure_mode = "stop"
 
                 def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -80,27 +114,27 @@ class TestGateRegistryBasics:
         """list() includes the classes we registered above."""
         registry = GateRegistry()
         names = registry.list()
-        assert "G89" in names
-        assert "G98" in names
+        assert "G50" in names
+        assert "G51" in names
 
     def test_get_all(self) -> None:
         """get_all() returns a copy of the full mapping."""
         registry = GateRegistry()
         all_gates = registry.get_all()
         assert isinstance(all_gates, dict)
-        assert "G89" in all_gates
+        assert "G50" in all_gates
 
     def test_get_all_is_copy(self) -> None:
         """Modifying get_all() dict does not affect the registry."""
         registry = GateRegistry()
         snapshot = registry.get_all()
         snapshot.clear()
-        assert "G89" in registry.get_all()
+        assert "G50" in registry.get_all()
 
     def test_contains(self) -> None:
         """__contains__ works."""
         registry = GateRegistry()
-        assert "G89" in registry
+        assert "G50" in registry
         assert "NONEXISTENT" not in registry
 
     def test_len(self) -> None:
@@ -271,14 +305,27 @@ class TestAutoRegistration:
 
     def test_subclass_auto_registered(self) -> None:
         """A concrete BaseGate subclass is automatically in _registry."""
-        # The classes defined above already registered themselves.
-        # We verify they're reachable:
-        assert "G97" in _registry
-        assert "G93" in _registry
+        class _AutoA(BaseGate):
+            _gate_name = "G71"
+            _failure_mode = "stop"
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                return {"ok": True}
+        class _AutoB(BaseGate):
+            _gate_name = "G72"
+            _failure_mode = "stop"
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                return {"ok": True}
+        assert "G71" in _registry
+        assert "G72" in _registry
 
     def test_registry_get_returns_class_not_instance(self) -> None:
         """registry.get() returns the class, usable for instantiation."""
-        cls = _registry.get("G97")
+        class _AutoC(BaseGate):
+            _gate_name = "G54"
+            _failure_mode = "stop"
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                return {"status": "pong", "input": gate_context}
+        cls = _registry.get("G54")
         instance = cls()
         assert instance.execute({"a": 1}) == {"status": "pong", "input": {"a": 1}}
 

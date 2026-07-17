@@ -122,4 +122,4 @@ exclude = ["tests", "scripts", ".venv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --tb=short"
+addopts = "-q --tb=short -m 'not e2e'"

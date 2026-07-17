@@ -524,7 +524,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": None}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G83"
+            _gate_name = "G55"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -549,7 +549,7 @@ class TestFallbackCompat:
         finally:
             # Clean up registry to avoid polluting other tests
             try:
-                del _registry._registry["G83"]
+                del _registry._registry["G55"]
             except KeyError:
                 pass
 
@@ -588,7 +588,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": None}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G84"
+            _gate_name = "G56"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -611,7 +611,7 @@ class TestFallbackCompat:
             mock_load_single.assert_called_once()
         finally:
             try:
-                del _registry._registry["G84"]
+                del _registry._registry["G56"]
             except KeyError:
                 pass
 
@@ -645,7 +645,7 @@ class TestFallbackCompat:
         captured: dict[str, Any] = {"brand_profile": "UNSET"}
 
         class _CaptureGate(BaseGate):
-            _gate_name = "G85"
+            _gate_name = "G57"
             _failure_mode = "stop"
 
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -661,7 +661,7 @@ class TestFallbackCompat:
             assert captured["brand_profile"] is None
         finally:
             try:
-                del _registry._registry["G85"]
+                del _registry._registry["G57"]
             except KeyError:
                 pass
 

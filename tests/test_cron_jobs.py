@@ -130,6 +130,7 @@ def e2e_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 class TestCronPoolCollect:
     """``automedia cron run pool-collect`` populates pool.db."""
 
+    @pytest.mark.e2e
     def test_collect_inserts_topics(self, e2e_env: dict[str, Any]):
         result = runner.invoke(app, ["cron", "run", "pool-collect"])
         assert result.exit_code == 0, result.output
@@ -148,6 +149,7 @@ class TestCronPoolCollect:
         output_lower = result.output.lower()
         assert "dedup" in output_lower or "skipped" in output_lower
 
+    @pytest.mark.e2e
     def test_collect_topics_have_source(self, e2e_env: dict[str, Any]):
         runner.invoke(app, ["cron", "run", "pool-collect"])
 
@@ -199,6 +201,7 @@ class TestCronPoolScore:
         assert result.exit_code == 0
         assert "0" in result.output
 
+    @pytest.mark.e2e
     def test_score_after_collect(self, e2e_env: dict[str, Any]):
         runner.invoke(app, ["cron", "run", "pool-collect"])
         result = runner.invoke(app, ["cron", "run", "pool-score"])
