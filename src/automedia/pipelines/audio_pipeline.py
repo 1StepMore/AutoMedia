@@ -19,7 +19,11 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from automedia.engines import resolve_engine
+from automedia.engines.base import BaseASREngine, BaseTTSEngine
+from automedia.engines.errors import EngineUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +48,84 @@ class AudioPipeline:
     Each method shells out to external CLI tools (edge-tts, whisper) via
     subprocess and produces files on disk.
     """
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """Initialise the pipeline with an optional configuration dict.
+
+        Parameters
+        ----------
+        config:
+            Full pipeline configuration dictionary.  Engines are resolved
+            from ``config["engines"]``.  When ``None`` or absent, the
+            built-in defaults are used.
+        """
+        self._config: dict[str, Any] = config or {}
+        self._tts_engine: BaseTTSEngine | None = None
+        self._asr_engine: BaseASREngine | None = None
+        self._tts_fallback: bool = False
+        self._asr_fallback: bool = False
+
+    # ------------------------------------------------------------------
+    # Engine resolution (lazy)
+    # ------------------------------------------------------------------
+
+    def _get_tts_engine(self) -> BaseTTSEngine | None:
+        """Resolve and cache the TTS engine.
+
+        Uses :func:`resolve_engine` with ``self._config`` to obtain the
+        configured TTS engine.  On ``EngineUnavailableError``, logs a
+        warning and returns ``None`` so callers can fall back to the
+        original direct subprocess approach.
+
+        Returns
+        -------
+        BaseTTSEngine or None
+            The resolved TTS engine, or ``None`` if the engine is
+            unavailable.
+        """
+        if self._tts_engine is not None:
+            return self._tts_engine
+        if self._tts_fallback:
+            return None
+        try:
+            engine = resolve_engine("tts", self._config)
+            self._tts_engine = cast(BaseTTSEngine, engine)
+        except EngineUnavailableError:
+            logger.warning(
+                "TTS engine not available, falling back to direct edge-tts subprocess call"
+            )
+            self._tts_fallback = True
+            return None
+        return self._tts_engine
+
+    def _get_asr_engine(self) -> BaseASREngine | None:
+        """Resolve and cache the ASR engine.
+
+        Uses :func:`resolve_engine` with ``self._config`` to obtain the
+        configured ASR engine.  On ``EngineUnavailableError``, logs a
+        warning and returns ``None`` so callers can fall back to the
+        original direct subprocess approach.
+
+        Returns
+        -------
+        BaseASREngine or None
+            The resolved ASR engine, or ``None`` if the engine is
+            unavailable.
+        """
+        if self._asr_engine is not None:
+            return self._asr_engine
+        if self._asr_fallback:
+            return None
+        try:
+            engine = resolve_engine("asr", self._config)
+            self._asr_engine = cast(BaseASREngine, engine)
+        except EngineUnavailableError:
+            logger.warning(
+                "ASR engine not available, falling back to direct whisper subprocess call"
+            )
+            self._asr_fallback = True
+            return None
+        return self._asr_engine
 
     # ------------------------------------------------------------------
     # TTS: edge-tts
@@ -87,6 +169,12 @@ class AudioPipeline:
         # Ensure parent directory exists
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
+        # Try engine delegation first; fall back to direct subprocess call
+        engine = self._get_tts_engine()
+        if engine is not None:
+            return engine.synthesize(text, voice=voice, output_path=output_path)
+
+        # Fallback: direct edge-tts subprocess call (backward compat)
         cmd = [
             "edge-tts",
             "--voice",
@@ -149,7 +237,12 @@ class AudioPipeline:
         if not os.path.isfile(audio_path):
             raise FileNotFoundError(f"audio file not found: {audio_path}")
 
-        # Whisper writes output files next to the input file.
+        # Try engine delegation first; fall back to direct subprocess call
+        engine = self._get_asr_engine()
+        if engine is not None:
+            return engine.transcribe(audio_path, language=language)
+
+        # Fallback: direct whisper subprocess call (backward compat)
         audio_dir = os.path.dirname(os.path.abspath(audio_path))
 
         cmd = [

@@ -11,18 +11,17 @@ Provides three main classes:
 from __future__ import annotations
 
 import os
-import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
 from PIL import Image
 from structlog import get_logger
 
 from automedia.core.llm_client import LLMError, llm_complete
+from automedia.engines import resolve_engine
+from automedia.engines.base import BaseImageEngine
+from automedia.engines.errors import EngineExecutionError
 from automedia.prompts import load_prompt
-
-if TYPE_CHECKING:
-    import httpx
 
 logger = get_logger(__name__)
 
@@ -42,150 +41,6 @@ BODY_IMAGE_SIZE: tuple[int, int] = (1600, 1200)  # 4:3 landscape
 BODY_IMAGE_MIN_SIDE: int = 800
 ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 
-
-# ---------------------------------------------------------------------------
-# ComfyUI helpers (HTTP API client)
-# ---------------------------------------------------------------------------
-
-
-def _run_comfyui(
-    workflow: dict[str, Any],
-    output_dir: str,
-    *,
-    host: str = "127.0.0.1",
-    port: int = 8188,
-    protocol: str = "http",
-    timeout: int = 300,
-) -> str:
-    """Execute a ComfyUI workflow via its HTTP API.
-
-    Makes a real HTTP POST to the ComfyUI ``/prompt`` endpoint with the
-    workflow JSON, polls for completion, and downloads the output image.
-    Falls back to PIL placeholder generation when *httpx* is not available
-    or the server is unreachable.
-
-    Parameters
-    ----------
-    workflow:
-        ComfyUI workflow JSON payload (node graph).
-    output_dir:
-        Directory where generated images are stored.
-    host:
-        ComfyUI server hostname (default ``"127.0.0.1"``).
-    port:
-        ComfyUI server port (default ``8188``).
-    protocol:
-        HTTP protocol scheme (default ``"http"``).
-    timeout:
-        Maximum time in seconds to wait for prompt completion (default ``300``).
-
-    Returns
-    -------
-    str
-        Path to the generated image file.
-    """
-    output_path = os.path.join(output_dir, workflow.get("filename", "output.png"))
-    width = workflow.get("width", 1080)
-    height = workflow.get("height", 1080)
-
-    # ---- Attempt real ComfyUI API call via httpx ----
-    try:
-        import httpx  # noqa: F811
-    except ImportError:
-        from automedia.core._import_helpers import warn_missing_optional
-
-        warn_missing_optional("httpx", feature="using PIL placeholder fallback")
-        _create_placeholder(output_path, width, height)
-        return output_path
-
-    base_url = f"{protocol}://{host}:{port}"
-    try:
-        with httpx.Client(timeout=httpx.Timeout(timeout)) as client:
-            # a) POST workflow to /prompt
-            resp = client.post(f"{base_url}/prompt", json={"prompt": workflow})
-            resp.raise_for_status()
-            prompt_data = resp.json()
-            prompt_id = prompt_data.get("prompt_id")
-            if not prompt_id:
-                raise RuntimeError(f"No prompt_id in ComfyUI response: {prompt_data}")
-
-            # b) Poll /history/{prompt_id} until completed
-            _poll_comfyui(client, base_url, prompt_id, timeout)
-
-            # c) Get output filename from history
-            history_resp = client.get(f"{base_url}/history/{prompt_id}")
-            history_resp.raise_for_status()
-            history = history_resp.json()
-            output_filename = _extract_output_filename(history, prompt_id)
-
-            # d) Download image via /view
-            download_resp = client.get(
-                f"{base_url}/view",
-                params={"filename": output_filename},
-            )
-            download_resp.raise_for_status()
-
-            # e) Write image to disk
-            with open(output_path, "wb") as f:
-                f.write(download_resp.content)
-
-            logger.info("ComfyUI generated image → %s", output_path)
-            return output_path
-
-    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as exc:
-        logger.warning("ComfyUI API error (%s) — using PIL fallback", exc)
-    except Exception as exc:
-        logger.warning("ComfyUI unexpected error (%s) — using PIL fallback", exc)
-
-    # ---- Fallback: PIL placeholder ----
-    _create_placeholder(output_path, width, height)
-    return output_path
-
-
-def _poll_comfyui(
-    client: httpx.Client,  # noqa: F821  — guarded by TYPE_CHECKING
-    base_url: str,
-    prompt_id: str,
-    timeout: int,
-) -> None:
-    """Poll the ComfyUI ``/history`` endpoint until the prompt completes.
-
-    Raises
-    ------
-    TimeoutError
-        If the prompt does not complete within *timeout* seconds.
-    """
-    start = time.monotonic()
-    poll_interval = 1.0
-
-    while (time.monotonic() - start) < timeout:
-        resp = client.get(f"{base_url}/history/{prompt_id}")
-        resp.raise_for_status()
-        history = resp.json()
-        prompt_entry = history.get(prompt_id, {})
-        if prompt_entry.get("status", {}).get("completed") is True:
-            return
-        time.sleep(poll_interval)
-
-    raise TimeoutError(f"ComfyUI prompt {prompt_id} did not complete within {timeout}s")
-
-
-def _extract_output_filename(history: dict[str, Any], prompt_id: str) -> str:
-    """Extract the first output image filename from a ComfyUI history response."""
-    outputs = history.get(prompt_id, {}).get("outputs", {})
-    for _node_id, node_output in outputs.items():
-        images = node_output.get("images", [])
-        if images:
-            filename = images[0].get("filename")
-            if filename:
-                return filename
-    raise RuntimeError(f"No output image found in ComfyUI history for prompt {prompt_id}")
-
-
-def _create_placeholder(output_path: str, width: int, height: int) -> None:
-    """Create a minimal PNG placeholder image using PIL."""
-    img = Image.new("RGB", (width, height), color=(30, 30, 30))
-    img.save(output_path, "PNG")
 
 
 # ---------------------------------------------------------------------------
@@ -259,9 +114,29 @@ def _generate_image_prompt(topic: str, brand: str, image_index: int) -> str:
 class ImagePipeline:
     """Generates cover images, body images, and fallback frames via ComfyUI.
 
-    Each generation method shells out to ComfyUI (subprocess) and writes
+    Each generation method delegates to the configured image engine
+    (resolved via :func:`~automedia.engines.resolve_engine`) and writes
     images into *project_dir*.
     """
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """Initialise the pipeline with an optional config dict.
+
+        Args:
+            config: Full pipeline configuration dictionary. When ``None``,
+                the engine is resolved using built-in defaults.
+        """
+        self._config = config
+        self._image_engine: BaseImageEngine | None = None
+
+    def _get_image_engine(self) -> BaseImageEngine:
+        """Lazy-load and cache the image engine from config."""
+        if self._image_engine is None:
+            self._image_engine = cast(
+                BaseImageEngine,
+                resolve_engine("image", self._config),
+            )
+        return self._image_engine
 
     def generate_covers(
         self,
@@ -293,13 +168,17 @@ class ImagePipeline:
         for ratio, (w, h) in COVER_SPECS.items():
             safe_ratio = ratio.replace(":", "x")
             filename = f"cover_{safe_ratio}.png"
-            workflow = {
-                "prompt": f"{topic} — {brand} cover {ratio}",
-                "width": w,
-                "height": h,
-                "filename": filename,
-            }
-            path = _run_comfyui(workflow, covers_dir)
+            output_path = os.path.join(covers_dir, filename)
+            try:
+                path = self._get_image_engine().generate(
+                    f"{topic} — {brand} cover {ratio}", w, h, output_path,
+                )
+            except EngineExecutionError as exc:
+                logger.warning(
+                    "Cover generation failed for %s: %s — continuing without images",
+                    ratio, exc,
+                )
+                continue
             results[ratio] = path
             logger.info("Generated cover %s → %s", ratio, path)
 
@@ -338,14 +217,16 @@ class ImagePipeline:
         paths: list[str] = []
         for i in range(count):
             filename = f"body_{i:02d}.png"
+            output_path = os.path.join(body_dir, filename)
             prompt = _generate_image_prompt(topic, brand, i)
-            workflow = {
-                "prompt": prompt,
-                "width": w,
-                "height": h,
-                "filename": filename,
-            }
-            path = _run_comfyui(workflow, body_dir)
+            try:
+                path = self._get_image_engine().generate(prompt, w, h, output_path)
+            except EngineExecutionError as exc:
+                logger.warning(
+                    "Body image %d generation failed: %s — continuing without images",
+                    i, exc,
+                )
+                break
             paths.append(path)
 
         logger.info("Generated %d body images → %s", count, body_dir)
@@ -361,8 +242,7 @@ class ImagePipeline:
         """Generate a single cover image in the specified aspect ratio.
 
         Writes the cover to ``02_images/cover/cover.png`` within
-        *project_dir*.  Falls back to a PIL placeholder when ComfyUI
-        is unavailable.
+        *project_dir*.
 
         Parameters
         ----------
@@ -379,20 +259,23 @@ class ImagePipeline:
         Returns
         -------
         str
-            Path to the generated cover image.
+            Path to the generated cover image, or ``""`` on failure.
         """
         spec = COVER_SPECS.get(ratio, (1920, 1080))
         cover_dir = os.path.join(project_dir, "02_images", "cover")
         os.makedirs(cover_dir, exist_ok=True)
 
-        filename = "cover.png"
-        workflow: dict[str, Any] = {
-            "prompt": f"{topic} — {brand} cover {ratio}",
-            "width": spec[0],
-            "height": spec[1],
-            "filename": filename,
-        }
-        path = _run_comfyui(workflow, cover_dir)
+        output_path = os.path.join(cover_dir, "cover.png")
+        try:
+            path = self._get_image_engine().generate(
+                f"{topic} — {brand} cover {ratio}", spec[0], spec[1], output_path,
+            )
+        except EngineExecutionError as exc:
+            logger.warning(
+                "Single cover generation failed: %s — continuing without images", exc,
+            )
+            return ""
+
         logger.info("Generated single cover → %s", path)
         return path
 
@@ -413,19 +296,23 @@ class ImagePipeline:
         Returns
         -------
         str
-            Path to the fallback frame image.
+            Path to the fallback frame image, or ``""`` on failure.
         """
         fallback_dir = os.path.join(project_dir, "fallback")
         os.makedirs(fallback_dir, exist_ok=True)
 
         w, h = BODY_IMAGE_SIZE  # 4:3 landscape default
-        workflow = {
-            "prompt": f"{topic} fallback frame",
-            "width": w,
-            "height": h,
-            "filename": "fallback_frame.png",
-        }
-        path = _run_comfyui(workflow, fallback_dir)
+        output_path = os.path.join(fallback_dir, "fallback_frame.png")
+        try:
+            path = self._get_image_engine().generate(
+                f"{topic} fallback frame", w, h, output_path,
+            )
+        except EngineExecutionError as exc:
+            logger.warning(
+                "Fallback frame generation failed: %s — continuing without images", exc,
+            )
+            return ""
+
         logger.info("Generated fallback frame → %s", path)
         return path
 
