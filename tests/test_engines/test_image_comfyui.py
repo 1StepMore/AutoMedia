@@ -20,7 +20,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from automedia.engines import EngineExecutionError
-from automedia.engines.implementations.image_comfyui import ComfyUIImageEngine
+from automedia.engines.implementations.image_comfyui import (
+    ComfyUIImageEngine,
+    _materialise_workflow,
+)
 from automedia.engines.registry import EngineRegistry
 
 # =========================================================================
@@ -341,9 +344,177 @@ class TestComfyUIImageEngineGenerate:
         body = call_kwargs["json"]
         assert "prompt" in body
         workflow = body["prompt"]
-        assert workflow["prompt"] == "my prompt"
-        assert workflow["width"] == 800
-        assert workflow["height"] == 600
+        # Workflow is a valid ComfyUI node graph
+        assert isinstance(workflow, dict)
+        assert "6" in workflow  # CLIPTextEncode node
+        assert workflow["6"]["inputs"]["text"] == "my prompt"
+        assert "5" in workflow  # EmptyLatentImage node
+        assert workflow["5"]["inputs"]["width"] == 800
+        assert workflow["5"]["inputs"]["height"] == 600
+
+    @patch("httpx.Client")
+    def test_negative_prompt_from_config(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """negative_prompt from config flows to node 7 (negative CLIPTextEncode)."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__enter__.return_value = mock_client
+
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "neg-test"}
+        mock_client.post.return_value = post_resp
+
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "neg-test": {
+                "status": {"completed": True},
+                "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+            },
+        }
+        download_resp = MagicMock()
+        download_resp.content = b"abc"
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        engine = ComfyUIImageEngine(
+            engine_config={"negative_prompt": "bad quality, ugly"},
+        )
+        engine.generate("a cat", 512, 512, str(tmp_path / "out.png"))
+
+        body = mock_client.post.call_args[1]["json"]
+        workflow = body["prompt"]
+        assert "7" in workflow
+        assert workflow["7"]["inputs"]["text"] == "bad quality, ugly"
+
+    @patch("httpx.Client")
+    def test_negative_prompt_default(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """Default negative prompt is used when config is not set."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__enter__.return_value = mock_client
+
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "neg-default"}
+        mock_client.post.return_value = post_resp
+
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "neg-default": {
+                "status": {"completed": True},
+                "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+            },
+        }
+        download_resp = MagicMock()
+        download_resp.content = b"abc"
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        engine = ComfyUIImageEngine()
+        engine.generate("a cat", 512, 512, str(tmp_path / "out.png"))
+
+        body = mock_client.post.call_args[1]["json"]
+        workflow = body["prompt"]
+        assert "7" in workflow
+        assert workflow["7"]["inputs"]["text"] == "blurry, low quality, distorted"
+
+    @patch("httpx.Client")
+    def test_seed_is_integer_in_workflow(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """Node 3 (KSampler) seed is an integer."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__enter__.return_value = mock_client
+
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "seed-test"}
+        mock_client.post.return_value = post_resp
+
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "seed-test": {
+                "status": {"completed": True},
+                "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+            },
+        }
+        download_resp = MagicMock()
+        download_resp.content = b"abc"
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        engine = ComfyUIImageEngine()
+        engine.generate("test", 512, 512, str(tmp_path / "out.png"))
+
+        body = mock_client.post.call_args[1]["json"]
+        workflow = body["prompt"]
+        assert "3" in workflow
+        seed = workflow["3"]["inputs"]["seed"]
+        assert isinstance(seed, int), f"Expected int seed, got {type(seed)}"
+        assert 0 <= seed <= 2**31 - 1
+
+    @patch("httpx.Client")
+    def test_custom_workflow_path(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """Custom workflow JSON via workflow_path config is used."""
+        import json
+
+        custom_workflow = {
+            "10": {
+                "class_type": "CLIPTextEncode",
+                "inputs": {"text": "__PROMPT__", "clip": ["4", 1]},
+            },
+            "11": {
+                "class_type": "CLIPTextEncode",
+                "inputs": {"text": "__NEGATIVE_PROMPT__", "clip": ["4", 1]},
+            },
+        }
+        workflow_file = tmp_path / "custom_workflow.json"
+        workflow_file.write_text(json.dumps(custom_workflow, indent=2))
+
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__enter__.return_value = mock_client
+
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"prompt_id": "custom-wf"}
+        mock_client.post.return_value = post_resp
+
+        history_resp = MagicMock()
+        history_resp.json.return_value = {
+            "custom-wf": {
+                "status": {"completed": True},
+                "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+            },
+        }
+        download_resp = MagicMock()
+        download_resp.content = b"abc"
+        mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+        engine = ComfyUIImageEngine(
+            engine_config={"workflow_path": str(workflow_file)},
+        )
+        engine.generate("hello", 512, 512, str(tmp_path / "out.png"))
+
+        body = mock_client.post.call_args[1]["json"]
+        workflow = body["prompt"]
+        # Custom workflow uses node IDs 10 and 11 (not the default 6, 7)
+        assert "10" in workflow
+        assert workflow["10"]["inputs"]["text"] == "hello"
+        assert "11" in workflow
+        assert workflow["11"]["inputs"]["text"] == "blurry, low quality, distorted"
+
+    @patch("httpx.Client")
+    def test_custom_workflow_path_missing(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """Missing workflow_path file raises EngineExecutionError."""
+        missing = tmp_path / "no_such_file.json"
+
+        engine = ComfyUIImageEngine(
+            engine_config={"workflow_path": str(missing)},
+        )
+        with pytest.raises(
+            EngineExecutionError,
+            match="Workflow template not found",
+        ):
+            engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
     def test_uses_config_host_port(

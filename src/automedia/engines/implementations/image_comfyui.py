@@ -6,9 +6,12 @@ to a proper :class:`BaseImageEngine` subclass with **no PIL fallback**.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import random
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from automedia.engines.base import BaseImageEngine
@@ -18,6 +21,101 @@ if TYPE_CHECKING:
     import httpx
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Default SD1.5 workflow template — used when no ``workflow_path`` is set.
+# Stored as a JSON string so the file is importable without triggering a
+# ``NameError`` on the placeholder tokens (``__PROMPT__``, ``__WIDTH__``,
+# etc. — not valid Python names).
+#
+# Placeholders:
+#   __PROMPT__          — positive text prompt
+#   __NEGATIVE_PROMPT__ — negative text prompt
+#   __WIDTH__ / __HEIGHT__ — output dimensions (int)
+#   __SEED__            — replaced with random.randint(0, 2**31-1)
+# ---------------------------------------------------------------------------
+_DEFAULT_WORKFLOW_JSON: str = r"""{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": __SEED__,
+      "steps": 20,
+      "cfg": 7.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["5", 0]
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": __WIDTH__,
+      "height": __HEIGHT__,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "__PROMPT__",
+      "clip": ["4", 1]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "__NEGATIVE_PROMPT__",
+      "clip": ["4", 1]
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "automedia_",
+      "images": ["8", 0]
+    }
+  }
+}"""
+
+
+def _materialise_workflow(
+    template_json: str,
+    *,
+    prompt: str,
+    negative_prompt: str,
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    """Replace placeholders in *template_json* and return a parsed workflow dict.
+
+    Placeholders understood: ``__PROMPT__``, ``__NEGATIVE_PROMPT__``,
+    ``__WIDTH__``, ``__HEIGHT__``, ``__SEED__``.
+    """
+    seed = random.randint(0, 2**31 - 1)
+    raw = template_json
+    raw = raw.replace("__PROMPT__", json.dumps(prompt)[1:-1])
+    raw = raw.replace("__NEGATIVE_PROMPT__", json.dumps(negative_prompt)[1:-1])
+    raw = raw.replace("__WIDTH__", str(width))
+    raw = raw.replace("__HEIGHT__", str(height))
+    raw = raw.replace("__SEED__", str(seed))
+    return json.loads(raw)
 
 
 class ComfyUIImageEngine(BaseImageEngine):
@@ -33,6 +131,10 @@ class ComfyUIImageEngine(BaseImageEngine):
     * ``port`` (default ``8188``)
     * ``protocol`` (default ``"http"``)
     * ``timeout`` (default ``300``)
+    * ``negative_prompt`` (default ``"blurry, low quality, distorted"``)
+    * ``workflow_path`` — optional path to a JSON workflow template file.
+      The file must contain the same placeholders (``__PROMPT__``,
+      ``__WIDTH__``, etc.).  When unset the built-in SD1.5 workflow is used.
     """
 
     engine_name: ClassVar[str] = "comfyui"
@@ -140,7 +242,7 @@ class ComfyUIImageEngine(BaseImageEngine):
                 with open(output_path, "wb") as f:
                     f.write(download_resp.content)
 
-                logger.info("ComfyUI generated image → %s", output_path)
+                logger.info("ComfyUI generated image at %s", output_path)
                 return os.path.abspath(output_path)
 
         except EngineExecutionError:
@@ -182,17 +284,49 @@ class ComfyUIImageEngine(BaseImageEngine):
     ) -> dict[str, Any]:
         """Build a ComfyUI workflow dict from *prompt* and dimensions.
 
-        Subclasses may override to customise the node graph structure.
+        The workflow is a valid ComfyUI node graph — a dict whose keys are
+        node IDs and values are ``{"class_type": …, "inputs": …}``.
 
-        Returns a dict with keys ``prompt``, ``width``, ``height``, and
-        ``filename`` (a timestamped unique filename).
+        Subclasses may override to customise the node graph structure, or
+        point ``workflow_path`` config to a custom JSON template.
+
+        Returns:
+            A ComfyUI ``/prompt``-compatible workflow dict.
         """
-        return {
-            "prompt": prompt,
-            "width": width,
-            "height": height,
-            "filename": f"comfyui_{int(time.time())}.png",
-        }
+        template_json = self._resolve_workflow_json()
+        negative = self._config.get(
+            "negative_prompt",
+            "blurry, low quality, distorted",
+        )
+        return _materialise_workflow(
+            template_json,
+            prompt=prompt,
+            negative_prompt=negative,
+            width=width,
+            height=height,
+        )
+
+    def _resolve_workflow_json(self) -> str:
+        """Return the workflow template JSON string.
+
+        Priority:
+        1. ``workflow_path`` config — load from file on every call (cheap).
+        2. Built-in :data:`_DEFAULT_WORKFLOW_JSON`.
+        """
+        workflow_path: str | None = self._config.get("workflow_path")
+        if workflow_path:
+            path = Path(workflow_path)
+            if not path.exists():
+                raise EngineExecutionError(
+                    self.engine_name,
+                    f"Workflow template not found: {workflow_path}",
+                )
+            with open(path, encoding="utf-8") as f:
+                data = f.read()
+            logger.info("Loaded custom workflow template from %s", workflow_path)
+            return data
+
+        return _DEFAULT_WORKFLOW_JSON
 
     @staticmethod
     def _poll_comfyui(
