@@ -7,6 +7,7 @@ from automedia.cli.commands.cron import app as cron_app
 from automedia.cli.commands.doctor import doctor_cmd
 from automedia.cli.commands.hitl import app as hitl_app
 from automedia.cli.commands.init_cmd import init_cmd
+from automedia.cli.commands.mcp import app as mcp_app
 from automedia.cli.commands.omni import app as omni_app
 from automedia.cli.commands.onboard import app as onboard_app
 from automedia.cli.commands.pool import app as pool_app
@@ -21,6 +22,7 @@ __all__ = [
     "doctor_cmd",
     "hitl_app",
     "init_cmd",
+    "mcp_app",
     "omni_app",
     "onboard_app",
     "pool_app",

@@ -12,6 +12,7 @@ from automedia.cli.commands.cron import app as cron_app
 from automedia.cli.commands.doctor import doctor_cmd
 from automedia.cli.commands.hitl import app as hitl_app
 from automedia.cli.commands.init_cmd import init_cmd
+from automedia.cli.commands.mcp import app as mcp_app
 from automedia.cli.commands.omni import app as omni_app
 from automedia.cli.commands.onboard import app as onboard_app
 from automedia.cli.commands.pool import app as pool_app
@@ -65,6 +66,7 @@ app.add_typer(cron_app, name="cron")
 app.add_typer(omni_app, name="omni")
 app.add_typer(hitl_app, name="hitl")
 app.add_typer(onboard_app, name="onboard")
+app.add_typer(mcp_app, name="mcp")
 
 
 app.command(name="run", help="Execute the full AutoMedia production pipeline.")(run_cmd)
