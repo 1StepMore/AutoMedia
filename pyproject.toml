@@ -28,6 +28,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "typer>=0.9,<1",
     "click>=8.1",
+    "httpx>=0.27",
     "pydantic>=2,<3",
     "pyyaml>=6.0.2",
     "tenacity>=8",
@@ -46,7 +47,6 @@ Documentation = "https://github.com/1stepmore/automedia/tree/main/docs"
 [project.optional-dependencies]
 openai = ["openai>=2.45.0"]
 anthropic = ["anthropic>=0.116.0"]
-httpx = ["httpx>=0.27"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0"]
 
