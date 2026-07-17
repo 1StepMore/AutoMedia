@@ -1,11 +1,12 @@
-# Skills
+# Skills — Canonical Location
 
-This is the **canonical location** for skills in this project. All
-agent types (OpenCode, Claude Code, Codex CLI, Cline) reference this
-directory.
+This is the **canonical location** for skills in this project. Skill
+files are maintained here and synced as native copies to each agent's
+dedicated skill directory so every tool has them natively available.
 
-- `.claude/skills/README.md` — points here
-- `.codex/skills/README.md` — points here
+- `.claude/skills/` — native copies for Claude Code
+- `.codex/skills/` — native copies for Codex CLI
+- Cline — references this directory directly (no dedicated directory)
 
-Skills are shared across all agents. Do not duplicate skill files in
-other agent directories.
+To add or update a skill: edit the `.md` file here, then sync the same
+file to `.claude/skills/` and `.codex/skills/`.

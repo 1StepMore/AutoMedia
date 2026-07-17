@@ -503,7 +503,9 @@ def create_server() -> FastMCP:
             "Research trending or high-potential topics within a category using LLM. "
             "Takes a category name, optional count (default 5), and optional trending "
             "data. Returns a structured list of topics with angles, confidence scores, "
-            "and format recommendations. The result is ready to feed into the topic pool."
+            "and format recommendations. The result is ready to feed into the topic pool. "
+            "Requires AUTOMEDIA_TAVILY_API_KEY for real-time trending data; "
+            "defaults to simulated results when the env var is not set."
         ),
     )(research_topics)
 

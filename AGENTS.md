@@ -502,10 +502,16 @@ Skills (agent instructions for specific tasks) are stored in
 `.opencode/skills/` and are available to **all agent types** — OpenCode,
 Claude Code, Codex CLI, and Cline.
 
-- **Canonical location:** `.opencode/skills/`
-- **Claude Code:** `.claude/skills/README.md` points to canonical location
-- **Codex CLI:** `.codex/skills/README.md` points to canonical location
+- **Canonical location:** `.opencode/skills/` — edit skills here
+- **Claude Code:** `.claude/skills/` — native copies for Claude Code
+- **Codex CLI:** `.codex/skills/` — native copies for Codex CLI
 - **Cline:** Reference `.opencode/skills/` directly — no dedicated directory
 
-Do not duplicate skill files. All agents should reference the canonical
-`.opencode/skills/` directory.
+Each agent directory receives a native copy of each skill file so that
+every tool can load them without indirection. When updating a skill,
+edit the canonical file in `.opencode/skills/` and sync the same content
+to `.claude/skills/` and `.codex/skills/`.
+
+Currently available skills:
+- `brand-strategy` — Brand positioning, audience analysis, competitive landscape
+- `project-validation` — Post-change validation against founder expectations

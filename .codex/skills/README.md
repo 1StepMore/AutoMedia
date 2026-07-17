@@ -1,4 +1,11 @@
-# Skills
+# Skills — Native for Codex CLI
 
-Skills are defined in `.opencode/skills/` and available to ALL agents.
-Reference them from there.
+This directory contains native skill `.md` files for Codex CLI. Files
+here are synced from the canonical `.opencode/skills/` directory.
+
+Available skills:
+- `brand-strategy.md` — Brand positioning, audience analysis, competitive landscape
+- `project-validation.md` — Post-change validation against founder expectations
+
+To add or update: edit the canonical file in `.opencode/skills/`, then
+sync to this directory.
