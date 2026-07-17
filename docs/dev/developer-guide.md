@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  33 tools
+   │   select_topic, run_pipeline, ...    │  41 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -294,7 +294,11 @@ The pipeline supports eight modes, each running a different subset of gates. The
 |------|---------------|----------|
 | `auto` | D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
 | `text_only` | D0 → CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | D0 → CW → G0-G5 → V0 → L1-L4 | Text output plus a single cover image |
 | `video_only` | D0 → V0-V7 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
+| `image-carousel` | D0 → CW → G0-G5 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
+| `social-thread` | D0 → CW → G0-G5 → L1-L4 | Thread-style posts for social platforms |
+| `short-video` | D0 → CW → G0-G5 → V0-V6 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
 | `qa_only` | D0 → G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
 
 Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, and `_QA_ONLY_GATE_NAMES`.

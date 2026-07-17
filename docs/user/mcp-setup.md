@@ -66,35 +66,43 @@ Registered MCP tools:
   - test_cron_schedule
 ```
 
-## Available Tools (33)
+## Available Tools (41)
 
 | Tool | Description |
 |------|------|
-| `select_topic` | Select the highest-scored topic from the topic pool |
-| `research_topics` | Research trending topics using LLM |
+| `select_topic` | Select the highest-scored pending topic from the pool |
+| `research_topics` | Research trending topics using LLM (requires AUTOMEDIA_TAVILY_API_KEY for real-time data; defaults to simulated results) |
 | `run_pipeline` | Execute full production pipeline (background async) |
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `run_brand_strategy` | Generate a brand strategy using LLM analysis |
-| `get_pipeline_progress` | Pull gate-by-gate progress of a running pipeline |
-| `get_pipeline_status` | Query project status |
-| `list_projects` | List all projects |
-| `get_project_assets` | Get project asset list |
-| `archive_project` | Archive a project (Red Line 8 constraint) |
-| `list_topic_pool` | View the topic pool |
-| `pool_add_topic` | Add a topic to the topic pool |
-| `publish_content` | Publish a project to a platform |
-| `register_platform_adapter` | Register a platform adapter |
+| `evaluate_content_quality` | Score content quality against criteria |
+| `batch_run` | Run pipeline sequentially for multiple topics |
+| `cancel_pipeline` | Cancel a running pipeline by project ID |
+| `pause_pipeline` | Pause a running pipeline after the current gate completes |
+| `resume_pipeline` | Resume a paused pipeline |
+| `retry_gate` | Mark a specific gate for retry in a running pipeline |
+| `skip_gate` | Mark a specific gate for skipping in a running pipeline |
+| `get_pipeline_progress` | Poll gate-by-gate progress of a running pipeline |
+| `get_pipeline_status` | Query project status from its info file |
+| `list_projects` | List all projects, optionally filtered by status |
+| `get_project_assets` | List asset files in a project directory |
+| `archive_project` | Archive a project (Red Line 8: refuses unless published or —force) |
+| `mcp_help` | Get a categorized listing of all MCP tools with descriptions and parameter schemas |
+| `engine_health` | Check all engine-related dependencies health |
+| `health_check` | Return server health status (version, uptime, tool count) |
+| `update_engine_config` | Update an engine configuration setting |
 | `extract_brief` | Extract a content brief from a document (OPP) |
 | `localize_content` | Translate Markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
-| `evaluate_content_quality` | Score content quality against criteria |
-| `health_check` | Return server health status |
-| `connect_account` | Register a new platform account |
-| `list_accounts` | List all registered accounts |
+| `pool_add_topic` | Add a topic to the topic pool |
+| `list_topic_pool` | View the topic pool with optional filters |
+| `connect_account` | Register a new platform account (returns account_id) |
+| `list_accounts` | List all registered accounts with optional filters |
 | `get_account_health` | Check an account's health status |
 | `disconnect_account` | Disconnect/remove a platform account |
-| `batch_run` | Run pipeline sequentially for multiple topics |
+| `publish_content` | Publish a project to a platform |
+| `register_platform_adapter` | Register a platform adapter stub |
 | `add_cron_schedule` | Add a cron schedule entry |
 | `list_cron_schedules` | List all cron schedules |
 | `remove_cron_schedule` | Remove a cron schedule entry |

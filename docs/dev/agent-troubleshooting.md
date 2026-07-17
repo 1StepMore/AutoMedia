@@ -190,7 +190,7 @@ To work around allowlist restrictions:
 If an MCP tool call returns "tool not found":
 
 1. Verify the server is running: check that `python -m automedia.mcp.server` is still running
-2. Check the tool name against the 33 tools listed in AGENTS.md section 9
+2. Check the tool name against the 41 tools listed in AGENTS.md section 9
 3. Restart the server: kill the process and start it again
 
 ### Testing MCP tools directly

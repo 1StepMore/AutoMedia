@@ -277,12 +277,8 @@ The `automedia/hitl/` module exists with `config.py`, `executor.py`, `protocol.p
 ### 4. Agent → Human Communication Gap
 D3 assumes the agent presents summaries, asks for approval, and reports results to the human in natural language. This is **inherently agent-side behavior** (OpenCode, Claude Code, etc.) and not something AutoMedia implements. AutoMedia provides the tools (`get_pipeline_status`, `get_project_assets`, `publish_content`) but the agent framework must handle the human interaction layer.
 
-### 5. run_pipeline MCP Mode Validation
-The MCP tool validation (tools.py:481) is **stricter** than the runner:
-```python
-valid_modes = ("auto", "text_only", "video_only", "qa_only")
-```
-This rejects `image-carousel`, `text-with-cover`, `short-video`, `social-thread` — all valid modes in `runner.py`. Fix: either remove the validation (let runner validate) or sync the list.
+### 5. run_pipeline MCP Mode Validation (✅ Resolved)
+The MCP tool validation previously had a hardcoded subset of modes, rejecting `image-carousel`, `text-with-cover`, `short-video`, `social-thread`. This has been fixed — the MCP layer now imports `VALID_MODES` directly from `runner.py` as a single source of truth, so all 8 modes are accepted automatically.
 
 ---
 

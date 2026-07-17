@@ -19,7 +19,7 @@ AutoMedia automates content production from **topic selection** through **draft 
 
 ## Features
 
-- **Three-layer API** — Python SDK / CLI (12 commands) / MCP Server (33 tools)
+- **Three-layer API** — Python SDK / CLI (12 commands) / MCP Server (41 tools)
 - **20 quality gates** — G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle)
 - **6-layer configuration** — defaults → project → user → overrides → prompts → env vars
 - **Topic pool** — SQLite-backed with scoring, dedup, scheduling
