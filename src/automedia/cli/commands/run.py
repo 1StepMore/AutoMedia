@@ -30,8 +30,18 @@ class CLIPipelineProgress(PipelineProgress):
         self._heartbeat_stop = threading.Event()
         self._heartbeat_thread: threading.Thread | None = None
 
-    def on_gate_start(self, gate_name: str) -> None:
-        super().on_gate_start(gate_name)
+    def on_gate_start(
+        self, gate_name: str,
+        attempt_number: int = 1,
+        retry_level: str | None = None,
+        strategy_delta: dict[str, Any] | None = None,
+    ) -> None:
+        super().on_gate_start(
+            gate_name,
+            attempt_number=attempt_number,
+            retry_level=retry_level,
+            strategy_delta=strategy_delta,
+        )
         sys.stdout.write(f"  {gate_name}...\n")
         sys.stdout.flush()
 
@@ -42,14 +52,22 @@ class CLIPipelineProgress(PipelineProgress):
         self._heartbeat_thread.start()
 
     def on_gate_end(
-        self, gate_name: str, passed: bool, duration: float, detail: str = ""
+        self, gate_name: str, passed: bool, duration: float, detail: str = "",
+        attempt_number: int = 1,
+        retry_level: str | None = None,
+        strategy_delta: dict[str, Any] | None = None,
     ) -> None:
         self._heartbeat_stop.set()
         if self._heartbeat_thread is not None and self._heartbeat_thread.is_alive():
             self._heartbeat_thread.join(timeout=2)
 
-        super().on_gate_end(gate_name, passed, duration, detail=detail)
-        self._completed += 1
+        super().on_gate_end(
+            gate_name, passed, duration, detail=detail,
+            attempt_number=attempt_number,
+            retry_level=retry_level,
+            strategy_delta=strategy_delta,
+        )
+        self._completed = len(self._gates_done)
 
         if passed:
             typer.secho(
