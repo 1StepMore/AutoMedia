@@ -341,9 +341,13 @@ class TestComfyUIImageEngineGenerate:
         body = call_kwargs["json"]
         assert "prompt" in body
         workflow = body["prompt"]
-        assert workflow["prompt"] == "my prompt"
-        assert workflow["width"] == 800
-        assert workflow["height"] == 600
+        # Workflow is a valid ComfyUI node graph
+        assert isinstance(workflow, dict)
+        assert "6" in workflow  # CLIPTextEncode node
+        assert workflow["6"]["inputs"]["text"] == "my prompt"
+        assert "5" in workflow  # EmptyLatentImage node
+        assert workflow["5"]["inputs"]["width"] == 800
+        assert workflow["5"]["inputs"]["height"] == 600
 
     @patch("httpx.Client")
     def test_uses_config_host_port(
