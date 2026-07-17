@@ -134,6 +134,10 @@ class GateProgressEvent:
     duration_s: float = 0.0
     detail: str = ""
     timestamp: str = ""
+    # Retry metadata (see GateEngine retry logic)
+    attempt_number: int = 1
+    retry_level: str | None = None  # "quality" | "tenacity" | "manual" | None
+    strategy_delta: dict[str, Any] | None = None
 
 
 class PipelineProgress:
@@ -160,6 +164,11 @@ class PipelineProgress:
         self._lock = threading.Lock()
         self._hitl_event = threading.Event()
         self._hitl_decision: bool | None = None
+        self._cancelled: bool = False
+        self._paused_event: threading.Event = threading.Event()
+        self._paused_event.set()  # Not paused by default
+        self._retry_gate: str | None = None
+        self._skip_gate: str | None = None
 
     def set_gate_names(self, gate_names: list[str]) -> None:
         """Store the ordered list of all gate names for the pipeline.
@@ -174,7 +183,12 @@ class PipelineProgress:
 
     # -- Mutators (called by GateEngine.run) --------------------------------
 
-    def on_gate_start(self, gate_name: str) -> None:
+    def on_gate_start(
+        self, gate_name: str,
+        attempt_number: int = 1,
+        retry_level: str | None = None,
+        strategy_delta: dict[str, Any] | None = None,
+    ) -> None:
         """Record that *gate_name* has started execution."""
         with self._lock:
             self.current_gate = gate_name
@@ -183,11 +197,17 @@ class PipelineProgress:
                     gate_name=gate_name,
                     status="running",
                     timestamp=datetime.now().isoformat(),
+                    attempt_number=attempt_number,
+                    retry_level=retry_level,
+                    strategy_delta=strategy_delta,
                 )
             )
 
     def on_gate_end(
-        self, gate_name: str, passed: bool, duration: float, detail: str = ""
+        self, gate_name: str, passed: bool, duration: float, detail: str = "",
+        attempt_number: int = 1,
+        retry_level: str | None = None,
+        strategy_delta: dict[str, Any] | None = None,
     ) -> None:
         """Record that *gate_name* completed with *passed*/duration."""
         with self._lock:
@@ -200,6 +220,9 @@ class PipelineProgress:
                     duration_s=duration,
                     detail=detail,
                     timestamp=datetime.now().isoformat(),
+                    attempt_number=attempt_number,
+                    retry_level=retry_level,
+                    strategy_delta=strategy_delta,
                 )
             )
             # Track unique completed gates (retry may call on_gate_end
@@ -230,7 +253,12 @@ class PipelineProgress:
 
     # -- HITL (Human-in-the-Loop) lifecycle --------------------------------
 
-    def on_gate_awaiting_hitl(self, gate_name: str, detail: str = "") -> None:
+    def on_gate_awaiting_hitl(
+        self, gate_name: str, detail: str = "",
+        attempt_number: int = 1,
+        retry_level: str | None = None,
+        strategy_delta: dict[str, Any] | None = None,
+    ) -> None:
         """Record that *gate_name* is awaiting human review.
 
         Sets ``current_gate`` to *gate_name* and adds an event with
@@ -245,6 +273,9 @@ class PipelineProgress:
                     status="awaiting_hitl",
                     detail=detail,
                     timestamp=datetime.now().isoformat(),
+                    attempt_number=attempt_number,
+                    retry_level=retry_level,
+                    strategy_delta=strategy_delta,
                 )
             )
         with _hitl_lock:
@@ -330,6 +361,63 @@ class PipelineProgress:
             return True  # Timeout = auto-approve
 
         return bool(self._hitl_decision)
+
+    # -- Cancel / Pause / Retry / Skip control ------------------------------
+
+    def cancel(self) -> None:
+        """Signal pipeline to stop at next gate boundary."""
+        with self._lock:
+            self._cancelled = True
+            self._paused_event.set()  # Unblock if paused
+
+    def pause(self) -> None:
+        """Pause pipeline after current gate completes."""
+        with self._lock:
+            self._paused_event.clear()
+
+    def resume(self) -> None:
+        """Resume a paused pipeline."""
+        with self._lock:
+            self._paused_event.set()
+
+    def is_cancelled(self) -> bool:
+        """Check whether cancellation has been requested."""
+        with self._lock:
+            return self._cancelled
+
+    def is_paused(self) -> bool:
+        """Check whether pipeline is currently paused."""
+        with self._lock:
+            return not self._paused_event.is_set()
+
+    def wait_if_paused(self) -> bool:
+        """Block while paused. Returns False if cancelled during wait."""
+        self._paused_event.wait()
+        return not self.is_cancelled()
+
+    def mark_retry_gate(self, gate_name: str) -> None:
+        """Mark a gate for retry on next cycle."""
+        with self._lock:
+            self._retry_gate = gate_name
+
+    def mark_skip_gate(self, gate_name: str) -> None:
+        """Mark a gate to be skipped on next cycle."""
+        with self._lock:
+            self._skip_gate = gate_name
+
+    def consume_retry_gate(self) -> str | None:
+        """Atomically read and clear the retry-gate flag."""
+        with self._lock:
+            val = self._retry_gate
+            self._retry_gate = None
+            return val
+
+    def consume_skip_gate(self) -> str | None:
+        """Atomically read and clear the skip-gate flag."""
+        with self._lock:
+            val = self._skip_gate
+            self._skip_gate = None
+            return val
 
 
 # ---------------------------------------------------------------------------
@@ -464,8 +552,16 @@ class GateEngine:
                 error=str(exc) if exc else "",
             )
             if progress:
-                progress.on_gate_end(gate_name, False, 0.0)
-                progress.on_gate_start(gate_name)
+                progress.on_gate_end(
+                    gate_name, False, 0.0,
+                    attempt_number=_attempt_counter["n"],
+                    retry_level="tenacity",
+                )
+                progress.on_gate_start(
+                    gate_name,
+                    attempt_number=_attempt_counter["n"] + 1,
+                    retry_level="tenacity",
+                )
 
         retryer = tenacity.Retrying(
             stop=tenacity.stop_after_attempt(self._max_retries),
@@ -606,10 +702,30 @@ class GateEngine:
         all_ok = True
         total_gates = len(self._gates)
 
-        for gate_idx, gate in enumerate(self._gates, 1):
+        _gate_loop_idx = 0
+        while _gate_loop_idx < len(self._gates):
+            gate = self._gates[_gate_loop_idx]
+            gate_idx = _gate_loop_idx + 1
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
             gate_context["_quality_retry_count"] = 0  # Reset per gate for quality retry tracking
+
+            # NEW: Check cancellation
+            if progress and progress.is_cancelled():
+                log.warning("gate_engine.cancelled", gate_name=gate_name)
+                break
+
+            # NEW: Check skip flag
+            if progress and progress.consume_skip_gate() == gate_name:
+                log.info("gate_engine.skipped", gate_name=gate_name)
+                if progress:
+                    progress.on_gate_end(gate_name, True, 0.0, detail="skipped via MCP")
+                _gate_loop_idx += 1
+                continue
+
+            # NEW: Wait if paused (between gates, not during a gate)
+            if progress and not progress.wait_if_paused():
+                break  # cancelled during pause
 
             # Backward compatibility: accept "rewrite" → map to "retry"
             fm = gate.failure_mode
@@ -696,8 +812,16 @@ class GateEngine:
                         )
 
                         if progress:
-                            progress.on_gate_end(gate_name, False, 0.0)
-                            progress.on_gate_start(gate_name)
+                            progress.on_gate_end(
+                                gate_name, False, 0.0,
+                                attempt_number=_quality_attempt,
+                                retry_level="quality",
+                            )
+                            progress.on_gate_start(
+                                gate_name,
+                                attempt_number=_quality_attempt + 1,
+                                retry_level="quality",
+                            )
 
                         start = time.monotonic()
                         try:
@@ -723,7 +847,10 @@ class GateEngine:
                             passed = result.get("passed", True)
                             if progress:
                                 progress.on_gate_end(
-                                    gate_name, passed, duration, detail=result.get("error", "")
+                                    gate_name, passed, duration,
+                                    detail=result.get("error", ""),
+                                    attempt_number=_quality_attempt,
+                                    retry_level="quality",
                                 )
 
                             if passed:
@@ -767,7 +894,10 @@ class GateEngine:
                             results[-1] = error_result
                             if progress:
                                 progress.on_gate_end(
-                                    gate_name, False, duration, detail=str(exc)
+                                    gate_name, False, duration,
+                                    detail=str(exc),
+                                    attempt_number=_quality_attempt,
+                                    retry_level="quality",
                                 )
                             self._dispatch_failed(
                                 gate_name, gate_context, exc
@@ -800,7 +930,10 @@ class GateEngine:
                             results[-1] = error_result
                             if progress:
                                 progress.on_gate_end(
-                                    gate_name, False, duration, detail=str(exc)
+                                    gate_name, False, duration,
+                                    detail=str(exc),
+                                    attempt_number=_quality_attempt,
+                                    retry_level="quality",
                                 )
                             self._dispatch_failed(
                                 gate_name, gate_context, exc
@@ -829,7 +962,10 @@ class GateEngine:
                             results[-1] = error_result
                             if progress:
                                 progress.on_gate_end(
-                                    gate_name, False, duration, detail=str(exc)
+                                    gate_name, False, duration,
+                                    detail=str(exc),
+                                    attempt_number=_quality_attempt,
+                                    retry_level="quality",
                                 )
                             self._dispatch_failed(
                                 gate_name, gate_context, exc
@@ -974,6 +1110,15 @@ class GateEngine:
                         return False, results
                     return results
                 raise
+
+            # NEW: Check retry flag after gate completes
+            if progress:
+                retry_target = progress.consume_retry_gate()
+                if retry_target == gate_name:
+                    log.info("gate_engine.retry", gate_name=gate_name)
+                    continue  # _gate_loop_idx unchanged — re-runs same gate
+
+            _gate_loop_idx += 1
 
         if early_stop:
             return all_ok, results
