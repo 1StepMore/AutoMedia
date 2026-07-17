@@ -464,7 +464,9 @@ class TestInitCommand:
     def test_init_template_minimal(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import sys
+        import automedia.cli.commands.init_cmd  # noqa: F811 — ensures module is in sys.modules
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
         monkeypatch.setattr(

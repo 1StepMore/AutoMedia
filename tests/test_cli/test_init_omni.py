@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,8 @@ class TestInitOmniCommand:
     ) -> None:
         """All expected config files are created under ``~/.automedia/``."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
@@ -55,7 +57,8 @@ class TestInitOmniCommand:
     ) -> None:
         """User-provided values appear in the written config."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
@@ -76,7 +79,8 @@ class TestInitOmniCommand:
     ) -> None:
         """Defaults are used when the user provides empty input."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
@@ -97,7 +101,8 @@ class TestInitOmniCommand:
     ) -> None:
         """Copied template files contain expected content."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
@@ -126,7 +131,8 @@ class TestInitOmniCommand:
     def test_omni_success_message(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """A green success message is printed after init completes."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
@@ -147,7 +153,8 @@ class TestInitOmniCommand:
     ) -> None:
         """The ``~/.automedia/`` directory is created if absent."""
         monkeypatch.setenv("HOME", str(tmp_path))
-        import automedia.cli.commands.init_cmd as init_mod
+        import automedia.cli.commands.init_cmd  # noqa: F401
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
 
