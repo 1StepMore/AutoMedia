@@ -20,7 +20,7 @@ from automedia.pipelines.runner import _MODE_MAP, run_full_pipeline
 class _AlwaysPassGate(BaseGate):
     """Gate that always passes — for smoke-test gate lists."""
 
-    _gate_name = "G82"
+    _gate_name = "G89"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:

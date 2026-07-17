@@ -186,6 +186,49 @@ def select_topic(
         return {"selected": None, "error": str(exc)}
 
 
+def _fetch_tavily_trending(category: str) -> str:
+    api_key = os.environ.get("AUTOMEDIA_TAVILY_API_KEY", "")
+    if not api_key:
+        return ""
+
+    try:
+        import httpx
+    except ImportError:
+        return ""
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(
+                "https://api.tavily.com/search",
+                json={
+                    "api_key": api_key,
+                    "query": category,
+                    "search_depth": "advanced",
+                    "max_results": 8,
+                    "include_domains": [],
+                    "exclude_domains": [],
+                },
+            )
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+    except Exception:
+        return ""
+
+    results = data.get("results", [])
+    if not results:
+        return ""
+
+    lines: list[str] = []
+    for item in results[:8]:
+        title = (item.get("title") or "").strip()
+        content = (item.get("content") or "")[:200]
+        if title:
+            lines.append(f"- {title}")
+            if content:
+                lines.append(f"  {content}")
+    return "\n".join(lines) if lines else ""
+
+
 def research_topics(
     category: str,
     count: int = 5,
@@ -199,6 +242,11 @@ def research_topics(
     list of topic suggestions with angles, confidence scores, and format
     recommendations.  The result is ready to feed into the topic pool.
 
+    When ``AUTOMEDIA_TAVILY_API_KEY`` is configured, the function first
+    fetches real-time trending signals from the Tavily Search API and
+    passes them as ``trending_data`` to the LLM, providing up-to-date
+    context beyond the LLM's training data cutoff.
+
     Parameters
     ----------
     category:
@@ -207,7 +255,8 @@ def research_topics(
         Number of topics to generate (default 5).
     trending_data:
         Optional context — trending signals, audience data, or keywords
-        to steer the LLM toward relevant topics.
+        to steer the LLM toward relevant topics.  When Tavily is
+        configured, real-time data is merged into this field.
     pattern:
         When ``"a"``, return raw input data without calling the LLM.
         When ``"b"`` (default), use the LLM as usual.
@@ -224,6 +273,14 @@ def research_topics(
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import TopicResearchOutput
         from automedia.prompts import load_prompt
+
+        if not trending_data:
+            tavily_data = _fetch_tavily_trending(category)
+            if tavily_data:
+                trending_data = (
+                    f"Real-time search results for \"{category}\":\n"
+                    f"{tavily_data}"
+                )
 
         prompt = load_prompt(
             "topic_research",
