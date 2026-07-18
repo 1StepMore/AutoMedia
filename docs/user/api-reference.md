@@ -39,14 +39,14 @@ result = run_full_pipeline(
 
 | mode | Executed Gates | Use Case |
 |------|-----------|----------|
-| `auto` | D0 + pre-gate + CW + G0-G5 + V0-V7 + L1-L4 | Full pipeline production |
-| `text_only` | D0 + CW + G0-G5 + L1-L4 | Text-only production |
-| `text_with_cover` | D0 + CW + G0-G5 + V0 + L1-L4 | Text plus cover image |
-| `video_only` | D0 + V0-V7 + L1-L4 | Video-only production |
-| `image-carousel` | D0 + CW + G0-G5 + V0 + V6 + L1-L4 | Carousel image output |
-| `social-thread` | D0 + CW + G0-G5 + L1-L4 | Thread-style social posts |
-| `short-video` | D0 + CW + G0-G5 + V0-V6 + L1-L4 | Short-form video |
-| `qa_only` | D0 + G0 + G2 + G3 + V1 + V6 | Quality review only |
+| `auto` | pre-gate + CW + G0-G5 + V0-V7 + H0 + L1-L4 | Full pipeline production |
+| `text_only` | CW + G0-G5 + L1-L4 | Text-only production |
+| `text_with_cover` | CW + G0-G5 + V0 + L1-L4 | Text plus cover image |
+| `video_only` | V0-V7 + H0 + L1-L4 | Video-only production |
+| `image-carousel` | CW + G0-G5 + V0 + V6 + L1-L4 | Carousel image output |
+| `social-thread` | CW + G0-G5 + L1-L4 | Thread-style social posts |
+| `short-video` | CW + G0-G5 + V0-V6 + H0 + L1-L4 | Short-form video |
+| `qa_only` | G0 + G2 + G3 + V1 + V6 | Quality review only |
 
 ### Return Value
 

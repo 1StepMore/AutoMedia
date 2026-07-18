@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 12 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 13 subcommands.
 ---
 
 # CLI Reference
@@ -35,6 +35,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia doctor` | Check system dependencies |
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
+| `automedia mcp` | Generate MCP client configuration for various IDEs |
 | `automedia onboard` | Onboarding wizard |
 
 

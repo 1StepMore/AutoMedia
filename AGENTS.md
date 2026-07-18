@@ -19,8 +19,8 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 33 tools |
-| CLI | `automedia <subcommand>` | 12 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 41 tools |
+| CLI | `automedia <subcommand>` | 13 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -52,7 +52,7 @@ AutoMedia/
 │       │   ├── image_pipeline.py   # Image/video processing pipeline
 │       │   └── language_config.py  # Language configuration resolution
 │       │
-│       ├── gates/                  # Quality gates (20 implementations + D0)
+│       ├── gates/                  # Quality gates (21 implementations including H0)
 │       │   ├── base.py             # BaseGate ABC + GateRegistry singleton
 │       │   ├── failure_modes.py    # Failure mode knowledge base
 │       │   ├── fact_check.py       # G0
@@ -83,7 +83,7 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│   │       └── commands/           # 12 command modules
+│   │       └── commands/           # 13 command modules
 │       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
@@ -99,7 +99,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 33 tools
+│       │   ├── server.py           # FastMCP server — 41 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -245,7 +245,7 @@ The pipeline runs an ordered sequence of gates. Each gate has a `failure_mode`:
 - **`"stop"`** — halts the entire pipeline on failure
 - **`"rewrite"`** — retries the gate (content regeneration)
 
-Gates are ordered: D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4. Four pipeline modes (`auto`, `text_only`, `video_only`, `qa_only`) select different gate subsets. See `automedia/pipelines/runner.py` for the exact lists.
+Gates are ordered: pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4. Eight pipeline modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`) select different gate subsets. See `automedia/pipelines/runner.py` for the exact lists.
 
 ### 6-Layer Configuration
 Configuration merges from lowest to highest priority:
@@ -289,7 +289,7 @@ These constraints are enforced by the test suite and must never be violated:
 3. **MUST NOT** modify `automedia/mcp/mcp_allowlist.yaml` without explicit user request.
 4. **MUST** use synthetic test fixtures from `tests/fixtures/synth/` for testing. Zero production data in tests.
 5. **MUST** use `automedia archive` command for archiving projects — never manual directory operations.
-6. **MUST** follow the gate naming convention: G0-G5 (copy/content gates), V0-V7 (video/quality gates), L1-L4 (lifecycle gates). Additional gates include D0, pre-gate, and CW.
+6. **MUST** follow the gate naming convention: G0-G5 (copy/content gates), V0-V7 (video/quality gates), L1-L4 (lifecycle gates). Additional gates include H0, pre-gate, and CW.
 7. **MUST** add new gates to `automedia/gates/failure_modes.py` when creating them.
 8. **MUST NOT** skip pre-commit checks. Run `pre-commit run --all-files` before committing.
 9. **MUST** respect the GateHook readonly contract — hooks observe but never mutate.
@@ -388,7 +388,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (33 tools)
+## 9. MCP Tools Quick Reference (41 tools)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -430,7 +430,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 
 ---
 
-## 10. CLI Commands Quick Reference (12 commands)
+## 10. CLI Commands Quick Reference (13 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -481,14 +481,12 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/user/mcp-systemd-setup.md` | systemd deployment guide |
 | `docs/user/hitl-framework.md` | Human-in-the-loop framework docs |
 | `docs/user/omni-integration.md` | Omni Triad integration docs |
-| `docs/user/open-core.md` | Open-core licensing model |
 | `docs/dev/enforcement-mechanisms.md` | Red line enforcement docs |
-| `docs/archive/production-e2e-test-design.md` | E2E test design for production |
 | `docs/user/asset-library.md` | Asset library documentation |
-| `docs/runbook/gate-failure-modes.md` | Gate failure troubleshooting |
-| `docs/runbook/production-workflow.md` | Production operations guide |
-| `docs/runbook/cron-troubleshooting.md` | Cron job debugging |
-| `docs/runbook/api-gotchas.md` | Common API pitfalls |
+| `docs/dev/gate-failure-modes.md` | Gate failure troubleshooting |
+| `docs/user/production-workflow.md` | Production operations guide |
+| `docs/dev/cron-troubleshooting.md` | Cron job debugging |
+| `docs/dev/api-gotchas.md` | Common API pitfalls |
 | `CHANGELOG.md` | Version history |
 | `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
 

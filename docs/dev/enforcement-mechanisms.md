@@ -40,7 +40,7 @@
 - **`"retry"`**：关卡失败时自动重试（触发内容重新生成）
 
 定义在 `automedia/gates/failure_modes.py`，详见
-`docs/runbook/gate-failure-modes.md`。
+`docs/dev/gate-failure-modes.md`。
 
 ### H0 人工审核关卡（SOFT，自动化）
 
@@ -156,6 +156,6 @@ completed_nodes:
 
 - **AGENTS.md 第 5 节** — Red Line 约束（9 条必须遵守的规则）
 - **docs/dev/agent-troubleshooting.md** — 关卡故障排除
-- **docs/runbook/gate-failure-modes.md** — 各关卡的失败处理方式
+- **docs/dev/gate-failure-modes.md** — 各关卡的失败处理方式
 - **automedia/pipelines/runner.py** — 关卡列表和模式映射
 - **automedia/gates/failure_modes.py** — 所有关卡的失败模式定义

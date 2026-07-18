@@ -71,19 +71,6 @@ These constraints are defined in `pyproject.toml` under
 `[project.optional-dependencies] omni` and are enforced at install time by
 `pip`.
 
-### Verification Script
-
-A verification script is available to confirm all three packages are
-installed and importable:
-
-```bash
-python scripts/verify-omni-packages.py
-```
-
-This script imports each package and exercises its basic API. Exit code
-0 means all packages are functional; exit code 1 indicates missing or
-broken packages.
-
 ### Graceful Degradation
 
 All three adapters handle missing packages gracefully.  If an Omni package

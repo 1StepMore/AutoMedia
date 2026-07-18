@@ -195,7 +195,7 @@ External Call Layer
 |------|------|
 | `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`) |
 | `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
-| `gates/` | 20 Gate implementations + failure mode knowledge base (`failure_modes.py`) |
+| `gates/` | 21 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
 | `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
@@ -284,6 +284,7 @@ class MyNewGate(BaseGate):
 |------|------|------|
 | G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
 | V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
+| H0 | Human Review Gate | Human-in-the-loop content and video approval |
 | L1-L4 | Lifecycle Gates | Publish log, archive validation, platform integrity, translation quality |
 
 ### Pipeline Modes
@@ -292,14 +293,14 @@ The pipeline supports eight modes, each running a different subset of gates. The
 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|
-| `auto` | D0 → pre-gate → CW → G0-G5 → V0-V7 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
-| `text_only` | D0 → CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
-| `text_with_cover` | D0 → CW → G0-G5 → V0 → L1-L4 | Text output plus a single cover image |
-| `video_only` | D0 → V0-V7 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
-| `image-carousel` | D0 → CW → G0-G5 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
-| `social-thread` | D0 → CW → G0-G5 → L1-L4 | Thread-style posts for social platforms |
-| `short-video` | D0 → CW → G0-G5 → V0-V6 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
-| `qa_only` | D0 → G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
+| `auto` | pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
+| `text_only` | CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | CW → G0-G5 → V0 → L1-L4 | Text output plus a single cover image |
+| `video_only` | V0-V7 → H0 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
+| `image-carousel` | CW → G0-G5 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
+| `social-thread` | CW → G0-G5 → L1-L4 | Thread-style posts for social platforms |
+| `short-video` | CW → G0-G5 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
+| `qa_only` | G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
 
 Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, and `_QA_ONLY_GATE_NAMES`.
 

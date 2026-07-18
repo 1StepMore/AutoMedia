@@ -26,8 +26,8 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (12 commands) / MCP Server (33 tools)
-- **20 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
+- **Three-layer API**: SDK / CLI (13 commands) / MCP Server (41 tools)
+- **21 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
 - **Platform adapter system**: Extensible publish targets — 20 registered adapters (13 real API + 7 documented manual-only stubs)
@@ -262,7 +262,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (12 commands)
+### CLI (13 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -279,7 +279,7 @@ result = run_full_pipeline(
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (33 tools)
+### MCP Server (41 tools)
 
 Start:
 
@@ -404,7 +404,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  33 tools      |     |  12 commands       |
+  |  41 tools      |     |  13 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -421,7 +421,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 |---------|---------------|
 | `core/` | Config loading (6-layer), project management, credential loading, health checks |
 | `pipelines/` | Pipeline orchestration, GateEngine, audio/video pipelines |
-| `gates/` | 20 gate implementations + failure mode knowledge base |
+| `gates/` | 21 gate implementations + failure mode knowledge base |
 | `hooks/` | GateHook observer protocol (readonly), MD5 tracking, metrics |
 | `adapters/` | Platform publish adapter registry + base classes |
 | `accounts/` | Encrypted credential store, account registry, auth flow engine, session manager |
@@ -429,7 +429,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (12 command modules) |
+| `cli/` | Typer CLI application (13 command modules) |
 | `hitl/` | Human-in-the-loop framework |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
 | `asset_library/` | Vector store, document ingest, similarity search |
@@ -457,9 +457,10 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 | CW | 1 | Content writing |
 | G0-G5 | 6 | Copy gates: fact check, humanizer, copy review, brand CTA, WeChat checks, HTML lint |
 | V0-V7 | 8 | Video gates: lint, vision QA, Whisper, content semantic, TTS brand asset, MP3×SRT, subtitle render, six-step hard check |
+| H0 | 1 | Human-in-the-loop review for content and video quality approval |
 | L1-L4 | 4 | Lifecycle gates: publish log schema, archive validation, platform integrity, translation quality |
 
-**Total: 19 gates.** Gate order: pre-gate → CW → G0-G5 → V0-V7 → L1-L4.
+**Total: 21 gates.** Gate order: pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4.
 
 ## Security
 
@@ -543,8 +544,8 @@ MIT License. See `LICENSE` for details.
 | `docs/user/omni-integration.md` | English | Omni Triad integration |
 | `docs/user/hitl-framework.md` | English | HITL framework |
 | `docs/user/asset-library.md` | English | Asset library |
-| `docs/runbook/gate-failure-modes.md` | English | Gate failure troubleshooting |
-| `docs/runbook/production-workflow.md` | English | Production operations |
-| `docs/runbook/cron-troubleshooting.md` | English | Cron job debugging |
-| `docs/runbook/api-gotchas.md` | English | Common API pitfalls |
+| `docs/dev/gate-failure-modes.md` | English | Gate failure troubleshooting |
+| `docs/user/production-workflow.md` | English | Production operations |
+| `docs/dev/cron-troubleshooting.md` | English | Cron job debugging |
+| `docs/dev/api-gotchas.md` | English | Common API pitfalls |
 | `CHANGELOG.md` | English | Version history and release notes |

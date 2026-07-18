@@ -149,7 +149,7 @@ Pipeline finished: success
 If the Pipeline shows `status="partial"` or `status="failed"`:
 
 1. Check the error message to identify the failing Gate
-2. Refer to `docs/runbook/gate-failure-modes.md` for remediation steps
+2. Refer to `docs/dev/gate-failure-modes.md` for remediation steps
 3. After fixing the issue, resume from the failed Gate using `--resume-from`:
 
 ```bash
