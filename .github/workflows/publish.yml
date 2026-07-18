@@ -14,7 +14,7 @@ on:
   release:
     types: [published]
   push:
-    tags: ["v*"]
+    tags: ["v*", "automedia-v*"]
   workflow_dispatch:
 
 permissions:
