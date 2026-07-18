@@ -137,6 +137,9 @@ def mock_all() -> Iterator[dict[str, MagicMock]]:
         patch(
             "automedia.engines.implementations.video_hyperframes.os.path.isdir",
         ) as m_isdir,
+        patch(
+            "automedia.engines.implementations.video_hyperframes.os.listdir",
+        ) as m_listdir,
     ):
         # --- defaults ---
         m_which.return_value = None
@@ -144,6 +147,7 @@ def mock_all() -> Iterator[dict[str, MagicMock]]:
         m_mkdtemp.return_value = "/tmp/hyperframes_test"
         m_isfile.return_value = True
         m_isdir.return_value = True
+        m_listdir.return_value = []
 
         yield {
             "which": m_which,
@@ -156,6 +160,7 @@ def mock_all() -> Iterator[dict[str, MagicMock]]:
             "makedirs": m_makedirs,
             "isfile": m_isfile,
             "isdir": m_isdir,
+            "listdir": m_listdir,
         }
 
 
@@ -365,12 +370,8 @@ class TestRenderHyperFrames:
             "/tmp/hyperframes_test",
         )
 
-        # template directory (recursive copy)
-        mock_all["copytree"].assert_called_once_with(
-            "/fake/template",
-            "/tmp/hyperframes_test/template",
-            dirs_exist_ok=True,
-        )
+        # template directory — individual items copied to temp root
+        mock_all["listdir"].assert_called_once_with("/fake/template")
 
     def test_render_skips_missing_optional_assets(
         self,
@@ -387,7 +388,11 @@ class TestRenderHyperFrames:
         mock_all["isdir"].return_value = False
 
         output = str(tmp_path / "output.mp4")
-        HyperFramesVideoEngine().render(minimal_assets, output)
+        with patch.object(
+            HyperFramesVideoEngine,
+            "_provision_default_hyperframes_project",
+        ) as m_provision:
+            HyperFramesVideoEngine().render(minimal_assets, output)
 
         # Only image copies should have happened
         copy_calls = mock_all["copy2"].call_args_list
@@ -396,8 +401,8 @@ class TestRenderHyperFrames:
             "/fake/img1.png",
             "/tmp/hyperframes_test/images",
         )
-        # copytree should NOT have been called
-        mock_all["copytree"].assert_not_called()
+        # Default provisioning was called (no template_dir in minimal_assets)
+        m_provision.assert_called_once()
 
     # ------------------------------------------------------------------
     # Cleanup
@@ -771,4 +776,332 @@ class TestRenderConfiguration:
             capture_output=True,
             text=True,
             timeout=600,
+        )
+
+
+# ===================================================================
+# Default template provisioning
+# ===================================================================
+
+
+class TestDefaultTemplateProvisioning:
+    """_provision_default_hyperframes_project and _get_audio_duration."""
+
+    # ------------------------------------------------------------------
+    # _get_audio_duration unit tests
+    # ------------------------------------------------------------------
+
+    @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    @patch("automedia.engines.implementations.video_hyperframes.subprocess.run")
+    def test_get_audio_duration_success(
+        self, m_run: MagicMock, m_which: MagicMock, m_isfile: MagicMock,
+    ) -> None:
+        """> ``ffprobe`` returns duration → floats."""
+        m_isfile.return_value = True
+        m_which.return_value = "/usr/bin/ffprobe"
+        m_run.return_value = MagicMock(returncode=0, stdout="30.5\n", stderr="")
+
+        result = HyperFramesVideoEngine._get_audio_duration("/fake/test.mp3")
+        assert result == 30.5
+
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    def test_get_audio_duration_ffprobe_missing(
+        self, m_which: MagicMock,
+    ) -> None:
+        """> ``ffprobe`` not on ``PATH`` → ``None``."""
+        m_which.return_value = None
+        result = HyperFramesVideoEngine._get_audio_duration("/fake/test.mp3")
+        assert result is None
+
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
+    def test_get_audio_duration_file_missing(
+        self, m_isfile: MagicMock, m_which: MagicMock,
+    ) -> None:
+        """> Audio file not found → ``None``."""
+        m_which.return_value = "/usr/bin/ffprobe"
+        m_isfile.return_value = False
+        result = HyperFramesVideoEngine._get_audio_duration("/fake/nope.mp3")
+        assert result is None
+
+    @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    @patch("automedia.engines.implementations.video_hyperframes.subprocess.run")
+    def test_get_audio_duration_timeout(
+        self, m_run: MagicMock, m_which: MagicMock, m_isfile: MagicMock,
+    ) -> None:
+        """> ``ffprobe`` times out → ``None``."""
+        from subprocess import TimeoutExpired
+
+        m_isfile.return_value = True
+        m_which.return_value = "/usr/bin/ffprobe"
+        m_run.side_effect = TimeoutExpired(cmd="ffprobe", timeout=15)
+        result = HyperFramesVideoEngine._get_audio_duration("/fake/test.mp3")
+        assert result is None
+
+    # ------------------------------------------------------------------
+    # Default template provisioning — integration style
+    # ------------------------------------------------------------------
+
+    def test_provision_creates_expected_file_layout(
+        self, tmp_path: Any,
+    ) -> None:
+        """> Full provisioning creates ``hyperframes.json``, ``index.html``,
+        ``meta.json``, and scene compositions."""
+        img1 = tmp_path / "img1.png"
+        img2 = tmp_path / "img2.png"
+        audio = tmp_path / "narration.mp3"
+        img1.write_text("fake-png")
+        img2.write_text("fake-png")
+        audio.write_text("fake-mp3")
+
+        project_dir = tmp_path / "hf_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+        assets: dict[str, Any] = {
+            "images": [str(img1), str(img2)],
+            "audio": str(audio),
+            "content": "Test content for the video.",
+        }
+
+        with (
+            patch(
+                "automedia.engines.implementations.video_hyperframes.shutil.which",
+            ) as m_which,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.subprocess.run",
+            ) as m_run,
+        ):
+            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+                "ffprobe": "/usr/bin/ffprobe",
+            }.get(x)
+            m_run.return_value = MagicMock(returncode=0, stdout="20.0\n", stderr="")
+
+            engine = HyperFramesVideoEngine()
+            engine._provision_default_hyperframes_project(
+                str(project_dir), assets,
+            )
+
+        # Static files
+        assert (project_dir / "hyperframes.json").is_file()
+        assert (project_dir / "package.json").is_file()
+
+        # Rendered files
+        assert (project_dir / "index.html").is_file()
+        assert (project_dir / "meta.json").is_file()
+
+        # Scene compositions (2 images → 2 scenes)
+        assert (project_dir / "compositions").is_dir()
+        assert (project_dir / "compositions" / "01-scene.html").is_file()
+        assert (project_dir / "compositions" / "02-scene.html").is_file()
+        assert not (project_dir / "compositions" / "03-scene.html").exists()
+
+        # Audio asset
+        assert (project_dir / "assets" / "audio").is_dir()
+
+    def test_provision_rendered_content_is_valid(
+        self, tmp_path: Any,
+    ) -> None:
+        """> Rendered ``index.html`` contains valid scene references and
+        ``meta.json`` is parseable with correct scene metadata."""
+        import json
+
+        img1 = tmp_path / "img1.png"
+        img2 = tmp_path / "img2.png"
+        audio = tmp_path / "voice.mp3"
+        img1.write_text("fake")
+        img2.write_text("fake")
+        audio.write_text("fake")
+
+        project_dir = tmp_path / "hf_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+        assets: dict[str, Any] = {
+            "images": [str(img1), str(img2)],
+            "audio": str(audio),
+            "content": "Hello world.",
+        }
+
+        with (
+            patch(
+                "automedia.engines.implementations.video_hyperframes.shutil.which",
+            ) as m_which,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.subprocess.run",
+            ) as m_run,
+        ):
+            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+                "ffprobe": "/usr/bin/ffprobe",
+            }.get(x)
+            m_run.return_value = MagicMock(returncode=0, stdout="20.0\n", stderr="")
+
+            engine = HyperFramesVideoEngine()
+            engine._provision_default_hyperframes_project(
+                str(project_dir), assets,
+            )
+
+        # index.html has expected structure
+        index_html = (project_dir / "index.html").read_text(encoding="utf-8")
+        assert "<!doctype html>" in index_html.lower()
+        assert "scene-1" in index_html
+        assert "scene-2" in index_html
+        assert "assets/audio/voice.mp3" in index_html
+        assert 'data-duration="20.0"' in index_html
+
+        # meta.json is valid and has correct scene count
+        meta = json.loads((project_dir / "meta.json").read_text(encoding="utf-8"))
+        assert meta["meta"]["targetDuration"] == 20.0
+        assert len(meta["scenes"]) == 2
+        assert meta["scenes"][0]["id"] == "scene-1"
+        assert meta["scenes"][1]["id"] == "scene-2"
+
+        # Scene compositions have correct IDs and GSAP timelines
+        scene1 = (project_dir / "compositions" / "01-scene.html").read_text(
+            encoding="utf-8",
+        )
+        assert 'data-composition-id="scene-1"' in scene1
+        assert "gsap.timeline({ paused: true })" in scene1
+        assert "Hello world." in scene1
+
+        scene2 = (project_dir / "compositions" / "02-scene.html").read_text(
+            encoding="utf-8",
+        )
+        assert 'data-composition-id="scene-2"' in scene2
+
+    def test_provision_single_image(
+        self, tmp_path: Any,
+    ) -> None:
+        """> 1 image → 1 scene composition (no extra files)."""
+        img = tmp_path / "img.png"
+        audio = tmp_path / "audio.mp3"
+        img.write_text("fake")
+        audio.write_text("fake")
+
+        project_dir = tmp_path / "hf_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+        assets: dict[str, Any] = {
+            "images": [str(img)],
+            "audio": str(audio),
+            "content": "Single scene.",
+        }
+
+        with (
+            patch(
+                "automedia.engines.implementations.video_hyperframes.shutil.which",
+            ) as m_which,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.subprocess.run",
+            ) as m_run,
+        ):
+            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+                "ffprobe": "/usr/bin/ffprobe",
+            }.get(x)
+            m_run.return_value = MagicMock(returncode=0, stdout="10.0\n", stderr="")
+
+            engine = HyperFramesVideoEngine()
+            engine._provision_default_hyperframes_project(
+                str(project_dir), assets,
+            )
+
+        assert (project_dir / "compositions" / "01-scene.html").is_file()
+        assert not (project_dir / "compositions" / "02-scene.html").exists()
+
+    def test_provision_no_audio_uses_default_duration(
+        self, tmp_path: Any,
+    ) -> None:
+        """> No audio → each scene gets ``_DEFAULT_SCENE_DURATION`` seconds."""
+        img1 = tmp_path / "img1.png"
+        img2 = tmp_path / "img2.png"
+        img1.write_text("fake")
+        img2.write_text("fake")
+
+        project_dir = tmp_path / "hf_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+        assets: dict[str, Any] = {
+            "images": [str(img1), str(img2)],
+            "content": "No audio test.",
+        }
+
+        engine = HyperFramesVideoEngine()
+        engine._provision_default_hyperframes_project(str(project_dir), assets)
+
+        # Without audio → 2 scenes × 10s default = 20s
+        import json
+
+        meta = json.loads((project_dir / "meta.json").read_text(encoding="utf-8"))
+        assert meta["meta"]["targetDuration"] == 20.0
+        assert meta["scenes"][0]["duration"] == 10.0
+        assert meta["scenes"][1]["duration"] == 10.0
+
+        # No assets/audio directory created
+        assert not (project_dir / "assets" / "audio").exists()
+
+    # ------------------------------------------------------------------
+    # Integration: render() with template_dir="" triggers default provisioning
+    # ------------------------------------------------------------------
+
+    def test_default_templates_used_when_template_dir_empty(
+        self, mock_all: dict[str, MagicMock], tmp_path: Any,
+    ) -> None:
+        """> ``template_dir=""`` → ``_provision_default_hyperframes_project`` called."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        # ``isdir`` returns ``False`` for template_dir → defaults path
+        mock_all["isdir"].return_value = False
+
+        assets: dict[str, Any] = {
+            "images": ["/fake/img1.png", "/fake/img2.png"],
+            "audio": "/fake/audio.mp3",
+            "content": "Test",
+            "template_dir": "",
+        }
+        output = str(tmp_path / "out.mp4")
+
+        with patch.object(
+            HyperFramesVideoEngine,
+            "_provision_default_hyperframes_project",
+        ) as m_provision:
+            engine = HyperFramesVideoEngine()
+            engine.render(assets, output)
+
+            m_provision.assert_called_once()
+
+    def test_user_template_dir_copied_to_root(
+        self, mock_all: dict[str, MagicMock], tmp_path: Any,
+    ) -> None:
+        """> User ``template_dir`` → files copied to temp root,
+        ``_provision_default_hyperframes_project`` NOT called."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        # ``isdir`` returns ``True`` for template_dir → user templates path
+        mock_all["isdir"].return_value = True
+        # Simulate files in the template directory
+        mock_all["listdir"].return_value = ["hyperframes.json", "index.html"]
+
+        assets: dict[str, Any] = {
+            "images": ["/fake/img1.png"],
+            "audio": "/fake/audio.mp3",
+            "content": "Test",
+            "template_dir": "/fake/template",
+        }
+        output = str(tmp_path / "out.mp4")
+
+        with patch.object(
+            HyperFramesVideoEngine,
+            "_provision_default_hyperframes_project",
+        ) as m_provision:
+            engine = HyperFramesVideoEngine()
+            engine.render(assets, output)
+
+            m_provision.assert_not_called()
+
+        # Template files copied to temp_dir root (not /template/ subdir)
+        copy_calls = mock_all["copy2"].call_args_list
+        root_copies = [
+            c for c in copy_calls
+            if c[0][1] == "/tmp/hyperframes_test"
+        ]
+        assert len(root_copies) >= 1, (
+            f"No files copied to temp root: {copy_calls}"
         )
