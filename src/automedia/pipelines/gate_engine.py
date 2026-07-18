@@ -90,6 +90,8 @@ class PipelineResult:
     total_duration_s: float = 0.0
     error: str | None = None
     usage: dict[str, Any] = field(default_factory=dict)
+    workflow: str = ""
+    """Name of the workflow used for this pipeline run, if any."""
 
 
 class GateErrorResult(TypedDict, total=False):

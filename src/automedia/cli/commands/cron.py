@@ -7,6 +7,7 @@ import sys
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -28,6 +29,7 @@ _KNOWN_JOBS: dict[str, str] = {
     "pool-prune": "Prune stale pool entries.",
     "publish-check": "Check for unpublished ready content.",
     "watchdog": "Run the 4-step system health check (alias for check-health).",
+    "run-pipeline": "Execute a scheduled pipeline run from cron/jobs.yaml.",
 }
 
 _DEFAULT_DB = Path(".automedia") / "pool.db"
@@ -57,6 +59,7 @@ def cron_run(
         "pool-prune": _job_pool_prune,
         "publish-check": _job_publish_check,
         "watchdog": _job_watchdog,
+        "run-pipeline": _job_run_pipeline,
     }
 
     try:
@@ -216,6 +219,160 @@ def _job_publish_check() -> None:
 def _job_watchdog() -> None:
     """Delegate to the check-health command handler."""
     cron_check_health()
+
+
+# ---------------------------------------------------------------------------
+# Job: run-pipeline (cron dispatcher path — runs all schedules)
+# ---------------------------------------------------------------------------
+
+
+def _job_run_pipeline() -> None:
+    """Execute all pipeline schedules from ``cron/jobs.yaml``.
+
+    Reads every schedule defined in ``pipeline_schedules`` and runs
+    each one sequentially.  Per-schedule errors are collected and
+    reported — a single failing schedule does **not** stop the batch.
+    """
+    from automedia.cron.runner import run_scheduled_pipeline
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    if not schedules:
+        typer.echo("  [run-pipeline] No pipeline schedules defined in cron/jobs.yaml.")
+        return
+
+    results: list[dict[str, Any]] = []
+    for entry in schedules:
+        name = entry.get("name", "unnamed")
+        typer.echo(f"  [run-pipeline] Running schedule: {name!r} ...")
+        try:
+            res = run_scheduled_pipeline(entry)
+            results.append(res)
+            status = res.get("status", "unknown")
+            if status == "failed":
+                typer.secho(
+                    f"  [run-pipeline] {name!r} FAILED: {res.get('error', 'unknown error')}",
+                    fg=typer.colors.RED,
+                )
+            else:
+                typer.echo(
+                    f"  [run-pipeline] {name!r} → {status}  "
+                    f"(topic={res.get('topic', '')}, "
+                    f"project_id={res.get('project_id', '')})"
+                )
+        except Exception as exc:
+            typer.secho(
+                f"  [run-pipeline] {name!r} EXCEPTION: {exc}",
+                fg=typer.colors.RED,
+            )
+            results.append({"status": "failed", "error": str(exc), "name": name})
+
+    passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
+    failed = len(results) - passed
+    typer.echo(
+        f"  [run-pipeline] Batch complete: {passed} passed, {failed} failed "
+        f"(out of {len(results)} schedules)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# cron run-pipeline (standalone command)
+# ---------------------------------------------------------------------------
+
+
+@app.command("run-pipeline")
+def cron_run_pipeline(
+    name: str = typer.Option(
+        "",
+        "--name",
+        "-n",
+        help="Schedule name to run (empty = run all schedules).",
+    ),
+    pool_db_path: str = typer.Option(
+        "",
+        "--pool-db",
+        help="Explicit path to the topic pool SQLite database.",
+    ),
+) -> None:
+    """Execute a scheduled pipeline run from ``cron/jobs.yaml``.
+
+    Reads the ``pipeline_schedules`` section of the cron YAML config,
+    selects a topic from the pool, runs the full pipeline with the
+    configured **mode**, and optionally publishes to a **platform**.
+
+    When ``--name`` is provided only that schedule is executed.
+    When ``--name`` is empty **all** schedules are executed sequentially.
+    """
+    from automedia.cron.runner import run_scheduled_pipeline
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    if not schedules:
+        output_error("No pipeline schedules found in cron/jobs.yaml.")
+
+    if name:
+        matched = [s for s in schedules if s.get("name") == name]
+        if not matched:
+            available = [s.get("name", "?") for s in schedules]
+            output_error(
+                f"Schedule {name!r} not found. "
+                f"Available schedules: {available}"
+            )
+        entries = matched
+    else:
+        entries = schedules
+
+    results: list[dict[str, Any]] = []
+    for entry in entries:
+        sched_name = entry.get("name", "unnamed")
+        if get_output_mode() == OutputMode.TEXT:
+            typer.echo(f"Running pipeline schedule: {sched_name!r}")
+
+        try:
+            res = run_scheduled_pipeline(entry, pool_db_path=pool_db_path)
+            results.append(res)
+
+            if output_text(None, data=res):
+                continue
+
+            status = res.get("status", "unknown")
+            if status == "failed":
+                typer.secho(
+                    f"  ✗ {sched_name!r} failed: {res.get('error', 'unknown')}",
+                    fg=typer.colors.RED,
+                )
+            else:
+                typer.secho(
+                    f"  ✓ {sched_name!r} → {status}  "
+                    f"(topic={res.get('topic', '')}, "
+                    f"project_id={res.get('project_id', '')})",
+                    fg=typer.colors.GREEN,
+                )
+        except Exception as exc:
+            results.append({"status": "failed", "error": str(exc), "name": sched_name})
+            output_text(
+                f"  ✗ {sched_name!r} exception: {exc}",
+                data={"status": "failed", "error": str(exc), "name": sched_name},
+            )
+
+    if output_text(None, data={"results": results, "count": len(results)}):
+        failed = sum(1 for r in results if r.get("status") == "failed")
+        if failed:
+            raise typer.Exit(code=1)
+        return
+
+    passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
+    failed = len(results) - passed
+    if failed:
+        typer.secho(
+            f"\n{passed}/{len(results)} schedules completed, {failed} failed.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+    typer.secho(
+        f"\nAll {len(results)} schedule(s) completed successfully.",
+        fg=typer.colors.GREEN,
+    )
 
 
 # ---------------------------------------------------------------------------

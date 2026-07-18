@@ -943,8 +943,18 @@ def add_cron_schedule(
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
-def list_cron_schedules() -> dict[str, Any]:
-    """List all cron schedule entries from ``cron/jobs.yaml``.
+def list_cron_schedules(
+    platform: str = "",
+    mode: str = "",
+) -> dict[str, Any]:
+    """List cron schedule entries from ``cron/jobs.yaml``, with optional filters.
+
+    Parameters
+    ----------
+    platform:
+        Optional platform filter — only return schedules for this platform.
+    mode:
+        Optional pipeline mode filter — only return schedules matching this mode.
 
     Returns
     -------
@@ -953,6 +963,10 @@ def list_cron_schedules() -> dict[str, Any]:
     """
     try:
         schedules = _read_pipeline_schedules()
+        if platform:
+            schedules = [s for s in schedules if s.get("platform") == platform]
+        if mode:
+            schedules = [s for s in schedules if s.get("mode") == mode]
         schedules.sort(key=lambda s: s.get("name", ""))
         return success_response({"schedules": schedules, "count": len(schedules)})
     except Exception as exc:

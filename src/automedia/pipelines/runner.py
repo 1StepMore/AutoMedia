@@ -18,6 +18,7 @@ from structlog import get_logger
 
 from automedia.core.config_loader import load_config
 from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
+from automedia.core.workflow import Workflow, WorkflowLoader
 from automedia.core.logging import bind_correlation_id
 from automedia.core.project import Project
 from automedia.engines import resolve_engine
@@ -624,6 +625,67 @@ def _filter_gates_for_platform(
 
 
 # ---------------------------------------------------------------------------
+# Workflow config merge
+# ---------------------------------------------------------------------------
+
+
+def _merge_workflow_config(workflow: Workflow, brand_profile: dict[str, Any]) -> dict[str, Any]:
+    """Merge workflow overrides into a brand profile dict.
+
+    Workflow is a higher-priority config layer that sits between explicit
+    overrides and brand config.  The following fields are overridden:
+
+    * ``platforms`` — replaced entirely when the workflow specifies them.
+    * ``mode`` — noted but *not* applied here (applied by the caller via
+      direct assignment to the ``mode`` variable).
+    * ``gates`` — stored under ``brand_profile["workflow_gates"]`` so that
+      downstream gate composition logic can consume them.
+    * ``prompts`` — stored under ``brand_profile["workflow_prompts"]`` so
+      that the prompt directory override can be injected into the gate
+      context.
+    * ``media`` — deep-merged into ``brand_profile["media"]``.
+
+    Parameters
+    ----------
+    workflow:
+        The loaded workflow instance.
+    brand_profile:
+        The brand profile as a plain dict (e.g. from ``asdict()``).
+
+    Returns
+    -------
+    dict[str, Any]
+        A new dict with workflow overrides applied.  The original
+        *brand_profile* is not mutated.
+    """
+    result = dict(brand_profile)  # shallow copy — safe for scalar/list replacement
+
+    # Platforms — full replacement (when workflow specifies non-empty list)
+    if workflow.platforms:
+        result["platforms"] = list(workflow.platforms)
+
+    # Gates — store for downstream consumption by gate modifiers
+    if workflow.gates is not None:
+        result["workflow_gates"] = dict(workflow.gates)
+
+    # Prompts — store directory path for later injection into gate context
+    if workflow.prompts is not None:
+        result["workflow_prompts"] = dict(workflow.prompts)
+
+    # Media specs — deep-merge into existing media config
+    if workflow.media is not None:
+        from automedia.core.config_loader import deep_merge
+
+        existing_media = result.get("media", {})
+        if isinstance(existing_media, dict):
+            result["media"] = deep_merge(existing_media, workflow.media)
+        else:
+            result["media"] = dict(workflow.media)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -634,6 +696,7 @@ def run_full_pipeline(
     *,
     hooks: list[GateHook] | None = None,
     mode: str = "auto",
+    workflow: str | None = None,
     decision_mode: str = "build",
     resume_from: str | None = None,
     config_dir: str | None = None,
@@ -658,6 +721,12 @@ def run_full_pipeline(
         Pipeline execution mode — ``"auto"``, ``"text_only"``,
         ``"text_with_cover"``, ``"video_only"``, ``"qa_only"``,
         ``"image-carousel"``, ``"social-thread"``, or ``"short-video"``.
+        When a *workflow* is provided and specifies a ``mode``, that value
+        overrides this parameter.
+    workflow:
+        Optional named workflow to apply.  When provided, workflow config
+        (mode, platforms, gates, prompts, media) is merged over the brand
+        profile as a higher-priority config layer.
     decision_mode:
         **DEPRECATED** — kept for backward compatibility only.
         No longer consumed by any gate and will be removed in a
@@ -740,6 +809,52 @@ def run_full_pipeline(
                     mode=mode,
                     platforms=brand_profile.platforms,
                 )
+
+        # 2.8 Workflow resolution — merge workflow config over brand config
+        #     Workflow is a higher-priority config layer (between explicit
+        #     overrides and brand config).  It can override mode, platforms,
+        #     gates, prompts, and media specs.
+        workflow_obj: Workflow | None = None
+        if workflow is not None:
+            try:
+                workflow_loader = WorkflowLoader()
+                workflow_obj = workflow_loader.load(workflow)
+                log.info(
+                    "pipeline.workflow.loaded",
+                    workflow=workflow,
+                    mode=workflow_obj.mode,
+                    platforms=workflow_obj.platforms,
+                )
+            except (FileNotFoundError, ValueError) as exc:
+                log.warning(
+                    "pipeline.workflow.load_failed",
+                    workflow=workflow,
+                    error=str(exc),
+                    hint="Pipeline will continue without workflow overrides.",
+                )
+
+        # 2.9 Apply workflow config overrides to brand profile
+        if workflow_obj is not None and brand_profile is not None:
+            brand_dict = _merge_workflow_config(workflow_obj, asdict(brand_profile))
+            # Rebuild brand_profile from merged dict
+            try:
+                brand_profile = BrandProfile(**brand_dict)
+            except (TypeError, ValueError) as exc:
+                log.warning(
+                    "pipeline.workflow.merge_failed",
+                    workflow=workflow,
+                    error=str(exc),
+                    hint="Workflow merge produced invalid brand profile. "
+                    "Falling back to original brand config.",
+                )
+
+            # Workflow mode overrides the pipeline mode
+            mode = workflow_obj.mode
+            log.info(
+                "pipeline.workflow.mode_override",
+                workflow=workflow,
+                mode=mode,
+            )
 
         log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
 
@@ -1019,6 +1134,7 @@ def run_full_pipeline(
             end_time=end,
             total_duration_s=end - start,
             usage=usage_summary,
+            workflow=workflow or "",
         )
 
     except Exception as exc:
@@ -1040,6 +1156,7 @@ def run_full_pipeline(
             total_duration_s=end - start,
             error=str(exc),
             usage=usage_summary,
+            workflow=workflow or "",
         )
 
 

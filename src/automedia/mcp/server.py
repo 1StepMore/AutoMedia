@@ -580,9 +580,10 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "List all cron schedule entries from cron/jobs.yaml. "
-            "Returns all entries sorted by name with their expression, "
-            "brand, category, and count fields."
+            "List cron schedule entries from cron/jobs.yaml "
+            "with optional platform and mode filters. "
+            "Returns entries sorted by name with their expression, "
+            "brand, category, count, platform, and mode fields."
         ),
     )(list_cron_schedules)
 
