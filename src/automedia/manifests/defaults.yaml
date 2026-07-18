@@ -90,6 +90,7 @@ engines:
     default: hyperframes
     hyperframes:
       quality: high
+      chrome_path: null
 
 pipeline:
   video:

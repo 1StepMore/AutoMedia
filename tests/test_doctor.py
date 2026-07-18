@@ -89,6 +89,43 @@ class TestDoctorGetVersion:
             assert ver is None
 
 
+class TestDoctorChromeHeadless:
+    """_check_chrome_headless behaviour."""
+
+    def test_headless_success(self, doctor: Doctor):
+        """Returncode 0 → (True, None)."""
+        with patch.object(subprocess, "run") as m_run:
+            m_run.return_value = MagicMock(returncode=0, stdout="<html></html>", stderr="")
+            ok, msg = doctor._check_chrome_headless("/usr/bin/google-chrome")
+            assert ok is True
+            assert msg is None
+
+    def test_headless_failure(self, doctor: Doctor):
+        """Returncode 1 → (False, error message)."""
+        with patch.object(subprocess, "run") as m_run:
+            m_run.return_value = MagicMock(returncode=1, stdout="", stderr="missing libnss3")
+            ok, msg = doctor._check_chrome_headless("/usr/bin/google-chrome")
+            assert ok is False
+            assert msg is not None
+            assert "missing libnss3" in msg
+
+    def test_headless_timeout(self, doctor: Doctor):
+        """TimeoutExpired → (False, 'timed out')."""
+        with patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=10)):
+            ok, msg = doctor._check_chrome_headless("/usr/bin/google-chrome")
+            assert ok is False
+            assert msg is not None
+            assert "timed out" in msg
+
+    def test_headless_file_not_found(self, doctor: Doctor):
+        """FileNotFoundError → (False, 'not found')."""
+        with patch.object(subprocess, "run", side_effect=FileNotFoundError):
+            ok, msg = doctor._check_chrome_headless("/usr/bin/google-chrome")
+            assert ok is False
+            assert msg is not None
+            assert "not found" in msg
+
+
 class TestDoctorCheckDependencies:
     """Full check_dependencies integration."""
 
@@ -99,6 +136,7 @@ class TestDoctorCheckDependencies:
             patch.object(doctor, "_get_version", return_value="1.0"),
             patch.object(doctor, "_check_comfyui_http", return_value=(True, "ComfyUI reachable")),
             patch.object(doctor, "_check_llm_api", return_value=(True, "API reachable")),
+            patch.object(doctor, "_check_chrome_headless", return_value=(True, None)),
         ):
             results = doctor.check_dependencies()
             for dep in results:
@@ -109,12 +147,14 @@ class TestDoctorCheckDependencies:
                 elif dep["name"] == "llm_api":
                     assert dep["path"] is None
                     assert dep["version"] == "API reachable"
+                elif dep["name"] == "chrome":
+                    assert dep["path"] == "/usr/bin/ok"
+                    assert dep["version"] is None
+                    assert dep["headless_ok"] is True
+                    assert dep.get("headless_message") is None
                 else:
                     assert dep["path"] == "/usr/bin/ok"
-                    if dep["name"] == "chrome":
-                        assert dep["version"] is None
-                    else:
-                        assert dep["version"] == "1.0"
+                    assert dep["version"] == "1.0"
 
     def test_all_missing(self, doctor: Doctor):
         """No tools found — returns installed=False for each."""
@@ -127,6 +167,9 @@ class TestDoctorCheckDependencies:
             for dep in results:
                 assert dep["installed"] is False
                 assert dep["path"] is None
+                if dep["name"] == "chrome":
+                    assert dep["headless_ok"] is False
+                    assert dep.get("headless_message") is None
                 assert dep["version"] is None or dep["name"] == "llm_api"
 
     def test_partial_installation(self, doctor: Doctor):
@@ -168,7 +211,15 @@ class TestDoctorCheckDependencies:
             assert "installed" in dep
             assert "version" in dep or dep.get("version") is None
             assert "path" in dep or dep.get("path") is None
+            if dep["name"] == "chrome":
+                assert "headless_ok" in dep
+                assert "headless_message" in dep
             assert isinstance(dep["installed"], bool)
+
+    def test_get_headless_chrome_instructions(self, doctor: Doctor):
+        """Returns platform-specific string or None."""
+        instructions = doctor.get_headless_chrome_instructions()
+        assert instructions is None or isinstance(instructions, str)
 
 
 class TestDoctorPythonResolution:

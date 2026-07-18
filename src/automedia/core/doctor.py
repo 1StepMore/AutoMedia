@@ -78,6 +78,19 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Headless Chrome dependencies (per-platform)
+# ---------------------------------------------------------------------------
+
+_HEADLESS_CHROME_DEPENDENCIES: dict[str, str] = {
+    "Linux": (
+        "sudo apt install -y libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 "
+        "libcups2t64 libdrm2 libdbus-1-3 libxkbcommon0 libxcomposite1 "
+        "libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64"
+    ),
+    "Darwin": "Chrome headless should work out of the box on macOS.",
+    "Windows": "Chrome headless should work out of the box on Windows.",
+}
 
 # ---------------------------------------------------------------------------
 # Doctor
@@ -197,6 +210,35 @@ class Doctor:
             return False, msg or "API check failed"
 
     @staticmethod
+    def _check_chrome_headless(chrome_path: str) -> tuple[bool, str | None]:
+        """Verify *chrome_path* can start in headless mode.
+
+        Runs ``chrome --headless --no-sandbox --disable-gpu --dump-dom about:blank``
+        with a 10-second timeout. Returns ``(True, None)`` on success, or
+        ``(False, error_message)`` on any failure.
+        """
+        try:
+            result = subprocess.run(  # noqa: S603 — trusted internal command
+                [chrome_path, "--headless", "--no-sandbox", "--disable-gpu",
+                 "--dump-dom", "about:blank"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                return True, None
+            return False, (
+                f"headless check failed (exit {result.returncode}): "
+                f"{result.stderr[:200].strip()}"
+            )
+        except FileNotFoundError:
+            return False, "chrome binary not found at resolved path"
+        except subprocess.TimeoutExpired:
+            return False, "headless check timed out after 10s"
+        except Exception as exc:
+            return False, f"headless check error: {exc}"
+
+    @staticmethod
     def get_install_instructions(dep_name: str) -> str | None:
         """Return an OS-appropriate install instruction for *dep_name*.
 
@@ -208,6 +250,12 @@ class Doctor:
             return None
         system = platform.system()
         return instructions.get(system)
+
+    @classmethod
+    def get_headless_chrome_instructions(cls) -> str | None:
+        """Return OS-appropriate install instructions for headless Chrome deps."""
+        system = platform.system()
+        return _HEADLESS_CHROME_DEPENDENCIES.get(system)
 
     def check_dependencies(self) -> list[dict[str, Any]]:
         """Check every known dependency and return a list of status dicts.
@@ -241,6 +289,30 @@ class Doctor:
                     "installed": installed,
                     "version": version,
                     "path": None,
+                })
+                continue
+
+            # --- Chrome headless probe --------------------------------------
+            if name == "chrome":
+                if path is None:
+                    results.append({
+                        "name": name,
+                        "installed": False,
+                        "version": None,
+                        "path": None,
+                        "headless_ok": False,
+                        "headless_message": None,
+                    })
+                    continue
+
+                headless_ok, headless_message = self._check_chrome_headless(path)
+                results.append({
+                    "name": name,
+                    "installed": True,
+                    "version": None,
+                    "path": path,
+                    "headless_ok": headless_ok,
+                    "headless_message": headless_message,
                 })
                 continue
 

@@ -56,6 +56,15 @@ def doctor_cmd(
             f"{icon} {dep['name']:<14} {'yes' if dep['installed'] else 'no':<12} {version}",
             fg=colour,
         )
+        if dep["name"] == "chrome" and dep.get("installed") and dep.get("headless_ok") is False:
+            msg = dep.get("headless_message") or "unknown error"
+            typer.secho(
+                f"  ⚠ Chrome binary found but headless check failed: {msg}",
+                fg=typer.colors.YELLOW,
+            )
+            hd_instructions = Doctor.get_headless_chrome_instructions()
+            if hd_instructions:
+                typer.secho(f"    {hd_instructions}", fg=typer.colors.YELLOW)
         if not dep["installed"]:
             all_ok = False
 
