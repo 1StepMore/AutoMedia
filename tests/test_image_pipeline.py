@@ -265,9 +265,9 @@ class TestValidateAll:
         _make_image(str(cover_dir / "cover_16x9.png"), 1920, 1080)
         _make_image(str(cover_dir / "cover_1x1.png"), 1080, 1080)
         # Create body images
-        _make_image(str(tmp_path / "body" / "body_00.png"), 1600, 1200)
+        _make_image(str(tmp_path / "02_images" / "body" / "body_00.png"), 1600, 1200)
         # Create fallback
-        _make_image(str(tmp_path / "fallback" / "fallback_frame.png"), 1600, 1200)
+        _make_image(str(tmp_path / "02_images" / "fallback" / "fallback_frame.png"), 1600, 1200)
 
         results = ImageValidator.validate_all(str(tmp_path))
         assert len(results) == 4
@@ -282,9 +282,9 @@ class TestValidateAll:
         assert results[0]["valid"] is False
 
     def test_non_image_files_skipped(self, tmp_path: Any) -> None:
-        os.makedirs(str(tmp_path / "body"), exist_ok=True)
-        (tmp_path / "body" / "notes.txt").write_text("not an image")
-        _make_image(str(tmp_path / "body" / "body_00.png"), 1600, 1200)
+        os.makedirs(str(tmp_path / "02_images" / "body"), exist_ok=True)
+        (tmp_path / "02_images" / "body" / "notes.txt").write_text("not an image")
+        _make_image(str(tmp_path / "02_images" / "body" / "body_00.png"), 1600, 1200)
         results = ImageValidator.validate_all(str(tmp_path))
         assert len(results) == 1
 

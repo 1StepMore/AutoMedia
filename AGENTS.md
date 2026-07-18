@@ -394,7 +394,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (41 tools)
+## 9. MCP Tools Quick Reference (46 tools, +4 deprecated aliases)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 

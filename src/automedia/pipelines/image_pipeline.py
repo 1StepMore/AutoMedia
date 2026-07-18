@@ -223,7 +223,7 @@ class ImagePipeline:
         from automedia.engines.errors import EngineExecutionError
 
         count = max(3, min(6, count))
-        body_dir = os.path.join(project_dir, "body")
+        body_dir = os.path.join(project_dir, "02_images", "body")
         os.makedirs(body_dir, exist_ok=True)
 
         w, h = BODY_IMAGE_SIZE
@@ -324,7 +324,7 @@ class ImagePipeline:
         """
         from automedia.engines.errors import EngineExecutionError
 
-        fallback_dir = os.path.join(project_dir, "fallback")
+        fallback_dir = os.path.join(project_dir, "02_images", "fallback")
         os.makedirs(fallback_dir, exist_ok=True)
 
         w, h = BODY_IMAGE_SIZE  # 4:3 landscape default
@@ -463,8 +463,8 @@ class ImageValidator:
 
         for subdir, validator_fn, _extra_args in [
             ("02_images/cover", ImageValidator._validate_cover_file, None),
-            ("body", ImageValidator._validate_body_file, None),
-            ("fallback", ImageValidator._validate_body_file, None),
+            ("02_images/body", ImageValidator._validate_body_file, None),
+            ("02_images/fallback", ImageValidator._validate_body_file, None),
         ]:
             dir_path = os.path.join(project_dir, subdir)
             if not os.path.isdir(dir_path):
