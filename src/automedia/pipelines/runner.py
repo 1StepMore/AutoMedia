@@ -888,6 +888,6 @@ def _collect_video_assets(gate_context: GateContext | dict[str, Any], project: P
         "images": images,
         "audio": audio_path,
         "subtitles": subtitles_path or "",
-        "template_dir": "",
+        "template_dir": "",  # empty string = use shipped default hyperframes templates
         "content": content,
     }

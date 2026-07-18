@@ -1,0 +1,14 @@
+{
+  "name": "hyperframes-video",
+  "version": "1.0.0",
+  "description": "HyperFrames video project — edit HTML, run `bun x hyperframes render`",
+  "scripts": {
+    "lint": "bun x hyperframes lint",
+    "render": "bun x hyperframes render --output out/video.mp4",
+    "render:draft": "bun x hyperframes render --output out/video.mp4 --quality draft",
+    "render:hq": "bun x hyperframes render --output out/video.mp4 --quality high"
+  },
+  "dependencies": {
+    "hyperframes": "^0.6.95"
+  }
+}

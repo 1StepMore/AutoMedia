@@ -82,7 +82,7 @@ where = ["src"]
 include = ["automedia", "automedia.*"]
 
 [tool.setuptools.package-data]
-automedia = ["**/*.yaml", "**/*.j2"]
+automedia = ["**/*.yaml", "**/*.j2", "**/*.html", "**/*.json"]
 
 [tool.uv]
 environments = [
