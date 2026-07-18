@@ -703,6 +703,7 @@ def run_full_pipeline(
     tenant_id: str = "default",
     default_lang: str | None = None,
     force_provenance: bool = False,
+    director: bool = False,
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
@@ -745,6 +746,12 @@ def run_full_pipeline(
         ``gate_context["lang_config"]`` for downstream gates.
     force_provenance:
         Deprecated.  Kept for backward compatibility — no longer used.
+    director:
+        When ``True``, enables director mode: sets
+        ``pause_on_approval=True`` on the gate engine and uses the
+        ``director`` HITL preset so that gates with
+        ``requires_approval`` pause for external approve/reject calls.
+        Default: ``False`` (backward compatible).
     progress:
         Optional progress tracker.  When provided, ``GateEngine.run()``
         emits ``GateProgressEvent`` entries for each gate so agents
@@ -903,7 +910,11 @@ def run_full_pipeline(
         all_hooks.append(cost_tracker)
 
         # 4. Instantiate engine
-        engine = GateEngine(gates, hooks=all_hooks)
+        engine = GateEngine(gates, hooks=all_hooks, pause_on_approval=director)
+        # Register in global registry for MCP approve/reject tools
+        from automedia.pipelines.gate_engine import register_engine
+
+        register_engine(project.project_id, engine)
 
         lang_config = resolve_language_config(
             brand_profile=brand_profile,
@@ -912,7 +923,7 @@ def run_full_pipeline(
 
         # 4.75 Load HITL config and inject into context
         try:
-            hitl_cfg = HITLConfig()
+            hitl_cfg = HITLConfig(preset_name="director" if director else "automated")
             hitl_config = {
                 "enabled_nodes": [n for n in hitl_cfg.list_nodes() if n.get("autoset") == "human"],
                 "default_executor": "agent",
@@ -959,6 +970,7 @@ def run_full_pipeline(
 
         # 4.76 Inject HITL config into context
         gate_context["hitl_config"] = hitl_config
+        gate_context["hitl_preset"] = "director" if director else "automated"
 
         # 4.77 HyperFrames availability detection
         #      Sets a boolean flag; video gates (V0-V7) use it to decide
@@ -1032,7 +1044,12 @@ def run_full_pipeline(
             log.info("pipeline.content_format", format="short_video")
 
         # 6. Execute
-        success, results = engine.run(gate_context, progress=progress)
+        try:
+            success, results = engine.run(gate_context, progress=progress)
+        finally:
+            from automedia.pipelines.gate_engine import unregister_engine
+
+            unregister_engine(project.project_id)
 
         # 6.5 Generate carousel images for image-carousel mode
         carousel_images: list[str] = []

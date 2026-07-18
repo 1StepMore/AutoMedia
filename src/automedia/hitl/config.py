@@ -11,6 +11,13 @@ import yaml
 # Static presets that do NOT require a NodeProvider.
 _STATIC_PRESETS: dict[str, list[dict[str, Any]]] = {}
 
+# Register the director preset from its Python module.
+from automedia.hitl.presets.director import DIRECTOR_NODES as _DIRECTOR_NODES
+
+_STATIC_PRESETS["director"] = [
+    {"name": n["name"], "autoset": n.get("autoset", "human")} for n in _DIRECTOR_NODES
+]
+
 # Build the test_automated preset from automated.yaml at import time.
 _automated_yaml = Path(__file__).parent / "presets" / "automated.yaml"
 if _automated_yaml.is_file():

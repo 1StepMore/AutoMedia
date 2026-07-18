@@ -36,7 +36,12 @@ from automedia.mcp.server_types import (
     ProjectStatusFilter,
     ResearchPattern,
 )
-from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
+from automedia.pipelines.gate_engine import (
+    PipelineProgress,
+    PipelineResult,
+    get_registered_engine,
+    list_registered_engines,
+)
 from automedia.pipelines.runner import VALID_MODES
 
 
@@ -347,6 +352,8 @@ def run_pipeline(
     resume_from: str = "",
     source_path: str = "",
     source_url: str = "",
+    workflow: str = "",
+    director: bool = False,
 ) -> dict[str, Any]:
     """Execute the full AutoMedia production pipeline in a background thread.
 
@@ -377,6 +384,15 @@ def run_pipeline(
     source_url:
         URL to fetch source content from.  Content is loaded and
         injected into the pipeline gate context.
+    workflow:
+        Optional named workflow to apply.  When provided, the workflow's
+        mode, platforms, gates, prompts, and media spec are merged over
+        the brand profile as a higher-priority config layer.
+    director:
+        When ``True``, enables director mode with ``pause_on_approval``
+        and the ``director`` HITL preset.  Gates with
+        ``requires_approval`` will pause for external approve/reject
+        calls via the MCP tools.  Default: ``False``.
 
     Returns
     -------
@@ -396,6 +412,19 @@ def run_pipeline(
                 f"Unknown pipeline mode {mode!r}. Choose from: {valid_modes}",
             ),
         }
+
+    # Validate workflow name when provided
+    if workflow:
+        try:
+            _validate_workflow(workflow)
+        except (FileNotFoundError, ValueError) as exc:
+            return {
+                "status": "failed",
+                **error_response(
+                    MCPErrorCode.INVALID_PARAM,
+                    f"Unknown workflow {workflow!r}: {exc}",
+                ),
+            }
 
     # Validate source_path against allowlist
     # If the path is not allowed, log a warning and fall back gracefully
@@ -430,6 +459,8 @@ def run_pipeline(
                 resume_from=resume_from or None,
                 source_path=source_path,
                 source_url=source_url,
+                workflow=workflow or None,
+                director=director,
             )
             progress.project_id = result.project_id
         except Exception as exc:
@@ -972,6 +1003,66 @@ def list_cron_schedules(
     except Exception as exc:
         # MCP boundary: catch-all for YAML read errors
         return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
+
+
+def list_workflows() -> dict[str, Any]:
+    """List all defined workflow configurations.
+
+    Uses :class:`~automedia.core.workflow.WorkflowLoader` to discover
+    workflow YAML files from both the project-level
+    (``.automedia/workflows/``) and user-level
+    (``~/.automedia/workflows/``) directories.  Returns summary metadata
+    for each workflow — name, mode, target platforms, and optional
+    schedule / brand / gates / prompts / media fields.
+
+    Returns
+    -------
+    dict
+        ``{"workflows": [...], "count": int}``.  Each entry is a flat
+        dict with at least ``name``, ``mode``, and ``platforms`` keys.
+        Returns empty list (not an error) when no workflows are defined.
+    """
+    try:
+        from automedia.core.workflow import WorkflowLoader
+
+        loader = WorkflowLoader()
+        workflows = loader.load_all()
+
+        result: list[dict[str, Any]] = []
+        for name, wf in sorted(workflows.items()):
+            entry: dict[str, Any] = {
+                "name": wf.name,
+                "mode": wf.mode,
+                "platforms": wf.platforms,
+            }
+            if wf.brand is not None:
+                entry["brand"] = wf.brand
+            if wf.schedule is not None:
+                entry["schedule"] = wf.schedule
+            if wf.gates is not None:
+                entry["gates"] = wf.gates
+            if wf.prompts is not None:
+                entry["prompts"] = wf.prompts
+            if wf.media is not None:
+                entry["media"] = wf.media
+            if wf.extends is not None:
+                entry["extends"] = wf.extends
+            result.append(entry)
+
+        return success_response({"workflows": result, "count": len(result)})
+
+    except Exception as exc:
+        # MCP boundary: catch-all for workflow loader errors
+        return {"workflows": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
+
+
+def _validate_workflow(name: str) -> None:
+    """Validate that a workflow name exists.  Raises ValueError on failure."""
+    from automedia.core.workflow import WorkflowLoader
+
+    loader = WorkflowLoader()
+    # Attempt to load — will raise FileNotFoundError if missing
+    loader.load(name)
 
 
 def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
@@ -1615,6 +1706,143 @@ def skip_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any]
         )
     progress.mark_skip_gate(gate_name)
     return success_response({"skipping": True, "project_id": project_id, "gate_name": gate_name})
+
+
+# ---------------------------------------------------------------------------
+# Approval / rejection tools (director mode)
+# ---------------------------------------------------------------------------
+
+
+def approve_gate(
+    project_id: NonEmptyStr,
+    gate_name: NonEmptyStr,
+    modifications: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Approve a gate output and resume pipeline execution.
+
+    Finds the active :class:`GateEngine` for *project_id* and calls
+    ``resume(gate_name, approved=True)`` to unblock a gate that is
+    paused for approval.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+    gate_name:
+        Name of the gate to approve (e.g. ``"G0"``, ``"V3"``).
+    modifications:
+        Optional modifications to apply to the gate result before
+        continuing (e.g. ``{"content": "revised text"}``).
+
+    Returns
+    -------
+    dict
+        ``{"approved": True, "project_id": str, "gate_name": str}``
+        or an error dict when the engine or gate is not found.
+    """
+    engine = get_registered_engine(project_id)
+    if engine is None:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active engine found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    try:
+        engine.resume(gate_name=gate_name, approved=True, modifications=modifications)
+    except KeyError as exc:
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            str(exc),
+            "Check gate_name — gate may not be paused for approval",
+        )
+    return success_response(
+        {"approved": True, "project_id": project_id, "gate_name": gate_name}
+    )
+
+
+def reject_gate(
+    project_id: NonEmptyStr,
+    gate_name: NonEmptyStr,
+    reason: str = "",
+) -> dict[str, Any]:
+    """Reject a gate output and resume pipeline execution.
+
+    Finds the active :class:`GateEngine` for *project_id* and calls
+    ``resume(gate_name, approved=False)`` to unblock a gate that is
+    paused for approval, marking the gate as rejected.
+
+    Parameters
+    ----------
+    project_id:
+        The project id returned by ``run_pipeline``.
+    gate_name:
+        Name of the gate to reject (e.g. ``"G0"``, ``"V3"``).
+    reason:
+        Optional human-readable explanation for the rejection.
+
+    Returns
+    -------
+    dict
+        ``{"rejected": True, "project_id": str, "gate_name": str}``
+        or an error dict when the engine or gate is not found.
+    """
+    engine = get_registered_engine(project_id)
+    if engine is None:
+        return error_response(
+            MCPErrorCode.NOT_FOUND,
+            f"No active engine found for project_id {project_id!r}",
+            "Check project_id or start a pipeline first",
+        )
+    modifications: dict[str, Any] = {"reason": reason} if reason else {}
+    try:
+        engine.resume(gate_name=gate_name, approved=False, modifications=modifications)
+    except KeyError as exc:
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            str(exc),
+            "Check gate_name — gate may not be paused for approval",
+        )
+    return success_response(
+        {"rejected": True, "project_id": project_id, "gate_name": gate_name}
+    )
+
+
+def get_pending_approvals(
+    project_id: str = "",
+) -> dict[str, Any]:
+    """List gates currently awaiting approval in active pipelines.
+
+    When *project_id* is provided, only gates for that project are
+    returned.  Otherwise returns all pending approvals across every
+    active engine.
+
+    Parameters
+    ----------
+    project_id:
+        Optional project filter.  When empty, returns pending approvals
+        from all active engines.
+
+    Returns
+    -------
+    dict
+        ``{"pending_approvals": [...], "count": int}``.  Each entry
+        contains ``project_id``, ``gate_name``, and ``status``.
+    """
+    if project_id:
+        engine = get_registered_engine(project_id)
+        if engine is None:
+            return success_response({"pending_approvals": [], "count": 0})
+        pending = [
+            {"project_id": project_id, **entry}
+            for entry in engine.list_pending_approvals()
+        ]
+        return success_response({"pending_approvals": pending, "count": len(pending)})
+
+    all_pending: list[dict[str, Any]] = []
+    for pid, engine in list_registered_engines().items():
+        for entry in engine.list_pending_approvals():
+            all_pending.append({"project_id": pid, **entry})
+    return success_response({"pending_approvals": all_pending, "count": len(all_pending)})
 
 
 def register_platform_adapter(
@@ -2450,6 +2678,7 @@ def run_pipeline_from_strategy(
     strategy_context: str = "",
     pattern: ResearchPattern = "b",
     platform: str = "",
+    workflow: str = "",
 ) -> dict[str, Any]:
     """Generate a content strategy via LLM then execute the production pipeline.
 
@@ -2482,6 +2711,10 @@ def run_pipeline_from_strategy(
         Optional platform name for platform-specific prompt variants.
         When provided and a platform-specific prompt exists (e.g.
         ``platforms/wechat/pipeline_strategy.j2``), that variant is used.
+    workflow:
+        Optional named workflow to apply.  When provided, the workflow's
+        mode, platforms, gates, prompts, and media spec are merged over
+        the brand profile as a higher-priority config layer.
 
     Returns
     -------
@@ -2502,6 +2735,17 @@ def run_pipeline_from_strategy(
                 },
             }
         )
+
+    # Validate workflow name when provided
+    if workflow:
+        try:
+            _validate_workflow(workflow)
+        except (FileNotFoundError, ValueError) as exc:
+            return error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"Unknown workflow {workflow!r}: {exc}",
+            )
+
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import PipelineStrategyOutput
@@ -2526,6 +2770,7 @@ def run_pipeline_from_strategy(
             topic=topic,
             brand=brand,
             mode=mode,
+            workflow=workflow or None,
         )
 
         return success_response(

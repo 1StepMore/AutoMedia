@@ -1,0 +1,15 @@
+# Synthetic base workflow fixture for extends/merge testing.
+name: test_workflow_base
+mode: auto
+platforms:
+  - wechat
+brand: BaseBrand
+gates:
+  include:
+    - G0
+prompts:
+  cw: "Default writing prompt"
+media:
+  wechat:
+    width: 1080
+    height: 1920

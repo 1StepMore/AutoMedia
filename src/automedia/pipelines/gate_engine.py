@@ -49,6 +49,33 @@ Structure::
     }
 """
 
+# Engine registry for MCP approve/reject tools (director mode).
+# Maps ``project_id`` to ``GateEngine``.  Populated by ``run_full_pipeline``
+# in ``runner.py`` and consumed by ``approve_gate`` / ``reject_gate`` /
+# ``get_pending_approvals`` in ``tools.py``.
+_engine_registry: dict[str, "GateEngine"] = {}
+_engine_registry_lock = threading.Lock()
+
+
+def get_registered_engine(project_id: str) -> "GateEngine | None":
+    with _engine_registry_lock:
+        return _engine_registry.get(project_id)
+
+
+def register_engine(project_id: str, engine: "GateEngine") -> None:
+    with _engine_registry_lock:
+        _engine_registry[project_id] = engine
+
+
+def unregister_engine(project_id: str) -> None:
+    with _engine_registry_lock:
+        _engine_registry.pop(project_id, None)
+
+
+def list_registered_engines() -> dict[str, "GateEngine"]:
+    with _engine_registry_lock:
+        return dict(_engine_registry)
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -463,6 +490,7 @@ class GateEngine:
         retry_delay: float = 1.0,
         max_quality_retries: int = 3,
         max_regenerations: int = 2,
+        pause_on_approval: bool = False,
     ) -> None:
         """Initialize the gate engine with an ordered list of gates.
 
@@ -475,6 +503,10 @@ class GateEngine:
                 return ``passed=False`` with ``failure_mode='retry'``.
             max_regenerations: Max content regeneration attempts when level 1
                 quality retries are exhausted.  Default: 2.
+            pause_on_approval: When ``True``, gates with ``requires_approval``
+                in their context will pause after execution and wait for an
+                external call to ``resume()``.  Default: ``False`` (backward
+                compatible).
         """
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
@@ -482,6 +514,11 @@ class GateEngine:
         self._retry_delay = retry_delay
         self._max_quality_retries = max_quality_retries
         self._max_regenerations = max_regenerations
+        self._pause_on_approval = pause_on_approval
+        # Per-gate approval coordination (thread-safe via lock + Event).
+        self._approval_events: dict[str, threading.Event] = {}
+        self._approval_results: dict[str, dict[str, Any]] = {}
+        self._approval_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -516,6 +553,21 @@ class GateEngine:
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
             hook.on_gate_failed(gate_name, ctx, error)
+
+    def _gate_requires_approval(self, gate_name: str, gate_context: dict[str, Any]) -> bool:
+        """Check whether *gate_name* needs approval before continuing.
+
+        Returns ``True`` only when ``pause_on_approval`` is enabled AND
+        the gate context indicates this gate requires approval.
+        ``requires_approval`` can be a boolean (applies to all gates) or
+        a sequence of gate names (applies only to named gates).
+        """
+        if not self._pause_on_approval:
+            return False
+        ra = gate_context.get("requires_approval", False)
+        if isinstance(ra, (list, tuple, set)):
+            return gate_name in ra
+        return bool(ra)
 
     # ------------------------------------------------------------------
     # Retry helper
@@ -1129,6 +1181,31 @@ class GateEngine:
                     log.info("gate_engine.retry", gate_name=gate_name)
                     continue  # _gate_loop_idx unchanged — re-runs same gate
 
+            # NEW: Pause on approval — block until resume() is called
+            if self._gate_requires_approval(gate_name, gate_context):
+                _approval_evt = threading.Event()
+                with self._approval_lock:
+                    self._approval_events[gate_name] = _approval_evt
+                if progress:
+                    progress.on_gate_awaiting_hitl(
+                        gate_name, detail="awaiting_approval"
+                    )
+                log.info(
+                    "gate_engine.pause_on_approval",
+                    gate_name=gate_name,
+                    message="Waiting for resume() — gate requires approval",
+                )
+                _approval_evt.wait()
+                with self._approval_lock:
+                    _approval = self._approval_results.pop(gate_name, {"approved": True})
+                    self._approval_events.pop(gate_name, None)
+                result["_approval"] = _approval
+                log.info(
+                    "gate_engine.resumed",
+                    gate_name=gate_name,
+                    approved=_approval.get("approved"),
+                )
+
             _gate_loop_idx += 1
 
         if early_stop:
@@ -1183,6 +1260,64 @@ class GateEngine:
         regardless of early-stop.
         """
         return self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
+
+    # ------------------------------------------------------------------
+    # Approval pause / resume (director mode)
+    # ------------------------------------------------------------------
+
+    def resume(
+        self,
+        gate_name: str,
+        approved: bool = True,
+        modifications: dict[str, Any] | None = None,
+    ) -> None:
+        """Resume a gate paused for approval.
+
+        Unblocks the execution loop when ``pause_on_approval`` is enabled
+        and a gate with ``requires_approval`` in its context is waiting.
+
+        Args:
+            gate_name: Name of the gate to resume.
+            approved: Whether the gate output is approved.
+            modifications: Optional modifications to apply to the gate
+                result before continuing.
+
+        Raises:
+            KeyError: If no gate named *gate_name* is currently awaiting
+                approval.
+        """
+        with self._approval_lock:
+            evt = self._approval_events.get(gate_name)
+            if evt is None:
+                raise KeyError(
+                    f"No gate awaiting approval: {gate_name!r}. "
+                    f"Active waiters: {set(self._approval_events.keys())}"
+                )
+            self._approval_results[gate_name] = {
+                "approved": approved,
+                "modifications": modifications or {},
+            }
+            evt.set()
+        log.info(
+            "gate_engine.resume.called",
+            gate_name=gate_name,
+            approved=approved,
+        )
+
+    def list_pending_approvals(self) -> list[dict[str, Any]]:
+        """Return metadata for every gate currently awaiting approval.
+
+        Returns
+        -------
+        list[dict]
+            Each entry has ``gate_name`` and ``status`` keys.
+            Empty list when no gates are paused for approval.
+        """
+        with self._approval_lock:
+            return [
+                {"gate_name": gate_name, "status": "awaiting_approval"}
+                for gate_name in self._approval_events
+            ]
 
 
 # Keep a backward-compatible alias so existing ``from ... import Pipeline``

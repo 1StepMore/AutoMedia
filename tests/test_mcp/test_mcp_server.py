@@ -310,6 +310,7 @@ class TestServerCreation:
         expected = sorted(
             [
                 "add_cron_schedule",
+                "approve_gate",
                 "archive_project",
                 "batch_run",
                 "cancel_pipeline",
@@ -322,6 +323,7 @@ class TestServerCreation:
                 "get_account_health",
                 "get_config",
                 "get_cron_health",
+                "get_pending_approvals",
                 "get_pipeline_progress",
                 "get_pipeline_status",
                 "get_project_assets",
@@ -332,6 +334,7 @@ class TestServerCreation:
                 "list_overridable_templates",
                 "list_projects",
                 "list_topic_pool",
+                "list_workflows",
                 "localize_content",
                 "localize_output",
                 "mcp_help",
@@ -339,6 +342,7 @@ class TestServerCreation:
                 "pool_add_topic",
                 "publish_content",
                 "register_platform_adapter",
+                "reject_gate",
                 "remove_cron_schedule",
                 "research_topics",
                 "resume_pipeline",
@@ -717,7 +721,7 @@ class TestHelpers:
         """health_check returns status=ok with version and uptime."""
         result = health_check()
         assert result["status"] == "ok"
-        assert result["version"] == "1.0.1"
+        assert result["version"] == "1.1.0"
         assert result["uptime_s"] >= 0
         assert result["tools_count"] >= 20
 

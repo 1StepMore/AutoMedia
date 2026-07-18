@@ -1,0 +1,51 @@
+preset_name: director
+description: "Director mode: human review at every key gate — all 7 review nodes require approval with 1-hour timeout"
+nodes:
+  topic_selection:
+    type: decision
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Review topic selection before content generation"
+  cw_output:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject content writer draft"
+  g2_copy_review:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject copy review results"
+  v0_lint:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject HTML lint output"
+  v1_vision_qa:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject vision quality assurance"
+  v2_subtitle:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject subtitle rendering"
+  l2_archive:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject archive validation"
+  l3_publish:
+    type: review
+    autoset: human
+    requires_approval: true
+    timeout: 3600
+    description: "Approve/reject publish per platform"

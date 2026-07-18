@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 42 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 46 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -72,6 +72,7 @@ from automedia.mcp.resources import (
 # ---------------------------------------------------------------------------
 from automedia.mcp.tools import (
     add_cron_schedule,
+    approve_gate,
     archive_project,
     batch_run,
     cancel_pipeline,
@@ -81,12 +82,14 @@ from automedia.mcp.tools import (
     format_output,
     get_config,
     get_cron_health,
+    get_pending_approvals,
     get_pipeline_progress,
     get_pipeline_status,
     get_project_assets,
     health_check,
     list_brands,
     list_cron_schedules,
+    list_workflows,
     list_overridable_templates,
     list_projects,
     list_topic_pool,
@@ -96,6 +99,7 @@ from automedia.mcp.tools import (
     pool_add_topic,
     publish_content,
     register_platform_adapter,
+    reject_gate,
     remove_cron_schedule,
     research_topics,
     resume_pipeline,
@@ -147,6 +151,7 @@ __all__ = [
     "add_cron_schedule",
     "list_cron_schedules",
     "list_overridable_templates",
+    "list_workflows",
     "remove_cron_schedule",
     "test_cron_schedule",
     # Engine health tool
@@ -162,6 +167,10 @@ __all__ = [
     "resume_pipeline",
     "retry_gate",
     "skip_gate",
+    # Approval / rejection tools (director mode)
+    "approve_gate",
+    "reject_gate",
+    "get_pending_approvals",
     # Allowlist helpers
     "_require_allowed",
     "mcp_help",
@@ -201,6 +210,8 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("research_", "Research"),
     ("archive_", "Archive"),
     ("update_", "Update"),
+    ("approve_", "Approval"),
+    ("reject_", "Approval"),
 ]
 
 
@@ -261,7 +272,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 42 tools and 5 resources registered.
+        A fully configured server with all 46 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -271,7 +282,7 @@ def create_server() -> FastMCP:
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "42 MCP tools for topic selection, pipeline execution, project\n"
+            "46 MCP tools for topic selection, pipeline execution, project\n"
             "management, Omni Triad document processing, brand strategy,\n"
             "cron schedule management, content quality evaluation,\n"
             "override management, and server health.\n"
@@ -445,15 +456,22 @@ def create_server() -> FastMCP:
             "  Empty allowed_directories = deny all paths. Modify the YAML to permit\n"
             "  access to your project directories. Do NOT modify without user request.\n"
             "\n"
-            "━━━ HITL (HUMAN-IN-THE-LOOP) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━ HITL & DIRECTOR MODE APPROVAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
             "Certain gates may pause for human review (HITL). When a gate enters\n"
             "HITL state, the pipeline waits for human approval via the CLI:\n"
             "  automedia hitl approve <project_id> <gate_name>\n"
             "  automedia hitl reject <project_id> <gate_name>\n"
             "\n"
-            "If get_pipeline_progress shows a gate in 'awaiting_hitl' status,\n"
-            "notify the user that human review is needed before proceeding.\n"
+            "When director mode is enabled (pause_on_approval=True), gates with\n"
+            "requires_approval in their context pause for MCP-level approval:\n"
+            "  get_pending_approvals(project_id?)  → list waiting gates\n"
+            "  approve_gate(project_id, gate_name)   → approve and resume\n"
+            "  reject_gate(project_id, gate_name)    → reject and resume\n"
+            "\n"
+            "Use get_pipeline_progress to detect paused gates (status:\n"
+            "'awaiting_hitl' with detail 'awaiting_approval'), then call\n"
+            "approve_gate or reject_gate to continue pipeline execution.\n"
             "\n"
             "━━━ EXAMPLE MULTI-STEP WORKFLOWS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -520,7 +538,8 @@ def create_server() -> FastMCP:
         description=(
             "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON. "
             "Modes: auto, text_only, text_with_cover, video_only, qa_only, "
-            "image-carousel, social-thread, short-video."
+            "image-carousel, social-thread, short-video. "
+            "Accepts optional workflow name to apply workflow-level config overrides."
         ),
     )(run_pipeline)
 
@@ -592,6 +611,20 @@ def create_server() -> FastMCP:
             "Remove a cron schedule entry by name. Returns an error if the name is not found."
         ),
     )(remove_cron_schedule)
+
+    # ------------------------------------------------------------------
+    # Workflow tools
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "List all defined workflow configurations. "
+            "Discovers workflow YAML files from .automedia/workflows/ "
+            "and ~/.automedia/workflows/. Returns name, mode, platforms, "
+            "and optional schedule/brand/gates/prompts/media for each "
+            "workflow. Returns empty list when no workflows are defined."
+        ),
+    )(list_workflows)
 
     mcp.tool(
         description=(
@@ -720,9 +753,9 @@ def create_server() -> FastMCP:
             "Generate a content strategy via LLM then execute the AutoMedia "
             "production pipeline. Takes topic, brand, optional mode "
             "(auto, text_only, text_with_cover, video_only, qa_only, "
-            "image-carousel, social-thread, short-video), and "
-            "optional strategy_context. Returns both the strategy output and "
-            "the pipeline result."
+            "image-carousel, social-thread, short-video), optional "
+            "strategy_context, and optional workflow name. Returns both "
+            "the strategy output and the pipeline result."
         ),
     )(run_pipeline_from_strategy)
 
@@ -820,6 +853,36 @@ def create_server() -> FastMCP:
             "The pipeline will skip the named gate on its next iteration."
         ),
     )(skip_gate)
+
+    # ------------------------------------------------------------------
+    # Approval / rejection tools (director mode)
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Approve a gate output and resume pipeline execution. "
+            "Finds the active engine for project_id and calls resume() "
+            "with approved=True. Takes project_id, gate_name, and optional "
+            "modifications dict. Returns approved status."
+        ),
+    )(approve_gate)
+
+    mcp.tool(
+        description=(
+            "Reject a gate output and resume pipeline execution. "
+            "Finds the active engine for project_id and calls resume() "
+            "with approved=False. Takes project_id, gate_name, and optional "
+            "reason string. Returns rejected status."
+        ),
+    )(reject_gate)
+
+    mcp.tool(
+        description=(
+            "List gates currently awaiting approval in active pipelines. "
+            "When project_id is provided, filters to that project only. "
+            "Returns a list of pending approvals with gate_name and status."
+        ),
+    )(get_pending_approvals)
 
     mcp.tool(
         description=(
@@ -925,7 +988,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 41 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 46 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",
