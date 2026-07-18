@@ -461,6 +461,7 @@ def run_pipeline(
                 source_url=source_url,
                 workflow=workflow or None,
                 director=director,
+                progress=progress,
             )
             progress.project_id = result.project_id
         except Exception as exc:

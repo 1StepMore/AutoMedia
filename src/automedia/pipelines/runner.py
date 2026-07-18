@@ -33,6 +33,7 @@ from automedia.gates.base import BaseGate, GateRegistry, _registry
 from automedia.hitl import HITLConfig
 from automedia.hooks.cost_tracker import CostTracker
 from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5, verify_md5
+from automedia.hooks.pipeline_history import PipelineHistoryHook
 from automedia.hooks.protocol import GateHook
 from automedia.manifests.brand_profile_schema import (
     BrandProfile,
@@ -904,10 +905,12 @@ def run_full_pipeline(
             progress.set_gate_names([g.gate_name for g in gates])
         log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
 
-        # 3.75 Inject CostTracker hook for LLM token usage tracking
+        # 3.75 Inject CostTracker + PipelineHistory hooks
         cost_tracker = CostTracker(project.project_dir)
+        history_hook = PipelineHistoryHook()
         all_hooks: list[GateHook] = list(hooks) if hooks else []
         all_hooks.append(cost_tracker)
+        all_hooks.append(history_hook)
 
         # 4. Instantiate engine
         engine = GateEngine(gates, hooks=all_hooks, pause_on_approval=director)
