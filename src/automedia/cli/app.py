@@ -23,6 +23,10 @@ app = typer.Typer(
     name="automedia",
     help="AutoMedia — automated media production pipeline.",
     no_args_is_help=True,
+    epilog=(
+        f"AutoMedia v{__version__} — automated media production pipeline. "
+        "Documentation: https://github.com/1stepmore/automedia"
+    ),
 )
 
 

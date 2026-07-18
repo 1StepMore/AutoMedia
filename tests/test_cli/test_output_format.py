@@ -52,6 +52,36 @@ class TestFailingGate:
     def test_returns_none_for_empty_error(self) -> None:
         assert _failing_gate("", None) is None
 
+    def test_recognizes_H0_from_log(self) -> None:
+        """H0 gate (human review) is found from gate log entries."""
+        log = [
+            GateLogEntry("pre-gate", "passed", 0.5),
+            GateLogEntry("H0", "failed", 2.0, error="Human review rejected"),
+        ]
+        assert _failing_gate("Human review rejected", log) == "H0"
+
+    def test_recognizes_H0_from_error_string(self) -> None:
+        """H0 is found via fallback prefix matching in error string."""
+        assert _failing_gate("H0 human review rejected", None) == "H0"
+
+
+class TestGatePrefixCoverage:
+    """Comprehensive coverage: every gate name used by the runner has a prefix."""
+
+    def test_all_runner_gates_have_prefixes(self) -> None:
+        """All gate names across every pipeline mode are in _GATE_PREFIXES."""
+        from automedia.cli.output_format import _GATE_PREFIXES
+        from automedia.pipelines.runner import _MODE_MAP
+
+        all_runner_gates: set[str] = {
+            name for names in _MODE_MAP.values() for name in names
+        }
+        missing = all_runner_gates - set(_GATE_PREFIXES)
+        assert not missing, (
+            f"Gate name(s) present in runner but missing from "
+            f"_GATE_PREFIXES: {sorted(missing)}"
+        )
+
 
 # =========================================================================
 # output_formatted_error (via CliRunner stderr capture)
@@ -75,6 +105,19 @@ class TestOutputFormattedError:
             calls = [c for c in mock_secho.call_args_list if "G0" in str(c)]
             assert calls, "Expected gate name 'G0' in secho output"
 
+    def test_H0_gate_error_shows_gate_name(self) -> None:
+        """H0 gate failure correctly shows H0 in error output."""
+        log = [GateLogEntry("H0", "failed", 1.5, error="Human review rejected")]
+
+        with patch("automedia.cli.output_format.typer.secho") as mock_secho:
+            output_formatted_error(
+                "Pipeline stopped",
+                error="Human review rejected",
+                gates_log=log,
+            )
+            calls = [c for c in mock_secho.call_args_list if "H0" in str(c)]
+            assert calls, "Expected gate name 'H0' in secho output"
+
     def test_unknown_error_shows_verbose_hint(self) -> None:
         """Unknown errors suggest --verbose."""
         with patch("automedia.cli.output_format.typer.secho") as mock_secho:
@@ -84,6 +127,34 @@ class TestOutputFormattedError:
             )
             all_text = " ".join(str(c) for c in mock_secho.call_args_list)
             assert "--verbose" in all_text
+
+    def test_known_gate_shows_suggested_fix(self) -> None:
+        """When a known gate has FAILURE_MODES entries, 'Suggested fix:' is shown."""
+        from automedia.gates.failure_modes import FAILURE_MODES
+
+        gate = "G0"
+        fixes = FAILURE_MODES[gate]["fixes"]
+        log = [GateLogEntry(gate, "failed", 1.0, error="Brand CTA mismatch")]
+
+        with patch("automedia.cli.output_format.typer.secho") as mock_secho:
+            output_formatted_error(
+                "Pipeline stopped",
+                error="Brand CTA mismatch",
+                gates_log=log,
+            )
+            all_text = " ".join(str(c) for c in mock_secho.call_args_list)
+            assert "Suggested fix:" in all_text
+            assert fixes[0] in all_text
+
+    def test_unknown_gate_no_suggested_fix(self) -> None:
+        """When no gate is identified, 'Suggested fix:' is NOT shown."""
+        with patch("automedia.cli.output_format.typer.secho") as mock_secho:
+            output_formatted_error(
+                "Pipeline stopped",
+                error="Something broke",
+            )
+            all_text = " ".join(str(c) for c in mock_secho.call_args_list)
+            assert "Suggested fix:" not in all_text
 
     def test_verbose_prints_traceback(self) -> None:
         """When verbose=True, traceback.print_exception is called."""
@@ -128,6 +199,32 @@ class TestOutputPipelineError:
             )
             all_text = " ".join(str(c) for c in mock_secho.call_args_list)
             assert "Something unexpected happened" in all_text
+
+    def test_pipeline_known_gate_shows_suggested_fix(self) -> None:
+        """output_pipeline_error shows 'Suggested fix:' for known gates."""
+        from automedia.gates.failure_modes import FAILURE_MODES
+
+        gate = "CW"
+        fixes = FAILURE_MODES[gate]["fixes"]
+        log = [GateLogEntry(gate, "failed", 2.0, error="LLM returned empty")]
+
+        with patch("automedia.cli.output_format.typer.secho") as mock_secho:
+            output_pipeline_error(
+                "LLM returned empty",
+                gates_log=log,
+            )
+            all_text = " ".join(str(c) for c in mock_secho.call_args_list)
+            assert "Suggested fix:" in all_text
+            assert fixes[0] in all_text
+
+    def test_pipeline_unknown_gate_no_suggested_fix(self) -> None:
+        """output_pipeline_error does NOT show 'Suggested fix:' for unknown gates."""
+        with patch("automedia.cli.output_format.typer.secho") as mock_secho:
+            output_pipeline_error(
+                "Something unexpected happened",
+            )
+            all_text = " ".join(str(c) for c in mock_secho.call_args_list)
+            assert "Suggested fix:" not in all_text
 
     def test_verbose_message(self) -> None:
         """verbose=True prints an additional note."""

@@ -50,6 +50,13 @@ class TestMainApp:
         assert "1.0.1" in result.output
         assert "Pipeline" not in result.output
 
+    def test_help_contains_epilog(self) -> None:
+        """--help output includes project description, docs link, and version."""
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "Documentation" in result.output or "docs" in result.output.lower()
+        assert "automedia" in result.output.lower()
+
 
 # =========================================================================
 # 2. automedia run

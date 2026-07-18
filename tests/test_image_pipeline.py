@@ -260,9 +260,10 @@ class TestValidateAll:
         assert results == []
 
     def test_valid_covers_and_body(self, tmp_path: Any) -> None:
-        # Create covers
-        _make_image(str(tmp_path / "covers" / "cover_16x9.png"), 1920, 1080)
-        _make_image(str(tmp_path / "covers" / "cover_1x1.png"), 1080, 1080)
+        cover_dir = tmp_path / "02_images" / "cover"
+        cover_dir.mkdir(parents=True, exist_ok=True)
+        _make_image(str(cover_dir / "cover_16x9.png"), 1920, 1080)
+        _make_image(str(cover_dir / "cover_1x1.png"), 1080, 1080)
         # Create body images
         _make_image(str(tmp_path / "body" / "body_00.png"), 1600, 1200)
         # Create fallback
@@ -273,8 +274,9 @@ class TestValidateAll:
         assert all(r["valid"] for r in results)
 
     def test_invalid_image_detected(self, tmp_path: Any) -> None:
-        # Wrong ratio cover
-        _make_image(str(tmp_path / "covers" / "cover_16x9.png"), 1080, 1080)
+        cover_dir = tmp_path / "02_images" / "cover"
+        cover_dir.mkdir(parents=True, exist_ok=True)
+        _make_image(str(cover_dir / "cover_16x9.png"), 1080, 1080)
         results = ImageValidator.validate_all(str(tmp_path))
         assert len(results) == 1
         assert results[0]["valid"] is False

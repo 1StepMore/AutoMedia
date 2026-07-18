@@ -300,6 +300,10 @@ class ImagePipeline:
     ) -> str:
         """Generate a single fallback frame for video pipelines.
 
+        .. note::
+            Reserved for future use — not currently called from any
+            production pipeline code.
+
         Parameters
         ----------
         topic:
@@ -435,7 +439,7 @@ class ImageValidator:
     def validate_all(project_dir: str) -> list[dict[str, Any]]:
         """Validate all images found under *project_dir*.
 
-        Scans ``covers/``, ``body/``, and ``fallback/`` subdirectories.
+        Scans ``02_images/cover/``, ``body/``, and ``fallback/`` subdirectories.
 
         Returns
         -------
@@ -446,7 +450,7 @@ class ImageValidator:
         image_extensions = {".png", ".jpg", ".jpeg", ".webp"}
 
         for subdir, validator_fn, _extra_args in [
-            ("covers", ImageValidator._validate_cover_file, None),
+            ("02_images/cover", ImageValidator._validate_cover_file, None),
             ("body", ImageValidator._validate_body_file, None),
             ("fallback", ImageValidator._validate_body_file, None),
         ]:

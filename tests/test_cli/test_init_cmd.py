@@ -424,3 +424,41 @@ class TestInitMinimal:
             config = yaml.safe_load(fh)
         assert config["llm"]["text_generation"]["provider"] == "openai"
         assert config["llm"]["text_generation"]["api_key"] == ""
+
+    def test_minimal_shows_guidance(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """``--template minimal`` prints post-init guidance text (not silent)."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        cfg_dir = tmp_path / ".automedia"
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_dir / "model_config.yaml")
+
+        result = runner.invoke(app, ["init", "--template", "minimal"])
+        assert result.exit_code == 0
+        assert "automedia doctor" in result.output
+        assert "automedia run" in result.output
+
+    def test_minimal_yaml_has_inline_comments(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Generated ``model_config.yaml`` contains inline comments explaining keys."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        cfg_dir = tmp_path / ".automedia"
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_dir / "model_config.yaml")
+
+        result = runner.invoke(app, ["init", "--template", "minimal"])
+        assert result.exit_code == 0
+
+        yaml_text = (cfg_dir / "model_config.yaml").read_text(encoding="utf-8")
+        # Must have at least a few comment lines
+        comments = [line for line in yaml_text.splitlines() if line.strip().startswith("#")]
+        assert len(comments) >= 2, f"Expected ≥2 comment lines, got {len(comments)}"
+        # Should mention provider or LLM in comments
+        comment_text = " ".join(comments).lower()
+        assert "provider" in comment_text or "llm" in comment_text

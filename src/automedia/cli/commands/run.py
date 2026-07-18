@@ -289,6 +289,7 @@ def run_cmd(
             "   Install HyperFrames for full video QA, or use --mode text_only to skip video."
         )
 
+    result = None
     try:
         bind_correlation_id()
         cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
@@ -308,6 +309,7 @@ def run_cmd(
             error=str(exc),
             verbose=verbose,
             exc_info=exc,
+            gates_log=result.gates_log if result else None,
         )
         raise typer.Exit(code=1) from exc
 

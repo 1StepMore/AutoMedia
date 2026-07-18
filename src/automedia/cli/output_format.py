@@ -24,9 +24,11 @@ from __future__ import annotations
 
 import sys
 import traceback
+from typing import cast
 
 import typer
 
+from automedia.gates.failure_modes import FAILURE_MODES
 from automedia.pipelines.gate_engine import GateLogEntry
 
 # Known gate name prefixes for pattern matching in error strings.
@@ -48,6 +50,7 @@ _GATE_PREFIXES = [
     "V5",
     "V6",
     "V7",
+    "H0",
     "L1",
     "L2",
     "L3",
@@ -90,6 +93,7 @@ def output_formatted_error(
             f"  Suggestion: Use --resume-from {gate_name} to retry after fixing.",
             bold_part=f"--resume-from {gate_name}",
         )
+        _print_failure_mode_suggestion(gate_name)
     elif error:
         _print(f"{summary}: {error}")
         _print("  Run with --verbose for details.", bold_part="--verbose")
@@ -132,6 +136,7 @@ def output_pipeline_error(
             f"  Use --resume-from {gate_name} to retry after fixing.",
             bold_part=f"--resume-from {gate_name}",
         )
+        _print_failure_mode_suggestion(gate_name)
     else:
         _print(f"Pipeline failed: {result_error}")
 
@@ -146,6 +151,16 @@ def output_pipeline_error(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _print_failure_mode_suggestion(gate_name: str) -> None:
+    """Print a 'Suggested fix:' block from FAILURE_MODES, if available."""
+    info = FAILURE_MODES.get(gate_name, {})
+    fixes = cast(list[str] | None, info.get("fixes"))
+    if fixes:
+        typer.secho("  Suggested fix:", fg=typer.colors.RED, err=True)
+        for fix in fixes:
+            typer.secho(f"    \u2022 {fix}", fg=typer.colors.RED, err=True)
 
 
 def _print(msg: str, *, bold_part: str = "") -> None:
