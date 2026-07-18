@@ -220,7 +220,11 @@ def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-def _run_plausibility_check(content: str, topic: str) -> dict[str, Any] | None:
+def _run_plausibility_check(
+    content: str,
+    topic: str,
+    platform: str = "",
+) -> dict[str, Any] | None:
     """Run LLM-based plausibility check when no source material is available.
 
     Uses the LLM's general knowledge to flag factually questionable claims.
@@ -243,6 +247,7 @@ def _run_plausibility_check(content: str, topic: str) -> dict[str, Any] | None:
             "fact_check_g0_plausibility",
             content=content,
             topic=topic,
+            platform=platform,
         )
 
         result = llm_complete_structured_safe(
@@ -316,11 +321,15 @@ class G0FactCheck(BaseGate):
         config: dict[str, Any] = gate_context.get("config", {})
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
+        # Detect target platform for platform-scoped prompt overrides
+        brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+        platform: str = brand_platforms[0] if brand_platforms else ""
+
         # When no source material is provided, attempt LLM plausibility check or skip
         if not source_data:
             if enable_llm:
                 topic: str = gate_context.get("topic", "")
-                plausibility_result = _run_plausibility_check(content, topic)
+                plausibility_result = _run_plausibility_check(content, topic, platform=platform)
                 if plausibility_result is not None:
                     return plausibility_result
 
@@ -376,6 +385,7 @@ class G0FactCheck(BaseGate):
                 prompt_template_name="fact_check_g0",
                 deterministic_fn=_deterministic_fn,
                 source_data=source_data,
+                platform=platform,
             )
 
             method = llm_result.get("method", "deterministic")

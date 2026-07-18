@@ -329,6 +329,7 @@ class TestServerCreation:
                 "list_accounts",
                 "list_brands",
                 "list_cron_schedules",
+                "list_overridable_templates",
                 "list_projects",
                 "list_topic_pool",
                 "localize_content",

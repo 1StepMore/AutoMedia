@@ -152,8 +152,12 @@ class ContentWriterGate(BaseGate):
                 },
             }
 
+        # Detect target platform for platform-scoped prompt overrides
+        brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+        platform: str = brand_platforms[0] if brand_platforms else ""
+
         # --- Build the writer prompt ------------------------------------------------
-        writer_prompt = load_prompt("content_writer")
+        writer_prompt = load_prompt("content_writer", platform=platform)
         # Allow per-call override from model_config.yaml → llm.writer.system_prompt
         if config:
             llm_cfg = config.get("llm", {})

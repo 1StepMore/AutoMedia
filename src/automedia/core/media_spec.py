@@ -87,7 +87,10 @@ def get_platform_media_spec(
     spec = PLATFORM_MEDIA_SPECS.get(platform, DEFAULT_SPEC)
 
     if brand_config:
-        platform_overrides = brand_config.get("platforms", {}).get(platform, {}).get("media", {})
+        platforms_cfg = brand_config.get("platforms", {})
+        if not isinstance(platforms_cfg, dict):
+            return spec  # platforms is a list[str] — no per-platform overrides
+        platform_overrides = platforms_cfg.get(platform, {}).get("media", {})
         if platform_overrides:
             override_kwargs = {
                 f.name: platform_overrides.get(f.name, getattr(spec, f.name))
@@ -96,3 +99,56 @@ def get_platform_media_spec(
             spec = PlatformMediaSpec(**override_kwargs)
 
     return spec
+
+
+def resolve_media_specs(
+    brand_profile: dict[str, Any],
+    platforms: list[str],
+) -> dict[str, PlatformMediaSpec]:
+    """Resolve media specs for a list of platforms with brand overrides.
+
+    Iterates over the given platform names and resolves each platform's
+    media spec, applying brand-level overrides from the brand profile.
+
+    Args:
+        brand_profile: Brand configuration dict with optional
+            ``platforms.<name>.media`` override keys.
+        platforms: List of platform names (e.g. ``["wechat", "xiaohongshu"]``).
+
+    Returns:
+        Dict mapping platform names to their resolved PlatformMediaSpec.
+    """
+    specs: dict[str, PlatformMediaSpec] = {}
+    for platform in platforms:
+        specs[platform] = get_platform_media_spec(platform, brand_profile)
+    return specs
+
+
+def get_active_media_spec(
+    gate_context: dict[str, Any],
+    platform: str | None = None,
+) -> PlatformMediaSpec:
+    """Get active media spec from gate context, optionally for a specific platform.
+
+    Args:
+        gate_context: The pipeline gate context dict.  Expects keys
+            ``media_specs`` (resolved spec dict) and ``brand_platforms``
+            (ordered list of platform names).
+        platform: Optional platform name.  When ``None``, uses the first
+            platform from ``brand_platforms`` or falls back to
+            ``DEFAULT_SPEC``.
+
+    Returns:
+        A PlatformMediaSpec for the given or first active platform.
+    """
+    media_specs: dict[str, PlatformMediaSpec] = gate_context.get("media_specs", {})
+
+    if platform is not None:
+        return media_specs.get(platform, DEFAULT_SPEC)
+
+    # No platform specified — use first platform's spec or DEFAULT_SPEC
+    brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+    if brand_platforms:
+        return media_specs.get(brand_platforms[0], DEFAULT_SPEC)
+
+    return DEFAULT_SPEC

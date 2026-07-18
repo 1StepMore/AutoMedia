@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 41 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 42 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -87,6 +87,7 @@ from automedia.mcp.tools import (
     health_check,
     list_brands,
     list_cron_schedules,
+    list_overridable_templates,
     list_projects,
     list_topic_pool,
     localize_content,
@@ -145,6 +146,7 @@ __all__ = [
     # Cron schedule tools
     "add_cron_schedule",
     "list_cron_schedules",
+    "list_overridable_templates",
     "remove_cron_schedule",
     "test_cron_schedule",
     # Engine health tool
@@ -259,7 +261,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 41 tools and 5 resources registered.
+        A fully configured server with all 42 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -269,9 +271,10 @@ def create_server() -> FastMCP:
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "41 MCP tools for topic selection, pipeline execution, project\n"
+            "42 MCP tools for topic selection, pipeline execution, project\n"
             "management, Omni Triad document processing, brand strategy,\n"
-            "cron schedule management, content quality evaluation, and server health.\n"
+            "cron schedule management, content quality evaluation,\n"
+            "override management, and server health.\n"
             "\n"
             "━━━ CORE WORKFLOW (5 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -608,6 +611,15 @@ def create_server() -> FastMCP:
             "Accepts an optional count parameter (default 5, max 20)."
         ),
     )(test_cron_schedule)
+
+    mcp.tool(
+        description=(
+            "List all overridable prompt templates with metadata (variables, "
+            "purpose, override status). Checks ~/.automedia/overrides/prompts/ "
+            "for existing overrides. Returns template names, their Jinja2 "
+            "variables, purpose descriptions, and whether a user override exists."
+        ),
+    )(list_overridable_templates)
 
     mcp.tool(
         description=(

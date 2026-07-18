@@ -537,6 +537,10 @@ class G2CopyReview(BaseGate):
         config: dict[str, Any] = gate_context.get("config", {})
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
+        # Detect target platform for platform-scoped prompt overrides
+        brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+        platform: str = brand_platforms[0] if brand_platforms else ""
+
         if mock_results is not None:
             return self._run_deterministic(content, brand_profile, mock_results)
 
@@ -555,6 +559,7 @@ class G2CopyReview(BaseGate):
                     ),
                 ),
                 brand_guidelines=brand_guidelines,
+                platform=platform,
             )
 
             if llm_result.get("method") == "llm":

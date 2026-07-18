@@ -47,7 +47,12 @@ ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 # ---------------------------------------------------------------------------
 
 
-def _generate_image_prompt(topic: str, brand: str, image_index: int) -> str:
+def _generate_image_prompt(
+    topic: str,
+    brand: str,
+    image_index: int,
+    platform: str = "",
+) -> str:
     """Generate a detailed SD/ComfyUI image prompt via LLM.
 
     Uses :func:`load_prompt` to render a Jinja2 template for the user message,
@@ -77,6 +82,7 @@ def _generate_image_prompt(topic: str, brand: str, image_index: int) -> str:
             topic=topic,
             brand=brand,
             image_index=image_index,
+            platform=platform,
         )
         result: str = llm_complete(
             user_message,

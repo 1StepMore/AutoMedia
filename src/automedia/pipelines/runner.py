@@ -351,7 +351,7 @@ def _record_gate_md5s(
 
 
 def validate_gate_modifiers(
-    modifiers: dict,
+    modifiers: dict[str, Any],
     base_gates: list[str],
     registry: GateRegistry | None = None,
 ) -> list[str]:
@@ -430,7 +430,7 @@ def validate_gate_modifiers(
 
 def _compose_gate_list(
     mode: str,
-    platform_config: dict | None = None,
+    platform_config: dict[str, Any] | None = None,
 ) -> list[str]:
     """Compose the gate list for a pipeline mode, applying platform modifiers.
 
@@ -464,6 +464,163 @@ def _compose_gate_list(
         return validate_gate_modifiers(platform_config["gates"], list(base))
 
     return list(base)
+
+
+def _collect_platform_gate_modifiers(
+    brand_profile_dict: dict[str, Any],
+    platforms: list[str],
+) -> dict[str, Any] | None:
+    """Collect gate modifiers from *platforms*, merging with union semantics.
+
+    For each platform, checks whether the brand profile (converted to a
+    dict via :func:`dataclasses.asdict`) contains a per-platform gate
+    configuration.  When found, include/exclude/override_failure_mode
+    entries are merged across all platforms:
+
+    * **Include** — union: a gate is added if *any* platform requests it.
+    * **Exclude** — union: a gate is removed if *any* platform excludes it.
+      (The actual exclude logic is applied by downstream
+      :func:`validate_gate_modifiers` — lifecycle and CW guards still hold.)
+    * **override_failure_mode** — last platform wins for conflicting keys.
+
+    Currently the ``BrandProfile`` dataclass stores ``platforms`` as a
+    ``list[str]``, so there is no per-platform gate configuration to
+    extract.  This function is primarily forward-compatible — it returns
+    ``None`` (no-op) for the current schema and will activate when richer
+    per-platform configs are introduced.
+
+    Parameters
+    ----------
+    brand_profile_dict:
+        Brand profile as a dict (e.g. ``asdict(brand_profile)``).
+    platforms:
+        List of platform name strings.
+
+    Returns
+    -------
+    dict[str, Any] or None
+        Merged modifiers dict with ``include``, ``exclude``, and/or
+        ``override_failure_mode`` keys, or ``None`` if no platform has
+        gate modifiers.
+    """
+    platforms_value = brand_profile_dict.get("platforms", [])
+
+    # Current schema: platforms is list[str] — no per-platform gate config.
+    if isinstance(platforms_value, list):
+        return None
+
+    # Future richer format: platforms is a dict with per-platform config.
+    if isinstance(platforms_value, dict):
+        combined: dict[str, set[str]] = {"include": set(), "exclude": set()}
+        override_fm: dict[str, str] = {}
+        has_modifiers = False
+
+        for platform in platforms:
+            p_config = platforms_value.get(platform, {})
+            if not isinstance(p_config, dict):
+                continue
+            gates_cfg = p_config.get("gates", {})
+            if not isinstance(gates_cfg, dict):
+                continue
+
+            inc = gates_cfg.get("include", [])
+            if isinstance(inc, list):
+                combined["include"].update(inc)
+                if inc:
+                    has_modifiers = True
+
+            exc = gates_cfg.get("exclude", [])
+            if isinstance(exc, list):
+                combined["exclude"].update(exc)
+                if exc:
+                    has_modifiers = True
+
+            ofm = gates_cfg.get("override_failure_mode", {})
+            if isinstance(ofm, dict):
+                override_fm.update(ofm)
+                if ofm:
+                    has_modifiers = True
+
+        if not has_modifiers:
+            return None
+
+        result: dict[str, Any] = {}
+        if combined["include"]:
+            result["include"] = list(combined["include"])
+        if combined["exclude"]:
+            result["exclude"] = list(combined["exclude"])
+        if override_fm:
+            result["override_failure_mode"] = override_fm
+        return result
+
+    return None  # Unknown type — no modifiers.
+
+
+def _filter_gates_for_platform(
+    gate_names: list[str],
+    platforms: list[str],
+    brand_profile: BrandProfile | None = None,
+) -> list[str]:
+    """Filter *gate_names* based on per-platform gate requirements.
+
+    Union semantics for includes — a gate is kept if *any* platform
+    needs it.  Intersection for excludes — a gate is removed only if
+    *all* platforms exclude it.
+
+    Like :func:`_collect_platform_gate_modifiers`, this is a forward-
+    compatible hook.  With the current ``BrandProfile.platforms`` schema
+    (``list[str]``) it is a no-op that returns a copy of *gate_names*.
+
+    Parameters
+    ----------
+    gate_names:
+        The current list of gate names.
+    platforms:
+        List of target platform names.
+    brand_profile:
+        Optional brand profile for per-platform gate config lookup.
+
+    Returns
+    -------
+    list[str]
+        Filtered gate name list.
+    """
+    if not platforms or brand_profile is None:
+        return list(gate_names)
+
+    brand_dict = asdict(brand_profile)
+    platforms_value = brand_dict.get("platforms", [])
+
+    # Current schema — no per-platform gate config → pass-through.
+    if not isinstance(platforms_value, dict):
+        return list(gate_names)
+
+    # Future richer format: collect per-platform includes/excludes.
+    all_includes: set[str] = set()
+    all_excludes: set[str] = set()
+
+    for platform in platforms:
+        p_config = platforms_value.get(platform, {})
+        if not isinstance(p_config, dict):
+            continue
+        gates_cfg = p_config.get("gates", {})
+        if not isinstance(gates_cfg, dict):
+            continue
+
+        inc = gates_cfg.get("include", [])
+        if isinstance(inc, list):
+            all_includes.update(inc)
+
+        exc = gates_cfg.get("exclude", [])
+        if isinstance(exc, list):
+            all_excludes.update(exc)
+
+    # Union for includes, intersection for excludes.
+    gate_set = set(gate_names) | all_includes
+    if all_excludes:
+        gate_set -= all_excludes
+
+    return [g for g in gate_names if g in gate_set]
 
 
 # ---------------------------------------------------------------------------
@@ -592,6 +749,20 @@ def run_full_pipeline(
 
         gate_names = _compose_gate_list(mode, platform_config=None)
 
+        # 3.1 Apply per-platform gate modifiers from brand profile
+        if brand_profile is not None and brand_profile.platforms:
+            brand_dict = asdict(brand_profile)
+            combined_gate_config = _collect_platform_gate_modifiers(
+                brand_dict, list(brand_profile.platforms)
+            )
+            if combined_gate_config:
+                gate_names = _compose_gate_list(mode, {"gates": combined_gate_config})
+                log.info(
+                    "pipeline.gate_modifiers_applied",
+                    platform_count=len(brand_profile.platforms),
+                    gate_count=len(gate_names),
+                )
+
         # Apply resume_from — find index and slice
         if resume_from is not None:
             try:
@@ -661,6 +832,15 @@ def run_full_pipeline(
         gate_context["brand_platforms"] = (
             list(brand_profile.platforms) if brand_profile is not None else []
         )
+
+        # 5.1.5 Inject media specs into context for downstream gates
+        gate_context["media_specs"] = {}
+        if brand_profile is not None and brand_profile.platforms:
+            from automedia.core.media_spec import resolve_media_specs
+
+            gate_context["media_specs"] = resolve_media_specs(
+                asdict(brand_profile), list(brand_profile.platforms)
+            )
 
         # 4.76 Inject HITL config into context
         gate_context["hitl_config"] = hitl_config

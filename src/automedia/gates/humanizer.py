@@ -520,6 +520,10 @@ class G1Humanizer(BaseGate):
         config: dict[str, Any] = gate_context.get("config", {})
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
 
+        # Detect target platform for platform-scoped prompt overrides
+        brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+        platform: str = brand_platforms[0] if brand_platforms else ""
+
         # ------------------------------------------------------------------
         # Mock path — skip LLM entirely, use deterministic with overrides
         # ------------------------------------------------------------------
@@ -556,6 +560,7 @@ class G1Humanizer(BaseGate):
                 check_type="humanizer",
                 prompt_template_name="humanizer_g1",
                 deterministic_fn=_deterministic_fn,
+                platform=platform,
             )
 
             method = llm_result.get("method", "deterministic")
