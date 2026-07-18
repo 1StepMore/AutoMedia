@@ -28,7 +28,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
-| `automedia cron` | Execute scheduled cron jobs |
+| `automedia cron` | Execute scheduled cron jobs and pipeline runs |
 | `automedia account` | Platform account management |
 | `automedia archive` | Archive a project |
 | `automedia init` | Initialize AutoMedia configuration |
@@ -312,6 +312,7 @@ automedia cron check-health
 | `pool-score` | Score and rank topics |
 | `pool-prune` | Clean up expired topics |
 | `publish-check` | Check pending publish content |
+| `run-pipeline` | Execute scheduled pipeline runs from cron/jobs.yaml |
 
 ### cron run Arguments
 
@@ -333,6 +334,28 @@ Run a 4-step health check:
 2. `pool.db` accessible
 3. Core dependencies: Python >= 3.11, ffmpeg available
 4. `jobs.yaml` valid
+
+### cron run-pipeline
+
+Execute scheduled pipeline runs defined in `cron/jobs.yaml`.
+
+```bash
+# Run all pipeline schedules
+automedia cron run-pipeline
+
+# Run a specific schedule by name
+automedia cron run-pipeline --name daily-wechat
+
+# Run with explicit pool database path
+automedia cron run-pipeline --pool-db /path/to/pool.db
+```
+
+#### cron run-pipeline Flags
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--name` | `-n` | `str` | `""` | Schedule name (empty = run all schedules) |
+| `--pool-db` | | `str` | `""` | Explicit path to topic pool SQLite database |
 
 ## `automedia init`
 

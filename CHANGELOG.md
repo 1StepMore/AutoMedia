@@ -1,5 +1,34 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Platform-Aware Workflow Customization (F49-F55)**: Comprehensive platform-scoped pipeline customization system covering prompt templates, media specs, gate modifiers, cron scheduling, reusable workflows, and director mode.
+
+- **Platform-Scoped Prompt Resolution**: `load_prompt(name, platform=...)` with 3-layer resolution (brand → platform → global → built-in). 18 platform-scoped Jinja2 templates (6 platforms × 3 gates) plus 18 MCP-scoped equivalents. OverridesLoader extended with `load_prompts(brand, platform)` and per-platform prompt directories.
+
+- **PlatformMediaSpec Data Model**: Dataclass with width/height/aspect_ratio for 19 platforms. `get_platform_media_spec()` resolver injected into gate_context for per-platform media adaptation.
+
+- **Gate Modifier System**: Override YAML rules support `gates.include`, `gates.exclude`, `gates.override_failure_mode`. `validate_gate_modifiers()` and `_compose_gate_list()` in runner.py for runtime gate list composition.
+
+- **Platform-Aware Cron Scheduling**: `add_cron_schedule` MCP tool extended with `platform` and `mode` parameters. `list_cron_schedules` supports `--platform`/`--mode` filtering. New `automedia cron run-pipeline` CLI command with `--name` and `--pool-db` options.
+
+- **Workflow System**: `Workflow` dataclass and `WorkflowLoader` in `automedia/core/workflow.py` with `load()`, `load_all()`, `extends` inheritance, and circular dependency detection. `_merge_workflow_config()` in runner.py merges workflow settings into pipeline config. `list_workflows` MCP tool and `workflow` parameter on `run_pipeline`/`run_pipeline_from_strategy`.
+
+- **Director HITL Preset**: `DirectorPreset` with 8 review nodes (topic, content, brand, wechat, vision, tts, subtitle, publish) in `automedia/hitl/presets/director.py` + YAML preset. GateEngine extended with `pause_on_approval`, `resume()`, and `_engine_registry` for pausing at specific gates pending human approval. MCP tools: `approve_gate`, `reject_gate`, `get_pending_approvals`.
+
+- **MCP Tools**: 5 new tools — `list_overridable_templates`, `list_workflows`, `approve_gate`, `reject_gate`, `get_pending_approvals`. Total tool count: 46.
+
+- **Override Discoverability**: `list_overridable_templates` MCP tool and `docs/dev/override-reference.md` documenting the full override system with prompt resolution order, rule schema, and 5 worked examples.
+
+### Changed
+
+- **`run_full_pipeline()`**: New parameters `workflow` (workflow name from `workflows.yaml`) and `director` (enable director mode with HITL gate approval).
+- **`run_pipeline` / `run_pipeline_from_strategy` MCP tools**: Accept `workflow` and `director` parameters.
+- **`GateEngine`**: Added `pause_on_approval` flag and `resume()` method for director-mode gate pausing.
+- **Config resolution**: 6-layer hierarchy now includes per-platform prompt resolution as a sub-layer within the overrides layer.
+
 ## [1.1.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.0.0...automedia-v1.1.0) (2026-07-18)
 
 

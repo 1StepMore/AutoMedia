@@ -26,9 +26,12 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (13 commands) / MCP Server (41 tools)
+- **Three-layer API**: SDK / CLI (14 commands) / MCP Server (46 tools)
 - **21 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
+- **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
+- **Workflow system**: Reusable `workflows.yaml` definitions with cascading config merge
+- **Director mode**: Human-in-the-loop approval via GateEngine pause/resume with MCP approve/reject tools
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
 - **Platform adapter system**: Extensible publish targets — 20 registered adapters (13 real API + 7 documented manual-only stubs)
 - **Account & credential management**: AES-256-GCM encrypted store, OAuth2/Cookie/API Key auth flows, session management
@@ -262,7 +265,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (13 commands)
+### CLI (14 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -270,7 +273,7 @@ result = run_full_pipeline(
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
 | `automedia adapter` | Platform adapter management |
-| `automedia cron` | Execute scheduled cron jobs |
+| `automedia cron` | Execute scheduled cron jobs + pipeline runs |
 | `automedia account` | Platform account management (connect, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
@@ -279,7 +282,7 @@ result = run_full_pipeline(
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (41 tools)
+### MCP Server (46 tools)
 
 Start:
 
@@ -322,6 +325,31 @@ python -m automedia.mcp.server
 | `list_accounts` | List all registered accounts with optional filters |
 | `get_account_health` | Check an account's health status |
 | `disconnect_account` | Disconnect/remove a platform account |
+| `list_overridable_templates` | List all overridable prompt templates with override status |
+| `list_workflows` | List all configured workflows from `workflows.yaml` |
+| `approve_gate` | Approve a paused gate in director mode (HITL approval) |
+| `reject_gate` | Reject a paused gate in director mode (triggers failure handling) |
+| `get_pending_approvals` | List all gates awaiting human approval in director mode |
+
+### SDK with Workflow and Director
+
+```python
+from automedia import run_full_pipeline
+
+# Run with a predefined workflow
+result = run_full_pipeline(
+    topic="AI tools comparison",
+    brand="my-brand",
+    workflow="daily-article",  # Reference a workflow from workflows.yaml
+)
+
+# Run with director mode (HITL approval gates)
+result = run_full_pipeline(
+    topic="AI tools comparison",
+    brand="my-brand",
+    director=True,  # Pause at H0 gate for human approval
+)
+```
 
 ### MCP Client Configuration Examples
 
@@ -404,14 +432,14 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  41 tools      |     |  13 commands       |
+  |  46 tools      |     |  14 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
   |      automedia/ Python Package             |
   |  core/ pipelines/ gates/ adapters/         |
   |  accounts/ hooks/ manifests/ pool/ cron/   |
-  |  mcp/ cli/ hitl/ omni/                     |
+  |  mcp/ cli/ hitl/ omni/ prompts/           |
   +--------------------------------------------+
 ```
 
@@ -419,8 +447,8 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 
 | Package | Responsibility |
 |---------|---------------|
-| `core/` | Config loading (6-layer), project management, credential loading, health checks |
-| `pipelines/` | Pipeline orchestration, GateEngine, audio/video pipelines |
+| `core/` | Config loading (6-layer), project management, credential loading, health checks, overrides, media specs, workflow loading |
+| `pipelines/` | Pipeline orchestration, GateEngine (with pause/resume for director mode), audio/video pipelines |
 | `gates/` | 21 gate implementations + failure mode knowledge base |
 | `hooks/` | GateHook observer protocol (readonly), MD5 tracking, metrics |
 | `adapters/` | Platform publish adapter registry + base classes |
@@ -430,8 +458,9 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
 | `cli/` | Typer CLI application (13 command modules) |
-| `hitl/` | Human-in-the-loop framework |
+| `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
+| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (18 templates for 6 platforms) |
 | `asset_library/` | Vector store, document ingest, similarity search |
 
 ## Configuration
@@ -525,7 +554,7 @@ pytest tests/test_mcp/ -v
 
 ## Project Status
 
-Active development. 2,955 test functions across 145 files. ~90,000+ LOC across 442+ Python files (33,619 LOC in automedia/ core).
+Active development. 2,955+ test functions across 145+ files. ~90,000+ LOC across 442+ Python files (33,619+ LOC in automedia/ core).
 
 ## License
 
@@ -548,4 +577,5 @@ MIT License. See `LICENSE` for details.
 | `docs/user/production-workflow.md` | English | Production operations |
 | `docs/dev/cron-troubleshooting.md` | English | Cron job debugging |
 | `docs/dev/api-gotchas.md` | English | Common API pitfalls |
+| `docs/dev/override-reference.md` | English | Override system reference (rules, prompts, platform scoping) |
 | `CHANGELOG.md` | English | Version history and release notes |

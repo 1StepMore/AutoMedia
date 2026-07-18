@@ -987,12 +987,13 @@ Not all expectations are equal. This matrix ranks all 55 expectations by **impor
 | Quadrant | Importance | Gap | Expectations |
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
-| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others), **F49** (prompt routing — override infra exists but gates don't read platform), **F50** (media specs — no platform→dimensions mapping), **F51** (gate composition — no per-platform gate modifiers), **F54** (declarative workflows — building blocks exist but no workflow YAML concept) |
+| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others) |
 | **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (2955 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
-| **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency), **F52** (override discoverability — templates/rules undocumented, no MCP tool), **F53** (platform-aware cron — add_cron_schedule missing platform/mode params) |
+| **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
-| **💤 Low priority** | LOW | LOW / MODERATE | **F22** (perf — no hard target), **F38** (no plugin system — by design), **F46** (override system — works for YAML/prompts), **F48** (v1 readable only — adequate), **F55** (implementation roadmap — meta-tracking item) |
+| **✅ Closed — implemented** | HIGH | → CLOSED | **F49** (prompt platform routing — platform-scoped prompt resolution with `<platform>/<name>.j2` fallback chain), **F50** (media spec mapping — `PlatformMediaSpec` with per-platform defaults and brand overrides), **F51** (per-platform gate composition — include/exclude/override failure mode per platform), **F52** (override discoverability — `list_overridable_templates` MCP tool + full override reference doc), **F53** (platform-aware cron — `platform` + `mode` params on `add_cron_schedule`), **F54** (declarative workflows — `workflows.yaml` with `WorkflowLoader` + `list_workflows` MCP tool), **F55** (implementation roadmap — P1–P5 all verified: 71/71 QA scenarios passing, 20/20 scope fidelity compliant) |
+| **💤 Low priority** | LOW | LOW / MODERATE | **F22** (perf — no hard target), **F38** (no plugin system — by design), **F46** (override system — works for YAML/prompts), **F48** (v1 readable only — adequate) |
 
 ### Immediate Action Items (top priorities)
 
@@ -1210,6 +1211,13 @@ Some expectations will show gaps. That is not failure — that is **direction**.
 
 The project is not done when all 2,955 tests pass.
 The project is done when the founder can say: **"Yes, this does what I wanted."**
+
+---
+
+## 11. Closed Expectations
+
+### F49-F55: Platform-Aware Workflow Customization
+**Status:** ✅ Closed — All 7 expectations implemented and verified via plan compliance audit, code quality review, real manual QA (71/71 scenarios passing), and scope fidelity check (20/20 compliant).
 
 ---
 

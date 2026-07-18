@@ -19,13 +19,17 @@ AutoMedia automates content production from **topic selection** through **draft 
 
 ## Features
 
-- **Three-layer API** — Python SDK / CLI (13 commands) / MCP Server (41 tools)
+- **Three-layer API** — Python SDK / CLI (14 commands) / MCP Server (46 tools)
 - **21 quality gates** — G0-G5 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle)
 - **6-layer configuration** — defaults → project → user → overrides → prompts → env vars
 - **Topic pool** — SQLite-backed with scoring, dedup, scheduling
 - **Platform adapters** — Extensible publish targets
 - **Omni Triad** — OPP (extraction), OL (localization), ORF (format conversion)
 - **Human-in-the-loop** — Review gates for content and video quality approval
+- **Platform-scoped prompts** — Per-platform prompt templates with 3-layer resolution (brand > platform > global)
+- **Workflow system** — Reusable `workflows.yaml` definitions with cascade merge
+- **Director mode** — HITL gate approval with GateEngine pause/resume
+- **Override system** — Gate rules, media specs, and prompt overrides per brand/platform
 - **MCP-native** — Works with Claude Desktop/Code, OpenCode, Codex CLI, Cline, OpenClaw
 
 ---

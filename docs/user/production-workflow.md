@@ -19,6 +19,7 @@ AutoMedia runs on the following daily schedule:
 | 08:30 | Check pending publish content | `automedia cron run publish-check` |
 | 09:00 | Operators select topics, start production | `automedia run --topic "..." --brand ...` |
 | 09:30 | Full system health check | `automedia cron check-health` |
+| 10:00 | Scheduled pipeline run | `automedia cron run-pipeline` |
 | All day | Publish confirmation + archive | `automedia archive <project-id>` |
 
 ## Pre-Production Checks
@@ -88,6 +89,70 @@ else:
 
 The agent calls `select_topic` to pick a topic, then calls `run_pipeline` to
 produce content.
+
+### Method D: Scheduled Pipeline (Cron)
+
+Use `automedia cron run-pipeline` to execute pipeline runs defined in
+`cron/jobs.yaml`. Each schedule specifies a topic source, mode, target
+platform, and optional cron expression:
+
+```yaml
+# cron/jobs.yaml
+pipeline_schedules:
+  - name: daily-wechat
+    topic_source: pool          # Select best topic from pool
+    mode: auto
+    platform: wechat
+    schedule: "0 10 * * *"      # Daily at 10:00
+  - name: weekly-video
+    topic_source: pool
+    mode: short-video
+    platform: xiaohongshu
+    schedule: "0 9 * * 1"       # Weekly on Monday
+```
+
+Run all schedules:
+```bash
+automedia cron run-pipeline
+```
+
+Or run a specific schedule:
+```bash
+automedia cron run-pipeline --name daily-wechat
+```
+
+### Method E: Workflow (SDK / MCP)
+
+Define reusable workflows in `workflows.yaml`:
+
+```yaml
+# workflows.yaml
+workflows:
+  daily-article:
+    mode: auto
+    platform: wechat
+    gates:
+      exclude: [V3, V7]
+    brand: my-brand
+  weekend-video:
+    mode: short-video
+    platform: xiaohongshu
+    extends: daily-article  # Inherit from daily-article
+    gates:
+      include: [H0]
+```
+
+Then reference by name:
+```python
+result = run_full_pipeline(
+    topic="AI tools",
+    brand="my-brand",
+    workflow="daily-article",
+)
+```
+
+Workflows support `extends` for inheritance and are merged into the pipeline
+config at runtime via `_merge_workflow_config()`.
 
 ## Production Monitoring
 

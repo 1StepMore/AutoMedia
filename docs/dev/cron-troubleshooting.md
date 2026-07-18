@@ -43,6 +43,7 @@ automedia cron run pool-collect
 automedia cron run pool-score
 automedia cron run pool-prune
 automedia cron run publish-check
+automedia cron run run-pipeline
 ```
 
 ### 3. Check Crontab Configuration
@@ -175,6 +176,7 @@ crontab /path/to/backup/crontab.txt
 # AutoMedia daily scheduled tasks
 0 8 * * * cd /var/automedia && automedia cron run pool-collect >> /var/log/automedia/cron.log 2>&1
 5 8 * * * cd /var/automedia && automedia cron run pool-score >> /var/log/automedia/cron.log 2>&1
+10 8 * * * cd /var/automedia && automedia cron run run-pipeline >> /var/log/automedia/cron.log 2>&1
 30 8 * * * cd /var/automedia && automedia cron run publish-check >> /var/log/automedia/cron.log 2>&1
 30 9 * * * cd /var/automedia && automedia cron check-health >> /var/log/automedia/cron.log 2>&1
 ```

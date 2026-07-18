@@ -20,6 +20,9 @@ result = run_full_pipeline(
     resume_from=None,
     config_dir=None,
     tenant_id="default",
+    workflow=None,             # Workflow name from workflows.yaml
+    director=False,            # Enable director mode (HITL gate approval)
+    platform=None,             # Target platform for media spec resolution
 )
 ```
 
@@ -34,6 +37,9 @@ result = run_full_pipeline(
 | `resume_from` | `str \| None` | `None` | Resume from a specific Gate (skip preceding Gates) |
 | `config_dir` | `str \| None` | `None` | Path to project `.automedia/` config directory |
 | `tenant_id` | `str` | `"default"` | Tenant/namespace identifier |
+| `workflow` | `str \| None` | `None` | Workflow name from `workflows.yaml` — merges workflow config into pipeline |
+| `director` | `bool` | `False` | Enable director mode — pauses at H0 gate for human approval via MCP approve/reject tools |
+| `platform` | `str \| None` | `None` | Target platform name for media spec resolution and prompt scoping |
 
 ### mode Options
 

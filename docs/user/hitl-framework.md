@@ -47,6 +47,67 @@ execution nodes      ─► agent
 
 Suitable for teams that want quality control while keeping execution fast.
 
+### `director` (Human-in-the-Loop Gate Approval)
+
+```
+gate_nodes              ─► human  (topic, content, brand, wechat,
+                                    vision, tts, subtitle, publish)
+all other nodes         ─► agent
+```
+
+Specifically designed for pipeline **gate-level** human-in-the-loop approval.
+The pipeline executes all gates automatically but **pauses** at configurable
+review points. A human operator inspects the output and **approves** or
+**rejects** each gate via dedicated MCP tools:
+
+| MCP Tool | Description |
+|----------|-------------|
+| `approve_gate` | Approve a paused gate — pipeline resumes automatically |
+| `reject_gate` | Reject a paused gate — triggers failure handling (retry or stop) |
+| `get_pending_approvals` | List all gates currently awaiting human approval |
+
+The director preset defines 8 review nodes for gate-level oversight:
+
+| Review Node | Gate | What's Reviewed |
+|-------------|------|----------------|
+| topic | Pre-gate | Topic selection and validation |
+| content | CW | Written content draft quality |
+| brand | G3 | Brand CTA compliance |
+| wechat | G4 | WeChat-specific formatting checks |
+| vision | V1 | Vision QA — image/video quality |
+| tts | V4 | TTS audio quality and brand asset check |
+| subtitle | V6 | Subtitle rendering accuracy |
+| publish | L1 | Publish log review before platform distribution |
+
+### Usage
+
+```bash
+# Run pipeline in director mode (CLI)
+automedia run --topic "..." --brand my-brand --director
+
+# Or via MCP
+# Call run_pipeline with director=true, then poll get_pending_approvals
+# Approve passing gates: approve_gate(gate_name="V1")
+# Reject failing gates: reject_gate(gate_name="V1")
+```
+
+The director mode is also accessible via `python`:
+
+```python
+from automedia import run_full_pipeline
+
+result = run_full_pipeline(
+    topic="AI tools",
+    brand="my-brand",
+    director=True,
+)
+# Pipeline runs until H0, then pauses.
+# Use MCP approve_gate/reject_gate to continue.
+```
+
+Suitable for teams that want full pipeline automation but require a
+human sign-off before content goes live.
+
 ---
 
 ## NodeExecutor

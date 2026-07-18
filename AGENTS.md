@@ -19,8 +19,8 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 41 tools |
-| CLI | `automedia <subcommand>` | 13 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 46 tools |
+| CLI | `automedia <subcommand>` | 14 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -43,7 +43,9 @@ AutoMedia/
 │       │   ├── credential_loader.py# Credential loading
 │       │   ├── doctor.py           # System dependency checks
 │       │   ├── overrides.py        # Override rule processing
-│       │   └── llm_client.py       # LLM API client abstraction
+│       │   ├── llm_client.py       # LLM API client abstraction
+│       │   ├── media_spec.py       # PlatformMediaSpec + 19-platform defaults
+│       │   └── workflow.py          # Workflow dataclass + WorkflowLoader
 │       │
 │       ├── pipelines/              # Pipeline execution
 │       │   ├── runner.py           # run_full_pipeline() — shared entry point
@@ -99,7 +101,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 41 tools
+│       │   ├── server.py           # FastMCP server — 46 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -151,7 +153,7 @@ AutoMedia/
 │       ├── hitl/                   # Human-in-the-loop framework
 │       │   ├── config.py           # HITL configuration
 │       │   ├── executor.py         # HITL execution engine
-│       │   ├── presets/            # HITL preset configurations
+│       │   ├── presets/            # HITL preset configurations (automated, semi-automated, director)
 │       │   └── __init__.py
 │       │
 │       ├── pool/                   # Topic pool (SQLite)
@@ -161,6 +163,10 @@ AutoMedia/
 │       │   └── dedup.py            # Deduplication
 │       │
 │       ├── cron/                   # Scheduled job definitions
+│       │
+│       ├── prompts/                # Jinja2 prompt templates (platform-scoped)
+│       │   ├── __init__.py             # load_prompt() with 3-layer resolution
+│       │   └── platforms/              # Platform-scoped templates (6 platforms)
 │       │
 │       ├── manifests/              # Default config + schemas
 │       │   ├── defaults.yaml       # Built-in default config
@@ -174,7 +180,7 @@ AutoMedia/
 │           ├── vector_store.py
 │           └── migrate.py
 │
-├── docs/                       # Documentation (25 files)
+├── docs/                       # Documentation (26 files)
 │   ├── index.md                # Documentation site home
 │   ├── d3-gap-analysis.md      # D3 gap closure analysis
 │   │

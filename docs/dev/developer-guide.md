@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  41 tools
+   │   select_topic, run_pipeline, ...    │  46 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -193,15 +193,16 @@ External Call Layer
 
 | Subpackage | Responsibility |
 |------|------|
-| `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`) |
+| `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`), overrides (`overrides.py`), media specs (`media_spec.py`), workflows (`workflow.py`) |
 | `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
 | `gates/` | 21 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
 | `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
 | `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
-| `cron/` | Scheduled job YAML definitions (`jobs.yaml`) |
+| `cron/` | Scheduled job YAML definitions (`jobs.yaml`), pipeline schedule runner (`runner.py`) |
 | `mcp/` | MCP Server implementation (`server.py`), stdio transport |
+| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (18 platform overrides for 6 platforms) |
 
 ### Unified Three-Layer Entry Point
 
@@ -227,6 +228,7 @@ automedia/                  # Core Python package
   manifests/                # Config file schema
   pool/                     # Topic pool
   cron/                     # Scheduled tasks
+  prompts/                  # Jinja2 prompt templates
   mcp/                      # MCP Server
   cli/                      # Typer CLI
 tests/                      # Test directory
@@ -258,7 +260,8 @@ pytest tests/test_e2e/ -v
 2. Define `_gate_name` and `_failure_mode` class attributes
 3. Implement the `execute(self, gate_context) -> dict` method
 4. Add a failure mode entry in `failure_modes.py`
-5. Add corresponding tests in `tests/`
+5. Register the gate in `runner.py`'s gate lists if it should be included in any pipeline mode
+6. Add corresponding tests in `tests/`
 
 ```python
 from automedia.gates.base import BaseGate
