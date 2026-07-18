@@ -7,7 +7,9 @@ Import each implementation module here to trigger auto-registration in the
 global :class:`~automedia.engines.registry.EngineRegistry` singleton.
 """
 
-from automedia.engines.implementations import asr_whisper  # noqa: F401
-from automedia.engines.implementations import image_comfyui  # noqa: F401
-from automedia.engines.implementations import tts_edge  # noqa: F401
-from automedia.engines.implementations import video_hyperframes  # noqa: F401
+from automedia.engines.implementations import (
+    asr_whisper,  # noqa: F401
+    image_comfyui,  # noqa: F401
+    tts_edge,  # noqa: F401
+    video_hyperframes,  # noqa: F401
+)

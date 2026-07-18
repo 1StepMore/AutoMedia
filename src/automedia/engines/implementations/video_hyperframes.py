@@ -254,7 +254,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             if chrome_path and os.path.isfile(chrome_path):
                 env["HYPERFRAMES_BROWSER_PATH"] = chrome_path
 
-            result: subprocess.CompletedProcess[str] = subprocess.run(
+            result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # cmd is hardcoded
                 cmd,
                 capture_output=True,
                 text=True,
@@ -366,7 +366,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 temp_video,
             )
 
-            result1: subprocess.CompletedProcess[str] = subprocess.run(
+            result1: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # step1_cmd is hardcoded
                 step1_cmd,
                 capture_output=True,
                 text=True,
@@ -403,7 +403,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                     output_path,
                 )
 
-                result2: subprocess.CompletedProcess[str] = subprocess.run(
+                result2: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # step2_cmd is hardcoded
                     step2_cmd,
                     capture_output=True,
                     text=True,
@@ -458,9 +458,9 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         if not ffprobe or not audio_path or not os.path.isfile(audio_path):
             return None
         try:
-            result: subprocess.CompletedProcess[str] = subprocess.run(
+            result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # ffprobe path is hardcoded
                 [ffprobe, "-v", "error", "-show_entries", "format=duration",
-                 "-of", "default=noprint_wrappers=1:nokey=1", audio_path],  # noqa: S603
+                 "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
                 capture_output=True,
                 text=True,
                 timeout=15,

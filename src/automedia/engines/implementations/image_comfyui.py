@@ -108,7 +108,7 @@ def _materialise_workflow(
     Placeholders understood: ``__PROMPT__``, ``__NEGATIVE_PROMPT__``,
     ``__WIDTH__``, ``__HEIGHT__``, ``__SEED__``.
     """
-    seed = random.randint(0, 2**31 - 1)
+    seed = random.randint(0, 2**31 - 1)  # noqa: S311  # seed for image generation, not crypto
     raw = template_json
     raw = raw.replace("__PROMPT__", json.dumps(prompt)[1:-1])
     raw = raw.replace("__NEGATIVE_PROMPT__", json.dumps(negative_prompt)[1:-1])

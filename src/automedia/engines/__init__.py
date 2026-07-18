@@ -29,7 +29,10 @@ from automedia.engines.errors import (
     EngineNotFoundError,
     EngineUnavailableError,
 )
-from automedia.engines.registry import EngineRegistry, _DEFAULT_ENGINES  # noqa: PLC2701  # intentional package-internal constant
+from automedia.engines.registry import (  # noqa: PLC2701  # intentional package-internal constant
+    _DEFAULT_ENGINES,
+    EngineRegistry,
+)
 
 log = get_logger(__name__)
 

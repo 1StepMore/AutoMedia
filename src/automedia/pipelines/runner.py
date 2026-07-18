@@ -20,6 +20,13 @@ from automedia.core.config_loader import load_config
 from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
 from automedia.core.logging import bind_correlation_id
 from automedia.core.project import Project
+from automedia.engines import resolve_engine
+from automedia.engines.base import BaseVideoEngine
+from automedia.engines.errors import (
+    EngineExecutionError,
+    EngineNotFoundError,
+    EngineUnavailableError,
+)
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate, GateRegistry, _registry
 from automedia.hitl import HITLConfig
@@ -37,13 +44,6 @@ from automedia.pipelines.gate_engine import (
     GateLogEntry,
     PipelineProgress,
     PipelineResult,
-)
-from automedia.engines import resolve_engine
-from automedia.engines.base import BaseVideoEngine
-from automedia.engines.errors import (
-    EngineExecutionError,
-    EngineNotFoundError,
-    EngineUnavailableError,
 )
 from automedia.pipelines.image_pipeline import ImagePipeline
 from automedia.pipelines.language_config import resolve_language_config
@@ -812,7 +812,7 @@ def _resolve_source_material(
         try:
             import urllib.request
 
-            with urllib.request.urlopen(source_url, timeout=30) as resp:
+            with urllib.request.urlopen(source_url, timeout=30) as resp:  # noqa: S310  # source_url is user-provided config value
                 content = resp.read().decode("utf-8")
             contents.append(content)
             if not result_type:

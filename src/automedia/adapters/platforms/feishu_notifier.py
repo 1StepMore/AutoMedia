@@ -134,7 +134,7 @@ class FeishuNotifier(BasePlatformAdapter):
         }
 
         # --- POST ---------------------------------------------------------------
-        assert _httpx_module is not None  # guarded by _has_httpx check above
+        assert _httpx_module is not None  # noqa: S101  # guarded by _has_httpx check above
         try:
             resp = _httpx_module.post(
                 webhook_url,

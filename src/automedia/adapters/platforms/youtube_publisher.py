@@ -60,7 +60,7 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
 YOUTUBE_UPLOAD_BASE = "https://www.googleapis.com/upload/youtube/v3"
-YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105  # URL, not a password
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 
 # Video file extensions supported for upload (in priority order)

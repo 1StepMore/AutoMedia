@@ -45,7 +45,7 @@ _CLIENT_CONFIGS: dict[str, dict[str, Any]] = {
 }
 
 
-def _output_format(data: Any, json_output: bool) -> None:
+def _output_format(data: Any, json_output: bool) -> None:  # noqa: ANN401  # Any is appropriate for CLI display
     """Print data as JSON or formatted text."""
     if json_output:
         typer.echo(json.dumps(data, indent=2))

@@ -122,11 +122,8 @@ def _split_thread(text: str) -> list[str]:
         if split_at <= 0:
             # No sentence boundary found — split at the last space
             idx = candidate.rfind(" ")
-            if idx > 0:
-                split_at = idx
-            else:
-                # No space either — hard split at the limit
-                split_at = TWEET_MAX_CHARS
+            # No space either — hard split at the limit
+            split_at = idx if idx > 0 else TWEET_MAX_CHARS
 
         chunk = remaining[:split_at].strip()
         remaining = remaining[split_at:].strip()

@@ -685,9 +685,9 @@ class PublishEngine:
                             artifact_dir, project, draft_only=True,
                         )
                     else:
-                        refresh_fn: Callable[[], bool] | None = (
-                            lambda aid=account_id: self._refresh_credential(aid)
-                        )
+                        def _refresh(aid: str = account_id) -> bool:
+                            return self._refresh_credential(aid)
+                        refresh_fn: Callable[[], bool] | None = _refresh
                         result = _publish_with_retry(
                             adapter, artifact_dir, project, platform,
                             refresh_fn=refresh_fn,
