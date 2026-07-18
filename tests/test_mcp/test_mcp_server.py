@@ -716,7 +716,7 @@ class TestHelpers:
         """health_check returns status=ok with version and uptime."""
         result = health_check()
         assert result["status"] == "ok"
-        assert result["version"] == "1.0.0"
+        assert result["version"] == "1.0.1"
         assert result["uptime_s"] >= 0
         assert result["tools_count"] >= 20
 

@@ -19,7 +19,7 @@ from automedia.mcp.tools import get_config
 MOCK_CONFIG: dict[str, Any] = {
     "project": {
         "name": "AutoMedia",
-        "version": "1.0.0",
+        "version": "1.0.1",
     },
     "paths": {
         "data_dir": "./data",
@@ -138,7 +138,7 @@ class TestGetConfigByKey:
 
         assert "value" in result
         assert result["value"]["name"] == "AutoMedia"
-        assert result["value"]["version"] == "1.0.0"
+        assert result["value"]["version"] == "1.0.1"
 
     @patch("automedia.core.config_loader.load_config")
     def test_dot_notation(self, mock_load: MagicMock) -> None:
