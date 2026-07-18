@@ -464,9 +464,8 @@ class FacebookPublisher(BasePlatformAdapter):
 
         # Build the message — append link to message text if present
         final_message = message
-        if link:
-            if link not in final_message:
-                final_message = f"{final_message}\n\n{link}"
+        if link and link not in final_message:
+            final_message = f"{final_message}\n\n{link}"
 
         try:
             file_data = image_path.read_bytes()

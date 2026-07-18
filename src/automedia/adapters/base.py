@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Any, TypedDict
 
 
@@ -52,7 +52,7 @@ class HealthResult(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 
 
-class AutomationLevel(str, Enum):
+class AutomationLevel(StrEnum):
     """Publish automation levels per platform.
 
     Each platform (wechat, zhihu, xiaohongshu, feishu) can be configured

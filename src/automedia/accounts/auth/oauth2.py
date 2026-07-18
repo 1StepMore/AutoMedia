@@ -9,8 +9,11 @@ import time
 from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse
+
+if TYPE_CHECKING:
+    import httpx
 
 from structlog import get_logger
 

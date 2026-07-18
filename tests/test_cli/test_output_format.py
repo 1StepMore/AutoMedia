@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import patch
 
 import pytest
@@ -159,7 +160,9 @@ class TestRunVerboseFlag:
 
         result = runner.invoke(app, ["run", "--help"])
         assert result.exit_code == 0
-        assert "--verbose" in result.output
+        # Strip ANSI escape codes — CI may render help with rich/color formatting
+        clean = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", result.output)
+        assert "--verbose" in clean
 
     def test_run_verbose_with_exception(self, tmp_path) -> None:
         """When pipeline raises and --verbose is set, hint is shown."""

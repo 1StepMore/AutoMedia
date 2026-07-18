@@ -41,13 +41,13 @@ class TestMainApp:
     def test_version_flag_prints_version(self) -> None:
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "1.0.0" in result.output
+        assert "1.0.1" in result.output
 
     def test_version_flag_exits_early(self) -> None:
         """--version should exit before running any command."""
         result = runner.invoke(app, ["--version", "run", "--topic", "x", "--brand", "y"])
         assert result.exit_code == 0
-        assert "1.0.0" in result.output
+        assert "1.0.1" in result.output
         assert "Pipeline" not in result.output
 
 

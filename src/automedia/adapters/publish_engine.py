@@ -288,7 +288,6 @@ def _publish_with_retry(
         Publish result — either the adapter's own success dict, or a
         structured error dict from :func:`build_error_result`.
     """
-    last_exception: Exception | None = None
     last_reason: str = ""
     last_error_code: str = UNKNOWN
     retry_count: int = 0
@@ -299,7 +298,6 @@ def _publish_with_retry(
             result = adapter.publish(artifact_dir, project)
         except Exception as exc:
             # Unknown adapter error — classify and decide retry strategy
-            last_exception = exc
             last_reason = str(exc)
             last_error_code = classify_publish_error(exception=exc)
 

@@ -282,7 +282,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 details=(
                     f"hyperframes render timed out after {timeout} seconds."
                 ),
-            )
+            ) from None
         except EngineExecutionError:
             raise
         except Exception as exc:
@@ -290,7 +290,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 engine_name=self.engine_name,
                 details=f"Unexpected error during hyperframes render: {exc}",
                 cause=exc,
-            )
+            ) from exc
         finally:
             if temp_dir is not None:
                 shutil.rmtree(temp_dir, ignore_errors=True)
@@ -434,7 +434,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 details=(
                     f"FFmpeg slideshow render timed out after {timeout} seconds."
                 ),
-            )
+            ) from None
         except EngineExecutionError:
             raise
         except Exception as exc:
@@ -442,7 +442,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 engine_name=self.engine_name,
                 details=f"Unexpected error during FFmpeg slideshow render: {exc}",
                 cause=exc,
-            )
+            ) from exc
         finally:
             if temp_dir is not None:
                 shutil.rmtree(temp_dir, ignore_errors=True)
