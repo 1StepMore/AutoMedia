@@ -18,7 +18,7 @@
 
 [Unit]
 Description=AutoMedia Production Pipeline
-Documentation=https://github.com/your-org/automedia
+Documentation=https://github.com/1stepmore/automedia
 After=network-online.target
 Wants=network-online.target
 

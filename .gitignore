@@ -6,6 +6,10 @@
 /test-*/
 202607*/
 PRD/
+/hyperframes-workflow-templates/
+
+# ===== Pipeline Output Directories =====
+0[1-6]_*/
 
 # ===== Internal / Developer-Only Docs =====
 AutoMedia-*.md
@@ -25,6 +29,7 @@ docs/production-e2e-test-design.md
 # ===== Credentials & Secrets =====
 .env
 .env.*.local
+deploy/systemd/*.env
 *.pem
 *.key
 *_credentials.yaml
@@ -85,6 +90,4 @@ tests/fixtures/synth/**/api_key*
 *.parquet
 
 site/
-"=6"
-"ave 1                    Wave 2                          Wave 3\\\\"
 *.cover
