@@ -16,40 +16,6 @@ from typing import Any, Literal, cast
 
 from structlog import get_logger
 
-from automedia.core.config_loader import load_config
-from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
-from automedia.core.workflow import Workflow, WorkflowLoader
-from automedia.core.logging import bind_correlation_id
-from automedia.core.project import Project
-from automedia.engines import resolve_engine
-from automedia.engines.base import BaseVideoEngine
-from automedia.engines.errors import (
-    EngineExecutionError,
-    EngineNotFoundError,
-    EngineUnavailableError,
-)
-from automedia.gates._context import GateContext
-from automedia.gates.base import BaseGate, GateRegistry, _registry
-from automedia.hitl import HITLConfig
-from automedia.hooks.cost_tracker import CostTracker
-from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5, verify_md5
-from automedia.hooks.pipeline_history import PipelineHistoryHook
-from automedia.hooks.protocol import GateHook
-from automedia.manifests.brand_profile_schema import (
-    BrandProfile,
-    load_brand_profile,
-    load_brand_profiles,
-)
-from automedia.pipelines.gate_engine import (
-    AssetInfo,
-    GateEngine,
-    GateLogEntry,
-    PipelineProgress,
-    PipelineResult,
-)
-from automedia.pipelines.image_pipeline import ImagePipeline
-from automedia.pipelines.language_config import resolve_language_config
-
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -261,6 +227,8 @@ def _check_hyperframes(mode: str) -> bool:
 
 def _collect_assets(gate_context: GateContext | dict[str, Any]) -> list[AssetInfo]:
     """Extract ``AssetInfo`` items from the gate context after execution."""
+    from automedia.pipelines.gate_engine import AssetInfo
+
     assets: list[AssetInfo] = []
     for key in ("output_files", "assets"):
         items = gate_context.get(key)
@@ -291,6 +259,8 @@ def _verify_resume_integrity(
     the resume point.  Mismatches are logged as warnings — the pipeline
     will regenerate those outputs anyway.
     """
+    from automedia.hooks.md5_tracker import get_pipeline_md5, verify_md5
+
     try:
         resume_idx = gate_names_in_mode.index(resume_from)
     except ValueError:
@@ -332,6 +302,8 @@ def _record_gate_md5s(
     gate_results: list[dict[str, Any]],
 ) -> None:
     """Record MD5 for each gate result that includes ``output_path``."""
+    from automedia.hooks.md5_tracker import record_md5
+
     for result in gate_results:
         output_path = result.get("output_path")
         gate_name = result.get("gate", "")
@@ -381,6 +353,8 @@ def validate_gate_modifiers(
         If any referenced gate is not registered, CW is excluded,
         or a lifecycle gate (L1–L4) is excluded.
     """
+    from automedia.gates.base import _registry
+
     reg = registry if registry is not None else _registry
 
     include_names: list[str] = modifiers.get("include", [])
@@ -774,6 +748,31 @@ def run_full_pipeline(
         On unexpected errors the result has ``status="failed"`` and
         ``error`` is populated instead of raising.
     """
+    from automedia.core.config_loader import load_config
+    from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
+    from automedia.core.workflow import WorkflowLoader
+    from automedia.core.logging import bind_correlation_id
+    from automedia.core.project import Project
+    from automedia.engines import resolve_engine
+    from automedia.engines.base import BaseVideoEngine
+    from automedia.engines.errors import (
+        EngineExecutionError,
+        EngineNotFoundError,
+        EngineUnavailableError,
+    )
+    from automedia.gates._context import GateContext
+    from automedia.hitl import HITLConfig
+    from automedia.hooks.cost_tracker import CostTracker
+    from automedia.hooks.pipeline_history import PipelineHistoryHook
+    from automedia.manifests.brand_profile_schema import (
+        BrandProfile,
+        load_brand_profile,
+        load_brand_profiles,
+    )
+    from automedia.pipelines.gate_engine import GateEngine, PipelineResult
+    from automedia.pipelines.image_pipeline import ImagePipeline
+    from automedia.pipelines.language_config import resolve_language_config
+
     start = time.monotonic()
     correlation_id = bind_correlation_id()
 
@@ -1281,12 +1280,16 @@ def _build_gates_from_names(
     registry: GateRegistry | None = None,
 ) -> list[BaseGate]:
     """Instantiate gates by name from the registry."""
+    from automedia.gates.base import _registry
+
     reg = registry if registry is not None else _registry
     return [reg.get(n)() for n in names]
 
 
 def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     """Convert raw gate result dicts into :class:`GateLogEntry` items."""
+    from automedia.pipelines.gate_engine import GateLogEntry
+
     entries: list[GateLogEntry] = []
     for r in results:
         passed = r.get("passed", True)

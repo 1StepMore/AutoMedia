@@ -24,12 +24,12 @@ from __future__ import annotations
 
 import sys
 import traceback
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import typer
 
-from automedia.gates.failure_modes import FAILURE_MODES
-from automedia.pipelines.gate_engine import GateLogEntry
+if TYPE_CHECKING:
+    from automedia.pipelines.gate_engine import GateLogEntry
 
 # Known gate name prefixes for pattern matching in error strings.
 _GATE_PREFIXES = [
@@ -155,6 +155,8 @@ def output_pipeline_error(
 
 def _print_failure_mode_suggestion(gate_name: str) -> None:
     """Print a 'Suggested fix:' block from FAILURE_MODES, if available."""
+    from automedia.gates.failure_modes import FAILURE_MODES
+
     info = FAILURE_MODES.get(gate_name, {})
     fixes = cast(list[str] | None, info.get("fixes"))
     if fixes:

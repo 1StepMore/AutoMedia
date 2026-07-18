@@ -242,8 +242,8 @@ class TestGetServerCommands:
 class TestCLICommands:
     """Tests for omni CLI subcommands (Typer)."""
 
-    @patch("automedia.cli.commands.omni.start_parallel_servers")
-    @patch("automedia.cli.commands.omni.stop_parallel_servers")
+    @patch("automedia.mcp.parallel.start_parallel_servers")
+    @patch("automedia.mcp.parallel.stop_parallel_servers")
     @patch("automedia.cli.commands.omni.time.sleep")
     def test_start_all_invokes_parallel(
         self,
@@ -271,8 +271,8 @@ class TestCLICommands:
         assert "Launched 1 server(s)" in result.output
         assert "[AutoMedia] started (PID: 4001)" in result.output
 
-    @patch("automedia.cli.commands.omni.start_parallel_servers")
-    @patch("automedia.cli.commands.omni.stop_parallel_servers")
+    @patch("automedia.mcp.parallel.start_parallel_servers")
+    @patch("automedia.mcp.parallel.stop_parallel_servers")
     @patch("automedia.cli.commands.omni.time.sleep")
     def test_start_mode_parallel(
         self,
@@ -296,8 +296,8 @@ class TestCLICommands:
         assert result.exit_code == 0
         mock_start.assert_called_once_with(mode="parallel")
 
-    @patch("automedia.cli.commands.omni.start_parallel_servers")
-    @patch("automedia.cli.commands.omni.stop_parallel_servers")
+    @patch("automedia.mcp.parallel.start_parallel_servers")
+    @patch("automedia.mcp.parallel.stop_parallel_servers")
     @patch("automedia.cli.commands.omni.time.sleep")
     def test_start_mode_sdk(
         self,
@@ -322,8 +322,8 @@ class TestCLICommands:
         mock_start.assert_called_once_with(mode="sdk")
         assert "Launched 1 server(s) in sdk mode" in result.output
 
-    @patch("automedia.cli.commands.omni.start_parallel_servers")
-    @patch("automedia.cli.commands.omni.stop_parallel_servers")
+    @patch("automedia.mcp.parallel.start_parallel_servers")
+    @patch("automedia.mcp.parallel.stop_parallel_servers")
     @patch("automedia.cli.commands.omni.time.sleep")
     def test_start_all_shows_pids(
         self,
@@ -351,8 +351,8 @@ class TestCLICommands:
         assert "[AutoMedia] started (PID: 4010)" in result.output
         assert "[OPP] started (PID: 4011)" in result.output
 
-    @patch("automedia.cli.commands.omni.start_parallel_servers")
-    @patch("automedia.cli.commands.omni.stop_parallel_servers")
+    @patch("automedia.mcp.parallel.start_parallel_servers")
+    @patch("automedia.mcp.parallel.stop_parallel_servers")
     @patch("automedia.cli.commands.omni.time.sleep")
     def test_unexpected_exit_reported(
         self,

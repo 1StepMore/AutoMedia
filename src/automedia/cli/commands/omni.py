@@ -9,7 +9,6 @@ from pathlib import Path
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
-from automedia.mcp.parallel import start_parallel_servers, stop_parallel_servers
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,8 @@ def omni_start_all(
     adapter servers.  Each server runs as an independent subprocess with
     stdio transport.
     """
+    from automedia.mcp.parallel import start_parallel_servers
+
     servers = start_parallel_servers(mode=mode)
 
     if output_text(
@@ -68,6 +69,8 @@ def omni_start_all(
                     )
     except KeyboardInterrupt:
         typer.echo("\nShutting down all servers...")
+        from automedia.mcp.parallel import stop_parallel_servers
+
         stop_parallel_servers(servers)
         typer.echo("All servers stopped.")
 
@@ -94,6 +97,8 @@ def omni_start(
     if mode == "parallel":
         omni_start_all(mode=mode)
         return
+
+    from automedia.mcp.parallel import start_parallel_servers
 
     servers = start_parallel_servers(mode=mode)
 
@@ -125,6 +130,8 @@ def omni_start(
                     )
     except KeyboardInterrupt:
         typer.echo("\nShutting down all servers...")
+        from automedia.mcp.parallel import stop_parallel_servers
+
         stop_parallel_servers(servers)
         typer.echo("All servers stopped.")
 

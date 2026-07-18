@@ -293,6 +293,8 @@ python -m automedia.mcp.server
 | Tool | Description |
 |------|-------------|
 | `health_check` | Return server health status (version, uptime, tool count) |
+| `engine_health` | Check all engine-related dependencies health |
+| `update_engine_config` | Update an engine configuration setting |
 | `select_topic` | Select highest-scored pending topic from pool |
 | `research_topics` | Research trending topics within a category using LLM |
 | `run_brand_strategy` | Generate a brand strategy using LLM analysis |
@@ -313,6 +315,11 @@ python -m automedia.mcp.server
 | `format_output` | Convert content format (ORF adapter) |
 | `evaluate_content_quality` | Score content quality against criteria |
 | `batch_run` | Run pipeline sequentially for multiple topics |
+| `cancel_pipeline` | Cancel a running pipeline by project ID |
+| `pause_pipeline` | Pause a running pipeline after the current gate completes |
+| `resume_pipeline` | Resume a paused pipeline |
+| `retry_gate` | Mark a specific gate for retry in a running pipeline |
+| `skip_gate` | Mark a specific gate for skipping in a running pipeline |
 | `add_cron_schedule` | Add a cron schedule entry |
 | `list_cron_schedules` | List all cron schedules |
 | `remove_cron_schedule` | Remove a cron schedule entry |
@@ -330,6 +337,7 @@ python -m automedia.mcp.server
 | `approve_gate` | Approve a paused gate in director mode (HITL approval) |
 | `reject_gate` | Reject a paused gate in director mode (triggers failure handling) |
 | `get_pending_approvals` | List all gates awaiting human approval in director mode |
+| `mcp_help` | Get a categorized listing of all MCP tools with descriptions |
 
 ### SDK with Workflow and Director
 

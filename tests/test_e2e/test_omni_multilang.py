@@ -109,10 +109,10 @@ class TestMultilingualEnglishPipeline:
     # Integration: run_full_pipeline with default_lang="en"
     # ------------------------------------------------------------------
 
-    @patch("automedia.pipelines.runner.load_config")
-    @patch("automedia.pipelines.runner.Project")
-    @patch("automedia.pipelines.runner.load_brand_profile")
-    @patch("automedia.pipelines.runner.GateEngine")
+    @patch("automedia.core.config_loader.load_config")
+    @patch("automedia.core.project.Project")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
+    @patch("automedia.pipelines.gate_engine.GateEngine")
     def test_run_full_pipeline_injects_lang_config_with_en(
         self,
         mock_ge_cls: MagicMock,
@@ -188,10 +188,10 @@ class TestMultilingualEnglishPipeline:
     # Integration: run_full_pipeline without default_lang → zh-CN
     # ------------------------------------------------------------------
 
-    @patch("automedia.pipelines.runner.load_config")
-    @patch("automedia.pipelines.runner.Project")
-    @patch("automedia.pipelines.runner.load_brand_profile")
-    @patch("automedia.pipelines.runner.GateEngine")
+    @patch("automedia.core.config_loader.load_config")
+    @patch("automedia.core.project.Project")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
+    @patch("automedia.pipelines.gate_engine.GateEngine")
     def test_run_full_pipeline_defaults_to_zh_cn(
         self,
         mock_ge_cls: MagicMock,
@@ -314,9 +314,9 @@ class TestMultilingualEnglishPipeline:
     # Mock GateEngine capture: verify lang_config reaches the engine
     # ------------------------------------------------------------------
 
-    @patch("automedia.pipelines.runner.load_config")
-    @patch("automedia.pipelines.runner.Project")
-    @patch("automedia.pipelines.runner.load_brand_profile")
+    @patch("automedia.core.config_loader.load_config")
+    @patch("automedia.core.project.Project")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
     def test_gate_context_includes_lang_config_via_mock_engine(
         self,
         mock_load_bp: MagicMock,

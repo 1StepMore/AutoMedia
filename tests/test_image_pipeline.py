@@ -54,7 +54,7 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         return _MockImageEngine()
 
     monkeypatch.setattr(
-        "automedia.pipelines.image_pipeline.resolve_engine",
+        "automedia.engines.resolve_engine",
         _mock_resolve,
     )
 

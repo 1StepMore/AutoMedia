@@ -10,6 +10,7 @@ from automedia.cli.commands.adapter import app as adapter_app
 from automedia.cli.commands.archive import archive_cmd
 from automedia.cli.commands.cron import app as cron_app
 from automedia.cli.commands.doctor import doctor_cmd
+from automedia.cli.commands.history_cmd import history_cmd
 from automedia.cli.commands.hitl import app as hitl_app
 from automedia.cli.commands.init_cmd import init_cmd
 from automedia.cli.commands.mcp import app as mcp_app
@@ -17,6 +18,7 @@ from automedia.cli.commands.omni import app as omni_app
 from automedia.cli.commands.onboard import app as onboard_app
 from automedia.cli.commands.pool import app as pool_app
 from automedia.cli.commands.projects import app as projects_app
+from automedia.cli.commands.rollback import rollback_cmd
 from automedia.cli.commands.run import run_cmd
 
 app = typer.Typer(
@@ -73,9 +75,14 @@ app.add_typer(onboard_app, name="onboard")
 app.add_typer(mcp_app, name="mcp")
 
 
+app.command(name="history", help="Show pipeline execution history for a project.")(history_cmd)
 app.command(name="run", help="Execute the full AutoMedia production pipeline.")(run_cmd)
 app.command(
     name="archive", help="Archive a project. Red Line 8: requires --force unless published."
 )(archive_cmd)
+app.command(
+    name="rollback",
+    help="Roll back a project: archive it and revert status to draft.",
+)(rollback_cmd)
 app.command(name="init", help="Initialize AutoMedia configuration.")(init_cmd)
 app.command(name="doctor", help="Check system dependencies and environment health.")(doctor_cmd)

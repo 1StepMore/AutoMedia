@@ -14,14 +14,9 @@ import os
 from dataclasses import dataclass
 from typing import Any, cast
 
-from PIL import Image
 from structlog import get_logger
 
 from automedia.core.llm_client import LLMError, llm_complete
-from automedia.engines import resolve_engine
-from automedia.engines.base import BaseImageEngine
-from automedia.engines.errors import EngineExecutionError
-from automedia.prompts import load_prompt
 
 logger = get_logger(__name__)
 
@@ -77,6 +72,8 @@ def _generate_image_prompt(
         The generated image prompt (LLM result or fallback).
     """
     try:
+        from automedia.prompts import load_prompt
+
         user_message = load_prompt(
             "image_prompt",
             topic=topic,
@@ -136,6 +133,9 @@ class ImagePipeline:
 
     def _get_image_engine(self) -> BaseImageEngine:
         """Lazy-load and cache the image engine from config."""
+        from automedia.engines import resolve_engine
+        from automedia.engines.base import BaseImageEngine
+
         if self._image_engine is None:
             self._image_engine = cast(
                 BaseImageEngine,
@@ -166,6 +166,8 @@ class ImagePipeline:
         dict[str, str]
             Mapping of ratio label (e.g. ``"16:9"``) to file path.
         """
+        from automedia.engines.errors import EngineExecutionError
+
         covers_dir = os.path.join(project_dir, "covers")
         os.makedirs(covers_dir, exist_ok=True)
 
@@ -218,6 +220,8 @@ class ImagePipeline:
         list[str]
             Paths to generated body images.
         """
+        from automedia.engines.errors import EngineExecutionError
+
         count = max(3, min(6, count))
         body_dir = os.path.join(project_dir, "body")
         os.makedirs(body_dir, exist_ok=True)
@@ -271,6 +275,8 @@ class ImagePipeline:
         str
             Path to the generated cover image, or ``""`` on failure.
         """
+        from automedia.engines.errors import EngineExecutionError
+
         spec = COVER_SPECS.get(ratio, (1920, 1080))
         cover_dir = os.path.join(project_dir, "02_images", "cover")
         os.makedirs(cover_dir, exist_ok=True)
@@ -316,6 +322,8 @@ class ImagePipeline:
         str
             Path to the fallback frame image, or ``""`` on failure.
         """
+        from automedia.engines.errors import EngineExecutionError
+
         fallback_dir = os.path.join(project_dir, "fallback")
         os.makedirs(fallback_dir, exist_ok=True)
 
@@ -379,6 +387,8 @@ class ImageValidator:
         bool
             ``True`` if the image aspect ratio is within tolerance.
         """
+        from PIL import Image
+
         if not os.path.isfile(image_path):
             return False
 
@@ -414,6 +424,8 @@ class ImageValidator:
         """
         if not os.path.isfile(image_path):
             return False
+
+        from PIL import Image
 
         expected_ratio = BODY_IMAGE_SIZE[0] / BODY_IMAGE_SIZE[1]  # 4:3 ≈ 1.333
 
@@ -553,6 +565,8 @@ class VisionQADegradation:
             return base_result
 
         try:
+            from PIL import Image
+
             with Image.open(image_path) as img:
                 # Convert to grayscale for luminance analysis
                 gray = img.convert("L")

@@ -18,20 +18,6 @@ try:
 except ImportError:
     pass
 
-from automedia.core.media_spec import PlatformMediaSpec, get_platform_media_spec
-from automedia.decision.base import DecisionArtifact
-from automedia.gates.base import GateRegistry
-from automedia.hooks.protocol import GateHook
-from automedia.pipelines.gate_engine import (
-    AssetInfo,
-    GateEngine,
-    GateLogEntry,
-    Pipeline,
-    PipelineProgress,
-    PipelineResult,
-)
-from automedia.pipelines.runner import run_full_pipeline
-
 __all__ = [
     "AccountError",
     "AdapterError",
@@ -53,3 +39,27 @@ __all__ = [
     "run_full_pipeline",
     "__version__",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy-import heavy sub-modules on first attribute access."""
+    _lazy: dict[str, tuple[str, str]] = {
+        "AssetInfo": ("automedia.pipelines.gate_engine", "AssetInfo"),
+        "DecisionArtifact": ("automedia.decision.base", "DecisionArtifact"),
+        "GateEngine": ("automedia.pipelines.gate_engine", "GateEngine"),
+        "GateHook": ("automedia.hooks.protocol", "GateHook"),
+        "GateLogEntry": ("automedia.pipelines.gate_engine", "GateLogEntry"),
+        "GateRegistry": ("automedia.gates.base", "GateRegistry"),
+        "Pipeline": ("automedia.pipelines.gate_engine", "Pipeline"),
+        "PipelineProgress": ("automedia.pipelines.gate_engine", "PipelineProgress"),
+        "PipelineResult": ("automedia.pipelines.gate_engine", "PipelineResult"),
+        "PlatformMediaSpec": ("automedia.core.media_spec", "PlatformMediaSpec"),
+        "get_platform_media_spec": ("automedia.core.media_spec", "get_platform_media_spec"),
+        "run_full_pipeline": ("automedia.pipelines.runner", "run_full_pipeline"),
+    }
+    if name in _lazy:
+        import importlib  # noqa: PLC0415
+        mod_path, attr = _lazy[name]
+        mod = importlib.import_module(mod_path)
+        return getattr(mod, attr)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

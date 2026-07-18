@@ -433,6 +433,14 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `search_assets` | query, brand, limit, filters | Search produced content via keyword + semantic search |
 | `list_brands` | — | Return all configured brands with profile metadata |
 | `get_config` | key | Return merged configuration (secrets redacted) |
+| `cancel_pipeline` | project_id | Cancel a running pipeline by project_id (sets cancellation flag) |
+| `pause_pipeline` | project_id | Pause a running pipeline by project_id |
+| `resume_pipeline` | project_id | Resume a paused pipeline by project_id |
+| `retry_gate` | project_id, gate_name | Mark a specific gate for retry in a running pipeline |
+| `skip_gate` | project_id, gate_name | Mark a specific gate for skipping in a running pipeline |
+| `engine_health` | — | Check all engine-related dependencies and return their health status |
+| `update_engine_config` | modality, setting, value | Update an engine configuration setting |
+| `mcp_help` | — | Get a categorized listing of all available MCP tools with descriptions |
 
 ---
 

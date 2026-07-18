@@ -415,11 +415,11 @@ class TestPipelineWithoutWorkflow:
         assert isinstance(result, dict)
         assert result["status"] == "started"
 
-    @patch("automedia.pipelines.runner.WorkflowLoader")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
-    @patch("automedia.pipelines.runner.GateEngine")
-    @patch("automedia.pipelines.runner.Project.init")
-    @patch("automedia.pipelines.runner.load_config")
+    @patch("automedia.core.workflow.WorkflowLoader")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.pipelines.gate_engine.GateEngine")
+    @patch("automedia.core.project.Project.init")
+    @patch("automedia.core.config_loader.load_config")
     def test_run_full_pipeline_without_workflow_returns_result(
         self,
         mock_load_config: Any,

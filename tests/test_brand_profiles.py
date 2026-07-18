@@ -487,12 +487,12 @@ class TestFallbackCompat:
     """run_full_pipeline loads brand from multi-brand profiles, then
     falls back to project_dir/brand-profile.yaml."""
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
-    @patch("automedia.pipelines.runner.load_brand_profile")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
     def test_uses_multi_brand_when_available(
         self,
         mock_load_single: MagicMock,
@@ -552,12 +552,12 @@ class TestFallbackCompat:
             except KeyError:
                 pass
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
-    @patch("automedia.pipelines.runner.load_brand_profile")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
     def test_falls_back_to_project_file(
         self,
         mock_load_single: MagicMock,
@@ -614,12 +614,12 @@ class TestFallbackCompat:
             except KeyError:
                 pass
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
-    @patch("automedia.pipelines.runner.load_brand_profile")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
     def test_none_when_both_missing(
         self,
         mock_load_single: MagicMock,
@@ -664,12 +664,12 @@ class TestFallbackCompat:
             except KeyError:
                 pass
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
-    @patch("automedia.pipelines.runner.load_brand_profile")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profile")
     def test_fallback_works_with_existing_project_file(
         self,
         mock_load_single: MagicMock,

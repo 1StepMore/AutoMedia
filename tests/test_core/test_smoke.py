@@ -35,8 +35,8 @@ class _AlwaysPassGate(BaseGate):
 class TestTextOnlyPipelineSucceeds:
     """run_full_pipeline(mode='text_only') returns success and creates a project."""
 
-    @patch("automedia.pipelines.runner.load_config", return_value={"key": "val"})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={"key": "val"})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_text_only_pipeline_succeeds(
@@ -75,8 +75,8 @@ class TestTextOnlyPipelineSucceeds:
         # Assert — project directory exists
         assert mock_proj.project_dir is not None
 
-    @patch("automedia.pipelines.runner.load_config", return_value={"key": "val"})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={"key": "val"})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_text_only_no_video_gates_built(
@@ -154,8 +154,8 @@ class TestGatesAreConstructed:
 class TestResumeFromNoCrash:
     """run_full_pipeline with resume_from works without raising."""
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_resume_from_valid_gate(
@@ -192,8 +192,8 @@ class TestResumeFromNoCrash:
         # The first gate built should be G0 when resuming from G0
         assert captured_names[0][0] == "G0"
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_resume_from_none_runs_all_gates(

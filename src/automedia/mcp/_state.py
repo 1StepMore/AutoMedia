@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from structlog import get_logger
 
-from automedia.pipelines.gate_engine import PipelineProgress
+if TYPE_CHECKING:
+    from automedia.pipelines.gate_engine import PipelineProgress
 
 log = get_logger(__name__)
 

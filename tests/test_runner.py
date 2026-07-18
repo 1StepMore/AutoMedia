@@ -250,8 +250,8 @@ class TestBuildGatesLog:
 class TestRunFullPipeline:
     """run_full_pipeline with mocked config and project."""
 
-    @patch("automedia.pipelines.runner.load_config", return_value={"key": "val"})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={"key": "val"})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_success_result(
@@ -277,8 +277,8 @@ class TestRunFullPipeline:
         assert result.brand == "testbrand"
         assert result.total_duration_s >= 0
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_partial_result_on_failure(
@@ -299,14 +299,14 @@ class TestRunFullPipeline:
         result = run_full_pipeline("topic", "brand")
         assert result.status == "partial"
 
-    @patch("automedia.pipelines.runner.load_config", side_effect=RuntimeError("config boom"))
+    @patch("automedia.core.config_loader.load_config", side_effect=RuntimeError("config boom"))
     def test_failed_on_exception(self, mock_config: MagicMock) -> None:
         result = run_full_pipeline("t", "b")
         assert result.status == "failed"
         assert "config boom" in (result.error or "")
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_unknown_mode_raises(
@@ -326,8 +326,8 @@ class TestRunFullPipeline:
         assert result.status == "failed"
         assert "nonexistent" in (result.error or "")
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_resume_from_skips_gates(
@@ -357,8 +357,8 @@ class TestRunFullPipeline:
         # V3 should be first gate
         assert captured_names[0][0] == "V3"
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_resume_from_invalid_gate(
@@ -378,8 +378,8 @@ class TestRunFullPipeline:
         assert result.status == "failed"
         assert "INVALID_GATE" in (result.error or "")
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_config_dir_passed_to_load_config(
@@ -400,8 +400,8 @@ class TestRunFullPipeline:
         run_full_pipeline("t", "b", config_dir="/custom/config")
         mock_config.assert_called_once_with(config_dir="/custom/config")
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_tenant_id_passed_to_project(
@@ -422,9 +422,9 @@ class TestRunFullPipeline:
         run_full_pipeline("t", "b", tenant_id="acme")
         mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
 
-    @patch("automedia.pipelines.runner.HITLConfig")
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.hitl.config.HITLConfig")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_hitl_config_in_context(
@@ -479,9 +479,9 @@ class TestRunFullPipeline:
     # text_with_cover mode — cover image generation
     # ------------------------------------------------------------------
 
-    @patch("automedia.pipelines.runner.ImagePipeline")
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.pipelines.image_pipeline.ImagePipeline")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_text_with_cover_generates_cover(
@@ -527,8 +527,8 @@ class TestRunFullPipeline:
 class TestFallbackContentGuard:
     """video_only / qa_only modes must inject fallback content when CW is skipped."""
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_video_only_has_fallback_content(
@@ -567,8 +567,8 @@ class TestFallbackContentGuard:
             f"Expected placeholder marker in content, got {content!r}"
         )
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_qa_only_has_fallback_content(
@@ -607,8 +607,8 @@ class TestFallbackContentGuard:
             f"Expected placeholder marker in content, got {content!r}"
         )
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_auto_mode_not_affected(
@@ -643,8 +643,8 @@ class TestFallbackContentGuard:
         content = captured["content"]
         assert content == "", f"auto mode should start with empty content, got {content!r}"
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_text_only_mode_not_affected(
@@ -748,11 +748,11 @@ class TestRunFullPipelineModeDerivation:
             platforms=platforms or [],
         )
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_text_only_platforms_derive_text_only(
         self,
         mock_load_profiles: MagicMock,
@@ -790,11 +790,11 @@ class TestRunFullPipelineModeDerivation:
         assert "V0" not in built, "text_only mode should not include V0"
         assert built == _MODE_MAP["text_only"]
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_mixed_social_platforms_derive_auto(
         self,
         mock_load_profiles: MagicMock,
@@ -830,11 +830,11 @@ class TestRunFullPipelineModeDerivation:
         assert "V0" in built, "auto mode should include V0"
         assert built == _MODE_MAP["auto"]
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_explicit_mode_overrides_derivation(
         self,
         mock_load_profiles: MagicMock,
@@ -872,11 +872,11 @@ class TestRunFullPipelineModeDerivation:
         assert "V0" not in built, "explicit text_only mode should not include V0"
         assert built == _MODE_MAP["text_only"]
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_no_platforms_keeps_default_mode(
         self,
         mock_load_profiles: MagicMock,
@@ -910,11 +910,11 @@ class TestRunFullPipelineModeDerivation:
         built = captured_names[0]
         assert built == _MODE_MAP["auto"]
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_brand_platforms_in_gate_context(
         self,
         mock_load_profiles: MagicMock,
@@ -950,11 +950,11 @@ class TestRunFullPipelineModeDerivation:
         assert result.status == "success"
         assert captured_ctx["brand_platforms"] == ["wechat", "xiaohongshu"]
 
-    @patch("automedia.pipelines.runner.load_config", return_value={})
-    @patch("automedia.pipelines.runner.Project")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
-    @patch("automedia.pipelines.runner.load_brand_profiles")
+    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_no_brand_platforms_empty_list_in_context(
         self,
         mock_load_profiles: MagicMock,

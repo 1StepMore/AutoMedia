@@ -3,16 +3,12 @@
 Hooks implement the GateHook protocol and are notified before/after every
 gate execution and on gate failure.  Hooks must never mutate context or
 interfere with pipeline execution.
+
+Heavy imports are deferred via __getattr__ to improve CLI cold-start time.
 """
 
-from structlog import get_logger
+from typing import Any
 
-from automedia.hooks.cost_tracker import CostTracker
-
-log = get_logger(__name__)
-from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5, verify_md5
-from automedia.hooks.metrics import MetricsHook
-from automedia.hooks.pipeline_history import PipelineHistoryHook
 from automedia.hooks.protocol import GateHook
 
 __all__ = [
@@ -24,3 +20,23 @@ __all__ = [
     "record_md5",
     "verify_md5",
 ]
+
+
+_LAZY_MAP: dict[str, tuple[str, str]] = {
+    "CostTracker": ("automedia.hooks.cost_tracker", "CostTracker"),
+    "MetricsHook": ("automedia.hooks.metrics", "MetricsHook"),
+    "PipelineHistoryHook": ("automedia.hooks.pipeline_history", "PipelineHistoryHook"),
+    "get_pipeline_md5": ("automedia.hooks.md5_tracker", "get_pipeline_md5"),
+    "record_md5": ("automedia.hooks.md5_tracker", "record_md5"),
+    "verify_md5": ("automedia.hooks.md5_tracker", "verify_md5"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy-import hook names on first attribute access."""
+    if name in _LAZY_MAP:
+        import importlib  # noqa: PLC0415
+        mod_path, attr = _LAZY_MAP[name]
+        mod = importlib.import_module(mod_path)
+        return getattr(mod, attr)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
