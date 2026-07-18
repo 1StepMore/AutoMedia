@@ -13,12 +13,16 @@ HyperFramesVideoEngine
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
 import subprocess
 import tempfile
+from datetime import date
 from typing import Any, ClassVar
+
+import jinja2
 
 from automedia.engines.base import BaseVideoEngine
 from automedia.engines.errors import EngineExecutionError
@@ -63,6 +67,9 @@ class HyperFramesVideoEngine(BaseVideoEngine):
 
     _VIDEO_CODEC: str = "libx264"
     """Video codec used by the FFmpeg fallback."""
+
+    _DEFAULT_SCENE_DURATION: int = 10
+    """Default seconds per scene when audio duration cannot be detected."""
 
     # ------------------------------------------------------------------
     # Dependency check
@@ -200,21 +207,29 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             for img_path in assets.get("images", []):
                 shutil.copy2(img_path, images_dir)
 
-            # Copy audio if provided
+            # Copy or provision template project files
+            template_dir: str | None = assets.get("template_dir")
             audio_path: str | None = assets.get("audio")
-            if audio_path and os.path.isfile(audio_path):
-                shutil.copy2(audio_path, temp_dir)
+            if template_dir and os.path.isdir(template_dir):
+                # User-provided templates: copy every item to temp_dir root
+                for _item in os.listdir(template_dir):
+                    _src: str = os.path.join(template_dir, _item)
+                    _dst: str = os.path.join(temp_dir, _item)
+                    if os.path.isdir(_src):
+                        shutil.copytree(_src, _dst, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(_src, _dst)
+                # Copy audio to root (backward compatible for user templates)
+                if audio_path and os.path.isfile(audio_path):
+                    shutil.copy2(audio_path, temp_dir)
+            else:
+                # No template_dir: provision shipped default templates
+                self._provision_default_hyperframes_project(temp_dir, assets)
 
             # Copy subtitles if provided
             subs_path: str | None = assets.get("subtitles")
             if subs_path and os.path.isfile(subs_path):
                 shutil.copy2(subs_path, temp_dir)
-
-            # Copy template directory if provided
-            template_dir: str | None = assets.get("template_dir")
-            if template_dir and os.path.isdir(template_dir):
-                dest_template: str = os.path.join(temp_dir, "template")
-                shutil.copytree(template_dir, dest_template, dirs_exist_ok=True)
 
             # Build the command
             quality: str = self._config.get("quality", "high")
@@ -425,3 +440,154 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         finally:
             if temp_dir is not None:
                 shutil.rmtree(temp_dir, ignore_errors=True)
+
+    # ------------------------------------------------------------------
+    # Audio duration detection (for default template provisioning)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_audio_duration(audio_path: str) -> float | None:
+        """Detect audio duration using ``ffprobe`` (seconds, or ``None`` on failure)."""
+        ffprobe: str | None = shutil.which("ffprobe")
+        if not ffprobe or not audio_path or not os.path.isfile(audio_path):
+            return None
+        try:
+            result: subprocess.CompletedProcess[str] = subprocess.run(
+                [ffprobe, "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", audio_path],  # noqa: S603
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return float(result.stdout.strip())
+        except (subprocess.TimeoutExpired, ValueError, OSError):
+            pass
+        return None
+
+    # ------------------------------------------------------------------
+    # Default template provisioning
+    # ------------------------------------------------------------------
+
+    def _provision_default_hyperframes_project(
+        self, temp_dir: str, assets: dict[str, Any]
+    ) -> None:
+        """Provision a complete hyperframes project from shipped default templates.
+
+        Copies static files (``hyperframes.json``, ``package.json``), renders
+        Jinja2 templates (``index.html``, ``meta.json``, scene compositions),
+        and sets up ``assets/audio/``.
+
+        Called automatically when ``assets["template_dir"]`` is empty/falsy.
+        """
+        import importlib.resources
+
+        _templates = importlib.resources.files("automedia.templates.hyperframes")
+
+        # 1. Copy static template files to temp_dir root
+        for _filename in ("hyperframes.json", "package.json"):
+            _src_path = _templates.joinpath(_filename)
+            if _src_path.is_file():
+                shutil.copy2(str(_src_path), temp_dir)
+
+        # 2. Detect audio duration and set up scene parameters
+        images: list[str] = assets.get("images", [])
+        audio_path: str | None = assets.get("audio")
+        content_text: str = assets.get("content", "")
+        num_scenes: int = len(images)
+        total_duration: float = 0.0
+        audio_basename: str = ""
+
+        if audio_path and os.path.isfile(audio_path):
+            audio_basename = os.path.basename(audio_path)
+            audio_dir: str = os.path.join(temp_dir, "assets", "audio")
+            os.makedirs(audio_dir, exist_ok=True)
+            shutil.copy2(audio_path, audio_dir)
+            detected: float | None = self._get_audio_duration(audio_path)
+            if detected is not None and detected > 0:
+                total_duration = detected
+            else:
+                total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
+        else:
+            total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
+
+        # 3. Build scene list with proportional timing
+        duration_per_scene: float = (
+            max(3.0, total_duration / num_scenes) if num_scenes > 0 else 0.0
+        )
+        scenes: list[dict[str, Any]] = []
+        for i in range(num_scenes):
+            start: float = round(i * duration_per_scene, 1)
+            dur: float = round(duration_per_scene, 1)
+            if i == num_scenes - 1:
+                dur = round(total_duration - start, 1)
+            scenes.append({
+                "id": f"scene-{i + 1}",
+                "index": i + 1,
+                "start": start,
+                "duration": dur,
+                "name": f"Scene {i + 1}",
+                "image": os.path.basename(images[i]) if images else "",
+                "content": content_text,
+            })
+
+        # 4. Create compositions directory
+        compositions_dir: str = os.path.join(temp_dir, "compositions")
+        os.makedirs(compositions_dir, exist_ok=True)
+
+        # 5. Render and write index.html
+        _index_tpl = jinja2.Template(
+            _templates.joinpath("index.html.j2").read_text(encoding="utf-8"),
+        )
+        index_html: str = _index_tpl.render(
+            total_duration=total_duration,
+            audio_basename=audio_basename,
+            scenes=scenes,
+        )
+        with open(os.path.join(temp_dir, "index.html"), "w", encoding="utf-8") as _f:
+            _f.write(index_html)
+
+        # 6. Render and write meta.json
+        _meta_tpl = jinja2.Template(
+            _templates.joinpath("meta.json.j2").read_text(encoding="utf-8"),
+        )
+        scene_data: list[dict[str, Any]] = [
+            {
+                "id": s["id"],
+                "name": s["name"],
+                "start": s["start"],
+                "duration": s["duration"],
+            }
+            for s in scenes
+        ]
+        meta_json: str = _meta_tpl.render(
+            title=assets.get("title", "AutoMedia Video"),
+            description=assets.get("description", "Generated by AutoMedia pipeline"),
+            total_duration=total_duration,
+            created_at=date.today().isoformat(),
+            scenes_json=json.dumps(scene_data, indent=2, ensure_ascii=False),
+        )
+        with open(os.path.join(temp_dir, "meta.json"), "w", encoding="utf-8") as _f:
+            _f.write(meta_json)
+
+        # 7. Render and write scene compositions
+        _scene_tpl = jinja2.Template(
+            _templates.joinpath("scene.html.j2").read_text(encoding="utf-8"),
+        )
+        for scene in scenes:
+            scene_html: str = _scene_tpl.render(
+                scene_id=scene["id"],
+                duration=scene["duration"],
+                title=scene["name"],
+                content=scene["content"],
+            )
+            scene_path: str = os.path.join(
+                compositions_dir, f"{scene['index']:02d}-scene.html",
+            )
+            with open(scene_path, "w", encoding="utf-8") as _f:
+                _f.write(scene_html)
+
+        logger.info(
+            "Provisioned default hyperframes project (%d scenes, %.1fs total) in %s",
+            num_scenes, total_duration, temp_dir,
+        )
