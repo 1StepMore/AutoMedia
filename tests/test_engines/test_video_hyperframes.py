@@ -24,7 +24,7 @@ import importlib
 import os
 from collections.abc import Iterator
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 
@@ -47,6 +47,12 @@ def _fail_result(code: int = 1) -> MagicMock:
     """Return a :class:`~unittest.mock.MagicMock` mimicking a failing
     :class:`subprocess.CompletedProcess` (non-zero ``returncode``)."""
     return MagicMock(returncode=code, stdout="", stderr="render error")
+
+
+def _extract_env_from_run(mock_run: MagicMock) -> dict[str, str] | None:
+    """Extract the ``env`` kwarg from a ``subprocess.run`` call."""
+    call_kwargs = mock_run.call_args[1]
+    return call_kwargs.get("env")
 
 
 # ===================================================================
@@ -326,6 +332,7 @@ class TestRenderHyperFrames:
             capture_output=True,
             text=True,
             timeout=300,
+            env=ANY,
         )
 
     def test_render_copies_images_and_assets(
@@ -776,7 +783,86 @@ class TestRenderConfiguration:
             capture_output=True,
             text=True,
             timeout=600,
+            env=ANY,
         )
+
+
+# ===================================================================
+# render — HYPERFRAMES_BROWSER_PATH env var
+# ===================================================================
+
+
+class TestRenderChromePath:
+    """HYPERFRAMES_BROWSER_PATH env var is set from config."""
+
+    def test_sets_hyperframes_browser_path(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """chrome_path in config → HYPERFRAMES_BROWSER_PATH set in subprocess env."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        engine = HyperFramesVideoEngine(
+            engine_config={"chrome_path": "/usr/bin/google-chrome"},
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        env = _extract_env_from_run(mock_all["run"])
+        assert env is not None
+        assert env.get("HYPERFRAMES_BROWSER_PATH") == "/usr/bin/google-chrome"
+
+    def test_skips_when_null(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+        monkeypatch: Any,
+    ) -> None:
+        """chrome_path=None → HYPERFRAMES_BROWSER_PATH not in env."""
+        monkeypatch.delenv("HYPERFRAMES_BROWSER_PATH", raising=False)
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        engine = HyperFramesVideoEngine(
+            engine_config={"chrome_path": None},
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        env = _extract_env_from_run(mock_all["run"])
+        assert env is not None
+        assert "HYPERFRAMES_BROWSER_PATH" not in env
+
+    def test_skips_when_path_not_found(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+        monkeypatch: Any,
+    ) -> None:
+        """chrome_path points to non-existent file → env var not set."""
+        monkeypatch.delenv("HYPERFRAMES_BROWSER_PATH", raising=False)
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        # Mock os.path.isfile to return False for the chrome path
+        mock_all["isfile"].side_effect = lambda p: (
+            p != "/usr/bin/google-chrome"
+        )
+
+        engine = HyperFramesVideoEngine(
+            engine_config={"chrome_path": "/usr/bin/google-chrome"},
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        env = _extract_env_from_run(mock_all["run"])
+        assert env is not None
+        assert "HYPERFRAMES_BROWSER_PATH" not in env
 
 
 # ===================================================================

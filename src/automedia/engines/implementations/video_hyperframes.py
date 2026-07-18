@@ -249,11 +249,17 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 temp_dir,
             )
 
+            env = os.environ.copy()
+            chrome_path = self._config.get("chrome_path")
+            if chrome_path and os.path.isfile(chrome_path):
+                env["HYPERFRAMES_BROWSER_PATH"] = chrome_path
+
             result: subprocess.CompletedProcess[str] = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                env=env,
             )
 
             if result.returncode != 0:
