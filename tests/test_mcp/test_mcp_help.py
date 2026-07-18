@@ -32,14 +32,20 @@ MOCK_TOOL_REGISTRY: dict[str, dict[str, str]] = {
     "localize_content": {"description": "Localize content", "inputSchema": "{}"},
     "format_output": {"description": "Format output", "inputSchema": "{}"},
     "evaluate_content_quality": {"description": "Evaluate quality", "inputSchema": "{}"},
-    "batch_run": {"description": "Batch run", "inputSchema": "{}"},
-    "engine_health": {"description": "Engine health", "inputSchema": "{}"},
+    # Renamed tools: new primary names
+    "run_batch": {"description": "Batch run", "inputSchema": "{}"},
+    "health_engine": {"description": "Engine health", "inputSchema": "{}"},
+    "help_mcp": {"description": "Get MCP help", "inputSchema": "{}"},
+    "add_pool_topic": {"description": "Add topic to pool", "inputSchema": "{}"},
+    # Renamed tools: old alias names (backward-compatible)
+    "batch_run": {"description": "Batch run (deprecated)", "inputSchema": "{}"},
+    "engine_health": {"description": "Engine health (deprecated)", "inputSchema": "{}"},
+    "mcp_help": {"description": "Get MCP help (deprecated)", "inputSchema": "{}"},
+    "pool_add_topic": {"description": "Add topic to pool (deprecated)", "inputSchema": "{}"},
     "connect_account": {"description": "Connect account", "inputSchema": "{}"},
     "disconnect_account": {"description": "Disconnect account", "inputSchema": "{}"},
-    "mcp_help": {"description": "Get MCP help", "inputSchema": "{}"},
     "test_cron_schedule": {"description": "Test cron schedule", "inputSchema": "{}"},
     "update_engine_config": {"description": "Update config", "inputSchema": "{}"},
-    "pool_add_topic": {"description": "Add topic to pool", "inputSchema": "{}"},
     "remove_cron_schedule": {"description": "Remove cron schedule", "inputSchema": "{}"},
 }
 
@@ -120,14 +126,14 @@ class TestMcpHelp:
         list_tools = {t["name"] for t in categories["List / Browse"]}
         assert "list_projects" in list_tools
 
-    def test_engine_health_in_server_category(self) -> None:
-        """engine_health tool falls under Server / Engine category."""
+    def test_health_engine_in_server_category(self) -> None:
+        """health_engine tool falls under Server / Engine category."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
             result = mcp_help()
 
         assert "Server / Engine" in result["categories"]
         engine_tools = {t["name"] for t in result["categories"]["Server / Engine"]}
-        assert "engine_health" in engine_tools
+        assert "health_engine" in engine_tools
 
     def test_cancel_pipeline_unmatched_falls_to_other(self) -> None:
         """A tool with no matching prefix ends up in 'Other'."""
@@ -207,6 +213,12 @@ class TestCategorizeTool:
 
         assert _categorize_tool("mcp_help") == "Other"
 
+    def test_help_mcp_prefix(self) -> None:
+        """help_mcp falls under Help / Introspection category."""
+        from automedia.mcp.server import _categorize_tool
+
+        assert _categorize_tool("help_mcp") == "Help / Introspection"
+
     def test_archive_prefix(self) -> None:
         """archive_ prefix maps to Archive category."""
         from automedia.mcp.server import _categorize_tool
@@ -239,6 +251,12 @@ class TestCategorizeTool:
 
         # engine_ prefix is checked before get_ in the list
         assert _categorize_tool("engine_health") == "Server / Engine"
+
+    def test_health_before_get_prefix(self) -> None:
+        """health_ maps to 'Server / Engine' — checks health_engine."""
+        from automedia.mcp.server import _categorize_tool
+
+        assert _categorize_tool("health_engine") == "Server / Engine"
 
 
 # ---------------------------------------------------------------------------

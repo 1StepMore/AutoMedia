@@ -19,7 +19,7 @@ AutoMedia is an automated media production pipeline. It handles the full content
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 46 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 50 tools |
 | CLI | `automedia <subcommand>` | 14 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -101,7 +101,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 46 tools
+│       │   ├── server.py           # FastMCP server — 50 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -422,9 +422,11 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `list_accounts` | platform, status | List registered accounts with optional filters |
 | `get_account_health` | account_id | Check an account's health status |
 | `disconnect_account` | account_id | Remove a platform account |
-| `pool_add_topic` | topic, category, source | Add a topic to the topic pool |
+| `add_pool_topic` | topic, category, source | Add a topic to the topic pool |
+| `pool_add_topic` | topic, category, source | ⚠️ Deprecated: use add_pool_topic |
 | `publish_content` | project_id, platform, mode | Publish a project to a platform |
-| `batch_run` | topics, brand, mode | Run pipeline sequentially for multiple topics |
+| `run_batch` | topics, brand, mode | Run pipeline sequentially for multiple topics |
+| `batch_run` | topics, brand, mode | ⚠️ Deprecated: use run_batch |
 | `add_cron_schedule` | schedule, command | Add a cron schedule entry |
 | `list_cron_schedules` | — | List all cron schedules |
 | `remove_cron_schedule` | schedule_id | Remove a cron schedule entry |
@@ -438,9 +440,11 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `resume_pipeline` | project_id | Resume a paused pipeline by project_id |
 | `retry_gate` | project_id, gate_name | Mark a specific gate for retry in a running pipeline |
 | `skip_gate` | project_id, gate_name | Mark a specific gate for skipping in a running pipeline |
-| `engine_health` | — | Check all engine-related dependencies and return their health status |
+| `health_engine` | — | Check all engine-related dependencies and return their health status |
+| `engine_health` | — | ⚠️ Deprecated: use health_engine |
 | `update_engine_config` | modality, setting, value | Update an engine configuration setting |
-| `mcp_help` | — | Get a categorized listing of all available MCP tools with descriptions |
+| `help_mcp` | — | Get a categorized listing of all available MCP tools with descriptions |
+| `mcp_help` | — | ⚠️ Deprecated: use help_mcp |
 
 ---
 

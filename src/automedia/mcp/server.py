@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 46 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 50 tools and 5 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -123,6 +123,7 @@ __all__ = [
     "main",
     # Tool handlers
     "batch_run",
+    "run_batch",
     "evaluate_content_quality",
     "research_topics",
     "run_brand_strategy",
@@ -136,6 +137,7 @@ __all__ = [
     "archive_project",
     "list_topic_pool",
     "pool_add_topic",
+    "add_pool_topic",
     "publish_content",
     "register_platform_adapter",
     "extract_brief",
@@ -156,6 +158,7 @@ __all__ = [
     "test_cron_schedule",
     # Engine health tool
     "engine_health",
+    "health_engine",
     # Account tools
     "connect_account",
     "list_accounts",
@@ -174,6 +177,7 @@ __all__ = [
     # Allowlist helpers
     "_require_allowed",
     "mcp_help",
+    "help_mcp",
 ]
 
 
@@ -206,6 +210,7 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("evaluate_", "Content Quality"),
     ("batch_", "Batch Operations"),
     ("health_", "Server / Engine"),
+    ("help_", "Help / Introspection"),
     ("engine_", "Server / Engine"),
     ("research_", "Research"),
     ("archive_", "Archive"),
@@ -262,6 +267,39 @@ def mcp_help() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Wrapper functions for renamed tools (backward-compatible aliases kept)
+# ---------------------------------------------------------------------------
+
+
+def add_pool_topic(
+    title: str,
+    category: str = "",
+    pool_db_path: str = "",
+) -> dict[str, Any]:
+    """Add a topic to the topic pool. Wraps pool_add_topic."""
+    return pool_add_topic(title=title, category=category, pool_db_path=pool_db_path)
+
+
+def run_batch(
+    topics: list[str],
+    brand: str,
+    mode: str = "auto",
+) -> dict[str, Any]:
+    """Execute pipelines for multiple topics sequentially. Wraps batch_run."""
+    return batch_run(topics=topics, brand=brand, mode=mode)
+
+
+def health_engine() -> dict[str, Any]:
+    """Check all engine-related dependencies health. Wraps engine_health."""
+    return engine_health()
+
+
+def help_mcp() -> dict[str, Any]:
+    """Get a categorized listing of all available MCP tools with descriptions. Wraps mcp_help."""
+    return mcp_help()
+
+
+# ---------------------------------------------------------------------------
 # MCP Server construction
 # ---------------------------------------------------------------------------
 
@@ -272,7 +310,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 46 tools and 5 resources registered.
+        A fully configured server with all 50 tools and 5 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -282,7 +320,7 @@ def create_server() -> FastMCP:
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-            "46 MCP tools for topic selection, pipeline execution, project\n"
+            "50 MCP tools for topic selection, pipeline execution, project\n"
             "management, Omni Triad document processing, brand strategy,\n"
             "cron schedule management, content quality evaluation,\n"
             "override management, and server health.\n"
@@ -582,6 +620,16 @@ def create_server() -> FastMCP:
             "Takes title, optional category, and optional pool_db_path. "
             "Returns the new topic id, title, category, and status."
         ),
+    )(add_pool_topic)
+
+    mcp.tool(
+        name="pool_add_topic",
+        description=(
+            "⚠️ DEPRECATED: Use add_pool_topic instead. "
+            "Add a topic to the topic pool. "
+            "Takes title, optional category, and optional pool_db_path. "
+            "Returns the new topic id, title, category, and status."
+        ),
     )(pool_add_topic)
 
     # ------------------------------------------------------------------
@@ -746,6 +794,19 @@ def create_server() -> FastMCP:
             "A single topic failure does not stop the batch. "
             "Returns per-topic results with a pass/fail summary."
         ),
+    )(run_batch)
+
+    mcp.tool(
+        name="batch_run",
+        description=(
+            "⚠️ DEPRECATED: Use run_batch instead. "
+            "Execute pipelines for multiple topics sequentially. "
+            "Takes a list of topics, brand, and optional mode "
+            "(auto, text_only, text_with_cover, video_only, qa_only, "
+            "image-carousel, social-thread, short-video). "
+            "A single topic failure does not stop the batch. "
+            "Returns per-topic results with a pass/fail summary."
+        ),
     )(batch_run)
 
     mcp.tool(
@@ -890,6 +951,16 @@ def create_server() -> FastMCP:
             "edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return "
             "their installation and health status."
         ),
+    )(health_engine)
+
+    mcp.tool(
+        name="engine_health",
+        description=(
+            "⚠️ DEPRECATED: Use health_engine instead. "
+            "Check all engine-related dependencies (ComfyUI, hyperframes, "
+            "edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return "
+            "their installation and health status."
+        ),
     )(engine_health)
 
     mcp.tool(
@@ -907,6 +978,15 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
+            "Get a categorized listing of all available MCP tools with descriptions. "
+            "Use this to discover what tools are available."
+        ),
+    )(help_mcp)
+
+    mcp.tool(
+        name="mcp_help",
+        description=(
+            "⚠️ DEPRECATED: Use help_mcp instead. "
             "Get a categorized listing of all available MCP tools with descriptions. "
             "Use this to discover what tools are available."
         ),
@@ -988,7 +1068,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 46 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 50 tools and 5 resources.",
     )
     parser.add_argument(
         "--show-tools",

@@ -32,10 +32,12 @@ Output:
 ```
 Registered MCP tools:
   - add_cron_schedule
+  - add_pool_topic
   - archive_project
   - batch_run
   - connect_account
   - disconnect_account
+  - engine_health
   - evaluate_content_quality
   - extract_brief
   - format_output
@@ -46,6 +48,8 @@ Registered MCP tools:
   - get_pipeline_status
   - get_project_assets
   - health_check
+  - health_engine
+  - help_mcp
   - list_accounts
   - list_brands
   - list_cron_schedules
@@ -53,20 +57,23 @@ Registered MCP tools:
   - list_topic_pool
   - localize_content
   - localize_output
+  - mcp_help
   - pool_add_topic
   - publish_content
   - register_platform_adapter
   - remove_cron_schedule
   - research_topics
+  - run_batch
   - run_brand_strategy
   - run_pipeline
   - run_pipeline_from_strategy
   - search_assets
   - select_topic
   - test_cron_schedule
+  - update_engine_config
 ```
 
-## Available Tools (41)
+## Available Tools (50)
 
 | Tool | Description |
 |------|------|
@@ -76,7 +83,8 @@ Registered MCP tools:
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `run_brand_strategy` | Generate a brand strategy using LLM analysis |
 | `evaluate_content_quality` | Score content quality against criteria |
-| `batch_run` | Run pipeline sequentially for multiple topics |
+| `run_batch` | Run pipeline sequentially for multiple topics |
+| `batch_run` | ⚠️ Deprecated: use run_batch |
 | `cancel_pipeline` | Cancel a running pipeline by project ID |
 | `pause_pipeline` | Pause a running pipeline after the current gate completes |
 | `resume_pipeline` | Resume a paused pipeline |
@@ -87,15 +95,18 @@ Registered MCP tools:
 | `list_projects` | List all projects, optionally filtered by status |
 | `get_project_assets` | List asset files in a project directory |
 | `archive_project` | Archive a project (Red Line 8: refuses unless published or —force) |
-| `mcp_help` | Get a categorized listing of all MCP tools with descriptions and parameter schemas |
-| `engine_health` | Check all engine-related dependencies health |
+| `help_mcp` | Get a categorized listing of all MCP tools with descriptions and parameter schemas |
+| `mcp_help` | ⚠️ Deprecated: use help_mcp |
+| `health_engine` | Check all engine-related dependencies health |
+| `engine_health` | ⚠️ Deprecated: use health_engine |
 | `health_check` | Return server health status (version, uptime, tool count) |
 | `update_engine_config` | Update an engine configuration setting |
 | `extract_brief` | Extract a content brief from a document (OPP) |
 | `localize_content` | Translate Markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
-| `pool_add_topic` | Add a topic to the topic pool |
+| `add_pool_topic` | Add a topic to the topic pool |
+| `pool_add_topic` | ⚠️ Deprecated: use add_pool_topic |
 | `list_topic_pool` | View the topic pool with optional filters |
 | `connect_account` | Register a new platform account (returns account_id) |
 | `list_accounts` | List all registered accounts with optional filters |

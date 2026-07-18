@@ -310,6 +310,7 @@ class TestServerCreation:
         expected = sorted(
             [
                 "add_cron_schedule",
+                "add_pool_topic",
                 "approve_gate",
                 "archive_project",
                 "batch_run",
@@ -328,6 +329,8 @@ class TestServerCreation:
                 "get_pipeline_status",
                 "get_project_assets",
                 "health_check",
+                "health_engine",
+                "help_mcp",
                 "list_accounts",
                 "list_brands",
                 "list_cron_schedules",
@@ -347,6 +350,7 @@ class TestServerCreation:
                 "research_topics",
                 "resume_pipeline",
                 "retry_gate",
+                "run_batch",
                 "run_brand_strategy",
                 "run_pipeline",
                 "run_pipeline_from_strategy",

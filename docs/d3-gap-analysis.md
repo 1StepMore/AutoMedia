@@ -99,7 +99,7 @@ Already implemented: `automedia run --topic "X"`, `run_pipeline(topic="X")`, `se
 All three Omni tools implemented: `extract_brief` (OPP), `localize_content` (OL), `format_output` (ORF). Plus `localize_output` for batch translation.
 
 ### F14 — Topic Pool ✅
-SQLite-backed pool with `pool_add_topic`, `list_topic_pool`, `select_topic`, scoring, dedup.
+SQLite-backed pool with `add_pool_topic`, `list_topic_pool`, `select_topic`, scoring, dedup.
 
 ### F15 — Trending ✅
 `research_topics` MCP tool with LLM-driven topic research.

@@ -272,7 +272,7 @@ Expectations are grouped by journey phase.
 | **Human: add a topic** | `automedia pool add --title "AI视频工具对比" --category tech` |
 | **Human: list pool** | `automedia pool list` — shows all topics with status (pending/scored/production/archived) |
 | **Human: score pending topics** | `automedia pool score` — runs scoring algorithm on all pending topics |
-| **Agent: add a topic** | `pool_add_topic(title="AI video tools", category="tech")` |
+| **Agent: add a topic** | `add_pool_topic(title="AI video tools", category="tech")` (previously `pool_add_topic`) |
 | **Agent: list pool** | `list_topic_pool(status="pending", category="tech")` — filtered query |
 | **Agent: select best topic** | `select_topic(category="tech")` — returns single highest-scored topic, auto-marks as "in_production" |
 | **Scoring factors** | Trending score, category relevance, freshness, platform fit, production history (dedup) |
@@ -291,8 +291,8 @@ Expectations are grouped by journey phase.
 | **Output** | Returns list of `{title, description, source, trending_score, category}` |
 | **Sources** | Multi-platform trend aggregation (social media, news, search trends). Exact sources configured by brand/integration. |
 | **LLM enrichment** | LLM analyzes raw trend data → generates structured topic suggestions with reasoning |
-| **To pool flow** | Agent calls `research_topics` → reviews results → `pool_add_topic` for selected topics → `select_topic` for the best one → `run_pipeline`. All via MCP tools. |
-| **Implementation status** | ✅ Full implementation. `research_topics` MCP tool uses LLM with optional `trending_data` parameter. Results can flow through topic pool: `research_topics` → `pool_add_topic` → `select_topic` → `run_pipeline`. |
+| **To pool flow** | Agent calls `research_topics` → reviews results → `add_pool_topic` for selected topics → `select_topic` for the best one → `run_pipeline`. All via MCP tools. |
+| **Implementation status** | ✅ Full implementation. `research_topics` MCP tool uses LLM with optional `trending_data` parameter. Results can flow through topic pool: `research_topics` → `add_pool_topic` → `select_topic` → `run_pipeline`. |
 | **Human review point** | Agent may present trending topics to human for approval before adding to pool (HITL gate). |
 
 #### F16 — Brand Selection at Input Time
