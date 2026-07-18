@@ -42,7 +42,6 @@ BODY_IMAGE_MIN_SIDE: int = 800
 ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 
 
-
 # ---------------------------------------------------------------------------
 # Image prompt generation (LLM-powered with naive fallback)
 # ---------------------------------------------------------------------------
@@ -171,12 +170,16 @@ class ImagePipeline:
             output_path = os.path.join(covers_dir, filename)
             try:
                 path = self._get_image_engine().generate(
-                    f"{topic} — {brand} cover {ratio}", w, h, output_path,
+                    f"{topic} — {brand} cover {ratio}",
+                    w,
+                    h,
+                    output_path,
                 )
             except EngineExecutionError as exc:
                 logger.warning(
                     "Cover generation failed for %s: %s — continuing without images",
-                    ratio, exc,
+                    ratio,
+                    exc,
                 )
                 continue
             results[ratio] = path
@@ -224,7 +227,8 @@ class ImagePipeline:
             except EngineExecutionError as exc:
                 logger.warning(
                     "Body image %d generation failed: %s — continuing without images",
-                    i, exc,
+                    i,
+                    exc,
                 )
                 break
             paths.append(path)
@@ -268,11 +272,15 @@ class ImagePipeline:
         output_path = os.path.join(cover_dir, "cover.png")
         try:
             path = self._get_image_engine().generate(
-                f"{topic} — {brand} cover {ratio}", spec[0], spec[1], output_path,
+                f"{topic} — {brand} cover {ratio}",
+                spec[0],
+                spec[1],
+                output_path,
             )
         except EngineExecutionError as exc:
             logger.warning(
-                "Single cover generation failed: %s — continuing without images", exc,
+                "Single cover generation failed: %s — continuing without images",
+                exc,
             )
             return ""
 
@@ -305,11 +313,15 @@ class ImagePipeline:
         output_path = os.path.join(fallback_dir, "fallback_frame.png")
         try:
             path = self._get_image_engine().generate(
-                f"{topic} fallback frame", w, h, output_path,
+                f"{topic} fallback frame",
+                w,
+                h,
+                output_path,
             )
         except EngineExecutionError as exc:
             logger.warning(
-                "Fallback frame generation failed: %s — continuing without images", exc,
+                "Fallback frame generation failed: %s — continuing without images",
+                exc,
             )
             return ""
 

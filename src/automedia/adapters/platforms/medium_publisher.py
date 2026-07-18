@@ -157,10 +157,7 @@ class MediumPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "medium",
-                "reason": (
-                    "Medium token not set "
-                    "(AUTOMEDIA_MEDIUM_TOKEN or MEDIUM_TOKEN)"
-                ),
+                "reason": ("Medium token not set (AUTOMEDIA_MEDIUM_TOKEN or MEDIUM_TOKEN)"),
             }
 
         # --- pre-flight: httpx --------------------------------------------------
@@ -254,9 +251,7 @@ class MediumPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "medium",
-                "reason": (
-                    f"user info request failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"user info request failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -313,9 +308,7 @@ class MediumPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -404,9 +397,7 @@ class MediumPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "medium",
-                "reason": (
-                    f"post creation failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"post creation failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(

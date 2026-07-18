@@ -76,7 +76,9 @@ class TestRunCommand:
         monkeypatch.setattr(run_mod, "_MODEL_CONFIG_PATH", cfg_file)
 
     @patch("automedia.cli.commands.run.run_full_pipeline")
-    def test_run_success(self, mock_runner: MagicMock, _model_config_present: None, tmp_path: Any) -> None:
+    def test_run_success(
+        self, mock_runner: MagicMock, _model_config_present: None, tmp_path: Any
+    ) -> None:
         mock_runner.return_value = PipelineResult(
             status="success",
             project_id="abc123",
@@ -149,7 +151,9 @@ class TestRunCommand:
 
     def test_run_empty_brand_rejected(self, _model_config_present: None) -> None:
         """--brand '' must be rejected with non-zero exit code."""
-        result = runner.invoke(app, ["run", "--brand", "", "--topic", "test", "--mode", "text_only"])
+        result = runner.invoke(
+            app, ["run", "--brand", "", "--topic", "test", "--mode", "text_only"]
+        )
         assert result.exit_code != 0, f"Expected non-zero exit, got 0: {result.output}"
 
     def test_run_missing_required_args(self) -> None:
@@ -470,7 +474,7 @@ class TestInitCommand:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
         import sys
-        import automedia.cli.commands.init_cmd  # noqa: F811 — ensures module is in sys.modules
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")

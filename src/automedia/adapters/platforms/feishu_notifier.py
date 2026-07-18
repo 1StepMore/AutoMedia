@@ -43,16 +43,12 @@ class FeishuNotifier(BasePlatformAdapter):
     @property
     def enabled(self) -> bool:
         """Only enabled when Feishu webhook URL is set."""
-        return bool(
-            load_credential_or_env("FEISHU_WEBHOOK_URL", "feishu_webhook_url")
-        )
+        return bool(load_credential_or_env("FEISHU_WEBHOOK_URL", "feishu_webhook_url"))
 
     def validate(self, artifact_dir: str) -> bool:
         """Check that Feishu webhook URL is set."""
         _ = artifact_dir
-        return bool(
-            load_credential_or_env("FEISHU_WEBHOOK_URL", "feishu_webhook_url")
-        )
+        return bool(load_credential_or_env("FEISHU_WEBHOOK_URL", "feishu_webhook_url"))
 
     # ------------------------------------------------------------------
     # Publish
@@ -123,9 +119,7 @@ class FeishuNotifier(BasePlatformAdapter):
                         "text": {
                             "tag": "lark_md",
                             "content": (
-                                f"**Topic:** {topic}\n"
-                                f"**Brand:** {brand}\n"
-                                f"**Status:** {status}"
+                                f"**Topic:** {topic}\n**Brand:** {brand}\n**Status:** {status}"
                             ),
                         },
                     },

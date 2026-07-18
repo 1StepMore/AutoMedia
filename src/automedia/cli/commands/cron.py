@@ -45,9 +45,7 @@ def cron_run(
 ) -> None:
     """Execute a named cron job."""
     if job_name not in _KNOWN_JOBS:
-        output_error(
-            f"Unknown job {job_name!r}. Known jobs: {list(_KNOWN_JOBS)}"
-        )
+        output_error(f"Unknown job {job_name!r}. Known jobs: {list(_KNOWN_JOBS)}")
 
     if get_output_mode() == OutputMode.TEXT:
         typer.echo(f"Running cron job: {job_name} — {_KNOWN_JOBS[job_name]}")
@@ -289,13 +287,15 @@ def cron_check_health() -> None:
 
     all_ok = all(ok for _, ok, _ in checks)
 
-    if output_text(None, data={
-        "status": "ok" if all_ok else "error",
-        "checks": [
-            {"name": name, "passed": ok, "detail": detail}
-            for name, ok, detail in checks
-        ],
-    }):
+    if output_text(
+        None,
+        data={
+            "status": "ok" if all_ok else "error",
+            "checks": [
+                {"name": name, "passed": ok, "detail": detail} for name, ok, detail in checks
+            ],
+        },
+    ):
         if not all_ok:
             raise typer.Exit(code=1)
         return

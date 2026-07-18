@@ -5,8 +5,6 @@ from __future__ import annotations
 import typing
 from typing import Any
 
-import pytest
-
 from automedia.omni.ol_adapter import OLAdapter, TranslationResult
 
 

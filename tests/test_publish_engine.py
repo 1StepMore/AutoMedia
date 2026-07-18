@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from automedia.adapters.base import AutomationLevel
-
 import pytest
 
 from automedia.adapters.base import BasePlatformAdapter
@@ -260,11 +258,8 @@ class TestAutomationLevels:
             "reason": "automation level: manual",
         }
 
-    def test_defaults_used_when_automation_not_provided(
-        self, sample_artifact_dir: str
-    ) -> None:
+    def test_defaults_used_when_automation_not_provided(self, sample_artifact_dir: str) -> None:
         """Without automation param, defaults from AUTOMATION_DEFAULTS apply."""
-        from automedia.adapters.base import AUTOMATION_DEFAULTS
 
         AdapterRegistry.register(_OkAdapter)
         engine = PublishEngine()
@@ -274,9 +269,7 @@ class TestAutomationLevels:
         results = engine.publish_all(sample_artifact_dir, SAMPLE_PROJECT)
         assert results["ok_adapter"]["status"] == "ok"
 
-    def test_defaults_applied_for_unknown_platform(
-        self, sample_artifact_dir: str
-    ) -> None:
+    def test_defaults_applied_for_unknown_platform(self, sample_artifact_dir: str) -> None:
         """A platform not in the automation dict falls back to defaults."""
         _PublishTrackerAdapter.publish_called = False
         AdapterRegistry.register(_PublishTrackerAdapter)
@@ -291,10 +284,10 @@ class TestAutomationLevels:
         assert results["tracker_adapter"]["status"] == "ok"
 
     def test_defaults_use_builtin_defaults_for_known_platforms(
-        self, sample_artifact_dir: str,
+        self,
+        sample_artifact_dir: str,
     ) -> None:
         """Known platforms like xiaohongshu should default to manual."""
-        from automedia.adapters.base import AUTOMATION_DEFAULTS
 
         class _XHSAdapter(BasePlatformAdapter):
             publish_called = False
@@ -358,7 +351,9 @@ class TestAutomationLevelsWithAccountIds:
         assert "manual" in results["acc_wechat_001"]["reason"]
 
     def test_review_account_calls_publish_with_draft_only(
-        self, sample_artifact_dir: str, monkeypatch: Any,
+        self,
+        sample_artifact_dir: str,
+        monkeypatch: Any,
     ) -> None:
         class _WechatStub(BasePlatformAdapter):
             publish_called = False
@@ -502,9 +497,7 @@ class TestRealAdapters:
 class TestPublishAllWithAccountIds:
     """Tests for the ``account_ids`` parameter on :meth:`PublishEngine.publish_all`."""
 
-    def test_publish_legacy_no_account_ids(
-        self, sample_artifact_dir: str
-    ) -> None:
+    def test_publish_legacy_no_account_ids(self, sample_artifact_dir: str) -> None:
         """Legacy behaviour (account_ids=None) is unchanged."""
         AdapterRegistry.register(_OkAdapter)
         engine = PublishEngine()
@@ -513,9 +506,7 @@ class TestPublishAllWithAccountIds:
             "ok_adapter": {"status": "ok", "platform": "ok_adapter"},
         }
 
-    def test_publish_with_account_ids(
-        self, sample_artifact_dir: str, monkeypatch: Any
-    ) -> None:
+    def test_publish_with_account_ids(self, sample_artifact_dir: str, monkeypatch: Any) -> None:
         """Publish to specific accounts via AccountRegistry lookup."""
 
         class _WechatStub(BasePlatformAdapter):
@@ -579,9 +570,7 @@ class TestPublishAllWithAccountIds:
         assert results["acc_nonexistent_999"]["status"] == "error"
         assert "not found" in results["acc_nonexistent_999"]["reason"]
 
-    def test_publish_partial_failure(
-        self, sample_artifact_dir: str, monkeypatch: Any
-    ) -> None:
+    def test_publish_partial_failure(self, sample_artifact_dir: str, monkeypatch: Any) -> None:
         """One account failing should not block other accounts."""
 
         class _ConditionalWechat(BasePlatformAdapter):
@@ -658,17 +647,12 @@ class TestClassifyPublishError:
     def test_network_error_from_exception_name(self) -> None:
         from automedia.adapters.publish_engine import classify_publish_error
 
-        class ConnectTimeout(Exception):
-            ...
+        class ConnectTimeout(Exception): ...
 
-        class RemoteProtocolError(Exception):
-            ...
+        class RemoteProtocolError(Exception): ...
 
         assert classify_publish_error(exception=ConnectTimeout("timeout")) == "network_error"
-        assert (
-            classify_publish_error(exception=RemoteProtocolError("reset"))
-            == "network_error"
-        )
+        assert classify_publish_error(exception=RemoteProtocolError("reset")) == "network_error"
 
     def test_network_error_from_reason(self) -> None:
         from automedia.adapters.publish_engine import classify_publish_error
@@ -709,10 +693,7 @@ class TestClassifyPublishError:
                 super().__init__("429 Too Many Requests")
                 self.response = _FakeResponse()
 
-        assert (
-            classify_publish_error(exception=HTTPStatusError())
-            == "rate_limited"
-        )
+        assert classify_publish_error(exception=HTTPStatusError()) == "rate_limited"
 
 
 # ---------------------------------------------------------------------------
@@ -838,7 +819,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "ok"
         assert _RetryCounterAdapter.call_count == 3
@@ -855,7 +839,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "error"
         assert result["error_code"] == "rate_limited"
@@ -879,7 +866,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "ok"
         assert _RetryCounterAdapter.call_count == 2
@@ -896,7 +886,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "error"
         assert result["error_code"] == "network_error"
@@ -920,7 +913,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "error"
         assert result["error_code"] == "credential_expired"
@@ -945,7 +941,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "ok"
         assert _RetryCounterAdapter.call_count == 3
@@ -966,7 +965,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "error"
         assert result["error_code"] == "content_rejected"
@@ -989,7 +991,10 @@ class TestPublishWithRetry:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RetryCounterAdapter(), "/tmp", {"topic": "test"}, "retry_counter",
+            _RetryCounterAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "retry_counter",
         )
         assert result["status"] == "error"
         assert result["error_code"] == "unknown"
@@ -1066,7 +1071,10 @@ class _RefreshableAdapter(BasePlatformAdapter):
         return "refresh_test"
 
     def publish(
-        self, artifact_dir: str, project: dict, **kwargs: Any,
+        self,
+        artifact_dir: str,
+        project: dict,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         type(self).call_count += 1
         if type(self).call_count <= type(self).fail_for:
@@ -1091,7 +1099,8 @@ class TestCredentialRefresh:
     # ------------------------------------------------------------------
 
     def test_credential_expired_refresh_success_via_exception(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """credential_expired → refresh succeeds → retry → success (exception path)."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1111,8 +1120,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["status"] == "ok"
@@ -1120,7 +1132,8 @@ class TestCredentialRefresh:
         assert refresh_called is True
 
     def test_credential_expired_refresh_success_via_returned_error(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """credential_expired → refresh succeeds → retry → success (result path)."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1140,8 +1153,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["status"] == "ok"
@@ -1153,7 +1169,8 @@ class TestCredentialRefresh:
     # ------------------------------------------------------------------
 
     def test_credential_expired_refresh_fails_via_exception(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """credential_expired → refresh fails → credential_refresh_failed (exception)."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1173,8 +1190,11 @@ class TestCredentialRefresh:
             return False
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["status"] == "error"
@@ -1186,7 +1206,8 @@ class TestCredentialRefresh:
         assert refresh_called is True
 
     def test_credential_expired_refresh_fails_via_returned_error(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """credential_expired → refresh fails → credential_refresh_failed (result)."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1206,8 +1227,11 @@ class TestCredentialRefresh:
             return False
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["status"] == "error"
@@ -1223,7 +1247,8 @@ class TestCredentialRefresh:
     # ------------------------------------------------------------------
 
     def test_credential_expired_refresh_only_once(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """Max 1 refresh per publish — second credential_expired is not retried."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1243,8 +1268,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["error_code"] == "credential_refresh_failed"
@@ -1255,7 +1283,8 @@ class TestCredentialRefresh:
     # ------------------------------------------------------------------
 
     def test_credential_expired_refresh_raises_exception(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """refresh_fn raising an exception is caught and treated as failure."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1271,8 +1300,11 @@ class TestCredentialRefresh:
             raise RuntimeError("API unreachable during refresh")
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["status"] == "error"
@@ -1303,8 +1335,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["error_code"] == "rate_limited"
@@ -1329,8 +1364,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["error_code"] == "network_error"
@@ -1355,8 +1393,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["error_code"] == "content_rejected"
@@ -1381,8 +1422,11 @@ class TestCredentialRefresh:
             return True
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
-            "refresh_test", refresh_fn=mock_refresh,
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
+            "refresh_test",
+            refresh_fn=mock_refresh,
         )
 
         assert result["error_code"] == "unknown"
@@ -1393,7 +1437,8 @@ class TestCredentialRefresh:
     # ------------------------------------------------------------------
 
     def test_credential_expired_no_refresh_fn_preserves_behavior(
-        self, monkeypatch: Any,
+        self,
+        monkeypatch: Any,
     ) -> None:
         """Without refresh_fn, credential_expired returns immediately (backward compat)."""
         from automedia.adapters.publish_engine import _publish_with_retry
@@ -1406,7 +1451,9 @@ class TestCredentialRefresh:
         self.setup_method()
 
         result = _publish_with_retry(
-            _RefreshableAdapter(), "/tmp", {"topic": "test"},
+            _RefreshableAdapter(),
+            "/tmp",
+            {"topic": "test"},
             "refresh_test",
         )
 
@@ -1430,7 +1477,8 @@ class TestCredentialRefreshFailedStructure:
         from automedia.adapters.publish_engine import build_error_result
 
         result = build_error_result(
-            "wechat", "credential_refresh_failed",
+            "wechat",
+            "credential_refresh_failed",
             "Credential refresh failed for wechat: token expired",
         )
         assert result["status"] == "error"

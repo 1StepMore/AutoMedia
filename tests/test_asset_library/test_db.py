@@ -38,9 +38,7 @@ def db_with_sample(db: AssetDatabase, sample_asset_doc: AssetDoc) -> tuple[Asset
 class TestAssetDatabaseInit:
     """AssetDatabase.__init__ creates the brand directory and SQLite file."""
 
-    def test_creates_directory_and_db_file(
-        self, patch_asset_db_paths: Path
-    ) -> None:
+    def test_creates_directory_and_db_file(self, patch_asset_db_paths: Path) -> None:
         """Brand subdirectory and index.sqlite should exist after init."""
         db = AssetDatabase(brand="my-brand")
 
@@ -68,9 +66,7 @@ class TestAssetDatabaseInit:
 class TestAddAsset:
     """add_asset() inserts a row and returns a doc_id string."""
 
-    def test_returns_uuid_string(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_returns_uuid_string(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """When doc_id is empty, a UUID string should be generated."""
         doc_id = db.add_asset(sample_asset_doc)
 
@@ -136,9 +132,7 @@ class TestAddAsset:
 class TestGetAsset:
     """get_asset() retrieves a single asset by doc_id."""
 
-    def test_returns_correct_doc(
-        self, db_with_sample: tuple[AssetDatabase, str]
-    ) -> None:
+    def test_returns_correct_doc(self, db_with_sample: tuple[AssetDatabase, str]) -> None:
         """Should return the exact doc that was inserted."""
         db, doc_id = db_with_sample
         result = db.get_asset(doc_id)
@@ -154,9 +148,7 @@ class TestGetAsset:
         result = db.get_asset("nonexistent-id-999")
         assert result is None
 
-    def test_tags_deserialized_to_list(
-        self, db_with_sample: tuple[AssetDatabase, str]
-    ) -> None:
+    def test_tags_deserialized_to_list(self, db_with_sample: tuple[AssetDatabase, str]) -> None:
         """Tags stored as JSON should be returned as a Python list."""
         db, doc_id = db_with_sample
         result = db.get_asset(doc_id)
@@ -175,9 +167,7 @@ class TestGetAsset:
 class TestSearchByType:
     """search_by_type() filters assets by the built-in type taxonomy."""
 
-    def test_returns_matching_type(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_returns_matching_type(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """Should return assets whose type matches the query."""
         db.add_asset(sample_asset_doc)
         results = db.search_by_type("content")
@@ -190,9 +180,7 @@ class TestSearchByType:
         results = db.search_by_type("strategy")
         assert results == []
 
-    def test_excludes_other_types(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_excludes_other_types(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """Should not return assets of a different type."""
         db.add_asset(sample_asset_doc)
         db.add_asset(
@@ -216,9 +204,7 @@ class TestSearchByType:
 class TestSearchByTags:
     """search_by_tags() finds assets whose tags overlap with the query."""
 
-    def test_returns_matching_tag(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_returns_matching_tag(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """Should return assets containing at least one of the query tags."""
         db.add_asset(sample_asset_doc)
         results = db.search_by_tags(["test"])
@@ -258,9 +244,7 @@ class TestSearchByTags:
 class TestKeywordSearch:
     """keyword_search() performs case-insensitive LIKE search on title."""
 
-    def test_matches_substring(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_matches_substring(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """Should match a substring of the title."""
         db.add_asset(sample_asset_doc)
         results = db.keyword_search("Test")
@@ -332,9 +316,7 @@ class TestListAll:
 class TestCount:
     """count() returns the total number of rows in the assets table."""
 
-    def test_returns_correct_count(
-        self, db: AssetDatabase, sample_asset_doc: AssetDoc
-    ) -> None:
+    def test_returns_correct_count(self, db: AssetDatabase, sample_asset_doc: AssetDoc) -> None:
         """Count should match the number of inserted assets."""
         assert db.count() == 0
 
@@ -359,9 +341,7 @@ class TestCount:
 class TestDeleteAsset:
     """delete_asset() removes the row with the given doc_id."""
 
-    def test_removes_row(
-        self, db_with_sample: tuple[AssetDatabase, str]
-    ) -> None:
+    def test_removes_row(self, db_with_sample: tuple[AssetDatabase, str]) -> None:
         """After deletion, get_asset should return None."""
         db, doc_id = db_with_sample
         assert db.get_asset(doc_id) is not None
@@ -369,9 +349,7 @@ class TestDeleteAsset:
         db.delete_asset(doc_id)
         assert db.get_asset(doc_id) is None
 
-    def test_count_decreases(
-        self, db_with_sample: tuple[AssetDatabase, str]
-    ) -> None:
+    def test_count_decreases(self, db_with_sample: tuple[AssetDatabase, str]) -> None:
         """Count should decrease after deletion."""
         db, doc_id = db_with_sample
         assert db.count() == 1
@@ -413,9 +391,7 @@ class TestAssetExistsByChecksum:
 class TestContextManager:
     """AssetDatabase supports `with` statement for automatic cleanup."""
 
-    def test_context_manager_closes_connection(
-        self, patch_asset_db_paths: Path
-    ) -> None:
+    def test_context_manager_closes_connection(self, patch_asset_db_paths: Path) -> None:
         """__exit__ should close the connection cleanly."""
         with AssetDatabase(brand="ctx-test") as db:
             doc_id = db.add_asset(

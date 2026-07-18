@@ -148,16 +148,34 @@ class TestFormatForPgvector:
     def test_multiple_assets_with_partial_embeddings(self) -> None:
         assets = [
             {
-                "doc_id": "d1", "brand_id": "b", "type": "strategy",
-                "title": "A", "tags": [], "lang": "zh", "file_path": "/a",
-                "source_phase": "", "vector_id": "", "source_project_id": "",
-                "created_at": "", "updated_at": "", "checksum": "c1",
+                "doc_id": "d1",
+                "brand_id": "b",
+                "type": "strategy",
+                "title": "A",
+                "tags": [],
+                "lang": "zh",
+                "file_path": "/a",
+                "source_phase": "",
+                "vector_id": "",
+                "source_project_id": "",
+                "created_at": "",
+                "updated_at": "",
+                "checksum": "c1",
             },
             {
-                "doc_id": "d2", "brand_id": "b", "type": "content",
-                "title": "B", "tags": [], "lang": "en", "file_path": "/b",
-                "source_phase": "", "vector_id": "", "source_project_id": "",
-                "created_at": "", "updated_at": "", "checksum": "c2",
+                "doc_id": "d2",
+                "brand_id": "b",
+                "type": "content",
+                "title": "B",
+                "tags": [],
+                "lang": "en",
+                "file_path": "/b",
+                "source_phase": "",
+                "vector_id": "",
+                "source_project_id": "",
+                "created_at": "",
+                "updated_at": "",
+                "checksum": "c2",
             },
         ]
         embeddings = [
@@ -179,9 +197,7 @@ class TestMigrateAssetsDryRun:
 
     @patch("automedia.asset_library.migrate.VectorStore")
     @patch("automedia.asset_library.migrate.AssetDatabase")
-    def test_dry_run_report_structure(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_dry_run_report_structure(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_db.list_all.return_value = [
@@ -226,9 +242,7 @@ class TestMigrateAssetsDryRun:
 
     @patch("automedia.asset_library.migrate.VectorStore")
     @patch("automedia.asset_library.migrate.AssetDatabase")
-    def test_dry_run_empty_database(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_dry_run_empty_database(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_db.list_all.return_value = []
@@ -247,9 +261,7 @@ class TestMigrateAssetsDryRun:
 
     @patch("automedia.asset_library.migrate.VectorStore")
     @patch("automedia.asset_library.migrate.AssetDatabase")
-    def test_dry_run_does_not_call_pg(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_dry_run_does_not_call_pg(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_db.list_all.return_value = []
@@ -275,18 +287,14 @@ class TestMigrateAssetsDryRun:
         mock_vs_cls.return_value = mock_vs
         mock_vs.get_all_embeddings.return_value = []
 
-        report = migrate_assets(
-            brand="test", pg_uri="postgresql://localhost/test", dry_run=True
-        )
+        report = migrate_assets(brand="test", pg_uri="postgresql://localhost/test", dry_run=True)
         # pg_uri was provided but dry_run=True → PG is not called
         assert report["pg_uri_configured"] is True
         assert report["dry_run"] is True
 
     @patch("automedia.asset_library.migrate.VectorStore")
     @patch("automedia.asset_library.migrate.AssetDatabase")
-    def test_dry_run_db_failure(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_dry_run_db_failure(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_db.list_all.side_effect = RuntimeError("DB connection failed")

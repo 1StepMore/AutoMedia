@@ -118,19 +118,21 @@ _REASON_PATTERNS: list[tuple[str, str]] = [
 ]
 
 # Exception type names that indicate network-layer failures.
-_NETWORK_ERROR_TYPES: frozenset[str] = frozenset({
-    "ConnectTimeout",
-    "RemoteProtocolError",
-    "ConnectError",
-    "ReadTimeout",
-    "WriteTimeout",
-    "PoolTimeout",
-    "TimeoutException",
-    "TimeoutError",
-    "NetworkError",
-    "ProtocolError",
-    "ConnectionError",
-})
+_NETWORK_ERROR_TYPES: frozenset[str] = frozenset(
+    {
+        "ConnectTimeout",
+        "RemoteProtocolError",
+        "ConnectError",
+        "ReadTimeout",
+        "WriteTimeout",
+        "PoolTimeout",
+        "TimeoutException",
+        "TimeoutError",
+        "NetworkError",
+        "ProtocolError",
+        "ConnectionError",
+    }
+)
 
 
 def classify_publish_error(
@@ -309,10 +311,7 @@ def _publish_with_retry(
                     exception=exc,
                 )
 
-            if (
-                last_error_code == CREDENTIAL_EXPIRED
-                and refresh_fn is not None
-            ):
+            if last_error_code == CREDENTIAL_EXPIRED and refresh_fn is not None:
                 _refresh_attempted = True
                 if _try_credential_refresh(refresh_fn, platform):
                     log.info(
@@ -345,7 +344,7 @@ def _publish_with_retry(
                 )
 
             retry_count += 1
-            delay: float = 2.0 ** retry_count
+            delay: float = 2.0**retry_count
             log.info(
                 "publish.engine.retry",
                 platform=platform,
@@ -377,10 +376,7 @@ def _publish_with_retry(
                 f"Credential refresh failed for {platform}: {last_reason}",
             )
 
-        if (
-            last_error_code == CREDENTIAL_EXPIRED
-            and refresh_fn is not None
-        ):
+        if last_error_code == CREDENTIAL_EXPIRED and refresh_fn is not None:
             _refresh_attempted = True
             if _try_credential_refresh(refresh_fn, platform):
                 log.info(
@@ -407,7 +403,7 @@ def _publish_with_retry(
             return build_error_result(platform, last_error_code, last_reason)
 
         retry_count += 1
-        delay = 2.0 ** retry_count
+        delay = 2.0**retry_count
         log.info(
             "publish.engine.retry",
             platform=platform,
@@ -533,7 +529,8 @@ class PublishEngine:
             )
             client_id = creds.get("client_id", creds.get("appid", ""))
             client_secret = creds.get(
-                "client_secret", creds.get("secret", ""),
+                "client_secret",
+                creds.get("secret", ""),
             )
 
             if not client_id or not client_secret:
@@ -682,14 +679,21 @@ class PublishEngine:
 
                     if level == _REVIEW:
                         result = adapter.publish(
-                            artifact_dir, project, draft_only=True,
+                            artifact_dir,
+                            project,
+                            draft_only=True,
                         )
                     else:
+
                         def _refresh(aid: str = account_id) -> bool:
                             return self._refresh_credential(aid)
+
                         refresh_fn: Callable[[], bool] | None = _refresh
                         result = _publish_with_retry(
-                            adapter, artifact_dir, project, platform,
+                            adapter,
+                            artifact_dir,
+                            project,
+                            platform,
                             refresh_fn=refresh_fn,
                         )
                     results[account_id] = result
@@ -725,11 +729,16 @@ class PublishEngine:
                 try:
                     if level == _REVIEW:
                         result = adapter.publish(
-                            artifact_dir, project, draft_only=True,
+                            artifact_dir,
+                            project,
+                            draft_only=True,
                         )
                     else:
                         result = _publish_with_retry(
-                            adapter, artifact_dir, project, name,
+                            adapter,
+                            artifact_dir,
+                            project,
+                            name,
                         )
                     results[name] = result
                 except Exception as exc:

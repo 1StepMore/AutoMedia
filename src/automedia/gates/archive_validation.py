@@ -35,7 +35,6 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-
 def _check_archive_status(context: GateContext | dict[str, Any]) -> CheckResult:
     """Red Line 8: archive must have status ``"published"``.
 

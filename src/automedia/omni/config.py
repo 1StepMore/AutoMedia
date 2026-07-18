@@ -61,9 +61,7 @@ def load_omni_config(config_path: Path | None = None) -> OmniConfig:
     OmniConfig
         A populated config with defaults for missing keys.
     """
-    path = (
-        config_path if config_path is not None else get_user_config_dir() / "omni_config.yaml"
-    )
+    path = config_path if config_path is not None else get_user_config_dir() / "omni_config.yaml"
 
     if not path.is_file():
         return OmniConfig()

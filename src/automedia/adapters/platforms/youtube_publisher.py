@@ -64,9 +64,19 @@ YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105  # URL, 
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 
 # Video file extensions supported for upload (in priority order)
-_VIDEO_EXTENSIONS = frozenset({
-    ".mp4", ".mov", ".avi", ".mkv", ".webm", ".mpeg", ".mpg", ".flv", ".wmv",
-})
+_VIDEO_EXTENSIONS = frozenset(
+    {
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".webm",
+        ".mpeg",
+        ".mpg",
+        ".flv",
+        ".wmv",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +225,8 @@ class YouTubePublisher(BasePlatformAdapter):
 
         # 2. Read video metadata from project & artifact info
         title, description, tags, privacy = self._read_metadata(
-            artifact_dir, project,
+            artifact_dir,
+            project,
         )
 
         # 3. Find video file
@@ -243,9 +254,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return upload_result
 
         video_id = upload_result.get("video_id", "")
-        video_url = (
-            f"https://www.youtube.com/watch?v={video_id}" if video_id else ""
-        )
+        video_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else ""
 
         if draft_only:
             log.info(
@@ -330,9 +339,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "youtube",
-                "reason": (
-                    f"token refresh failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"token refresh failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error("youtube.token.connection_error", error=str(exc))
@@ -376,14 +383,8 @@ class YouTubePublisher(BasePlatformAdapter):
                 info: dict[str, Any] = json.loads(
                     info_file.read_text(encoding="utf-8"),
                 )
-                title = str(
-                    info.get("title") or info.get("topic") or title
-                )
-                description = str(
-                    info.get("description")
-                    or info.get("summary")
-                    or description
-                )
+                title = str(info.get("title") or info.get("topic") or title)
+                description = str(info.get("description") or info.get("summary") or description)
                 if "tags" in info:
                     raw_tags = info["tags"]
             except (json.JSONDecodeError, OSError):
@@ -466,10 +467,7 @@ class YouTubePublisher(BasePlatformAdapter):
         file_size = video_file.stat().st_size
 
         # ---- Step 1: Initiate resumable upload session ------------------------
-        init_url = (
-            f"{YOUTUBE_UPLOAD_BASE}/videos"
-            f"?uploadType=resumable&part=snippet,status"
-        )
+        init_url = f"{YOUTUBE_UPLOAD_BASE}/videos?uploadType=resumable&part=snippet,status"
         init_headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json; charset=UTF-8",
@@ -504,10 +502,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "youtube",
-                "reason": (
-                    f"upload initiation failed "
-                    f"(HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"upload initiation failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -517,9 +512,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "youtube",
-                "reason": (
-                    f"upload initiation failed: {type(exc).__name__}"
-                ),
+                "reason": (f"upload initiation failed: {type(exc).__name__}"),
             }
 
         # Get the resumable session URI from the Location header.
@@ -556,10 +549,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "youtube",
-                "reason": (
-                    f"video upload failed "
-                    f"(HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"video upload failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -569,9 +559,7 @@ class YouTubePublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "youtube",
-                "reason": (
-                    f"video upload failed: {type(exc).__name__}"
-                ),
+                "reason": (f"video upload failed: {type(exc).__name__}"),
             }
 
         # Parse the response for the video ID.

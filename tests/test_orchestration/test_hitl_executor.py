@@ -286,6 +286,3 @@ class TestNodeExecutorHumanMode:
         executor.skip_node("node_a")
 
         assert executor.pending_nodes() == ["node_b"]
-
-
-

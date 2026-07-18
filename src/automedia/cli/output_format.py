@@ -34,9 +34,24 @@ _GATE_PREFIXES = [
     "pre-gate",
     "CW",
     "D0",
-    "G0", "G1", "G2", "G3", "G4", "G5",
-    "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
-    "L1", "L2", "L3", "L4",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "V0",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
 ]
 
 
@@ -86,7 +101,10 @@ def output_formatted_error(
         typer.secho("\n--- verbose traceback ---", fg=typer.colors.YELLOW, err=True)
         if exc_info is not None:
             traceback.print_exception(
-                type(exc_info), exc_info, exc_info.__traceback__, file=sys.stderr,
+                type(exc_info),
+                exc_info,
+                exc_info.__traceback__,
+                file=sys.stderr,
             )
         else:
             traceback.print_stack(file=sys.stderr)

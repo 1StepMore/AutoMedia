@@ -369,9 +369,7 @@ class TestTestCronSchedule:
         assert result["valid"] is False
         assert "must have exactly 5 fields" in result["error"]["message"]
 
-    def test_valid_expression_no_croniter(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_valid_expression_no_croniter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Valid expression but croniter not available."""
         import builtins
 

@@ -180,14 +180,25 @@ class TestCollectAssets:
         assert _collect_assets({}) == []
 
     def test_output_files_key(self, tmp_path: Any) -> None:
-        ctx = {"output_files": [{"type": "video", "path": str(tmp_path / "v.mp4"), "platform": "bilibili"}]}
+        ctx = {
+            "output_files": [
+                {"type": "video", "path": str(tmp_path / "v.mp4"), "platform": "bilibili"}
+            ]
+        }
         assets = _collect_assets(ctx)
         assert len(assets) == 1
         assert assets[0].type == "video"
 
     def test_assets_key(self, tmp_path: Any) -> None:
         ctx = {
-            "assets": [{"type": "image", "path": str(tmp_path / "i.png"), "platform": "wechat", "md5": "abc"}]
+            "assets": [
+                {
+                    "type": "image",
+                    "path": str(tmp_path / "i.png"),
+                    "platform": "wechat",
+                    "md5": "abc",
+                }
+            ]
         }
         assets = _collect_assets(ctx)
         assert len(assets) == 1
@@ -495,7 +506,9 @@ class TestRunFullPipeline:
         mock_image_pipeline.return_value = mock_pipeline
 
         result = run_full_pipeline(
-            "AI topic", "testbrand", mode="text_with_cover",
+            "AI topic",
+            "testbrand",
+            mode="text_with_cover",
         )
 
         assert result.status == "success"
@@ -549,9 +562,7 @@ class TestFallbackContentGuard:
         # RED: This assertion currently FAILS because content is empty.
         # GREEN: After guard implementation, content will have placeholder text.
         content = captured["content"]
-        assert content != "", (
-            "video_only mode should provide fallback content, got empty string"
-        )
+        assert content != "", "video_only mode should provide fallback content, got empty string"
         assert "[content skipped" in content, (
             f"Expected placeholder marker in content, got {content!r}"
         )
@@ -591,9 +602,7 @@ class TestFallbackContentGuard:
         # RED: This assertion currently FAILS because content is empty.
         # GREEN: After guard implementation, content will have placeholder text.
         content = captured["content"]
-        assert content != "", (
-            "qa_only mode should provide fallback content, got empty string"
-        )
+        assert content != "", "qa_only mode should provide fallback content, got empty string"
         assert "[content skipped" in content, (
             f"Expected placeholder marker in content, got {content!r}"
         )
@@ -632,9 +641,7 @@ class TestFallbackContentGuard:
 
         # auto mode should NOT have fallback — CW will set content
         content = captured["content"]
-        assert content == "", (
-            f"auto mode should start with empty content, got {content!r}"
-        )
+        assert content == "", f"auto mode should start with empty content, got {content!r}"
 
     @patch("automedia.pipelines.runner.load_config", return_value={})
     @patch("automedia.pipelines.runner.Project")
@@ -670,9 +677,7 @@ class TestFallbackContentGuard:
 
         # text_only mode should NOT have fallback — CW will set content
         content = captured["content"]
-        assert content == "", (
-            f"text_only mode should start with empty content, got {content!r}"
-        )
+        assert content == "", f"text_only mode should start with empty content, got {content!r}"
 
 
 # =========================================================================

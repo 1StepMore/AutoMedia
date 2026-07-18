@@ -27,6 +27,7 @@ from automedia.gates.base import BaseGate, GateRegistry, _registry
 
 class _ModLevelGate50(BaseGate):
     """Module-level G50 fixture — used by list/get/contains tests."""
+
     _gate_name = "G50"
     _failure_mode = "stop"
 
@@ -36,6 +37,7 @@ class _ModLevelGate50(BaseGate):
 
 class _ModLevelGate51(BaseGate):
     """Module-level G51 fixture — used by list/duplicate tests."""
+
     _gate_name = "G51"
     _failure_mode = "stop"
 
@@ -305,26 +307,34 @@ class TestAutoRegistration:
 
     def test_subclass_auto_registered(self) -> None:
         """A concrete BaseGate subclass is automatically in _registry."""
+
         class _AutoA(BaseGate):
             _gate_name = "G66"
             _failure_mode = "stop"
+
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
+
         class _AutoB(BaseGate):
             _gate_name = "G67"
             _failure_mode = "stop"
+
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": True}
+
         assert "G66" in _registry
         assert "G67" in _registry
 
     def test_registry_get_returns_class_not_instance(self) -> None:
         """registry.get() returns the class, usable for instantiation."""
+
         class _AutoC(BaseGate):
             _gate_name = "G54"
             _failure_mode = "stop"
+
             def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 return {"status": "pong", "input": gate_context}
+
         cls = _registry.get("G54")
         instance = cls()
         assert instance.execute({"a": 1}) == {"status": "pong", "input": {"a": 1}}

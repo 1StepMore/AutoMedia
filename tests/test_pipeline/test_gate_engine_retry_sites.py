@@ -262,10 +262,7 @@ class TestQualityRetryCallsProgress:
         assert len(quality_end_calls) >= 2  # At least the retry attempts
 
         # Verify attempt numbers are present
-        attempt_numbers = {
-            call.kwargs.get("attempt_number")
-            for call in quality_end_calls
-        }
+        attempt_numbers = {call.kwargs.get("attempt_number") for call in quality_end_calls}
         assert 1 in attempt_numbers
         assert 2 in attempt_numbers
 
@@ -506,9 +503,7 @@ class TestRetryGateFlagWithEngine:
 
         # G70 should have 2 on_gate_end calls (initial + retry re-run)
         g70_end_calls = [
-            call
-            for call in progress.on_gate_end.call_args_list
-            if call.args[0] == "G70"
+            call for call in progress.on_gate_end.call_args_list if call.args[0] == "G70"
         ]
         assert len(g70_end_calls) == 2
 

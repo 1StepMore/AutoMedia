@@ -38,6 +38,7 @@ class SemanticScoreResult(BaseModel):
         description="Brief one-sentence reasoning for the relevance score",
     )
 
+
 # 4-tier keyword classification
 # Each tier maps keywords to (tier_score_high, tier_score_low)
 _TIER1_KEYWORDS: list[str] = [
@@ -149,7 +150,9 @@ class TopicScorer:
         kw_corr = self.correlation_score(topic.get("title", ""), tier_keywords)
         title = topic.get("title", "")
         effective_corr = self._augment_correlation(
-            title, kw_corr, brand_keywords,
+            title,
+            kw_corr,
+            brand_keywords,
         )
         fresh = self._freshness_score(topic.get("collected_at", ""))
         return (heat / 10.0) * 0.30 + effective_corr * 0.40 + fresh * 0.30
@@ -183,7 +186,9 @@ class TopicScorer:
         kw_corr = self.correlation_score(topic.get("title", ""), tier_keywords)
         title = topic.get("title", "")
         effective_corr = self._augment_correlation(
-            title, kw_corr, brand_keywords,
+            title,
+            kw_corr,
+            brand_keywords,
         )
         fresh = self._freshness_score(topic.get("collected_at", ""))
         return (heat / 10.0) * 0.10 + effective_corr * 0.60 + fresh * 0.30
@@ -258,7 +263,7 @@ class TopicScorer:
 
             kw_list = ", ".join(brand_keywords)
             prompt = (
-                f"Rate the semantic relevance of the topic \"{topic}\" "
+                f'Rate the semantic relevance of the topic "{topic}" '
                 f"to these brand keywords: {kw_list}. "
                 "Return a relevance score between 0.0 (completely irrelevant) "
                 "and 1.0 (highly relevant and on-brand)."

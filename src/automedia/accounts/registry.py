@@ -93,9 +93,9 @@ class AccountRegistry:
 
         if label and self._label_exists(platform, label):
             raise ValueError(
-                    f"Label '{label}' already exists for platform '{platform}'. "
-                    "Labels must be unique per platform."
-                )
+                f"Label '{label}' already exists for platform '{platform}'. "
+                "Labels must be unique per platform."
+            )
 
         account_id = AccountStore.generate_account_id(platform)
         meta = self._store.save(platform, account_id, credentials, label, auth_type, tags)
@@ -267,7 +267,7 @@ class AccountRegistry:
         accounts = self._store.list_accounts(platform=platform)
         for acc in accounts:
             if acc.get("label") == label and (exclude is None or acc["account_id"] != exclude):
-                    return True
+                return True
         return False
 
 

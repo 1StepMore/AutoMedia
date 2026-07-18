@@ -49,8 +49,6 @@ _EXPECTED_MAP: dict[str, str] = {
 }
 
 
-
-
 # ---------------------------------------------------------------------------
 # Round 1: Clarity — sentence complexity, jargon, vague words
 # ---------------------------------------------------------------------------
@@ -500,8 +498,6 @@ def _soften_jargon(m: re.Match[str]) -> str:
     return replacement
 
 
-
-
 # ---------------------------------------------------------------------------
 # G2CopyReview gate
 # ---------------------------------------------------------------------------
@@ -550,9 +546,14 @@ class G2CopyReview(BaseGate):
                 text=content,
                 check_type="copy_review",
                 prompt_template_name="copy_review_g2",
-                deterministic_fn=lambda text: cast(LLMCheckResult, self._run_deterministic(  # type: ignore[arg-type]  # lambda captures brand_profile from closure; mypy cannot verify Callable[[str], LLMCheckResult] match
-                    text, brand_profile, None,
-                )),
+                deterministic_fn=lambda text: cast(
+                    LLMCheckResult,
+                    self._run_deterministic(  # type: ignore[arg-type]  # lambda captures brand_profile from closure; mypy cannot verify Callable[[str], LLMCheckResult] match
+                        text,
+                        brand_profile,
+                        None,
+                    ),
+                ),
                 brand_guidelines=brand_guidelines,
             )
 
@@ -629,8 +630,6 @@ class G2CopyReview(BaseGate):
         passed: bool = llm_result["passed"]
         issues: list[str] = llm_result.get("issues", [])
         detail = (
-            "; ".join(issues)
-            if issues
-            else ("all checks passed" if passed else "issues found")
+            "; ".join(issues) if issues else ("all checks passed" if passed else "issues found")
         )
         return [{"name": "llm_review", "passed": passed, "detail": detail}]

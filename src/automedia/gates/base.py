@@ -54,9 +54,7 @@ class GateRegistry(BaseRegistry):
         except ImportError:
             from structlog import get_logger
 
-            get_logger(__name__).debug(
-                "Could not import failure_modes — RL7 check skipped"
-            )
+            get_logger(__name__).debug("Could not import failure_modes — RL7 check skipped")
 
     # ------------------------------------------------------------------
     # Public API

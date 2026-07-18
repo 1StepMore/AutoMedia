@@ -23,7 +23,6 @@ from automedia.manifests.brand_profile_schema import (
     save_brand_profile,
 )
 
-
 # =========================================================================
 # Helpers
 # =========================================================================
@@ -257,7 +256,9 @@ class TestBrandProfilePlatformValidation:
     """Tests for platform name validation against AdapterRegistry."""
 
     def test_valid_platforms_load_without_warning(
-        self, tmp_path: Any, recwarn: Any,
+        self,
+        tmp_path: Any,
+        recwarn: Any,
     ) -> None:
         """Known platform names load without triggering a warning."""
         data = {"acme": _profile_data("Acme", platforms=["wechat", "zhihu"])}
@@ -275,9 +276,7 @@ class TestBrandProfilePlatformValidation:
                 profiles = load_brand_profiles()
         assert "acme" in profiles
         # No warnings should be emitted for valid platforms
-        platform_warnings = [
-            w for w in recwarn if "not a registered adapter" in str(w.message)
-        ]
+        platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
         assert len(platform_warnings) == 0
 
     def test_unknown_platform_triggers_warning(self, tmp_path: Any) -> None:
@@ -301,7 +300,9 @@ class TestBrandProfilePlatformValidation:
         assert "unknown_platform" in str(record[0].message)
 
     def test_no_warning_for_empty_platforms(
-        self, tmp_path: Any, recwarn: Any,
+        self,
+        tmp_path: Any,
+        recwarn: Any,
     ) -> None:
         """Empty platforms list does not trigger any warning."""
         data = {"acme": _profile_data("Acme", platforms=[])}
@@ -318,13 +319,13 @@ class TestBrandProfilePlatformValidation:
             ):
                 profiles = load_brand_profiles()
         assert "acme" in profiles
-        platform_warnings = [
-            w for w in recwarn if "not a registered adapter" in str(w.message)
-        ]
+        platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
         assert len(platform_warnings) == 0
 
     def test_no_warning_when_registry_unavailable(
-        self, tmp_path: Any, recwarn: Any,
+        self,
+        tmp_path: Any,
+        recwarn: Any,
     ) -> None:
         """When registry is unavailable, validation is skipped without warning."""
         data = {"acme": _profile_data("Acme", platforms=["unknown"])}
@@ -341,9 +342,7 @@ class TestBrandProfilePlatformValidation:
             ):
                 profiles = load_brand_profiles()
         assert "acme" in profiles
-        platform_warnings = [
-            w for w in recwarn if "not a registered adapter" in str(w.message)
-        ]
+        platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
         assert len(platform_warnings) == 0
 
 

@@ -18,7 +18,6 @@ from automedia.mcp.tools import (
 )
 from automedia.pipelines.gate_engine import PipelineProgress
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

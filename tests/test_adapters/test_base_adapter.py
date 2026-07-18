@@ -6,7 +6,6 @@ from typing import Any
 
 from automedia.adapters.base import BasePlatformAdapter
 
-
 # ---------------------------------------------------------------------------
 # Stub — concrete subclass required because BasePlatformAdapter has
 # abstract methods (platform_name, publish).
@@ -20,9 +19,7 @@ class _StubAdapter(BasePlatformAdapter):
     def platform_name(self) -> str:
         return "stub"
 
-    def publish(
-        self, artifact_dir: str, project: dict[str, Any], **kwargs: Any
-    ) -> dict[str, Any]:
+    def publish(self, artifact_dir: str, project: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         return {"status": "ok"}
 
 

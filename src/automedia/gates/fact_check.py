@@ -61,7 +61,7 @@ def _run_deterministic_checks(
     content: str,
     source_url: str,
     source_data: dict[str, Any],
-    ) -> list[CheckResult]:
+) -> list[CheckResult]:
     """Run all 5 deterministic checks and return the check dicts."""
     return [
         _check_source_trace(content, source_url, source_data),
@@ -77,9 +77,7 @@ def _run_deterministic_checks(
 # ---------------------------------------------------------------------------
 
 
-def _check_source_trace(
-    content: str, source_url: str, source_data: dict[str, Any]
-) -> CheckResult:
+def _check_source_trace(content: str, source_url: str, source_data: dict[str, Any]) -> CheckResult:
     """Step 1: Verify that *content* references the *source_url* domain."""
     name = "source_trace"
     if not source_url:
@@ -268,7 +266,9 @@ def _run_plausibility_check(content: str, topic: str) -> dict[str, Any] | None:
         return build_gate_result(
             [check],
             gate="G0",
-            expected_map={check_name: "All claims are factually plausible based on general knowledge"},
+            expected_map={
+                check_name: "All claims are factually plausible based on general knowledge"
+            },
             confidence=result.confidence,
             method="llm",
             status="completed",
@@ -386,12 +386,12 @@ class G0FactCheck(BaseGate):
                 passed = llm_result["passed"]
                 issues = llm_result.get("issues", [])
                 detail = (
-                    "; ".join(issues) if issues
+                    "; ".join(issues)
+                    if issues
                     else ("verified by LLM" if passed else "fact-check failed")
                 )
                 checks = [
-                    {"name": name, "passed": passed, "detail": detail}
-                    for name in _CHECK_NAMES
+                    {"name": name, "passed": passed, "detail": detail} for name in _CHECK_NAMES
                 ]
 
             confidence = llm_result.get("confidence")

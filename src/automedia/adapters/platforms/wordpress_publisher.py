@@ -181,9 +181,7 @@ class WordPressPublisher(BasePlatformAdapter):
         )
         if raw_categories:
             try:
-                category_ids = self._resolve_categories(
-                    site_url, auth_header, raw_categories
-                )
+                category_ids = self._resolve_categories(site_url, auth_header, raw_categories)
             except Exception:
                 log.warning("wordpress.category_resolve_failed", exc_info=True)
 
@@ -257,9 +255,7 @@ class WordPressPublisher(BasePlatformAdapter):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _read_content(
-        self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read article title and body from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -281,9 +277,7 @@ class WordPressPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -369,9 +363,7 @@ class WordPressPublisher(BasePlatformAdapter):
                         created = create_resp.json()
                         ids.append(int(created["id"]))
             except _httpx.RequestError:
-                log.warning(
-                    "wordpress.category_lookup_failed", category=item_str
-                )
+                log.warning("wordpress.category_lookup_failed", category=item_str)
 
         return ids
 
@@ -612,23 +604,17 @@ def _md_to_html(md_content: str) -> str:
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h3>{_inline_md(html_mod.escape(stripped[4:]))}</h3>"
-            )
+            html_parts.append(f"<h3>{_inline_md(html_mod.escape(stripped[4:]))}</h3>")
         elif stripped.startswith("## "):
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h2>{_inline_md(html_mod.escape(stripped[3:]))}</h2>"
-            )
+            html_parts.append(f"<h2>{_inline_md(html_mod.escape(stripped[3:]))}</h2>")
         elif stripped.startswith("# "):
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h1>{_inline_md(html_mod.escape(stripped[2:]))}</h1>"
-            )
+            html_parts.append(f"<h1>{_inline_md(html_mod.escape(stripped[2:]))}</h1>")
         # Unordered list item
         elif stripped.startswith("- ") or stripped.startswith("* "):
             if not in_list:
@@ -647,9 +633,7 @@ def _md_to_html(md_content: str) -> str:
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<p>{_inline_md(html_mod.escape(stripped))}</p>"
-            )
+            html_parts.append(f"<p>{_inline_md(html_mod.escape(stripped))}</p>")
 
     if in_list:
         html_parts.append("</ul>")

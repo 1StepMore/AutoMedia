@@ -406,5 +406,3 @@ class TestRedLine9:
         assert "05_publish" not in rogue.artifact_type, (
             "RL9: artifact_type must not contain filesystem paths"
         )
-
-

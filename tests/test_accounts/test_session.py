@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import time
 import threading
+import time
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -12,7 +12,6 @@ import pytest
 
 from automedia.accounts.models import HealthStatus, SessionToken
 from automedia.accounts.session import CachedSession, SessionManager
-
 
 # ---------------------------------------------------------------------------
 # Helpers

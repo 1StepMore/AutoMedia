@@ -75,8 +75,6 @@ def _check_syntax_valid(lint_result: dict[str, Any]) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # V0Lint gate
 # ---------------------------------------------------------------------------
@@ -101,7 +99,12 @@ class V0Lint(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V0 lint checks and return structured result."""
         if not gate_context.get("hyperframes_available", True):
-            return {"passed": True, "gate": "V0", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+            return {
+                "passed": True,
+                "gate": "V0",
+                "status": "skipped",
+                "reason": "HyperFrames not installed — video QA skipped",
+            }
 
         lint_result: dict[str, Any] = gate_context.get("lint_result", {})
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")

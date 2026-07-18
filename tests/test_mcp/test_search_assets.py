@@ -81,8 +81,7 @@ class TestSearchAssets:
         many_results = [dict(r, title=f"Result {i}") for i in range(25) for r in MOCK_RESULTS[:1]]
         # Actually build 25 distinct items
         many_results = [
-            {**MOCK_RESULTS[0], "title": f"Result {i}", "_score": 1.0 - i * 0.01}
-            for i in range(25)
+            {**MOCK_RESULTS[0], "title": f"Result {i}", "_score": 1.0 - i * 0.01} for i in range(25)
         ]
         mock_search.return_value = many_results
 

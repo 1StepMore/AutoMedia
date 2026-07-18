@@ -136,12 +136,9 @@ _SUGGESTIONS: dict[str, str] = {
         "and contains source_lang/target_lang fields"
     ),
     "language_match": (
-        "Verify that frontmatter source_lang/target_lang"
-        " match the expected translation direction"
+        "Verify that frontmatter source_lang/target_lang match the expected translation direction"
     ),
-    "no_garbled_text": (
-        "Re-run the translation — garbled text indicates encoding corruption"
-    ),
+    "no_garbled_text": ("Re-run the translation — garbled text indicates encoding corruption"),
     "non_empty": "Check that the translation pipeline produced actual content",
 }
 
@@ -201,14 +198,16 @@ def _build_checks(gr: GateResult) -> list[dict[str, str | bool]]:
                 detail = f"{name.replace('_', ' ')} check failed"
                 actual_value = "check did not pass"
 
-        checks.append({
-            "name": name,
-            "passed": passed,
-            "detail": detail,
-            "actual_value": actual_value,
-            "threshold": threshold,
-            "suggestion": suggestion,
-        })
+        checks.append(
+            {
+                "name": name,
+                "passed": passed,
+                "detail": detail,
+                "actual_value": actual_value,
+                "threshold": threshold,
+                "suggestion": suggestion,
+            }
+        )
     return checks
 
 

@@ -32,10 +32,7 @@ class EngineNotFoundError(KeyError):
         super().__init__(self._format_message())
 
     def _format_message(self) -> str:
-        msg = (
-            f"Engine '{self.engine_name}' not found for modality "
-            f"'{self.modality}'."
-        )
+        msg = f"Engine '{self.engine_name}' not found for modality '{self.modality}'."
         if self.available:
             msg += f" Available: {self.available}"
         return msg
@@ -60,9 +57,7 @@ class EngineExecutionError(RuntimeError):
         cause: Optional original exception that caused this error.
     """
 
-    def __init__(
-        self, engine_name: str, details: str, cause: Exception | None = None
-    ) -> None:
+    def __init__(self, engine_name: str, details: str, cause: Exception | None = None) -> None:
         self.engine_name = engine_name
         self.details = details
         self.cause = cause
@@ -102,8 +97,7 @@ class EngineUnavailableError(EngineExecutionError):
 
     def _format_message(self) -> str:
         return (
-            f"Engine '{self.engine_name}' unavailable: {self.reason}. "
-            f"Install: {self.install_hint}"
+            f"Engine '{self.engine_name}' unavailable: {self.reason}. Install: {self.install_hint}"
         )
 
     def __repr__(self) -> str:

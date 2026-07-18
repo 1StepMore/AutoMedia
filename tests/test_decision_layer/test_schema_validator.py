@@ -28,9 +28,7 @@ def _patch_schema_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             "metadata": "object",
         },
     }
-    (schema_dir / "test_schema.json").write_text(
-        json.dumps(test_schema), encoding="utf-8"
-    )
+    (schema_dir / "test_schema.json").write_text(json.dumps(test_schema), encoding="utf-8")
 
     # Broken (invalid JSON) schema
     (schema_dir / "broken.json").write_text("not valid json {{{", encoding="utf-8")
@@ -66,9 +64,7 @@ class TestValidateArtifact:
     def test_wrong_type_returns_errors(self) -> None:
         from automedia.decision.schema_validator import validate_artifact
 
-        result = validate_artifact(
-            "test_schema", {"name": "foo", "values": "not_a_list"}
-        )
+        result = validate_artifact("test_schema", {"name": "foo", "values": "not_a_list"})
         assert result["valid"] is False
         assert any("list" in e.lower() for e in result["errors"])
 
@@ -89,9 +85,7 @@ class TestValidateArtifact:
     def test_string_field_wrong_type(self) -> None:
         from automedia.decision.schema_validator import validate_artifact
 
-        result = validate_artifact(
-            "test_schema", {"name": 123, "values": [1]}
-        )
+        result = validate_artifact("test_schema", {"name": 123, "values": [1]})
         assert result["valid"] is False
         assert any("string" in e.lower() for e in result["errors"])
 

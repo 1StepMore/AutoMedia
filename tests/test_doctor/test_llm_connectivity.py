@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from automedia.core.doctor import Doctor
 
@@ -40,6 +36,7 @@ class TestDoctorLlmConnectivity:
     def test_llm_connectivity_reports_missing_on_error(self, mock_llm: MagicMock) -> None:
         """When LLM call fails, llm_api shows installed=False with error detail."""
         from automedia.core.llm_client import LLMError
+
         mock_llm.side_effect = LLMError("API key not found")
         d = Doctor()
         results = d.check_dependencies()

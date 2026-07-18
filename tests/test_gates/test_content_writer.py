@@ -189,9 +189,7 @@ class TestExecute:
         assert result["gate"] == "CW"
         assert "topic" in result["error"].lower()
         assert result["expected_vs_actual"]["check"] == "topic_present"
-        assert (
-            result["expected_vs_actual"]["actual"] == "topic is empty or missing"
-        )
+        assert result["expected_vs_actual"]["actual"] == "topic is empty or missing"
 
     # ------------------------------------------------------------------
     # Edge case: missing project directory
@@ -314,6 +312,5 @@ class TestExecute:
         # System prompt should be the custom one
         _call_system_prompt = mock_llm.call_args[1].get("system_prompt")
         assert _call_system_prompt == custom_prompt, (
-            f"Expected system_prompt={custom_prompt!r}, "
-            f"got {_call_system_prompt!r}"
+            f"Expected system_prompt={custom_prompt!r}, got {_call_system_prompt!r}"
         )

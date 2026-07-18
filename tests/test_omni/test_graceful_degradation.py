@@ -114,7 +114,9 @@ class TestORFGracefulDegradation:
         import tempfile
 
         adapter = ORFAdapter()
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as fh:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as fh:
             out_path = fh.name
 
         try:

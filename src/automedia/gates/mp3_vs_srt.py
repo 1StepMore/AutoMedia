@@ -101,8 +101,6 @@ def _check_whisper_not_empty(whisper_text: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # V5Mp3VsSrt gate
 # ---------------------------------------------------------------------------
@@ -130,7 +128,12 @@ class V5Mp3VsSrt(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V5 MP3 vs SRT checks and return structured result."""
         if not gate_context.get("hyperframes_available", True):
-            return {"passed": True, "gate": "V5", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+            return {
+                "passed": True,
+                "gate": "V5",
+                "status": "skipped",
+                "reason": "HyperFrames not installed — video QA skipped",
+            }
 
         whisper_text: str = gate_context.get("whisper_text", "")
         srt_text: str = gate_context.get("srt_text", "")

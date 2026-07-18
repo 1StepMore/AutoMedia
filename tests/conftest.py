@@ -17,7 +17,6 @@ import pytest
 
 def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers and warning filters."""
-    import warnings as _w
 
     config.addinivalue_line("markers", "e2e: end-to-end pipeline integration tests")
     config.addinivalue_line("markers", "redline: red-line enforcement tests")

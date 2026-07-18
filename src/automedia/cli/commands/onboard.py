@@ -199,7 +199,10 @@ def _step_pipeline() -> None:
     existing = load_config()
     pipeline = existing.get("pipeline", {})
 
-    mode = typer.prompt("Default mode (auto / text_only / text_with_cover / video_only / qa_only / image-carousel / social-thread / short-video)", default="auto")
+    mode = typer.prompt(
+        "Default mode (auto / text_only / text_with_cover / video_only / qa_only / image-carousel / social-thread / short-video)",
+        default="auto",
+    )
     text_enabled = typer.prompt(
         "Enable text track", default=pipeline.get("text", {}).get("enabled", True)
     )
@@ -554,7 +557,9 @@ def cmd_list() -> None:
     platforms = config.get("platforms", {})
     enabled = [k for k, v in platforms.items() if isinstance(v, dict) and v.get("enabled")]
 
-    if output_text(None, data={
+    if output_text(
+        None,
+        data={
             "status": "ok",
             "llm_provider": (
                 config.get("llm", {}).get("text_generation", {}).get("provider", "not set")
@@ -586,9 +591,7 @@ def cmd_list() -> None:
     # Brand
     if brand_path.exists():
         typer.echo(f"Brand: {brand.get('brand_name', 'not set')}")
-        typer.echo(
-            f"Languages: {[k for k in brand.get('languages', {})] or ['not configured']}"
-        )
+        typer.echo(f"Languages: {[k for k in brand.get('languages', {})] or ['not configured']}")
 
     # Platform
     typer.echo(f"Enabled platforms: {enabled or ['none']}")

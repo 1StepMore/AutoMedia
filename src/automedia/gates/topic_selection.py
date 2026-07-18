@@ -129,7 +129,6 @@ _EXPECTED_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-
 def _check_topic_not_category(
     topic: str,
     check_name: str,

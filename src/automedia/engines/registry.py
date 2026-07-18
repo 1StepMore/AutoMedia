@@ -114,8 +114,7 @@ class EngineRegistry(BaseRegistry):
         """
         if key not in self._registry:
             raise KeyError(
-                f"Engine {key!r} is not registered. "
-                f"Available engines: {sorted(self._registry)}"
+                f"Engine {key!r} is not registered. Available engines: {sorted(self._registry)}"
             )
         return self._registry[key]
 
@@ -167,11 +166,7 @@ class EngineRegistry(BaseRegistry):
             default, or if the resolved engine name is not registered.
         """
         # 1. Try config
-        engine_name: str | None = (
-            config.get("engines", {})
-            .get(modality, {})
-            .get("default")
-        )
+        engine_name: str | None = config.get("engines", {}).get(modality, {}).get("default")
 
         # 2. Fall back to built-in default
         if not engine_name:
@@ -208,9 +203,7 @@ class EngineRegistry(BaseRegistry):
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
-        return (
-            f"EngineRegistry({len(self)} engines: {', '.join(self.list())})"
-        )
+        return f"EngineRegistry({len(self)} engines: {', '.join(self.list())})"
 
 
 # Module-level singleton — used by engine base classes for auto-registration

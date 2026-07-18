@@ -137,6 +137,3 @@ def disconnect(
 
     _get_registry().delete(account_id)
     console.print(f"[green]Account disconnected: {account_id}[/green]")
-
-
-

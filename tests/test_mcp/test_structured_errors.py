@@ -29,7 +29,6 @@ from automedia.mcp.tools import (
     skip_gate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -96,15 +95,16 @@ class TestRunPipelineFromStrategyErrors:
     def test_invalid_mode_returns_unknown_error(self) -> None:
         """run_pipeline_from_strategy wraps errors with UNKNOWN code."""
         with (
-            patch("automedia.pipelines.runner.run_full_pipeline",
-                  side_effect=ValueError("Unknown pipeline mode 'bogus'")),
-            patch("automedia.core.llm_client.llm_complete_structured_safe",
-                  return_value=MagicMock()),
+            patch(
+                "automedia.pipelines.runner.run_full_pipeline",
+                side_effect=ValueError("Unknown pipeline mode 'bogus'"),
+            ),
+            patch(
+                "automedia.core.llm_client.llm_complete_structured_safe", return_value=MagicMock()
+            ),
             patch("automedia.prompts.load_prompt", return_value="prompt"),
         ):
-            result = run_pipeline_from_strategy(
-                topic="test", brand="brand", mode="bogus"
-            )
+            result = run_pipeline_from_strategy(topic="test", brand="brand", mode="bogus")
 
         _assert_error_shape(result)
         assert result["error"]["code"] == "UNKNOWN"
@@ -331,10 +331,13 @@ class TestSuccessPaths:
 
         with (
             patch("automedia.mcp.tools._require_allowed"),
-            patch("automedia.mcp.tools._discover_projects", return_value=[
-                {"project_id": "p1", "topic": "t1"},
-                {"project_id": "p2", "topic": "t2"},
-            ]),
+            patch(
+                "automedia.mcp.tools._discover_projects",
+                return_value=[
+                    {"project_id": "p1", "topic": "t1"},
+                    {"project_id": "p2", "topic": "t2"},
+                ],
+            ),
         ):
             result = list_projects(base_dir="/tmp")
 

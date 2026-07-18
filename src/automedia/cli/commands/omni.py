@@ -38,10 +38,13 @@ def omni_start_all(
     """
     servers = start_parallel_servers(mode=mode)
 
-    if output_text(None, data={
-        "status": "ok",
-        "servers": {name: proc.pid for name, proc in servers.items()},
-    }):
+    if output_text(
+        None,
+        data={
+            "status": "ok",
+            "servers": {name: proc.pid for name, proc in servers.items()},
+        },
+    ):
         # In JSON mode, don't block — caller manages lifecycle
         return
 
@@ -94,11 +97,14 @@ def omni_start(
 
     servers = start_parallel_servers(mode=mode)
 
-    if output_text(None, data={
-        "status": "ok",
-        "mode": mode,
-        "servers": {name: proc.pid for name, proc in servers.items()},
-    }):
+    if output_text(
+        None,
+        data={
+            "status": "ok",
+            "mode": mode,
+            "servers": {name: proc.pid for name, proc in servers.items()},
+        },
+    ):
         return
 
     typer.echo(f"Launched {len(servers)} server(s) in {mode} mode:")
@@ -300,7 +306,9 @@ def omni_ingest(
         output_text(
             f"No supported documents found in {scan_dir}",
             data={
-                "status": "ok", "files": [], "count": 0,
+                "status": "ok",
+                "files": [],
+                "count": 0,
                 "message": f"No supported documents found in {scan_dir}",
             },
         )

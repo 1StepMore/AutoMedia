@@ -40,9 +40,7 @@ def _make_subprocess_result(
     return result
 
 
-def _write_fake_whisper_json(
-    json_path: str, segments: list[dict[str, Any]] | None = None
-) -> None:
+def _write_fake_whisper_json(json_path: str, segments: list[dict[str, Any]] | None = None) -> None:
     """Write a fake Whisper JSON output file."""
     if segments is None:
         segments = [
@@ -170,9 +168,7 @@ class TestWhisperASREngineTranscribe:
     """transcribe() — all paths with mocked subprocess."""
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_calls_whisper_with_correct_args(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_calls_whisper_with_correct_args(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Verify the exact CLI command built by transcribe()."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
@@ -199,9 +195,7 @@ class TestWhisperASREngineTranscribe:
         assert "segments" in result
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_returns_segments_from_json_file(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_returns_segments_from_json_file(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Transcription segments are parsed from the Whisper JSON output file."""
         audio_path = str(tmp_path / "audio.mp3")
         _create_fake_audio(audio_path)
@@ -228,24 +222,18 @@ class TestWhisperASREngineTranscribe:
             engine.transcribe("/nonexistent/audio.mp3")
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_failure_raises_called_process_error(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_failure_raises_called_process_error(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Non-zero returncode from whisper raises CalledProcessError."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
 
-        mock_run.return_value = _make_subprocess_result(
-            returncode=1, stderr="model error"
-        )
+        mock_run.return_value = _make_subprocess_result(returncode=1, stderr="model error")
         engine = WhisperASREngine()
         with pytest.raises(subprocess.CalledProcessError):
             engine.transcribe(audio_path)
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_default_language_from_config(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_default_language_from_config(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Language from config is used when parameter is None."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
@@ -260,9 +248,7 @@ class TestWhisperASREngineTranscribe:
         assert args[lang_idx] == "ja"
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_default_language_is_zh(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_default_language_is_zh(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Built-in default language is 'zh' when neither param nor config provides one."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
@@ -277,9 +263,7 @@ class TestWhisperASREngineTranscribe:
         assert args[lang_idx] == "zh"
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_fallback_to_stdout_json(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_fallback_to_stdout_json(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """When JSON output file is missing, fall back to parsing stdout as JSON."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
@@ -297,9 +281,7 @@ class TestWhisperASREngineTranscribe:
         assert len(result["segments"]) == 1
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_fallback_to_stdout_text(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_fallback_to_stdout_text(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """When JSON file is missing and stdout is not valid JSON, return raw text."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)
@@ -312,9 +294,7 @@ class TestWhisperASREngineTranscribe:
         assert result["segments"] == []
 
     @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
-    def test_default_model_from_config(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_default_model_from_config(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Model from config overrides the default 'tiny'."""
         audio_path = str(tmp_path / "test.mp3")
         _create_fake_audio(audio_path)

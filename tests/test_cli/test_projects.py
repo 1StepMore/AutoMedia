@@ -65,9 +65,7 @@ class TestDiscoverProjects:
         """Invalid JSON files are skipped gracefully."""
         proj_dir = tmp_path / "20260707_bad-json"
         proj_dir.mkdir()
-        (proj_dir / "00_project_info.json").write_text(
-            "this is not json{{", encoding="utf-8"
-        )
+        (proj_dir / "00_project_info.json").write_text("this is not json{{", encoding="utf-8")
 
         proj_dir2 = tmp_path / "20260708_good-json"
         proj_dir2.mkdir()
@@ -78,7 +76,9 @@ class TestDiscoverProjects:
         assert len(result) == 1
         assert result[0]["project_id"] == "good"
 
-    def test_discover_skips_os_error_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_discover_skips_os_error_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """OSError when reading a file is skipped gracefully."""
         proj_dir = tmp_path / "20260707_issue"
         proj_dir.mkdir()
@@ -224,7 +224,9 @@ class TestProjectsList:
 
     def test_list_nonexistent_base_dir(self, tmp_path: Path) -> None:
         """Non-existent base_dir shows no projects (Path.glob handles it)."""
-        result = runner.invoke(app, ["projects", "list", "--base-dir", str(tmp_path / "nonexistent")])
+        result = runner.invoke(
+            app, ["projects", "list", "--base-dir", str(tmp_path / "nonexistent")]
+        )
         assert result.exit_code == 0
         assert "No projects found" in result.output
 
@@ -426,7 +428,14 @@ class TestProjectsGetAssets:
         proj = self._create_project_with_assets(tmp_path)
         result = runner.invoke(
             app,
-            ["--json", "projects", "get-assets", proj["project_id"], "--base-dir", proj["base_dir"]],
+            [
+                "--json",
+                "projects",
+                "get-assets",
+                proj["project_id"],
+                "--base-dir",
+                proj["base_dir"],
+            ],
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -442,7 +451,14 @@ class TestProjectsGetAssets:
         proj = self._create_project_no_assets(tmp_path)
         result = runner.invoke(
             app,
-            ["--json", "projects", "get-assets", proj["project_id"], "--base-dir", proj["base_dir"]],
+            [
+                "--json",
+                "projects",
+                "get-assets",
+                proj["project_id"],
+                "--base-dir",
+                proj["base_dir"],
+            ],
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -530,9 +546,7 @@ class TestProjectsErrorHandling:
         """projects list shows error when _discover_projects raises."""
         with patch("automedia.cli.commands.projects._discover_projects") as mock:
             mock.side_effect = RuntimeError("boom")
-            result = runner.invoke(
-                app, ["projects", "list", "--base-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["projects", "list", "--base-dir", str(tmp_path)])
         assert result.exit_code == 1
         assert "Error scanning projects" in result.output
 
@@ -540,9 +554,7 @@ class TestProjectsErrorHandling:
         """--json projects list returns JSON error when discovery fails."""
         with patch("automedia.cli.commands.projects._discover_projects") as mock:
             mock.side_effect = RuntimeError("boom")
-            result = runner.invoke(
-                app, ["--json", "projects", "list", "--base-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["--json", "projects", "list", "--base-dir", str(tmp_path)])
         assert result.exit_code == 1
         data = json.loads(result.output)
         assert data["status"] == "error"
@@ -551,9 +563,7 @@ class TestProjectsErrorHandling:
         """projects get shows error when _discover_projects raises."""
         with patch("automedia.cli.commands.projects._discover_projects") as mock:
             mock.side_effect = RuntimeError("boom")
-            result = runner.invoke(
-                app, ["projects", "get", "abc123", "--base-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["projects", "get", "abc123", "--base-dir", str(tmp_path)])
         assert result.exit_code == 1
         assert "Error scanning projects" in result.output
 

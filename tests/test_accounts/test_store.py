@@ -10,7 +10,6 @@ from cryptography.exceptions import InvalidTag
 
 from automedia.accounts.store import AccountStore
 
-
 # ---------------------------------------------------------------------------
 # Sample credential payloads (synthetic — no real secrets)
 # ---------------------------------------------------------------------------
@@ -160,8 +159,7 @@ class TestNonceRandomisation:
         )
         # Ciphertexts MUST differ (different nonce → different ciphertext)
         assert payload_a["ciphertext"] != payload_b["ciphertext"], (
-            "Ciphertexts should differ even for identical plaintext — nonce "
-            "randomisation failed."
+            "Ciphertexts should differ even for identical plaintext — nonce randomisation failed."
         )
 
 
@@ -442,6 +440,7 @@ class TestInitialisation:
         assert nested.is_dir()
         # Cleanup
         import shutil
+
         shutil.rmtree(temp_store_dir, ignore_errors=True)
 
     def test_re_init_uses_existing_dir(self, temp_store_dir: Path) -> None:

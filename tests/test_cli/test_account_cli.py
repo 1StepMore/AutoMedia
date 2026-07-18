@@ -241,9 +241,7 @@ class TestAccountDisconnect:
         }
         mock_registry.delete.return_value = True
 
-        result = runner.invoke(
-            app, ["account", "disconnect", "acc_wechat_a1b2c3d4", "--yes"]
-        )
+        result = runner.invoke(app, ["account", "disconnect", "acc_wechat_a1b2c3d4", "--yes"])
         assert result.exit_code == 0
         assert "Account disconnected" in result.output
         mock_registry.delete.assert_called_once_with("acc_wechat_a1b2c3d4")

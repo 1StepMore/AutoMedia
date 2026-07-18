@@ -44,7 +44,7 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
     "bun": {
         "Linux": "curl -fsSL https://bun.sh/install | bash",
         "Darwin": "brew install oven-sh/bun/bun  # or: curl -fsSL https://bun.sh/install | bash",
-        "Windows": "powershell -c \"irm bun.sh/install.ps1 | iex\"  # or: scoop install bun",
+        "Windows": 'powershell -c "irm bun.sh/install.ps1 | iex"  # or: scoop install bun',
     },
     "ffmpeg": {
         "Linux": "sudo apt install ffmpeg  # or: sudo dnf install ffmpeg",
@@ -219,8 +219,14 @@ class Doctor:
         """
         try:
             result = subprocess.run(  # noqa: S603 — trusted internal command
-                [chrome_path, "--headless", "--no-sandbox", "--disable-gpu",
-                 "--dump-dom", "about:blank"],
+                [
+                    chrome_path,
+                    "--headless",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--dump-dom",
+                    "about:blank",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -228,8 +234,7 @@ class Doctor:
             if result.returncode == 0:
                 return True, None
             return False, (
-                f"headless check failed (exit {result.returncode}): "
-                f"{result.stderr[:200].strip()}"
+                f"headless check failed (exit {result.returncode}): {result.stderr[:200].strip()}"
             )
         except FileNotFoundError:
             return False, "chrome binary not found at resolved path"
@@ -284,36 +289,42 @@ class Doctor:
             # --- LLM API connectivity check -------------------------------
             if name == "llm_api":
                 installed, version = self._check_llm_api()
-                results.append({
-                    "name": name,
-                    "installed": installed,
-                    "version": version,
-                    "path": None,
-                })
+                results.append(
+                    {
+                        "name": name,
+                        "installed": installed,
+                        "version": version,
+                        "path": None,
+                    }
+                )
                 continue
 
             # --- Chrome headless probe --------------------------------------
             if name == "chrome":
                 if path is None:
-                    results.append({
-                        "name": name,
-                        "installed": False,
-                        "version": None,
-                        "path": None,
-                        "headless_ok": False,
-                        "headless_message": None,
-                    })
+                    results.append(
+                        {
+                            "name": name,
+                            "installed": False,
+                            "version": None,
+                            "path": None,
+                            "headless_ok": False,
+                            "headless_message": None,
+                        }
+                    )
                     continue
 
                 headless_ok, headless_message = self._check_chrome_headless(path)
-                results.append({
-                    "name": name,
-                    "installed": True,
-                    "version": None,
-                    "path": path,
-                    "headless_ok": headless_ok,
-                    "headless_message": headless_message,
-                })
+                results.append(
+                    {
+                        "name": name,
+                        "installed": True,
+                        "version": None,
+                        "path": path,
+                        "headless_ok": headless_ok,
+                        "headless_message": headless_message,
+                    }
+                )
                 continue
 
             # --- Standard CLI-based check ---------------------------------

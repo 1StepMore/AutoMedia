@@ -116,8 +116,6 @@ def _check_red_line_6(entries: list[dict[str, Any]]) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # V1VisionQA gate
 # ---------------------------------------------------------------------------
@@ -146,7 +144,12 @@ class V1VisionQA(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V1 vision QA checks and return structured result."""
         if not gate_context.get("hyperframes_available", True):
-            return {"passed": True, "gate": "V1", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+            return {
+                "passed": True,
+                "gate": "V1",
+                "status": "skipped",
+                "reason": "HyperFrames not installed — video QA skipped",
+            }
 
         entries: list[dict[str, Any]] = gate_context.get("entries", [])
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")

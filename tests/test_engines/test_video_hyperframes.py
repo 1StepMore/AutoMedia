@@ -325,9 +325,12 @@ class TestRenderHyperFrames:
             [
                 "hyperframes",
                 "render",
-                "--quality", "high",
-                "--assets", "/tmp/hyperframes_test",
-                "--output", output,
+                "--quality",
+                "high",
+                "--assets",
+                "/tmp/hyperframes_test",
+                "--output",
+                output,
             ],
             capture_output=True,
             text=True,
@@ -776,9 +779,12 @@ class TestRenderConfiguration:
             [
                 "hyperframes",
                 "render",
-                "--quality", "low",
-                "--assets", "/tmp/hyperframes_test",
-                "--output", output,
+                "--quality",
+                "low",
+                "--assets",
+                "/tmp/hyperframes_test",
+                "--output",
+                output,
             ],
             capture_output=True,
             text=True,
@@ -850,9 +856,7 @@ class TestRenderChromePath:
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # Mock os.path.isfile to return False for the chrome path
-        mock_all["isfile"].side_effect = lambda p: (
-            p != "/usr/bin/google-chrome"
-        )
+        mock_all["isfile"].side_effect = lambda p: (p != "/usr/bin/google-chrome")
 
         engine = HyperFramesVideoEngine(
             engine_config={"chrome_path": "/usr/bin/google-chrome"},
@@ -881,7 +885,10 @@ class TestDefaultTemplateProvisioning:
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
     @patch("automedia.engines.implementations.video_hyperframes.subprocess.run")
     def test_get_audio_duration_success(
-        self, m_run: MagicMock, m_which: MagicMock, m_isfile: MagicMock,
+        self,
+        m_run: MagicMock,
+        m_which: MagicMock,
+        m_isfile: MagicMock,
     ) -> None:
         """> ``ffprobe`` returns duration → floats."""
         m_isfile.return_value = True
@@ -893,7 +900,8 @@ class TestDefaultTemplateProvisioning:
 
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
     def test_get_audio_duration_ffprobe_missing(
-        self, m_which: MagicMock,
+        self,
+        m_which: MagicMock,
     ) -> None:
         """> ``ffprobe`` not on ``PATH`` → ``None``."""
         m_which.return_value = None
@@ -903,7 +911,9 @@ class TestDefaultTemplateProvisioning:
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
     @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
     def test_get_audio_duration_file_missing(
-        self, m_isfile: MagicMock, m_which: MagicMock,
+        self,
+        m_isfile: MagicMock,
+        m_which: MagicMock,
     ) -> None:
         """> Audio file not found → ``None``."""
         m_which.return_value = "/usr/bin/ffprobe"
@@ -915,7 +925,10 @@ class TestDefaultTemplateProvisioning:
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
     @patch("automedia.engines.implementations.video_hyperframes.subprocess.run")
     def test_get_audio_duration_timeout(
-        self, m_run: MagicMock, m_which: MagicMock, m_isfile: MagicMock,
+        self,
+        m_run: MagicMock,
+        m_which: MagicMock,
+        m_isfile: MagicMock,
     ) -> None:
         """> ``ffprobe`` times out → ``None``."""
         from subprocess import TimeoutExpired
@@ -931,7 +944,8 @@ class TestDefaultTemplateProvisioning:
     # ------------------------------------------------------------------
 
     def test_provision_creates_expected_file_layout(
-        self, tmp_path: Any,
+        self,
+        tmp_path: Any,
     ) -> None:
         """> Full provisioning creates ``hyperframes.json``, ``index.html``,
         ``meta.json``, and scene compositions."""
@@ -965,7 +979,8 @@ class TestDefaultTemplateProvisioning:
 
             engine = HyperFramesVideoEngine()
             engine._provision_default_hyperframes_project(
-                str(project_dir), assets,
+                str(project_dir),
+                assets,
             )
 
         # Static files
@@ -986,7 +1001,8 @@ class TestDefaultTemplateProvisioning:
         assert (project_dir / "assets" / "audio").is_dir()
 
     def test_provision_rendered_content_is_valid(
-        self, tmp_path: Any,
+        self,
+        tmp_path: Any,
     ) -> None:
         """> Rendered ``index.html`` contains valid scene references and
         ``meta.json`` is parseable with correct scene metadata."""
@@ -1022,7 +1038,8 @@ class TestDefaultTemplateProvisioning:
 
             engine = HyperFramesVideoEngine()
             engine._provision_default_hyperframes_project(
-                str(project_dir), assets,
+                str(project_dir),
+                assets,
             )
 
         # index.html has expected structure
@@ -1054,7 +1071,8 @@ class TestDefaultTemplateProvisioning:
         assert 'data-composition-id="scene-2"' in scene2
 
     def test_provision_single_image(
-        self, tmp_path: Any,
+        self,
+        tmp_path: Any,
     ) -> None:
         """> 1 image → 1 scene composition (no extra files)."""
         img = tmp_path / "img.png"
@@ -1085,14 +1103,16 @@ class TestDefaultTemplateProvisioning:
 
             engine = HyperFramesVideoEngine()
             engine._provision_default_hyperframes_project(
-                str(project_dir), assets,
+                str(project_dir),
+                assets,
             )
 
         assert (project_dir / "compositions" / "01-scene.html").is_file()
         assert not (project_dir / "compositions" / "02-scene.html").exists()
 
     def test_provision_no_audio_uses_default_duration(
-        self, tmp_path: Any,
+        self,
+        tmp_path: Any,
     ) -> None:
         """> No audio → each scene gets ``_DEFAULT_SCENE_DURATION`` seconds."""
         img1 = tmp_path / "img1.png"
@@ -1126,7 +1146,9 @@ class TestDefaultTemplateProvisioning:
     # ------------------------------------------------------------------
 
     def test_default_templates_used_when_template_dir_empty(
-        self, mock_all: dict[str, MagicMock], tmp_path: Any,
+        self,
+        mock_all: dict[str, MagicMock],
+        tmp_path: Any,
     ) -> None:
         """> ``template_dir=""`` → ``_provision_default_hyperframes_project`` called."""
         mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
@@ -1153,7 +1175,9 @@ class TestDefaultTemplateProvisioning:
             m_provision.assert_called_once()
 
     def test_user_template_dir_copied_to_root(
-        self, mock_all: dict[str, MagicMock], tmp_path: Any,
+        self,
+        mock_all: dict[str, MagicMock],
+        tmp_path: Any,
     ) -> None:
         """> User ``template_dir`` → files copied to temp root,
         ``_provision_default_hyperframes_project`` NOT called."""
@@ -1184,10 +1208,5 @@ class TestDefaultTemplateProvisioning:
 
         # Template files copied to temp_dir root (not /template/ subdir)
         copy_calls = mock_all["copy2"].call_args_list
-        root_copies = [
-            c for c in copy_calls
-            if c[0][1] == "/tmp/hyperframes_test"
-        ]
-        assert len(root_copies) >= 1, (
-            f"No files copied to temp root: {copy_calls}"
-        )
+        root_copies = [c for c in copy_calls if c[0][1] == "/tmp/hyperframes_test"]
+        assert len(root_copies) >= 1, f"No files copied to temp root: {copy_calls}"

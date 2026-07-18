@@ -16,8 +16,6 @@ Scenarios
 
 from __future__ import annotations
 
-from typing import Any
-
 from automedia.pipelines.gate_engine import GateProgressEvent, PipelineProgress
 
 # =====================================================================
@@ -37,46 +35,34 @@ class TestGateProgressEventConstruction:
 
     def test_explicit_attempt_number(self) -> None:
         """attempt_number set explicitly is stored."""
-        event = GateProgressEvent(
-            gate_name="G0", status="running", attempt_number=3
-        )
+        event = GateProgressEvent(gate_name="G0", status="running", attempt_number=3)
         assert event.attempt_number == 3
 
     def test_explicit_retry_level_quality(self) -> None:
         """retry_level='quality' is stored."""
-        event = GateProgressEvent(
-            gate_name="G0", status="running", retry_level="quality"
-        )
+        event = GateProgressEvent(gate_name="G0", status="running", retry_level="quality")
         assert event.retry_level == "quality"
 
     def test_explicit_retry_level_tenacity(self) -> None:
         """retry_level='tenacity' is stored."""
-        event = GateProgressEvent(
-            gate_name="G0", status="running", retry_level="tenacity"
-        )
+        event = GateProgressEvent(gate_name="G0", status="running", retry_level="tenacity")
         assert event.retry_level == "tenacity"
 
     def test_explicit_retry_level_manual(self) -> None:
         """retry_level='manual' is stored."""
-        event = GateProgressEvent(
-            gate_name="G0", status="running", retry_level="manual"
-        )
+        event = GateProgressEvent(gate_name="G0", status="running", retry_level="manual")
         assert event.retry_level == "manual"
 
     def test_strategy_delta_can_be_dict(self) -> None:
         """strategy_delta can be a flat dict."""
         delta = {"temperature": 0.7, "max_tokens": 2000}
-        event = GateProgressEvent(
-            gate_name="G0", status="passed", strategy_delta=delta
-        )
+        event = GateProgressEvent(gate_name="G0", status="passed", strategy_delta=delta)
         assert event.strategy_delta == delta
 
     def test_strategy_delta_nested_dict(self) -> None:
         """strategy_delta can be a nested dict."""
         delta = {"llm": {"temperature": 0.8, "model": "gpt-4"}, "prompt": "revised"}
-        event = GateProgressEvent(
-            gate_name="G0", status="failed", strategy_delta=delta
-        )
+        event = GateProgressEvent(gate_name="G0", status="failed", strategy_delta=delta)
         assert event.strategy_delta == delta
         assert event.strategy_delta["llm"]["temperature"] == 0.8
 
@@ -256,7 +242,9 @@ class TestOnGateEndRetryMetadata:
         progress.set_gate_names(["G0"])
         progress.on_gate_start("G0")
         delta = {"prompt": "revised-v2"}
-        progress.on_gate_end("G0", True, 2.0, attempt_number=3, retry_level="quality", strategy_delta=delta)
+        progress.on_gate_end(
+            "G0", True, 2.0, attempt_number=3, retry_level="quality", strategy_delta=delta
+        )
         p = progress.get_progress()
         event = p["events"][-1]
         assert event["attempt_number"] == 3
@@ -289,7 +277,11 @@ class TestOnGateAwaitingHITLRetryMetadata:
         progress.set_gate_names(["G0"])
         delta = {"timeout": 600}
         progress.on_gate_awaiting_hitl(
-            "G0", detail="human review needed", attempt_number=2, retry_level="quality", strategy_delta=delta
+            "G0",
+            detail="human review needed",
+            attempt_number=2,
+            retry_level="quality",
+            strategy_delta=delta,
         )
         p = progress.get_progress()
         event = p["events"][0]

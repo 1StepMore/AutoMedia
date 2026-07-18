@@ -36,6 +36,7 @@ class TestInitOmniCommand:
         """All expected config files are created under ``~/.automedia/``."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -58,6 +59,7 @@ class TestInitOmniCommand:
         """User-provided values appear in the written config."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -80,6 +82,7 @@ class TestInitOmniCommand:
         """Defaults are used when the user provides empty input."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -102,6 +105,7 @@ class TestInitOmniCommand:
         """Copied template files contain expected content."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -132,6 +136,7 @@ class TestInitOmniCommand:
         """A green success message is printed after init completes."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -154,6 +159,7 @@ class TestInitOmniCommand:
         """The ``~/.automedia/`` directory is created if absent."""
         monkeypatch.setenv("HOME", str(tmp_path))
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")

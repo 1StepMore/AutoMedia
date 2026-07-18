@@ -305,7 +305,9 @@ class LinkedInPublisher(BasePlatformAdapter):
             status_code = exc.response.status_code
             try:
                 err_detail: dict[str, Any] = exc.response.json()
-                err_msg = json.dumps(err_detail) if isinstance(err_detail, dict) else str(err_detail)
+                err_msg = (
+                    json.dumps(err_detail) if isinstance(err_detail, dict) else str(err_detail)
+                )
             except (json.JSONDecodeError, ValueError):
                 err_msg = str(exc)
             log.error(
@@ -341,9 +343,7 @@ class LinkedInPublisher(BasePlatformAdapter):
 
         return {"status": "ok", "post_id": str(post_id)}
 
-    def _read_content(
-        self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read post text from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -369,9 +369,7 @@ class LinkedInPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass

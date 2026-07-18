@@ -54,12 +54,14 @@ class BrandProfile:
     target_audience: str = ""
     personality: str = ""
     platforms: list[str] = field(default_factory=list)
-    automation: dict[str, str] = field(default_factory=lambda: {
-        "wechat": "auto",
-        "zhihu": "auto",
-        "xiaohongshu": "manual",
-        "feishu": "auto",
-    })
+    automation: dict[str, str] = field(
+        default_factory=lambda: {
+            "wechat": "auto",
+            "zhihu": "auto",
+            "xiaohongshu": "manual",
+            "feishu": "auto",
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +108,9 @@ def _extract_automation(raw: object) -> dict[str, str]:
         else:
             logger.warning(
                 "Invalid automation level %r for platform %r; expected one of %s",
-                value, key, sorted(VALID_LEVELS),
+                value,
+                key,
+                sorted(VALID_LEVELS),
             )
     return result
 

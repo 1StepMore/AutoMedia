@@ -170,8 +170,7 @@ def llm_check_with_fallback(
     result_model = _RESULT_MODELS.get(check_type)
     if result_model is None:
         raise ValueError(
-            f"Unknown check_type {check_type!r}. "
-            f"Expected one of: {list(_RESULT_MODELS)}"
+            f"Unknown check_type {check_type!r}. Expected one of: {list(_RESULT_MODELS)}"
         )
 
     # --- Attempt LLM evaluation ---
@@ -280,8 +279,7 @@ def run_deep_check(
                 prompt,
                 response_format=DeepCheckResult,
                 system_prompt=(
-                    "You are a content quality reviewer. "
-                    "Identify any issues in the content."
+                    "You are a content quality reviewer. Identify any issues in the content."
                 ),
             )
             result = future.result(timeout=timeout)

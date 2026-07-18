@@ -58,12 +58,14 @@ class _UsageTracker:
         """Record a single LLM call's token usage."""
         if not hasattr(self._local, "calls"):
             self.reset()
-        self._local.calls.append({
-            "model": model,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-        })
+        self._local.calls.append(
+            {
+                "model": model,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+            }
+        )
         self._local.prompt_tokens += prompt_tokens
         self._local.completion_tokens += completion_tokens
         self._local.total_tokens += total_tokens
@@ -110,7 +112,8 @@ class _UsageTracker:
         return {
             "calls": current["calls"][prev_count:],
             "prompt_tokens": current["prompt_tokens"] - previous.get("prompt_tokens", 0),
-            "completion_tokens": current["completion_tokens"] - previous.get("completion_tokens", 0),
+            "completion_tokens": current["completion_tokens"]
+            - previous.get("completion_tokens", 0),
             "total_tokens": current["total_tokens"] - previous.get("total_tokens", 0),
         }
 
@@ -372,9 +375,7 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
         return (AttributeError, NotImplementedError)
 
 
-_FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = (
-    _get_fallback_structured_errors()
-)
+_FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = _get_fallback_structured_errors()
 
 
 def _structured_completion_with_fallback(
@@ -441,9 +442,7 @@ def _structured_completion_with_fallback(
     resolved_temp: float = (
         temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
     )
-    resolved_max: int = (
-        max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
-    )
+    resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
 
     messages: list[dict[str, str]] = []
     if system_prompt:
@@ -478,9 +477,7 @@ def _structured_completion_with_fallback(
             max_tokens=resolved_max,
         )
     except Exception as exc:
-        raise LLMError(
-            f"LLM completion failed during structured fallback: {exc}"
-        ) from exc
+        raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
 
     raw_text: str = response.choices[0].message.content or ""
 

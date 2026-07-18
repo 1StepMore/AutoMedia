@@ -23,9 +23,7 @@ from automedia.gates.base import BaseGate, _registry
 # Names guaranteed not to clash with existing test gate classes
 # (test_gate_base.py uses G87-G99; test_gate_engine.py uses G73-G85;
 #  test_runner.py uses G60-G61 and V96-V99).
-_SAFE_NAMES: list[str] = ["D1", "D2", "D3", "D4", "D5",
-                          "D6", "D7", "D8", "D9", "L98",
-                          "L99", "V90"]
+_SAFE_NAMES: list[str] = ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "L98", "L99", "V90"]
 
 
 def _make_test_gate(name: str) -> type[BaseGate]:
@@ -118,7 +116,7 @@ class TestGateRegistryConcurrency:
 
         # --- assertions ---
         assert len(results) == 10
-        for a, got in zip(call_args, results):
+        for a, got in zip(call_args, results, strict=False):
             assert got is classes[a], (
                 f"Expected {classes[a].__name__} for {a!r}, got {got.__name__}"
             )
@@ -151,9 +149,7 @@ class TestGateRegistryConcurrency:
             concurrent.futures.wait(reg_futures + get_futures)
 
         reg_results = [f.result() for f in reg_futures]
-        assert all(r is not None for r in reg_results), (
-            f"Some registers failed: {reg_results}"
-        )
+        assert all(r is not None for r in reg_results), f"Some registers failed: {reg_results}"
         # Every registered gate must be queryable
         for n in reg_names:
             cls = _registry.get(n)
@@ -242,9 +238,7 @@ class TestGateRegistryConcurrency:
             assert cls._gate_name == name, (  # type: ignore[attr-defined]
                 f"Gate key {name!r} != cls._gate_name {cls._gate_name!r}"  # type: ignore[attr-defined]
             )
-            assert hasattr(cls, "_failure_mode"), (
-                f"Gate {name!r} missing _failure_mode"
-            )
+            assert hasattr(cls, "_failure_mode"), f"Gate {name!r} missing _failure_mode"
 
     # ------------------------------------------------------------------
     # Test 6 — mix of register / get / contains / len under high concurrency
@@ -271,8 +265,7 @@ class TestGateRegistryConcurrency:
             """Pick a random operation and run it."""
             import random
 
-            op = random.choice(["register", "get", "contains", "len",
-                                "list", "get_all"])
+            op = random.choice(["register", "get", "contains", "len", "list", "get_all"])
             try:
                 if op == "register":
                     idx = (op_id * 7) % len(new_gates)

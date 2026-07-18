@@ -619,32 +619,24 @@ class TestPipelineProgress:
 class TestTracebackLogging:
     """All exception types must log full tracebacks, not just str(exc)."""
 
-    def test_permanent_error_logs_traceback(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_permanent_error_logs_traceback(self, caplog: pytest.LogCaptureFixture) -> None:
         """Permanent exceptions must include traceback in the log."""
         engine = GateEngine([_PermanentErrorRewriteGate()])
         with caplog.at_level(logging.ERROR, logger="automedia.pipelines.gate_engine"):
             engine.run({})
 
-        error_records = [
-            r for r in caplog.records if r.levelno >= logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
         assert len(error_records) >= 1, "Expected at least one ERROR log record"
         combined = "\n".join(r.getMessage() for r in error_records)
         assert "ValueError" in combined or "permanent error" in combined
 
-    def test_transient_error_logs_traceback(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_transient_error_logs_traceback(self, caplog: pytest.LogCaptureFixture) -> None:
         """Transient exceptions must include traceback in the log."""
         engine = GateEngine([_TransientConnectionErrorGate()])
         with caplog.at_level(logging.ERROR, logger="automedia.pipelines.gate_engine"):
             engine.run({})
 
-        error_records = [
-            r for r in caplog.records if r.levelno >= logging.ERROR
-        ]
+        error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
         assert len(error_records) >= 1
         combined = "\n".join(r.getMessage() for r in error_records)
         assert "ConnectionError" in combined or "transient" in combined

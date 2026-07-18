@@ -70,15 +70,11 @@ class H0HumanReviewGate(BaseGate):
             }
 
         # Collect any escalated gates from auto-recovery
-        escalated: list[dict[str, Any]] | list[str] = list(
-            gate_context.get("_escalated_gates", [])
-        )
+        escalated: list[dict[str, Any]] | list[str] = list(gate_context.get("_escalated_gates", []))
 
         hitl_cfg: dict[str, Any] = gate_context.get("hitl_config", {})
         timeout_s = (
-            gate_context.get("hitl_timeout")
-            or hitl_cfg.get("timeout_s")
-            or _DEFAULT_HITL_TIMEOUT_S
+            gate_context.get("hitl_timeout") or hitl_cfg.get("timeout_s") or _DEFAULT_HITL_TIMEOUT_S
         )
 
         # Pause for human review

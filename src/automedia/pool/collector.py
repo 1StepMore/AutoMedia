@@ -47,9 +47,7 @@ class HotCollector:
             tavily_api_key: Tavily Search API key. Falls back to env var.
         """
         self._seed_topics = seed_topics or []
-        self._tavily_api_key = tavily_api_key or os.environ.get(
-            "AUTOMEDIA_TAVILY_API_KEY", ""
-        )
+        self._tavily_api_key = tavily_api_key or os.environ.get("AUTOMEDIA_TAVILY_API_KEY", "")
 
     # ------------------------------------------------------------------
     # Public API
@@ -191,13 +189,15 @@ class HotCollector:
                 continue
             score = item.get("score", 0.5)
             heat_score = round(min(float(score) * 10, 10.0), 1)
-            results.append({
-                "source": "tavily",
-                "title": title,
-                "url": url,
-                "heat_score": heat_score,
-                "collected_at": now,
-            })
+            results.append(
+                {
+                    "source": "tavily",
+                    "title": title,
+                    "url": url,
+                    "heat_score": heat_score,
+                    "collected_at": now,
+                }
+            )
         return results
 
     # ------------------------------------------------------------------
@@ -221,9 +221,9 @@ class HotCollector:
             "Generate a list of 5 currently trending hot topics in the AI "
             "and creator-economy space. "
             "Return ONLY a JSON array of objects with keys: "
-            "\"title\" (topic title in Chinese or English), "
-            "\"url\" (a relevant news or article URL), "
-            "and \"heat_score\" (float 0-10 indicating popularity)."
+            '"title" (topic title in Chinese or English), '
+            '"url" (a relevant news or article URL), '
+            'and "heat_score" (float 0-10 indicating popularity).'
         )
 
         try:
@@ -243,7 +243,7 @@ class HotCollector:
         if text.startswith("```"):
             first_nl = text.find("\n")
             if first_nl != -1:
-                text = text[first_nl + 1:]
+                text = text[first_nl + 1 :]
             if text.endswith("```"):
                 text = text[:-3].rstrip()
 
@@ -262,13 +262,15 @@ class HotCollector:
             title = (item.get("title") or "").strip()
             if not title:
                 continue
-            results.append({
-                "source": "aihot",
-                "title": title,
-                "url": item.get("url", ""),
-                "heat_score": float(item.get("heat_score", 5.0)),
-                "collected_at": now,
-            })
+            results.append(
+                {
+                    "source": "aihot",
+                    "title": title,
+                    "url": item.get("url", ""),
+                    "heat_score": float(item.get("heat_score", 5.0)),
+                    "collected_at": now,
+                }
+            )
         return results
 
     # ------------------------------------------------------------------

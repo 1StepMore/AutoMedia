@@ -253,9 +253,7 @@ class TwitterPublisher(BasePlatformAdapter):
         if draft_only:
             draft_url = None
             if user_display_name:
-                draft_url = (
-                    f"https://twitter.com/{user_display_name}"
-                )
+                draft_url = f"https://twitter.com/{user_display_name}"
             log.info(
                 "twitter.draft_only.preview",
                 text_preview=tweet_text[:100],
@@ -418,9 +416,7 @@ class TwitterPublisher(BasePlatformAdapter):
             log.warning("twitter.resolve_display_name.failed", error=str(exc))
             return None
 
-    def _upload_media(
-        self, artifact_dir: str, token: str
-    ) -> dict[str, Any]:
+    def _upload_media(self, artifact_dir: str, token: str) -> dict[str, Any]:
         """Upload media files from the artifact directory to Twitter.
 
         Scans for images (``*.png``, ``*.jpg``, ``*.jpeg``, ``*.gif``)
@@ -490,9 +486,7 @@ class TwitterPublisher(BasePlatformAdapter):
 
         return {"status": "ok", "media_ids": media_ids}
 
-    def _read_content(
-        self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read tweet text from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -518,9 +512,7 @@ class TwitterPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass

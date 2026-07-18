@@ -226,11 +226,13 @@ def mcp_help() -> dict[str, Any]:
     categorized: dict[str, list[dict[str, Any]]] = {}
     for name, info in _tool_registry.items():
         category = _categorize_tool(name)
-        categorized.setdefault(category, []).append({
-            "name": name,
-            "description": info["description"],
-            "parameters": info.get("parameters"),
-        })
+        categorized.setdefault(category, []).append(
+            {
+                "name": name,
+                "description": info["description"],
+                "parameters": info.get("parameters"),
+            }
+        )
 
     sorted_categories: dict[str, list[dict[str, str]]] = {}
     for cat in sorted(categorized):
@@ -267,9 +269,9 @@ def create_server() -> FastMCP:
             "AutoMedia — Automated Media Production Pipeline\n"
             "================================================\n"
             "\n"
-"41 MCP tools for topic selection, pipeline execution, project\n"
-             "management, Omni Triad document processing, brand strategy,\n"
-             "cron schedule management, content quality evaluation, and server health.\n"
+            "41 MCP tools for topic selection, pipeline execution, project\n"
+            "management, Omni Triad document processing, brand strategy,\n"
+            "cron schedule management, content quality evaluation, and server health.\n"
             "\n"
             "━━━ CORE WORKFLOW (5 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
@@ -374,30 +376,30 @@ def create_server() -> FastMCP:
             "  health_check()\n"
             "      Returns {status, version, uptime_s, tools_count}. No parameters.\n"
             "\n"
-"━━━ BRAND TOOLS (1 tool) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-             "\n"
-             "  list_brands()\n"
-             "      List all configured brands with full profile metadata.\n"
-             "      Returns structured list with aliases, CTA principles, blocked\n"
-             "      words, tone guidelines, brand identity, languages, industry,\n"
-             "      target audience, personality, and platforms.\n"
-             "\n"
-             "━━━ CRON SCHEDULE TOOLS (3 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-             "\n"
-             "  add_cron_schedule(name, expression, brand?, category?, count?)\n"
-             "      Add a cron schedule entry to cron/jobs.yaml. Validates\n"
-             "      the cron expression (5 fields) and prevents duplicate names.\n"
-             "      Returns {added: true, name} on success.\n"
-             "\n"
-             "  list_cron_schedules()\n"
-             "      List all cron schedule entries sorted by name.\n"
-             "      Returns {schedules[], count}.\n"
-             "\n"
-             "  remove_cron_schedule(name)\n"
-             "      Remove a cron schedule entry by name.\n"
-             "      Returns {removed: true, name} or {error} if not found.\n"
-             "\n"
-             "━━━ ACCOUNT TOOLS (4 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━ BRAND TOOLS (1 tool) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "\n"
+            "  list_brands()\n"
+            "      List all configured brands with full profile metadata.\n"
+            "      Returns structured list with aliases, CTA principles, blocked\n"
+            "      words, tone guidelines, brand identity, languages, industry,\n"
+            "      target audience, personality, and platforms.\n"
+            "\n"
+            "━━━ CRON SCHEDULE TOOLS (3 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "\n"
+            "  add_cron_schedule(name, expression, brand?, category?, count?)\n"
+            "      Add a cron schedule entry to cron/jobs.yaml. Validates\n"
+            "      the cron expression (5 fields) and prevents duplicate names.\n"
+            "      Returns {added: true, name} on success.\n"
+            "\n"
+            "  list_cron_schedules()\n"
+            "      List all cron schedule entries sorted by name.\n"
+            "      Returns {schedules[], count}.\n"
+            "\n"
+            "  remove_cron_schedule(name)\n"
+            "      Remove a cron schedule entry by name.\n"
+            "      Returns {removed: true, name} or {error} if not found.\n"
+            "\n"
+            "━━━ ACCOUNT TOOLS (4 tools) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
             "  connect_account(platform, auth_type?, credentials?, label?)\n"
             "      Register a new platform account for publishing.\n"
@@ -418,7 +420,7 @@ def create_server() -> FastMCP:
             "━━━ ERROR HANDLING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "\n"
             "All tools return JSON dicts. On error the dict contains an 'error' key:\n"
-            "  {\"error\": \"description of what went wrong\"}\n"
+            '  {"error": "description of what went wrong"}\n'
             "\n"
             "Common error patterns:\n"
             "  - 'path not allowed' — file outside the allowlist. Configure\n"
@@ -583,8 +585,7 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Remove a cron schedule entry by name. "
-            "Returns an error if the name is not found."
+            "Remove a cron schedule entry by name. Returns an error if the name is not found."
         ),
     )(remove_cron_schedule)
 
@@ -743,8 +744,7 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Register a new platform account for publishing. "
-            "Returns the account_id and metadata."
+            "Register a new platform account for publishing. Returns the account_id and metadata."
         ),
     )(connect_account)
 
@@ -763,9 +763,7 @@ def create_server() -> FastMCP:
     )(get_account_health)
 
     mcp.tool(
-        description=(
-            "Disconnect/remove a platform account. Requires account_id."
-        ),
+        description=("Disconnect/remove a platform account. Requires account_id."),
     )(disconnect_account)
 
     # ------------------------------------------------------------------

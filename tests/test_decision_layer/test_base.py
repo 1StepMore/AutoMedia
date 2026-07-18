@@ -16,7 +16,6 @@ from typing import Any
 
 from automedia.decision.base import DecisionArtifact
 
-
 # ===================================================================
 # DecisionArtifact — construction & defaults
 # ===================================================================
@@ -129,7 +128,8 @@ class TestDecisionArtifactValidation:
     def test_content_can_be_non_dict(self) -> None:
         """content stores whatever is passed (dataclasses don't enforce types)."""
         artifact = DecisionArtifact(
-            artifact_type="brief", content=["not", "a", "dict"]  # type: ignore[arg-type]
+            artifact_type="brief",
+            content=["not", "a", "dict"],  # type: ignore[arg-type]
         )
         assert isinstance(artifact.content, list)  # type: ignore[assert-type]
 

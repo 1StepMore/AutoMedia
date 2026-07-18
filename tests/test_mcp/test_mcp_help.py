@@ -11,7 +11,6 @@ from unittest.mock import patch
 
 from automedia.mcp.server import _CATEGORY_PREFIXES, mcp_help
 
-
 # ---------------------------------------------------------------------------
 # Shared test data
 # ---------------------------------------------------------------------------
@@ -82,9 +81,7 @@ class TestMcpHelp:
             result = mcp_help()
 
         categories = list(result["categories"].keys())
-        assert categories == sorted(categories), (
-            f"Categories should be sorted: {categories}"
-        )
+        assert categories == sorted(categories), f"Categories should be sorted: {categories}"
 
     def test_tools_within_category_sorted_by_name(self) -> None:
         """Tools within each category are sorted by name alphabetically."""
@@ -261,11 +258,5 @@ class TestCategoryPrefixes:
         disconnect_idx = next(
             i for i, (p, _) in enumerate(_CATEGORY_PREFIXES) if p == "disconnect_"
         )
-        get_idx = next(
-            i for i, (p, _) in enumerate(_CATEGORY_PREFIXES) if p == "get_"
-        )
-        assert disconnect_idx < get_idx, (
-            "disconnect_ must come before get_ in _CATEGORY_PREFIXES"
-        )
-
-
+        get_idx = next(i for i, (p, _) in enumerate(_CATEGORY_PREFIXES) if p == "get_")
+        assert disconnect_idx < get_idx, "disconnect_ must come before get_ in _CATEGORY_PREFIXES"

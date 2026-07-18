@@ -55,9 +55,19 @@ TIKTOK_UPLOAD_URL = f"{TIKTOK_API_BASE}/video/upload/"
 TIKTOK_PUBLISH_URL = f"{TIKTOK_API_BASE}/video/publish/"
 
 # Video file extensions supported for upload (in priority order)
-_VIDEO_EXTENSIONS = frozenset({
-    ".mp4", ".mov", ".avi", ".mkv", ".webm", ".mpeg", ".mpg", ".flv", ".wmv",
-})
+_VIDEO_EXTENSIONS = frozenset(
+    {
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".webm",
+        ".mpeg",
+        ".mpg",
+        ".flv",
+        ".wmv",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -168,10 +178,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    "TikTok credentials not configured — set "
-                    "AUTOMEDIA_TIKTOK_ACCESS_TOKEN"
-                ),
+                "reason": ("TikTok credentials not configured — set AUTOMEDIA_TIKTOK_ACCESS_TOKEN"),
             }
 
         access_token: str = creds["access_token"]
@@ -187,7 +194,8 @@ class TikTokPublisher(BasePlatformAdapter):
 
         # 1. Read video metadata from project & artifact info
         title, description, privacy_level = self._read_metadata(
-            artifact_dir, project,
+            artifact_dir,
+            project,
         )
 
         # 2. Find video file
@@ -278,14 +286,8 @@ class TikTokPublisher(BasePlatformAdapter):
                 info: dict[str, Any] = json.loads(
                     info_file.read_text(encoding="utf-8"),
                 )
-                title = str(
-                    info.get("title") or info.get("topic") or title
-                )
-                description = str(
-                    info.get("description")
-                    or info.get("summary")
-                    or description
-                )
+                title = str(info.get("title") or info.get("topic") or title)
+                description = str(info.get("description") or info.get("summary") or description)
             except (json.JSONDecodeError, OSError):
                 pass
 
@@ -384,9 +386,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    f"video upload failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"video upload failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -396,9 +396,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    f"video upload failed: {type(exc).__name__}"
-                ),
+                "reason": (f"video upload failed: {type(exc).__name__}"),
             }
 
         # Parse the response for the video/upload ID.
@@ -503,9 +501,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    f"video publish failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"video publish failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -515,9 +511,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    f"video publish failed: {type(exc).__name__}"
-                ),
+                "reason": (f"video publish failed: {type(exc).__name__}"),
             }
 
         try:
@@ -545,9 +539,7 @@ class TikTokPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "tiktok",
-                "reason": (
-                    f"publish API error ({error_code}): {error_msg}"
-                ),
+                "reason": (f"publish API error ({error_code}): {error_msg}"),
             }
 
         log.info(

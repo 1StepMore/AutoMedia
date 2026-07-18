@@ -111,13 +111,15 @@ class TestCollectAll:
         )
 
         # Mock LLM response
-        mock_llm.return_value = json.dumps([
-            {
-                "title": "Trending Topic",
-                "url": "https://example.com/trend",
-                "heat_score": 8.0,
-            },
-        ])
+        mock_llm.return_value = json.dumps(
+            [
+                {
+                    "title": "Trending Topic",
+                    "url": "https://example.com/trend",
+                    "heat_score": 8.0,
+                },
+            ]
+        )
 
         # Create a collector with CJK keyword seed so _extract_keywords works
         seed = [
@@ -270,18 +272,20 @@ class TestFetchAIHOT:
 
     def test_parses_llm_trending_response(self):
         """Verify correct parsing of LLM-generated trending topics."""
-        mock_data = json.dumps([
-            {
-                "title": "AI Agent框架全面爆发",
-                "url": "https://example.com/ai-agent",
-                "heat_score": 9.2,
-            },
-            {
-                "title": "开源大模型最新进展",
-                "url": "https://example.com/oss-llm",
-                "heat_score": 8.5,
-            },
-        ])
+        mock_data = json.dumps(
+            [
+                {
+                    "title": "AI Agent框架全面爆发",
+                    "url": "https://example.com/ai-agent",
+                    "heat_score": 9.2,
+                },
+                {
+                    "title": "开源大模型最新进展",
+                    "url": "https://example.com/oss-llm",
+                    "heat_score": 8.5,
+                },
+            ]
+        )
 
         with patch(
             "automedia.core.llm_client.llm_complete",
@@ -300,7 +304,7 @@ class TestFetchAIHOT:
         """LLM responses wrapped in ```json fences should still parse."""
         with patch(
             "automedia.core.llm_client.llm_complete",
-            return_value="```json\n[{\"title\": \"AI Trend\", \"url\": \"https://example.com\", \"heat_score\": 7.5}]\n```",
+            return_value='```json\n[{"title": "AI Trend", "url": "https://example.com", "heat_score": 7.5}]\n```',
         ):
             c = HotCollector()
             items = c._fetch_aihot()

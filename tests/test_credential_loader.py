@@ -458,9 +458,7 @@ class TestAdapterEdgeCases:
 
     # -- resolve_api_key empty-env interaction ----------------------------
 
-    def test_resolve_api_key_empty_env_with_model_config(
-        self, monkeypatch, tmp_path
-    ):
+    def test_resolve_api_key_empty_env_with_model_config(self, monkeypatch, tmp_path):
         """``resolve_api_key`` skips an empty env var (falsy check) and
         proceeds to ``model_config.yaml`` lookup."""
         cred_dir = _mock_home(monkeypatch, tmp_path)

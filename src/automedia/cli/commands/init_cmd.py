@@ -58,9 +58,7 @@ def init_cmd(
         _init_minimal()
     elif template is None:
         if get_output_mode() == OutputMode.JSON:
-            output_error(
-                "Interactive init not supported in --json mode. Use --template minimal."
-            )
+            output_error("Interactive init not supported in --json mode. Use --template minimal.")
         _init_interactive()
     else:
         output_error(f"Unknown template: {template!r}")

@@ -111,7 +111,9 @@ class TestDoctorChromeHeadless:
 
     def test_headless_timeout(self, doctor: Doctor):
         """TimeoutExpired → (False, 'timed out')."""
-        with patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=10)):
+        with patch.object(
+            subprocess, "run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=10)
+        ):
             ok, msg = doctor._check_chrome_headless("/usr/bin/google-chrome")
             assert ok is False
             assert msg is not None

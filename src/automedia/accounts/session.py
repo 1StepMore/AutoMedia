@@ -69,9 +69,9 @@ class SessionManager:
             _ = self._cooldowns.pop(account_id, None)
             return False
 
-    # ------------------------------------------------------------------
-    # Rate-limit handling
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Rate-limit handling
+        # ------------------------------------------------------------------
         return True
 
     # ------------------------------------------------------------------
@@ -144,16 +144,21 @@ class SessionManager:
                     return self._refresh(account_id, refresh_fn)
                 return None
 
-            if ttl > 0 and elapsed >= ttl * self._refresh_threshold and refresh_fn and not cached.is_refreshing:
+            if (
+                ttl > 0
+                and elapsed >= ttl * self._refresh_threshold
+                and refresh_fn
+                and not cached.is_refreshing
+            ):
                 # Past threshold — refresh if not already refreshing
-                    # Fire async refresh in background
-                    cached.is_refreshing = True
-                    t = threading.Thread(
-                        target=self._refresh,
-                        args=(account_id, refresh_fn),
-                        daemon=True,
-                    )
-                    t.start()
+                # Fire async refresh in background
+                cached.is_refreshing = True
+                t = threading.Thread(
+                    target=self._refresh,
+                    args=(account_id, refresh_fn),
+                    daemon=True,
+                )
+                t.start()
 
         return cached.token
 

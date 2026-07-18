@@ -180,5 +180,3 @@ class OLAdapter(BaseOmniAdapter):
             )
             results.append(result)
         return results
-
-

@@ -31,15 +31,11 @@ class TestCookieAuth:
 
     def test_with_health_check_passing(self) -> None:
         """Health check that returns True makes cookie valid."""
-        assert CookieAuth.validate_cookie(
-            "session=valid", health_check_fn=lambda c: True
-        ) is True
+        assert CookieAuth.validate_cookie("session=valid", health_check_fn=lambda c: True) is True
 
     def test_with_health_check_failing(self) -> None:
         """Health check that returns False makes cookie invalid."""
-        assert CookieAuth.validate_cookie(
-            "session=valid", health_check_fn=lambda c: False
-        ) is False
+        assert CookieAuth.validate_cookie("session=valid", health_check_fn=lambda c: False) is False
 
     def test_with_health_check_raising(self) -> None:
         """Health check that raises logs warning and returns False."""
@@ -47,7 +43,4 @@ class TestCookieAuth:
         def _failing(c: str) -> bool:
             raise ConnectionError("API unreachable")
 
-        assert (
-            CookieAuth.validate_cookie("session=valid", health_check_fn=_failing)
-            is False
-        )
+        assert CookieAuth.validate_cookie("session=valid", health_check_fn=_failing) is False

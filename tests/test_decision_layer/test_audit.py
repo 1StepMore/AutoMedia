@@ -54,9 +54,7 @@ class TestLogForceProvenance:
     def test_writes_correct_entry_format(self, tmp_path: Path) -> None:
         from automedia.decision.audit import _audit_log_path, log_force_provenance
 
-        log_force_provenance(
-            topic="eco bottles", brand="green-co", user="alice", args="--force"
-        )
+        log_force_provenance(topic="eco bottles", brand="green-co", user="alice", args="--force")
         content = _audit_log_path().read_text(encoding="utf-8")
         assert "user=alice" in content
         assert "topic='eco bottles'" in content

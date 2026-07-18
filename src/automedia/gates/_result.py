@@ -85,7 +85,11 @@ def _derive_suggestion(check_name: str, threshold: str) -> str:
         return f"Remove or avoid {check_label} to satisfy: {threshold}"
     if "must" in threshold_lower or "should" in threshold_lower:
         return f"Ensure {check_label} to satisfy: {threshold}"
-    if "between" in threshold_lower or "within" in threshold_lower or threshold_lower.startswith("all "):
+    if (
+        "between" in threshold_lower
+        or "within" in threshold_lower
+        or threshold_lower.startswith("all ")
+    ):
         return f"Verify {check_label} meets: {threshold}"
 
     return f"Address {check_label} to match expected: {threshold}"
@@ -106,7 +110,9 @@ def _enrich_failing_checks(
     for check in checks:
         if not check["passed"]:
             check_name = check["name"]
-            threshold = _derive_expected(check_name, expected_map=expected_map, suffix=expected_suffix)
+            threshold = _derive_expected(
+                check_name, expected_map=expected_map, suffix=expected_suffix
+            )
             check["check_name"] = check_name
             check["actual_value"] = check.get("detail", "")
             check["threshold"] = threshold

@@ -141,8 +141,6 @@ def _check_duration_valid(
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # V7SixStepHard gate
 # ---------------------------------------------------------------------------
@@ -175,7 +173,12 @@ class V7SixStepHard(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V7 6-step hard checks and return structured result."""
         if not gate_context.get("hyperframes_available", True):
-            return {"passed": True, "gate": "V7", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+            return {
+                "passed": True,
+                "gate": "V7",
+                "status": "skipped",
+                "reason": "HyperFrames not installed — video QA skipped",
+            }
 
         required_files: list[str] = gate_context.get("required_files", [])
         file_sizes: dict[str, int] = gate_context.get("file_sizes", {})

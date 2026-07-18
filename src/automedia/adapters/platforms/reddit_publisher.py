@@ -101,18 +101,10 @@ def _load_reddit_credentials() -> tuple[str, str, str, str]:
         ``(client_id, client_secret, username, password)`` — any may be
         empty if not found.
     """
-    client_id = (
-        load_credential_or_env("REDDIT_CLIENT_ID", "reddit_client_id") or ""
-    )
-    client_secret = (
-        load_credential_or_env("REDDIT_CLIENT_SECRET", "reddit_client_secret") or ""
-    )
-    username = (
-        load_credential_or_env("REDDIT_USERNAME", "reddit_username") or ""
-    )
-    password = (
-        load_credential_or_env("REDDIT_PASSWORD", "reddit_password") or ""
-    )
+    client_id = load_credential_or_env("REDDIT_CLIENT_ID", "reddit_client_id") or ""
+    client_secret = load_credential_or_env("REDDIT_CLIENT_SECRET", "reddit_client_secret") or ""
+    username = load_credential_or_env("REDDIT_USERNAME", "reddit_username") or ""
+    password = load_credential_or_env("REDDIT_PASSWORD", "reddit_password") or ""
     return client_id, client_secret, username, password
 
 
@@ -364,9 +356,7 @@ class RedditPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "reddit",
-                "reason": (
-                    f"token request failed (HTTP {exc.response.status_code})"
-                ),
+                "reason": (f"token request failed (HTTP {exc.response.status_code})"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -420,9 +410,7 @@ class RedditPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -536,9 +524,7 @@ class RedditPublisher(BasePlatformAdapter):
                 return {
                     "status": "error",
                     "platform": "reddit",
-                    "reason": (
-                        f"Rate limited. Retry after {retry_after} seconds."
-                    ),
+                    "reason": (f"Rate limited. Retry after {retry_after} seconds."),
                 }
 
             return {
@@ -586,9 +572,7 @@ class RedditPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "reddit",
-                "reason": (
-                    f"unexpected API response: no post id in {data}"
-                ),
+                "reason": (f"unexpected API response: no post id in {data}"),
             }
 
         log.info(

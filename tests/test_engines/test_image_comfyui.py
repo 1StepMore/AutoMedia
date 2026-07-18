@@ -22,7 +22,6 @@ import pytest
 from automedia.engines import EngineExecutionError
 from automedia.engines.implementations.image_comfyui import (
     ComfyUIImageEngine,
-    _materialise_workflow,
 )
 from automedia.engines.registry import EngineRegistry
 
@@ -84,9 +83,7 @@ class TestComfyUIImageEngineCheckAvailable:
         EngineRegistry().register("comfyui", ComfyUIImageEngine, modality="image")
 
     @patch("httpx.Client")
-    def test_returns_true_when_reachable(
-        self, mock_client_cls: MagicMock
-    ) -> None:
+    def test_returns_true_when_reachable(self, mock_client_cls: MagicMock) -> None:
         """HTTP GET succeeds → available is True."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -99,9 +96,7 @@ class TestComfyUIImageEngineCheckAvailable:
         mock_client.get.assert_called_once()
 
     @patch("httpx.Client")
-    def test_returns_false_when_unreachable(
-        self, mock_client_cls: MagicMock
-    ) -> None:
+    def test_returns_false_when_unreachable(self, mock_client_cls: MagicMock) -> None:
         """HTTP GET raises → available is False."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -142,9 +137,7 @@ class TestComfyUIImageEngineCheckAvailable:
         assert call_url == "http://127.0.0.1:8188"
 
     @patch("httpx.Client")
-    def test_uses_custom_url_from_config(
-        self, mock_client_cls: MagicMock
-    ) -> None:
+    def test_uses_custom_url_from_config(self, mock_client_cls: MagicMock) -> None:
         """Custom host/port/protocol from config are used."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -204,9 +197,7 @@ class TestComfyUIImageEngineGenerate:
         EngineRegistry().register("comfyui", ComfyUIImageEngine, modality="image")
 
     @patch("httpx.Client")
-    def test_full_flow_creates_output_file(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_full_flow_creates_output_file(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Full HTTP flow: POST → poll → download → file written."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -244,9 +235,7 @@ class TestComfyUIImageEngineGenerate:
         assert result == os.path.abspath(output_path)
 
     @patch("httpx.Client")
-    def test_uses_correct_http_endpoints(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_uses_correct_http_endpoints(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Verify the correct ComfyUI HTTP endpoints are called."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -276,17 +265,11 @@ class TestComfyUIImageEngineGenerate:
 
         # At least one GET to /history/ and one to /view
         get_urls = [call[0][0] for call in mock_client.get.call_args_list]
-        assert any("/history/" in u for u in get_urls), (
-            f"No /history/ call in {get_urls}"
-        )
-        assert any("/view" in u for u in get_urls), (
-            f"No /view call in {get_urls}"
-        )
+        assert any("/history/" in u for u in get_urls), f"No /history/ call in {get_urls}"
+        assert any("/view" in u for u in get_urls), f"No /view call in {get_urls}"
 
     @patch("httpx.Client")
-    def test_returns_absolute_path(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_returns_absolute_path(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Return value is an absolute path to the output file."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -308,15 +291,16 @@ class TestComfyUIImageEngineGenerate:
 
         engine = ComfyUIImageEngine()
         result = engine.generate(
-            "p", 512, 512, str(tmp_path / "nested" / "out.png"),
+            "p",
+            512,
+            512,
+            str(tmp_path / "nested" / "out.png"),
         )
         assert os.path.isabs(result)
         assert result.endswith("out.png")
 
     @patch("httpx.Client")
-    def test_passes_workflow_in_post_body(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_passes_workflow_in_post_body(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """POST body contains a 'prompt' key with the workflow data."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -353,9 +337,7 @@ class TestComfyUIImageEngineGenerate:
         assert workflow["5"]["inputs"]["height"] == 600
 
     @patch("httpx.Client")
-    def test_negative_prompt_from_config(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_negative_prompt_from_config(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """negative_prompt from config flows to node 7 (negative CLIPTextEncode)."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -386,9 +368,7 @@ class TestComfyUIImageEngineGenerate:
         assert workflow["7"]["inputs"]["text"] == "bad quality, ugly"
 
     @patch("httpx.Client")
-    def test_negative_prompt_default(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_negative_prompt_default(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Default negative prompt is used when config is not set."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -417,9 +397,7 @@ class TestComfyUIImageEngineGenerate:
         assert workflow["7"]["inputs"]["text"] == "blurry, low quality, distorted"
 
     @patch("httpx.Client")
-    def test_seed_is_integer_in_workflow(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_seed_is_integer_in_workflow(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Node 3 (KSampler) seed is an integer."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -450,9 +428,7 @@ class TestComfyUIImageEngineGenerate:
         assert 0 <= seed <= 2**31 - 1
 
     @patch("httpx.Client")
-    def test_custom_workflow_path(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_custom_workflow_path(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Custom workflow JSON via workflow_path config is used."""
         import json
 
@@ -501,9 +477,7 @@ class TestComfyUIImageEngineGenerate:
         assert workflow["11"]["inputs"]["text"] == "blurry, low quality, distorted"
 
     @patch("httpx.Client")
-    def test_custom_workflow_path_missing(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_custom_workflow_path_missing(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Missing workflow_path file raises EngineExecutionError."""
         missing = tmp_path / "no_such_file.json"
 
@@ -517,9 +491,7 @@ class TestComfyUIImageEngineGenerate:
             engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
-    def test_uses_config_host_port(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_uses_config_host_port(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Custom host/port from engine config are used in URLs."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -585,9 +557,7 @@ class TestComfyUIImageEngineGenerateErrors:
                 engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
-    def test_connection_error_raises(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_connection_error_raises(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Connection error raises EngineExecutionError."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -602,9 +572,7 @@ class TestComfyUIImageEngineGenerateErrors:
             engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
-    def test_http_error_status_raises(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_http_error_status_raises(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """HTTP 5xx from POST /prompt raises EngineExecutionError."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -618,9 +586,7 @@ class TestComfyUIImageEngineGenerateErrors:
             engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
-    def test_missing_prompt_id_raises(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_missing_prompt_id_raises(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """Response without prompt_id raises EngineExecutionError."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client
@@ -662,9 +628,7 @@ class TestComfyUIImageEngineGenerateErrors:
             engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
-    def test_download_http_error_raises(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_download_http_error_raises(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """HTTP error during image download raises EngineExecutionError."""
         mock_client = MagicMock()
         mock_client_cls.return_value.__enter__.return_value = mock_client

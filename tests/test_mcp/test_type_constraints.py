@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-
 # ---------------------------------------------------------------------------
 # Tests: tools.py imports type aliases
 # ---------------------------------------------------------------------------
@@ -236,8 +235,16 @@ class TestLiteralTypeEnforcement:
         """All known valid modes are accepted by run_pipeline."""
         from automedia.mcp.tools import run_pipeline
 
-        for mode in ("auto", "text_only", "text_with_cover", "video_only", "qa_only",
-                     "image-carousel", "social-thread", "short-video"):
+        for mode in (
+            "auto",
+            "text_only",
+            "text_with_cover",
+            "video_only",
+            "qa_only",
+            "image-carousel",
+            "social-thread",
+            "short-video",
+        ):
             with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
                 mock_run.return_value = MagicMock()
                 result = run_pipeline(
@@ -260,6 +267,7 @@ class TestTypeAliasUsage:
     def test_get_pipeline_progress_uses_non_empty_str(self) -> None:
         """get_pipeline_progress signature uses NonEmptyStr for project_id."""
         import inspect
+
         from automedia.mcp.tools import get_pipeline_progress
 
         sig = inspect.signature(get_pipeline_progress)
@@ -273,6 +281,7 @@ class TestTypeAliasUsage:
     def test_cancel_pipeline_uses_non_empty_str(self) -> None:
         """cancel_pipeline signature uses NonEmptyStr for project_id."""
         import inspect
+
         from automedia.mcp.tools import cancel_pipeline
 
         sig = inspect.signature(cancel_pipeline)
@@ -283,6 +292,7 @@ class TestTypeAliasUsage:
     def test_list_projects_uses_project_status_filter(self) -> None:
         """list_projects signature uses ProjectStatusFilter for status."""
         import inspect
+
         from automedia.mcp.tools import list_projects
 
         sig = inspect.signature(list_projects)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from structlog.testing import capture_logs
@@ -12,7 +11,6 @@ from automedia.gates.h0_human_review import H0HumanReviewGate
 from automedia.pipelines.gate_engine import (
     GateEngine,
     PipelineProgress,
-    _TRANSIENT_EXCEPTIONS,
 )
 
 
@@ -160,7 +158,9 @@ def test_retry_logging_contains_attempt_messages() -> None:
     with capture_logs() as cap:
         engine.run({"topic": "test"})
 
-    retry_events = [e for e in cap if e.get("log_level") == "info" and "retry" in e.get("event", "")]
+    retry_events = [
+        e for e in cap if e.get("log_level") == "info" and "retry" in e.get("event", "")
+    ]
     assert len(retry_events) == 2
 
     first = retry_events[0]
@@ -372,10 +372,7 @@ def test_quality_retry_logging() -> None:
     with capture_logs() as cap:
         engine.run({"topic": "test"})
 
-    quality_retry_events = [
-        e for e in cap
-        if e.get("event") == "gate.quality_retry"
-    ]
+    quality_retry_events = [e for e in cap if e.get("event") == "gate.quality_retry"]
     assert len(quality_retry_events) == 2
 
     first = quality_retry_events[0]
@@ -573,10 +570,13 @@ def test_level2_regeneration_count_tracked_in_context() -> None:
 def test_level2_max_regenerations_sets_exhausted_flag() -> None:
     """After max_regenerations attempts, _level2_exhausted is True."""
     cw_gate = _FakeGate(
-        "CW", "stop", lambda ctx: {"passed": True, "gate": "CW"},
+        "CW",
+        "stop",
+        lambda ctx: {"passed": True, "gate": "CW"},
     )
     g0_gate = _FakeGate(
-        "G0", "retry",
+        "G0",
+        "retry",
         lambda ctx: {"passed": False, "gate": "G0", "error": "fails always"},
     )
     engine = GateEngine(
@@ -657,10 +657,13 @@ def test_level2_exhaustion_populates_escalated_gates() -> None:
     """When level 2 regeneration budget exhausted, _escalated_gates
     is populated with the failed gate name, error, and regen count."""
     cw_gate = _FakeGate(
-        "CW", "stop", lambda ctx: {"passed": True, "gate": "CW"},
+        "CW",
+        "stop",
+        lambda ctx: {"passed": True, "gate": "CW"},
     )
     g0_gate = _FakeGate(
-        "G0", "retry",
+        "G0",
+        "retry",
         lambda ctx: {"passed": False, "gate": "G0", "error": "persistent failure"},
     )
 
@@ -715,14 +718,15 @@ def test_level2_escalation_flows_to_h0_gate() -> None:
 
     engine = GateEngine(
         [cw_gate, g0_gate, h0_gate],
-        max_quality_retries=1,   # Allow 1 level 1 retry per gate pass
-        max_regenerations=2,     # Allow 2 regeneration attempts
+        max_quality_retries=1,  # Allow 1 level 1 retry per gate pass
+        max_regenerations=2,  # Allow 2 regeneration attempts
     )
     progress = PipelineProgress(project_id="escalation-test")
 
     # Auto-approve HITL after a short delay
     def _auto_approve() -> None:
         import time
+
         time.sleep(0.2)
         progress.approve_hitl()
 

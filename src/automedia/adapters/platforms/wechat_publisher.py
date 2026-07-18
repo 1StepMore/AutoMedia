@@ -41,9 +41,7 @@ WX_DRAFT_ADD_URL = f"{WX_API_BASE}/draft/add"
 WX_PUBLISH_SUBMIT_URL = f"{WX_API_BASE}/freepublish/submit"
 
 # Regex matching credential-bearing query parameters that must never appear in logs.
-_CREDENTIAL_PARAMS = re.compile(
-    r"((?:appid|secret|access_token)=)[^&]*", re.IGNORECASE
-)
+_CREDENTIAL_PARAMS = re.compile(r"((?:appid|secret|access_token)=)[^&]*", re.IGNORECASE)
 
 
 def _sanitize_url(url: str) -> str:
@@ -226,19 +224,14 @@ class WechatPublisher(BasePlatformAdapter):
 
     def _get_access_token(self, appid: str, secret: str) -> PublishResult:
         """Obtain a WeChat ``access_token`` via client_credential grant."""
-        url = (
-            f"{WX_TOKEN_URL}?grant_type=client_credential"
-            f"&appid={appid}&secret={secret}"
-        )
+        url = f"{WX_TOKEN_URL}?grant_type=client_credential&appid={appid}&secret={secret}"
         safe_url = _sanitize_url(url)
         try:
             resp = _httpx.post(url, timeout=10)
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
         except _httpx.HTTPStatusError as exc:
-            log.error(
-                "wechat.token.http_error", status_code=exc.response.status_code
-            )
+            log.error("wechat.token.http_error", status_code=exc.response.status_code)
             return {
                 "status": "error",
                 "platform": "wechat",
@@ -270,9 +263,7 @@ class WechatPublisher(BasePlatformAdapter):
 
         return {"status": "ok", "access_token": data["access_token"]}
 
-    def _read_content(
-        self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read article title and body from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -297,9 +288,7 @@ class WechatPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -353,9 +342,7 @@ class WechatPublisher(BasePlatformAdapter):
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
         except _httpx.HTTPStatusError as exc:
-            log.error(
-                "wechat.draft.http_error", status_code=exc.response.status_code
-            )
+            log.error("wechat.draft.http_error", status_code=exc.response.status_code)
             return {
                 "status": "error",
                 "platform": "wechat",
@@ -388,9 +375,7 @@ class WechatPublisher(BasePlatformAdapter):
         log.info("wechat.draft.created", media_id=data["media_id"])
         return {"status": "ok", "draft_id": data["media_id"]}
 
-    def _submit_publish(
-        self, access_token: str, draft_id: str
-    ) -> PublishResult:
+    def _submit_publish(self, access_token: str, draft_id: str) -> PublishResult:
         """Submit a draft for publication via ``/cgi-bin/freepublish/submit``."""
         url = f"{WX_PUBLISH_SUBMIT_URL}?access_token={access_token}"
         safe_url = _sanitize_url(url)
@@ -401,9 +386,7 @@ class WechatPublisher(BasePlatformAdapter):
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
         except _httpx.HTTPStatusError as exc:
-            log.error(
-                "wechat.publish.http_error", status_code=exc.response.status_code
-            )
+            log.error("wechat.publish.http_error", status_code=exc.response.status_code)
             return {
                 "status": "error",
                 "platform": "wechat",
@@ -472,23 +455,17 @@ def _md_to_html(md_content: str) -> str:
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h3>{_inline_md(html_mod.escape(stripped[4:]))}</h3>"
-            )
+            html_parts.append(f"<h3>{_inline_md(html_mod.escape(stripped[4:]))}</h3>")
         elif stripped.startswith("## "):
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h2>{_inline_md(html_mod.escape(stripped[3:]))}</h2>"
-            )
+            html_parts.append(f"<h2>{_inline_md(html_mod.escape(stripped[3:]))}</h2>")
         elif stripped.startswith("# "):
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<h1>{_inline_md(html_mod.escape(stripped[2:]))}</h1>"
-            )
+            html_parts.append(f"<h1>{_inline_md(html_mod.escape(stripped[2:]))}</h1>")
         # Unordered list item
         elif stripped.startswith("- ") or stripped.startswith("* "):
             if not in_list:
@@ -507,9 +484,7 @@ def _md_to_html(md_content: str) -> str:
             if in_list:
                 html_parts.append("</ul>")
                 in_list = False
-            html_parts.append(
-                f"<p>{_inline_md(html_mod.escape(stripped))}</p>"
-            )
+            html_parts.append(f"<p>{_inline_md(html_mod.escape(stripped))}</p>")
 
     if in_list:
         html_parts.append("</ul>")

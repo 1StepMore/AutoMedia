@@ -7,9 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-import pytest
-
-from automedia.gates.base import BaseGate, _registry
+from automedia.gates.base import _registry
 from automedia.gates.failure_modes import FAILURE_MODES
 from automedia.gates.h0_human_review import H0HumanReviewGate
 from automedia.pipelines.gate_engine import (
@@ -17,7 +15,6 @@ from automedia.pipelines.gate_engine import (
     _hitl_lock,
     _hitl_waiters,
 )
-
 
 # =========================================================================
 # Unit tests: H0HumanReviewGate
@@ -62,10 +59,12 @@ class TestH0Gate:
             {"gate_name": "G0", "error": "quality fail", "regeneration_count": 2},
             {"gate_name": "V3", "error": "semantic mismatch", "regeneration_count": 2},
         ]
-        result = gate.execute({
-            "_escalated_gates": escalated,
-            "topic": "test",
-        })
+        result = gate.execute(
+            {
+                "_escalated_gates": escalated,
+                "topic": "test",
+            }
+        )
         assert result["escalated_gates"] == escalated
 
     def test_custom_timeout(self) -> None:
@@ -144,6 +143,7 @@ class TestPipelineProgressHITL:
 
         def _write_approve() -> None:
             import time
+
             time.sleep(0.2)
             state_file.write_text(json.dumps({"decision": "approve"}), encoding="utf-8")
 
@@ -190,7 +190,7 @@ class TestGateEngineH0:
 
     def test_engine_creates_awaiting_hitl_event(self) -> None:
         """When H0 gate returns awaiting_hitl, the engine should wait."""
-        from automedia.pipelines.gate_engine import GateEngine, GateProgressEvent
+        from automedia.pipelines.gate_engine import GateEngine
 
         gate = H0HumanReviewGate()
         engine = GateEngine(gates=[gate])
@@ -199,6 +199,7 @@ class TestGateEngineH0:
         # Auto-approve after a short delay
         def _auto_approve() -> None:
             import time
+
             time.sleep(0.2)
             progress.approve_hitl()
 

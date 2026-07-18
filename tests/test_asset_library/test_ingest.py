@@ -183,7 +183,7 @@ class TestExtractTitle:
         assert result == "My Strategy Doc"
 
     def test_yaml_frontmatter_title(self) -> None:
-        content = '---\ntitle: Market Analysis 2025\nauthor: team\n---\nBody.'
+        content = "---\ntitle: Market Analysis 2025\nauthor: team\n---\nBody."
         fp = Path("/project/doc.yaml")
         result = _extract_title(fp, content.encode("utf-8"))
         assert result == "Market Analysis 2025"
@@ -232,7 +232,7 @@ class TestExtractTitle:
         assert result is None
 
     def test_yaml_frontmatter_title_with_quotes(self) -> None:
-        content = "---\ntitle: \"Quoted Title\"\n---\nBody."
+        content = '---\ntitle: "Quoted Title"\n---\nBody.'
         fp = Path("/project/doc.yaml")
         result = _extract_title(fp, content.encode("utf-8"))
         assert result == "Quoted Title"

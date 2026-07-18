@@ -44,9 +44,7 @@ class TestAuthFlowEngineAuthenticate:
     def test_cookie_valid(self) -> None:
         """Valid cookie is returned as string."""
         engine = AuthFlowEngine()
-        result = engine.authenticate(
-            AuthType.COOKIE, {"cookie": "session=valid123"}
-        )
+        result = engine.authenticate(AuthType.COOKIE, {"cookie": "session=valid123"})
         assert result == "session=valid123"
 
     def test_cookie_invalid_raises(self) -> None:
@@ -58,9 +56,7 @@ class TestAuthFlowEngineAuthenticate:
     def test_api_key_valid(self) -> None:
         """Valid API key is returned as string."""
         engine = AuthFlowEngine()
-        result = engine.authenticate(
-            AuthType.API_KEY, {"api_key": "sk-abcdefghijklmnop"}
-        )
+        result = engine.authenticate(AuthType.API_KEY, {"api_key": "sk-abcdefghijklmnop"})
         assert result == "sk-abcdefghijklmnop"
 
     def test_api_key_invalid_raises(self) -> None:
@@ -134,9 +130,7 @@ class TestAuthFlowEngineOAuth2AuthCode:
         assert "authorization_url" in result
         assert "redirect_uri" in result
         assert "session_id" in result
-        assert result["authorization_url"].startswith(
-            "https://accounts.example.com/auth"
-        )
+        assert result["authorization_url"].startswith("https://accounts.example.com/auth")
         assert "code_challenge=" in result["authorization_url"]
 
         # Verify session was stored

@@ -202,8 +202,6 @@ _EXPECTED_MAP: dict[str, str] = {
 }
 
 
-
-
 # ---------------------------------------------------------------------------
 # Individual check functions
 # ---------------------------------------------------------------------------
@@ -483,8 +481,6 @@ def _rewrite_content(content: str) -> str:
     return text
 
 
-
-
 # ---------------------------------------------------------------------------
 # G1Humanizer gate
 # ---------------------------------------------------------------------------
@@ -575,8 +571,7 @@ class G1Humanizer(BaseGate):
                     else ("verified by LLM" if passed else "humanizer check failed")
                 )
                 checks = [
-                    {"name": name, "passed": passed, "detail": detail}
-                    for name in _CHECK_NAMES
+                    {"name": name, "passed": passed, "detail": detail} for name in _CHECK_NAMES
                 ]
 
             all_passed = all(c["passed"] for c in checks)

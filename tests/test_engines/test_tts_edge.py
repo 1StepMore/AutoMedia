@@ -144,9 +144,7 @@ class TestEdgeTTSEngineSynthesize:
     """synthesize() — all paths with mocked subprocess."""
 
     @patch("automedia.engines.implementations.tts_edge.subprocess.run")
-    def test_calls_edge_tts_with_correct_args(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_calls_edge_tts_with_correct_args(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Verify the exact CLI command built by synthesize()."""
         mock_run.return_value = _make_subprocess_result()
         output = str(tmp_path / "out.mp3")
@@ -164,9 +162,7 @@ class TestEdgeTTSEngineSynthesize:
         assert output in args
 
     @patch("automedia.engines.implementations.tts_edge.subprocess.run")
-    def test_returns_absolute_path(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_returns_absolute_path(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Return value is an absolute path to the output file."""
         mock_run.return_value = _make_subprocess_result()
         output = str(tmp_path / "subdir" / "tts.mp3")
@@ -188,21 +184,15 @@ class TestEdgeTTSEngineSynthesize:
             engine.synthesize("Hello", output_path="")
 
     @patch("automedia.engines.implementations.tts_edge.subprocess.run")
-    def test_failure_raises_called_process_error(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_failure_raises_called_process_error(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Non-zero returncode from edge-tts raises CalledProcessError."""
-        mock_run.return_value = _make_subprocess_result(
-            returncode=1, stderr="voice not found"
-        )
+        mock_run.return_value = _make_subprocess_result(returncode=1, stderr="voice not found")
         engine = EdgeTTSEngine()
         with pytest.raises(subprocess.CalledProcessError):
             engine.synthesize("Hello", output_path=str(tmp_path / "out.mp3"))
 
     @patch("automedia.engines.implementations.tts_edge.subprocess.run")
-    def test_default_voice_from_config(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_default_voice_from_config(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """Voice from config is used when voice parameter is empty."""
         mock_run.return_value = _make_subprocess_result()
         output = str(tmp_path / "out.mp3")
@@ -213,9 +203,7 @@ class TestEdgeTTSEngineSynthesize:
         assert args[voice_idx] == "zh-CN-XiaoxiaoNeural"
 
     @patch("automedia.engines.implementations.tts_edge.subprocess.run")
-    def test_default_voice_from_constant(
-        self, mock_run: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_default_voice_from_constant(self, mock_run: MagicMock, tmp_path: Any) -> None:
         """DEFAULT_VOICE constant is used when neither param nor config provides one."""
         mock_run.return_value = _make_subprocess_result()
         output = str(tmp_path / "out.mp3")

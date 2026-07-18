@@ -7,6 +7,7 @@ These tests verify that:
   missing httpx gracefully.
 - Content is read from the artifact directory when available.
 """
+
 from __future__ import annotations
 
 import json
@@ -67,9 +68,7 @@ class TestMetadata:
 class TestCredentialLoaderIntegration:
     """Verify adapter uses ``load_credential_or_env`` with ``AUTOMEDIA_*`` vars."""
 
-    def test_enabled_with_automedia_env_var(
-        self, adapter: ZhihuPublisher
-    ) -> None:
+    def test_enabled_with_automedia_env_var(self, adapter: ZhihuPublisher) -> None:
         with patch.dict(
             os.environ,
             {"AUTOMEDIA_ZHIHU_COOKIE": "session=abc123;"},
@@ -77,9 +76,7 @@ class TestCredentialLoaderIntegration:
         ):
             assert adapter.enabled is True
 
-    def test_enabled_legacy_takes_precedence(
-        self, adapter: ZhihuPublisher
-    ) -> None:
+    def test_enabled_legacy_takes_precedence(self, adapter: ZhihuPublisher) -> None:
         with patch.dict(
             os.environ,
             {
@@ -136,18 +133,14 @@ class TestEnabled:
 class TestValidate:
     """Verify ``validate()`` behaviour."""
 
-    def test_validate_passes_with_cookie(
-        self, adapter: ZhihuPublisher, unused_path: str
-    ) -> None:
+    def test_validate_passes_with_cookie(self, adapter: ZhihuPublisher, unused_path: str) -> None:
         os.environ["ZHIHU_COOKIE"] = "session=abc123; "
         try:
             assert adapter.validate(unused_path) is True
         finally:
             del os.environ["ZHIHU_COOKIE"]
 
-    def test_validate_fails_without_cookie(
-        self, adapter: ZhihuPublisher, unused_path: str
-    ) -> None:
+    def test_validate_fails_without_cookie(self, adapter: ZhihuPublisher, unused_path: str) -> None:
         os.environ.pop("ZHIHU_COOKIE", None)
         assert adapter.validate(unused_path) is False
 
@@ -189,9 +182,7 @@ class TestPublishErrors:
     ) -> None:
         os.environ["ZHIHU_COOKIE"] = "session=abc123; "
         try:
-            with patch(
-                "automedia.adapters.platforms.zhihu_publisher._HAS_HTTPX", False
-            ):
+            with patch("automedia.adapters.platforms.zhihu_publisher._HAS_HTTPX", False):
                 result = adapter.publish(unused_path, sample_project)
                 assert result["status"] == "error"
                 assert result["platform"] == "zhihu"

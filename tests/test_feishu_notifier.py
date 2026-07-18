@@ -46,15 +46,11 @@ class TestEnabledAndValidate:
         with patch.dict(os.environ, {"FEISHU_WEBHOOK_URL": "https://example.com/hook"}):
             assert notifier.enabled is True
 
-    def test_validate_false_when_no_env(
-        self, notifier: FeishuNotifier, tmp_path: Path
-    ) -> None:
+    def test_validate_false_when_no_env(self, notifier: FeishuNotifier, tmp_path: Path) -> None:
         assert "FEISHU_WEBHOOK_URL" not in os.environ
         assert notifier.validate(str(tmp_path)) is False
 
-    def test_validate_true_when_env_set(
-        self, notifier: FeishuNotifier, tmp_path: Path
-    ) -> None:
+    def test_validate_true_when_env_set(self, notifier: FeishuNotifier, tmp_path: Path) -> None:
         with patch.dict(os.environ, {"FEISHU_WEBHOOK_URL": "https://example.com/hook"}):
             assert notifier.validate(str(tmp_path)) is True
 
@@ -99,10 +95,7 @@ class TestPublishSuccess:
         assert call_args[0] == "https://example.com/hook"
         payload = call_kwargs["json"]
         assert payload["msg_type"] == "interactive"
-        assert (
-            payload["card"]["header"]["title"]["content"]
-            == "AutoMedia Publish Notification"
-        )
+        assert payload["card"]["header"]["title"]["content"] == "AutoMedia Publish Notification"
         elements = payload["card"]["elements"]
         assert len(elements) == 1
         assert elements[0]["tag"] == "div"
@@ -180,9 +173,7 @@ class TestPublishErrors:
         env = {"FEISHU_WEBHOOK_URL": "https://example.com/hook"}
         with (
             patch.dict(os.environ, env),
-            patch(
-                "automedia.adapters.platforms.feishu_notifier._httpx_module.post"
-            ) as mock_post,
+            patch("automedia.adapters.platforms.feishu_notifier._httpx_module.post") as mock_post,
         ):
             mock_post.side_effect = Exception("timeout after 30s")
             result = notifier.publish(str(tmp_path), sample_project)
@@ -200,9 +191,7 @@ class TestPublishErrors:
 class TestPublishEdgeCases:
     """publish() handles missing/unknown project fields gracefully."""
 
-    def test_empty_project_dict(
-        self, notifier: FeishuNotifier, tmp_path: Path
-    ) -> None:
+    def test_empty_project_dict(self, notifier: FeishuNotifier, tmp_path: Path) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -231,9 +220,7 @@ class TestPublishEdgeCases:
 class TestCredentialLoaderIntegration:
     """Verify adapter uses ``load_credential_or_env`` with ``AUTOMEDIA_*`` vars."""
 
-    def test_enabled_with_automedia_env_var(
-        self, notifier: FeishuNotifier
-    ) -> None:
+    def test_enabled_with_automedia_env_var(self, notifier: FeishuNotifier) -> None:
         with patch.dict(
             os.environ,
             {"AUTOMEDIA_FEISHU_WEBHOOK_URL": "https://example.com/hook"},
@@ -241,9 +228,7 @@ class TestCredentialLoaderIntegration:
         ):
             assert notifier.enabled is True
 
-    def test_enabled_legacy_takes_precedence(
-        self, notifier: FeishuNotifier
-    ) -> None:
+    def test_enabled_legacy_takes_precedence(self, notifier: FeishuNotifier) -> None:
         with patch.dict(
             os.environ,
             {
@@ -277,14 +262,17 @@ class TestCredentialLoaderIntegration:
             "data": {"message_id": "om_abc123"},
         }
 
-        with patch.dict(
-            os.environ,
-            {"AUTOMEDIA_FEISHU_WEBHOOK_URL": "https://example.com/hook"},
-            clear=True,
-        ), patch(
-            "automedia.adapters.platforms.feishu_notifier._httpx_module.post",
-            return_value=mock_response,
-        ) as mock_post:
+        with (
+            patch.dict(
+                os.environ,
+                {"AUTOMEDIA_FEISHU_WEBHOOK_URL": "https://example.com/hook"},
+                clear=True,
+            ),
+            patch(
+                "automedia.adapters.platforms.feishu_notifier._httpx_module.post",
+                return_value=mock_response,
+            ) as mock_post,
+        ):
             result = notifier.publish(str(tmp_path), sample_project)
 
         assert result["status"] == "ok"

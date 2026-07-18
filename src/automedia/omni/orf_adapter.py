@@ -76,5 +76,3 @@ class ORFAdapter(BaseOmniAdapter):
         with open(target_path, "w", encoding="utf-8") as fh:
             fh.write(md_content)
         return target_path
-
-

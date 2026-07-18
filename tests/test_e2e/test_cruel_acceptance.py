@@ -29,10 +29,15 @@ pytestmark = [
 @pytest.mark.skipif(not os.environ.get("AUTOMEDIA_LLM_API_KEY"), reason="requires API key")
 def test_cruel_a_missing_api_key_clear_error() -> None:
     """Missing API key must produce a clear, actionable error message."""
-    from automedia.core.llm_client import llm_complete, LLMError
+    from automedia.core.llm_client import LLMError, llm_complete
 
-    with patch.dict(os.environ, clear=True), \
-         patch("automedia.core.config_loader.load_config", return_value={"llm": {"text_generation": {"model": "test-model"}}}):
+    with (
+        patch.dict(os.environ, clear=True),
+        patch(
+            "automedia.core.config_loader.load_config",
+            return_value={"llm": {"text_generation": {"model": "test-model"}}},
+        ),
+    ):
         try:
             llm_complete("Say hello")
             pytest.fail("Expected LLMError for missing API key")
@@ -51,7 +56,7 @@ def test_cruel_a_missing_api_key_clear_error() -> None:
 @pytest.mark.skipif(not os.environ.get("AUTOMEDIA_LLM_API_KEY"), reason="requires API key")
 def test_cruel_b_invalid_api_key_clear_error() -> None:
     """Invalid API key must produce a clear authentication error."""
-    from automedia.core.llm_client import llm_complete, LLMError
+    from automedia.core.llm_client import LLMError, llm_complete
 
     with patch.dict(os.environ, {"AUTOMEDIA_LLM_API_KEY": "sk-invalid-key-for-test"}):
         try:
@@ -59,9 +64,9 @@ def test_cruel_b_invalid_api_key_clear_error() -> None:
             pytest.fail("Expected LLMError for invalid API key")
         except LLMError as e:
             msg = str(e).lower()
-            assert any(term in msg for term in ["auth", "401", "unauthorized", "key", "forbidden"]), (
-                f"Error must indicate auth failure, got: {e}"
-            )
+            assert any(
+                term in msg for term in ["auth", "401", "unauthorized", "key", "forbidden"]
+            ), f"Error must indicate auth failure, got: {e}"
 
 
 # =============================================================================
@@ -96,6 +101,7 @@ def test_cruel_c_md5_detects_tampered_asset_during_resume(tmp_path: str) -> None
 
     # Run _verify_resume_integrity as the runner does and capture the warning
     from structlog.testing import capture_logs
+
     with capture_logs() as cap:
         _verify_resume_integrity(
             project_dir=str(proj),
@@ -104,12 +110,11 @@ def test_cruel_c_md5_detects_tampered_asset_during_resume(tmp_path: str) -> None
         )
 
     mismatch_events = [
-        e for e in cap
+        e
+        for e in cap
         if "md5" in str(e).lower() and ("mismatch" in str(e).lower() or "fail" in str(e).lower())
     ]
-    assert mismatch_events, (
-        "No MD5 mismatch warning logged for tampered gate G0"
-    )
+    assert mismatch_events, "No MD5 mismatch warning logged for tampered gate G0"
 
 
 # =============================================================================

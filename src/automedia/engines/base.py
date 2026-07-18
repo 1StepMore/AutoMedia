@@ -77,8 +77,7 @@ class BaseEngine(ABC):
 
     def __repr__(self) -> str:
         return (
-            f"<{type(self).__name__} engine_name={self.engine_name!r}"
-            f" modality={self.modality!r}>"
+            f"<{type(self).__name__} engine_name={self.engine_name!r} modality={self.modality!r}>"
         )
 
 

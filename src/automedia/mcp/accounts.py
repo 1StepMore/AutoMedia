@@ -89,13 +89,15 @@ def get_account_health(account_id: NonEmptyStr) -> dict[str, Any]:
             "Verify account_id",
         )
 
-    return success_response({
-        "account_id": account_id,
-        "platform": info.get("platform"),
-        "label": info.get("label"),
-        "status": info.get("status"),
-        "last_health_check": str(info.get("last_health_check", "")),
-    })
+    return success_response(
+        {
+            "account_id": account_id,
+            "platform": info.get("platform"),
+            "label": info.get("label"),
+            "status": info.get("status"),
+            "last_health_check": str(info.get("last_health_check", "")),
+        }
+    )
 
 
 def disconnect_account(account_id: NonEmptyStr) -> dict[str, Any]:

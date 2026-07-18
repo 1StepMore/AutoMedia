@@ -35,7 +35,6 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-
 def _check_all_platforms_present(context: GateContext | dict[str, Any]) -> CheckResult:
     """Check that all expected platforms are covered in the archive."""
     name = "all_platforms_present"

@@ -51,9 +51,7 @@ def env_vars() -> dict[str, str]:
 class TestEnabledAndValidate:
     """enabled property and validate() both check WX_APPID / WX_APPSECRET."""
 
-    def test_enabled_false_when_no_env(
-        self, publisher: WechatPublisher
-    ) -> None:
+    def test_enabled_false_when_no_env(self, publisher: WechatPublisher) -> None:
         assert "WX_APPID" not in os.environ
         assert publisher.enabled is False
 
@@ -63,21 +61,15 @@ class TestEnabledAndValidate:
         with patch.dict(os.environ, env_vars):
             assert publisher.enabled is True
 
-    def test_enabled_false_when_only_appid(
-        self, publisher: WechatPublisher
-    ) -> None:
+    def test_enabled_false_when_only_appid(self, publisher: WechatPublisher) -> None:
         with patch.dict(os.environ, {"WX_APPID": "wx_test_appid"}):
             assert publisher.enabled is False
 
-    def test_enabled_false_when_only_secret(
-        self, publisher: WechatPublisher
-    ) -> None:
+    def test_enabled_false_when_only_secret(self, publisher: WechatPublisher) -> None:
         with patch.dict(os.environ, {"WX_APPSECRET": "test_secret_123"}):
             assert publisher.enabled is False
 
-    def test_validate_false_when_no_env(
-        self, publisher: WechatPublisher, tmp_path: Path
-    ) -> None:
+    def test_validate_false_when_no_env(self, publisher: WechatPublisher, tmp_path: Path) -> None:
         assert "WX_APPID" not in os.environ
         assert publisher.validate(str(tmp_path)) is False
 
@@ -101,9 +93,7 @@ class TestEnabledAndValidate:
 class TestCredentialLoaderIntegration:
     """Verify adapters use ``load_credential_or_env`` with ``AUTOMEDIA_*`` vars."""
 
-    def test_enabled_with_automedia_env_vars(
-        self, publisher: WechatPublisher
-    ) -> None:
+    def test_enabled_with_automedia_env_vars(self, publisher: WechatPublisher) -> None:
         with patch.dict(
             os.environ,
             {
@@ -114,9 +104,7 @@ class TestCredentialLoaderIntegration:
         ):
             assert publisher.enabled is True
 
-    def test_enabled_legacy_takes_precedence(
-        self, publisher: WechatPublisher
-    ) -> None:
+    def test_enabled_legacy_takes_precedence(self, publisher: WechatPublisher) -> None:
         with patch.dict(
             os.environ,
             {
@@ -155,17 +143,20 @@ class TestCredentialLoaderIntegration:
         mock_response = MagicMock()
         mock_response.json.return_value = {"access_token": "tk"}
 
-        with patch.dict(
-            os.environ,
-            {
-                "AUTOMEDIA_WECHAT_APPID": "wx_test_appid",
-                "AUTOMEDIA_WECHAT_APPSECRET": "test_secret_123",
-            },
-            clear=True,
-        ), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post",
-            return_value=mock_response,
-        ) as mock_post:
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "AUTOMEDIA_WECHAT_APPID": "wx_test_appid",
+                    "AUTOMEDIA_WECHAT_APPSECRET": "test_secret_123",
+                },
+                clear=True,
+            ),
+            patch(
+                "automedia.adapters.platforms.wechat_publisher._httpx.post",
+                return_value=mock_response,
+            ) as mock_post,
+        ):
             mock_post.side_effect = [
                 MagicMock(json=lambda: {"access_token": "tk"}),
                 MagicMock(json=lambda: {"media_id": "draft_123"}),
@@ -200,9 +191,7 @@ class TestPublishSuccess:
 
         # Mock httpx responses for all three calls
         mock_token_resp = MagicMock()
-        mock_token_resp.json.return_value = {
-            "access_token": "fake_token_abc"
-        }
+        mock_token_resp.json.return_value = {"access_token": "fake_token_abc"}
 
         mock_draft_resp = MagicMock()
         mock_draft_resp.json.return_value = {"media_id": "draft_123"}
@@ -210,9 +199,10 @@ class TestPublishSuccess:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_456"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             # Set side_effect to return different responses per call
             mock_post.side_effect = [
                 mock_token_resp,
@@ -265,9 +255,10 @@ class TestPublishSuccess:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_md"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -297,9 +288,7 @@ class TestPublishSuccess:
 
         # Write project info with a different title
         info = {"title": "Project Info Title"}
-        (tmp_path / "00_project_info.json").write_text(
-            json.dumps(info), encoding="utf-8"
-        )
+        (tmp_path / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
 
         mock_token_resp = MagicMock()
         mock_token_resp.json.return_value = {"access_token": "tk"}
@@ -308,9 +297,10 @@ class TestPublishSuccess:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_proj"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -374,9 +364,10 @@ class TestPublishErrors:
         drafts_dir.mkdir()
         (drafts_dir / "content.html").write_text("<p>body</p>", encoding="utf-8")
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             import httpx
 
             error_response = MagicMock(spec=httpx.Response)
@@ -402,9 +393,10 @@ class TestPublishErrors:
         drafts_dir.mkdir()
         (drafts_dir / "content.html").write_text("<p>body</p>", encoding="utf-8")
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             import httpx
 
             mock_post.side_effect = httpx.ConnectTimeout(
@@ -433,9 +425,10 @@ class TestPublishErrors:
             "errmsg": "invalid appid",
         }
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.return_value = mock_response
             result = publisher.publish(str(tmp_path), sample_project)
 
@@ -461,9 +454,10 @@ class TestPublishErrors:
             "errmsg": "invalid credential",
         }
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [mock_token_resp, mock_draft_resp]
             result = publisher.publish(str(tmp_path), sample_project)
 
@@ -491,9 +485,10 @@ class TestPublishErrors:
             "errmsg": "system error",
         }
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -531,9 +526,10 @@ class TestPublishEdgeCases:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_empty"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -561,9 +557,10 @@ class TestPublishEdgeCases:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_nodir"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -594,9 +591,10 @@ class TestPublishEdgeCases:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_auth"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
@@ -626,17 +624,16 @@ class TestPublishEdgeCases:
         mock_publish_resp = MagicMock()
         mock_publish_resp.json.return_value = {"publish_id": "pub_noauth"}
 
-        with patch.dict(os.environ, env_vars), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
                 mock_publish_resp,
             ]
-            result = publisher.publish(
-                str(tmp_path), {"topic": "No Brand"}
-            )
+            result = publisher.publish(str(tmp_path), {"topic": "No Brand"})
 
         assert result["status"] == "ok"
         draft_payload = mock_post.call_args_list[1][1]["json"]
@@ -672,7 +669,9 @@ class TestSanitizeUrl:
     def test_preserves_non_credential_params(self) -> None:
         from automedia.adapters.platforms.wechat_publisher import _sanitize_url
 
-        url = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=X&secret=Y"
+        url = (
+            "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=X&secret=Y"
+        )
         sanitized = _sanitize_url(url)
         assert "grant_type=client_credential" in sanitized
 
@@ -699,13 +698,9 @@ class TestCredentialLeakPrevention:
     SECRET = "super_secret_value_999"
     TOKEN = "access_token_SENSITIVE_xyz"
 
-    def _assert_no_credentials(
-        self, text: str, *values: str, label: str = ""
-    ) -> None:
+    def _assert_no_credentials(self, text: str, *values: str, label: str = "") -> None:
         for val in values:
-            assert val not in text, (
-                f"Credential '{val}' leaked in {label}: {text}"
-            )
+            assert val not in text, f"Credential '{val}' leaked in {label}: {text}"
 
     def test_token_request_error_no_leak_in_logs(
         self, publisher: WechatPublisher, tmp_path: Path, capsys: Any
@@ -719,9 +714,10 @@ class TestCredentialLeakPrevention:
 
         env = {"WX_APPID": self.APPID, "WX_APPSECRET": self.SECRET}
 
-        with patch.dict(os.environ, env), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             import httpx
 
             mock_post.side_effect = httpx.ConnectTimeout(
@@ -734,9 +730,7 @@ class TestCredentialLeakPrevention:
                 log_capture = io.StringIO()
                 handler = logging.StreamHandler(log_capture)
                 handler.setLevel(logging.DEBUG)
-                logger = logging.getLogger(
-                    "automedia.adapters.platforms.wechat_publisher"
-                )
+                logger = logging.getLogger("automedia.adapters.platforms.wechat_publisher")
                 logger.addHandler(handler)
                 try:
                     result = publisher.publish(str(tmp_path), {"topic": "t"})
@@ -744,13 +738,9 @@ class TestCredentialLeakPrevention:
                     logger.removeHandler(handler)
 
         log_output = log_capture.getvalue()
-        self._assert_no_credentials(
-            log_output, self.APPID, self.SECRET, label="log output"
-        )
+        self._assert_no_credentials(log_output, self.APPID, self.SECRET, label="log output")
         reason = result.get("reason", "")
-        self._assert_no_credentials(
-            reason, self.APPID, self.SECRET, label="reason dict"
-        )
+        self._assert_no_credentials(reason, self.APPID, self.SECRET, label="reason dict")
         assert "appid=***" in reason or "token request failed" in reason
 
     def test_draft_request_error_no_leak_in_reason(
@@ -765,23 +755,20 @@ class TestCredentialLeakPrevention:
         mock_token_resp = MagicMock()
         mock_token_resp.json.return_value = {"access_token": self.TOKEN}
 
-        with patch.dict(os.environ, env), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             import httpx
 
             mock_post.side_effect = [
                 mock_token_resp,
-                httpx.ConnectTimeout(
-                    "timeout", request=MagicMock()
-                ),
+                httpx.ConnectTimeout("timeout", request=MagicMock()),
             ]
             result = publisher.publish(str(tmp_path), {"topic": "t"})
 
         reason = result.get("reason", "")
-        self._assert_no_credentials(
-            reason, self.TOKEN, label="draft error reason"
-        )
+        self._assert_no_credentials(reason, self.TOKEN, label="draft error reason")
         assert "access_token=***" in reason
 
     def test_publish_request_error_no_leak_in_reason(
@@ -798,24 +785,21 @@ class TestCredentialLeakPrevention:
         mock_draft_resp = MagicMock()
         mock_draft_resp.json.return_value = {"media_id": "d1"}
 
-        with patch.dict(os.environ, env), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             import httpx
 
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,
-                httpx.ConnectTimeout(
-                    "timeout", request=MagicMock()
-                ),
+                httpx.ConnectTimeout("timeout", request=MagicMock()),
             ]
             result = publisher.publish(str(tmp_path), {"topic": "t"})
 
         reason = result.get("reason", "")
-        self._assert_no_credentials(
-            reason, self.TOKEN, label="publish error reason"
-        )
+        self._assert_no_credentials(reason, self.TOKEN, label="publish error reason")
         assert "access_token=***" in reason
 
     def test_success_path_no_credential_leak_in_logs(
@@ -841,14 +825,13 @@ class TestCredentialLeakPrevention:
         log_capture = io.StringIO()
         handler = logging.StreamHandler(log_capture)
         handler.setLevel(logging.DEBUG)
-        logger = logging.getLogger(
-            "automedia.adapters.platforms.wechat_publisher"
-        )
+        logger = logging.getLogger("automedia.adapters.platforms.wechat_publisher")
         logger.addHandler(handler)
 
-        with patch.dict(os.environ, env), patch(
-            "automedia.adapters.platforms.wechat_publisher._httpx.post"
-        ) as mock_post:
+        with (
+            patch.dict(os.environ, env),
+            patch("automedia.adapters.platforms.wechat_publisher._httpx.post") as mock_post,
+        ):
             mock_post.side_effect = [
                 mock_token_resp,
                 mock_draft_resp,

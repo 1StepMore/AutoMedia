@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from unittest.mock import patch
 
-import pytest
-import typer
 from typer.testing import CliRunner
 
 from automedia.cli.output_format import (
@@ -139,10 +137,7 @@ class TestOutputPipelineError:
                 gates_log=[GateLogEntry("V0", "failed", 0.5, error="Lint errors")],
                 verbose=True,
             )
-            extra_call = [
-                c for c in mock_secho.call_args_list
-                if "traceback" in str(c).lower()
-            ]
+            extra_call = [c for c in mock_secho.call_args_list if "traceback" in str(c).lower()]
             assert extra_call, "Expected a 'no traceback' note when verbose=True"
 
 
@@ -166,9 +161,10 @@ class TestRunVerboseFlag:
 
     def test_run_verbose_with_exception(self, tmp_path) -> None:
         """When pipeline raises and --verbose is set, hint is shown."""
-        from unittest.mock import patch, MagicMock
-        from automedia.cli.app import app
+        from unittest.mock import patch
+
         import automedia.cli.commands.run as run_mod
+        from automedia.cli.app import app
 
         # Monkey-patch _MODEL_CONFIG_PATH to a temp file so the check passes
         cfg = tmp_path / "model_config.yaml"
@@ -188,9 +184,10 @@ class TestRunVerboseFlag:
 
     def test_run_verbose_shows_traceback(self, tmp_path) -> None:
         """--verbose prints traceback info in the output (traceback hint)."""
-        from unittest.mock import patch, MagicMock
-        from automedia.cli.app import app
+        from unittest.mock import patch
+
         import automedia.cli.commands.run as run_mod
+        from automedia.cli.app import app
 
         cfg = tmp_path / "model_config.yaml"
         cfg.write_text("dummy")

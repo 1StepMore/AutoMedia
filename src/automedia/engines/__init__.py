@@ -153,8 +153,7 @@ def resolve_engine(
             engine_name=engine_name,
             reason=message or "check_available() returned (False, ...)",
             install_hint=(
-                f"Verify the dependencies for '{engine_name}' "
-                f"are installed and accessible."
+                f"Verify the dependencies for '{engine_name}' are installed and accessible."
             ),
         )
 

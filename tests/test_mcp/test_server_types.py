@@ -17,15 +17,14 @@ import pytest
 from automedia.mcp.server_types import (
     CronExpression,
     EngineModality,
+    GateName,
     NonEmptyStr,
     PipelineMode,
     ProjectStatusFilter,
     ResearchPattern,
-    TopicStatus,
-    GateName,
     RetryLevel,
+    TopicStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # NonEmptyStr
@@ -326,10 +325,25 @@ class TestGateName:
         expected = {
             "pre-gate",
             "CW",
-            "G0", "G1", "G2", "G3", "G4", "G5",
-            "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
+            "G0",
+            "G1",
+            "G2",
+            "G3",
+            "G4",
+            "G5",
+            "V0",
+            "V1",
+            "V2",
+            "V3",
+            "V4",
+            "V5",
+            "V6",
+            "V7",
             "H0",
-            "L1", "L2", "L3", "L4",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
         }
         assert set(args) == expected
         assert len(args) == len(expected)

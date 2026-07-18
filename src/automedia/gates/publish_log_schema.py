@@ -64,7 +64,6 @@ _CHECK_NAMES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-
 def _check_topic_present(publish_log: dict[str, Any]) -> CheckResult:
     """Check that *topic* is a non-empty string."""
     name = "topic_present"

@@ -31,8 +31,9 @@ Usage
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 if TYPE_CHECKING:
@@ -49,9 +50,7 @@ if TYPE_CHECKING:
 # module dict, which *is* affected by the patch.
 # ---------------------------------------------------------------------------
 
-_PATCH_TARGET: str = (
-    "automedia.core.llm_client._structured_completion_with_fallback"
-)
+_PATCH_TARGET: str = "automedia.core.llm_client._structured_completion_with_fallback"
 
 
 @contextmanager
@@ -103,6 +102,4 @@ def assert_llm_called(mock: MagicMock, expected_calls: int = 1) -> Iterator[None
     """
     yield
     actual = mock.call_count
-    assert actual == expected_calls, (
-        f"Expected {expected_calls} LLM call(s), got {actual}"
-    )
+    assert actual == expected_calls, f"Expected {expected_calls} LLM call(s), got {actual}"

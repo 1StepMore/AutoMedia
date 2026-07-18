@@ -151,9 +151,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             try:
                 return self._render_with_hyperframes(assets, output_path)
             except EngineExecutionError:
-                logger.warning(
-                    "hyperframes render failed; checking for ffmpeg fallback."
-                )
+                logger.warning("hyperframes render failed; checking for ffmpeg fallback.")
 
         # Fallback: FFmpeg slideshow
         ffmpeg_path: str | None = shutil.which("ffmpeg")
@@ -174,9 +172,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Primary path — HyperFrames CLI
     # ------------------------------------------------------------------
 
-    def _render_with_hyperframes(
-        self, assets: dict[str, Any], output_path: str
-    ) -> str:
+    def _render_with_hyperframes(self, assets: dict[str, Any], output_path: str) -> str:
         """Render via ``hyperframes`` CLI using a temporary asset directory.
 
         Parameters
@@ -237,9 +233,12 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             cmd: list[str] = [
                 "hyperframes",
                 "render",
-                "--quality", quality,
-                "--assets", temp_dir,
-                "--output", output_path,
+                "--quality",
+                quality,
+                "--assets",
+                temp_dir,
+                "--output",
+                output_path,
             ]
 
             logger.info(
@@ -279,9 +278,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         except subprocess.TimeoutExpired:
             raise EngineExecutionError(
                 engine_name=self.engine_name,
-                details=(
-                    f"hyperframes render timed out after {timeout} seconds."
-                ),
+                details=(f"hyperframes render timed out after {timeout} seconds."),
             ) from None
         except EngineExecutionError:
             raise
@@ -299,9 +296,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Fallback path — FFmpeg slideshow
     # ------------------------------------------------------------------
 
-    def _render_with_ffmpeg(
-        self, assets: dict[str, Any], output_path: str
-    ) -> str:
+    def _render_with_ffmpeg(self, assets: dict[str, Any], output_path: str) -> str:
         """Render a video via an ``ffmpeg`` slideshow pipeline.
 
         Two-step process:
@@ -351,12 +346,18 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             step1_cmd: list[str] = [
                 "ffmpeg",
                 "-y",
-                "-framerate", str(fallback_framerate),
-                "-pattern_type", "glob",
-                "-i", glob_pattern,
-                "-c:v", video_codec,
-                "-r", str(output_framerate),
-                "-pix_fmt", "yuv420p",
+                "-framerate",
+                str(fallback_framerate),
+                "-pattern_type",
+                "glob",
+                "-i",
+                glob_pattern,
+                "-c:v",
+                video_codec,
+                "-r",
+                str(output_framerate),
+                "-pix_fmt",
+                "yuv420p",
                 temp_video,
             ]
 
@@ -389,10 +390,14 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 step2_cmd: list[str] = [
                     "ffmpeg",
                     "-y",
-                    "-i", temp_video,
-                    "-i", audio,
-                    "-c:v", "copy",
-                    "-c:a", "aac",
+                    "-i",
+                    temp_video,
+                    "-i",
+                    audio,
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    "aac",
                     "-shortest",
                     output_path,
                 ]
@@ -431,9 +436,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         except subprocess.TimeoutExpired:
             raise EngineExecutionError(
                 engine_name=self.engine_name,
-                details=(
-                    f"FFmpeg slideshow render timed out after {timeout} seconds."
-                ),
+                details=(f"FFmpeg slideshow render timed out after {timeout} seconds."),
             ) from None
         except EngineExecutionError:
             raise
@@ -459,8 +462,16 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             return None
         try:
             result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # ffprobe path is hardcoded
-                [ffprobe, "-v", "error", "-show_entries", "format=duration",
-                 "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    audio_path,
+                ],
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -475,9 +486,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Default template provisioning
     # ------------------------------------------------------------------
 
-    def _provision_default_hyperframes_project(
-        self, temp_dir: str, assets: dict[str, Any]
-    ) -> None:
+    def _provision_default_hyperframes_project(self, temp_dir: str, assets: dict[str, Any]) -> None:
         """Provision a complete hyperframes project from shipped default templates.
 
         Copies static files (``hyperframes.json``, ``package.json``), renders
@@ -518,24 +527,24 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
 
         # 3. Build scene list with proportional timing
-        duration_per_scene: float = (
-            max(3.0, total_duration / num_scenes) if num_scenes > 0 else 0.0
-        )
+        duration_per_scene: float = max(3.0, total_duration / num_scenes) if num_scenes > 0 else 0.0
         scenes: list[dict[str, Any]] = []
         for i in range(num_scenes):
             start: float = round(i * duration_per_scene, 1)
             dur: float = round(duration_per_scene, 1)
             if i == num_scenes - 1:
                 dur = round(total_duration - start, 1)
-            scenes.append({
-                "id": f"scene-{i + 1}",
-                "index": i + 1,
-                "start": start,
-                "duration": dur,
-                "name": f"Scene {i + 1}",
-                "image": os.path.basename(images[i]) if images else "",
-                "content": content_text,
-            })
+            scenes.append(
+                {
+                    "id": f"scene-{i + 1}",
+                    "index": i + 1,
+                    "start": start,
+                    "duration": dur,
+                    "name": f"Scene {i + 1}",
+                    "image": os.path.basename(images[i]) if images else "",
+                    "content": content_text,
+                }
+            )
 
         # 4. Create compositions directory
         compositions_dir: str = os.path.join(temp_dir, "compositions")
@@ -588,12 +597,15 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 content=scene["content"],
             )
             scene_path: str = os.path.join(
-                compositions_dir, f"{scene['index']:02d}-scene.html",
+                compositions_dir,
+                f"{scene['index']:02d}-scene.html",
             )
             with open(scene_path, "w", encoding="utf-8") as _f:
                 _f.write(scene_html)
 
         logger.info(
             "Provisioned default hyperframes project (%d scenes, %.1fs total) in %s",
-            num_scenes, total_duration, temp_dir,
+            num_scenes,
+            total_duration,
+            temp_dir,
         )

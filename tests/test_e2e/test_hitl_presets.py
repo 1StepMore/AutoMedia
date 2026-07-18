@@ -314,6 +314,3 @@ class TestAgentCannotSkip:
 
         with pytest.raises(ValueError, match="No pending node"):
             executor.approve_node("test_node")
-
-
-

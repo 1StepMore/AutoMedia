@@ -16,9 +16,7 @@ from automedia.asset_library.db import AssetDatabase, AssetDoc
 def patch_asset_db_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect AssetDatabase._base_dir to tmp_path for test isolation."""
     test_base = tmp_path / "asset-library"
-    monkeypatch.setattr(
-        AssetDatabase, "_base_dir", staticmethod(lambda: test_base)
-    )
+    monkeypatch.setattr(AssetDatabase, "_base_dir", staticmethod(lambda: test_base))
     return tmp_path
 
 

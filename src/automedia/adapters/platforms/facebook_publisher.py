@@ -53,9 +53,7 @@ except ImportError:  # pragma: no cover
 FACEBOOK_API_BASE = "https://graph.facebook.com/v22.0"
 
 # Regex matching credential-bearing query parameters that must never appear in logs.
-_CREDENTIAL_PARAMS = re.compile(
-    r"((?:access_token)=)[^&]*", re.IGNORECASE
-)
+_CREDENTIAL_PARAMS = re.compile(r"((?:access_token)=)[^&]*", re.IGNORECASE)
 
 
 def _sanitize_url(url: str) -> str:
@@ -218,7 +216,9 @@ class FacebookPublisher(BasePlatformAdapter):
         # Resolve page_id: project config > credential_loader
         resolved_page_id = (
             project.get("facebook_page_id")
-            or (project.get("config", {}) if isinstance(project.get("config"), dict) else {}).get("facebook_page_id")  # type: ignore[union-attr]  # project is dict[str,Any] but .get("config") may return non-dict; isinstance narrows at runtime only
+            or (project.get("config", {}) if isinstance(project.get("config"), dict) else {}).get(
+                "facebook_page_id"
+            )  # type: ignore[union-attr]  # project is dict[str,Any] but .get("config") may return non-dict; isinstance narrows at runtime only
             or page_id
         )
         if not resolved_page_id:
@@ -300,9 +300,7 @@ class FacebookPublisher(BasePlatformAdapter):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _read_content(
-        self, artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(self, artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read post message from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -325,9 +323,7 @@ class FacebookPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -519,11 +515,7 @@ class FacebookPublisher(BasePlatformAdapter):
         post_id = data.get("id", "")
         # The returned id from /photos is the photo id; construct a
         # page-level URL.
-        post_url = (
-            f"https://www.facebook.com/{page_id}/posts/{post_id}"
-            if post_id
-            else ""
-        )
+        post_url = f"https://www.facebook.com/{page_id}/posts/{post_id}" if post_id else ""
 
         log.info(
             "facebook.photo.posted",

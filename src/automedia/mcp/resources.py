@@ -123,14 +123,16 @@ def pipeline_metrics_resource(project_id: str) -> str:
 
     gate_metrics: list[dict[str, Any]] = []
     for event in events:
-        gate_metrics.append({
-            "gate_name": event.get("gate", ""),
-            "status": event.get("status", ""),
-            "started_at": event.get("started_at"),
-            "finished_at": event.get("finished_at"),
-            "duration_s": event.get("duration_s"),
-            "error": event.get("error"),
-        })
+        gate_metrics.append(
+            {
+                "gate_name": event.get("gate", ""),
+                "status": event.get("status", ""),
+                "started_at": event.get("started_at"),
+                "finished_at": event.get("finished_at"),
+                "duration_s": event.get("duration_s"),
+                "error": event.get("error"),
+            }
+        )
 
     return json.dumps(
         {

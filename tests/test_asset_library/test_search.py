@@ -113,9 +113,7 @@ class TestApplyFilters:
         assert len(filtered) == 1
         assert filtered[0]["doc_id"] == "1"
 
-    def test_filter_by_type_case_insensitive(
-        self, sample_results: list[dict[str, Any]]
-    ) -> None:
+    def test_filter_by_type_case_insensitive(self, sample_results: list[dict[str, Any]]) -> None:
         filtered = AssetLibrary._apply_filters(sample_results, {"type": "Strategy"})
         assert len(filtered) == 1
 
@@ -136,15 +134,11 @@ class TestApplyFilters:
         assert filtered[0]["doc_id"] == "2"
 
     def test_combined_filters(self, sample_results: list[dict[str, Any]]) -> None:
-        filtered = AssetLibrary._apply_filters(
-            sample_results, {"type": "persona", "lang": "zh"}
-        )
+        filtered = AssetLibrary._apply_filters(sample_results, {"type": "persona", "lang": "zh"})
         assert len(filtered) == 1
         assert filtered[0]["doc_id"] == "3"
 
-    def test_empty_filters_passthrough(
-        self, sample_results: list[dict[str, Any]]
-    ) -> None:
+    def test_empty_filters_passthrough(self, sample_results: list[dict[str, Any]]) -> None:
         filtered = AssetLibrary._apply_filters(sample_results, {})
         assert len(filtered) == 3
 
@@ -297,9 +291,7 @@ class TestAssetLibrarySearch:
 
     @patch("automedia.asset_library.search.VectorStore")
     @patch("automedia.asset_library.search.AssetDatabase")
-    def test_search_closes_on_error(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_search_closes_on_error(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_db.keyword_search.side_effect = RuntimeError("DB error")
@@ -314,9 +306,7 @@ class TestAssetLibrarySearch:
 
     @patch("automedia.asset_library.search.VectorStore")
     @patch("automedia.asset_library.search.AssetDatabase")
-    def test_context_manager(
-        self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock
-    ) -> None:
+    def test_context_manager(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
         mock_vs_cls.return_value = MagicMock()

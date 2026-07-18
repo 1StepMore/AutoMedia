@@ -60,9 +60,7 @@ class TestMetadata:
 class TestCredentialLoaderIntegration:
     """Verify adapter uses ``load_credential_or_env`` with ``AUTOMEDIA_*`` vars."""
 
-    def test_enabled_with_automedia_env_var(
-        self, adapter: XiaohongshuPublisher
-    ) -> None:
+    def test_enabled_with_automedia_env_var(self, adapter: XiaohongshuPublisher) -> None:
         with patch.dict(
             os.environ,
             {"AUTOMEDIA_XIAOHONGSHU_COOKIE": "session=abc123"},
@@ -70,9 +68,7 @@ class TestCredentialLoaderIntegration:
         ):
             assert adapter.enabled is True
 
-    def test_enabled_legacy_takes_precedence(
-        self, adapter: XiaohongshuPublisher
-    ) -> None:
+    def test_enabled_legacy_takes_precedence(self, adapter: XiaohongshuPublisher) -> None:
         with patch.dict(
             os.environ,
             {
@@ -83,9 +79,7 @@ class TestCredentialLoaderIntegration:
         ):
             assert adapter.enabled is True
 
-    def test_validate_with_automedia_env_only(
-        self, adapter: XiaohongshuPublisher
-    ) -> None:
+    def test_validate_with_automedia_env_only(self, adapter: XiaohongshuPublisher) -> None:
         with patch.dict(
             os.environ,
             {"AUTOMEDIA_XIAOHONGSHU_COOKIE": "session=abc123"},

@@ -1,4 +1,5 @@
 """Tests for CLIPipelineProgress — retry metadata propagation."""
+
 from __future__ import annotations
 
 from automedia.cli.commands.run import CLIPipelineProgress
@@ -19,8 +20,7 @@ class TestCLIPipelineProgressRetry:
         progress = CLIPipelineProgress("test-proj")
         progress.set_gate_names(["G1", "G2"])
         progress.on_gate_start("G2")
-        progress.on_gate_end("G2", True, 1.5, detail="ok",
-                             attempt_number=1, retry_level="quality")
+        progress.on_gate_end("G2", True, 1.5, detail="ok", attempt_number=1, retry_level="quality")
         # Should not raise TypeError
 
     def test_completed_count_not_inflated_by_retry(self) -> None:
@@ -35,8 +35,9 @@ class TestCLIPipelineProgressRetry:
 
         # G2 fails, retry 1
         progress.on_gate_start("G2")
-        progress.on_gate_end("G2", False, 0.5, detail="fail",
-                             attempt_number=1, retry_level="quality")
+        progress.on_gate_end(
+            "G2", False, 0.5, detail="fail", attempt_number=1, retry_level="quality"
+        )
         # _completed should still be 1 (only G1 is done, G2 hasn't passed yet)
         # Actually, _gates_done includes G2 now since on_gate_end was called
         # The key point is that ._completed = len(self._gates_done) deduplicates
@@ -44,8 +45,9 @@ class TestCLIPipelineProgressRetry:
 
         # G2 retry starts and passes
         progress.on_gate_start("G2", attempt_number=2, retry_level="quality")
-        progress.on_gate_end("G2", True, 1.5, detail="passed on retry",
-                             attempt_number=2, retry_level="quality")
+        progress.on_gate_end(
+            "G2", True, 1.5, detail="passed on retry", attempt_number=2, retry_level="quality"
+        )
 
         # After G2 passes, _completed should be 2 (G1 + G2)
         assert progress._completed == 2
@@ -56,8 +58,9 @@ class TestCLIPipelineProgressRetry:
         progress.set_gate_names(["G1"])
         progress.on_gate_start("G1")
         # Tenacity retry calls on_gate_end/on_gate_start before re-executing
-        progress.on_gate_end("G1", False, 0.0, detail="timeout",
-                             attempt_number=1, retry_level="tenacity")
+        progress.on_gate_end(
+            "G1", False, 0.0, detail="timeout", attempt_number=1, retry_level="tenacity"
+        )
         progress.on_gate_start("G1", attempt_number=2, retry_level="tenacity")
         progress.on_gate_end("G1", True, 2.0, detail="ok")
         # No crash = pass

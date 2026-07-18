@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import builtins
 import os
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
@@ -44,7 +42,8 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         ) -> str:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             Image.new("RGB", (width, height), color=(100, 150, 200)).save(
-                output_path, "PNG",
+                output_path,
+                "PNG",
             )
             return output_path
 
@@ -55,7 +54,8 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         return _MockImageEngine()
 
     monkeypatch.setattr(
-        "automedia.pipelines.image_pipeline.resolve_engine", _mock_resolve,
+        "automedia.pipelines.image_pipeline.resolve_engine",
+        _mock_resolve,
     )
 
 
@@ -345,6 +345,3 @@ class TestVisionQADegradation:
         assert result["std_luminance"] > 0
         assert result["min_luminance"] == 0
         assert result["max_luminance"] == 255
-
-
-

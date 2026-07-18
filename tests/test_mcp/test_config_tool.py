@@ -193,8 +193,14 @@ class TestGetConfigByKey:
         """All secret keywords (key, secret, password, token) are rejected."""
         mock_load.return_value = MOCK_CONFIG
 
-        assert get_config(key="platforms.wechat.app_secret")["error"]["message"] == "secret key not exposed"
-        assert get_config(key="platforms.wechat.access_token")["error"]["message"] == "secret key not exposed"
+        assert (
+            get_config(key="platforms.wechat.app_secret")["error"]["message"]
+            == "secret key not exposed"
+        )
+        assert (
+            get_config(key="platforms.wechat.access_token")["error"]["message"]
+            == "secret key not exposed"
+        )
         assert get_config(key="pool.redis_password")["error"]["message"] == "secret key not exposed"
 
 

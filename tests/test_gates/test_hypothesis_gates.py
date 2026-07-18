@@ -102,9 +102,7 @@ def test_empty_checks_do_not_crash(checks: list[dict[str, Any]], gate: str) -> N
 
 
 @given(checks=_gate_checks(min_size=1), gate=_gate_name, error=st.text(max_size=100))
-def test_error_and_extra_passthrough(
-    checks: list[dict[str, Any]], gate: str, error: str
-) -> None:
+def test_error_and_extra_passthrough(checks: list[dict[str, Any]], gate: str, error: str) -> None:
     """The error field and **extra kwargs are passed through verbatim."""
     result = build_gate_result(checks, gate=gate, error=error, confidence=0.42)
     assert result["error"] == error

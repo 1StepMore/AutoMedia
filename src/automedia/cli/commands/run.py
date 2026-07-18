@@ -31,7 +31,8 @@ class CLIPipelineProgress(PipelineProgress):
         self._heartbeat_thread: threading.Thread | None = None
 
     def on_gate_start(
-        self, gate_name: str,
+        self,
+        gate_name: str,
         attempt_number: int = 1,
         retry_level: str | None = None,
         strategy_delta: dict[str, Any] | None = None,
@@ -47,12 +48,17 @@ class CLIPipelineProgress(PipelineProgress):
 
         self._heartbeat_stop.clear()
         self._heartbeat_thread = threading.Thread(
-            target=self._heartbeat_loop, daemon=True,
+            target=self._heartbeat_loop,
+            daemon=True,
         )
         self._heartbeat_thread.start()
 
     def on_gate_end(
-        self, gate_name: str, passed: bool, duration: float, detail: str = "",
+        self,
+        gate_name: str,
+        passed: bool,
+        duration: float,
+        detail: str = "",
         attempt_number: int = 1,
         retry_level: str | None = None,
         strategy_delta: dict[str, Any] | None = None,
@@ -62,7 +68,10 @@ class CLIPipelineProgress(PipelineProgress):
             self._heartbeat_thread.join(timeout=2)
 
         super().on_gate_end(
-            gate_name, passed, duration, detail=detail,
+            gate_name,
+            passed,
+            duration,
+            detail=detail,
             attempt_number=attempt_number,
             retry_level=retry_level,
             strategy_delta=strategy_delta,
@@ -110,7 +119,9 @@ def run_cmd(
         help="Comma-separated topics for batch mode (overrides --topic).",
     ),
     brand: str = typer.Option(
-        ..., "--brand", "-b",
+        ...,
+        "--brand",
+        "-b",
         callback=_validate_brand,
         help="Brand identifier.",
     ),
@@ -179,18 +190,22 @@ def run_cmd(
                 "⚠ HyperFrames not detected. Video quality gates (V0-V7) will be skipped.",
                 fg=typer.colors.YELLOW,
             )
-            typer.echo("   Install HyperFrames for full video QA, or use --mode text_only to skip video.")
+            typer.echo(
+                "   Install HyperFrames for full video QA, or use --mode text_only to skip video."
+            )
 
         batch_results: list[dict[str, Any]] = []
         for t in topic_list:
             if get_output_mode() == OutputMode.TEXT:
-                typer.echo(f"\n{'='*60}")
+                typer.echo(f"\n{'=' * 60}")
                 typer.echo(f"Batch topic: {t!r}  brand={brand!r}  mode={mode}")
-                typer.echo(f"{'='*60}")
+                typer.echo(f"{'=' * 60}")
 
             try:
                 bind_correlation_id()
-                cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
+                cli_progress = (
+                    CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
+                )
                 result = run_full_pipeline(
                     t,
                     brand,
@@ -201,21 +216,26 @@ def run_cmd(
                     source_path=source_path,
                     source_url=source_url,
                 )
-                batch_results.append({
-                    "topic": t,
-                    "status": result.status,
-                    "project_id": result.project_id,
-                    "error": result.error,
-                })
+                batch_results.append(
+                    {
+                        "topic": t,
+                        "status": result.status,
+                        "project_id": result.project_id,
+                        "error": result.error,
+                    }
+                )
             except Exception as exc:
-                batch_results.append({
-                    "topic": t,
-                    "status": "failed",
-                    "project_id": "",
-                    "error": str(exc),
-                })
+                batch_results.append(
+                    {
+                        "topic": t,
+                        "status": "failed",
+                        "project_id": "",
+                        "error": str(exc),
+                    }
+                )
                 if verbose:
                     import traceback as _tb
+
                     _tb.print_exc()
 
         # Batch summary
@@ -227,7 +247,7 @@ def run_cmd(
         else:
             icon = typer.colors.GREEN if failed == 0 else typer.colors.YELLOW
             typer.secho(
-                f"\n{'='*60}\n"
+                f"\n{'=' * 60}\n"
                 f"Batch complete — {passed}/{len(batch_results)} passed, {failed} failed",
                 fg=icon,
                 bold=True,
@@ -265,7 +285,9 @@ def run_cmd(
             "⚠ HyperFrames not detected. Video quality gates (V0-V7) will be skipped.",
             fg=typer.colors.YELLOW,
         )
-        typer.echo("   Install HyperFrames for full video QA, or use --mode text_only to skip video.")
+        typer.echo(
+            "   Install HyperFrames for full video QA, or use --mode text_only to skip video."
+        )
 
     try:
         bind_correlation_id()

@@ -234,9 +234,7 @@ class ZhihuPublisher(BasePlatformAdapter):
     # Internal helpers
     # ------------------------------------------------------------------
     @staticmethod
-    def _read_content(
-        artifact_dir: str, project: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _read_content(artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
         """Read article title and body from the artifact directory.
 
         Title resolution order (first non-empty wins):
@@ -258,9 +256,7 @@ class ZhihuPublisher(BasePlatformAdapter):
         info_file = base / "00_project_info.json"
         if info_file.exists():
             try:
-                info: dict[str, Any] = json.loads(
-                    info_file.read_text(encoding="utf-8")
-                )
+                info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
                 title = str(info.get("title") or info.get("topic") or title)
             except (json.JSONDecodeError, OSError):
                 pass

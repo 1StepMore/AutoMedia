@@ -61,9 +61,7 @@ IG_TIMEOUT = 30
 IG_CAPTION_MAX_CHARS = 2200
 
 # Regex matching credential-bearing query parameters that must never appear in logs.
-_CREDENTIAL_PARAMS = re.compile(
-    r"((?:access_token)=)[^&]*", re.IGNORECASE
-)
+_CREDENTIAL_PARAMS = re.compile(r"((?:access_token)=)[^&]*", re.IGNORECASE)
 
 
 def _sanitize_url(url: str) -> str:
@@ -110,9 +108,7 @@ def _read_caption(artifact_dir: str, project: dict[str, Any]) -> str:
         try:
             import json
 
-            info: dict[str, Any] = json.loads(
-                info_file.read_text(encoding="utf-8")
-            )
+            info: dict[str, Any] = json.loads(info_file.read_text(encoding="utf-8"))
             title = str(info.get("title") or info.get("topic") or title)
         except (json.JSONDecodeError, OSError):
             pass
@@ -145,9 +141,7 @@ def _read_caption(artifact_dir: str, project: dict[str, Any]) -> str:
     return caption
 
 
-def _find_media_url(
-    artifact_dir: str, project: dict[str, Any]
-) -> dict[str, Any]:
+def _find_media_url(artifact_dir: str, project: dict[str, Any]) -> dict[str, Any]:
     """Resolve a media URL for the Instagram container.
 
     Priority order:
@@ -470,10 +464,7 @@ class InstagramPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "instagram",
-                "reason": (
-                    f"media container creation failed "
-                    f"(HTTP {status_code}): {err_msg}"
-                ),
+                "reason": (f"media container creation failed (HTTP {status_code}): {err_msg}"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -483,10 +474,7 @@ class InstagramPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "instagram",
-                "reason": (
-                    f"media container creation failed "
-                    f"({safe_url}): {type(exc).__name__}"
-                ),
+                "reason": (f"media container creation failed ({safe_url}): {type(exc).__name__}"),
             }
 
         container_id = data.get("id")
@@ -559,9 +547,7 @@ class InstagramPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "instagram",
-                "reason": (
-                    f"publish failed (HTTP {status_code}): {err_msg}"
-                ),
+                "reason": (f"publish failed (HTTP {status_code}): {err_msg}"),
             }
         except _httpx.RequestError as exc:
             log.error(
@@ -571,9 +557,7 @@ class InstagramPublisher(BasePlatformAdapter):
             return {
                 "status": "error",
                 "platform": "instagram",
-                "reason": (
-                    f"publish failed ({safe_url}): {type(exc).__name__}"
-                ),
+                "reason": (f"publish failed ({safe_url}): {type(exc).__name__}"),
             }
 
         published_id = data.get("id")

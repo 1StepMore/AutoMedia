@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
 
-
 # ---------------------------------------------------------------------------
 # MCPErrorCode
 # ---------------------------------------------------------------------------
@@ -20,9 +19,7 @@ class TestMCPErrorCode:
     def test_enum_values_match_keys(self) -> None:
         """Each enum member has a value matching its name."""
         for member in MCPErrorCode:
-            assert member.value == member.name, (
-                f"{member.name} should have value matching its name"
-            )
+            assert member.value == member.name, f"{member.name} should have value matching its name"
 
     def test_expected_members_present(self) -> None:
         """MCPErrorCode contains all expected error code members."""

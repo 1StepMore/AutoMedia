@@ -138,11 +138,12 @@ class EdgeTTSEngine(BaseTTSEngine):
             timeout=120,
         )
         if result.returncode != 0:
-            logger.error(
-                "edge-tts failed (rc=%d): %s", result.returncode, result.stderr
-            )
+            logger.error("edge-tts failed (rc=%d): %s", result.returncode, result.stderr)
             raise subprocess.CalledProcessError(
-                result.returncode, cmd, result.stdout, result.stderr  # type: ignore[arg-type]
+                result.returncode,
+                cmd,
+                result.stdout,
+                result.stderr,  # type: ignore[arg-type]
             )
 
         logger.info("edge-tts: wrote %s", output_path)

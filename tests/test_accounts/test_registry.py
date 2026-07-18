@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -295,7 +294,9 @@ class TestUpdate:
 
     def test_update_tags_only(self, registry: AccountRegistry) -> None:
         """Updating only tags leaves label unchanged."""
-        meta = registry.register("wechat", WECHAT_CREDENTIALS, label="My Label", tags={"env": "prod"})
+        meta = registry.register(
+            "wechat", WECHAT_CREDENTIALS, label="My Label", tags={"env": "prod"}
+        )
         registry.update(meta["account_id"], tags={"region": "us"})
 
         info = registry.get(meta["account_id"])

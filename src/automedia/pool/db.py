@@ -29,6 +29,7 @@ class TopicRecord(TypedDict, total=False):
     updated_at: str
     research_data: str
 
+
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS topics (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

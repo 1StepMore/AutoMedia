@@ -115,8 +115,6 @@ def _check_red_line_7(transcription: str, full_audio: bool) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # V2PreSendWhisper gate
 # ---------------------------------------------------------------------------
@@ -144,7 +142,12 @@ class V2PreSendWhisper(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run V2 pre-send whisper checks and return structured result."""
         if not gate_context.get("hyperframes_available", True):
-            return {"passed": True, "gate": "V2", "status": "skipped", "reason": "HyperFrames not installed — video QA skipped"}
+            return {
+                "passed": True,
+                "gate": "V2",
+                "status": "skipped",
+                "reason": "HyperFrames not installed — video QA skipped",
+            }
 
         transcription: str = gate_context.get("transcription", "")
         audio_path: str = gate_context.get("audio_path", "")

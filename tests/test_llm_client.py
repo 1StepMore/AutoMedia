@@ -315,8 +315,10 @@ class TestBuildClient:
     def test_raises_import_error_when_openai_missing(self) -> None:
         """Raises ImportError when openai package is not installed."""
         config = _make_llm_config()
-        with patch.dict(sys.modules, {"openai": None}), \
-                pytest.raises(ImportError, match="openai.*extra"):
+        with (
+            patch.dict(sys.modules, {"openai": None}),
+            pytest.raises(ImportError, match="openai.*extra"),
+        ):
             _build_client(config)
 
     def test_omits_base_url_when_absent_from_config(self) -> None:
@@ -671,9 +673,7 @@ class TestRetryWrappers:
             response,
         ]
         with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)):
-            result = _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+            result = _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert result == response
         assert mock_client.chat.completions.create.call_count == 2
 
@@ -685,9 +685,7 @@ class TestRetryWrappers:
             response,
         ]
         with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)):
-            result = _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+            result = _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert result == response
 
     def test_retries_on_connection_error(self, mock_client: MagicMock) -> None:
@@ -698,19 +696,17 @@ class TestRetryWrappers:
             response,
         ]
         with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)):
-            result = _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+            result = _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert result == response
 
     def test_does_not_retry_on_non_retryable_error(self, mock_client: MagicMock) -> None:
         """Non-retryable errors propagate immediately without retry."""
         mock_client.chat.completions.create.side_effect = ValueError("bad request")
-        with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)), \
-                pytest.raises(ValueError, match="bad request"):
-            _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+        with (
+            patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)),
+            pytest.raises(ValueError, match="bad request"),
+        ):
+            _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert mock_client.chat.completions.create.call_count == 1
 
     def test_succeeds_on_second_attempt(self, mock_client: MagicMock) -> None:
@@ -721,22 +717,18 @@ class TestRetryWrappers:
             response,
         ]
         with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)):
-            result = _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+            result = _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert result == response
         assert mock_client.chat.completions.create.call_count == 2
 
     def test_retries_exactly_three_times(self, mock_client: MagicMock) -> None:
         """After 3 failed retryable attempts, re-raises the exception."""
-        mock_client.chat.completions.create.side_effect = _RetryableTestError(
-            "always fail"
-        )
-        with patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)), \
-                pytest.raises(_RetryableTestError, match="always fail"):
-            _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+        mock_client.chat.completions.create.side_effect = _RetryableTestError("always fail")
+        with (
+            patch("automedia.core.llm_client._RETRYABLE_ERRORS", (_RetryableTestError,)),
+            pytest.raises(_RetryableTestError, match="always fail"),
+        ):
+            _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert mock_client.chat.completions.create.call_count == 3
 
     def test_structured_retry_retries_on_transient_error(
@@ -759,14 +751,12 @@ class TestRetryWrappers:
 
     def test_no_retry_when_retryable_errors_empty(self, mock_client: MagicMock) -> None:
         """When _RETRYABLE_ERRORS is empty, no retries occur even for matching errors."""
-        mock_client.chat.completions.create.side_effect = _RetryableTestError(
-            "no retry"
-        )
-        with patch("automedia.core.llm_client._RETRYABLE_ERRORS", ()), \
-                pytest.raises(_RetryableTestError, match="no retry"):
-            _llm_chat_completion_with_retry(
-                mock_client, "model", [], 0.7, 100
-            )
+        mock_client.chat.completions.create.side_effect = _RetryableTestError("no retry")
+        with (
+            patch("automedia.core.llm_client._RETRYABLE_ERRORS", ()),
+            pytest.raises(_RetryableTestError, match="no retry"),
+        ):
+            _llm_chat_completion_with_retry(mock_client, "model", [], 0.7, 100)
         assert mock_client.chat.completions.create.call_count == 1
 
 
@@ -870,8 +860,6 @@ class TestConfigFallback:
             "automedia.core.config_loader.load_config",
             return_value=loaded,
         ) as mock_load:
-            result = llm_complete_structured(
-                "test prompt", response_format=dict, config=None
-            )
+            result = llm_complete_structured("test prompt", response_format=dict, config=None)
             mock_load.assert_called_once()
             assert result == {"parsed": True}

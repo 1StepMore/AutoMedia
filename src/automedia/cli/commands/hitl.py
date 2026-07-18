@@ -111,18 +111,21 @@ def _show_presets() -> None:
     all_presets = sorted(set(filesystem) | _BUILTIN_PRESETS)
 
     active = _read_active_preset()
-    if output_text(None, data={
-        "status": "ok",
-        "presets": [
-            {
-                "name": name,
-                "source": "built-in" if name in _BUILTIN_PRESETS else "file",
-                "active": name == active,
-            }
-            for name in all_presets
-        ],
-        "active_preset": active,
-    }):
+    if output_text(
+        None,
+        data={
+            "status": "ok",
+            "presets": [
+                {
+                    "name": name,
+                    "source": "built-in" if name in _BUILTIN_PRESETS else "file",
+                    "active": name == active,
+                }
+                for name in all_presets
+            ],
+            "active_preset": active,
+        },
+    ):
         return
 
     if not all_presets:
@@ -201,15 +204,18 @@ def config_cmd() -> None:
         t = n.get("type", "unknown")
         type_counts[t] = type_counts.get(t, 0) + 1
 
-    if output_text(None, data={
-        "status": "ok",
-        "active_preset": active_name,
-        "total_nodes": len(nodes),
-        "human_nodes": human_count,
-        "agent_nodes": agent_count,
-        "by_type": type_counts,
-        "nodes": sorted(nodes, key=lambda x: x.get("name", "")),
-    }):
+    if output_text(
+        None,
+        data={
+            "status": "ok",
+            "active_preset": active_name,
+            "total_nodes": len(nodes),
+            "human_nodes": human_count,
+            "agent_nodes": agent_count,
+            "by_type": type_counts,
+            "nodes": sorted(nodes, key=lambda x: x.get("name", "")),
+        },
+    ):
         return
 
     typer.echo("HITL Configuration Summary")

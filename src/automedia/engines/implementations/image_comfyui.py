@@ -217,9 +217,7 @@ class ComfyUIImageEngine(BaseImageEngine):
                 prompt_data = resp.json()
                 prompt_id = prompt_data.get("prompt_id")
                 if not prompt_id:
-                    raise RuntimeError(
-                        f"No prompt_id in ComfyUI response: {prompt_data}"
-                    )
+                    raise RuntimeError(f"No prompt_id in ComfyUI response: {prompt_data}")
 
                 # b) Poll /history/{prompt_id} until completed
                 self._poll_comfyui(client, base_url, prompt_id, timeout)

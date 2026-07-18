@@ -831,7 +831,9 @@ class TestResources:
         db_path = tmp_path / "pool.db"
         db = PoolDB(db_path)
         db.add_topic({"title": "Topic A", "status": "pending", "category": "tech", "score": 5.0})
-        db.add_topic({"title": "Topic B", "status": "selected", "category": "finance", "score": 8.0})
+        db.add_topic(
+            {"title": "Topic B", "status": "selected", "category": "finance", "score": 8.0}
+        )
         db.close()
 
         monkeypatch.setenv("AUTOMEDIA_POOL_DB", str(db_path))
@@ -862,6 +864,7 @@ class TestBatchRun:
         error: str | None = None,
     ) -> Any:
         from automedia.pipelines.gate_engine import PipelineResult
+
         return PipelineResult(
             status=status,  # pyright: ignore[reportArgumentType]
             project_id=project_id,

@@ -22,7 +22,6 @@ from tests.mock_llm import (
     mock_llm_response,
 )
 
-
 # =========================================================================
 # mock_llm_response — direct call to llm_complete_structured_safe
 # =========================================================================
@@ -74,9 +73,9 @@ class TestMockLlmResponseDirect:
         # Verify the mock is no longer active — the function would fail
         # if called without a real API key, but we just check it's a real
         # function (not a MagicMock).
-        assert not isinstance(
-            llm_complete_structured_safe, MagicMock
-        ), "mock leaked outside context"
+        assert not isinstance(llm_complete_structured_safe, MagicMock), (
+            "mock leaked outside context"
+        )
 
 
 # =========================================================================

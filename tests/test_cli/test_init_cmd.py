@@ -57,6 +57,7 @@ class TestWriteModelConfig:
     def test_creates_directory(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Directory ``~/.automedia/`` is created if missing."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -72,6 +73,7 @@ class TestWriteModelConfig:
     def test_writes_valid_yaml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Written YAML can be parsed back to the original dict."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -92,6 +94,7 @@ class TestWriteModelConfig:
     ) -> None:
         """File is created with 0o600 permissions."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -105,6 +108,7 @@ class TestWriteModelConfig:
     def test_preserves_unicode(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Unicode characters are preserved in the written YAML."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -122,6 +126,7 @@ class TestWriteModelConfig:
     ) -> None:
         """Writing a second time reuses existing directory without error."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -150,6 +155,7 @@ class TestInitCmdDispatch:
     ) -> None:
         """``init --template minimal --json`` produces valid JSON on stdout."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -223,6 +229,7 @@ class TestInitInteractive:
     ) -> None:
         """Interactive wizard writes a valid config file."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -255,6 +262,7 @@ class TestInitInteractive:
     ) -> None:
         """When the user leaves base_url blank, the key is omitted from config."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -279,6 +287,7 @@ class TestInitInteractive:
     ) -> None:
         """Empty optional input falls back to the typer prompt defaults."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -316,6 +325,7 @@ class TestInitOmniEdgeCases:
     ) -> None:
         """``init --omni --json`` with missing templates returns JSON error."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -333,6 +343,7 @@ class TestInitOmniEdgeCases:
     ) -> None:
         """``init --omni`` with missing templates prints text error."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -345,11 +356,10 @@ class TestInitOmniEdgeCases:
         clean = _strip_ansi(result.output)
         assert "template" in clean.lower()
 
-    def test_omni_json_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_omni_json_output(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """``init --omni --json`` produces valid JSON on success."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
@@ -380,6 +390,7 @@ class TestInitMinimal:
     ) -> None:
         """``--template minimal --json`` includes the correct path in output."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"
@@ -397,6 +408,7 @@ class TestInitMinimal:
     ) -> None:
         """``--template minimal`` (no --json) creates the config file."""
         import automedia.cli.commands.init_cmd  # noqa: F401
+
         init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         cfg_dir = tmp_path / ".automedia"

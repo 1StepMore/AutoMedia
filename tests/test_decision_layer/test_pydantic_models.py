@@ -30,7 +30,6 @@ from automedia.decision.pydantic import (
     TopicResearchOutput,
 )
 
-
 # ===================================================================
 # BrandStrategyOutput
 # ===================================================================
