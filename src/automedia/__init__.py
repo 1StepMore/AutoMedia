@@ -18,6 +18,7 @@ try:
 except ImportError:
     pass
 
+from automedia.core.media_spec import PlatformMediaSpec, get_platform_media_spec
 from automedia.decision.base import DecisionArtifact
 from automedia.gates.base import GateRegistry
 from automedia.hooks.protocol import GateHook
@@ -47,6 +48,8 @@ __all__ = [
     "PipelineError",
     "PipelineProgress",
     "PipelineResult",
+    "PlatformMediaSpec",
+    "get_platform_media_spec",
     "run_full_pipeline",
     "__version__",
 ]

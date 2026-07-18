@@ -8,7 +8,7 @@ Public API
 ----------
 - ``OverridesLoader(overrides_dir=None)``
   - ``load_rules(brand=None) -> list[dict]``
-  - ``load_prompts(brand=None) -> dict[str, str]``
+  - ``load_prompts(brand=None, platform=None) -> dict[str, str]``
 """
 
 from __future__ import annotations
@@ -139,27 +139,39 @@ class OverridesLoader:
                 filtered.append(rule)
         return filtered
 
-    def load_prompts(self, brand: str | None = None) -> dict[str, str]:
+    def load_prompts(
+        self,
+        brand: str | None = None,
+        platform: str | None = None,
+    ) -> dict[str, str]:
         """Load custom LLM prompt templates from ``<overrides_dir>/prompts/*.j2``.
 
-        When *brand* is supplied, brand-scoped prompts are loaded first from
-        ``<overrides_dir>/prompts/<brand>/*.j2`` (if that subdirectory exists),
-        then merged with global prompts from ``<overrides_dir>/prompts/*.j2``.
-        Brand-scoped prompts take precedence over global ones with the same
-        stem name.
+        When *platform* is supplied, platform-scoped prompts are loaded from
+        ``<overrides_dir>/prompts/<platform>/*.j2`` and merged over global
+        prompts (platform takes precedence over global).
+
+        When *brand* is supplied, brand-scoped prompts are loaded from
+        ``<overrides_dir>/prompts/<brand>/*.j2`` and merged on top of any
+        platform-scoped prompts (brand takes highest precedence).
+
+        Resolution order (lowest → highest priority):
+        1. Global prompts from ``<overrides_dir>/prompts/*.j2``
+        2. Platform-scoped prompts from ``<overrides_dir>/prompts/<platform>/*.j2``
+        3. Brand-scoped prompts from ``<overrides_dir>/prompts/<brand>/*.j2``
 
         Returns an empty dict when the prompts directory does not exist.
         """
         # Global prompts (top-level .j2 files only)
-        global_prompts = _load_j2_files(self.prompts_dir)
+        result = _load_j2_files(self.prompts_dir)
 
-        if brand is None:
-            return global_prompts
+        if platform is not None:
+            platform_prompts_dir = self.prompts_dir / platform.lower()
+            platform_prompts = _load_j2_files(platform_prompts_dir)
+            result.update(platform_prompts)
 
-        # Brand-scoped prompts from subdirectory
-        brand_prompts_dir = self.prompts_dir / brand.lower()
-        brand_prompts = _load_j2_files(brand_prompts_dir)
+        if brand is not None:
+            brand_prompts_dir = self.prompts_dir / brand.lower()
+            brand_prompts = _load_j2_files(brand_prompts_dir)
+            result.update(brand_prompts)
 
-        # Merge: global as base, brand-scoped overrides
-        merged = {**global_prompts, **brand_prompts}
-        return merged
+        return result

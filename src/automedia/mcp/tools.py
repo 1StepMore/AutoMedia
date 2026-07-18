@@ -1,6 +1,6 @@
 """MCP tool handler functions (module-level for testability).
 
-All 14 tool handlers plus the helper utilities they depend on.
+All tool handler functions plus the helper utilities they depend on.
 Imported and registered by :func:`automedia.mcp.server.create_server`.
 """
 
@@ -13,7 +13,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import yaml
 from structlog import get_logger
@@ -39,6 +39,17 @@ from automedia.mcp.server_types import (
 from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
 from automedia.pipelines.runner import VALID_MODES
 
+
+class CronScheduleEntry(TypedDict):
+    name: str
+    expression: str
+    brand: str
+    category: str
+    count: int
+    platform: str
+    mode: str
+
+
 # Track registered tool count (set dynamically by server.py after registration)
 _tools_count: int = 0
 
@@ -58,6 +69,7 @@ def _require_allowed(path: str, *, tool_name: str = "") -> None:
     from automedia.mcp import server as _srv
 
     _srv._require_allowed(path, tool_name=tool_name)
+
 
 log = get_logger(__name__)
 
@@ -286,10 +298,14 @@ def research_topics(
         or an error dict on failure.
     """
     if pattern == "a":
-        return success_response({
-            "topics": [], "category": category,
-            "total_found": 0, "note": "pattern_a_raw_data",
-        })
+        return success_response(
+            {
+                "topics": [],
+                "category": category,
+                "total_found": 0,
+                "note": "pattern_a_raw_data",
+            }
+        )
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import TopicResearchOutput
@@ -298,10 +314,7 @@ def research_topics(
         if not trending_data:
             tavily_data = _fetch_tavily_trending(category)
             if tavily_data:
-                trending_data = (
-                    f"Real-time search results for \"{category}\":\n"
-                    f"{tavily_data}"
-                )
+                trending_data = f'Real-time search results for "{category}":\n{tavily_data}'
 
         prompt = load_prompt(
             "topic_research",
@@ -472,29 +485,35 @@ def batch_run(
                 brand=brand,
                 mode=mode,
             )
-            results.append({
-                "topic": topic,
-                "status": pipeline_result.status,
-                "project_id": pipeline_result.project_id,
-                "error": pipeline_result.error,
-            })
+            results.append(
+                {
+                    "topic": topic,
+                    "status": pipeline_result.status,
+                    "project_id": pipeline_result.project_id,
+                    "error": pipeline_result.error,
+                }
+            )
         except Exception as exc:
             # MCP boundary: per-topic catch-all so one failure doesn't stop the batch
-            results.append({
-                "topic": topic,
-                "status": "failed",
-                "project_id": "",
-                "error": str(exc),
-            })
+            results.append(
+                {
+                    "topic": topic,
+                    "status": "failed",
+                    "project_id": "",
+                    "error": str(exc),
+                }
+            )
 
     passed = sum(1 for r in results if r["status"] == "success")
     failed = len(results) - passed
-    return success_response({
-        "results": results,
-        "total": len(results),
-        "passed": passed,
-        "failed": failed,
-    })
+    return success_response(
+        {
+            "results": results,
+            "total": len(results),
+            "passed": passed,
+            "failed": failed,
+        }
+    )
 
 
 def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
@@ -659,21 +678,27 @@ def archive_project(
         projects = _discover_projects(base_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
-            return {"archived": False, **error_response(
-                MCPErrorCode.NOT_FOUND,
-                f"Project {project_id!r} not found",
-                "Verify project_id",
-            )}
+            return {
+                "archived": False,
+                **error_response(
+                    MCPErrorCode.NOT_FOUND,
+                    f"Project {project_id!r} not found",
+                    "Verify project_id",
+                ),
+            }
 
         proj = match[0]
         status_val = str(proj.get("status", ""))
         if status_val != "published" and not force:
             return {
                 "archived": False,
-                **error_response(MCPErrorCode.INVALID_PARAM, (
-                    f"Refused: project status is '{status_val}', not 'published'. "
-                    f"Set force=True to override (Red Line 8)."
-                )),
+                **error_response(
+                    MCPErrorCode.INVALID_PARAM,
+                    (
+                        f"Refused: project status is '{status_val}', not 'published'. "
+                        f"Set force=True to override (Red Line 8)."
+                    ),
+                ),
             }
 
         project_dir = Path(proj["_dir"])
@@ -769,12 +794,14 @@ def pool_add_topic(
 
         topic_id = db.add_topic(data={"title": title, "category": category})
         db.close()
-        return success_response({
-            "id": topic_id,
-            "title": title,
-            "category": category,
-            "status": "pending",
-        })
+        return success_response(
+            {
+                "id": topic_id,
+                "title": title,
+                "category": category,
+                "status": "pending",
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for PoolDB errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
@@ -803,7 +830,12 @@ def _read_pipeline_schedules() -> list[dict[str, Any]]:
             data = yaml.safe_load(fh)
         if not isinstance(data, dict):
             return []
-        return data.get("pipeline_schedules", []) or []
+        schedules: list[dict[str, Any]] = data.get("pipeline_schedules", []) or []
+        # Ensure backward compat: default missing platform/mode to ""
+        for s in schedules:
+            s.setdefault("platform", "")
+            s.setdefault("mode", "")
+        return schedules
     except Exception:
         # YAML parse errors are non-fatal — return empty schedule list
         return []
@@ -830,6 +862,8 @@ def add_cron_schedule(
     brand: str = "",
     category: str = "",
     count: int = 1,
+    platform: str = "",
+    mode: str = "",
 ) -> dict[str, Any]:
     """Add a cron schedule entry to ``cron/jobs.yaml``.
 
@@ -845,11 +879,16 @@ def add_cron_schedule(
         Topic category filter.
     count:
         Number of topics to process (default 1).
+    platform:
+        Target platform for the pipeline (optional, validated against known adapters).
+    mode:
+        Pipeline mode to use (optional, validated against VALID_MODES).
 
     Returns
     -------
     dict
-        ``{"added": True, "name": str}`` or ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
+        ``{"added": True, "name": str}`` or
+        ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     import re
 
@@ -857,6 +896,23 @@ def add_cron_schedule(
         return error_response(
             MCPErrorCode.INVALID_PARAM,
             f"Invalid cron expression {expression!r}: must have exactly 5 fields",
+        )
+
+    if platform:
+        from automedia.adapters.registry import AdapterRegistry
+
+        known_platforms = AdapterRegistry.list()
+        if platform not in known_platforms:
+            return error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"Unknown platform {platform!r}. Choose from: {known_platforms}",
+            )
+
+    if mode and mode not in VALID_MODES:
+        valid_modes = list(VALID_MODES)
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"Unknown pipeline mode {mode!r}. Choose from: {valid_modes}",
         )
 
     schedules = _read_pipeline_schedules()
@@ -874,6 +930,8 @@ def add_cron_schedule(
             "brand": brand,
             "category": category,
             "count": count,
+            "platform": platform,
+            "mode": mode,
         }
     )
 
@@ -913,7 +971,8 @@ def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
     Returns
     -------
     dict
-        ``{"removed": True, "name": str}`` or ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
+        ``{"removed": True, "name": str}`` or
+        ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     schedules = _read_pipeline_schedules()
 
@@ -956,35 +1015,41 @@ def get_cron_health() -> dict[str, Any]:
     """
     path = _get_jobs_yaml_path()
     if not path.is_file():
-        return success_response({
-            "jobs_valid": False,
-            "schedule_count": 0,
-            "job_count": 0,
-            "static_jobs": [],
-            "note": "cron/jobs.yaml not found",
-        })
+        return success_response(
+            {
+                "jobs_valid": False,
+                "schedule_count": 0,
+                "job_count": 0,
+                "static_jobs": [],
+                "note": "cron/jobs.yaml not found",
+            }
+        )
 
     try:
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     except Exception as exc:
         # MCP boundary: YAML parse errors are non-fatal
-        return success_response({
-            "jobs_valid": False,
-            "schedule_count": 0,
-            "job_count": 0,
-            "static_jobs": [],
-            "note": f"parse error: {exc}",
-        })
+        return success_response(
+            {
+                "jobs_valid": False,
+                "schedule_count": 0,
+                "job_count": 0,
+                "static_jobs": [],
+                "note": f"parse error: {exc}",
+            }
+        )
 
     if not isinstance(data, dict):
-        return success_response({
-            "jobs_valid": False,
-            "schedule_count": 0,
-            "job_count": 0,
-            "static_jobs": [],
-            "note": "jobs.yaml is not a valid dict",
-        })
+        return success_response(
+            {
+                "jobs_valid": False,
+                "schedule_count": 0,
+                "job_count": 0,
+                "static_jobs": [],
+                "note": "jobs.yaml is not a valid dict",
+            }
+        )
 
     pipeline_schedules = data.get("pipeline_schedules", []) or []
     if not isinstance(pipeline_schedules, list):
@@ -1007,9 +1072,7 @@ def get_cron_health() -> dict[str, Any]:
     for sched in pipeline_schedules:
         name = sched.get("name", "")
         expr = sched.get("expression", "")
-        valid = isinstance(expr, str) and bool(
-            re.match(r"^(\S+\s+){4}\S+$", expr.strip())
-        )
+        valid = isinstance(expr, str) and bool(re.match(r"^(\S+\s+){4}\S+$", expr.strip()))
 
         entry: dict[str, Any] = {
             "name": name,
@@ -1046,9 +1109,7 @@ def get_cron_health() -> dict[str, Any]:
                 )
         else:
             entry["next_triggers"] = None
-            entry["next_triggers_note"] = (
-                "Expression does not match 5-field cron syntax."
-            )
+            entry["next_triggers_note"] = "Expression does not match 5-field cron syntax."
 
         schedules.append(entry)
 
@@ -1071,16 +1132,18 @@ def get_cron_health() -> dict[str, Any]:
     if croniter_note:
         notes.append(croniter_note)
 
-    return success_response({
-        "jobs_valid": True,
-        "schedule_count": len(pipeline_schedules),
-        "valid_expressions": valid_count,
-        "invalid_expressions": len(pipeline_schedules) - valid_count,
-        "schedules": schedules,
-        "job_count": len(static_jobs),
-        "static_jobs": job_details,
-        "note": " ".join(notes),
-    })
+    return success_response(
+        {
+            "jobs_valid": True,
+            "schedule_count": len(pipeline_schedules),
+            "valid_expressions": valid_count,
+            "invalid_expressions": len(pipeline_schedules) - valid_count,
+            "schedules": schedules,
+            "job_count": len(static_jobs),
+            "static_jobs": job_details,
+            "note": " ".join(notes),
+        }
+    )
 
 
 def test_cron_schedule(
@@ -1107,8 +1170,9 @@ def test_cron_schedule(
         "note": None}`` on success with *croniter*, or
         ``{"valid": True, "expression": str, "next_triggers": None,
         "note": "croniter not available..."}`` without *croniter*, or
-        ``{"valid": False, "expression": str, "error": {"code": ..., "message": ..., "resolution": ...}}`` on invalid
-        syntax or computation failure.
+        ``{"valid": False, "expression": str,
+        "error": {"code": ..., "message": ..., "resolution": ...}}``
+        on invalid syntax or computation failure.
     """
     import re
 
@@ -1135,22 +1199,26 @@ def test_cron_schedule(
             next_time = cron.get_next(datetime)
             next_triggers.append(next_time.isoformat())
 
-        return success_response({
-            "valid": True,
-            "expression": expression,
-            "next_triggers": next_triggers,
-            "note": None,
-        })
+        return success_response(
+            {
+                "valid": True,
+                "expression": expression,
+                "next_triggers": next_triggers,
+                "note": None,
+            }
+        )
     except ImportError:
-        return success_response({
-            "valid": True,
-            "expression": expression,
-            "next_triggers": None,
-            "note": (
-                "croniter not available — install with 'pip install croniter' "
-                "to compute next trigger times. The expression format is valid."
-            ),
-        })
+        return success_response(
+            {
+                "valid": True,
+                "expression": expression,
+                "next_triggers": None,
+                "note": (
+                    "croniter not available — install with 'pip install croniter' "
+                    "to compute next trigger times. The expression format is valid."
+                ),
+            }
+        )
     except Exception as exc:
         # MCP boundary: croniter computation failures are non-fatal
         return {
@@ -1205,11 +1273,14 @@ def publish_content(
         projects = _discover_projects(projects_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
-            return {"published": False, **error_response(
-                MCPErrorCode.NOT_FOUND,
-                f"Project {project_id!r} not found",
-                "Verify project_id",
-            )}
+            return {
+                "published": False,
+                **error_response(
+                    MCPErrorCode.NOT_FOUND,
+                    f"Project {project_id!r} not found",
+                    "Verify project_id",
+                ),
+            }
 
         proj = match[0]
         artifact_dir = proj["_dir"]
@@ -1446,7 +1517,8 @@ def register_platform_adapter(
         "class": str}`` on success.
         Without ``adapter_class``: ``{"registered": False, "stub": True,
         "platform": str, "message": str, "instructions": str}``.
-        On error: ``{"registered": False, "error": {"code": ..., "message": ..., "resolution": ...}}``.
+        On error: ``{"registered": False,
+        "error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     import re
 
@@ -1461,10 +1533,13 @@ def register_platform_adapter(
     if not re.match(r"^[a-zA-Z0-9_-]+$", platform_name):
         return {
             "registered": False,
-            **error_response(MCPErrorCode.INVALID_PARAM, (
-                f"Invalid platform_name {platform_name!r}. "
-                f"Use only letters, digits, underscores, and hyphens."
-            )),
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                (
+                    f"Invalid platform_name {platform_name!r}. "
+                    f"Use only letters, digits, underscores, and hyphens."
+                ),
+            ),
         }
 
     try:
@@ -1475,55 +1550,68 @@ def register_platform_adapter(
             if not module_path:
                 return {
                     "registered": False,
-                    **error_response(MCPErrorCode.INVALID_PARAM, (
-                        f"Invalid adapter_class {adapter_class!r}: "
-                        f"must be a dotted path (e.g. 'pkg.mod.ClassName')."
-                    )),
+                    **error_response(
+                        MCPErrorCode.INVALID_PARAM,
+                        (
+                            f"Invalid adapter_class {adapter_class!r}: "
+                            f"must be a dotted path (e.g. 'pkg.mod.ClassName')."
+                        ),
+                    ),
                 }
             if not module_path.startswith("automedia.adapters."):
                 return {
                     "registered": False,
-                    **error_response(MCPErrorCode.INVALID_PARAM, (
-                        f"Invalid adapter class: {adapter_class!r}. "
-                        f"Must be in automedia.adapters.* namespace"
-                    )),
+                    **error_response(
+                        MCPErrorCode.INVALID_PARAM,
+                        (
+                            f"Invalid adapter class: {adapter_class!r}. "
+                            f"Must be in automedia.adapters.* namespace"
+                        ),
+                    ),
                 }
             if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", class_name):
                 return {
                     "registered": False,
-                    **error_response(MCPErrorCode.INVALID_PARAM, (
-                        f"Invalid class name in {adapter_class!r}. "
-                        f"Class name must match [A-Za-z_][A-Za-z0-9_]*."
-                    )),
+                    **error_response(
+                        MCPErrorCode.INVALID_PARAM,
+                        (
+                            f"Invalid class name in {adapter_class!r}. "
+                            f"Class name must match [A-Za-z_][A-Za-z0-9_]*."
+                        ),
+                    ),
                 }
             mod = importlib.import_module(module_path)
             cls = getattr(mod, class_name)
             AdapterRegistry.register(cls)
-            return success_response({
-                "registered": True,
-                "platform": platform_name,
-                "class": adapter_class,
-            })
+            return success_response(
+                {
+                    "registered": True,
+                    "platform": platform_name,
+                    "class": adapter_class,
+                }
+            )
 
-        return success_response({
-            "registered": False,
-            "platform": platform_name,
-            "stub": True,
-            "message": (
-                f"Stub: adapter for {platform_name!r} acknowledged. "
-                f"Provide a dotted ``adapter_class`` path to fully register."
-            ),
-            "instructions": (
-                f"To implement the {platform_name!r} adapter:\n"
-                f"  1. Create automedia/adapters/{platform_name}.py with a class\n"
-                f"     that implements the adapter protocol.\n"
-                f"  2. Call register_platform_adapter(\n"
-                f"       platform_name={platform_name!r},\n"
-                f"       adapter_class='automedia.adapters.{platform_name}.<ClassName>',\n"
-                f"     )\n"
-                f"  3. The adapter will be registered with AdapterRegistry."
-            ),
-        })
+        return success_response(
+            {
+                "registered": False,
+                "platform": platform_name,
+                "stub": True,
+                "message": (
+                    f"Stub: adapter for {platform_name!r} acknowledged. "
+                    f"Provide a dotted ``adapter_class`` path to fully register."
+                ),
+                "instructions": (
+                    f"To implement the {platform_name!r} adapter:\n"
+                    f"  1. Create automedia/adapters/{platform_name}.py with a class\n"
+                    f"     that implements the adapter protocol.\n"
+                    f"  2. Call register_platform_adapter(\n"
+                    f"       platform_name={platform_name!r},\n"
+                    f"       adapter_class='automedia.adapters.{platform_name}.<ClassName>',\n"
+                    f"     )\n"
+                    f"  3. The adapter will be registered with AdapterRegistry."
+                ),
+            }
+        )
 
     except Exception as exc:
         # MCP boundary: catch-all for dynamic import / registry errors
@@ -1562,15 +1650,18 @@ def extract_brief(
 
         adapter = OPPAdapter()
         result = adapter.extract(file_path, source_lang, target_lang)
-        return success_response({
-            "md_content": result.md_content,
-            "manifest_json": result.manifest,
-            "warnings": result.warnings,
-        })
+        return success_response(
+            {
+                "md_content": result.md_content,
+                "manifest_json": result.manifest,
+                "warnings": result.warnings,
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for OPP extraction errors
         return {
-            "md_content": "", "manifest_json": {},
+            "md_content": "",
+            "manifest_json": {},
             "warnings": [str(exc)],
             **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
@@ -1607,15 +1698,18 @@ def localize_content(
 
         adapter = OLAdapter()
         result = adapter.translate(md_content, source_lang, target_lang)
-        return success_response({
-            "translated_md": result.translated_md,
-            "xliff_path": result.xliff_path,
-            "warnings": result.warnings,
-        })
+        return success_response(
+            {
+                "translated_md": result.translated_md,
+                "xliff_path": result.xliff_path,
+                "warnings": result.warnings,
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for OL translation errors
         return {
-            "translated_md": "", "xliff_path": None,
+            "translated_md": "",
+            "xliff_path": None,
             "warnings": [str(exc)],
             **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
@@ -1657,27 +1751,33 @@ def localize_output(
         warnings: list[str] = []
 
         if not drafts_dir.is_dir():
-            return success_response({
-                "project_dir": project_dir,
-                "results": results,
-                "warnings": [f"Drafts directory not found: {drafts_dir}"],
-            })
+            return success_response(
+                {
+                    "project_dir": project_dir,
+                    "results": results,
+                    "warnings": [f"Drafts directory not found: {drafts_dir}"],
+                }
+            )
 
         langs = [lang.strip() for lang in target_langs.split(",") if lang.strip()]
         if not langs:
-            return success_response({
-                "project_dir": project_dir,
-                "results": results,
-                "warnings": ["No target languages specified"],
-            })
+            return success_response(
+                {
+                    "project_dir": project_dir,
+                    "results": results,
+                    "warnings": ["No target languages specified"],
+                }
+            )
 
         md_files = sorted(drafts_dir.glob("*.md"))
         if not md_files:
-            return success_response({
-                "project_dir": project_dir,
-                "results": results,
-                "warnings": [f"No markdown files found in {drafts_dir}"],
-            })
+            return success_response(
+                {
+                    "project_dir": project_dir,
+                    "results": results,
+                    "warnings": [f"No markdown files found in {drafts_dir}"],
+                }
+            )
 
         adapter = OLAdapter()
 
@@ -1699,11 +1799,13 @@ def localize_output(
                     # Per-file catch-all: one file failure doesn't stop other translations
                     warnings.append(f"Translation failed for {md_file.name} → {lang}: {exc}")
 
-        return success_response({
-            "project_dir": project_dir,
-            "results": results,
-            "warnings": warnings,
-        })
+        return success_response(
+            {
+                "project_dir": project_dir,
+                "results": results,
+                "warnings": warnings,
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for file I/O / translation errors
         return {
@@ -1772,15 +1874,18 @@ def format_output(
             **options,
         )
         errors = result.get("errors", [])
-        return success_response({
-            "output_path": output_path,
-            "output_format": target_format,
-            "warnings": errors if errors else [],
-        })
+        return success_response(
+            {
+                "output_path": output_path,
+                "output_format": target_format,
+                "warnings": errors if errors else [],
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for ORF conversion errors
         return {
-            "output_path": "", "output_format": target_format,
+            "output_path": "",
+            "output_format": target_format,
             "warnings": [str(exc)],
             **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
@@ -1830,10 +1935,13 @@ def evaluate_content_quality(
         or an error dict on failure.
     """
     if pattern == "a":
-        return success_response({
-            "quality_score": 0.5, "note": "pattern_a_raw_data",
-            "criteria": criteria,
-        })
+        return success_response(
+            {
+                "quality_score": 0.5,
+                "note": "pattern_a_raw_data",
+                "criteria": criteria,
+            }
+        )
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import ContentQualityOutput
@@ -1873,18 +1981,22 @@ def health_check() -> dict[str, Any]:
     -------
     dict
         ``{"status": "ok", "version": str, "uptime_s": float, "tools_count": int}``
-        or ``{"status": "error", "error": {"code": ..., "message": ..., "resolution": ...}}`` on failure.
+        or ``{"status": "error",
+        "error": {"code": ..., "message": ..., "resolution": ...}}``
+        on failure.
     """
     try:
         from automedia._version import __version__
 
         uptime_s = time.monotonic() - _SERVER_START
-        return success_response({
-            "status": "ok",
-            "version": __version__,
-            "uptime_s": round(uptime_s, 2),
-            "tools_count": _tools_count,
-        })
+        return success_response(
+            {
+                "status": "ok",
+                "version": __version__,
+                "uptime_s": round(uptime_s, 2),
+                "tools_count": _tools_count,
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for version import errors
         return {"status": "error", **error_response(MCPErrorCode.UNKNOWN, str(exc))}
@@ -1955,7 +2067,8 @@ def get_config(key: str = "") -> dict[str, Any]:
         ``{"config": {...}}`` with secrets redacted, or
         ``{"value": ...}`` for a specific key lookup, or
         ``{"error": {"code": "NOT_FOUND", "message": "config key '...' not found"}}``, or
-        ``{"error": {"code": "ALLOWLIST_DENIED", "message": "secret key not exposed"}}`` when the key is secret.
+        ``{"error": {"code": "ALLOWLIST_DENIED",
+        "message": "secret key not exposed"}}`` when the key is secret.
     """
     try:
         from automedia.core.config_loader import load_config
@@ -2141,15 +2254,17 @@ def run_brand_strategy(
         ``"error"`` key instead.
     """
     if pattern == "a":
-        return success_response({
-            "note": "pattern_a_raw_data",
-            "input": {
-                "brand_name": brand_name,
-                "industry": industry,
-                "target_audience": target_audience,
-                "context": context,
-            },
-        })
+        return success_response(
+            {
+                "note": "pattern_a_raw_data",
+                "input": {
+                    "brand_name": brand_name,
+                    "industry": industry,
+                    "target_audience": target_audience,
+                    "context": context,
+                },
+            }
+        )
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import BrandStrategyOutput
@@ -2215,15 +2330,17 @@ def run_pipeline_from_strategy(
         failure description.
     """
     if pattern == "a":
-        return success_response({
-            "note": "pattern_a_raw_data",
-            "input": {
-                "topic": topic,
-                "brand": brand,
-                "mode": mode,
-                "strategy_context": strategy_context,
-            },
-        })
+        return success_response(
+            {
+                "note": "pattern_a_raw_data",
+                "input": {
+                    "topic": topic,
+                    "brand": brand,
+                    "mode": mode,
+                    "strategy_context": strategy_context,
+                },
+            }
+        )
     try:
         from automedia.core.llm_client import llm_complete_structured_safe
         from automedia.decision.pydantic import PipelineStrategyOutput
@@ -2249,10 +2366,12 @@ def run_pipeline_from_strategy(
             mode=mode,
         )
 
-        return success_response({
-            "strategy": strategy.model_dump(),
-            "pipeline_result": _pipeline_result_to_dict(pipeline_result),
-        })
+        return success_response(
+            {
+                "strategy": strategy.model_dump(),
+                "pipeline_result": _pipeline_result_to_dict(pipeline_result),
+            }
+        )
     except Exception as exc:
         # MCP boundary: catch-all for strategy generation + pipeline errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
@@ -2314,13 +2433,15 @@ def update_engine_config(
         with open(filepath, "w", encoding="utf-8") as f:
             yaml.dump(override_data, f, default_flow_style=False)
 
-        return success_response({
-            "status": "ok",
-            "modality": modality,
-            "setting": setting,
-            "value": value,
-            "file": str(filepath),
-        })
+        return success_response(
+            {
+                "status": "ok",
+                "modality": modality,
+                "setting": setting,
+                "value": value,
+                "file": str(filepath),
+            }
+        )
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
@@ -2337,18 +2458,28 @@ def engine_health() -> dict[str, Any]:
     try:
         from automedia.core.doctor import Doctor
 
-        engine_deps_set = {"comfyui", "whisper", "edge-tts", "hyperframes",
-                           "chrome", "ffmpeg", "bun", "llm_api"}
+        engine_deps_set = {
+            "comfyui",
+            "whisper",
+            "edge-tts",
+            "hyperframes",
+            "chrome",
+            "ffmpeg",
+            "bun",
+            "llm_api",
+        }
 
         all_deps = Doctor().check_dependencies()
         engine_deps = [d for d in all_deps if d["name"] in engine_deps_set]
         healthy = sum(1 for d in engine_deps if d["installed"])
         unhealthy = len(engine_deps) - healthy
 
-        return success_response({
-            "engines": engine_deps,
-            "healthy_count": healthy,
-            "unhealthy_count": unhealthy,
-        })
+        return success_response(
+            {
+                "engines": engine_deps,
+                "healthy_count": healthy,
+                "unhealthy_count": unhealthy,
+            }
+        )
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))

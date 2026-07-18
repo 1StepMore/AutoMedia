@@ -7,7 +7,7 @@
 
 ## 1. Why Founder's Expectations?
 
-AutoMedia has 2,047 passing tests, 20 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
+AutoMedia has 2,955 test functions, 20 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
 
 **Does this project actually solve the problem I created it to solve?**
 
@@ -93,7 +93,7 @@ The founder's complete workflow — from having an idea to seeing it published.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-The journey has 8 phases. Each phase has specific expectations.
+The journey has 9 phases. Each phase has specific expectations.
 
 ---
 
@@ -176,7 +176,7 @@ Expectations are grouped by journey phase.
 | **Human: default mode** | Configurable. `automedia run --topic "X" --brand "Y"` uses whatever `default_mode` is set in `.automedia/config.yaml`. If unset, there is no default — user must specify `--mode`. |
 | **Agent: default mode** | `run_pipeline` MCP tool has `mode` parameter with the same default behavior — reads from config if available, otherwise requires explicit parameter. |
 | **Available modes** | 8 modes: `auto` (full pipeline: content → quality gates → video → lifecycle), `text_only` (content writing + quality gates, skip video), `text_with_cover` (text content with cover image), `video_only` (video processing only, uses existing content), `qa_only` (re-run selected quality gates on existing output), `image-carousel` (image carousel with lifecycle gates), `social-thread` (social media thread format), `short-video` (short-form video pipeline). |
-| **Implementation status** | ✅ 8 modes fully implemented with mode-specific gate lists in `_MODE_GATE_MAP` in `runner.py`: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`. |
+| **Implementation status** | ✅ 8 modes fully implemented with mode-specific gate lists in `_MODE_MAP` in `runner.py`: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`. |
 | **Rationale** | `auto` mode may fail due to missing video deps; `text_only` is a conscious choice per run. No silent default that could fail unexpectedly. Mode determines what the pipeline produces; platform adapters then consume what they can from the output (see F34). |
 
 #### F08 — Runtime Output
@@ -527,7 +527,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | UX Detail | Specification |
 |-----------|---------------|
 | **Xiaohongshu (intentional divergence)** | `xiaohongshu_publisher.py` returns `"not_implemented"` — the platform has no public API. Publishing is **manual-only** via the RED mobile app or web creator portal. Credentials are validated (cookie check) but no automated publish is attempted. Adding automated XHS publishing would require reverse-engineering private APIs, which is out of scope. |
-| **IM notifications** | Not in AutoMedia scope. Agent-to-human IM conversation (e.g., agent asking "shall I publish?") is handled by the agent framework (OpenCode, Claude Code, etc.), not by AutoMedia. AutoMedia provides the tools; the agent communicates results to the human via the agent framework's own notification layer. Feishu/Discord webhook adapters are removed — they duplicate agent framework responsibility. |
+| **IM notifications** | Not in AutoMedia scope. Agent-to-human IM conversation (e.g., agent asking "shall I publish?") is handled by the agent framework (OpenCode, Claude Code, etc.), not by AutoMedia. AutoMedia provides the tools; the agent communicates results to the human via the agent framework's own notification layer. Feishu/Discord webhook adapters are out of scope — they duplicate agent framework responsibility. |
 
 #### F33 — Platform-Specific Formatting
 
@@ -547,8 +547,8 @@ Platform → content type mapping is automatic: text-first platforms → text co
 |-----------|---------------|
 | **Binding** | Brand config declares which platforms it publishes to: `brands.my-brand.platforms: [wechat, zhihu, douyin, xiaohongshu]`. |
 | **Mode determines production** | Pipeline mode (`auto`, `text_only`, `video_only`) determines what content is produced. The mode is the source of truth — platforms must adapt to what the mode produces, not the other way around. |
-| **Platform capability matching** | Each platform adapter declares what content types it accepts. The publish engine checks compatibility: |
-| | **Platform capability matrix**: |
+| **Platform capability matching** | ❌ Not implemented. The publish engine does not filter platforms by content-type compatibility with pipeline mode — only automation level (auto/review/manual) is checked. |
+| | **Platform capability matrix** (reference — all registered adapters): |
 | | | Platform | Content Type | Accepts From Mode | Actual Status | Priority |
 | | |----------|-------------|-------------------|---------------|----------|
 | | | WeChat Official Account | Long-form text + images | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
@@ -560,20 +560,19 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | | | Toutiao | Long-form text, images | `auto`, `text_only` | ❌ Not implemented | P3 |
 | | | Baijiahao | Long-form text, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P3 |
 | | | Kuaishou | Short video | `auto`, `video_only` | ❌ Not implemented | P3 |
-| | | YouTube | Long video (16:9) | `auto`, `video_only` | ❌ Not implemented | P4 |
-| | | Twitter/X | Short text + media | `auto`, `text_only`, `video_only` | ❌ Not implemented | P4 |
-| | | Reddit | Text, link, images | `auto`, `text_only` | ❌ Not implemented | P4 |
-| | | TikTok | Short video (9:16) | `auto`, `video_only` | ❌ Not implemented | P5 |
-| | | Facebook | Text + images, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P5 |
-| | | Instagram | Images, video, Reels | `auto` only (needs images) | ❌ Not implemented | P5 |
-| | | LinkedIn | Text, images, documents | `auto`, `text_only` | ❌ Not implemented | P5 |
-| | | Medium | Long-form text | `text_only` | ❌ Not implemented | P5 |
-| | | WordPress | Blog posts | `auto`, `text_only` | ❌ Not implemented | P5 |
-| | | Juejin | Tech articles (Markdown) | `text_only` | ❌ Not implemented | P5 |
-| | | **If a platform's requirements conflict with the current mode, that platform is skipped** — the mode is never upgraded to accommodate a platform. E.g., `text_only` mode with Xiaohongshu bound → skip (XHS needs images, text_only has none). |
+| | | YouTube | Long video (16:9) | `auto`, `video_only` | ✅ Full implementation | P0 (done) |
+| | | Twitter/X | Short text + media | `auto`, `text_only`, `video_only` | ✅ Full implementation | P0 (done) |
+| | | Reddit | Text, link, images | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
+| | | TikTok | Short video (9:16) | `auto`, `video_only` | ✅ Full implementation | P0 (done) |
+| | | Facebook | Text + images, video | `auto`, `text_only`, `video_only` | ✅ Full implementation | P0 (done) |
+| | | Instagram | Images, video, Reels | `auto` only (needs images) | ✅ Full implementation | P0 (done) |
+| | | LinkedIn | Text, images, documents | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
+| | | Medium | Long-form text | `text_only` | ✅ Full implementation | P0 (done) |
+| | | WordPress | Blog posts | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
+| | | Juejin | Tech articles (Markdown) | `text_only` | ⚠️ Manual-only stub (no public API) | P1 (stub) |
 | **Publish execution** | After pipeline completes: for each platform, respect its automation level. Auto → publish now. Review → create draft. Manual → skip. |
 | **Per-platform adaptation** | Same core content, adapted per platform (title tweaks, format changes, CTA adjustment). Brand config can specify per-platform overrides. |
-| **Implementation status** | ✅ Complete — all 19 platform adapters exist. WeChat ✅ full, Zhihu ✅ full, YouTube ✅ full, Twitter/X ✅ full, Reddit ✅ full, TikTok ✅ full, Facebook ✅ full, Instagram ✅ full, LinkedIn ✅ full, Medium ✅ full, WordPress ✅ full, Xiaohongshu ⚠️ manual-only stub, Douyin ⚠️ manual-only stub, Bilibili ⚠️ manual-only stub, Weibo ⚠️ manual-only stub, Toutiao ⚠️ manual-only stub, Baijiahao ⚠️ manual-only stub, Kuaishou ⚠️ manual-only stub, Juejin ⚠️ manual-only stub. 12 real API integrations + 7 intentional manual-only stubs (documented divergences, no API available). |
+| **Implementation status** | ✅ Complete — all 19 platform adapters exist. WeChat ✅ full, Zhihu ✅ full, YouTube ✅ full, Twitter/X ✅ full, Reddit ✅ full, TikTok ✅ full, Facebook ✅ full, Instagram ✅ full, LinkedIn ✅ full, Medium ✅ full, WordPress ✅ full, Xiaohongshu ⚠️ manual-only stub, Douyin ⚠️ manual-only stub, Bilibili ⚠️ manual-only stub, Weibo ⚠️ manual-only stub, Toutiao ⚠️ manual-only stub, Baijiahao ⚠️ manual-only stub, Kuaishou ⚠️ manual-only stub, Juejin ⚠️ manual-only stub. 11 real API integrations + 8 intentional manual-only stubs (documented divergences, no API available). |
 | **Partial failure** | One platform failure doesn't block others. Skipped/failed platforms reported in summary. |
 
 #### F35 — Publish Error Handling
@@ -625,7 +624,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent involvement** | Agent can manage scheduling via MCP tools: "schedule daily tech production at 9am" → agent calls tool to add cron entry. |
 | **Agent: verify cron health** | `get_cron_health()` tool returns cron daemon status, last trigger time, next scheduled trigger, missed triggers count. Agent can proactively report: "Cron is healthy. Next trigger: tomorrow 9:00 AM for daily-tech." |
 | **Agent: test schedule** | `test_cron_schedule(expression="0 9 * * *")` tool returns the next N trigger times, validates cron expression syntax. Agent can confirm before setting up a schedule. |
-| **Implementation status** | ✅ `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule` implemented. ❌ `get_cron_health` and `test_cron_schedule` not yet implemented — documented gaps. External crond triggers `automedia cron run`. |
+| **Implementation status** | ✅ All 5 cron MCP tools implemented: `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule`, `get_cron_health`, `test_cron_schedule`. External crond triggers `automedia cron run`. |
 | **Human monitoring** | `automedia cron list` to see past runs. Agent uses `get_cron_health` (when implemented) to report proactively. |
 
 #### F38 — Customizable Topic Pipeline
@@ -695,8 +694,8 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Search capabilities** | Full-text (exact + fuzzy), metadata filters (brand, platform, date, status, category), semantic / vector search. |
 | **Agent: search assets** | Agent can query: `search_assets(query="AI 视频工具", brand="my-brand", limit=5)` → returns ranked results with relevance scores. |
 | **Human: search assets** | "帮我找去年写的关于 AI 工具的文章" → Agent handles the search, no directory browsing needed. |
-| **Search implementation status** | ❌ **Not implemented.** Agent cannot query produced content programmatically. Asset search is a documented gap. |
-| **Config implementation note** | ✅ Config introspection and brand discovery are implemented. The gap is on the search side only. |
+| **Search implementation status** | ✅ **Implemented.** `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. |
+| **Config implementation note** | ✅ Config introspection and brand discovery are implemented. |
 
 #### F43 — Pipeline Integrity Verification
 
@@ -753,7 +752,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Current status** | ✅ 2,634 tests passing (6 pre-existing failures). CI runs on every push. |
+| **Current status** | ✅ 2,955 test functions across 145 files. CI runs on every push. |
 | **Test coverage** | Unit tests per gate, integration tests for pipeline, CLI tests, MCP tests, red line enforcement tests, E2E tests. |
 | **Adding new gates** | Each new gate must include tests. The `add-new-gate` skill enforces test creation. |
 | **Pre-commit hooks** | Ruff, mypy, and pre-commit checks run before every commit. |
@@ -769,6 +768,124 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Breaking changes** | If a structural change is necessary, there must be: (1) a deprecation period where both old and new formats are supported, and (2) a migration tool. |
 | **Implementation status** | ✅ Readability guarantee (v1) designed into project directory structure and metadata schema. Re-runnability and auto-migration are not planned for v1 MVP. |
 | **Agent behavior** | Agent opening an old project with new code should be able to report: "This project was produced with v0.4.2. Content is accessible." |
+
+---
+
+### 3.9 Phase 9: Customize — Platform-Aware Workflow
+
+> "I can customize prompts, media specs, gate composition, and scheduling per platform — without touching code. Defaults ship with sensible per-platform differentiation."
+
+**Design principle**: The system ships with working defaults for every supported platform. But direct-users (agents) and director-users (humans) can override any aspect of a platform's workflow through a layered customization system. Customization is progressive: change one prompt, or define a completely new workflow.
+
+**Current gap**: The pipeline has one set of prompts, one gate composition per mode, and one cron schedule for all platforms. Six specific gaps (G1–G6) exist, addressed by five implementation phases (P1–P5). The "director" preset in `hitl/config.py` validates this architecture.
+
+#### F49 — Prompt Platform Routing
+
+*Gate prompts (CW, G0, G1, G2, etc.) are platform-aware — each platform can have its own prompt template.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 1: Prompt has no platform routing.** The override system (`~/.automedia/overrides/prompts/`) supports brand-scoped `*.j2` overrides, but gates like CW, G0, G1, G2 all load a single prompt template (`content_writer.j2`, `fact_check_g0.j2`, etc.) regardless of target platform. All platforms use the same prompt. |
+| **Where the gap lives** | `automedia/gates/content_writer.py` line 156: `load_prompt("content_writer")` — no `platform` parameter. The CW gate reads `gate_context.get("mode")` for mode awareness (lines 165–191) but never reads a platform field. Other gates have the same blind spot. |
+| **What exists** | ✅ `automedia/core/overrides.py` `OverridesLoader.load_prompts(brand=None)` supports brand-scoped directories (`prompts/<brand>/*.j2`) and global (`prompts/*.j2`). The infrastructure for hierarchical prompt resolution exists. |
+| **What's missing** | Platform-scoped prompt routing: `prompts/<platform>/*.j2` (e.g., `prompts/wechat/content_writer.j2`, `prompts/zhihu/content_writer.j2`), platform-dependent fallback chain (`platform > brand > global > built-in`), and gate-level `load_prompt(name, platform="...")` API. |
+| **Default behavior** | Ship platform-agnostic defaults that work for all text platforms. The default `content_writer.j2` produces a generic long-form article. |
+| **Customization scope** | Per-platform override files. User creates `~/.automedia/overrides/prompts/wechat/content_writer.j2` → CW gate auto-detects platform context → loads the platform-specific template. No code changes. |
+| **Agent workflow** | Agent configures "write WeChat articles with a more casual tone" → creates platform-scoped prompt override → subsequent `run_pipeline(brand="my-brand")` with WeChat in the platform list automatically uses the overridden prompt. |
+| **Per-platform differentiation** | WeChat → longer, more formal, WeChat-format HTML. Xiaohongshu → shorter, visual-first, image-heavy narrative. Zhihu → technical deep-dive, citation-heavy. Twitter → thread format with 280-char-aware segmentation. Douyin → conversational, hook-first, short-form narration. Each platform variant is a separate `*.j2` file. |
+| **Implementation phase** | **Phase 1 (P1)** — extend `OverridesLoader.load_prompts()` with platform resolution; add `platform` parameter to `load_prompt()` API; update CW, G0, G1, G2 gates to pass `gate_context.get("platforms", [])`; ship per-platform default prompts for the 6 most-used platforms. |
+
+#### F50 — Media Spec Mapping
+
+*Image/video dimensions and format requirements are declared per-platform in config, not hardcoded.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 2: Image/video specs are hardcoded or in process-level placeholders.** Width/height placeholders exist but there is no centralized `platform → dimensions` mapping table. Each video gate and image pipeline reads dimensions from scattered configuration. |
+| **Where the gap lives** | `automedia/pipelines/image_pipeline.py` and `video_pipeline.py` consume `config` dicts with width/height that come from caller-provided overrides or defaults.yaml. Platform-specific media requirements (e.g., XHS 1:1 images vs WeChat 16:9 cover) are not mapped anywhere. |
+| **What exists** | ✅ `automedia/manifests/defaults.yaml` has `engines.image.comfyui` and `engines.video.hyperframes` config sections. Pipeline-level width/height can be passed as overrides. Platform-specific specs are absent. |
+| **What's missing** | A platform media-spec manifest: `platforms.<platform>.media.image.width`, `platforms.<platform>.media.image.aspect_ratio`, `platforms.<platform>.media.video.max_duration_s`, `platforms.<platform>.media.video.resolution`. A lookup function `get_platform_media_spec(platform) -> dict`. |
+| **Default behavior** | Ship a reference table of all 19 platforms' known media requirements as built-in defaults. E.g., WeChat cover: 900×383 (16:9), Xiaohongshu note: 1:1 or 3:4, Douyin video: 9:16 1080×1920, YouTube video: 16:9 1920×1080. |
+| **Customization scope** | Per-brand override: `brands.my-brand.platforms.wechat.media.image.width: 1200`. Platform-level defaults serve as the base layer; brand-level overrides apply on top. |
+| **Agent workflow** | Agent configures a new platform: "add YouTube with 4K video output" → sets `platforms.youtube.media.video.resolution: 3840x2160` in brand config. Pipeline generates appropriately sized output. |
+| **Implementation phase** | **Phase 1 (P1)** — define `PlatformMediaSpec` model in `automedia/core/`; add `get_platform_media_spec(platform, brand_config) -> dict` resolver; populate `defaults.yaml` with all platforms' media specs; update image/video pipelines to consume specs from resolver instead of hardcoded values. |
+
+#### F51 — Per-Platform Gate Composition
+
+*Gate composition can vary per platform — add WeChat-specific checks, skip video gates for XHS text-only mode.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 3: Gate composition is global per mode.** 8 modes (`_MODE_MAP` in `runner.py`) define global gate lists. All platforms sharing the same mode run the exact same gate sequence. There is no mechanism to add/remove/modify gates per platform. |
+| **Where the gap lives** | `automedia/pipelines/runner.py` lines 57–195: `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, etc. are static lists. `GateEngine` in `gate_engine.py` executes whatever gate list it receives. The gate list is built from mode alone — no platform influence. |
+| **What exists** | ✅ The 8-mode system + `_derive_mode_from_platforms()` (line 215) which maps platform categories to modes. Mode is platform-influenced at a coarse level (text-first → `text_only`, mixed-social → `auto`), but individual gate selection is not. |
+| **What's missing** | Platform-level gate modifiers: `platforms.<platform>.gates.include: ["G6"]` (add a custom gate for this platform only), `platforms.<platform>.gates.exclude: ["V3"]` (skip a gate for this platform), `platforms.<platform>.gates.override_failure_mode: {"G1": "stop"}` (change failure behavior per-platform). |
+| **Default behavior** | Mode's standard gate list is the base. If no platform modifiers exist, behavior is identical to today. Platform modifiers are purely additive/restrictive — they cannot create entirely new modes (that requires a new mode entry). |
+| **Customization scope** | Per-platform in brand config or override rules. `brands.my-brand.platforms.wechat.gates.exclude: [V0, V1, V2]` — skip video gates for a text-only platform. This is YAML-level customization, not Python. |
+| **Agent workflow** | Human: "微信的内容不用跑视频门" → Agent adds platform gate override. Next WeChat pipeline run skips video gates, reducing processing time. Agent can introspect effective gate list via `get_pipeline_progress`. |
+| **Design constraints** | Platform gate modifiers must be validated: (1) cannot exclude gates that produce required artifacts for downstream gates, (2) cannot include a gate that doesn't exist, (3) CW cannot be excluded if content generation is needed, (4) lifecycle gates (L1–L4) are always required. |
+| **Implementation phase** | **Phase 2 (P2)** — define gate modifier schema in config; add `_apply_platform_gate_modifiers(base_gates, platform_config) -> list[str]` in `runner.py`; integrate into gate list building pipeline; add validation for constraint rules; expose effective gate list via `get_pipeline_progress` metadata. |
+
+#### F52 — Override System Discoverability
+
+*All customizable prompts, rules, and variables are discoverable — documented naming conventions, schema reference, and an MCP tool to list them.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 4: Override system is undocumented and undiscoverable.** F46 acknowledges the override system exists and AGENTS.md mentions it in one line. But there is no documentation of: available overrideable prompt template names, their expected Jinja2 variables, rule YAML schema, file naming conventions, or how the resolution order works. |
+| **What exists** | ✅ `automedia/core/overrides.py` implements `OverridesLoader` with `load_rules(brand)` and `load_prompts(brand)` methods. The file system layout (`rules/*.yaml`, `prompts/*.j2`, `prompts/<brand>/*.j2`) works. F46 describes the 6-layer config hierarchy. |
+| **What's missing** | (1) A `list_overridable()` tool or documented reference listing every prompt template name (`content_writer`, `fact_check_g0`, `humanizer_g1`, `brand_strategy`, etc.), their expected input variables, and example usage. (2) Rule YAML schema documentation with all supported keys (currently inferred from `overrides.py` code at line 121–139 where `brand` key filtering is shown). (3) Naming conventions for files. (4) Jinja2 variable reference per template. (5) An MCP tool to enumerate current overrides. |
+| **Default behavior** | No overrides = use built-in defaults. Discoverability is about documentation, not runtime. Ship a "Override System Reference" doc page. |
+| **Customization scope** | Users can create `rules/*.yaml` for config overrides (gate thresholds, scoring weights, etc.) and `prompts/*.j2` for LLM prompt customization. Platform-scoped prompts (F49) extend this with `prompts/<platform>/*.j2`. Brand-scoped prompts already work (`prompts/<brand>/*.j2`). |
+| **Agent workflow** | Agent: "what can I customize?" → calls new `list_overridable_templates()` MCP tool → returns `[{name: "content_writer", variables: ["topic", "brand", "platform"], file: "overrides/prompts/content_writer.j2"}]`. Agent can then create or modify overrides via file operations. |
+| **Implementation phase** | **Phase 2 (P2)** — document all overrideable templates with their variables in `docs/dev/override-reference.md`; create `list_overridable_templates()` MCP tool; document rule YAML schema; add Jinja2 variable reference comments to every `.j2` file header. |
+
+#### F53 — Platform-Aware Cron Scheduling
+
+*Scheduled jobs can target specific platforms — "daily tech article published to WeChat and Zhihu" is a single schedule entry.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 5: Cron scheduling has no platform awareness.** `add_cron_schedule(name, expression, brand, category, count)` supports `brand` and `category` filters but has no `platform` or `mode` parameter. A schedule entry triggers `select_topic` + `run_pipeline` with the brand's full platform list — you cannot schedule "daily WeChat-only" vs "daily Zhihu-only" separately. |
+| **Where the gap lives** | `automedia/mcp/tools.py` line 827: `add_cron_schedule` signature has `brand`, `category`, `count` but no `platform` or `mode`. The cron runner consumes the schedule's brand and runs the brand's full config. |
+| **What exists** | ✅ F37: all 5 cron MCP tools exist (add/list/remove/get_health/test). `add_cron_schedule` already has `brand` and `category` parameters. The external crond + `automedia cron run` pipeline works end-to-end. |
+| **What's missing** | `platform` parameter in `add_cron_schedule` to restrict which platforms a scheduled run publishes to. `mode` parameter to override pipeline mode per schedule. Optional: `mode` override to decouple from brand's default. Optional: `gate_overrides` for platform-specific gate composition in scheduled runs. |
+| **Default behavior** | No platform filter → publish to all brand-configured platforms (current behavior). Backward compatible: existing schedules with no `platform` field continue to publish to all platforms. |
+| **Customization scope** | Per-schedule `platform` list: `add_cron_schedule(name="daily-wechat-tech", expression="0 9 * * *", brand="my-brand", platform=["wechat"])`. Per-schedule `mode` override: `mode="text_only"` for text-only cron jobs. |
+| **Agent workflow** | Human: "每天上午9点产一篇科技文章只发微信" → Agent calls `add_cron_schedule(name="daily-wechat-tech", expression="0 9 * * *", brand="my-brand", platform=["wechat"])`. Cron runs at 9 AM → selects topic → runs pipeline → publishes to WeChat only. |
+| **Implementation phase** | **Phase 3 (P3)** — add `platform: list[str]` and `mode: str` optional parameters to `add_cron_schedule`; extend schedule YAML schema; update cron runner to filter platforms and override mode when these are set; update `list_cron_schedules` and `test_cron_schedule` to display the new fields. |
+
+#### F54 — Declarative Workflows
+
+*A "workflow" is a named, composable pipeline recipe defined in YAML — platform bindings, gate list, prompt overrides, media specs, and scheduling all in one file.*
+
+| UX Detail | Specification |
+|-----------|---------------|
+| **Current state** | ❌ **Gap 6: No "workflow" concept exists.** Everything is implicit in Python code. Pipeline behavior is determined by: mode + brand config + platform list + global defaults. There is no single declarative artifact that says "here is a complete recipe for producing WeChat articles." Users must understand `runner.py`, `_MODE_MAP`, gate names, config hierarchy, and override file layout to customize anything. |
+| **What exists** | ✅ Building blocks exist: 8 modes, 20 gates, 6-layer config, override system, cron scheduling, platform adapters. What's missing is the glue that binds them into named, reusable workflows. |
+| **What's missing** | A `workflows.yaml` file (in project `.automedia/` or user `~/.automedia/`) defining named workflows. Each workflow specifies: `mode`, `platform` binding, `gates` (base + include/exclude), `prompt_overrides` (directory or inline), `media_spec_overrides`, and optional `schedule` (cron expression + count). |
+| **Example workflow** | ```yaml<br>workflows:<br>  wechat-daily:<br>    mode: text_only<br>    platforms: [wechat]<br>    gates:<br>      base: text_only<br>      exclude: [G2]  # skip copy review for daily runs<br>    prompts:<br>      dir: overrides/prompts/wechat/<br>    media:<br>      image: {width: 900, height: 383, format: jpg}<br>    schedule:<br>      expression: "0 9 * * *"<br>      count: 1<br>``` |
+| **Default behavior** | No `workflows.yaml` → system uses current behavior (mode-based gate lists, global prompts, brand platform list). Workflows are entirely opt-in. |
+| **Customization scope** | Workflows can be brand-scoped (a brand field) or global. Workflow inheritance: `extends: wechat-daily` + override specific fields. Director-users define workflows once; direct-users (agents) select workflow by name. |
+| **Agent workflow** | Human: "给我定义一个微信每日流程" → Agent defines `wechat-daily` workflow → Agent then calls `run_pipeline(topic="X", workflow="wechat-daily")` → pipeline executes the workflow's full recipe. |
+| **MCP tool integration** | New `list_workflows()` tool returning all defined workflows. `run_pipeline` gains optional `workflow` parameter. When set, workflow config merges over (does not replace) brand config — workflow is a higher-priority layer in the 6+1 hierarchy. |
+| **Implementation phase** | **Phase 4 (P4)** — design `Workflow` Pydantic model; implement `WorkflowLoader` (analogous to `OverridesLoader`); add workflow resolution in `runner.py` (merge workflow config on top of mode + brand before gate list building); add `list_workflows` MCP tool; update `run_pipeline` to accept `workflow` parameter. |
+
+#### F55 — Implementation Roadmap
+
+*Five-phase plan to close all six gaps, with acceptance criteria per phase.*
+
+| Phase | Gaps Addressed | Deliverables | Acceptance Criteria |
+|:------|:---------------|:-------------|:--------------------|
+| **P1: Prompt & Media** | G1 (prompt routing), G2 (media specs) | Platform-scoped prompt resolution; `get_platform_media_spec()` resolver; per-platform default prompts for 6 most-used platforms; media spec table in `defaults.yaml` | ✅ Prompts vary by platform (`content_writer.j2` vs `content_writer_wechat.j2` produce different output); media specs queryable per platform |
+| **P2: Discoverability & Gate Modifiers** | G3 (gate composition), G4 (override discoverability) | Platform gate include/exclude/override mechanic; `list_overridable_templates()` MCP tool; override system reference doc; gate modifier validation | ✅ Gates can be added/removed per platform with validated modifiers; all prompts, variables, and rules documented and tool-enumerable |
+| **P3: Platform-Aware Scheduling** | G5 (cron platform routing) | `platform` and `mode` params on `add_cron_schedule`; schedule YAML schema extended; cron runner respects platform filter | ✅ Schedule `platform: [wechat]` publishes only to WeChat; existing schedules unchanged; mode override works independently |
+| **P4: Declarative Workflows** | G6 (workflow concept) | `workflows.yaml` format definition; `WorkflowLoader` implementation; workflow→config merge in `runner.py`; `list_workflows` MCP tool; `run_pipeline(workflow="...")` parameter | ✅ YAML-defined workflow produces identical output to equivalent manual config; workflow overrides merge correctly with brand config; MCP tool lists all workflows |
+| **P5: Director-User Mode** | All gaps — director preset validation | "Director" HITL preset (`hitl/config.py`) becomes the default for director-users; agent workflow: human says "帮我产一篇 AI 工具对比" → agent resolves topic + chooses workflow + schedules + publishes; agent reports summary in natural language without technical details | ✅ Director-user never sees gate names, mode strings, or platform codes; agent handles all mapping; human gives intent, system delivers output |
+
+**Priority ranking**: P1 (prompt + media) is the highest-value gap — it directly impacts content quality differentiation between platforms. P2 (discoverability) is a prerequisite for any user to actually use the customization system. P3 (scheduling) and P4 (workflows) are power-user features. P5 (director mode) is the culmination that makes the whole system invisible to director-users.
+
+**Integration with existing expectations**: F34 (multi-platform routing) defines which platforms a brand publishes to. F54 (workflows) defines *how* each platform is serviced. F49 (prompts) defines *what voice* each platform speaks in. F37 (scheduling) defines *when* each platform receives content. Together they form a complete platform lifecycle: bind → customize → compose → schedule → execute.
 
 ---
 
@@ -823,7 +940,7 @@ Reality:  20 gates exist. G0/G1/G2 use hybrid LLM-first + fallback; others are d
 
 ```
 Promise:  AI coding agents (Claude Code, OpenCode, etc.) can run AutoMedia via MCP
-Reality:  MCP server exists with 24+ tools, but agent integration quality varies
+Reality:  MCP server exists with 41 tools, but agent integration quality varies
 ```
 
 | Aspect | Status | Gap |
@@ -835,9 +952,9 @@ Reality:  MCP server exists with 24+ tools, but agent integration quality varies
 | Account tools | ✅ Works | connect, list, health, disconnect |
 | **Brand discovery** | ✅ **Resolved** | `list_brands` MCP tool gives agent visibility into configured brands with full profile metadata. |
 | **Config introspection** | ✅ **Resolved** | `get_config(key="")` MCP tool returns merged config (secrets redacted). Dot-notation lookup for any key (`llm.text_generation.temperature`, `default_mode`, etc.). |
-| **Asset search** | ❌ **Gap** | Agent cannot query produced content. Asset search is a documented gap — SDK exists internally but no tool is exposed. |
-| **IM notifications** | ✅ **Out of scope** | Feishu/Discord notifiers removed — agent-to-human IM conversation is agent framework's responsibility, not AutoMedia's. |
-| Error messages are agent-friendly | ⚠️ Partial | Some errors are Python traces, not structured JSON |
+| **Asset search** | ✅ **Resolved** | `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. Agent can query produced content programmatically. |
+| **IM notifications** | ✅ **Out of scope** | Agent-to-human IM conversation is agent framework's responsibility, not AutoMedia's. Feishu notifier removed in July 2026. |
+| Error messages are agent-friendly | ✅ **Structured** | All MCP tools return consistent `{"error": "..."}` dicts. CLI shows gate-level errors with check name and suggestion; raw tracebacks only with `--verbose`. |
 | Agent can self-correct on failure | ❓ Unknown | Not tested |
 
 ### 4.4 "Not a black box — HITL available"
@@ -861,21 +978,21 @@ Reality:  HITL framework integrated into pipeline gate execution
 
 ## 5. Founder's Priority Matrix
 
-Not all expectations are equal. This matrix ranks all 48 expectations by **importance to the founder** and **current gap size**.
+Not all expectations are equal. This matrix ranks all 55 expectations by **importance to the founder** and **current gap size**.
 
 **Quadrant guide**: Top-right = highest priority (important but gappy). Bottom-left = already good (important and working).
 
-### Priority Grid (48 Expectations)
+### Priority Grid (55 Expectations)
 
 | Quadrant | Importance | Gap | Expectations |
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
-| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others), **F37** (needs external crond) |
-| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 12 real API + 7 manual-only stubs), **F35** (PublishEngine retry), **F47** (2047 tests) |
+| **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others), **F49** (prompt routing — override infra exists but gates don't read platform), **F50** (media specs — no platform→dimensions mapping), **F51** (gate composition — no per-platform gate modifiers), **F54** (declarative workflows — building blocks exist but no workflow YAML concept) |
+| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (2955 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
-| **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
+| **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency), **F52** (override discoverability — templates/rules undocumented, no MCP tool), **F53** (platform-aware cron — add_cron_schedule missing platform/mode params) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
-| **💤 Low priority** | LOW | LOW / MODERATE | **F22** (perf — no hard target), **F38** (no plugin system — by design), **F46** (override system — works for YAML/prompts), **F48** (v1 readable only — adequate) |
+| **💤 Low priority** | LOW | LOW / MODERATE | **F22** (perf — no hard target), **F38** (no plugin system — by design), **F46** (override system — works for YAML/prompts), **F48** (v1 readable only — adequate), **F55** (implementation roadmap — meta-tracking item) |
 
 ### Immediate Action Items (top priorities)
 
@@ -922,15 +1039,15 @@ class ValueResult:
 ### 6.2 Example Verdicts
 
 ```
-PASS — All 8 critical expectations pass, 36/48 total pass
+PASS — All 8 critical expectations pass, 36/55 total pass
        Value props: 1 fulfilled, 3 partial, 0 broken
 
-FAIL — 2 critical expectations fail:
+FAIL — 2 critical expectations fail (old example, pre-F49):
        F11 (topic→article): G0 gate consistently fails on real LLM output
        F29 (one-command publish): Xiaohongshu manual-only (intentional divergence)
        Value props: 0 fulfilled, 3 partial, 0 broken
 
-PARTIAL — 42/48 expectations pass, but:
+PARTIAL — 42/55 expectations pass, but:
           F24 (not AI-sounding): G1 catches only 6/9 AI patterns
           F27 (readable subtitles): V6 degrades without HyperFrames
           This is acceptable for v1 with known limitations
@@ -996,7 +1113,7 @@ This flow works. It's the project's strongest path.
 | Config introspection | ✅ Implemented | `get_config` and `list_brands` MCP tools |
 | **Asset search** | ✅ **Implemented** | `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. Exposes existing asset library capability. |
 | F09 doc correction | ✅ Documented | F09 status corrected from "some errors still Python traces" to "structured errors throughout; tracebacks only on --verbose". Confirmed via `cli/output_format.py` implementation and MCP tools' consistent structured error dicts. |
-| F34 doc correction | ✅ Documented | Platform capability matrix corrected to honest actual status. Only WeChat and Zhihu have real API adapters; Xiaohongshu is manual-only; remaining 16 platforms documented as ❌ Not implemented with priority order. Feishu confirmed out of scope per F32 (IM notifier, not publish platform). |
+| F34 doc correction | ✅ Resolved | Platform capability matrix updated to reflect actual status: 11 real API adapters (WeChat, Zhihu, YouTube, Twitter/X, Reddit, TikTok, Facebook, Instagram, LinkedIn, Medium, WordPress) + 8 manual-only stubs. Platform capability matching (mode-based filtering) documented as ❌ not implemented — actually does not exist in publish engine. |
 
 ---
 
@@ -1070,10 +1187,10 @@ An AI agent can evaluate the True Test by running each criterion and reporting P
 | Component | Status |
 |-----------|--------|
 | Framework design | ✅ Documented (this file) |
-| Expectation catalog | ✅ 48 expectations across 8 phases |
-| **All 8 phases UX specs** | **✅ All expanded from sparse tables to full detail tables with dual perspective (Human + Agent)** |
+| Expectation catalog | ✅ 55 expectations across 9 phases |
+| **All 9 phases UX specs** | **✅ All expanded from sparse tables to full detail tables with dual perspective (Human + Agent). Phase 9 (Customize) added with per-platform workflow customization expectations F49–F55.** |
 | Core value propositions | ✅ 4 assessed with honest gaps; all known gaps documented (HITL corrected, config introspection resolved, IM notifications scoped out) |
-| Priority matrix | ✅ Updated — all 48 expectations mapped with importance × gap ratings |
+| Priority matrix | ✅ Updated — all 55 expectations mapped with importance × gap ratings |
 | Verdict model | ✅ Designed |
 | End-to-end flow test (text_only) | ❓ Not performed |
 | End-to-end flow test (auto) | ❓ Not performed |
@@ -1091,7 +1208,7 @@ This document was designed to be **honest**. Not to make the project look good, 
 
 Some expectations will show gaps. That is not failure — that is **direction**. Every gap is a candidate for the next improvement.
 
-The project is not done when all 2,047 tests pass.
+The project is not done when all 2,955 tests pass.
 The project is done when the founder can say: **"Yes, this does what I wanted."**
 
 ---

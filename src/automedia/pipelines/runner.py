@@ -194,6 +194,9 @@ _MODE_MAP: dict[str, list[str]] = {
     "short-video": _SHORT_VIDEO_GATE_NAMES,
 }
 
+# Lifecycle gates — these are required and cannot be excluded via modifiers
+_LIFECYCLE_GATE_NAMES: list[str] = ["L1", "L2", "L3", "L4"]
+
 # Valid modes tuple — shared reference for CLI/MCP/SDK validation
 VALID_MODES: tuple[str, ...] = tuple(_MODE_MAP)
 
@@ -226,8 +229,7 @@ def _derive_mode_from_platforms(platforms: list[str]) -> str:
         return ""
 
     has_mixed_social = any(
-        _PLATFORM_CATEGORIES.get(p, "text-first") == "mixed-social"
-        for p in platforms
+        _PLATFORM_CATEGORIES.get(p, "text-first") == "mixed-social" for p in platforms
     )
 
     return "auto" if has_mixed_social else "text_only"
@@ -319,7 +321,7 @@ def _verify_resume_integrity(
                 gate_name=gate_name,
                 file_path=file_path,
                 hint="The file has been modified or is missing since the original pipeline run. "
-                     "The resumed pipeline will regenerate this output.",
+                "The resumed pipeline will regenerate this output.",
             )
 
 
@@ -341,6 +343,127 @@ def _record_gate_md5s(
                     output_path=output_path,
                     error=str(exc),
                 )
+
+
+# ---------------------------------------------------------------------------
+# Gate modifier schema + validation (Wave 1)
+# ---------------------------------------------------------------------------
+
+
+def validate_gate_modifiers(
+    modifiers: dict,
+    base_gates: list[str],
+    registry: GateRegistry | None = None,
+) -> list[str]:
+    """Validate and apply gate include/exclude/override_failure_mode modifiers.
+
+    Parameters
+    ----------
+    modifiers:
+        Dict with optional keys: ``include`` (list[str] — gates to add),
+        ``exclude`` (list[str] — gates to remove),
+        ``override_failure_mode`` (dict[str, str] — gate -> new failure mode).
+    base_gates:
+        The base gate name list for the current pipeline mode.
+    registry:
+        Gate registry instance.  Defaults to module-level ``_registry``.
+
+    Returns
+    -------
+    list[str]
+        Modified gate name list after applying includes and excludes.
+
+    Raises
+    ------
+    ValueError
+        If any referenced gate is not registered, CW is excluded,
+        or a lifecycle gate (L1–L4) is excluded.
+    """
+    reg = registry if registry is not None else _registry
+
+    include_names: list[str] = modifiers.get("include", [])
+    exclude_names: list[str] = modifiers.get("exclude", [])
+    override_fm: dict[str, str] = modifiers.get("override_failure_mode", {})
+
+    all_referenced: set[str] = set(include_names) | set(exclude_names) | set(override_fm.keys())
+
+    # -- Validate all referenced gates exist in the registry --
+    for name in all_referenced:
+        if name not in reg:
+            available = reg.list()
+            raise ValueError(
+                f"Gate {name!r} is not registered. Available gates: {sorted(available)}"
+            )
+
+    # -- CW is required for content generation --
+    if "CW" in exclude_names:
+        raise ValueError("Gate 'CW' cannot be excluded — required for content generation")
+
+    # -- Lifecycle gates (L1–L4) cannot be excluded --
+    for name in _LIFECYCLE_GATE_NAMES:
+        if name in exclude_names:
+            raise ValueError(f"Gate {name!r} is a lifecycle gate and cannot be excluded")
+
+    # -- Warn if excluding a stop-mode gate --
+    for name in exclude_names:
+        try:
+            gate_cls = reg.get(name)
+            failure_mode = getattr(gate_cls, "_failure_mode", "")
+            if failure_mode == "stop":
+                log.warning(
+                    "pipeline.gate_exclude.stop_mode",
+                    gate_name=name,
+                    hint="Excluding a stop-mode gate means the pipeline will not halt "
+                    "on failures in this gate.",
+                )
+        except KeyError:
+            pass  # Already validated above
+
+    # -- Apply includes and excludes --
+    result = [g for g in base_gates if g not in exclude_names]
+    for name in include_names:
+        if name not in result:
+            result.append(name)
+
+    return result
+
+
+def _compose_gate_list(
+    mode: str,
+    platform_config: dict | None = None,
+) -> list[str]:
+    """Compose the gate list for a pipeline mode, applying platform modifiers.
+
+    Starts from ``_MODE_MAP[mode]``, then applies gate modifiers from
+    *platform_config* (if present).
+
+    Parameters
+    ----------
+    mode:
+        Pipeline mode string (e.g. ``"auto"``, ``"text_only"``).
+    platform_config:
+        Optional platform configuration dict.  When it contains a ``"gates"``
+        key, the value is treated as gate modifiers and passed to
+        :func:`validate_gate_modifiers`.
+
+    Returns
+    -------
+    list[str]
+        Final gate name list.
+
+    Raises
+    ------
+    ValueError
+        If *mode* is unknown or gate modifier validation fails.
+    """
+    base = _MODE_MAP.get(mode)
+    if base is None:
+        raise ValueError(f"Unknown pipeline mode {mode!r}. Choose from: {list(_MODE_MAP)}")
+
+    if platform_config and "gates" in platform_config:
+        return validate_gate_modifiers(platform_config["gates"], list(base))
+
+    return list(base)
 
 
 # ---------------------------------------------------------------------------
@@ -467,9 +590,7 @@ def run_full_pipeline(
         #    Ensure gates module is imported so all gates are registered
         import automedia.gates  # noqa: F401
 
-        gate_names = _MODE_MAP.get(mode)
-        if gate_names is None:
-            raise ValueError(f"Unknown pipeline mode {mode!r}. Choose from: {list(_MODE_MAP)}")
+        gate_names = _compose_gate_list(mode, platform_config=None)
 
         # Apply resume_from — find index and slice
         if resume_from is not None:
@@ -507,15 +628,14 @@ def run_full_pipeline(
         try:
             hitl_cfg = HITLConfig()
             hitl_config = {
-                "enabled_nodes": [
-                    n for n in hitl_cfg.list_nodes()
-                    if n.get("autoset") == "human"
-                ],
+                "enabled_nodes": [n for n in hitl_cfg.list_nodes() if n.get("autoset") == "human"],
                 "default_executor": "agent",
                 "timeout_s": 86400,  # 24 hours
             }
         except Exception:
-            log.warning("pipeline.hitl_config_failed", hint="HITL config unavailable, using empty fallback")
+            log.warning(
+                "pipeline.hitl_config_failed", hint="HITL config unavailable, using empty fallback"
+            )
             hitl_config = {
                 "enabled_nodes": [],
                 "default_executor": "agent",
@@ -575,11 +695,12 @@ def run_full_pipeline(
 
         # 5.2 Source material loading
         if source_path or source_url:
-            material = _resolve_source_material(
-                source_path=source_path, source_url=source_url
-            )
+            material = _resolve_source_material(source_path=source_path, source_url=source_url)
             if material is None:
-                log.info("pipeline.source_material.empty", hint="Both source_path and source_url are empty — skipping")
+                log.info(
+                    "pipeline.source_material.empty",
+                    hint="Both source_path and source_url are empty — skipping",
+                )
             elif "error" in material:
                 log.warning(
                     "pipeline.source_material.failed",
@@ -699,7 +820,8 @@ def run_full_pipeline(
         status = "success" if success else "partial"
         log.info(
             "pipeline.complete",
-            status=status, duration_s=end - start,
+            status=status,
+            duration_s=end - start,
             project_id=project.project_id,
         )
 
@@ -724,8 +846,10 @@ def run_full_pipeline(
         usage_summary = get_usage_summary()
         log.error(
             "pipeline.failed",
-            error=str(exc), duration_s=end - start,
-            topic=topic, brand=brand,
+            error=str(exc),
+            duration_s=end - start,
+            topic=topic,
+            brand=brand,
         )
         return PipelineResult(
             status="failed",
@@ -860,7 +984,9 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     return entries
 
 
-def _collect_video_assets(gate_context: GateContext | dict[str, Any], project: Project) -> dict[str, Any]:
+def _collect_video_assets(
+    gate_context: GateContext | dict[str, Any], project: Project
+) -> dict[str, Any]:
     """Collect video assets from gate_context into HyperFramesVideoEngine format."""
     # Gather images from gate_context (covers, body)
     images = []
