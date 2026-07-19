@@ -137,6 +137,8 @@ class FacebookPublisher(BasePlatformAdapter):
     4. ``FACEBOOK_PAGE_ID`` legacy env var
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"facebook\"``."""

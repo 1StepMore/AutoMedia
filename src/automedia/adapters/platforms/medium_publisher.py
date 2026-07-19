@@ -88,6 +88,8 @@ class MediumPublisher(BasePlatformAdapter):
     to allow human review before going live.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"medium\"``."""

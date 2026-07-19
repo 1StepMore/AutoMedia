@@ -57,6 +57,8 @@ class ZhihuPublisher(BasePlatformAdapter):
     JSON payload, and POSTs it to the Zhihu draft API.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         return "zhihu"

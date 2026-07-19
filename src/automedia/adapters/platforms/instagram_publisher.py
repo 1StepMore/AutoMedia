@@ -261,6 +261,8 @@ class InstagramPublisher(BasePlatformAdapter):
        file paths (``file://``) will **not** work.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"instagram\"``."""

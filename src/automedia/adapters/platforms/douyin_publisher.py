@@ -26,6 +26,8 @@ logger = structlog.get_logger(__name__)
 class DouyinPublisher(BasePlatformAdapter):
     """Publish content to Douyin (抖音) — manual-only."""
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "douyin"

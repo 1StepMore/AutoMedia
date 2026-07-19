@@ -25,6 +25,8 @@ logger = structlog.get_logger(__name__)
 class BilibiliPublisher(BasePlatformAdapter):
     """Publish content to Bilibili (哔哩哔哩) — manual-only."""
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "bilibili"

@@ -71,6 +71,8 @@ class WordPressPublisher(BasePlatformAdapter):
        then ``POST /wp-json/wp/v2/posts/{id}`` to set ``featured_media``.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"wordpress\"``."""

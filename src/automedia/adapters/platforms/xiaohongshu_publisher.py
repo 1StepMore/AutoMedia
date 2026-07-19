@@ -41,6 +41,8 @@ class XiaohongshuPublisher(BasePlatformAdapter):
        credentials and documents the requirement.
     """
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "xiaohongshu"

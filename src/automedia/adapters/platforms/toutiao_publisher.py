@@ -24,6 +24,8 @@ logger = structlog.get_logger(__name__)
 class ToutiaoPublisher(BasePlatformAdapter):
     """Publish content to Toutiao (头条) — manual-only."""
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "toutiao"

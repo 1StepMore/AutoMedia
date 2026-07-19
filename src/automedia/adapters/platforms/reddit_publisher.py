@@ -156,6 +156,8 @@ class RedditPublisher(BasePlatformAdapter):
     Supports both self posts (text) and link posts.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"reddit\"``."""

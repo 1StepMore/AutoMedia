@@ -153,3 +153,45 @@ class TestClear:
         assert len(AdapterRegistry.list()) == 2
         AdapterRegistry.clear()
         assert AdapterRegistry.list() == []
+
+
+class TestListPublishablePlatforms:
+    def test_method_exists(self) -> None:
+        r = AdapterRegistry()
+        assert hasattr(r, "list_publishable_platforms")
+
+    def test_returns_empty_after_clear(self) -> None:
+        r = AdapterRegistry()
+        AdapterRegistry.clear()
+        assert r.list_publishable_platforms() == []
+
+    def test_returns_is_stub_from_class_attribute(self) -> None:
+        AdapterRegistry.register(_StubAdapterA)
+        AdapterRegistry.register(_StubAdapterB)
+        platforms = AdapterRegistry().list_publishable_platforms()
+        assert len(platforms) == 2
+        for p in platforms:
+            assert "name" in p
+            assert "is_stub" in p
+        assert all(p["is_stub"] is True for p in platforms)
+
+    def test_preserves_is_stub_false(self) -> None:
+        class _RealAdapter(BasePlatformAdapter):
+            is_stub = False
+
+            @property
+            def platform_name(self) -> str:
+                return "real_platform"
+
+            def publish(self, artifact_dir: str, project: dict, **kwargs: Any) -> dict:
+                return {"status": "ok"}
+
+        AdapterRegistry.register(_RealAdapter)
+        platforms = AdapterRegistry().list_publishable_platforms()
+        assert platforms == [{"name": "real_platform", "is_stub": False}]
+
+    def test_returns_sorted(self) -> None:
+        AdapterRegistry.register(_StubAdapterB)
+        AdapterRegistry.register(_StubAdapterA)
+        platforms = AdapterRegistry().list_publishable_platforms()
+        assert [p["name"] for p in platforms] == ["stub_a", "stub_b"]

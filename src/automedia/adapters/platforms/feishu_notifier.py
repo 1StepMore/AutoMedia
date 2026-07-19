@@ -34,7 +34,9 @@ except ImportError:  # pragma: no cover
 
 
 class FeishuNotifier(BasePlatformAdapter):
-    """Send an interactive card notification to a Feishu group via webhook."""
+    """Send an interactive card notification to a Feishu group via webhook.    """
+
+    is_stub = False
 
     @property
     def platform_name(self) -> str:

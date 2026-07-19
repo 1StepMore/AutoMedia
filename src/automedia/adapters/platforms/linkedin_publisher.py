@@ -93,6 +93,8 @@ class LinkedInPublisher(BasePlatformAdapter):
     before posting (LinkedIn does not support HTML in the commentary field).
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"linkedin\"``."""

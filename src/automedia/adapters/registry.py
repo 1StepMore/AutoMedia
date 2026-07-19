@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from automedia.core.registry import BaseRegistry
 
@@ -70,6 +70,18 @@ class AdapterRegistry(BaseRegistry):
     def list(cls) -> list[str]:
         """Return sorted list of registered platform names."""
         return sorted(cls._registry)
+
+    def list_publishable_platforms(self) -> list[dict[str, Any]]:
+        """Return all registered platforms with ``is_stub`` metadata.
+
+        Returns:
+            Sorted list of ``{"name": str, "is_stub": bool}`` dicts.
+        """
+        result: list[dict[str, Any]] = []
+        for name, adapter_cls in self._registry.items():
+            is_stub = getattr(adapter_cls, "is_stub", True)  # default True for safety
+            result.append({"name": name, "is_stub": is_stub})
+        return sorted(result, key=lambda x: x["name"])
 
     @classmethod
     def clear(cls) -> None:

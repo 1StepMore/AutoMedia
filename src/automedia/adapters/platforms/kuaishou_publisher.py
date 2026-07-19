@@ -24,6 +24,8 @@ logger = structlog.get_logger(__name__)
 class KuaishouPublisher(BasePlatformAdapter):
     """Publish content to Kuaishou (快手) — manual-only."""
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "kuaishou"

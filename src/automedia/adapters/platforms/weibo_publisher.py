@@ -26,6 +26,8 @@ logger = structlog.get_logger(__name__)
 class WeiboPublisher(BasePlatformAdapter):
     """Publish content to Weibo (微博) — manual-only."""
 
+    is_stub = True
+
     @property
     def platform_name(self) -> str:
         return "weibo"

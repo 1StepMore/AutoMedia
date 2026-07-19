@@ -111,6 +111,8 @@ class TikTokPublisher(BasePlatformAdapter):
     5. **Publish video** — finalize and publish the uploaded video.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"tiktok\"``."""

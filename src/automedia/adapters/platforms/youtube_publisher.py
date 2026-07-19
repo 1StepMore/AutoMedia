@@ -133,6 +133,8 @@ class YouTubePublisher(BasePlatformAdapter):
        the YouTube API, then upload the binary video data.
     """
 
+    is_stub = False
+
     @property
     def platform_name(self) -> str:
         """Return the platform identifier ``\"youtube\"``."""
