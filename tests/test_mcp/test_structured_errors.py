@@ -49,8 +49,7 @@ def _assert_error_shape(result: dict[str, object]) -> None:
     assert "code" in error, "Error should have 'code'"
     assert "message" in error, "Error should have 'message'"
     assert "resolution" in error, "Error should have 'resolution'"
-    # Backward compat
-    assert "error_message" in result
+    assert "error_message" not in result
 
 
 # ===================================================================
@@ -464,8 +463,8 @@ class TestErrorShapeConsistency:
                 f"Resolution should be non-empty, got {resolution!r}"
             )
 
-    def test_error_message_matches_error_message_key(self) -> None:
-        """error_message key matches error.message for backward compat."""
+    def test_no_error_message_key_in_errors(self) -> None:
+        """Error responses do NOT include the redundant error_message key."""
         with patch("automedia.mcp.tools._pipeline_tracker", {}):
             error_results = [
                 cancel_pipeline("x"),
@@ -477,6 +476,6 @@ class TestErrorShapeConsistency:
             ]
 
         for result in error_results:
-            assert result["error_message"] == result["error"]["message"], (
-                "error_message should match error.message"
+            assert "error_message" not in result, (
+                "error_message was removed; use error['message'] instead"
             )

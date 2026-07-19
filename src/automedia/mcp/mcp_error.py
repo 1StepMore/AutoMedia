@@ -52,7 +52,6 @@ def error_response(
             "message": message,
             "resolution": resolution or "See documentation or contact support",
         },
-        "error_message": message,
     }
 
 

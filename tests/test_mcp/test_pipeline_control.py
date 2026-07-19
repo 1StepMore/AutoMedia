@@ -374,10 +374,9 @@ class TestPipelineControlErrorShape:
         assert "resolution" in error
         assert error["code"] == "NOT_FOUND"
 
-    def test_error_has_error_message_key(self) -> None:
-        """Error responses have error_message key for backward compat."""
+    def test_error_no_error_message_key(self) -> None:
+        """Error responses do NOT include the redundant error_message key."""
         with patch("automedia.mcp.tools._pipeline_tracker", {}):
             result = cancel_pipeline("nonexistent")
 
-        assert "error_message" in result
-        assert isinstance(result["error_message"], str)
+        assert "error_message" not in result

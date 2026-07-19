@@ -171,24 +171,20 @@ class TestErrorResponse:
         result = error_response(MCPErrorCode.UNKNOWN, "fail", resolution="")
         assert result["error"]["resolution"] == "See documentation or contact support"
 
-    def test_backward_compat_has_error_message_key(self) -> None:
-        """error_response response has error_message key for backward compat."""
+    def test_no_error_message_key(self) -> None:
+        """error_response does NOT include redundant error_message key."""
         result = error_response(MCPErrorCode.NOT_FOUND, "not found")
-        # error_message is present and equals the message
-        assert "error_message" in result
-        assert result["error_message"] == "not found"
+        assert "error_message" not in result
 
-    def test_error_message_matches_error_message_field(self) -> None:
-        """error_message key matches the error.message field."""
+    def test_error_dict_shape(self) -> None:
+        """Error dict has code, message, resolution; success is False."""
         result = error_response(MCPErrorCode.INVALID_PARAM, "bad input", "fix it")
-        assert result["error_message"] == result["error"]["message"]
-
-    def test_has_success_and_error_and_message_keys(self) -> None:
-        """Response dict has all expected top-level keys."""
-        result = error_response(MCPErrorCode.UNKNOWN, "fail")
-        assert "success" in result
+        assert result["success"] is False
         assert "error" in result
-        assert "error_message" in result
+        error = result["error"]
+        assert error["code"] == "INVALID_PARAM"
+        assert error["message"] == "bad input"
+        assert error["resolution"] == "fix it"
 
     def test_resolution_is_optional_parameter(self) -> None:
         """resolution parameter defaults to empty string (then to generic)."""
