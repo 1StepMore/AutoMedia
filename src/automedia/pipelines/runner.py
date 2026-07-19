@@ -175,6 +175,9 @@ _PLATFORM_CATEGORIES: dict[str, str] = {
     "zhihu": "text-first",
     "xiaohongshu": "mixed-social",
     "feishu": "notification-only",
+    "youtube": "video-first",
+    "twitter": "text-first",
+    "bilibili": "video-first",
 }
 
 
@@ -196,11 +199,12 @@ def _derive_mode_from_platforms(platforms: list[str]) -> str:
     if not platforms:
         return ""
 
-    has_mixed_social = any(
-        _PLATFORM_CATEGORIES.get(p, "text-first") == "mixed-social" for p in platforms
+    has_multimedia = any(
+        _PLATFORM_CATEGORIES.get(p, "text-first") in ("mixed-social", "video-first")
+        for p in platforms
     )
 
-    return "auto" if has_mixed_social else "text_only"
+    return "auto" if has_multimedia else "text_only"
 
 
 def _check_hyperframes(mode: str) -> bool:

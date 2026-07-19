@@ -700,6 +700,15 @@ class TestPlatformCategories:
     def test_feishu_is_notification_only(self) -> None:
         assert _PLATFORM_CATEGORIES["feishu"] == "notification-only"
 
+    def test_youtube_is_video_first(self) -> None:
+        assert _PLATFORM_CATEGORIES["youtube"] == "video-first"
+
+    def test_twitter_is_text_first(self) -> None:
+        assert _PLATFORM_CATEGORIES["twitter"] == "text-first"
+
+    def test_bilibili_is_video_first(self) -> None:
+        assert _PLATFORM_CATEGORIES["bilibili"] == "video-first"
+
 
 class TestDeriveModeFromPlatforms:
     """_derive_mode_from_platforms() returns the correct mode."""
@@ -715,6 +724,10 @@ class TestDeriveModeFromPlatforms:
     def test_mixed_social_returns_auto(self) -> None:
         assert _derive_mode_from_platforms(["xiaohongshu"]) == "auto"
 
+    def test_video_first_returns_auto(self) -> None:
+        assert _derive_mode_from_platforms(["youtube"]) == "auto"
+        assert _derive_mode_from_platforms(["bilibili"]) == "auto"
+
     def test_notification_only_returns_text_only(self) -> None:
         assert _derive_mode_from_platforms(["feishu"]) == "text_only"
 
@@ -726,11 +739,22 @@ class TestDeriveModeFromPlatforms:
         assert _derive_mode_from_platforms(["zhihu", "xiaohongshu"]) == "auto"
         assert _derive_mode_from_platforms(["wechat", "zhihu", "xiaohongshu"]) == "auto"
 
+    def test_text_and_video_first_returns_auto(self) -> None:
+        assert _derive_mode_from_platforms(["wechat", "youtube"]) == "auto"
+        assert _derive_mode_from_platforms(["zhihu", "bilibili"]) == "auto"
+        assert _derive_mode_from_platforms(["twitter", "youtube"]) == "auto"
+
     def test_unknown_platform_treated_as_text_first(self) -> None:
         assert _derive_mode_from_platforms(["unknown_platform"]) == "text_only"
 
-    def test_unknown_with_mixed_social_returns_auto(self) -> None:
+    def test_unknown_with_multimedia_returns_auto(self) -> None:
         assert _derive_mode_from_platforms(["unknown", "xiaohongshu"]) == "auto"
+        assert _derive_mode_from_platforms(["unknown", "youtube"]) == "auto"
+        assert _derive_mode_from_platforms(["unknown", "bilibili"]) == "auto"
+
+    def test_text_first_platforms_return_text_only(self) -> None:
+        assert _derive_mode_from_platforms(["twitter"]) == "text_only"
+        assert _derive_mode_from_platforms(["wechat", "twitter"]) == "text_only"
 
     def test_all_notification_returns_text_only(self) -> None:
         assert _derive_mode_from_platforms(["feishu", "feishu"]) == "text_only"

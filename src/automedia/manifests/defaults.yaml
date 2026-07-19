@@ -53,6 +53,10 @@ platforms:
     enabled: false
     adapter: twitter
     default_style: tweet
+  bilibili:
+    enabled: false
+    adapter: bilibili
+    default_style: video
 
 cron:
   enabled: true
