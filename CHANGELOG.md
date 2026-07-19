@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Bilibili Platform Onboarding**: Added Bilibili to `_PLATFORM_CATEGORIES` (video-first routing), `defaults.yaml` platform config, and 6 platform-scoped Jinja2 prompt templates (content_writer, copy_review_g2, humanizer_g1, brand_strategy, pipeline_strategy, content_quality). YouTube and Twitter also added to `_PLATFORM_CATEGORIES` for correct auto-mode pipeline derivation.
+
 - **Platform-Aware Workflow Customization (F49-F55)**: Comprehensive platform-scoped pipeline customization system covering prompt templates, media specs, gate modifiers, cron scheduling, reusable workflows, and director mode.
 
 - **Platform-Scoped Prompt Resolution**: `load_prompt(name, platform=...)` with 3-layer resolution (brand → platform → global → built-in). 18 platform-scoped Jinja2 templates (6 platforms × 3 gates) plus 18 MCP-scoped equivalents. OverridesLoader extended with `load_prompts(brand, platform)` and per-platform prompt directories.

@@ -202,7 +202,7 @@ External Call Layer
 | `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
 | `cron/` | Scheduled job YAML definitions (`jobs.yaml`), pipeline schedule runner (`runner.py`) |
 | `mcp/` | MCP Server implementation (`server.py`), stdio transport |
-| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (18 platform overrides for 6 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (21 platform overrides for 7 platforms) |
 
 ### Unified Three-Layer Entry Point
 

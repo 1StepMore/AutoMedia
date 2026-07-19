@@ -472,7 +472,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `cli/` | Typer CLI application (13 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
-| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (18 templates for 6 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (21 templates for 7 platforms) |
 | `asset_library/` | Vector store, document ingest, similarity search |
 
 ## Configuration

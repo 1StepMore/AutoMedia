@@ -166,7 +166,7 @@ AutoMedia/
 │       │
 │       ├── prompts/                # Jinja2 prompt templates (platform-scoped)
 │       │   ├── __init__.py             # load_prompt() with 3-layer resolution
-│       │   └── platforms/              # Platform-scoped templates (6 platforms)
+│       │   └── platforms/              # Platform-scoped templates (7 platforms)
 │       │
 │       ├── manifests/              # Default config + schemas
 │       │   ├── defaults.yaml       # Built-in default config
