@@ -263,7 +263,7 @@ if topic.get("selected"):
 
 # Run pipeline
 result = run_pipeline(topic=topic, brand="my-brand")
-print(f"Status: {result['status']}")
+print(f"Project ID: {result['project_id']}")
 
 # List projects
 projects = list_projects(base_dir=".")

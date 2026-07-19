@@ -20,7 +20,7 @@
 
 - **Director HITL Preset**: `DirectorPreset` with 8 review nodes (topic, content, brand, wechat, vision, tts, subtitle, publish) in `automedia/hitl/presets/director.py` + YAML preset. GateEngine extended with `pause_on_approval`, `resume()`, and `_engine_registry` for pausing at specific gates pending human approval. MCP tools: `approve_gate`, `reject_gate`, `get_pending_approvals`.
 
-- **MCP Tools**: 5 new tools — `list_overridable_templates`, `list_workflows`, `approve_gate`, `reject_gate`, `get_pending_approvals`. Total tool count: 46.
+- **MCP Tools**: 5 new tools — `list_overridable_templates`, `list_workflows`, `approve_gate`, `reject_gate`, `get_pending_approvals`. Total tool count: 50.
 
 - **Override Discoverability**: `list_overridable_templates` MCP tool and `docs/dev/override-reference.md` documenting the full override system with prompt resolution order, rule schema, and 5 worked examples.
 

@@ -13,6 +13,18 @@ AutoMedia is an automated media production pipeline. It handles the full content
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 
+### Recommended Agent Install
+
+For full capability (all LLM providers, MCP server, dev tools):
+```bash
+pip install -e ".[dev]"
+```
+
+For MCP-only setups:
+```bash
+pip install -e ".[mcp]"
+```
+
 ---
 
 ## 2. Three Entry Points
@@ -394,7 +406,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (46 tools, +4 deprecated aliases)
+## 9. MCP Tools Quick Reference (50 tools, +4 deprecated aliases)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
