@@ -21,12 +21,13 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "e2e: end-to-end pipeline integration tests")
     config.addinivalue_line("markers", "redline: red-line enforcement tests")
     config.addinivalue_line("markers", "slow: tests that take more than a few seconds")
+    config.addinivalue_line("markers", "smoke: quick smoke tests for fast feedback")
     config.addinivalue_line("markers", "cruel: cruel acceptance tests requiring real API access")
-    # Suppress RL7 warnings for test-only gate names (G-prefixed test gates
-    # are not in failure_modes.py — this is expected).
+    # Suppress RL7 warnings for test-only gate names (single-letter-prefix
+    # test gates like G99, D99 are not in failure_modes.py — expected).
     config.addinivalue_line(
         "filterwarnings",
-        "ignore:Gate 'G[0-9]+' is registered but missing from FAILURE_MODES",
+        "ignore:Gate '[A-Z][0-9]+' is registered but missing from FAILURE_MODES",
     )
 
 

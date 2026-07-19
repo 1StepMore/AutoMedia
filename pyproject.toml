@@ -69,6 +69,7 @@ dev = [
     "vulture>=2.10",
     "hypothesis>=6.156.5",
     "interrogate>=1.7",
+    "pytest-timeout>=2.3",
 ]
 
 [project.entry-points.console_scripts]
@@ -122,4 +123,4 @@ exclude = ["tests", "scripts", ".venv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --tb=short -m 'not e2e'"
+addopts = "-q --tb=short -m 'not e2e' --timeout=120 --timeout-method=thread --strict-markers"
