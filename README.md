@@ -48,6 +48,7 @@ If you are an AI coding agent entering this codebase:
 - [Agent Configuration](#agent-configuration)
 - [Architecture](#architecture)
 - [Configuration](#configuration)
+- [Deployment](#deployment)
 - [Gate System](#gate-system)
 - [Security](#security)
 - [Development](#development)
@@ -211,6 +212,14 @@ Or use the setup script:
 ```bash
 bash scripts/setup.sh
 ```
+
+**Windows setup:**
+
+```powershell
+.\scripts\setup.ps1
+```
+
+See [Windows Deployment](docs/user/windows-deployment.md) for WSL2, Docker Desktop, and native Windows setup guides.
 
 ## Quick Start
 
@@ -489,6 +498,20 @@ Six-layer priority hierarchy (lowest to highest):
 
 Each layer merges with the one below it. See `.env.example` for all supported environment variables.
 
+## Deployment
+
+AutoMedia supports four deployment methods: Docker, native pip install,
+systemd services, and native Windows. See
+[Deployment Options](docs/user/deployment.md) for a comparison table,
+production checklist, and CI/CD integration guidance.
+
+| Method | Best For |
+|--------|----------|
+| Docker | Quick start, CI/CD, isolated environments |
+| Native pip | Development, full control of dependencies |
+| systemd | Production Linux servers, 24/7 MCP uptime |
+| Windows | Windows-only environments |
+
 ## Gate System
 
 Gates are quality checks that run at specific points in the pipeline. Each gate has a failure mode (`"stop"` halts the pipeline, `"retry"` triggers content regeneration).
@@ -540,7 +563,8 @@ make clean          # Clean build artifacts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/setup.sh` | One-command venv + install + init + doctor |
+| `scripts/setup.sh` | One-command venv + install + init + doctor (Linux/macOS) |
+| `scripts/setup.ps1` | One-command venv + install + init + doctor (Windows) |
 | `scripts/run-tests.sh` | pytest with coverage |
 | `scripts/mcp-server.sh` | MCP launcher with SIGTERM handler |
 | `scripts/doctor.sh` | Dependency checker (python, ffmpeg, bun, whisper, edge-tts, chrome, comfyui) |
@@ -582,11 +606,13 @@ MIT License. See `LICENSE` for details.
 | `docs/dev/developer-guide.md` | English | Full developer guide |
 | `docs/user/api-reference.md` | English | SDK API reference |
 | `docs/user/cli-reference.md` | English | CLI command reference |
+| `docs/user/deployment.md` | English | Deployment options comparison (Docker, native, systemd, Windows) |
 | `docs/user/mcp-setup.md` | English | MCP server setup guide |
 | `docs/user/omni-integration.md` | English | Omni Triad integration |
 | `docs/user/hitl-framework.md` | English | HITL framework |
 | `docs/user/asset-library.md` | English | Asset library |
 | `docs/dev/gate-failure-modes.md` | English | Gate failure troubleshooting |
+| `docs/user/windows-deployment.md` | English | Windows deployment (WSL2, Docker, native) |
 | `docs/user/production-workflow.md` | English | Production operations |
 | `docs/dev/cron-troubleshooting.md` | English | Cron job debugging |
 | `docs/dev/api-gotchas.md` | English | Common API pitfalls |
