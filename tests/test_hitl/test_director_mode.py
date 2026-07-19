@@ -9,7 +9,6 @@ from __future__ import annotations
 import threading
 import time
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,7 +17,6 @@ from automedia.gates.base import BaseGate
 from automedia.hitl.config import HITLConfig
 from automedia.pipelines.gate_engine import (
     GateEngine,
-    PipelineProgress,
     get_registered_engine,
     list_registered_engines,
     register_engine,

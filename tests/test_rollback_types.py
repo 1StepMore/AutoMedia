@@ -17,7 +17,6 @@ from automedia.pipelines.rollback_types import (
     update_project_status,
 )
 
-
 # ===================================================================
 # ProjectAction enum
 # ===================================================================

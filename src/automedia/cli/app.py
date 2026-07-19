@@ -7,12 +7,13 @@ import typer
 from typer.core import TyperGroup
 from typer.main import (
     get_command as _typer_get_command,
+)
+from typer.main import (
     get_command_from_info as _get_cmd_from_info,
 )
 from typer.models import CommandInfo
 
 from automedia._version import __version__
-
 
 # ---------------------------------------------------------------------------
 # Lazy-loading Click group — defers module imports until command dispatch

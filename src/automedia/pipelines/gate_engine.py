@@ -53,16 +53,16 @@ Structure::
 # Maps ``project_id`` to ``GateEngine``.  Populated by ``run_full_pipeline``
 # in ``runner.py`` and consumed by ``approve_gate`` / ``reject_gate`` /
 # ``get_pending_approvals`` in ``tools.py``.
-_engine_registry: dict[str, "GateEngine"] = {}
+_engine_registry: dict[str, GateEngine] = {}
 _engine_registry_lock = threading.Lock()
 
 
-def get_registered_engine(project_id: str) -> "GateEngine | None":
+def get_registered_engine(project_id: str) -> GateEngine | None:
     with _engine_registry_lock:
         return _engine_registry.get(project_id)
 
 
-def register_engine(project_id: str, engine: "GateEngine") -> None:
+def register_engine(project_id: str, engine: GateEngine) -> None:
     with _engine_registry_lock:
         _engine_registry[project_id] = engine
 
@@ -72,9 +72,10 @@ def unregister_engine(project_id: str) -> None:
         _engine_registry.pop(project_id, None)
 
 
-def list_registered_engines() -> dict[str, "GateEngine"]:
+def list_registered_engines() -> dict[str, GateEngine]:
     with _engine_registry_lock:
         return dict(_engine_registry)
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -147,6 +148,9 @@ class ProgressData(TypedDict, total=False):
     total_gates: int
     events: list[dict[str, Any]]
     error: str | None
+    is_running: bool
+    is_failed: bool
+    elapsed_s: float
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +195,8 @@ class PipelineProgress:
         self._gates_done: list[str] = []
         self._gate_names: list[str] = []
         self._lock = threading.Lock()
+        self._started_at: float | None = None
+        self._finished: bool = False
         self._hitl_event = threading.Event()
         self._hitl_decision: bool | None = None
         self._cancelled: bool = False
@@ -221,6 +227,8 @@ class PipelineProgress:
     ) -> None:
         """Record that *gate_name* has started execution."""
         with self._lock:
+            if self._started_at is None:
+                self._started_at = time.time()
             self.current_gate = gate_name
             self._events.append(
                 GateProgressEvent(
@@ -270,6 +278,7 @@ class PipelineProgress:
         """Return current progress as a JSON-compatible dict."""
         with self._lock:
             gates_remaining = self._gate_names[len(self._gates_done) :]
+            elapsed = (time.time() - self._started_at) if self._started_at else 0.0
             return {
                 "project_id": self.project_id,
                 "current_gate": self.current_gate,
@@ -278,12 +287,25 @@ class PipelineProgress:
                 "total_gates": self.total_gates,
                 "events": [e.__dict__ for e in self._events],
                 "error": self.error,
+                "is_running": self._started_at is not None and not self._finished,
+                "is_failed": self.error is not None,
+                "elapsed_s": round(elapsed, 3),
             }
 
     def get_current_gate(self) -> str | None:
         """Return name of the currently-running gate, or *None*."""
         with self._lock:
             return self.current_gate
+
+    def mark_finished(self) -> None:
+        """Mark the pipeline as finished (no longer running).
+
+        Sets ``_finished`` to ``True`` and clears ``current_gate``.
+        Safe to call multiple times.
+        """
+        with self._lock:
+            self._finished = True
+            self.current_gate = None
 
     # -- HITL (Human-in-the-Loop) lifecycle --------------------------------
 
@@ -1187,9 +1209,7 @@ class GateEngine:
                 with self._approval_lock:
                     self._approval_events[gate_name] = _approval_evt
                 if progress:
-                    progress.on_gate_awaiting_hitl(
-                        gate_name, detail="awaiting_approval"
-                    )
+                    progress.on_gate_awaiting_hitl(gate_name, detail="awaiting_approval")
                 log.info(
                     "gate_engine.pause_on_approval",
                     gate_name=gate_name,
@@ -1246,7 +1266,12 @@ class GateEngine:
         )
         if _local_max_regen > 0 and "_level2_handler" not in gate_context:  # type: ignore[operator]  # _local_max_regen is Any from TypedDict.get(); "in" not valid on TypedDict
             gate_context["_level2_handler"] = self._handle_level2_regeneration  # type: ignore[arg-type]  # dynamic key not defined in GateContext TypedDict
-        return self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
+        try:
+            result = self._run(gate_context, early_stop=True, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
+        finally:
+            if progress:
+                progress.mark_finished()
+        return result  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
 
     def run_with_results(
         self,
@@ -1259,7 +1284,12 @@ class GateEngine:
         Unlike :meth:`run`, this always returns the full result list
         regardless of early-stop.
         """
-        return self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
+        try:
+            result = self._run(gate_context, early_stop=False, progress=progress)  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
+        finally:
+            if progress:
+                progress.mark_finished()
+        return result  # type: ignore[return-value]  # _run() return is union; cannot narrow on early_stop param
 
     # ------------------------------------------------------------------
     # Approval pause / resume (director mode)

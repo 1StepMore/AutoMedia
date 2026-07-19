@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import subprocess
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app

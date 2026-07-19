@@ -126,6 +126,68 @@ class _RecordingHook(GateObserver):
 # =========================================================================
 
 
+class TestProgressDataFields:
+    """ProgressData must include is_running / is_failed / elapsed_s."""
+
+    def test_progress_data_has_new_fields(self) -> None:
+        """Assert the three new fields exist in ProgressData.__annotations__."""
+        from automedia.pipelines.gate_engine import ProgressData
+
+        annotations = ProgressData.__annotations__
+        assert "is_running" in annotations, "is_running missing from ProgressData"
+        assert "is_failed" in annotations, "is_failed missing from ProgressData"
+        assert "elapsed_s" in annotations, "elapsed_s missing from ProgressData"
+
+    def test_progress_populates_new_fields(self) -> None:
+        """get_progress() returns is_running/is_failed/elapsed_s with correct values."""
+        progress = PipelineProgress(project_id="test-new-fields")
+        progress.set_gate_names(["G0"])
+        p = progress.get_progress()
+        assert "is_running" in p
+        assert "is_failed" in p
+        assert "elapsed_s" in p
+        assert p["is_running"] is False  # not started yet
+        assert p["is_failed"] is False  # no error
+        assert p["elapsed_s"] == 0.0  # not started
+
+    def test_progress_is_running_while_gate_active(self) -> None:
+        """After on_gate_start, is_running is True."""
+        progress = PipelineProgress(project_id="test-running")
+        progress.set_gate_names(["G0"])
+        progress.on_gate_start("G0")
+        p = progress.get_progress()
+        assert p["is_running"] is True
+        assert p["current_gate"] == "G0"
+
+    def test_progress_is_running_false_after_all_done(self) -> None:
+        """After all gates complete, is_running is False."""
+        progress = PipelineProgress(project_id="test-done")
+        progress.set_gate_names(["G0"])
+        progress.on_gate_start("G0")
+        progress.mark_finished()
+        p = progress.get_progress()
+        assert p["is_running"] is False
+
+    def test_progress_elapsed_s_increases(self) -> None:
+        """elapsed_s should increase over time."""
+        import time
+
+        progress = PipelineProgress(project_id="test-elapsed")
+        progress.set_gate_names(["G0"])
+        progress.on_gate_start("G0")
+        time.sleep(0.01)
+        p = progress.get_progress()
+        assert p["elapsed_s"] > 0.0
+
+    def test_progress_is_failed_when_error_set(self) -> None:
+        """is_failed is True when progress.error is set."""
+        progress = PipelineProgress(project_id="test-failed")
+        progress.error = "something went wrong"
+        progress.mark_finished()
+        p = progress.get_progress()
+        assert p["is_failed"] is True
+
+
 class TestDataClasses:
     """AssetInfo, GateLogEntry, PipelineResult construction."""
 

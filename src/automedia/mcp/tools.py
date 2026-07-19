@@ -467,6 +467,7 @@ def run_pipeline(
         except Exception as exc:
             # Background thread catch-all — pipeline errors stored in progress
             progress.error = str(exc)
+            progress.mark_finished()
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
@@ -548,7 +549,10 @@ def batch_run(
     )
 
 
-def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
+def get_pipeline_progress(
+    project_id: NonEmptyStr,
+    since_index: int = 0,
+) -> dict[str, Any]:
     """Get current progress of a running pipeline by project_id.
 
     Poll this after ``run_pipeline`` to observe gate execution in real
@@ -560,12 +564,16 @@ def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
     ----------
     project_id:
         The project id returned by ``run_pipeline``.
+    since_index:
+        Optional index to filter events — only events at or after this
+        index are returned.  Default ``0`` (return all events).
 
     Returns
     -------
     dict
         ``{"project_id", "current_gate", "gates_done", "gates_remaining",
-        "total_gates", "events", "error"}`` or
+        "total_gates", "events", "error", "is_running", "is_failed",
+        "elapsed_s"}`` or
         ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
     """
     with _lock:
@@ -576,7 +584,10 @@ def get_pipeline_progress(project_id: NonEmptyStr) -> dict[str, Any]:
             f"No active pipeline found for project_id {project_id!r}",
             "Check project_id or start a pipeline first",
         )
-    return success_response(dict(progress.get_progress()))
+    data = dict(progress.get_progress())
+    if since_index > 0:
+        data["events"] = data.get("events", [])[since_index:]
+    return success_response(data)
 
 
 def get_pipeline_status(
@@ -1756,9 +1767,7 @@ def approve_gate(
             str(exc),
             "Check gate_name — gate may not be paused for approval",
         )
-    return success_response(
-        {"approved": True, "project_id": project_id, "gate_name": gate_name}
-    )
+    return success_response({"approved": True, "project_id": project_id, "gate_name": gate_name})
 
 
 def reject_gate(
@@ -1803,9 +1812,7 @@ def reject_gate(
             str(exc),
             "Check gate_name — gate may not be paused for approval",
         )
-    return success_response(
-        {"rejected": True, "project_id": project_id, "gate_name": gate_name}
-    )
+    return success_response({"rejected": True, "project_id": project_id, "gate_name": gate_name})
 
 
 def get_pending_approvals(
@@ -1833,10 +1840,7 @@ def get_pending_approvals(
         engine = get_registered_engine(project_id)
         if engine is None:
             return success_response({"pending_approvals": [], "count": 0})
-        pending = [
-            {"project_id": project_id, **entry}
-            for entry in engine.list_pending_approvals()
-        ]
+        pending = [{"project_id": project_id, **entry} for entry in engine.list_pending_approvals()]
         return success_response({"pending_approvals": pending, "count": len(pending)})
 
     all_pending: list[dict[str, Any]] = []

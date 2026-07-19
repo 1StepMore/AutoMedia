@@ -7,7 +7,7 @@ in a human-readable table (or machine-readable JSON with ``--json``).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import typer
 
@@ -18,7 +18,7 @@ from automedia.hooks.pipeline_history import _read_history
 
 def _format_ts(unix_ts: float) -> str:
     """Format a Unix timestamp as a human-readable string."""
-    dt = datetime.fromtimestamp(unix_ts, tz=timezone.utc)
+    dt = datetime.fromtimestamp(unix_ts, tz=UTC)
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 

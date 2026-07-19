@@ -1,63 +1,32 @@
-# =============================================================================
-# AutoMedia 定时任务配置 (Cron Jobs)
-# =============================================================================
-# 本文件定义 AutoMedia 内置的定时 job 模板。
-# 用户可通过 automedia.json 中的 cron.jobs 字段覆盖或扩展。
-#
-# 每个 job 的字段说明:
-#   name        - 任务名称, 唯一标识
-#   schedule    - cron 表达式 (分 时 日 月 周)
-#   command     - 要执行的 CLI 命令
-#   depends_on  - 依赖的前置 job 名称列表 (可选)
-#   on_failure  - 失败策略: stop(停止后续) / skip(跳过自身) / retry(重试)
-#   timeout_s   - 超时秒数
-#   description - 中文任务描述
-# =============================================================================
-
 jobs:
-
-  # ---------------------------------------------------------------------------
-  # Job 1: 热点采集
-  # ---------------------------------------------------------------------------
-  - name: hot-collection
-    schedule: "0 8 * * *"
-    command: "automedia cron run pool-collect"
-    depends_on: ~
-    on_failure: log
-    timeout_s: 600
-    description: "每日 08:00 采集各平台热点数据进 pool.db"
-
-  # ---------------------------------------------------------------------------
-  # Job 2: 语义审核/评分
-  # ---------------------------------------------------------------------------
-  - name: semantic-audit
-    schedule: "5 8 * * *"
-    command: "automedia cron run pool-score"
-    depends_on:
-      - hot-collection
-    on_failure: log
-    timeout_s: 300
-    description: "每日 08:05 对 pool 中的话题评分排序, 依赖 hot-collection"
-
-  # ---------------------------------------------------------------------------
-  # Job 3: 发布检查
-  # ---------------------------------------------------------------------------
-  - name: publish-check
-    schedule: "30 8 * * *"
-    command: "automedia cron run publish-check"
-    depends_on:
-      - semantic-audit
-    on_failure: log
-    timeout_s: 120
-    description: "每日 08:30 检查是否有待发布内容, 依赖 semantic-audit"
-
-  # ---------------------------------------------------------------------------
-  # Job 4: 健康检查
-  # ---------------------------------------------------------------------------
-  - name: watchdog
-    schedule: "30 9 * * *"
-    command: "automedia cron check-health"
-    depends_on: ~
-    on_failure: log
-    timeout_s: 60
-    description: "每日 09:30 执行全系统健康检查"
+- command: automedia cron run pool-collect
+  depends_on: null
+  description: 每日 08:00 采集各平台热点数据进 pool.db
+  name: hot-collection
+  on_failure: log
+  schedule: 0 8 * * *
+  timeout_s: 600
+- command: automedia cron run pool-score
+  depends_on:
+  - hot-collection
+  description: 每日 08:05 对 pool 中的话题评分排序, 依赖 hot-collection
+  name: semantic-audit
+  on_failure: log
+  schedule: 5 8 * * *
+  timeout_s: 300
+- command: automedia cron run publish-check
+  depends_on:
+  - semantic-audit
+  description: 每日 08:30 检查是否有待发布内容, 依赖 semantic-audit
+  name: publish-check
+  on_failure: log
+  schedule: 30 8 * * *
+  timeout_s: 120
+- command: automedia cron check-health
+  depends_on: null
+  description: 每日 09:30 执行全系统健康检查
+  name: watchdog
+  on_failure: log
+  schedule: 30 9 * * *
+  timeout_s: 60
+pipeline_schedules: []

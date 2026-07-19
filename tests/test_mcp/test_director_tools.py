@@ -9,17 +9,12 @@ from __future__ import annotations
 import threading
 import time
 from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.mcp.tools import approve_gate, get_pending_approvals, reject_gate
 from automedia.pipelines.gate_engine import (
     GateEngine,
-    PipelineProgress,
-    get_registered_engine,
     register_engine,
     unregister_engine,
 )

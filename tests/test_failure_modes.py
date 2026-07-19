@@ -111,3 +111,26 @@ class TestFailureModesContent:
         desc = FAILURE_MODES["V6"]["description"]
         assert isinstance(desc, str)
         assert "subtitle" in desc.lower() or "render" in desc.lower()
+
+
+class TestRL7Suppression:
+    """RL7: D-prefix test gates should not trigger UserWarning (conftest suppresses)."""
+
+    def test_d_prefix_gate_rl7_suppressed(self) -> None:
+        """D-prefix gate registration must not fire RL7 UserWarning.
+
+        The conftest ``filterwarnings`` entry ``ignore:Gate '[A-Z][0-9]+'...``
+        should suppress the RL7 warning for D-prefix (and any single-letter-prefix)
+        gates.  Running under ``-W error::UserWarning`` would fail if the
+        suppression is broken.
+        """
+        from automedia.gates.base import BaseGate, _registry
+
+        class _DTestGate(BaseGate):
+            _gate_name = "D99"
+            _failure_mode = "stop"
+
+            def execute(self, gate_context: object) -> dict[str, object]:
+                return {"passed": True}
+
+        assert "D99" in _registry

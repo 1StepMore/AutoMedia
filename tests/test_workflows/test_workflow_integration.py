@@ -19,7 +19,6 @@ import yaml
 
 from automedia.core.workflow import Workflow, WorkflowLoader
 
-
 # =====================================================================
 # Fixtures
 # =====================================================================
