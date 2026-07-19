@@ -110,3 +110,8 @@ pipeline:
       timeout: 300
   text:
     enabled: true
+
+  # Maximum concurrent pipelines allowed by the MCP server.
+  # When the limit is reached, new run_pipeline requests are rejected
+  # with INVALID_PARAM until an active pipeline completes or is cancelled.
+  max_concurrent_pipelines: 3

@@ -7,7 +7,7 @@
 #   sudo systemctl enable automedia-mcp
 #   sudo systemctl start  automedia-mcp
 #
-# See docs/mcp-systemd-setup.md for full instructions.
+# See docs/user/mcp-setup.md#production-deployment-systemd for full instructions.
 
 [Unit]
 Description=AutoMedia MCP Server — Model Context Protocol stdio server

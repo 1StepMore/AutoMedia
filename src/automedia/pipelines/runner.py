@@ -16,6 +16,8 @@ from typing import Any, Literal, cast
 
 from structlog import get_logger
 
+from automedia.core.overrides import OverridesLoader
+
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -332,7 +334,7 @@ def validate_gate_modifiers(
     modifiers: dict[str, Any],
     base_gates: list[str],
     registry: GateRegistry | None = None,
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
     """Validate and apply gate include/exclude/override_failure_mode modifiers.
 
     Parameters
@@ -348,8 +350,11 @@ def validate_gate_modifiers(
 
     Returns
     -------
-    list[str]
-        Modified gate name list after applying includes and excludes.
+    tuple[list[str], dict[str, str]]
+        ``(modified_gate_list, override_failure_mode_dict)`` where the first
+        element is the modified gate name list after applying includes and
+        excludes, and the second element is the override failure mode mapping
+        (gate_name -> new failure mode).
 
     Raises
     ------
@@ -405,13 +410,13 @@ def validate_gate_modifiers(
         if name not in result:
             result.append(name)
 
-    return result
+    return result, override_fm
 
 
 def _compose_gate_list(
     mode: str,
     platform_config: dict[str, Any] | None = None,
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
     """Compose the gate list for a pipeline mode, applying platform modifiers.
 
     Starts from ``_MODE_MAP[mode]``, then applies gate modifiers from
@@ -428,8 +433,8 @@ def _compose_gate_list(
 
     Returns
     -------
-    list[str]
-        Final gate name list.
+    tuple[list[str], dict[str, str]]
+        ``(gate_name_list, override_failure_mode_dict)``.
 
     Raises
     ------
@@ -443,7 +448,7 @@ def _compose_gate_list(
     if platform_config and "gates" in platform_config:
         return validate_gate_modifiers(platform_config["gates"], list(base))
 
-    return list(base)
+    return list(base), {}
 
 
 def _collect_platform_gate_modifiers(
@@ -819,7 +824,7 @@ def _run_pipeline(
 
         gate_names, gates = _select_gates(
             mode, brand_profile, resume_from, project.project_dir, progress,
-            workflow_obj=workflow_obj,
+            workflow_obj=workflow_obj, brand=brand,
         )
 
         gate_context = _build_pipeline_context(
@@ -926,10 +931,11 @@ def _select_gates(
     project_dir: str,
     progress: PipelineProgress | None,
     workflow_obj: Any | None = None,
+    brand: str | None = None,
 ) -> tuple[list[str], list[BaseGate]]:
     import automedia.gates  # noqa: F401
 
-    gate_names = _compose_gate_list(mode, platform_config=None)
+    gate_names, override_fm = _compose_gate_list(mode, platform_config=None)
 
     if brand_profile is not None and brand_profile.platforms:
         brand_dict = asdict(brand_profile)
@@ -937,21 +943,44 @@ def _select_gates(
             brand_dict, list(brand_profile.platforms)
         )
         if combined_gate_config:
-            gate_names = _compose_gate_list(mode, {"gates": combined_gate_config})
+            gate_names, platform_ofm = _compose_gate_list(mode, {"gates": combined_gate_config})
+            override_fm = platform_ofm
             log.info(
                 "pipeline.gate_modifiers_applied",
                 platform_count=len(brand_profile.platforms),
                 gate_count=len(gate_names),
             )
 
+    # OverridesLoader YAML rules apply on top of brand profile modifiers
+    if brand is not None:
+        overrides_loader = OverridesLoader()
+        overrides_modifiers = overrides_loader.load_gate_modifiers(brand)
+        if overrides_modifiers is not None:
+            gate_names, yaml_ofm = _compose_gate_list(mode, {"gates": overrides_modifiers})
+            override_fm = yaml_ofm
+            log.info(
+                "pipeline.override_gates_applied",
+                brand=brand,
+                gate_count=len(gate_names),
+            )
+
     # Workflow gate modifiers override platform-level modifiers
     if workflow_obj is not None and workflow_obj.gates is not None:
-        gate_names = _compose_gate_list(mode, {"gates": workflow_obj.gates})
+        gate_names, workflow_ofm = _compose_gate_list(mode, {"gates": workflow_obj.gates})
+        override_fm = workflow_ofm
         log.info(
             "pipeline.workflow_gates_applied",
             workflow=getattr(workflow_obj, "name", "?"),
             gate_count=len(gate_names),
         )
+
+    # Merge override_fm with all other sources (YAML rules, brand profile)
+    override_fm = _collect_gate_failure_overrides(
+        brand_profile=brand_profile,
+        workflow_obj=workflow_obj,
+        brand=brand,
+        base_overrides=override_fm,
+    )
 
     if resume_from is not None:
         try:
@@ -965,7 +994,7 @@ def _select_gates(
     if resume_from is not None:
         _verify_resume_integrity(project_dir, resume_from, _MODE_MAP.get(mode, []))
 
-    gates = _build_gates_from_names(gate_names)
+    gates = _build_gates_from_names(gate_names, override_failure_mode=override_fm)
     if progress is not None:
         progress.set_gate_names([g.gate_name for g in gates])
     log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
@@ -1382,11 +1411,82 @@ def _resolve_source_material(
     return result
 
 
+def _collect_gate_failure_overrides(
+    brand_profile: Any | None = None,
+    workflow_obj: Any | None = None,
+    brand: str | None = None,
+    base_overrides: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Merge gate failure-mode overrides from all available sources.
+
+    Sources merged in order (last wins):
+    1. *base_overrides* (from platform/workflow/override modifiers)
+    2. Brand profile platform gate modifiers
+    3. YAML override rules (via ``OverridesLoader``)
+    4. Workflow ``gates.override_failure_mode``
+
+    Parameters
+    ----------
+    brand_profile:
+        Optional brand profile with per-platform gate config.
+    workflow_obj:
+        Optional workflow object with ``gates.override_failure_mode``.
+    brand:
+        Brand name for filtering YAML override rules.
+    base_overrides:
+        Existing overrides to use as starting point.
+
+    Returns
+    -------
+    dict[str, str]
+        Merged ``{gate_name: failure_mode}`` mapping.
+    """
+    result: dict[str, str] = dict(base_overrides) if base_overrides else {}
+
+    # Source: Brand profile platform gate modifiers
+    if brand_profile is not None and hasattr(brand_profile, "platforms"):
+        platforms = brand_profile.platforms
+        if platforms:
+            brand_dict = asdict(brand_profile)
+            combined = _collect_platform_gate_modifiers(brand_dict, list(platforms))
+            if combined and "override_failure_mode" in combined:
+                result.update(combined["override_failure_mode"])
+
+    # Source: YAML override rules
+    try:
+        overrides_loader = OverridesLoader()
+        modifiers = overrides_loader.load_gate_modifiers(brand)
+        if modifiers and "override_failure_mode" in modifiers:
+            result.update(modifiers["override_failure_mode"])
+    except Exception:
+        pass
+
+    # Source: Workflow gate modifiers
+    if workflow_obj is not None and hasattr(workflow_obj, "gates") and workflow_obj.gates is not None:
+        ofm = workflow_obj.gates.get("override_failure_mode", {})
+        if isinstance(ofm, dict):
+            result.update(ofm)
+
+    return result
+
+
 def _build_gates_from_names(
     names: list[str],
     registry: GateRegistry | None = None,
+    override_failure_mode: dict[str, str] | None = None,
 ) -> list[BaseGate]:
-    """Instantiate gates by name from the registry."""
+    """Instantiate gates by name from the registry.
+
+    Parameters
+    ----------
+    names:
+        Gate name strings to instantiate.
+    registry:
+        Gate registry instance.  Defaults to module-level ``_registry``.
+    override_failure_mode:
+        Optional mapping of gate_name -> override failure mode.
+        (Reserved for future use — Task 13.)
+    """
     from automedia.gates.base import _registry
 
     reg = registry if registry is not None else _registry

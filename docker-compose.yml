@@ -20,3 +20,21 @@ services:
       - ./projects:/app/projects
     env_file:
       - .env
+
+  # Full-featured MCP server with bun, edge-tts, faster-whisper, chromium
+  # Build: docker compose --profile full build mcp-full
+  # Run:   docker compose --profile full up mcp-full
+  mcp-full:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mcp-full
+    image: automedia:mcp-full
+    command: python -m automedia.mcp.server
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./projects:/app/projects
+    env_file:
+      - .env

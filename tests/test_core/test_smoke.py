@@ -175,7 +175,7 @@ class TestResumeFromNoCrash:
         # Capture the gate names passed to _build_gates_from_names
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -212,7 +212,7 @@ class TestResumeFromNoCrash:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 

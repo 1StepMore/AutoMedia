@@ -90,7 +90,7 @@ AutoMedia is MCP-native. Connect any MCP client to get started:
 python -m automedia.mcp.server
 ```
 
-See [MCP Setup](mcp-setup.md) for client configuration examples (Claude Desktop, OpenCode, Codex CLI, Hermes Agent).
+See [MCP Setup](user/mcp-setup.md) for client configuration examples (Claude Desktop, OpenCode, Codex CLI, Hermes Agent).
 
 ---
 

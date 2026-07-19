@@ -275,7 +275,7 @@ if today - last_verified > max_age_days:
 ### ❌ 不是
 
 - ❌ 不是"又一篇要维护的文档"——它是连接已有工作的薄胶水层
-- ❌ 不是 d3-gap-analysis.md 的替代品——那篇是一次性审计，完成了就归档
+- ❌ 不是 `d3-gap-analysis.md` 的替代品——那篇是一次性审计，已完成归档
 - ❌ 不增加新工作——影响映射表里的每个验证步骤都是 agent 已经会做的事
 - ❌ 不需要人工运营——L1/L2 都是自动的，L3 才是唯一的 founder 投入点
 
@@ -292,5 +292,5 @@ if today - last_verified > max_age_days:
 
 - [`founder-expectations.md`](founder-expectations.md) — D3: Founder 视角的 48 条期望
 - [`evaluation-matrix-principles.md`](evaluation-matrix-principles.md) — 8 维度系统诊断工具包
-- [`d3-gap-analysis.md`](../d3-gap-analysis.md) — 一次性差距审计（归档候选）
+- [`d3-gap-analysis.md`](../archived/d3-gap-analysis.md) — 一次性差距审计（已归档）
 - [`.opencode/skills/project-validation.md`](../../.opencode/skills/project-validation.md) — 规范位置（所有 agent 共享）。Claude Code 使用 `.claude/skills/` 原生副本，Codex CLI 使用 `.codex/skills/` 原生副本

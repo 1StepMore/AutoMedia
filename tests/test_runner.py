@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -13,11 +14,13 @@ from automedia.pipelines.runner import (
     _IMAGE_CAROUSEL_GATE_NAMES,
     _MODE_MAP,
     _PLATFORM_CATEGORIES,
+    _TEXT_ONLY_GATE_NAMES,
     _TEXT_WITH_COVER_GATE_NAMES,
     _build_gates_from_names,
     _build_gates_log,
     _collect_assets,
     _derive_mode_from_platforms,
+    _select_gates,
     run_full_pipeline,
 )
 
@@ -346,7 +349,7 @@ class TestRunFullPipeline:
         # Capture the names passed to _build_gates_from_names
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -799,7 +802,7 @@ class TestRunFullPipelineModeDerivation:
         # Capture gate names built
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -840,7 +843,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -881,7 +884,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -922,7 +925,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -1097,7 +1100,7 @@ class TestPreLockBehavior:
         mock_project.init.return_value = mock_proj
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str]) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -1117,3 +1120,214 @@ class TestPreLockBehavior:
         assert isinstance(result, PipelineResult)
         assert result.status == "failed"
         assert "fail" in (result.error or "")
+
+
+# =========================================================================
+# Override gate rules integration tests
+# =========================================================================
+
+
+def _setup_override_rules(tmp_path: Path, home: str | None = None) -> Path:
+    """Create ``~/.automedia/overrides/rules/`` layout and return the home dir."""
+    if home is None:
+        home = tmp_path / "home"
+    else:
+        home = Path(home)
+    rules_dir = home / ".automedia" / "overrides" / "rules"
+    rules_dir.mkdir(parents=True)
+    return home
+
+
+class TestOverrideGateRules:
+    """YAML override rules affect final gate list via _select_gates."""
+
+    @pytest.fixture
+    def mock_progress(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def brand_profile_none(self) -> None:
+        return None
+
+    def _patch_home(self, monkeypatch, home: Path) -> None:
+        monkeypatch.setattr("os.path.expanduser", lambda p: str(home) if p == "~" else p)
+
+    def test_override_adds_gate(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """YAML override rule adding V0 to text_only mode appears in final gate list."""
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "add_v0.yaml").write_text(
+            "gates:\n  include:\n    - V0\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="my-brand",
+        )
+        assert "V0" in gate_names, "V0 should be included by override rule"
+
+    def test_override_excludes_gate(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """YAML override rule excluding V0 from auto mode removes it."""
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "exclude_v0.yaml").write_text(
+            "gates:\n  exclude:\n    - V0\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        gate_names, gates = _select_gates(
+            mode="auto",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="my-brand",
+        )
+        assert "V0" not in gate_names, "V0 should be excluded by override rule"
+
+    def test_brand_scoped_override_ignores_other_brand(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """Brand-scoped override only affects the matching brand."""
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "acme_only.yaml").write_text(
+            "brand: Acme\n"
+            "gates:\n  include:\n    - V0\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        # Other brand should NOT get V0
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="other-brand",
+        )
+        assert "V0" not in gate_names, "V0 should not appear for non-matching brand"
+
+    def test_brand_scoped_override_affects_matching_brand(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """Brand-scoped override includes gate for the matching brand."""
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "acme_only.yaml").write_text(
+            "brand: Acme\n"
+            "gates:\n  include:\n    - V0\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="Acme",
+        )
+        assert "V0" in gate_names, "V0 should appear for matching brand Acme"
+
+    def test_multiple_override_rules_merge(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """Multiple YAML rule files have their gate modifiers merged (union)."""
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "add_v0.yaml").write_text(
+            "gates:\n  include:\n    - V0\n"
+        )
+        (home / ".automedia" / "overrides" / "rules" / "add_v7.yaml").write_text(
+            "gates:\n  include:\n    - V7\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="my-brand",
+        )
+        assert "V0" in gate_names, "V0 should be included from first rule"
+        assert "V7" in gate_names, "V7 should be included from second rule"
+
+    def test_override_rules_merge_with_brand_profile_modifiers(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """Override rules stack on top of brand profile platform modifiers."""
+        import automedia.gates  # noqa: F401
+
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "add_v0.yaml").write_text(
+            "gates:\n  include:\n    - V0\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        brand_profile = BrandProfile(platforms=["wechat"])
+
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=brand_profile,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="my-brand",
+        )
+        assert "V0" in gate_names, "V0 should be included by override rule on top of brand profile"
+
+    def test_override_validates_unknown_gate_raises(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """Override rule referencing unknown gate raises ValueError via validate_gate_modifiers."""
+        import automedia.gates  # noqa: F401
+
+        home = _setup_override_rules(tmp_path)
+        (home / ".automedia" / "overrides" / "rules" / "bad_gate.yaml").write_text(
+            "gates:\n  include:\n    - NONEXISTENT_GATE_99\n"
+        )
+        self._patch_home(monkeypatch, home)
+
+        with pytest.raises(ValueError, match="NONEXISTENT_GATE_99"):
+            _select_gates(
+                mode="text_only",
+                brand_profile=None,
+                resume_from=None,
+                project_dir=str(tmp_path / "proj"),
+                progress=mock_progress,
+                workflow_obj=None,
+                brand="my-brand",
+            )
+
+    def test_no_overrides_dir_no_change(
+        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+    ) -> None:
+        """When no overrides dir exists, gate list is unchanged."""
+        empty_home = tmp_path / "empty_home"
+        empty_home.mkdir()
+        self._patch_home(monkeypatch, empty_home)
+
+        gate_names, gates = _select_gates(
+            mode="text_only",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=mock_progress,
+            workflow_obj=None,
+            brand="my-brand",
+        )
+        from automedia.pipelines.runner import _TEXT_ONLY_GATE_NAMES
+        assert gate_names == list(_TEXT_ONLY_GATE_NAMES)

@@ -56,7 +56,22 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 CMD ["doctor"]
 
 # ==============================================================================
-# Uncomment to install optional extras (e.g., mcp, openai):
+# Stage 3: Full runtime with all external deps (bun, edge-tts, whisper, chromium)
+# Build: docker build --target mcp-full -t automedia:mcp-full .
+# Use with: docker compose --profile full up mcp-full
 # ==============================================================================
-# FROM runtime AS runtime-extras
-# RUN pip install --no-cache-dir "automedia[mcp]"
+FROM runtime AS mcp-full
+
+USER root
+RUN curl -fsSL https://bun.sh/install | bash \
+    && mv /root/.bun/bin/bun /usr/local/bin/bun \
+    && rm -rf /root/.bun \
+    && bun --version
+RUN pip install --no-cache-dir edge-tts faster-whisper
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium-browser \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -c "import edge_tts; print(f'edge-tts {edge_tts.__version__}')" \
+    && python -c "import faster_whisper; print(f'faster-whisper {faster_whisper.__version__}')" \
+    && chromium-browser --version
+USER automedia

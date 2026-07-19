@@ -6,6 +6,7 @@ Imported and registered by :func:`automedia.mcp.server.create_server`.
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import warnings
 import json
@@ -13,6 +14,7 @@ import os
 import threading
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -121,6 +123,57 @@ def _require_allowed(path: str, *, tool_name: str = "") -> None:
 
 log = get_logger(__name__)
 
+# ---------------------------------------------------------------------------
+# Concurrency limit and session tracker state
+# ---------------------------------------------------------------------------
+
+_max_concurrent_pipelines: int = 3
+_pipeline_semaphore: threading.Semaphore | None = None
+
+
+def _get_max_concurrent_pipelines() -> int:
+    """Return the configured maximum concurrent pipeline count."""
+    return _max_concurrent_pipelines
+
+
+def _init_pipeline_semaphore() -> threading.Semaphore:
+    """Create or return the global pipeline semaphore.
+
+    Reads ``pipeline.max_concurrent_pipelines`` from the merged config
+    and creates a :class:`threading.Semaphore` with that count.
+    """
+    global _pipeline_semaphore, _max_concurrent_pipelines
+    if _pipeline_semaphore is None:
+        from automedia.core.config_loader import load_config
+
+        config = load_config()
+        max_val = config.get("pipeline", {}).get("max_concurrent_pipelines", 3)
+        _max_concurrent_pipelines = int(max_val) if max_val else 3
+        _pipeline_semaphore = threading.Semaphore(_max_concurrent_pipelines)
+    return _pipeline_semaphore
+
+
+def _get_semaphore() -> threading.Semaphore:
+    """Return the global semaphore, initialising it on first call."""
+    sem = _pipeline_semaphore
+    if sem is None:
+        sem = _init_pipeline_semaphore()
+    return sem
+
+
+# Active-pipelines JSON persistence path.
+_active_pipelines_path: Path | None = None
+
+
+def _get_active_pipelines_path() -> Path:
+    """Return the path to ``active_pipelines.json`` under ``~/.automedia/``."""
+    global _active_pipelines_path
+    if _active_pipelines_path is None:
+        from automedia.core.paths import get_user_config_dir
+
+        _active_pipelines_path = get_user_config_dir() / "active_pipelines.json"
+    return _active_pipelines_path
+
 
 # ---------------------------------------------------------------------------
 # Helper utilities
@@ -195,6 +248,111 @@ def _pipeline_result_to_dict(result: PipelineResult) -> dict[str, Any]:
             "brand": getattr(result, "brand", ""),
             "error": getattr(result, "error", None),
         }
+
+
+# ---------------------------------------------------------------------------
+# JSON session tracker helpers
+# ---------------------------------------------------------------------------
+
+
+def _read_active_pipelines() -> dict[str, dict[str, Any]]:
+    """Read active pipelines from the JSON file, using flock for safety.
+
+    Returns an empty dict when the file does not exist or is corrupt.
+    """
+    path = _get_active_pipelines_path()
+    if not path.is_file():
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            fcntl.flock(fh, fcntl.LOCK_SH)
+            data: dict[str, dict[str, Any]] = json.load(fh)
+    except (json.JSONDecodeError, OSError, ValueError):
+        return {}
+    return data
+
+
+def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
+    """Atomically write active pipelines dict to the JSON file.
+
+    Uses ``fcntl.flock`` (exclusive) so concurrent writers never
+    produce a corrupt file.
+    """
+    path = _get_active_pipelines_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            json.dump(data, fh, ensure_ascii=False, indent=2, default=str)
+            fh.flush()
+            os.fsync(fh.fileno())
+        tmp.rename(path)
+    except OSError:
+        # Clean up temp file on failure
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def _update_pipeline_entry(
+    project_id: str,
+    updates: dict[str, Any],
+) -> None:
+    """Read-modify-write a single pipeline entry with flock protection."""
+    try:
+        data = _read_active_pipelines()
+        entry = data.get(project_id, {})
+        entry.update(updates)
+        data[project_id] = entry
+        _write_active_pipelines(data)
+    except OSError:
+        log.warning(
+            "Failed to update active_pipelines.json",
+            project_id=project_id,
+        )
+
+
+def _mark_lost_entries() -> None:
+    """On server start, mark entries >24h old as ``"lost"``.
+
+    Entries whose ``started_at`` is more than 24 hours in the past
+    and whose ``status`` is still ``"running"`` are transitioned to
+    ``"lost"`` — they belong to a previous server session that did
+    not clean up.
+    """
+    path = _get_active_pipelines_path()
+    if not path.is_file():
+        return
+    try:
+        data = _read_active_pipelines()
+        now = datetime.now(timezone.utc)
+        changed = False
+        for pid, entry in data.items():
+            status = entry.get("status", "")
+            if status != "running":
+                continue
+            started_raw = entry.get("started_at")
+            if not started_raw:
+                continue
+            try:
+                started = datetime.fromisoformat(started_raw)
+            except (ValueError, TypeError):
+                continue
+            if now - started > timedelta(hours=24):
+                entry["status"] = "lost"
+                entry["ended_at"] = now.isoformat()
+                changed = True
+        if changed:
+            _write_active_pipelines(data)
+    except OSError:
+        log.warning("Failed to mark lost entries in active_pipelines.json")
+
+
+# Run at import time to clean stale entries from previous server sessions.
+_mark_lost_entries()
 
 
 # ---------------------------------------------------------------------------
@@ -507,13 +665,41 @@ def run_pipeline(
             log.warning("run_pipeline: source_path %s not in allowlist: %s", source_path, exc)
             source_path = ""
 
+    # --- Concurrency limit (Part A) ---
+    # Acquire the semaphore; reject immediately if at max capacity.
+    sem = _get_semaphore()
+    if not sem.acquire(blocking=False):
+        max_n = _get_max_concurrent_pipelines()
+        return {
+            "status": "failed",
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"At max concurrent pipelines ({max_n}). "
+                "Wait for one to finish or cancel one.",
+            ),
+        }
+
     project_id = str(uuid.uuid4())[:12]
     progress = PipelineProgress(project_id=project_id)
     with _lock:
         _pipeline_tracker[project_id] = progress
 
+    # --- JSON session tracker (Part B) ---
+    _update_pipeline_entry(
+        project_id,
+        {
+            "project_id": project_id,
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "mode": mode,
+            "topic": topic,
+            "current_gate": None,
+        },
+    )
+
     def _run() -> None:
         """Background thread — wraps pipeline execution in try/except."""
+        final_status = "completed"
         try:
             from automedia.pipelines.runner import run_full_pipeline
 
@@ -546,6 +732,19 @@ def run_pipeline(
             # Background thread catch-all — pipeline errors stored in progress
             progress.error = str(exc)
             progress.mark_finished()
+            final_status = "failed"
+        finally:
+            # Always release the semaphore so the next pipeline can start.
+            # Always persist the final status to the JSON tracker.
+            sem.release()
+            _update_pipeline_entry(
+                project_id,
+                {
+                    "status": final_status,
+                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                    "current_gate": progress.current_gate,
+                },
+            )
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
@@ -686,6 +885,86 @@ def get_pipeline_progress(
     if since_index > 0:
         data["events"] = data.get("events", [])[since_index:]
     return success_response(data)
+
+
+def list_active_pipelines() -> dict[str, Any]:
+    """Return all active and recently-finished pipelines.
+
+    Reads the ``active_pipelines.json`` session file and returns every
+    entry whose status is ``"running"``, together with entries that
+    finished within the last 5 minutes (for recovery context).
+
+    This tool survives server restarts — entries from previous sessions
+    that are older than 24h are marked ``"lost"``.
+
+    Returns
+    -------
+    dict
+        ``{"pipelines": [...], "count": int}`` where each entry contains
+        ``project_id``, ``status``, ``current_gate``, ``elapsed_s``,
+        ``mode``, and ``topic``.
+    """
+    try:
+        data = _read_active_pipelines()
+        now = datetime.now(timezone.utc)
+        five_min_ago = now - timedelta(minutes=5)
+        pipelines: list[dict[str, Any]] = []
+        for entry in data.values():
+            status = entry.get("status", "unknown")
+            current_gate: str | None = entry.get("current_gate")
+            # Compute elapsed time from started_at
+            started_raw = entry.get("started_at")
+            elapsed_s = 0.0
+            if started_raw:
+                try:
+                    started = datetime.fromisoformat(started_raw)
+                    if status == "running":
+                        elapsed_s = (now - started).total_seconds()
+                    else:
+                        ended_raw = entry.get("ended_at")
+                        if ended_raw:
+                            ended = datetime.fromisoformat(ended_raw)
+                            elapsed_s = (ended - started).total_seconds()
+                        else:
+                            elapsed_s = (now - started).total_seconds()
+                except (ValueError, TypeError):
+                    pass
+            # Include pipeline if it is "running", finished within 5 min,
+            # or marked "lost" (so the caller can see what was lost).
+            if status == "running" or status == "lost":
+                pipelines.append(
+                    {
+                        "project_id": entry.get("project_id", ""),
+                        "status": status,
+                        "current_gate": current_gate,
+                        "elapsed_s": round(elapsed_s, 1),
+                        "mode": entry.get("mode", ""),
+                        "topic": entry.get("topic", ""),
+                    }
+                )
+            elif ended_raw_str := entry.get("ended_at"):
+                try:
+                    ended = datetime.fromisoformat(ended_raw_str)
+                    if ended >= five_min_ago:
+                        pipelines.append(
+                            {
+                                "project_id": entry.get("project_id", ""),
+                                "status": status,
+                                "current_gate": current_gate,
+                                "elapsed_s": round(elapsed_s, 1),
+                                "mode": entry.get("mode", ""),
+                                "topic": entry.get("topic", ""),
+                            }
+                        )
+                except (ValueError, TypeError):
+                    pass
+
+        pipelines.sort(key=lambda p: p.get("elapsed_s", 0.0), reverse=True)
+        return success_response({"pipelines": pipelines, "count": len(pipelines)})
+    except OSError as exc:
+        return {"pipelines": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")}
+    except Exception as exc:
+        return {"pipelines": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
 def get_pipeline_status(

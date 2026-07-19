@@ -1058,7 +1058,7 @@ PARTIAL — 42/55 expectations pass, but:
 
 ## 7. Current Reality Assessment
 
-Based on the project audit (`docs/dev/project-audit.md`), documentation review, and codebase analysis, here is the honest assessment of the founder's expectations for a first-time end-to-end run:
+Based on the project audit (`docs/archived/project-audit.md`), documentation review, and codebase analysis, here is the honest assessment of the founder's expectations for a first-time end-to-end run:
 
 ### What works (end-to-end, `text_only` mode):
 
@@ -1226,6 +1226,6 @@ The project is done when the founder can say: **"Yes, this does what I wanted."*
 - `docs/user-introduction.md` — Project's promise to users
 - `docs/dev/archive/acceptance-criteria.md` — D1: Pipeline output acceptance
 - `docs/dev/archive/behavioral-acceptance.md` — D2: Behavioral acceptance
-- `docs/dev/project-audit.md` — Comprehensive project audit (§5 end-to-end flow, §10 testing gaps)
+- `docs/archived/project-audit.md` — Comprehensive project audit (§5 end-to-end flow, §10 testing gaps) - archived
 - `docs/user/open-core.md` — Licensing and commercial features
 - `docs/dev/archive/production-e2e-test-design.md` — Production E2E test design (S1-S9)

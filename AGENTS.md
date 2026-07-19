@@ -192,23 +192,19 @@ AutoMedia/
 │           ├── vector_store.py
 │           └── migrate.py
 │
-├── docs/                       # Documentation (26 files)
+├── docs/                       # Documentation (20 files)
 │   ├── index.md                # Documentation site home
-│   ├── d3-gap-analysis.md      # D3 gap closure analysis
 │   │
 │   ├── dev/                    # Developer-oriented docs
-│   │   ├── adr/architecture-decisions.md
 │   │   ├── agent-troubleshooting.md
 │   │   ├── api-gotchas.md
 │   │   ├── cron-troubleshooting.md
-│   │   ├── developer-guide.md
-│   │   ├── enforcement-mechanisms.md
+│   │   ├── developer-guide.md   # Also includes: enforcement mechanisms, PRD-4 summary, ADRs
 │   │   ├── evaluation-matrix-principles.md
 │   │   ├── forward-compat.md
 │   │   ├── founder-expectations.md
 │   │   ├── gate-failure-modes.md
-│   │   ├── PRD-4.md
-│   │   ├── project-audit.md
+│   │   ├── override-reference.md
 │   │   ├── project-validation-framework.md
 │   │   └── video-synthesis-design.md
 │   │
@@ -217,8 +213,7 @@ AutoMedia/
 │   │   ├── asset-library.md
 │   │   ├── cli-reference.md
 │   │   ├── hitl-framework.md
-│   │   ├── mcp-setup.md
-│   │   ├── mcp-systemd-setup.md
+│   │   ├── mcp-setup.md         # Also includes: systemd deployment, error code reference
 │   │   ├── omni-integration.md
 │   │   ├── production-workflow.md
 │   │   └── user-introduction.md
@@ -504,19 +499,18 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 
 | File | Content |
 |------|---------|
-| `docs/dev/developer-guide.md` | Full developer guide |
+| `docs/dev/developer-guide.md` | Full developer guide (includes enforcement mechanisms, PRD-4 summary, ADRs) |
 | `docs/user/api-reference.md` | SDK API reference |
 | `docs/user/cli-reference.md` | CLI command reference |
-| `docs/user/mcp-setup.md` | MCP server setup guide |
-| `docs/user/mcp-systemd-setup.md` | systemd deployment guide |
+| `docs/user/mcp-setup.md` | MCP server setup guide (includes systemd deployment, error code reference) |
 | `docs/user/hitl-framework.md` | Human-in-the-loop framework docs |
 | `docs/user/omni-integration.md` | Omni Triad integration docs |
-| `docs/dev/enforcement-mechanisms.md` | Red line enforcement docs |
 | `docs/user/asset-library.md` | Asset library documentation |
 | `docs/dev/gate-failure-modes.md` | Gate failure troubleshooting |
 | `docs/user/production-workflow.md` | Production operations guide |
 | `docs/dev/cron-troubleshooting.md` | Cron job debugging |
 | `docs/dev/api-gotchas.md` | Common API pitfalls |
+| `docs/dev/override-reference.md` | Override system reference (rules, prompts, platform scoping) |
 | `CHANGELOG.md` | Version history |
 | `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
 

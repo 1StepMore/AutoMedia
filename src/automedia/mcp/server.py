@@ -94,6 +94,7 @@ from automedia.mcp.tools import (
     get_redlines,
     health_check,
     init_config,
+    list_active_pipelines,
     list_brands,
     list_cron_schedules,
     list_overridable_templates,
@@ -144,6 +145,7 @@ __all__ = [
     "get_pipeline_progress",
     "get_pipeline_status",
     "init_config",
+    "list_active_pipelines",
     "list_projects",
     "get_project_assets",
     "archive_project",
@@ -423,6 +425,18 @@ def create_server() -> FastMCP:
             "thread. Poll this after run_pipeline to observe execution."
         ),
     )(get_pipeline_progress)
+
+    mcp.tool(
+        description=(
+            "Return all active and recently-finished pipelines. "
+            "Reads the persistent session tracker (active_pipelines.json) "
+            "and returns pipelines that are currently running, finished "
+            "within the last 5 minutes, or marked 'lost' from a previous "
+            "server session. Each entry includes project_id, status, "
+            "current_gate, elapsed_s, mode, and topic. "
+            "Survives server restarts."
+        ),
+    )(list_active_pipelines)
 
     mcp.tool(
         description=("Return the current status / progress of a pipeline run by project ID."),
