@@ -4,6 +4,28 @@
 
 ### Added
 
+- **Windows Deployment Support**: Full Windows deployment guide at `docs/user/windows-deployment.md` (WSL2, Docker Desktop, native Windows). PowerShell setup script at `scripts/setup.ps1`. Deployment overview at `docs/user/deployment.md` with method comparison table.
+
+- **Gate Modifier YAML Overrides**: OverridesLoader now accepts `gates.include`, `gates.exclude`, `gates.override_failure_mode` keys in YAML override rules. `validate_gate_modifiers()` returns `(included, excluded, overrides)` tuple for type-safe gate list composition. `override_failure_mode` applied per-instance via `object.__setattr__` (no BaseGate class mutation).
+
+- **Docker Compose Profiles**: `docker-compose.yml` with `mcp-full` profile bundling bun, edge-tts, whisper, and chromium for full-dependency containers. `Dockerfile` streamlined for profile-based dependency injection.
+
+- **Concurrency Control**: Pipeline concurrency semaphore (max 3 simultaneous pipelines) in MCP tools. `active_pipelines.json` session tracker at `~/.automedia/` with `fcntl.flock` file locking, 24h timeout → `"lost"` cleanup, and `list_active_pipelines()` MCP tool for agent inspection.
+
+- **`[all]` PyPI Extra**: New `[all]` pip install extra that includes `[dev]`, `[mcp]`, `[omni]`, `[openai]`, `[anthropic]` — full package functionality with a single extra. AGPL notice for omni extras (PyMuPDF).
+
+- **Onboarding MCP Tools**: `health_check` now reports `first_run` status and version. New `onboard()` MCP tool for guided setup. Error code system expanded from 6→13 codes with structured resolution fields in `MCPErrorCode`.
+
+- **CI/CD Deploy Validation**: New `validate-deploy` CI job that builds the Docker image and runs `systemd-analyze verify` on service files. Full CI pipeline with lint, typecheck, test, security scan, and deploy validation.
+
+- **Cost Data Exposure**: `_UsageTracker` cost and token data exposed per-thread on `run_pipeline` result. No cross-pipeline aggregation — per-invocation only.
+
+### Changed
+
+- **`_compose_gate_list()`**: OverridesLoader `gates` rules now feed into gate composition at runtime. `_collect_platform_gate_modifiers()` merges platform-specific gate modifiers from overrides.
+- **`_build_gates_from_names()`**: Applies `override_failure_mode` from gate modifiers per-instance via `object.__setattr__`.
+- **MCP server healthcheck**: deployed `healthcheck.sh` performs real MCP ping via `python -m automedia.mcp.server --ping`. systemd service requires `network-online.target`.
+
 - **Bilibili Platform Onboarding**: Added Bilibili to `_PLATFORM_CATEGORIES` (video-first routing), `defaults.yaml` platform config, and 6 platform-scoped Jinja2 prompt templates (content_writer, copy_review_g2, humanizer_g1, brand_strategy, pipeline_strategy, content_quality). YouTube and Twitter also added to `_PLATFORM_CATEGORIES` for correct auto-mode pipeline derivation.
 
 - **Platform-Aware Workflow Customization (F49-F55)**: Comprehensive platform-scoped pipeline customization system covering prompt templates, media specs, gate modifiers, cron scheduling, reusable workflows, and director mode.
