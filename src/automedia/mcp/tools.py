@@ -476,7 +476,7 @@ def run_pipeline(
     return success_response({"project_id": project_id, "status": "started"})
 
 
-def batch_run(
+def run_batch(
     topics: list[str],
     brand: NonEmptyStr,
     mode: PipelineMode = "auto",
@@ -548,6 +548,20 @@ def batch_run(
             "failed": failed,
         }
     )
+
+
+def batch_run(
+    topics: list[str],
+    brand: NonEmptyStr,
+    mode: PipelineMode = "auto",
+) -> dict[str, Any]:
+    """⚠️ DEPRECATED: Use :func:`run_batch` instead."""
+    warnings.warn(
+        "batch_run is deprecated, use run_batch instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return run_batch(topics=topics, brand=brand, mode=mode)
 
 
 def get_pipeline_progress(
@@ -2924,7 +2938,7 @@ def update_engine_config(
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
-def engine_health() -> dict[str, Any]:
+def health_engine() -> dict[str, Any]:
     """Check all engine-related dependencies and return their health status.
 
     Returns
@@ -2961,3 +2975,13 @@ def engine_health() -> dict[str, Any]:
         )
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
+
+
+def engine_health() -> dict[str, Any]:
+    """⚠️ DEPRECATED: Use :func:`health_engine` instead."""
+    warnings.warn(
+        "engine_health is deprecated, use health_engine instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return health_engine()

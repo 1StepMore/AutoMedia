@@ -28,6 +28,7 @@ Usage::
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from structlog import get_logger
@@ -232,7 +233,7 @@ def _categorize_tool(name: str) -> str:
     return "Other"
 
 
-def mcp_help() -> dict[str, Any]:
+def help_mcp() -> dict[str, Any]:
     """Get a categorized listing of all available MCP tools with descriptions.
 
     Use this to discover what tools are available at runtime — the output is
@@ -270,6 +271,29 @@ def mcp_help() -> dict[str, Any]:
     }
 
 
+def mcp_help() -> dict[str, Any]:
+    """⚠️ DEPRECATED: Use :func:`help_mcp` instead.
+
+    Get a categorized listing of all available MCP tools with descriptions.
+
+    Use this to discover what tools are available at runtime — the output is
+    dynamically generated from the registered tool set rather than hardcoded.
+
+    Returns
+    -------
+    dict
+        ``{"categories": {...}, "tool_count": int, "hint": str}``
+        where *categories* maps category name → list of ``{name, description}``
+        objects sorted alphabetically within each group.
+    """
+    warnings.warn(
+        "mcp_help is deprecated, use help_mcp instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return help_mcp()
+
+
 # ---------------------------------------------------------------------------
 # Wrapper functions for renamed tools (backward-compatible aliases kept)
 # ---------------------------------------------------------------------------
@@ -280,8 +304,10 @@ def add_pool_topic(
     category: str = "",
     pool_db_path: str = "",
 ) -> dict[str, Any]:
-    """Add a topic to the topic pool. Wraps pool_add_topic."""
-    return pool_add_topic(title=title, category=category, pool_db_path=pool_db_path)
+    """Add a topic to the topic pool."""
+    from automedia.mcp.tools import add_pool_topic as _impl
+
+    return _impl(title=title, category=category, pool_db_path=pool_db_path)
 
 
 def run_batch(
@@ -289,18 +315,17 @@ def run_batch(
     brand: str,
     mode: str = "auto",
 ) -> dict[str, Any]:
-    """Execute pipelines for multiple topics sequentially. Wraps batch_run."""
-    return batch_run(topics=topics, brand=brand, mode=mode)
+    """Execute pipelines for multiple topics sequentially."""
+    from automedia.mcp.tools import run_batch as _impl
+
+    return _impl(topics=topics, brand=brand, mode=mode)
 
 
 def health_engine() -> dict[str, Any]:
-    """Check all engine-related dependencies health. Wraps engine_health."""
-    return engine_health()
+    """Check all engine-related dependencies health."""
+    from automedia.mcp.tools import health_engine as _impl
 
-
-def help_mcp() -> dict[str, Any]:
-    """Get a categorized listing of all available MCP tools with descriptions. Wraps mcp_help."""
-    return mcp_help()
+    return _impl()
 
 
 # ---------------------------------------------------------------------------
