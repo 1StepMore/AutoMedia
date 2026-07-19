@@ -230,7 +230,11 @@ def run_cmd(
                         "topic": t,
                         "status": "failed",
                         "project_id": "",
-                        "error": str(exc),
+                        "error": {
+                            "code": "CLI_ERROR",
+                            "message": str(exc),
+                            "resolution": "Check the error message and fix the issue before retrying",
+                        },
                     }
                 )
                 if verbose:

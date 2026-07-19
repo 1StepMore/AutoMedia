@@ -181,6 +181,25 @@ class TestRunCommand:
         assert result.exit_code == 1
         assert "automedia init" in result.output
 
+    @patch("automedia.cli.commands.run.run_full_pipeline")
+    def test_batch_error_structured_json(
+        self, mock_runner: MagicMock, _model_config_present: None
+    ) -> None:
+        """Batch exception errors should have structured code/message/resolution in JSON mode."""
+        mock_runner.side_effect = RuntimeError("batch kaboom")
+        result = runner.invoke(app, ["--json", "run", "--topics", "t1", "--brand", "b", "--mode", "text_only"])
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert "results" in data
+        assert len(data["results"]) == 1
+        r = data["results"][0]
+        assert r["status"] == "failed"
+        error = r["error"]
+        assert isinstance(error, dict)
+        assert error["code"] == "CLI_ERROR"
+        assert "batch kaboom" in error["message"]
+        assert "resolution" in error
+
 
 # =========================================================================
 # 3. automedia pool
@@ -467,6 +486,42 @@ class TestCronCommand:
         PoolDB(db_path).close()  # ensure db exists so check passes for pool item
         result = runner.invoke(app, ["cron", "check-health"])
         assert "Health Check" in result.output
+
+    @patch("automedia.mcp.tools._read_pipeline_schedules")
+    @patch("automedia.cron.runner.run_scheduled_pipeline")
+    def test_cron_run_pipeline_exception_structured(
+        self,
+        mock_run: MagicMock,
+        mock_schedules: MagicMock,
+    ) -> None:
+        """cron run-pipeline exception should produce structured error with code/message/resolution."""
+        mock_schedules.return_value = [{"name": "test-sched", "brand": "test", "mode": "auto"}]
+        mock_run.side_effect = RuntimeError("cron kaboom")
+        result = runner.invoke(app, ["--json", "cron", "run-pipeline"])
+        assert result.exit_code == 1
+        # Multiple JSON objects are emitted; find the one with "results"
+        decoder = json.JSONDecoder()
+        pos = 0
+        data = {}
+        while pos < len(result.output):
+            try:
+                obj, end = decoder.raw_decode(result.output, pos)
+                assert isinstance(obj, dict)
+                if "results" in obj:
+                    data = obj
+                    break
+                pos = end
+            except json.JSONDecodeError:
+                pos += 1
+        assert "results" in data
+        assert len(data["results"]) == 1
+        r = data["results"][0]
+        assert r["status"] == "failed"
+        error = r["error"]
+        assert isinstance(error, dict)
+        assert error["code"] == "CLI_ERROR"
+        assert "cron kaboom" in error["message"]
+        assert "resolution" in error
 
 
 # =========================================================================

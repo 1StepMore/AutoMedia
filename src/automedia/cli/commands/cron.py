@@ -265,7 +265,15 @@ def _job_run_pipeline() -> None:
                 f"  [run-pipeline] {name!r} EXCEPTION: {exc}",
                 fg=typer.colors.RED,
             )
-            results.append({"status": "failed", "error": str(exc), "name": name})
+            results.append({
+                "status": "failed",
+                "error": {
+                    "code": "CLI_ERROR",
+                    "message": str(exc),
+                    "resolution": "Check the error message and fix the issue before retrying",
+                },
+                "name": name,
+            })
 
     passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
     failed = len(results) - passed
@@ -349,10 +357,15 @@ def cron_run_pipeline(
                     fg=typer.colors.GREEN,
                 )
         except Exception as exc:
-            results.append({"status": "failed", "error": str(exc), "name": sched_name})
+            error_dict = {
+                "code": "CLI_ERROR",
+                "message": str(exc),
+                "resolution": "Check the error message and fix the issue before retrying",
+            }
+            results.append({"status": "failed", "error": error_dict, "name": sched_name})
             output_text(
                 f"  ✗ {sched_name!r} exception: {exc}",
-                data={"status": "failed", "error": str(exc), "name": sched_name},
+                data={"status": "failed", "error": error_dict, "name": sched_name},
             )
 
     if output_text(None, data={"results": results, "count": len(results)}):
