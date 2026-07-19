@@ -41,13 +41,13 @@ class TestMainApp:
     def test_version_flag_prints_version(self) -> None:
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "1.0.1" in result.output
+        assert "1.1.0" in result.output
 
     def test_version_flag_exits_early(self) -> None:
         """--version should exit before running any command."""
         result = runner.invoke(app, ["--version", "run", "--topic", "x", "--brand", "y"])
         assert result.exit_code == 0
-        assert "1.0.1" in result.output
+        assert "1.1.0" in result.output
         assert "Pipeline" not in result.output
 
     def test_help_contains_epilog(self) -> None:
@@ -480,8 +480,9 @@ class TestInitCommand:
     def test_init_template_minimal(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
+        import sys
 
-        from automedia.cli.commands import init_cmd as init_mod
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
 
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
         monkeypatch.setattr(

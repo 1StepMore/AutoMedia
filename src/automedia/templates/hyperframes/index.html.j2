@@ -22,8 +22,10 @@
        data-start="0" data-duration="{{ total_duration }}"
        data-width="1920" data-height="1080">
 
+{% if audio_basename %}
     <audio class="clip" data-start="0" data-duration="{{ total_duration }}" data-track-index="0"
            src="assets/audio/{{ audio_basename }}" id="narration-audio"></audio>
+{% endif %}
 
 {% for scene in scenes %}
     <div class="clip" data-start="{{ scene.start }}" data-duration="{{ scene.duration }}" data-track-index="{{ loop.index }}"
