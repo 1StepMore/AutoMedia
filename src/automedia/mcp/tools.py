@@ -2985,3 +2985,195 @@ def engine_health() -> dict[str, Any]:
         stacklevel=2,
     )
     return health_engine()
+
+
+# ---------------------------------------------------------------------------
+# Setup / Configuration tools (first-time setup)
+# ---------------------------------------------------------------------------
+
+
+def init_config(project_dir: str = "") -> dict[str, Any]:
+    """Initialize AutoMedia configuration with sensible defaults.
+
+    Creates the ``.automedia/`` directory structure and a default
+    ``config.yaml`` in the target directory.  If *project_dir* is
+    provided, creates there; otherwise uses the current working
+    directory.
+
+    Parameters
+    ----------
+    project_dir:
+        Optional path to the project root.  When empty, the current
+        working directory is used.
+
+    Returns
+    -------
+    dict
+        ``{"success": True, "config_dir": str, "config_file": str}``
+        on success, or an error dict on failure.
+    """
+    try:
+        target = Path(project_dir).resolve() if project_dir else Path.cwd()
+        automedia_dir = target / ".automedia"
+        automedia_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write a minimal config.yaml if one doesn't already exist
+        config_path = automedia_dir / "config.yaml"
+        if not config_path.exists():
+            config: dict[str, Any] = {
+                "project": {"name": target.name},
+            }
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.dump(config, f, default_flow_style=False)
+            os.chmod(config_path, 0o600)
+
+        return success_response(
+            {
+                "success": True,
+                "config_dir": str(automedia_dir),
+                "config_file": str(config_path),
+            }
+        )
+    except Exception as exc:
+        # MCP boundary: catch-all for file I/O errors
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
+
+
+def configure_llm(
+    provider: str = "",
+    model: str = "",
+    api_key: str = "",
+) -> dict[str, Any]:
+    """Configure the LLM provider for AutoMedia.
+
+    Writes LLM configuration (provider, model, optional API key) to
+    ``~/.automedia/model_config.yaml`` by reusing path constants from
+    the existing CLI ``init`` command.
+
+    .. warning::
+
+       Storing API keys in config files is less secure than using
+       environment variables.  Prefer setting ``AUTOMEDIA_LLM_API_KEY``
+       in your shell profile, ``.env`` file, or MCP server ``env`` map.
+
+    Parameters
+    ----------
+    provider:
+        LLM provider name (e.g. ``"openai"``, ``"deepseek"``,
+        ``"anthropic"``).
+    model:
+        Model identifier (e.g. ``"gpt-4o-mini"``, ``"deepseek-chat"``).
+        When empty, only the provider is set.
+    api_key:
+        Optional API key.  Logs a warning that env vars are preferred.
+
+    Returns
+    -------
+    dict
+        ``{"success": True, "provider": str, "model": str,
+        "config_file": str}`` on success, or an error dict on failure.
+    """
+    try:
+        from automedia.cli.commands.init_cmd import (
+            _MODEL_CONFIG_FILE,
+            _USER_CFG_DIR,
+        )
+
+        if api_key:
+            log.warning(
+                "configure_llm: API key stored in plaintext. "
+                "Prefer AUTOMEDIA_LLM_API_KEY environment variable instead."
+            )
+
+        _USER_CFG_DIR.mkdir(parents=True, exist_ok=True)
+
+        llm_config: dict[str, Any] = {
+            "llm": {
+                "text_generation": {
+                    "provider": provider,
+                },
+            },
+        }
+        if model:
+            llm_config["llm"]["text_generation"]["model"] = model
+        if api_key:
+            llm_config["llm"]["text_generation"]["api_key"] = api_key
+
+        with open(_MODEL_CONFIG_FILE, "w", encoding="utf-8") as f:
+            yaml.dump(llm_config, f, default_flow_style=False)
+        os.chmod(_MODEL_CONFIG_FILE, 0o600)
+
+        return success_response(
+            {
+                "success": True,
+                "provider": provider,
+                "model": model,
+                "config_file": str(_MODEL_CONFIG_FILE),
+            }
+        )
+    except Exception as exc:
+        # MCP boundary: catch-all for file I/O errors
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
+
+
+def add_brand(
+    name: str,
+    industry: str = "",
+    target_audience: str = "",
+) -> dict[str, Any]:
+    """Create a new brand profile.
+
+    Uses :func:`automedia.manifests.brand_profile_schema.save_brand_profile`
+    to write the profile into ``~/.automedia/brand_profiles.yaml``.
+    The brand *name* is required; *industry* and *target_audience* are
+    optional.
+
+    Parameters
+    ----------
+    name:
+        Brand name (required).  Used as the key in the profiles YAML.
+    industry:
+        Optional industry / vertical (e.g. ``"SaaS"``, ``"e-commerce"``).
+    target_audience:
+        Optional audience description (e.g. ``"Tech professionals"``).
+
+    Returns
+    -------
+    dict
+        ``{"success": True, "brand_name": str, "industry": str,
+        "target_audience": str}`` on success, or an error dict on
+        failure (e.g. empty brand name).
+    """
+    try:
+        from automedia.manifests.brand_profile_schema import (
+            save_brand_profile,
+        )
+
+        data: dict[str, Any] = {"brand_name": name}
+        if industry:
+            data["industry"] = industry
+        if target_audience:
+            data["target_audience"] = target_audience
+
+        save_brand_profile(name, data)
+
+        return success_response(
+            {
+                "success": True,
+                "brand_name": name,
+                "industry": industry,
+                "target_audience": target_audience,
+            }
+        )
+    except Exception as exc:
+        # MCP boundary: catch-all for validation / file I/O errors
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+        }
