@@ -49,7 +49,7 @@ from automedia.mcp.accounts import (
     get_account_health,
     list_accounts,
 )
-from automedia.mcp.instructions import get_instructions
+
 
 # ---------------------------------------------------------------------------
 # Allowlist imports (from allowlist.py)
@@ -346,7 +346,7 @@ def create_server() -> FastMCP:
 
     mcp = FastMCP(
         name="AutoMedia",
-        instructions=get_instructions(),
+        instructions="",
     )
 
     # Register all tools
@@ -829,6 +829,11 @@ def create_server() -> FastMCP:
             "description": _tool.description,
             "parameters": _tool.parameters,
         }
+
+    # Generate dynamic instructions from the populated tool registry
+    from automedia.mcp.instructions import generate_instructions
+
+    mcp._mcp_server.instructions = generate_instructions(_tool_registry)
 
     # Set dynamic tool count for health_check
     from automedia.mcp.tools import set_tools_count
