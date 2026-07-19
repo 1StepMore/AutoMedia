@@ -86,10 +86,12 @@ from automedia.mcp.tools import (
     get_pipeline_progress,
     get_pipeline_status,
     get_project_assets,
+    get_redlines,
     health_check,
     list_brands,
     list_cron_schedules,
     list_overridable_templates,
+    list_platforms,
     list_projects,
     list_topic_pool,
     list_workflows,
@@ -145,6 +147,7 @@ __all__ = [
     "localize_output",
     "format_output",
     "get_config",
+    "get_redlines",
     "health_check",
     "list_brands",
     # Asset library tools
@@ -153,6 +156,7 @@ __all__ = [
     "add_cron_schedule",
     "list_cron_schedules",
     "list_overridable_templates",
+    "list_platforms",
     "list_workflows",
     "remove_cron_schedule",
     "test_cron_schedule",
@@ -556,6 +560,14 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
+            "Return the list of agent red-line constraints. "
+            "The 9 red lines are MUST/MUST NOT rules that agents must obey "
+            "while working in this codebase — sourced from AGENTS.md §5."
+        ),
+    )(get_redlines)
+
+    mcp.tool(
+        description=(
             "Select the highest-scored pending topic from the pool. "
             "Returns the selected topic and remaining count."
         ),
@@ -710,6 +722,14 @@ def create_server() -> FastMCP:
             "Returns the publish result including URL."
         ),
     )(publish_content)
+
+    mcp.tool(
+        description=(
+            "List all registered publishing platforms. "
+            "Returns sorted list platform names and total count. "
+            "Returns empty list when no adapters are registered (not an error)."
+        ),
+    )(list_platforms)
 
     mcp.tool(
         description=(

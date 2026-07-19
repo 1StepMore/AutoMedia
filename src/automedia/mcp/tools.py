@@ -7,6 +7,7 @@ Imported and registered by :func:`automedia.mcp.server.create_server`.
 from __future__ import annotations
 
 import importlib
+import warnings
 import json
 import os
 import threading
@@ -804,7 +805,7 @@ def list_topic_pool(
         return {"topics": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
-def pool_add_topic(
+def add_pool_topic(
     title: str,
     category: str = "",
     pool_db_path: str = "",
@@ -830,7 +831,7 @@ def pool_add_topic(
         from automedia.pool.db import PoolDB
 
         if pool_db_path:
-            _require_allowed(pool_db_path, tool_name="pool_add_topic")
+            _require_allowed(pool_db_path, tool_name="add_pool_topic")
             db = PoolDB(pool_db_path)
         else:
             db = PoolDB(":memory:")
@@ -848,6 +849,20 @@ def pool_add_topic(
     except Exception as exc:
         # MCP boundary: catch-all for PoolDB errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
+
+
+def pool_add_topic(
+    title: str,
+    category: str = "",
+    pool_db_path: str = "",
+) -> dict[str, Any]:
+    """⚠️ DEPRECATED: Use :func:`add_pool_topic` instead."""
+    warnings.warn(
+        "pool_add_topic is deprecated, use add_pool_topic instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return add_pool_topic(title=title, category=category, pool_db_path=pool_db_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1850,6 +1865,28 @@ def get_pending_approvals(
     return success_response({"pending_approvals": all_pending, "count": len(all_pending)})
 
 
+def list_platforms() -> dict[str, Any]:
+    """List all registered publishing platforms.
+
+    Uses :class:`automedia.adapters.registry.AdapterRegistry` to enumerate
+    all registered adapters by their platform name.
+
+    Returns
+    -------
+    dict
+        ``{"platforms": [...], "total": N}`` — sorted list of platform
+        names and their count.  Never raises.  Returns empty list when
+        no adapters are registered (not an error).
+    """
+    from automedia.adapters.registry import AdapterRegistry
+
+    try:
+        platforms = AdapterRegistry.list()
+        return success_response({"platforms": platforms, "total": len(platforms)})
+    except Exception as exc:
+        return {"platforms": [], "total": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
+
+
 def register_platform_adapter(
     platform_name: str,
     adapter_class: str = "",
@@ -2350,6 +2387,35 @@ def evaluate_content_quality(
             "overall_assessment": "",
             **error_response(MCPErrorCode.UNKNOWN, str(exc)),
         }
+
+
+# ---------------------------------------------------------------------------
+# Red-line introspection tool
+# ---------------------------------------------------------------------------
+
+
+def get_redlines() -> dict[str, Any]:
+    """Return the list of agent red-line constraints.
+
+    Returns
+    -------
+    dict
+        ``{"redlines": [...], "total": N}`` —
+        never raises. Each entry is a human-readable constraint description
+        sourced from AGENTS.md §5.
+    """
+    redlines: list[str] = [
+        "MUST NOT archive projects using --force unless status is 'published'",
+        "MUST NOT commit real production data, topic pool contents, or credentials to git",
+        "MUST NOT modify automedia/mcp/mcp_allowlist.yaml without explicit user request",
+        "MUST use synthetic test fixtures from tests/fixtures/synth/ for testing",
+        "MUST use 'automedia archive' command for archiving — never manual dir operations",
+        "MUST follow gate naming convention: G0-G5, V0-V7, L1-L4, H0, pre-gate, CW",
+        "MUST add new gates to automedia/gates/failure_modes.py",
+        "MUST NOT skip pre-commit checks",
+        "MUST respect GateHook readonly contract — hooks observe but never mutate",
+    ]
+    return success_response({"redlines": redlines, "total": len(redlines)})
 
 
 # ---------------------------------------------------------------------------
