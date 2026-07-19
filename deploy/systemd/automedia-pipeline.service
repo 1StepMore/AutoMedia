@@ -19,8 +19,9 @@
 [Unit]
 Description=AutoMedia Production Pipeline
 Documentation=https://github.com/1stepmore/automedia
-After=network-online.target
+After=network-online.target automedia-mcp.service
 Wants=network-online.target
+Requires=automedia-mcp.service
 
 [Service]
 Type=oneshot

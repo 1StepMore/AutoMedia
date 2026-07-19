@@ -12,8 +12,8 @@
 [Unit]
 Description=AutoMedia MCP Server — Model Context Protocol stdio server
 Documentation=https://github.com/1stepmore/automedia
-After=network.target
-Wants=network-online.target
+After=network.target network-online.target
+Requires=network-online.target
 
 [Service]
 Type=simple

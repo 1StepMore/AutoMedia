@@ -819,6 +819,7 @@ def _run_pipeline(
 
         gate_names, gates = _select_gates(
             mode, brand_profile, resume_from, project.project_dir, progress,
+            workflow_obj=workflow_obj,
         )
 
         gate_context = _build_pipeline_context(
@@ -895,6 +896,9 @@ def _resolve_brand_and_workflow(
 
     if workflow_obj is not None and brand_profile is not None:
         brand_dict = _merge_workflow_config(workflow_obj, asdict(brand_profile))
+        # Pop extra keys that BrandProfile doesn't accept before reconstructing
+        brand_dict.pop("workflow_gates", None)
+        brand_dict.pop("workflow_prompts", None)
         try:
             brand_profile = BrandProfile(**brand_dict)
         except (TypeError, ValueError) as exc:
@@ -921,6 +925,7 @@ def _select_gates(
     resume_from: str | None,
     project_dir: str,
     progress: PipelineProgress | None,
+    workflow_obj: Any | None = None,
 ) -> tuple[list[str], list[BaseGate]]:
     import automedia.gates  # noqa: F401
 
@@ -938,6 +943,15 @@ def _select_gates(
                 platform_count=len(brand_profile.platforms),
                 gate_count=len(gate_names),
             )
+
+    # Workflow gate modifiers override platform-level modifiers
+    if workflow_obj is not None and workflow_obj.gates is not None:
+        gate_names = _compose_gate_list(mode, {"gates": workflow_obj.gates})
+        log.info(
+            "pipeline.workflow_gates_applied",
+            workflow=getattr(workflow_obj, "name", "?"),
+            gate_count=len(gate_names),
+        )
 
     if resume_from is not None:
         try:

@@ -151,6 +151,97 @@ def pipeline_metrics_resource(project_id: str) -> str:
     )
 
 
+def getting_started_resource() -> str:
+    """Return a setup checklist with steps and completion status.
+
+    Registered as ``automedia://getting_started``.
+
+    Checks which onboarding steps are complete and returns a structured
+    list of remaining setup items so clients can guide users through
+    first-time configuration.
+    """
+    from automedia.core.paths import get_user_config_dir
+
+    user_cfg_dir = get_user_config_dir()
+    has_cfg_dir = user_cfg_dir.is_dir()
+
+    # Step 1: LLM configured?
+    model_cfg = user_cfg_dir / "model_config.yaml"
+    llm_configured = bool(os.environ.get("AUTOMEDIA_LLM_API_KEY")) or (
+        model_cfg.exists()
+        and model_cfg.stat().st_size > 0
+    )
+
+    # Step 2: Brand profile?
+    brand_file = user_cfg_dir / "brand_profiles.yaml"
+    brand_configured = bool(
+        brand_file.exists()
+        and brand_file.stat().st_size > 0
+    )
+
+    # Step 3: User config directory exists?
+    # Step 4: Project initialized?
+    project_cfg = Path.cwd() / ".automedia"
+    project_initialized = project_cfg.is_dir()
+
+    steps = [
+        {
+            "step": 1,
+            "name": "Create user config directory",
+            "done": has_cfg_dir,
+            "command": "automedia init",
+            "hint": "Creates ~/.automedia/ with default config files.",
+        },
+        {
+            "step": 2,
+            "name": "Configure LLM provider",
+            "done": llm_configured,
+            "command": "configure_llm MCP tool or automedia onboard --step llm",
+            "hint": "Set a provider, model, and API key for text generation.",
+        },
+        {
+            "step": 3,
+            "name": "Create a brand profile",
+            "done": brand_configured,
+            "command": "add_brand MCP tool or automedia onboard --step brand",
+            "hint": "Define brand name, tone, CTA principles, and languages.",
+        },
+        {
+            "step": 4,
+            "name": "Run doctor to check dependencies",
+            "done": False,
+            "command": "automedia doctor",
+            "hint": "Verify FFmpeg, Bun, edge-tts, Whisper, Chrome are installed.",
+        },
+        {
+            "step": 5,
+            "name": "Initialize project directory",
+            "done": project_initialized,
+            "command": "automedia init --project-dir .",
+            "hint": "Creates .automedia/ in the current working directory.",
+        },
+        {
+            "step": 6,
+            "name": "Run your first pipeline",
+            "done": False,
+            "command": "automedia run --topic 'Hello World' --brand <name> --mode text_only",
+            "hint": "Execute a text-only pipeline to verify the full setup.",
+        },
+    ]
+
+    all_done = all(s["done"] for s in steps)
+
+    return json.dumps(
+        {
+            "status": "ok",
+            "all_done": all_done,
+            "steps": steps,
+        },
+        indent=2,
+        ensure_ascii=False,
+    )
+
+
 def gate_info_resource(gate_name: str) -> str:
     """Return information about a specific pipeline gate.
 

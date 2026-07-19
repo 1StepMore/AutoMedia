@@ -73,6 +73,8 @@ class ProgressData(TypedDict, total=False):
     is_running: bool
     is_failed: bool
     elapsed_s: float
+    token_usage: dict[str, Any] | None
+    estimated_cost_usd: float | None
 
 
 @dataclass
@@ -126,6 +128,8 @@ class PipelineProgress:
         self._paused_event.set()  # Not paused by default
         self._retry_gate: str | None = None
         self._skip_gate: str | None = None
+        self.token_usage: dict[str, Any] | None = None
+        self.estimated_cost_usd: float | None = None
 
     def set_gate_names(self, gate_names: list[str]) -> None:
         """Store the ordered list of all gate names for the pipeline.
@@ -212,6 +216,8 @@ class PipelineProgress:
                 "is_running": self._started_at is not None and not self._finished,
                 "is_failed": self.error is not None,
                 "elapsed_s": round(elapsed, 3),
+                "token_usage": self.token_usage,
+                "estimated_cost_usd": self.estimated_cost_usd,
             }
 
     def get_current_gate(self) -> str | None:

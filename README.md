@@ -186,7 +186,8 @@ Verify: Start the server (`python main.py`) and check `http://localhost:8188` is
 ```bash
 pip install -e .
 
-# With extras
+# With extras (recommended: use [all] for full functionality)
+pip install -e ".[all]"       # full functionality (all extras)
 pip install -e ".[dev]"       # development (LLM providers, mcp, rich, test)
 pip install -e ".[mcp]"       # MCP server only
 pip install -e ".[openai]"    # OpenAI provider

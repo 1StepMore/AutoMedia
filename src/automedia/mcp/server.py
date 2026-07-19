@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 50 tools and 5 resources.
+"""AutoMedia MCP Server — stdio transport with 51 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -63,6 +63,7 @@ from automedia.mcp.allowlist import (
 # ---------------------------------------------------------------------------
 from automedia.mcp.resources import (
     gate_info_resource,
+    getting_started_resource,
     list_projects_resource,
     pipeline_metrics_resource,
     pipeline_status_resource,
@@ -102,6 +103,7 @@ from automedia.mcp.tools import (
     list_workflows,
     localize_content,
     localize_output,
+    onboard,
     pause_pipeline,
     pool_add_topic,
     publish_content,
@@ -190,6 +192,8 @@ __all__ = [
     "_require_allowed",
     "mcp_help",
     "help_mcp",
+    # Onboarding
+    "onboard",
 ]
 
 
@@ -227,6 +231,7 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("research_", "Research"),
     ("archive_", "Archive"),
     ("init_", "Setup / Configuration"),
+    ("onboard", "Setup / Configuration"),
     ("configure_", "Setup / Configuration"),
     ("update_", "Update"),
     ("approve_", "Approval"),
@@ -692,6 +697,15 @@ def create_server() -> FastMCP:
         ),
     )(add_brand)
 
+    mcp.tool(
+        description=(
+            "One-step onboarding: configure LLM and create a brand profile. "
+            "Accepts brand_name, llm_provider, llm_key, and optional base_url. "
+            "Delegates to the same config-writing logic as the CLI onboard wizard. "
+            "Returns success status, brand name, provider, and config directory."
+        ),
+    )(onboard)
+
     # ------------------------------------------------------------------
     # Brand tools
     # ------------------------------------------------------------------
@@ -911,6 +925,11 @@ def create_server() -> FastMCP:
     def _gate_info(gate_name: str) -> str:
         """Get gate description, failure mode, common causes, and fixes."""
         return gate_info_resource(gate_name)
+
+    @mcp.resource("automedia://getting_started")
+    def _getting_started() -> str:
+        """Return a setup checklist with steps and completion status."""
+        return getting_started_resource()
 
     # Pass AutoMedia version to MCP protocol-level server info
     mcp._mcp_server.version = _automedia_version

@@ -17,9 +17,18 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 import yaml
+from pydantic import ValidationError
 from structlog import get_logger
 
 from automedia.core.logging import bind_correlation_id
+from automedia.core.llm_client import LLMError
+from automedia.exceptions import (
+    AutoMediaError,
+    BrandNotFoundError,
+    ConfigError,
+    ModuleLoadError,
+    PipelineError,
+)
 from automedia.mcp._state import (
     _SERVER_START,
     _lock,
@@ -28,7 +37,7 @@ from automedia.mcp._state import (
 from automedia.mcp.allowlist import (
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
+from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response, validation_error_response
 from automedia.mcp.server_types import (
     CronExpression,
     EngineModality,
@@ -58,6 +67,39 @@ class CronScheduleEntry(TypedDict):
 
 # Track registered tool count (set dynamically by server.py after registration)
 _tools_count: int = 0
+
+# Default per-model cost-per-token rates (USD per 1M tokens).
+# Used to estimate cost when token_usage is available.
+# Model → (input_cost_per_1M, output_cost_per_1M)
+_DEFAULT_COST_RATES: dict[str, tuple[float, float]] = {
+    "deepseek-chat": (0.27, 1.10),
+    "deepseek-reasoner": (0.55, 2.19),
+    "gpt-4o": (2.50, 10.00),
+    "gpt-4o-mini": (0.15, 0.60),
+    "claude-3-5-sonnet": (3.00, 15.00),
+    "claude-3-haiku": (0.25, 1.25),
+}
+_FALLBACK_INPUT_RATE = 0.27
+_FALLBACK_OUTPUT_RATE = 1.10
+
+
+def _estimate_cost(usage: dict[str, Any]) -> float:
+    """Estimate cost in USD from token usage.
+
+    Iterates over per-call records to compute a precise estimate using
+    model-specific rates.  Falls back to default rates for unknown models.
+    """
+    total: float = 0.0
+    for call in usage.get("calls", []):
+        model = call.get("model", "")
+        pt = call.get("prompt_tokens", 0)
+        ct = call.get("completion_tokens", 0)
+        if model in _DEFAULT_COST_RATES:
+            in_rate, out_rate = _DEFAULT_COST_RATES[model]
+        else:
+            in_rate, out_rate = _FALLBACK_INPUT_RATE, _FALLBACK_OUTPUT_RATE
+        total += (pt * in_rate + ct * out_rate) / 1_000_000
+    return round(total, 6)
 
 
 def set_tools_count(count: int) -> None:
@@ -217,8 +259,11 @@ def select_topic(
         db.close()
         return success_response({"selected": chosen, "remaining_count": len(topics) - 1})
 
+    except ImportError as exc:
+        return {"selected": None, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except AutoMediaError as exc:
+        return {"selected": None, **error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all to return error dict for any pool/DB failure
         return {"selected": None, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -333,8 +378,32 @@ def research_topics(
             response_format=TopicResearchOutput,
         )
         return success_response(result.model_dump())
+    except LLMError as exc:
+        return {
+            "topics": [],
+            "category": category,
+            "total_found": 0,
+            **error_response(MCPErrorCode.LLM_ERROR, str(exc)),
+        }
+    except ImportError as exc:
+        return {
+            "topics": [],
+            "category": category,
+            "total_found": 0,
+            **error_response(MCPErrorCode.IMPORT_ERROR, str(exc)),
+        }
+    except ValidationError as exc:
+        return {
+            "topics": [],
+            "category": category,
+            "total_found": 0,
+            **validation_error_response(
+                f"LLM response validation failed: {exc}",
+                errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                        for e in (exc.errors() if hasattr(exc, "errors") else [])],
+            ),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for LLM/prompt/template errors
         return {
             "topics": [],
             "category": category,
@@ -465,6 +534,14 @@ def run_pipeline(
                 progress=progress,
             )
             progress.project_id = result.project_id
+            # Store token usage and estimated cost for get_pipeline_progress
+            if result.usage:
+                progress.token_usage = {
+                    "prompt_tokens": result.usage.get("prompt_tokens", 0),
+                    "completion_tokens": result.usage.get("completion_tokens", 0),
+                    "total_tokens": result.usage.get("total_tokens", 0),
+                }
+                progress.estimated_cost_usd = _estimate_cost(result.usage)
         except Exception as exc:
             # Background thread catch-all — pipeline errors stored in progress
             progress.error = str(exc)
@@ -588,8 +665,14 @@ def get_pipeline_progress(
     dict
         ``{"project_id", "current_gate", "gates_done", "gates_remaining",
         "total_gates", "events", "error", "is_running", "is_failed",
-        "elapsed_s"}`` or
+        "elapsed_s", "token_usage", "estimated_cost_usd"}`` or
         ``{"error": {"code": ..., "message": ..., "resolution": ...}}``.
+
+        When the pipeline has completed (``is_running=false,
+        is_failed=false``), ``token_usage`` contains
+        ``{"prompt_tokens", "completion_tokens", "total_tokens"}``
+        and ``estimated_cost_usd`` is a float cost estimate based on
+        per-model pricing.
     """
     with _lock:
         progress = _pipeline_tracker.get(project_id)
@@ -645,9 +728,10 @@ def get_pipeline_status(
             )
         return success_response({"project": proj, "subdirs": subdirs})
 
-    except Exception as exc:
-        # MCP boundary: catch-all for file/allowlist errors
-        return error_response(MCPErrorCode.UNKNOWN, str(exc))
+    except PermissionError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
 
 
 def list_projects(
@@ -675,8 +759,11 @@ def list_projects(
             projects = [p for p in projects if p.get("status", "") == status]
         return success_response({"projects": projects, "count": len(projects)})
 
+    except PermissionError as exc:
+        return {"projects": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")}
+    except OSError as exc:
+        return {"projects": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning projects: {exc}")}
     except Exception as exc:
-        # MCP boundary: catch-all for file-scan/allowlist errors
         return {"projects": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -700,8 +787,11 @@ def get_project_assets(
         assets = _project_assets(project_dir)
         return success_response({"assets": assets, "count": len(assets)})
 
+    except PermissionError as exc:
+        return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")}
+    except OSError as exc:
+        return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning assets: {exc}")}
     except Exception as exc:
-        # MCP boundary: catch-all for file-scan/allowlist errors
         return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -773,8 +863,11 @@ def archive_project(
         project_dir.rename(archive_dir)
         return success_response({"archived": True, "archive_dir": str(archive_dir)})
 
+    except PermissionError as exc:
+        return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}", "Check file permissions")}
+    except OSError as exc:
+        return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, f"File operation error: {exc}")}
     except Exception as exc:
-        # MCP boundary: catch-all for file/allowlist/rename errors
         return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -814,8 +907,11 @@ def list_topic_pool(
         db.close()
         return success_response({"topics": topics, "count": len(topics)})
 
+    except ImportError as exc:
+        return {"topics": [], **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except AutoMediaError as exc:
+        return {"topics": [], **error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all for PoolDB errors
         return {"topics": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -860,8 +956,11 @@ def add_pool_topic(
                 "status": "pending",
             }
         )
+    except ImportError as exc:
+        return error_response(MCPErrorCode.IMPORT_ERROR, str(exc))
+    except AutoMediaError as exc:
+        return error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))
     except Exception as exc:
-        # MCP boundary: catch-all for PoolDB errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
@@ -1010,9 +1109,10 @@ def add_cron_schedule(
     try:
         _write_pipeline_schedules(schedules)
         return success_response({"added": True, "name": name})
-    except Exception as exc:
-        # MCP boundary: catch-all for YAML write errors
-        return error_response(MCPErrorCode.UNKNOWN, str(exc))
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error writing schedule: {exc}")
+    except yaml.YAMLError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"YAML serialization error: {exc}")
 
 
 def list_cron_schedules(
@@ -1041,9 +1141,10 @@ def list_cron_schedules(
             schedules = [s for s in schedules if s.get("mode") == mode]
         schedules.sort(key=lambda s: s.get("name", ""))
         return success_response({"schedules": schedules, "count": len(schedules)})
-    except Exception as exc:
-        # MCP boundary: catch-all for YAML read errors
-        return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
+    except OSError as exc:
+        return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, f"File I/O error reading schedules: {exc}")}
+    except yaml.YAMLError as exc:
+        return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, f"YAML parse error: {exc}")}
 
 
 def list_workflows() -> dict[str, Any]:
@@ -1092,8 +1193,11 @@ def list_workflows() -> dict[str, Any]:
 
         return success_response({"workflows": result, "count": len(result)})
 
+    except FileNotFoundError as exc:
+        return {"workflows": [], **error_response(MCPErrorCode.CONFIG_MISSING, f"Workflow file not found: {exc}")}
+    except ConfigError as exc:
+        return {"workflows": [], **error_response(MCPErrorCode.CONFIG_MISSING, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all for workflow loader errors
         return {"workflows": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -1135,9 +1239,10 @@ def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
     try:
         _write_pipeline_schedules(schedules)
         return success_response({"removed": True, "name": name})
-    except Exception as exc:
-        # MCP boundary: catch-all for YAML write errors
-        return error_response(MCPErrorCode.UNKNOWN, str(exc))
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error writing schedule: {exc}")
+    except yaml.YAMLError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"YAML serialization error: {exc}")
 
 
 def get_cron_health() -> dict[str, Any]:
@@ -1601,8 +1706,13 @@ def publish_content(
             base_response["published"] = False
             base_response["error"] = platform_result.get("reason", "unknown error")
         return success_response(base_response)
+    except ImportError as exc:
+        return {"published": False, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except OSError as exc:
+        return {"published": False, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")}
+    except AutoMediaError as exc:
+        return {"published": False, **error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all for publish-engine / allowlist errors
         return {"published": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -1897,6 +2007,10 @@ def list_platforms() -> dict[str, Any]:
     try:
         platforms = AdapterRegistry.list()
         return success_response({"platforms": platforms, "total": len(platforms)})
+    except ImportError as exc:
+        return {"platforms": [], "total": 0, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except AutoMediaError as exc:
+        return {"platforms": [], "total": 0, **error_response(MCPErrorCode.ENGINE_ERROR, str(exc))}
     except Exception as exc:
         return {"platforms": [], "total": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
@@ -2039,8 +2153,31 @@ def register_platform_adapter(
             }
         )
 
+    except (ImportError, ModuleNotFoundError) as exc:
+        return {
+            "registered": False,
+            **error_response(
+                MCPErrorCode.IMPORT_ERROR,
+                f"Could not import adapter class: {exc}",
+            ),
+        }
+    except AttributeError as exc:
+        return {
+            "registered": False,
+            **error_response(
+                MCPErrorCode.INVALID_PARAM,
+                f"Adapter class not found in module: {exc}",
+            ),
+        }
+    except ModuleLoadError as exc:
+        return {
+            "registered": False,
+            **error_response(
+                MCPErrorCode.IMPORT_ERROR,
+                str(exc),
+            ),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for dynamic import / registry errors
         return {"registered": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -2083,8 +2220,21 @@ def extract_brief(
                 "warnings": result.warnings,
             }
         )
+    except OSError as exc:
+        return {
+            "md_content": "",
+            "manifest_json": {},
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}"),
+        }
+    except ImportError as exc:
+        return {
+            "md_content": "",
+            "manifest_json": {},
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.IMPORT_ERROR, str(exc)),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for OPP extraction errors
         return {
             "md_content": "",
             "manifest_json": {},
@@ -2131,8 +2281,21 @@ def localize_content(
                 "warnings": result.warnings,
             }
         )
+    except ImportError as exc:
+        return {
+            "translated_md": "",
+            "xliff_path": None,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.IMPORT_ERROR, str(exc)),
+        }
+    except LLMError as exc:
+        return {
+            "translated_md": "",
+            "xliff_path": None,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.LLM_ERROR, str(exc)),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for OL translation errors
         return {
             "translated_md": "",
             "xliff_path": None,
@@ -2232,8 +2395,21 @@ def localize_output(
                 "warnings": warnings,
             }
         )
+    except OSError as exc:
+        return {
+            "project_dir": project_dir,
+            "results": {},
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}"),
+        }
+    except LLMError as exc:
+        return {
+            "project_dir": project_dir,
+            "results": {},
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.LLM_ERROR, str(exc)),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for file I/O / translation errors
         return {
             "project_dir": project_dir,
             "results": {},
@@ -2307,8 +2483,21 @@ def format_output(
                 "warnings": errors if errors else [],
             }
         )
+    except ImportError as exc:
+        return {
+            "output_path": "",
+            "output_format": target_format,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.IMPORT_ERROR, str(exc)),
+        }
+    except AutoMediaError as exc:
+        return {
+            "output_path": "",
+            "output_format": target_format,
+            "warnings": [str(exc)],
+            **error_response(MCPErrorCode.PIPELINE_ERROR, str(exc)),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for ORF conversion errors
         return {
             "output_path": "",
             "output_format": target_format,
@@ -2392,8 +2581,35 @@ def evaluate_content_quality(
             response_format=ContentQualityOutput,
         )
         return success_response(result.model_dump())
+    except LLMError as exc:
+        return {
+            "quality_score": 0.0,
+            "issues": [],
+            "suggestions": [],
+            "overall_assessment": "",
+            **error_response(MCPErrorCode.LLM_ERROR, str(exc)),
+        }
+    except ImportError as exc:
+        return {
+            "quality_score": 0.0,
+            "issues": [],
+            "suggestions": [],
+            "overall_assessment": "",
+            **error_response(MCPErrorCode.IMPORT_ERROR, str(exc)),
+        }
+    except ValidationError as exc:
+        return {
+            "quality_score": 0.0,
+            "issues": [],
+            "suggestions": [],
+            "overall_assessment": "",
+            **validation_error_response(
+                f"LLM response validation failed: {exc}",
+                errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                        for e in (exc.errors() if hasattr(exc, "errors") else [])],
+            ),
+        }
     except Exception as exc:
-        # MCP boundary: catch-all for LLM/prompt errors
         return {
             "quality_score": 0.0,
             "issues": [],
@@ -2437,13 +2653,62 @@ def get_redlines() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _detect_first_run() -> bool:
+    """Detect if AutoMedia has never been configured (first run).
+
+    Returns ``True`` when **no brands exist** AND (**no LLM API key is
+    configured** OR **the ``~/.automedia/`` directory does not exist**).
+
+    The result is purely informational — it does not gate any tool access.
+    """
+    try:
+        from automedia.core.paths import get_user_config_dir
+
+        user_cfg_dir = get_user_config_dir()
+        has_config_dir = user_cfg_dir.is_dir()
+
+        # Check for existing brands via brand_profiles.yaml
+        brand_file = user_cfg_dir / "brand_profiles.yaml"
+        has_brands = bool(
+            brand_file.exists()
+            and brand_file.stat().st_size > 0
+            and brand_file.read_text(encoding="utf-8").strip()
+        )
+
+        # Check for LLM API key (env var or model_config.yaml)
+        llm_key_env = bool(os.environ.get("AUTOMEDIA_LLM_API_KEY"))
+
+        model_config = user_cfg_dir / "model_config.yaml"
+        has_llm_config_file = False
+        if model_config.exists():
+            try:
+                raw = model_config.read_text(encoding="utf-8")
+                data = yaml.safe_load(raw) or {}
+                llm = data.get("llm", {}).get("text_generation", {})
+                has_llm_config_file = bool(llm.get("api_key"))
+            except Exception:
+                pass
+
+        has_llm_key = llm_key_env or has_llm_config_file
+
+        return not has_brands and (not has_llm_key or not has_config_dir)
+    except Exception:
+        # Fail-safe: if anything goes wrong, assume not first run
+        return False
+
+
 def health_check() -> dict[str, Any]:
-    """Return server health status — version, uptime, and tool count.
+    """Return server health status — version, uptime, tool count, and first_run.
+
+    The ``first_run`` field indicates whether AutoMedia appears to be
+    unconfigured (no brands AND no LLM key).  It is **informational only**
+    and does not block any tools.
 
     Returns
     -------
     dict
-        ``{"status": "ok", "version": str, "uptime_s": float, "tools_count": int}``
+        ``{"status": "ok", "version": str, "uptime_s": float,
+        "tools_count": int, "first_run": bool}``
         or ``{"status": "error",
         "error": {"code": ..., "message": ..., "resolution": ...}}``
         on failure.
@@ -2458,10 +2723,12 @@ def health_check() -> dict[str, Any]:
                 "version": __version__,
                 "uptime_s": round(uptime_s, 2),
                 "tools_count": _tools_count,
+                "first_run": _detect_first_run(),
             }
         )
+    except ImportError as exc:
+        return {"status": "error", **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all for version import errors
         return {"status": "error", **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -2558,8 +2825,12 @@ def get_config(key: str = "") -> dict[str, Any]:
             value = _redact_secrets(value)
 
         return success_response({"value": value})
+    except ConfigError as exc:
+        return error_response(
+            MCPErrorCode.CONFIG_MISSING,
+            f"Configuration load failed: {exc}",
+        )
     except Exception as exc:
-        # MCP boundary: catch-all for config load errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
@@ -2602,8 +2873,11 @@ def list_brands() -> dict[str, Any]:
             for profile in profiles.values()
         ]
         return success_response({"brands": brands_list, "total": len(brands_list)})
+    except BrandNotFoundError as exc:
+        return {"brands": [], "total": 0, **error_response(MCPErrorCode.BRAND_NOT_FOUND, str(exc))}
+    except ConfigError as exc:
+        return {"brands": [], "total": 0, **error_response(MCPErrorCode.CONFIG_MISSING, str(exc))}
     except Exception as exc:
-        # MCP boundary: catch-all for brand profile load errors
         return {"brands": [], "total": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -2668,8 +2942,9 @@ def search_assets(
         raw_results = _search_assets(query=query, brand=brand, filters=filters or None)
         limited = raw_results[:limit]
         return success_response({"results": limited, "count": len(limited), "error": None})
-    except Exception as exc:
-        # MCP boundary: catch-all for asset library search errors
+    except ImportError as exc:
+        return {"results": [], "count": 0, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except AutoMediaError as exc:
         return {"results": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
@@ -2751,8 +3026,20 @@ def run_brand_strategy(
             response_format=BrandStrategyOutput,
         )
         return success_response(result.model_dump())
+    except LLMError as exc:
+        return error_response(
+            MCPErrorCode.LLM_ERROR,
+            f"Brand strategy generation failed: {exc}",
+        )
+    except ImportError as exc:
+        return error_response(MCPErrorCode.IMPORT_ERROR, str(exc))
+    except ValidationError as exc:
+        return validation_error_response(
+            f"LLM response validation failed: {exc}",
+            errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                    for e in (exc.errors() if hasattr(exc, "errors") else [])],
+        )
     except Exception as exc:
-        # MCP boundary: catch-all for LLM/strategy generation errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
@@ -2864,8 +3151,23 @@ def run_pipeline_from_strategy(
                 "pipeline_result": _pipeline_result_to_dict(pipeline_result),
             }
         )
+    except LLMError as exc:
+        return error_response(
+            MCPErrorCode.LLM_ERROR,
+            f"Strategy generation failed: {exc}",
+        )
+    except PipelineError as exc:
+        return error_response(
+            MCPErrorCode.PIPELINE_ERROR,
+            f"Pipeline execution failed: {exc}",
+        )
+    except ValidationError as exc:
+        return validation_error_response(
+            f"LLM response validation failed: {exc}",
+            errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                    for e in (exc.errors() if hasattr(exc, "errors") else [])],
+        )
     except Exception as exc:
-        # MCP boundary: catch-all for strategy generation + pipeline errors
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
 
 
@@ -2934,8 +3236,10 @@ def update_engine_config(
                 "file": str(filepath),
             }
         )
-    except Exception as exc:
-        return error_response(MCPErrorCode.UNKNOWN, str(exc))
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error writing override: {exc}")
+    except yaml.YAMLError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"YAML serialization error: {exc}")
 
 
 def health_engine() -> dict[str, Any]:
@@ -2973,8 +3277,14 @@ def health_engine() -> dict[str, Any]:
                 "unhealthy_count": unhealthy,
             }
         )
-    except Exception as exc:
-        return error_response(MCPErrorCode.UNKNOWN, str(exc))
+    except ImportError as exc:
+        return error_response(
+            MCPErrorCode.IMPORT_ERROR,
+            f"Doctor module not available: {exc}",
+            "Install automedia[doctor] or check your installation",
+        )
+    except AutoMediaError as exc:
+        return error_response(MCPErrorCode.ENGINE_ERROR, str(exc))
 
 
 def engine_health() -> dict[str, Any]:
@@ -3034,11 +3344,15 @@ def init_config(project_dir: str = "") -> dict[str, Any]:
                 "config_file": str(config_path),
             }
         )
-    except Exception as exc:
-        # MCP boundary: catch-all for file I/O errors
+    except OSError as exc:
         return {
             "success": False,
-            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error initializing config: {exc}"),
+        }
+    except yaml.YAMLError as exc:
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, f"YAML serialization error: {exc}"),
         }
 
 
@@ -3114,11 +3428,15 @@ def configure_llm(
                 "config_file": str(_MODEL_CONFIG_FILE),
             }
         )
-    except Exception as exc:
-        # MCP boundary: catch-all for file I/O errors
+    except OSError as exc:
         return {
             "success": False,
-            **error_response(MCPErrorCode.UNKNOWN, str(exc)),
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error writing config: {exc}"),
+        }
+    except yaml.YAMLError as exc:
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, f"YAML serialization error: {exc}"),
         }
 
 
@@ -3171,8 +3489,98 @@ def add_brand(
                 "target_audience": target_audience,
             }
         )
+    except ConfigError as exc:
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.CONFIG_MISSING, str(exc), "Check brand profile configuration"),
+        }
+    except OSError as exc:
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error saving brand: {exc}"),
+        }
+
+
+def onboard(
+    brand_name: str = "",
+    llm_provider: str = "",
+    llm_key: str = "",
+    base_url: str = "",
+) -> dict[str, Any]:
+    """One-step onboarding: configure LLM and create a brand profile.
+
+    Delegates to the same config-writing logic as the CLI ``automedia onboard``
+    wizard (``configure_llm`` for LLM settings, ``add_brand`` for brand) but
+    accepts all parameters directly without interactive prompts.
+
+    Parameters
+    ----------
+    brand_name:
+        Brand name to create (optional — skip by leaving empty).
+    llm_provider:
+        LLM provider name (e.g. ``"openai"``, ``"deepseek"``).
+        When empty, LLM configuration is skipped.
+    llm_key:
+        LLM API key.  Prefer ``AUTOMEDIA_LLM_API_KEY`` env var instead.
+    base_url:
+        Optional custom API base URL.
+
+    Returns
+    -------
+    dict
+        ``{"success": True, "brand_name": str, "llm_provider": str,
+        "config_file": str}`` on success, or an error dict on failure.
+    """
+    try:
+        from automedia.core.paths import get_user_config_dir
+
+        results: dict[str, Any] = {}
+        user_cfg_dir = get_user_config_dir()
+
+        # Configure LLM via configure_llm (delegates to CLI init logic)
+        if llm_provider:
+            llm_result = configure_llm(provider=llm_provider, api_key=llm_key)
+            results["llm"] = {
+                "provider": llm_provider,
+                "config_file": str(user_cfg_dir / "model_config.yaml"),
+            }
+
+            # Write base_url separately if provided
+            if base_url:
+                cfg_path = user_cfg_dir / "model_config.yaml"
+                if cfg_path.exists():
+                    raw = cfg_path.read_text(encoding="utf-8")
+                    data = yaml.safe_load(raw) or {}
+                    llm_node = data.setdefault("llm", {}).setdefault(
+                        "text_generation", {}
+                    )
+                    llm_node["base_url"] = base_url
+                    cfg_path.write_text(
+                        yaml.dump(
+                            data, default_flow_style=False, allow_unicode=True
+                        ),
+                        encoding="utf-8",
+                    )
+
+        # Create brand profile via add_brand (delegates to brand profile schema)
+        if brand_name:
+            brand_result = add_brand(name=brand_name)
+            results["brand"] = {
+                "brand_name": brand_name,
+                "config_file": str(user_cfg_dir / "brand_profiles.yaml"),
+            }
+
+        return success_response(
+            {
+                "success": True,
+                "brand_name": brand_name or "",
+                "llm_provider": llm_provider or "",
+                "config_dir": str(user_cfg_dir),
+                **results,
+            }
+        )
     except Exception as exc:
-        # MCP boundary: catch-all for validation / file I/O errors
+        # MCP boundary: catch-all for file I/O errors
         return {
             "success": False,
             **error_response(MCPErrorCode.UNKNOWN, str(exc)),

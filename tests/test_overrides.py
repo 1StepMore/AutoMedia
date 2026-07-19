@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import yaml
 
-from automedia.core.overrides import OverridesLoader, _load_j2_files, _load_yaml_files
+from automedia.core.overrides import OverridesLoader, _load_j2_files, _load_yaml_files, _merge_gate_modifiers
 
 # ---------------------------------------------------------------------------
 # _load_yaml_files helper
@@ -231,3 +231,197 @@ class TestOverridesLoader:
         loader = OverridesLoader()
         assert loader.overrides_dir.name == "overrides"
         assert loader.overrides_dir.parent.name == ".automedia"
+
+
+# ---------------------------------------------------------------------------
+# load_gate_modifiers
+# ---------------------------------------------------------------------------
+
+
+class TestLoadGateModifiers:
+    """Unit tests for OverridesLoader.load_gate_modifiers()."""
+
+    def _make_loader(self, tmp_path, *, rules=None):
+        base = tmp_path / "overrides"
+        if rules:
+            rules_dir = base / "rules"
+            rules_dir.mkdir(parents=True)
+            for name, content in rules.items():
+                (rules_dir / name).write_text(content, encoding="utf-8")
+        return OverridesLoader(overrides_dir=base)
+
+    # -- _merge_gate_modifiers helper ---------------------------------------
+
+    def test_merge_empty_list_returns_none(self):
+        assert _merge_gate_modifiers([]) is None
+
+    def test_merge_no_gates_key_returns_none(self):
+        rules = [{"brand": "foo"}, {"brand": "bar"}]
+        assert _merge_gate_modifiers(rules) is None
+
+    def test_merge_single_gate_modifiers(self):
+        rules = [{"brand": "my-brand", "gates": {"include": ["G6"]}}]
+        result = _merge_gate_modifiers(rules)
+        assert result == {"include": ["G6"]}
+
+    def test_merge_include_union(self):
+        rules = [
+            {"brand": "a", "gates": {"include": ["G6"]}},
+            {"brand": "b", "gates": {"include": ["V3"]}},
+        ]
+        result = _merge_gate_modifiers(rules)
+        assert result is not None
+        assert sorted(result["include"]) == sorted(["G6", "V3"])
+
+    def test_merge_exclude_union(self):
+        rules = [
+            {"brand": "a", "gates": {"exclude": ["G0"]}},
+            {"brand": "b", "gates": {"exclude": ["V1"]}},
+        ]
+        result = _merge_gate_modifiers(rules)
+        assert result is not None
+        assert sorted(result["exclude"]) == sorted(["G0", "V1"])
+
+    def test_merge_override_failure_mode_last_wins(self):
+        rules = [
+            {"brand": "a", "gates": {"override_failure_mode": {"G1": "stop"}}},
+            {"brand": "b", "gates": {"override_failure_mode": {"G1": "retry"}}},
+        ]
+        result = _merge_gate_modifiers(rules)
+        assert result is not None
+        assert result["override_failure_mode"] == {"G1": "retry"}
+
+    def test_merge_all_keys_combined(self):
+        rules = [
+            {
+                "brand": "a",
+                "gates": {
+                    "include": ["G6"],
+                    "exclude": ["V3"],
+                    "override_failure_mode": {"G1": "stop"},
+                },
+            },
+        ]
+        result = _merge_gate_modifiers(rules)
+        assert result is not None
+        assert result["include"] == ["G6"]
+        assert result["exclude"] == ["V3"]
+        assert result["override_failure_mode"] == {"G1": "stop"}
+
+    def test_merge_empty_subkeys_omitted(self):
+        rules = [{"brand": "a", "gates": {"include": [], "exclude": []}}]
+        result = _merge_gate_modifiers(rules)
+        assert result is None
+
+    def test_merge_non_dict_gates_skipped(self):
+        rules = [{"brand": "a", "gates": "not-a-dict"}]
+        result = _merge_gate_modifiers(rules)
+        assert result is None
+
+    # -- load_gate_modifiers via OverridesLoader ----------------------------
+
+    def test_missing_rules_dir_returns_none(self, tmp_path):
+        loader = OverridesLoader(overrides_dir=tmp_path / "nonexistent")
+        assert loader.load_gate_modifiers() is None
+
+    def test_no_gate_rules_returns_none(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "r1.yaml": yaml.dump({"brand": "Acme", "some_key": "value"}),
+            },
+        )
+        assert loader.load_gate_modifiers() is None
+
+    def test_brand_filter_returns_modifiers(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "acme.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["G6"]}}
+                ),
+                "beta.yaml": yaml.dump(
+                    {"brand": "Beta", "gates": {"include": ["V3"]}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="Acme")
+        assert result is not None
+        assert result["include"] == ["G6"]
+
+    def test_brand_filter_no_match_returns_none(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "acme.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["G6"]}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="OtherBrand")
+        assert result is None
+
+    def test_global_rules_included_with_brand(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "global.yaml": yaml.dump(
+                    {"gates": {"exclude": ["V1"]}}
+                ),
+                "acme.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["G6"]}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="Acme")
+        assert result is not None
+        assert "G6" in result["include"]
+        assert "V1" in result["exclude"]
+
+    def test_multiple_files_union_semantics(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "a.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["G6"], "exclude": ["V3"]}}
+                ),
+                "b.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["V7"], "exclude": ["G0"]}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="Acme")
+        assert result is not None
+        assert sorted(result["include"]) == sorted(["G6", "V7"])
+        assert sorted(result["exclude"]) == sorted(["V3", "G0"])
+
+    def test_override_failure_mode_merged_across_files(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "a.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"override_failure_mode": {"G1": "stop"}}}
+                ),
+                "b.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"override_failure_mode": {"G1": "retry"}}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="Acme")
+        assert result is not None
+        # Last file (alphabetical order: b after a) wins for same key
+        assert result["override_failure_mode"] == {"G1": "retry"}
+
+    def test_mixed_gate_and_non_gate_rules(self, tmp_path):
+        loader = self._make_loader(
+            tmp_path,
+            rules={
+                "config.yaml": yaml.dump({"some_setting": True}),
+                "gates.yaml": yaml.dump(
+                    {"brand": "Acme", "gates": {"include": ["G6"]}}
+                ),
+            },
+        )
+        result = loader.load_gate_modifiers(brand="Acme")
+        assert result is not None
+        assert result["include"] == ["G6"]

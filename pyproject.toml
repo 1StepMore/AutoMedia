@@ -55,6 +55,9 @@ omni-pdf = ["pymupdf>=1.24"]
 omni-ml = ["sentence-transformers>=3", "torch>=2.13.0"]
 omni = ["automedia-pipeline[omni-core]", "automedia-pipeline[omni-pdf]", "automedia-pipeline[omni-ml]",
         "omni-pre-processor>=0.5.8,<1.0", "omni-localizer>=0.7,<1.0", "omni-re-formatter>=0.4,<1.0"]
+
+# AGPL notice: omni-pdf pulls PyMuPDF (AGPL v3) — ensure compliance before use
+all = ["automedia-pipeline[openai]", "automedia-pipeline[anthropic]", "automedia-pipeline[rich]", "automedia-pipeline[mcp]", "automedia-pipeline[omni]", "httpx>=0.28"]
 dev = [
     "automedia-pipeline[openai]",
     "automedia-pipeline[anthropic]",

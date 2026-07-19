@@ -26,5 +26,13 @@ class ConfigError(AutoMediaError):
     """Configuration loading/validation failures."""
 
 
+class BrandNotFoundError(ConfigError):
+    """Raised when a requested brand profile does not exist."""
+
+
 class AccountError(AutoMediaError):
     """Account/credential management failures."""
+
+
+class ModuleLoadError(AutoMediaError):
+    """Raised when a required Python module cannot be imported."""
