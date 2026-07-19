@@ -73,11 +73,13 @@ from automedia.mcp.resources import (
 # Helper / utility imports (from tools.py)
 # ---------------------------------------------------------------------------
 from automedia.mcp.tools import (
+    add_brand,
     add_cron_schedule,
     approve_gate,
     archive_project,
     batch_run,
     cancel_pipeline,
+    configure_llm,
     engine_health,
     evaluate_content_quality,
     extract_brief,
@@ -90,6 +92,7 @@ from automedia.mcp.tools import (
     get_project_assets,
     get_redlines,
     health_check,
+    init_config,
     list_brands,
     list_cron_schedules,
     list_overridable_templates,
@@ -126,8 +129,10 @@ __all__ = [
     "create_server",
     "main",
     # Tool handlers
+    "add_brand",
     "batch_run",
     "run_batch",
+    "configure_llm",
     "evaluate_content_quality",
     "research_topics",
     "run_brand_strategy",
@@ -136,6 +141,7 @@ __all__ = [
     "run_pipeline",
     "get_pipeline_progress",
     "get_pipeline_status",
+    "init_config",
     "list_projects",
     "get_project_assets",
     "archive_project",
@@ -220,6 +226,8 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("engine_", "Server / Engine"),
     ("research_", "Research"),
     ("archive_", "Archive"),
+    ("init_", "Setup / Configuration"),
+    ("configure_", "Setup / Configuration"),
     ("update_", "Update"),
     ("approve_", "Approval"),
     ("reject_", "Approval"),
@@ -648,6 +656,41 @@ def create_server() -> FastMCP:
             "the strategy output and the pipeline result."
         ),
     )(run_pipeline_from_strategy)
+
+    # ------------------------------------------------------------------
+    # Setup / Configuration tools (first-time setup)
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "Initialize AutoMedia configuration with sensible defaults. "
+            "Creates the .automedia/ directory structure and a default "
+            "config.yaml.  When project_dir is provided, creates there; "
+            "otherwise uses the current working directory. "
+            "Returns the config directory and file paths."
+        ),
+    )(init_config)
+
+    mcp.tool(
+        description=(
+            "Configure the LLM provider for AutoMedia. "
+            "Writes provider, optional model, and optional API key to "
+            "~/.automedia/model_config.yaml. "
+            "WARNING: Storing API keys in config files is less secure "
+            "than using AUTOMEDIA_LLM_API_KEY environment variable. "
+            "Returns success status, provider, model, and config file path."
+        ),
+    )(configure_llm)
+
+    mcp.tool(
+        description=(
+            "Create a new brand profile. "
+            "Writes to ~/.automedia/brand_profiles.yaml using the brand "
+            "profile schema.  The brand name is required; industry and "
+            "target_audience are optional. "
+            "Returns success status and brand metadata."
+        ),
+    )(add_brand)
 
     # ------------------------------------------------------------------
     # Brand tools
