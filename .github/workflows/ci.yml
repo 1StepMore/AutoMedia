@@ -140,3 +140,12 @@ jobs:
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
+
+  validate-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify systemd unit files
+        run: systemd-analyze verify deploy/systemd/automedia-mcp.service deploy/systemd/automedia-cron.service deploy/systemd/automedia-pipeline.service
+      - name: Build Docker image (mcp-full profile)
+        run: docker compose --profile full build mcp-full

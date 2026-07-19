@@ -1485,12 +1485,21 @@ def _build_gates_from_names(
         Gate registry instance.  Defaults to module-level ``_registry``.
     override_failure_mode:
         Optional mapping of gate_name -> override failure mode.
-        (Reserved for future use — Task 13.)
+        Applied per-instance via ``object.__setattr__`` so the class-level
+        ``_failure_mode`` ClassVar is preserved for future instantiations.
     """
     from automedia.gates.base import _registry
 
     reg = registry if registry is not None else _registry
-    return [reg.get(n)() for n in names]
+    gates = [reg.get(n)() for n in names]
+
+    if override_failure_mode:
+        for gate in gates:
+            new_fm = override_failure_mode.get(gate.gate_name)
+            if new_fm is not None:
+                object.__setattr__(gate, "_failure_mode", new_fm)
+
+    return gates
 
 
 def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:

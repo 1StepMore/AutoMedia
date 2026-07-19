@@ -170,6 +170,87 @@ class TestBuildGatesFromNames:
         with pytest.raises(KeyError, match="NONEXISTENT_XYZ"):
             _build_gates_from_names(["NONEXISTENT_XYZ"])
 
+    # ------------------------------------------------------------------
+    # override_failure_mode per-instance tests
+    # ------------------------------------------------------------------
+
+    def test_override_single_gate(self) -> None:
+        """Override failure mode for a single gate."""
+        import automedia.gates  # noqa: F401
+
+        # G1 (humanizer) defaults to "retry"
+        gates = _build_gates_from_names(["G1"], override_failure_mode={"G1": "stop"})
+        assert len(gates) == 1
+        assert gates[0].gate_name == "G1"
+        assert getattr(gates[0], "_failure_mode") == "stop"
+        assert gates[0].failure_mode == "stop"  # property access
+
+    def test_override_multiple_gates(self) -> None:
+        """Override failure mode for multiple gates."""
+        import automedia.gates  # noqa: F401
+
+        gates = _build_gates_from_names(
+            ["G1", "G2"],
+            override_failure_mode={"G1": "stop", "G2": "stop"},
+        )
+        assert len(gates) == 2
+        assert gates[0].gate_name == "G1"
+        assert gates[0].failure_mode == "stop"
+        assert gates[1].gate_name == "G2"
+        assert gates[1].failure_mode == "stop"
+
+    def test_override_noop_with_empty_dict(self) -> None:
+        """Empty override dict does not alter gate failure modes."""
+        import automedia.gates  # noqa: F401
+
+        gates = _build_gates_from_names(["G1"], override_failure_mode={})
+        assert len(gates) == 1
+        assert gates[0].failure_mode == "retry"  # unchanged default
+
+    def test_override_unaffected_gates_retain_class_level(self) -> None:
+        """Gates not listed in overrides keep their class-level failure mode."""
+        import automedia.gates  # noqa: F401
+
+        gates = _build_gates_from_names(
+            ["G1", "G2"],
+            override_failure_mode={"G1": "stop"},  # only override G1
+        )
+        assert gates[0].gate_name == "G1"
+        assert gates[0].failure_mode == "stop"  # overridden
+        assert gates[1].gate_name == "G2"
+        assert gates[1].failure_mode == "retry"  # unchanged
+
+    def test_override_does_not_affect_class_attribute(self) -> None:
+        """Instance override does not mutate the class-level ClassVar."""
+        import automedia.gates  # noqa: F401
+
+        from automedia.gates.humanizer import G1Humanizer
+
+        class_before = G1Humanizer._failure_mode
+        assert class_before == "retry"
+
+        gates = _build_gates_from_names(["G1"], override_failure_mode={"G1": "stop"})
+        assert gates[0].failure_mode == "stop"
+
+        # Class-level must remain untouched
+        assert G1Humanizer._failure_mode == "retry"
+
+    def test_override_none_is_noop(self) -> None:
+        """Passing None as override_failure_mode is the default — no-op."""
+        import automedia.gates  # noqa: F401
+
+        gates = _build_gates_from_names(["G1"])
+        assert gates[0].failure_mode == "retry"
+
+    def test_override_subsequent_calls_isolated(self) -> None:
+        """Each call to _build_gates_from_names produces fresh instances."""
+        import automedia.gates  # noqa: F401
+
+        g1 = _build_gates_from_names(["G1"], override_failure_mode={"G1": "stop"})
+        g2 = _build_gates_from_names(["G1"], override_failure_mode={"G1": "retry"})
+        assert g1[0].failure_mode == "stop"
+        assert g2[0].failure_mode == "retry"
+
 
 # =========================================================================
 # _collect_assets tests
