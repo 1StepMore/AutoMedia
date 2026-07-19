@@ -89,7 +89,7 @@ class TestListBrands:
         lifestyle = next(b for b in result["brands"] if b["name"] == "lifestyle-mag")
         assert lifestyle["name"] == "lifestyle-mag"
         assert lifestyle["aliases"] == ["lifestyle", "life-mag"]
-        assert result["error"] is None
+        assert "error" not in result
 
     @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_list_brands_empty(self, mock_load: MagicMock) -> None:
@@ -101,7 +101,7 @@ class TestListBrands:
         assert result["total"] == 0
         assert result["brands"] == []
         # Empty state is not an error
-        assert result["error"] is None
+        assert "error" not in result
 
     @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
     def test_list_brands_error(self, mock_load: MagicMock) -> None:

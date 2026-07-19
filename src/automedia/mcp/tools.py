@@ -2493,7 +2493,7 @@ def list_brands() -> dict[str, Any]:
     Returns
     -------
     dict
-        ``{"brands": [...], "total": N, "error": str | None}`` —
+        ``{"brands": [...], "total": N}`` —
         never raises.  Each brand entry includes all fields from
         :class:`~automedia.manifests.brand_profile_schema.BrandProfile`.
     """
@@ -2517,7 +2517,7 @@ def list_brands() -> dict[str, Any]:
             }
             for profile in profiles.values()
         ]
-        return success_response({"brands": brands_list, "total": len(brands_list), "error": None})
+        return success_response({"brands": brands_list, "total": len(brands_list)})
     except Exception as exc:
         # MCP boundary: catch-all for brand profile load errors
         return {"brands": [], "total": 0, **error_response(MCPErrorCode.UNKNOWN, str(exc))}
