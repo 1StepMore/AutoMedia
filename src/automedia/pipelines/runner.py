@@ -752,35 +752,51 @@ def run_full_pipeline(
         On unexpected errors the result has ``status="failed"`` and
         ``error`` is populated instead of raising.
     """
+    return _run_pipeline(
+        topic=topic,
+        brand=brand,
+        hooks=hooks,
+        mode=mode,
+        workflow=workflow,
+        decision_mode=decision_mode,
+        resume_from=resume_from,
+        config_dir=config_dir,
+        tenant_id=tenant_id,
+        default_lang=default_lang,
+        force_provenance=force_provenance,
+        director=director,
+        progress=progress,
+        source_path=source_path,
+        source_url=source_url,
+    )
+
+
+def _run_pipeline(
+    topic: str,
+    brand: str,
+    *,
+    hooks: list[GateHook] | None = None,
+    mode: str = "auto",
+    workflow: str | None = None,
+    decision_mode: str = "build",
+    resume_from: str | None = None,
+    config_dir: str | None = None,
+    tenant_id: str = "default",
+    default_lang: str | None = None,
+    force_provenance: bool = False,
+    director: bool = False,
+    progress: PipelineProgress | None = None,
+    source_path: str = "",
+    source_url: str = "",
+) -> PipelineResult:
     from automedia.core.config_loader import load_config
     from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
     from automedia.core.logging import bind_correlation_id
     from automedia.core.project import Project
-    from automedia.core.workflow import WorkflowLoader
-    from automedia.engines import resolve_engine
-    from automedia.engines.base import BaseVideoEngine
-    from automedia.engines.errors import (
-        EngineExecutionError,
-        EngineNotFoundError,
-        EngineUnavailableError,
-    )
-    from automedia.gates._context import GateContext
-    from automedia.hitl import HITLConfig
-    from automedia.hooks.cost_tracker import CostTracker
-    from automedia.hooks.pipeline_history import PipelineHistoryHook
-    from automedia.manifests.brand_profile_schema import (
-        BrandProfile,
-        load_brand_profile,
-        load_brand_profiles,
-    )
-    from automedia.pipelines.gate_engine import GateEngine, PipelineResult
-    from automedia.pipelines.image_pipeline import ImagePipeline
-    from automedia.pipelines.language_config import resolve_language_config
+    from automedia.pipelines.gate_engine import PipelineResult
 
     start = time.monotonic()
     correlation_id = bind_correlation_id()
-
-    # Reset token usage tracking for this pipeline run
     reset_usage_tracking()
 
     if decision_mode is not None and decision_mode != "build":
@@ -792,395 +808,468 @@ def run_full_pipeline(
         log.warning("decision_mode parameter is deprecated, ignoring value: %s", decision_mode)
 
     try:
-        # 1. Load configuration
         config = load_config(config_dir=config_dir)
-
-        # 2. Create project
         project = Project.init(topic, brand, tenant_id=tenant_id)
 
-        # 2.5 Resolve brand profile from multi-brand config or fallback
-        brand_profile: BrandProfile | None = None
-        profiles = load_brand_profiles()
-        if brand in profiles:
-            brand_profile = profiles[brand]
-        else:
-            brand_profile_path = os.path.join(project.project_dir, "brand-profile.yaml")
-            try:
-                brand_profile = load_brand_profile(brand_profile_path)
-            except (FileNotFoundError, ValueError):
-                brand_profile = None
-
-        # 2.75 Derive pipeline mode from brand platforms when not explicitly set
-        if mode == "auto" and brand_profile is not None and brand_profile.platforms:
-            derived = _derive_mode_from_platforms(brand_profile.platforms)
-            if derived:
-                mode = derived
-                log.info(
-                    "pipeline.mode_derived",
-                    mode=mode,
-                    platforms=brand_profile.platforms,
-                )
-
-        # 2.8 Workflow resolution — merge workflow config over brand config
-        #     Workflow is a higher-priority config layer (between explicit
-        #     overrides and brand config).  It can override mode, platforms,
-        #     gates, prompts, and media specs.
-        workflow_obj: Workflow | None = None
-        if workflow is not None:
-            try:
-                workflow_loader = WorkflowLoader()
-                workflow_obj = workflow_loader.load(workflow)
-                log.info(
-                    "pipeline.workflow.loaded",
-                    workflow=workflow,
-                    mode=workflow_obj.mode,
-                    platforms=workflow_obj.platforms,
-                )
-            except (FileNotFoundError, ValueError) as exc:
-                log.warning(
-                    "pipeline.workflow.load_failed",
-                    workflow=workflow,
-                    error=str(exc),
-                    hint="Pipeline will continue without workflow overrides.",
-                )
-
-        # 2.9 Apply workflow config overrides to brand profile
-        if workflow_obj is not None and brand_profile is not None:
-            brand_dict = _merge_workflow_config(workflow_obj, asdict(brand_profile))
-            # Rebuild brand_profile from merged dict
-            try:
-                brand_profile = BrandProfile(**brand_dict)
-            except (TypeError, ValueError) as exc:
-                log.warning(
-                    "pipeline.workflow.merge_failed",
-                    workflow=workflow,
-                    error=str(exc),
-                    hint="Workflow merge produced invalid brand profile. "
-                    "Falling back to original brand config.",
-                )
-
-            # Workflow mode overrides the pipeline mode
-            mode = workflow_obj.mode
-            log.info(
-                "pipeline.workflow.mode_override",
-                workflow=workflow,
-                mode=mode,
-            )
+        brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
+            mode, brand, project, workflow,
+        )
 
         log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
 
-        # 3. Build gate list
-        #    Ensure gates module is imported so all gates are registered
-        import automedia.gates  # noqa: F401
-
-        gate_names = _compose_gate_list(mode, platform_config=None)
-
-        # 3.1 Apply per-platform gate modifiers from brand profile
-        if brand_profile is not None and brand_profile.platforms:
-            brand_dict = asdict(brand_profile)
-            combined_gate_config = _collect_platform_gate_modifiers(
-                brand_dict, list(brand_profile.platforms)
-            )
-            if combined_gate_config:
-                gate_names = _compose_gate_list(mode, {"gates": combined_gate_config})
-                log.info(
-                    "pipeline.gate_modifiers_applied",
-                    platform_count=len(brand_profile.platforms),
-                    gate_count=len(gate_names),
-                )
-
-        # Apply resume_from — find index and slice
-        if resume_from is not None:
-            try:
-                idx = gate_names.index(resume_from)
-                gate_names = gate_names[idx:]
-            except ValueError:
-                raise ValueError(
-                    f"resume_from gate {resume_from!r} not found in mode {mode!r} gate list"
-                ) from None
-
-        # 3.5 Verify previous gate outputs when resuming
-        if resume_from is not None:
-            _verify_resume_integrity(project.project_dir, resume_from, _MODE_MAP.get(mode, []))
-
-        gates = _build_gates_from_names(gate_names)
-        if progress is not None:
-            progress.set_gate_names([g.gate_name for g in gates])
-        log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
-
-        # 3.75 Inject CostTracker + PipelineHistory hooks
-        cost_tracker = CostTracker(project.project_dir)
-        history_hook = PipelineHistoryHook()
-        all_hooks: list[GateHook] = list(hooks) if hooks else []
-        all_hooks.append(cost_tracker)
-        all_hooks.append(history_hook)
-
-        # 4. Instantiate engine
-        engine = GateEngine(gates, hooks=all_hooks, pause_on_approval=director)
-        # Register in global registry for MCP approve/reject tools
-        from automedia.pipelines.gate_engine import register_engine
-
-        register_engine(project.project_id, engine)
-
-        lang_config = resolve_language_config(
-            brand_profile=brand_profile,
-            default_lang=default_lang,
+        gate_names, gates = _select_gates(
+            mode, brand_profile, resume_from, project.project_dir, progress,
         )
 
-        # 4.75 Load HITL config and inject into context
-        try:
-            hitl_cfg = HITLConfig(preset_name="director" if director else "automated")
-            hitl_config = {
-                "enabled_nodes": [n for n in hitl_cfg.list_nodes() if n.get("autoset") == "human"],
-                "default_executor": "agent",
-                "timeout_s": 86400,  # 24 hours
-            }
-        except Exception:
-            log.warning(
-                "pipeline.hitl_config_failed", hint="HITL config unavailable, using empty fallback"
-            )
-            hitl_config = {
-                "enabled_nodes": [],
-                "default_executor": "agent",
-                "timeout_s": 86400,
-            }
-
-        # 5. Build initial context (including correlation_id for distributed tracing)
-        gate_context = GateContext(
-            topic=topic,
-            brand=brand,
-            project_id=project.project_id,
-            project_dir=project.project_dir,
-            config=config,
-            tenant_id=tenant_id,
-            lang_config=lang_config,
-            mode=mode,
-            force_provenance=force_provenance,
-            brand_profile=asdict(brand_profile) if brand_profile is not None else None,
-            correlation_id=correlation_id,
+        gate_context = _build_pipeline_context(
+            topic, brand, mode, project, config, tenant_id, brand_profile,
+            director, force_provenance, default_lang,
+            source_path, source_url, correlation_id, gate_names,
         )
 
-        # 5.1 Inject brand platforms into context for downstream gates
-        gate_context["brand_platforms"] = (
-            list(brand_profile.platforms) if brand_profile is not None else []
+        success, results = _setup_and_run_engine(
+            gates, hooks, director, project, gate_context, progress,
         )
 
-        # 5.1.5 Inject media specs into context for downstream gates
-        gate_context["media_specs"] = {}
-        if brand_profile is not None and brand_profile.platforms:
-            from automedia.core.media_spec import resolve_media_specs
-
-            gate_context["media_specs"] = resolve_media_specs(
-                asdict(brand_profile), list(brand_profile.platforms)
-            )
-
-        # 4.76 Inject HITL config into context
-        gate_context["hitl_config"] = hitl_config
-        gate_context["hitl_preset"] = "director" if director else "automated"
-
-        # 4.77 HyperFrames availability detection
-        #      Sets a boolean flag; video gates (V0-V7) use it to decide
-        #      whether to skip or degrade gracefully.  Never blocks the
-        #      pipeline — that decision belongs inside the gate chain.
-        #      Also checks the video engine (includes FFmpeg fallback).
-        hyperframes_available = _check_hyperframes(mode=mode)
-        video_engine_available: bool = False
-        try:
-            resolve_engine("video", config)
-            video_engine_available = True
-        except (EngineNotFoundError, EngineExecutionError, EngineUnavailableError):
-            pass
-        gate_context["hyperframes_available"] = hyperframes_available or video_engine_available
-        if gate_context["hyperframes_available"]:
-            log.info("pipeline.hyperframes.check", available=True)
-        elif mode in ("auto", "video_only"):
-            log.warning(
-                "pipeline.hyperframes.missing_video_mode",
-                mode=mode,
-                hint="Install: npm install -g hyperframes. Video gates will be skipped.",
-            )
-        else:
-            log.info(
-                "pipeline.hyperframes.skip",
-                mode=mode,
-                reason="hyperframes not required for this mode",
-            )
-
-        # 5.2 Source material loading
-        if source_path or source_url:
-            material = _resolve_source_material(source_path=source_path, source_url=source_url)
-            if material is None:
-                log.info(
-                    "pipeline.source_material.empty",
-                    hint="Both source_path and source_url are empty — skipping",
-                )
-            elif "error" in material:
-                log.warning(
-                    "pipeline.source_material.failed",
-                    error=material["error"],
-                    hint="Falling back to LLM-only mode",
-                )
-                gate_context["source_content"] = ""
-            else:
-                gate_context["source_content"] = material["content"]
-                gate_context["source_material"] = material
-                log.info(
-                    "pipeline.source_material.loaded",
-                    type=material.get("type"),
-                    path=material.get("path"),
-                    content_len=len(material["content"]),
-                )
-
-        # 5.5 Content fallback guard (Issue #14)
-        #      When CW is not in the gate list (video_only / qa_only modes),
-        #      content stays empty.  Inject a placeholder so downstream gates
-        #      and pipeline consumers don't see blank content.
-        if "CW" not in gate_names and not gate_context.get("content", "").strip():
-            placeholder = f"[content skipped in {mode} mode]"
-            gate_context["content"] = placeholder
-            gate_context["draft"] = placeholder
-            log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
-
-        # 5.6 Inject content format hint for social-thread / short-video mode
-        if mode == "social-thread":
-            gate_context["content_format"] = "social_thread"
-            log.info("pipeline.content_format", format="social_thread")
-        if mode == "short-video":
-            gate_context["content_format"] = "short_video"
-            log.info("pipeline.content_format", format="short_video")
-
-        # 6. Execute
-        try:
-            success, results = engine.run(gate_context, progress=progress)
-        finally:
-            from automedia.pipelines.gate_engine import unregister_engine
-
-            unregister_engine(project.project_id)
-
-        # 6.5 Generate carousel images for image-carousel mode
-        carousel_images: list[str] = []
-        if mode == "image-carousel":
-            try:
-                pipeline = ImagePipeline(config=config)
-                content = gate_context.get("content", topic)
-                project_dir_str = str(project.project_dir)
-                carousel_images = pipeline.generate_body_images(
-                    topic=content or topic,
-                    project_dir=project_dir_str,
-                    count=4,
-                    brand=brand,
-                )
-                gate_context["carousel_images"] = carousel_images
-                log.info(
-                    "pipeline.carousel_images_generated",
-                    count=len(carousel_images),
-                )
-            except Exception as exc:
-                log.warning(
-                    "pipeline.carousel_images_failed",
-                    error=str(exc),
-                    hint="Carousel image generation failed — continuing without images",
-                )
-
-        # 6.6 Generate cover image for text_with_cover mode
-        cover_image: str = ""
-        if mode == "text_with_cover":
-            try:
-                pipeline = ImagePipeline(config=config)
-                project_dir_str = (
-                    project.project_dir
-                    if isinstance(project.project_dir, str)
-                    else str(project.project_dir)
-                )
-                cover_image = pipeline.generate_single_cover(
-                    topic=topic,
-                    brand=brand,
-                    project_dir=project_dir_str,
-                )
-                gate_context["cover_image"] = cover_image
-                log.info("pipeline.cover_image_generated", path=cover_image)
-            except Exception as exc:
-                log.warning(
-                    "pipeline.cover_image_failed",
-                    error=str(exc),
-                    hint="Cover image generation failed — continuing without cover",
-                )
-
-        # 6.5 Video production — produce MP4 from accumulated assets
-        video_path: str = ""
-        if mode in ("auto", "video_only", "short-video"):
-            video_assets = _collect_video_assets(gate_context, project)
-            if video_assets:
-                try:
-                    video_engine = cast(BaseVideoEngine, resolve_engine("video", config))
-                    video_path = video_engine.render(
-                        video_assets,
-                        os.path.join(project.project_dir, "03_video", "output.mp4"),
-                    )
-                    gate_context["video_path"] = video_path
-                    log.info("pipeline.video_produced", path=video_path)
-                except (EngineExecutionError, EngineNotFoundError) as exc:
-                    log.warning("pipeline.video_production_failed", error=str(exc))
-                except Exception as exc:
-                    log.warning("pipeline.video_production_unexpected_error", error=str(exc))
-
-        # 7. Collect assets
-        assets = _collect_assets(gate_context)
-
-        # 8. Record MD5s
-        _record_gate_md5s(project.project_dir, results)
-
-        # 9. Build gate log
-        gates_log = _build_gates_log(results)
-
-        end = time.monotonic()
-
-        status = "success" if success else "partial"
-        log.info(
-            "pipeline.complete",
-            status=status,
-            duration_s=end - start,
-            project_id=project.project_id,
-        )
-
-        usage_summary = get_usage_summary()
-
-        return PipelineResult(
-            status=cast(Literal["success", "failed", "partial"], status),
-            project_id=project.project_id,
-            project_dir=project.project_dir,
-            topic=topic,
-            brand=brand,
-            assets=assets,
-            gates_log=gates_log,
-            start_time=start,
-            end_time=end,
-            total_duration_s=end - start,
-            usage=usage_summary,
-            workflow=workflow or "",
+        return _finalize_pipeline(
+            success, results, mode, gate_context, project, config,
+            brand, topic, start, workflow,
         )
 
     except Exception as exc:
-        end = time.monotonic()
-        usage_summary = get_usage_summary()
-        log.error(
-            "pipeline.failed",
-            error=str(exc),
-            duration_s=end - start,
-            topic=topic,
-            brand=brand,
+        return _handle_pipeline_error(exc, start, topic, brand, workflow)
+
+
+def _resolve_brand_and_workflow(
+    mode: str,
+    brand: str,
+    project: Any,
+    workflow: str | None,
+) -> tuple[Any | None, str, Any | None]:
+    from automedia.core.workflow import WorkflowLoader
+    from automedia.manifests.brand_profile_schema import (
+        BrandProfile,
+        load_brand_profile,
+        load_brand_profiles,
+    )
+
+    brand_profile: BrandProfile | None = None
+    profiles = load_brand_profiles()
+    if brand in profiles:
+        brand_profile = profiles[brand]
+    else:
+        brand_profile_path = os.path.join(project.project_dir, "brand-profile.yaml")
+        try:
+            brand_profile = load_brand_profile(brand_profile_path)
+        except (FileNotFoundError, ValueError):
+            brand_profile = None
+
+    if mode == "auto" and brand_profile is not None and brand_profile.platforms:
+        derived = _derive_mode_from_platforms(brand_profile.platforms)
+        if derived:
+            mode = derived
+            log.info(
+                "pipeline.mode_derived",
+                mode=mode,
+                platforms=brand_profile.platforms,
+            )
+
+    workflow_obj: Any = None
+    if workflow is not None:
+        try:
+            workflow_loader = WorkflowLoader()
+            workflow_obj = workflow_loader.load(workflow)
+            log.info(
+                "pipeline.workflow.loaded",
+                workflow=workflow,
+                mode=workflow_obj.mode,
+                platforms=workflow_obj.platforms,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            log.warning(
+                "pipeline.workflow.load_failed",
+                workflow=workflow,
+                error=str(exc),
+                hint="Pipeline will continue without workflow overrides.",
+            )
+
+    if workflow_obj is not None and brand_profile is not None:
+        brand_dict = _merge_workflow_config(workflow_obj, asdict(brand_profile))
+        try:
+            brand_profile = BrandProfile(**brand_dict)
+        except (TypeError, ValueError) as exc:
+            log.warning(
+                "pipeline.workflow.merge_failed",
+                workflow=workflow,
+                error=str(exc),
+                hint="Workflow merge produced invalid brand profile. "
+                "Falling back to original brand config.",
+            )
+        mode = workflow_obj.mode
+        log.info(
+            "pipeline.workflow.mode_override",
+            workflow=workflow,
+            mode=mode,
         )
-        return PipelineResult(
-            status="failed",
-            topic=topic,
-            brand=brand,
-            start_time=start,
-            end_time=end,
-            total_duration_s=end - start,
-            error=str(exc),
-            usage=usage_summary,
-            workflow=workflow or "",
+
+    return brand_profile, mode, workflow_obj
+
+
+def _select_gates(
+    mode: str,
+    brand_profile: Any | None,
+    resume_from: str | None,
+    project_dir: str,
+    progress: PipelineProgress | None,
+) -> tuple[list[str], list[BaseGate]]:
+    import automedia.gates  # noqa: F401
+
+    gate_names = _compose_gate_list(mode, platform_config=None)
+
+    if brand_profile is not None and brand_profile.platforms:
+        brand_dict = asdict(brand_profile)
+        combined_gate_config = _collect_platform_gate_modifiers(
+            brand_dict, list(brand_profile.platforms)
         )
+        if combined_gate_config:
+            gate_names = _compose_gate_list(mode, {"gates": combined_gate_config})
+            log.info(
+                "pipeline.gate_modifiers_applied",
+                platform_count=len(brand_profile.platforms),
+                gate_count=len(gate_names),
+            )
+
+    if resume_from is not None:
+        try:
+            idx = gate_names.index(resume_from)
+            gate_names = gate_names[idx:]
+        except ValueError:
+            raise ValueError(
+                f"resume_from gate {resume_from!r} not found in mode {mode!r} gate list"
+            ) from None
+
+    if resume_from is not None:
+        _verify_resume_integrity(project_dir, resume_from, _MODE_MAP.get(mode, []))
+
+    gates = _build_gates_from_names(gate_names)
+    if progress is not None:
+        progress.set_gate_names([g.gate_name for g in gates])
+    log.info("pipeline.gates_constructed", gate_count=len(gates), gate_names=gate_names)
+
+    return gate_names, gates
+
+
+def _build_pipeline_context(
+    topic: str,
+    brand: str,
+    mode: str,
+    project: Any,
+    config: dict[str, Any],
+    tenant_id: str,
+    brand_profile: Any | None,
+    director: bool,
+    force_provenance: bool,
+    default_lang: str | None,
+    source_path: str,
+    source_url: str,
+    correlation_id: str,
+    gate_names: list[str],
+) -> Any:
+    from automedia.engines import resolve_engine
+    from automedia.engines.errors import (
+        EngineExecutionError,
+        EngineNotFoundError,
+        EngineUnavailableError,
+    )
+    from automedia.gates._context import GateContext
+    from automedia.hitl import HITLConfig
+    from automedia.pipelines.language_config import resolve_language_config
+
+    lang_config = resolve_language_config(
+        brand_profile=brand_profile,
+        default_lang=default_lang,
+    )
+
+    try:
+        hitl_cfg = HITLConfig(preset_name="director" if director else "automated")
+        hitl_config = {
+            "enabled_nodes": [n for n in hitl_cfg.list_nodes() if n.get("autoset") == "human"],
+            "default_executor": "agent",
+            "timeout_s": 86400,
+        }
+    except Exception:
+        log.warning(
+            "pipeline.hitl_config_failed", hint="HITL config unavailable, using empty fallback"
+        )
+        hitl_config = {
+            "enabled_nodes": [],
+            "default_executor": "agent",
+            "timeout_s": 86400,
+        }
+
+    gate_context = GateContext(
+        topic=topic,
+        brand=brand,
+        project_id=project.project_id,
+        project_dir=project.project_dir,
+        config=config,
+        tenant_id=tenant_id,
+        lang_config=lang_config,
+        mode=mode,
+        force_provenance=force_provenance,
+        brand_profile=asdict(brand_profile) if brand_profile is not None else None,
+        correlation_id=correlation_id,
+    )
+
+    gate_context["brand_platforms"] = (
+        list(brand_profile.platforms) if brand_profile is not None else []
+    )
+
+    gate_context["media_specs"] = {}
+    if brand_profile is not None and brand_profile.platforms:
+        from automedia.core.media_spec import resolve_media_specs
+
+        gate_context["media_specs"] = resolve_media_specs(
+            asdict(brand_profile), list(brand_profile.platforms)
+        )
+
+    gate_context["hitl_config"] = hitl_config
+    gate_context["hitl_preset"] = "director" if director else "automated"
+
+    hyperframes_available = _check_hyperframes(mode=mode)
+    video_engine_available = False
+    try:
+        resolve_engine("video", config)
+        video_engine_available = True
+    except (EngineNotFoundError, EngineExecutionError, EngineUnavailableError):
+        pass
+    gate_context["hyperframes_available"] = hyperframes_available or video_engine_available
+    if gate_context["hyperframes_available"]:
+        log.info("pipeline.hyperframes.check", available=True)
+    elif mode in ("auto", "video_only"):
+        log.warning(
+            "pipeline.hyperframes.missing_video_mode",
+            mode=mode,
+            hint="Install: npm install -g hyperframes. Video gates will be skipped.",
+        )
+    else:
+        log.info(
+            "pipeline.hyperframes.skip",
+            mode=mode,
+            reason="hyperframes not required for this mode",
+        )
+
+    if source_path or source_url:
+        material = _resolve_source_material(source_path=source_path, source_url=source_url)
+        if material is None:
+            log.info(
+                "pipeline.source_material.empty",
+                hint="Both source_path and source_url are empty — skipping",
+            )
+        elif "error" in material:
+            log.warning(
+                "pipeline.source_material.failed",
+                error=material["error"],
+                hint="Falling back to LLM-only mode",
+            )
+            gate_context["source_content"] = ""
+        else:
+            gate_context["source_content"] = material["content"]
+            gate_context["source_material"] = material
+            log.info(
+                "pipeline.source_material.loaded",
+                type=material.get("type"),
+                path=material.get("path"),
+                content_len=len(material["content"]),
+            )
+
+    if "CW" not in gate_names and not gate_context.get("content", "").strip():
+        placeholder = f"[content skipped in {mode} mode]"
+        gate_context["content"] = placeholder
+        gate_context["draft"] = placeholder
+        log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
+
+    if mode == "social-thread":
+        gate_context["content_format"] = "social_thread"
+        log.info("pipeline.content_format", format="social_thread")
+    if mode == "short-video":
+        gate_context["content_format"] = "short_video"
+        log.info("pipeline.content_format", format="short_video")
+
+    return gate_context
+
+
+def _setup_and_run_engine(
+    gates: list[BaseGate],
+    hooks: list[GateHook] | None,
+    director: bool,
+    project: Any,
+    gate_context: Any,
+    progress: PipelineProgress | None,
+) -> tuple[bool, list[dict[str, Any]]]:
+    from automedia.hooks.cost_tracker import CostTracker
+    from automedia.hooks.pipeline_history import PipelineHistoryHook
+    from automedia.pipelines.gate_engine import GateEngine, register_engine, unregister_engine
+
+    all_hooks: list[GateHook] = list(hooks) if hooks else []
+    all_hooks.append(CostTracker(project.project_dir))
+    all_hooks.append(PipelineHistoryHook())
+
+    engine = GateEngine(gates, hooks=all_hooks, pause_on_approval=director)
+    register_engine(project.project_id, engine)
+
+    try:
+        success, results = engine.run(gate_context, progress=progress)
+    finally:
+        unregister_engine(project.project_id)
+
+    return success, results
+
+
+def _finalize_pipeline(
+    success: bool,
+    results: list[dict[str, Any]],
+    mode: str,
+    gate_context: Any,
+    project: Any,
+    config: dict[str, Any],
+    brand: str,
+    topic: str,
+    start: float,
+    workflow: str | None,
+) -> PipelineResult:
+    from automedia.core.llm_client import get_usage_summary
+    from automedia.engines import resolve_engine
+    from automedia.engines.base import BaseVideoEngine
+    from automedia.engines.errors import EngineExecutionError, EngineNotFoundError
+    from automedia.pipelines.gate_engine import PipelineResult
+
+    if mode == "image-carousel":
+        try:
+            from automedia.pipelines.image_pipeline import ImagePipeline
+
+            pipeline = ImagePipeline(config=config)
+            content = gate_context.get("content", topic)
+            project_dir_str = str(project.project_dir)
+            carousel_images = pipeline.generate_body_images(
+                topic=content or topic,
+                project_dir=project_dir_str,
+                count=4,
+                brand=brand,
+            )
+            gate_context["carousel_images"] = carousel_images
+            log.info(
+                "pipeline.carousel_images_generated",
+                count=len(carousel_images),
+            )
+        except Exception as exc:
+            log.warning(
+                "pipeline.carousel_images_failed",
+                error=str(exc),
+                hint="Carousel image generation failed — continuing without images",
+            )
+
+    if mode == "text_with_cover":
+        try:
+            from automedia.pipelines.image_pipeline import ImagePipeline
+
+            pipeline = ImagePipeline(config=config)
+            project_dir_str = (
+                project.project_dir
+                if isinstance(project.project_dir, str)
+                else str(project.project_dir)
+            )
+            cover_image = pipeline.generate_single_cover(
+                topic=topic,
+                brand=brand,
+                project_dir=project_dir_str,
+            )
+            gate_context["cover_image"] = cover_image
+            log.info("pipeline.cover_image_generated", path=cover_image)
+        except Exception as exc:
+            log.warning(
+                "pipeline.cover_image_failed",
+                error=str(exc),
+                hint="Cover image generation failed — continuing without cover",
+            )
+
+    if mode in ("auto", "video_only", "short-video"):
+        video_assets = _collect_video_assets(gate_context, project)
+        if video_assets:
+            try:
+                video_engine = cast(BaseVideoEngine, resolve_engine("video", config))
+                video_path = video_engine.render(
+                    video_assets,
+                    os.path.join(project.project_dir, "03_video", "output.mp4"),
+                )
+                gate_context["video_path"] = video_path
+                log.info("pipeline.video_produced", path=video_path)
+            except (EngineExecutionError, EngineNotFoundError) as exc:
+                log.warning("pipeline.video_production_failed", error=str(exc))
+            except Exception as exc:
+                log.warning("pipeline.video_production_unexpected_error", error=str(exc))
+
+    assets = _collect_assets(gate_context)
+    _record_gate_md5s(project.project_dir, results)
+    gates_log = _build_gates_log(results)
+
+    end = time.monotonic()
+    status = "success" if success else "partial"
+    log.info(
+        "pipeline.complete",
+        status=status,
+        duration_s=end - start,
+        project_id=project.project_id,
+    )
+
+    usage_summary = get_usage_summary()
+
+    return PipelineResult(
+        status=cast(Literal["success", "failed", "partial"], status),
+        project_id=project.project_id,
+        project_dir=project.project_dir,
+        topic=topic,
+        brand=brand,
+        assets=assets,
+        gates_log=gates_log,
+        start_time=start,
+        end_time=end,
+        total_duration_s=end - start,
+        usage=usage_summary,
+        workflow=workflow or "",
+    )
+
+
+def _handle_pipeline_error(
+    exc: Exception,
+    start: float,
+    topic: str,
+    brand: str,
+    workflow: str | None,
+) -> PipelineResult:
+    from automedia.core.llm_client import get_usage_summary
+    from automedia.pipelines.gate_engine import PipelineResult
+
+    end = time.monotonic()
+    usage_summary = get_usage_summary()
+    log.error(
+        "pipeline.failed",
+        error=str(exc),
+        duration_s=end - start,
+        topic=topic,
+        brand=brand,
+    )
+    return PipelineResult(
+        status="failed",
+        topic=topic,
+        brand=brand,
+        start_time=start,
+        end_time=end,
+        total_duration_s=end - start,
+        error=str(exc),
+        usage=usage_summary,
+        workflow=workflow or "",
+    )
 
 
 # ---------------------------------------------------------------------------

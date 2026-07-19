@@ -1013,3 +1013,107 @@ class TestRunFullPipelineModeDerivation:
         result = run_full_pipeline("t", "testbrand")
         assert result.status == "success"
         assert captured_ctx["brand_platforms"] == []
+
+
+class TestPreLockBehavior:
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_returns_pipeline_result(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        from automedia.pipelines.gate_engine import PipelineResult
+        mock_proj = MagicMock()
+        mock_proj.project_id = "pre1"
+        mock_proj.project_dir = str(tmp_path / "pre1")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+        result = run_full_pipeline("topic", "brand")
+        assert isinstance(result, PipelineResult)
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_topic_brand_mode_passed_through(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        mock_proj = MagicMock()
+        mock_proj.project_id = "pre2"
+        mock_proj.project_dir = str(tmp_path / "pre2")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+        result = run_full_pipeline("My Topic", "my-brand", mode="text_only")
+        assert result.topic == "My Topic"
+        assert result.brand == "my-brand"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_project_dir_created(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        mock_proj = MagicMock()
+        mock_proj.project_id = "pre3"
+        mock_proj.project_dir = str(tmp_path / "pre3")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+        run_full_pipeline("t", "b", tenant_id="acme")
+        mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_gate_engine_receives_correct_gates(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Any,
+    ) -> None:
+        mock_proj = MagicMock()
+        mock_proj.project_id = "pre4"
+        mock_proj.project_dir = str(tmp_path / "pre4")
+        mock_project.init.return_value = mock_proj
+        captured_names: list[list[str]] = []
+
+        def capture(names: list[str]) -> list[BaseGate]:
+            captured_names.append(names)
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+        result = run_full_pipeline("t", "b", mode="auto")
+        assert result.status == "success"
+        assert captured_names[0][0] == "pre-gate"
+        assert len(captured_names[0]) > 10
+
+    @patch("automedia.core.config_loader.load_config", side_effect=RuntimeError("fail"))
+    def test_error_returns_failed_result(
+        self,
+        mock_config: MagicMock,
+    ) -> None:
+        from automedia.pipelines.gate_engine import PipelineResult
+        result = run_full_pipeline("t", "b")
+        assert isinstance(result, PipelineResult)
+        assert result.status == "failed"
+        assert "fail" in (result.error or "")
