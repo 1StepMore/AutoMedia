@@ -128,6 +128,27 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         ],
         "docstring_ref": "gates/html_hard.py",
     },
+    "G6": {
+        "description": (
+            "Tone Check Gate — evaluates content against brand tone"
+            " guidelines for voice consistency and style compliance"
+        ),
+        "common_causes": [
+            "Content uses casual language when brand tone is professional",
+            "Tone varies inconsistently between sections of the same piece",
+            "Vocabulary choices conflict with brand personality guidelines",
+            "Emotional register (enthusiastic, measured) does not match brand voice",
+            "Formality level does not match target audience expectations",
+        ],
+        "fixes": [
+            "Rewrite flagged passages to match the brand's defined tone and voice",
+            "Ensure consistent tone throughout the entire piece, not just the opening",
+            "Replace off-brand vocabulary with brand-approved alternatives",
+            "Adjust emotional register to align with brand personality (calm, excited, authoritative)",
+            "Reference the brand's tone_guidelines field in the brand profile for precise correction",
+        ],
+        "docstring_ref": "gates/g6_tone_check.py",
+    },
     "V0": {
         "description": "Lint Gate — code quality checks for rendered HyperFrames HTML/JS output",
         "common_causes": [

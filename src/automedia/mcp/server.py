@@ -123,6 +123,7 @@ from automedia.mcp.tools import (
     update_engine_config,
 )
 
+from automedia.effects.mcp import analyze_content as effects_analyze_content
 from automedia.mcp.tools_distribution import distribute_content
 
 # ---------------------------------------------------------------------------
@@ -199,6 +200,8 @@ __all__ = [
     "onboard",
     # Distribution
     "distribute_content",
+    # Effects
+    "effects_analyze_content",
 ]
 
 
@@ -230,6 +233,7 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("localize_", "Document Processing"),
     ("format_", "Document Processing"),
     ("evaluate_", "Content Quality"),
+    ("analyze_", "Content Quality"),
     ("batch_", "Batch Operations"),
     ("health_", "Server / Engine"),
     ("help_", "Help / Introspection"),
@@ -455,6 +459,15 @@ def create_server() -> FastMCP:
     mcp.tool(
         description=("Return the list of asset files inside a project directory."),
     )(get_project_assets)
+
+    mcp.tool(
+        description=(
+            "Compute content analytics for a project. "
+            "Scans the project's 01_content/drafts/ for markdown files and "
+            "returns word count, sentiment, readability, and brand mentions. "
+            "Takes project_id and optional base_dir."
+        ),
+    )(effects_analyze_content)
 
     mcp.tool(
         description=(

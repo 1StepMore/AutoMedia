@@ -1,6 +1,6 @@
 """Quality gates — all concrete gate implementations are imported here for auto-registration in GateRegistry.
 
-Gate naming convention: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), D1-D9 (distribution),
+Gate naming convention: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), D1-D9 (distribution),
 CW (content writer), pre-gate.
 """
 
@@ -32,6 +32,7 @@ from automedia.gates.fact_check import G0FactCheck
 
 # HITL gates
 from automedia.gates.h0_human_review import H0HumanReviewGate
+from automedia.gates.g6_tone_check import G6ToneCheckGate
 from automedia.gates.html_hard import G5HtmlHard
 from automedia.gates.humanizer import G1Humanizer
 
@@ -62,13 +63,14 @@ __all__ = [
     "D5BilibiliRewrite",
     "D6YouTubeGate",
     "D7Gate",
-    # Text-track gates (G0-G5)
+# Text-track gates (G0-G6)
     "G0FactCheck",
     "G1Humanizer",
     "G2CopyReview",
     "G3BrandCTA",
     "G4WechatChecklist",
     "G5HtmlHard",
+    "G6ToneCheckGate",
     # Video-track gates (V0-V7)
     "V0Lint",
     "V1VisionQA",

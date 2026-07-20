@@ -178,6 +178,12 @@ LazyTyperGroup.register_sub_app(
     "automedia.cli.commands.omni",
     help_text="Omni Triad operations (ingest, localize, format-output).",
 )
+LazyTyperGroup.register_fn(
+    "effects",
+    "automedia.effects.cli",
+    "effects_cmd",
+    help_text="Compute content analytics for a project.",
+)
 LazyTyperGroup.register_sub_app(
     "onboard",
     "automedia.cli.commands.onboard",

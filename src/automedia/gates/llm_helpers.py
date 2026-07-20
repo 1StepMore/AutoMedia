@@ -1,8 +1,9 @@
 """LLM evaluation helpers for gates with deterministic fallback.
 
 Provides :func:`llm_check_with_fallback` — a unified entry point for
-G0 (fact-check) and G2 (copy-review) gates that attempts an LLM-based
-evaluation first, then falls back to a deterministic function on any failure.
+G0 (fact-check), G2 (copy-review), and G6 (tone-check) gates that attempts
+an LLM-based evaluation first, then falls back to a deterministic function
+on any failure.
 
 Usage
 -----
@@ -36,8 +37,8 @@ class LLMCheckResult(TypedDict, total=False):
     """Result dict produced by :func:`llm_check_with_fallback`.
 
     ``passed``, ``issues``, and ``method`` are always present.
-    ``confidence`` (G0/G1), ``tone_score`` (G2), and
-    ``brand_compliance`` (G2) are model-specific extras.
+    ``confidence`` (G0/G1), ``tone_score`` (G2/G6), and
+    ``brand_compliance`` (G2/G6) are model-specific extras.
     """
 
     passed: bool
@@ -94,6 +95,15 @@ class G1CheckResult(BaseModel):
     confidence: float = 1.0
 
 
+class G6ToneCheckResult(BaseModel):
+    """Structured output model for G6 (tone check) LLM evaluation."""
+
+    passed: bool
+    issues: list[str] = Field(default_factory=list)
+    tone_score: float = 1.0
+    brand_compliance: bool = True
+
+
 class DeepCheckResult(BaseModel):
     """Structured output model for optional deep-check LLM evaluation.
 
@@ -113,6 +123,7 @@ _RESULT_MODELS: dict[str, type[BaseModel]] = {
     "fact_check": G0CheckResult,
     "copy_review": G2CheckResult,
     "humanizer": G1CheckResult,
+    "tone_check": G6ToneCheckResult,
     "deep_check": DeepCheckResult,
 }
 
@@ -141,8 +152,8 @@ def llm_check_with_fallback(
     text:
         The content to evaluate.
     check_type:
-        Either ``"fact_check"`` (G0), ``"copy_review"`` (G2), or
-        ``"humanizer"`` (G1).
+        Either ``"fact_check"`` (G0), ``"copy_review"`` (G2),
+        ``"humanizer"`` (G1), or ``"tone_check"`` (G6).
     prompt_template_name:
         Name of the Jinja2 prompt template (without ``.j2`` extension).
     deterministic_fn:
@@ -196,7 +207,7 @@ def llm_check_with_fallback(
         # Add model-specific fields
         if isinstance(result, (G0CheckResult, G1CheckResult)):
             response["confidence"] = result.confidence
-        elif isinstance(result, G2CheckResult):
+        elif isinstance(result, (G2CheckResult, G6ToneCheckResult)):
             response["tone_score"] = result.tone_score
             response["brand_compliance"] = result.brand_compliance
 
