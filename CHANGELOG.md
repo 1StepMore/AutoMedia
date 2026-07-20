@@ -20,6 +20,18 @@
 
 - **Cost Data Exposure**: `_UsageTracker` cost and token data exposed per-thread on `run_pipeline` result. No cross-pipeline aggregation — per-invocation only.
 
+### Fixed
+
+- **Bug 3 — Incorrect log level in structured fallback**: `llm_client.py` structured response fallback changed from `logger.info` to `logger.warning` to match the actual severity of the event (Issue #48).
+
+- **Issue #48 Bug 1 — PROJECTS_DIR env var not wired**: `Project.init()` now respects `AUTOMEDIA_PROJECTS_DIR` environment variable. When `base_dir=None`, the env var value is used as the projects root directory. Explicit `base_dir` parameter still takes precedence.
+
+- **Issue #51 Bug 1 — FAKE_LLM mock not dispatched correctly**: `llm_client.py` now short-circuits all three public functions (`llm_complete`, `llm_complete_structured_safe`, `llm_complete_structured`) when `AUTOMEDIA_FAKE_LLM=1` is set. Structured responses dispatch to a type-specific fake (`G0CheckResult`, `G1CheckResult`, `G2CheckResult`) based on the target model name.
+
+- **Issue #51 Bug 2 — platforms param missing from run_pipeline chain**: New `platforms` parameter added to `run_pipeline` (MCP), `run_full_pipeline` (SDK), `_run_pipeline`, and `_select_gates`. When provided, only gate modifiers for the requested platforms are applied. Accepts comma-separated string (MCP) or `list[str] | None` (SDK).
+
+- **8 stale test assertions updated**: Fixed outdated enum member sets, resolution strings, error-code defaults, tool-name lists, and exception-type mismatches in MCP and runner tests.
+
 ### Changed
 
 - **`_compose_gate_list()`**: OverridesLoader `gates` rules now feed into gate composition at runtime. `_collect_platform_gate_modifiers()` merges platform-specific gate modifiers from overrides.

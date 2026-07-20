@@ -14,15 +14,12 @@ re-exports.
 
 from __future__ import annotations
 
-from typing import Any
-
 from automedia.pipelines.gate_engine import (
     GateErrorResult,
     GateProgressEvent,
     PipelineProgress,
     ProgressData,
 )
-
 
 # =====================================================================
 # GateErrorResult TypedDict

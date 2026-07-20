@@ -22,12 +22,7 @@ from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateHook
 from automedia.pipelines.gate_types import (
-    GateErrorResult,
-    GateProgressEvent,
     PipelineProgress,
-    ProgressData,
-    _hitl_lock,
-    _hitl_waiters,
 )
 
 log = get_logger(__name__)
