@@ -46,6 +46,41 @@ ASSET_TYPES = frozenset(
 _SKIP_ON_INSERT = {"created_at", "updated_at"}
 
 
+# ---------------------------------------------------------------------------
+# DistributionLog — tracks project→platform publish attempts
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DistributionLog:
+    """A single distribution attempt entry mirroring the ``distribution_log`` table.
+
+    Attributes match the DB columns 1-to-1.  Each row records one
+    project→platform publish attempt with its outcome.
+    """
+
+    log_id: str = ""
+    project_id: str = ""
+    platform: str = ""
+    account_id: str = ""
+    status: str = ""  # "success", "failure", "draft_created", "skipped"
+    error_message: str = ""
+    url: str = ""
+    created_at: str = ""
+
+    def to_db_row(self) -> dict[str, Any]:
+        """Convert to a flat dict suitable for SQLite INSERT."""
+        d = asdict(self)
+        for skip in {"created_at"}:
+            d.pop(skip, None)
+        return d
+
+    @classmethod
+    def from_db_row(cls, row: dict[str, Any]) -> DistributionLog:
+        """Build an instance from a ``sqlite3.Row`` or plain dict."""
+        return cls(**dict(row))
+
+
 @dataclass
 class AssetDoc:
     """A single asset entry mirroring the ``assets`` table schema.
@@ -112,6 +147,21 @@ CREATE INDEX IF NOT EXISTS idx_assets_brand   ON assets(brand_id);
 CREATE INDEX IF NOT EXISTS idx_assets_type    ON assets(type);
 CREATE INDEX IF NOT EXISTS idx_assets_phase   ON assets(source_phase);
 CREATE INDEX IF NOT EXISTS idx_assets_checksum ON assets(checksum);
+
+CREATE TABLE IF NOT EXISTS distribution_log (
+    log_id            TEXT PRIMARY KEY,
+    project_id        TEXT NOT NULL,
+    platform          TEXT NOT NULL,
+    account_id        TEXT DEFAULT '',
+    status            TEXT NOT NULL,
+    error_message     TEXT DEFAULT '',
+    url               TEXT DEFAULT '',
+    created_at        TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_distro_project ON distribution_log(project_id);
+CREATE INDEX IF NOT EXISTS idx_distro_platform ON distribution_log(platform);
+CREATE INDEX IF NOT EXISTS idx_distro_created ON distribution_log(created_at);
 """
 
 # ---------------------------------------------------------------------------
@@ -346,6 +396,86 @@ class AssetDatabase:
             (checksum,),
         )
         return cur.fetchone() is not None
+
+    # -- Distribution tracking ------------------------------------------------
+
+    def log_distribution(
+        self,
+        project_id: str,
+        platform: str,
+        status: str,
+        *,
+        account_id: str = "",
+        error_message: str = "",
+        url: str = "",
+    ) -> str:
+        """Record a distribution attempt in the log.
+
+        Parameters
+        ----------
+        project_id:
+            The project that was published.
+        platform:
+            Target platform name (e.g. ``"xiaohongshu"``).
+        status:
+            Outcome — ``"success"``, ``"failure"``, ``"draft_created"``,
+            or ``"skipped"``.
+        account_id:
+            Optional account identifier used for the publish.
+        error_message:
+            Error details when status is ``"failure"``.
+        url:
+            Published URL when available.
+
+        Returns
+        -------
+        str
+            The auto-generated ``log_id``.
+        """
+        import uuid
+
+        log = DistributionLog(
+            log_id=str(uuid.uuid4()),
+            project_id=project_id,
+            platform=platform,
+            account_id=account_id,
+            status=status,
+            error_message=error_message,
+            url=url,
+        )
+        row = log.to_db_row()
+        columns = ", ".join(row.keys())
+        placeholders = ", ".join(f":{k}" for k in row)
+        stmt = f"INSERT INTO distribution_log ({columns}) VALUES ({placeholders})"  # noqa: S608 — parameterized
+        self.conn.execute(stmt, row)
+        self.conn.commit()
+        return log.log_id
+
+    def get_distribution_status(
+        self,
+        project_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return all distribution log entries for a given project.
+
+        Results are ordered most-recent-first.
+
+        Parameters
+        ----------
+        project_id:
+            The project identifier to look up.
+
+        Returns
+        -------
+        list[dict]
+            Each entry contains ``log_id``, ``project_id``, ``platform``,
+            ``account_id``, ``status``, ``error_message``, ``url``,
+            ``created_at``.
+        """
+        cur = self.conn.execute(
+            "SELECT * FROM distribution_log WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
 
     # -- Context manager ------------------------------------------------------
 

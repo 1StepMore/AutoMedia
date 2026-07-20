@@ -123,6 +123,8 @@ from automedia.mcp.tools import (
     update_engine_config,
 )
 
+from automedia.mcp.tools_distribution import distribute_content
+
 # ---------------------------------------------------------------------------
 # Public API — backward-compatible re-exports
 # ---------------------------------------------------------------------------
@@ -195,6 +197,8 @@ __all__ = [
     "help_mcp",
     # Onboarding
     "onboard",
+    # Distribution
+    "distribute_content",
 ]
 
 
@@ -219,6 +223,7 @@ _CATEGORY_PREFIXES: list[tuple[str, str]] = [
     ("pool_", "Topic Pool"),
     ("search_", "Search"),
     ("publish_", "Publishing"),
+    ("distribute_", "Publishing"),
     ("select_", "Topic Selection"),
     ("register_", "Registration"),
     ("extract_", "Document Processing"),
@@ -557,6 +562,17 @@ def create_server() -> FastMCP:
             "Returns the publish result including URL."
         ),
     )(publish_content)
+
+    mcp.tool(
+        description=(
+            "Distribute a project's content to one or more platforms. "
+            "Takes project_id, optional comma-separated platforms (e.g. 'wechat,zhihu'), "
+            "all (bool) to distribute to every registered platform, dry_run (bool) "
+            "to validate without publishing, and optional base_dir. "
+            "Returns a mapping of platform -> status and a summary string. "
+            "When all=True, overrides the platforms parameter."
+        ),
+    )(distribute_content)
 
     mcp.tool(
         description=(

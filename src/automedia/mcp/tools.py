@@ -1985,6 +1985,33 @@ def publish_content(
             automation=automation,
         )
 
+        # -- Log distribution attempts to asset library -------------------
+        try:
+            from automedia.asset_library.db import AssetDatabase
+
+            db = AssetDatabase(brand_name or "default")
+            for key, res in result.items():
+                res_platform = res.get("platform", key)
+                res_status = res.get("status", "")
+                distro_status: str = "failure"
+                if res_status in ("ok", "published", "success"):
+                    distro_status = "success"
+                elif res_status == "draft_created":
+                    distro_status = "draft_created"
+                elif res_status == "skipped":
+                    distro_status = "skipped"
+
+                db.log_distribution(
+                    project_id=project_id,
+                    platform=res_platform,
+                    status=distro_status,
+                    account_id=key if account_ids else "",
+                    error_message=res.get("reason", res.get("error_message", "")),
+                    url=res.get("url", ""),
+                )
+        except Exception as exc:
+            log.warning("publish.distro_log_failed", error=str(exc))
+
         platform_result = result.get(platform, {})
         status = platform_result.get("status", "")
         success = platform_result.get("success", False) or status in ("ok", "published")

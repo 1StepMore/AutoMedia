@@ -230,6 +230,12 @@ LazyTyperGroup.register_fn(
     "run_cmd",
     help_text="Execute the full AutoMedia production pipeline.",
 )
+LazyTyperGroup.register_fn(
+    "distribute",
+    "automedia.cli.commands.distribute",
+    "distribute_cmd",
+    help_text="Run D-gates to prepare project content for distribution platforms.",
+)
 
 
 # ---------------------------------------------------------------------------
