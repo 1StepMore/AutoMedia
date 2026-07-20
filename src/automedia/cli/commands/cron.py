@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -30,6 +31,7 @@ _KNOWN_JOBS: dict[str, str] = {
     "publish-check": "Check for unpublished ready content.",
     "watchdog": "Run the 4-step system health check (alias for check-health).",
     "run-pipeline": "Execute a scheduled pipeline run from cron/jobs.yaml.",
+    "run-distribute": "Execute scheduled distribution commands from cron/jobs.yaml.",
 }
 
 _DEFAULT_DB = Path(".automedia") / "pool.db"
@@ -60,6 +62,7 @@ def cron_run(
         "publish-check": _job_publish_check,
         "watchdog": _job_watchdog,
         "run-pipeline": _job_run_pipeline,
+        "run-distribute": _job_run_distribute,
     }
 
     try:
@@ -280,6 +283,76 @@ def _job_run_pipeline() -> None:
     typer.echo(
         f"  [run-pipeline] Batch complete: {passed} passed, {failed} failed "
         f"(out of {len(results)} schedules)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Job: run-distribute
+# ---------------------------------------------------------------------------
+
+
+def _job_run_distribute() -> None:
+    """Execute scheduled distribution commands from pipeline_schedules.
+
+    Reads every schedule entry in ``pipeline_schedules`` that has a
+    ``command`` field starting with ``automedia distribute`` and executes
+    it via ``subprocess.run``.  Per-entry errors are collected and
+    reported — a single failure does not stop the batch.
+    """
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    distribute_entries = [
+        s for s in schedules
+        if s.get("command", "").startswith("automedia distribute")
+    ]
+
+    if not distribute_entries:
+        typer.echo("  [run-distribute] No scheduled distributions found.")
+        return
+
+    results: list[dict[str, Any]] = []
+    for entry in distribute_entries:
+        name = entry.get("name", "unnamed")
+        command = entry.get("command", "")
+        typer.echo(f"  [run-distribute] Executing: {name!r} ...")
+
+        try:
+            proc = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if proc.returncode == 0:
+                typer.echo(f"  [run-distribute] {name!r} → ok")
+                results.append({"name": name, "status": "success"})
+            else:
+                error_msg = proc.stderr.strip() or f"exit code {proc.returncode}"
+                typer.secho(
+                    f"  [run-distribute] {name!r} FAILED: {error_msg}",
+                    fg=typer.colors.RED,
+                )
+                results.append({"name": name, "status": "failed", "error": error_msg})
+        except subprocess.TimeoutExpired:
+            typer.secho(
+                f"  [run-distribute] {name!r} TIMEOUT (exceeded 600s)",
+                fg=typer.colors.RED,
+            )
+            results.append({"name": name, "status": "failed", "error": "timeout"})
+        except Exception as exc:
+            typer.secho(
+                f"  [run-distribute] {name!r} EXCEPTION: {exc}",
+                fg=typer.colors.RED,
+            )
+            results.append({"name": name, "status": "failed", "error": str(exc)})
+
+    passed = sum(1 for r in results if r.get("status") == "success")
+    failed = len(results) - passed
+    typer.echo(
+        f"  [run-distribute] Batch complete: {passed} passed, {failed} failed "
+        f"(out of {len(results)} entries)."
     )
 
 

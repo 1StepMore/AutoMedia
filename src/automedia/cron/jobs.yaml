@@ -29,4 +29,11 @@ jobs:
   on_failure: log
   schedule: 30 9 * * *
   timeout_s: 60
+- command: automedia cron run run-distribute
+  depends_on: null
+  description: 执行已排期的分发任务
+  name: run-distribute
+  on_failure: log
+  schedule: 0 6 * * *
+  timeout_s: 600
 pipeline_schedules: []
