@@ -159,6 +159,35 @@ _SHORT_VIDEO_GATE_NAMES: list[str] = [
     "L4",
 ]
 
+_REPURPOSE_GATE_NAMES: list[str] = [
+    "pre-gate",
+    "CW",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "G6",
+    "V0",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+]
+
 _MODE_MAP: dict[str, list[str]] = {
     "auto": _AUTO_GATE_NAMES,
     "text_only": _TEXT_ONLY_GATE_NAMES,
@@ -168,6 +197,7 @@ _MODE_MAP: dict[str, list[str]] = {
     "image-carousel": _IMAGE_CAROUSEL_GATE_NAMES,
     "social-thread": _SOCIAL_THREAD_GATE_NAMES,
     "short-video": _SHORT_VIDEO_GATE_NAMES,
+    "repurpose": _REPURPOSE_GATE_NAMES,
 }
 
 # Lifecycle gates — these are required and cannot be excluded via modifiers
