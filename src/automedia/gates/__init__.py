@@ -1,11 +1,23 @@
 """Quality gates — all concrete gate implementations are imported here for auto-registration in GateRegistry.
 
-Gate naming convention: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), CW (content writer), pre-gate.
+Gate naming convention: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), D1-D9 (distribution),
+CW (content writer), pre-gate.
 """
 
 from structlog import get_logger
 
 log = get_logger(__name__)
+
+# Distribution gates (D-series)
+from automedia.gates.distribution import (
+    D1Gate,
+    D2Gate,
+    D3ZhihuRewrite,
+    D4Gate,
+    D5BilibiliRewrite,
+    D6YouTubeGate,
+    D7Gate,
+)
 
 # Text-track gates (G0-G5)
 from automedia.gates._context import GateContext
@@ -42,6 +54,14 @@ from automedia.gates.vision_qa import V1VisionQA
 from automedia.gates.wechat_checklist import G4WechatChecklist
 
 __all__ = [
+    # Distribution gates
+    "D1Gate",
+    "D2Gate",
+    "D3ZhihuRewrite",
+    "D4Gate",
+    "D5BilibiliRewrite",
+    "D6YouTubeGate",
+    "D7Gate",
     # Text-track gates (G0-G5)
     "G0FactCheck",
     "G1Humanizer",

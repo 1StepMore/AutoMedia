@@ -320,6 +320,45 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         ],
         "docstring_ref": "gates/platform_integrity.py",
     },
+    "D4": {
+        "description": (
+            "Xiaohongshu Rewrite Gate — rewrites draft content into"
+            " Xiaohongshu-style notes with emoji-rich, personal experience tone"
+        ),
+        "common_causes": [
+            "LLM returned content shorter than 200 characters minimum",
+            "Generated content lacks emojis or section headings",
+            "Content tone is not personal/first-person enough for Xiaohongshu style",
+            "LLM call failed or timed out",
+        ],
+        "fixes": [
+            "Re-run the LLM rewrite with stronger emphasis on length requirements",
+            "Add explicit emoji and heading requirements to the prompt",
+            "Adjust prompt to emphasize personal experience and first-person narrative",
+            "Retry LLM call or switch to a different model/provider",
+        ],
+        "docstring_ref": "gates/distribution/d4_xiaohongshu.py",
+    },
+    "D1": {
+        "description": (
+            "WeChat Distribution Gate — rewrites base content into WeChat"
+            " Official Account article format (professional tone, structured"
+            " sections, 1500-3000 characters)"
+        ),
+        "common_causes": [
+            "LLM provider returned an error or empty response",
+            "Rewritten output is shorter than the 500-character minimum",
+            "Output lacks WeChat-appropriate structure or formatting",
+            "Brand name or CTA is missing from the rewritten output",
+        ],
+        "fixes": [
+            "Retry the gate (failure_mode='retry') which re-runs the LLM call",
+            "Ensure base content is long enough to produce a substantial rewrite",
+            "Adjust the rewrite prompt to require explicit H2/H3 section headings",
+            "Verify brand information is present in gate_context",
+        ],
+        "docstring_ref": "gates/distribution/d1_wechat.py",
+    },
     "pre-gate": {
         "description": (
             "Topic Selection Gate — filters and scores candidate topics before pipeline entry"
@@ -374,6 +413,105 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "Re-translate preserving markdown structure with explicit format instructions",
         ],
         "docstring_ref": "gates/translation_quality.py",
+    },
+    "D3": {
+        "description": (
+            "Zhihu Rewrite Gate (D3) — rewrites draft content into"
+            " Zhihu-style Q&A or long-form article with expert tone,"
+            " Chinese language, and structured sections"
+        ),
+        "common_causes": [
+            "Output is too short (< 800 characters)",
+            "Output lacks section headings (## or ###)",
+            "LLM fails to generate Chinese Zhihu-style content",
+            "Tone is not sufficiently expert or authoritative",
+        ],
+        "fixes": [
+            "Ensure the LLM prompt includes explicit length and structure requirements",
+            "Add minimum heading count to the generation prompt",
+            "Verify the LLM model is capable of Chinese text generation",
+            "Include example Zhihu posts in the system prompt for tone guidance",
+        ],
+        "docstring_ref": "gates/d3_zhihu.py",
+    },
+    "D5": {
+        "description": (
+            "Bilibili Rewrite Gate — rewrites draft content into Bilibili-style"
+            " video script with [SCENE] markers, hook opening, and Chinese"
+        ),
+        "common_causes": [
+            "Output is shorter than 500 characters",
+            "Missing [SCENE] markers in the video script",
+            "LLM returned empty or malformed content",
+            "Content lacks a hook opening suitable for Bilibili's audience",
+        ],
+        "fixes": [
+            "Ensure the LLM prompt emphasises Chinese Bilibili video script format",
+            "Verify the generated content contains [SCENE] markers between scenes",
+            "Retry with a different LLM model or increased max_tokens",
+            "Add explicit instructions for a hook opening in the first 10 seconds",
+        ],
+        "docstring_ref": "gates/distribution/d5_bilibili.py",
+    },
+    "D2": {
+        "description": (
+            "Twitter/X Distribution Gate — rewrites base content into a"
+            " Twitter/X thread format (5-10 tweets, each ≤ 280 characters)"
+        ),
+        "common_causes": [
+            "LLM output has fewer than 3 tweets",
+            "One or more tweets exceed the 280-character limit",
+            "LLM returned an article-style response instead of a thread",
+            "Tweets are not properly numbered or separated",
+        ],
+        "fixes": [
+            "Re-run the LLM with a stronger emphasis on creating at least 5 tweets",
+            "Reduce output verbosity to fit within 280 chars per tweet",
+            "Include explicit thread format instructions in the prompt",
+            "Post-process to insert tweet markers if the LLM forgot them",
+        ],
+        "docstring_ref": "gates/distribution/d2_twitter.py",
+    },
+    "D7": {
+        "description": (
+            "TikTok Distribution Gate — rewrites base content into a TikTok"
+            " short-form video script (hook-first, trending tone, 15-60 sec,"
+            " 100-500 characters)"
+        ),
+        "common_causes": [
+            "LLM output is shorter than 100 characters or longer than 500",
+            "LLM returned article-style content instead of a short script",
+            "Output lacks a strong hook in the opening line",
+            "LLM call failed or timed out",
+        ],
+        "fixes": [
+            "Re-run the LLM with stronger emphasis on 100-500 character limit",
+            "Include explicit hook-first and short-form requirements in the prompt",
+            "Verify target language is appropriate for TikTok's audience",
+            "Retry the gate (failure_mode='retry') which re-runs the LLM call",
+        ],
+        "docstring_ref": "gates/distribution/d7_tiktok.py",
+    },
+    "D6": {
+        "description": (
+            "YouTube Standalone Rewrite Gate — rewrites pipeline content"
+            " into a YouTube-style video script with intro hook, body"
+            " sections, and outro CTA in English"
+        ),
+        "common_causes": [
+            "LLM returned script shorter than 500 characters",
+            "Missing intro/hook section heading in generated script",
+            "Missing body section headings",
+            "Missing outro or call-to-action in the script",
+            "LLM provider error or empty response",
+        ],
+        "fixes": [
+            "Re-run the LLM with a more detailed prompt specifying section structure",
+            "Verify the content input provides enough material for a full script",
+            "Check LLM configuration (API key, model, endpoint)",
+            "Increase max_tokens to allow longer script generation",
+        ],
+        "docstring_ref": "gates/distribution/d6_youtube.py",
     },
     "H0": {
         "description": (

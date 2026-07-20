@@ -10,6 +10,7 @@ that every downstream gate has real content to work with.
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -47,6 +48,65 @@ _SUGGESTIONS: dict[str, str] = {
     "content_not_empty": "Review the writer prompt — it may be producing empty responses",
     "file_write_success": "Ensure the project directory exists and is writable",
 }
+
+
+_SEO_KEYS: list[str] = [
+    "keyword_density",
+    "heading_structure",
+    "meta_readiness",
+    "readability",
+    "content_freshness",
+]
+
+_SEO_DEFAULT_SCORES: dict[str, int] = {k: 70 for k in _SEO_KEYS}
+_SEO_THRESHOLD: int = 40
+_MAX_SEO_RETRIES: int = 2
+
+_SEO_SCORING_PROMPT = (
+    "You are an SEO content analyzer. Evaluate the following article and "
+    "score it on these 5 dimensions (0-100):\n"
+    "1. keyword_density — How well are target keywords naturally integrated?\n"
+    "2. heading_structure — Are headings (H1/H2/H3) properly structured and descriptive?\n"
+    "3. meta_readiness — Would this content produce a good meta title/description?\n"
+    "4. readability — Is the content easy to read with appropriate sentence length and paragraph structure?\n"
+    "5. content_freshness — Does the content feel current, relevant, and well-researched?\n"
+    "\n"
+    "Return ONLY valid JSON in this exact format (no other text):\n"
+    '{"keyword_density": 75, "heading_structure": 80, "meta_readiness": 70, '
+    '"readability": 85, "content_freshness": 60}'
+)
+
+_SEO_IMPROVE_PROMPT = (
+    "You are an SEO-optimized content writer. The content below scored "
+    "poorly on certain SEO dimensions. "
+    "Rewrite the ENTIRE article to improve the given dimensions:\n"
+    "1. Better keyword density with natural integration\n"
+    "2. Clear heading structure (H2/H3)\n"
+    "3. Meta-friendly title and opening paragraph\n"
+    "4. Improved readability (shorter sentences, clear paragraphs)\n"
+    "5. Add fresh, current perspectives\n"
+    "\n"
+    "Keep the same topic, brand voice, and overall message. "
+    "Return the full rewritten article."
+)
+
+
+def _parse_seo_scores(text: str) -> dict[str, int] | None:
+    """Parse 5-dimension SEO score JSON from LLM output."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    try:
+        data = json.loads(text[start : end + 1])
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    for key in _SEO_KEYS:
+        if key not in data:
+            return None
+    return {key: max(0, min(100, int(data[key]))) for key in _SEO_KEYS}
 
 
 def _derive_expected(check_name: str) -> str:
@@ -286,6 +346,53 @@ class ContentWriterGate(BaseGate):
         gate_context.setdefault("output_files", []).append(
             {"type": "article", "path": output_path, "md5": ""}
         )
+
+        seo_scores: dict[str, int] = dict(_SEO_DEFAULT_SCORES)
+        seo_retries_remaining: int = _MAX_SEO_RETRIES
+        seo_rewritten: bool = False
+
+        while seo_retries_remaining >= 0:
+            try:
+                seo_response = llm_complete(
+                    f"Article content:\n\n{content}\n\n---\n\nEvaluate SEO scores:",
+                    config=config,
+                    system_prompt=_SEO_SCORING_PROMPT,
+                )
+            except LLMError:
+                log.warning("cw_seo_llm_error", remaining=seo_retries_remaining)
+                break
+
+            parsed = _parse_seo_scores(seo_response)
+            if parsed is None:
+                log.warning("cw_seo_parse_error", remaining=seo_retries_remaining)
+                break
+
+            seo_scores = parsed
+            low_scores = [k for k, v in seo_scores.items() if v < _SEO_THRESHOLD]
+            if not low_scores or seo_retries_remaining == 0:
+                break
+
+            low_detail = ", ".join(low_scores)
+            try:
+                content = llm_complete(
+                    "Original article:\n\n"
+                    f"{content}\n\n"
+                    f"---\n\nImprove SEO for these dimensions: {low_detail}",
+                    config=config,
+                    system_prompt=_SEO_IMPROVE_PROMPT,
+                )
+            except LLMError:
+                log.warning("cw_seo_rewrite_error", remaining=seo_retries_remaining)
+                break
+
+            seo_rewritten = True
+            seo_retries_remaining -= 1
+
+        gate_context.setdefault("extra", {})["seo_scores"] = seo_scores
+        if seo_rewritten:
+            gate_context["content"] = content
+            with open(output_path, "w", encoding="utf-8") as fh:
+                fh.write(content)
 
         return {
             "passed": True,

@@ -180,6 +180,20 @@ _PLATFORM_CATEGORIES: dict[str, str] = {
     "youtube": "video-first",
     "twitter": "text-first",
     "bilibili": "video-first",
+    "tiktok": "video-first",
+    "linkedin": "text-first",
+    "medium": "text-first",
+    "newsletter": "text-first",
+    "douyin": "video-first",
+    "wordpress": "text-first",
+    "reddit": "text-first",
+    "baijiahao": "text-first",
+    "juejin": "text-first",
+    "toutiao": "text-first",
+    "facebook": "mixed-social",
+    "instagram": "mixed-social",
+    "weibo": "text-first",
+    "kuaishou": "video-first",
 }
 
 
