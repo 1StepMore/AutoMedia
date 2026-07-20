@@ -461,7 +461,7 @@ def _structured_completion_with_fallback(
         )
         return response.choices[0].message.parsed
     except _FALLBACK_STRUCTURED_ERRORS as exc:
-        logger.info(
+        logger.warning(
             "Structured beta API not supported by provider (%s: %s). "
             "Falling back to manual JSON parse.",
             type(exc).__name__,
