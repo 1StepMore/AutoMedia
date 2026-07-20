@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools import search_assets
 
 # ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ class TestSearchAssets:
     @patch("automedia.asset_library.search_assets")
     def test_search_error_handling(self, mock_search: MagicMock) -> None:
         """search_assets returns structured error on failure."""
-        mock_search.side_effect = RuntimeError("Database connection failed")
+        mock_search.side_effect = AutoMediaError("Database connection failed")
 
         result = search_assets(query="AI", brand="my-brand")
 

@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools import (
     archive_project,
     batch_run,
@@ -408,7 +409,7 @@ class TestSearchAssetsErrors:
         """search_assets returns proper error shape on failure."""
         with patch(
             "automedia.asset_library.search_assets",
-            side_effect=RuntimeError("DB connection failed"),
+            side_effect=AutoMediaError("DB connection failed"),
         ):
             result = search_assets(query="test", brand="brand")
 

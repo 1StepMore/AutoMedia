@@ -26,8 +26,15 @@ class TestMCPErrorCode:
         expected = {
             "INVALID_PARAM",
             "NOT_FOUND",
+            "BRAND_NOT_FOUND",
+            "CONFIG_MISSING",
             "PIPELINE_ERROR",
+            "GATE_FAILURE",
             "ENGINE_ERROR",
+            "LLM_ERROR",
+            "IMPORT_ERROR",
+            "VALIDATION_ERROR",
+            "SESSION_LOST",
             "ALLOWLIST_DENIED",
             "UNKNOWN",
         }
@@ -151,9 +158,12 @@ class TestErrorResponse:
         assert result["error"]["code"] == "UNKNOWN"
 
     def test_without_resolution_uses_default(self) -> None:
-        """error_response without resolution falls back to a generic message."""
+        """error_response without resolution falls back to the code-specific default."""
         result = error_response(MCPErrorCode.NOT_FOUND, "Resource not found")
-        assert result["error"]["resolution"] == "See documentation or contact support"
+        assert (
+            result["error"]["resolution"]
+            == "Verify the resource identifier (e.g. project_id) and try again"
+        )
 
     def test_with_empty_resolution_uses_default(self) -> None:
         """error_response with empty resolution string falls back to generic."""
@@ -187,7 +197,10 @@ class TestErrorResponse:
         assert error["resolution"] == "fix it"
 
     def test_resolution_is_optional_parameter(self) -> None:
-        """resolution parameter defaults to empty string (then to generic)."""
+        """resolution parameter defaults to code-specific resolution."""
         # Should not raise TypeError — resolution is optional
         result = error_response(MCPErrorCode.NOT_FOUND, "nope")
-        assert result["error"]["resolution"] == "See documentation or contact support"
+        assert (
+            result["error"]["resolution"]
+            == "Verify the resource identifier (e.g. project_id) and try again"
+        )

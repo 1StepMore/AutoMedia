@@ -182,7 +182,7 @@ class TestBuildGatesFromNames:
         gates = _build_gates_from_names(["G1"], override_failure_mode={"G1": "stop"})
         assert len(gates) == 1
         assert gates[0].gate_name == "G1"
-        assert getattr(gates[0], "_failure_mode") == "stop"
+        assert gates[0]._failure_mode == "stop"
         assert gates[0].failure_mode == "stop"  # property access
 
     def test_override_multiple_gates(self) -> None:
@@ -223,7 +223,6 @@ class TestBuildGatesFromNames:
     def test_override_does_not_affect_class_attribute(self) -> None:
         """Instance override does not mutate the class-level ClassVar."""
         import automedia.gates  # noqa: F401
-
         from automedia.gates.humanizer import G1Humanizer
 
         class_before = G1Humanizer._failure_mode
@@ -504,7 +503,7 @@ class TestRunFullPipeline:
         mock_build.return_value = [_AlwaysPassGate()]
 
         run_full_pipeline("t", "b", tenant_id="acme")
-        mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
+        mock_project.init.assert_called_once_with("t", "b", base_dir=None, tenant_id="acme")
 
     @patch("automedia.hitl.config.HITLConfig")
     @patch("automedia.core.config_loader.load_config", return_value={})
@@ -1161,7 +1160,7 @@ class TestPreLockBehavior:
         mock_project.init.return_value = mock_proj
         mock_build.return_value = [_AlwaysPassGate()]
         run_full_pipeline("t", "b", tenant_id="acme")
-        mock_project.init.assert_called_once_with("t", "b", tenant_id="acme")
+        mock_project.init.assert_called_once_with("t", "b", base_dir=None, tenant_id="acme")
 
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
@@ -1410,5 +1409,4 @@ class TestOverrideGateRules:
             workflow_obj=None,
             brand="my-brand",
         )
-        from automedia.pipelines.runner import _TEXT_ONLY_GATE_NAMES
         assert gate_names == list(_TEXT_ONLY_GATE_NAMES)

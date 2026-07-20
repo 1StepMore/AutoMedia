@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 from automedia.mcp.tools import add_brand, configure_llm, init_config
 
-
 # ===================================================================
 # Tests: init_config
 # ===================================================================
@@ -191,7 +190,7 @@ class TestAddBrand:
         """add_brand returns error when save_brand_profile raises."""
         with patch(
             "automedia.manifests.brand_profile_schema.save_brand_profile",
-            side_effect=ValueError("validation failed"),
+            side_effect=OSError("save failed"),
         ):
             result = add_brand(name="")
 
