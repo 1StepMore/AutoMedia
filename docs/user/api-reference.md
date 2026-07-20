@@ -33,7 +33,7 @@ result = run_full_pipeline(
 | `topic` | `str` | (required) | Content topic/theme |
 | `brand` | `str` | (required) | Brand identifier, corresponds to brand-profile.yaml |
 | `hooks` | `list[GateHook] \| None` | `None` | List of GateHook observers |
-| `mode` | `str` | `"auto"` | Run mode: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video` |
+| `mode` | `str` | `"auto"` | Run mode: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose` |
 | `resume_from` | `str \| None` | `None` | Resume from a specific Gate (skip preceding Gates) |
 | `config_dir` | `str \| None` | `None` | Path to project `.automedia/` config directory |
 | `tenant_id` | `str` | `"default"` | Tenant/namespace identifier |
@@ -45,14 +45,15 @@ result = run_full_pipeline(
 
 | mode | Executed Gates | Use Case |
 |------|-----------|----------|
-| `auto` | pre-gate + CW + G0-G5 + V0-V7 + H0 + L1-L4 | Full pipeline production |
-| `text_only` | CW + G0-G5 + L1-L4 | Text-only production |
-| `text_with_cover` | CW + G0-G5 + V0 + L1-L4 | Text plus cover image |
+| `auto` | pre-gate + CW + G0-G6 + V0-V7 + H0 + L1-L4 | Full pipeline production |
+| `text_only` | CW + G0-G6 + L1-L4 | Text-only production |
+| `text_with_cover` | CW + G0-G6 + V0 + L1-L4 | Text plus cover image |
 | `video_only` | V0-V7 + H0 + L1-L4 | Video-only production |
-| `image-carousel` | CW + G0-G5 + V0 + V6 + L1-L4 | Carousel image output |
-| `social-thread` | CW + G0-G5 + L1-L4 | Thread-style social posts |
-| `short-video` | CW + G0-G5 + V0-V6 + H0 + L1-L4 | Short-form video |
+| `image-carousel` | CW + G0-G6 + V0 + V6 + L1-L4 | Carousel image output |
+| `social-thread` | CW + G0-G6 + L1-L4 | Thread-style social posts |
+| `short-video` | CW + G0-G6 + V0-V6 + H0 + L1-L4 | Short-form video |
 | `qa_only` | G0 + G2 + G3 + V1 + V6 | Quality review only |
+| `repurpose` | CW + G0-G6 + V0-V7 + H0 + L1-L4 + P1-P4 | Full pipeline + deep platform repurpose |
 
 ### Return Value
 

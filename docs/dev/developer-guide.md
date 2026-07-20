@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  50 tools
+   │   select_topic, run_pipeline, ...    │  52 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -195,14 +195,14 @@ External Call Layer
 |------|------|
 | `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`), overrides (`overrides.py`), media specs (`media_spec.py`), workflows (`workflow.py`) |
 | `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
-| `gates/` | 21 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
+| `gates/` | 33 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
 | `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
 | `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
 | `cron/` | Scheduled job YAML definitions (`jobs.yaml`), pipeline schedule runner (`runner.py`) |
 | `mcp/` | MCP Server implementation (`server.py`), stdio transport |
-| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (21 platform overrides for 7 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (30 platform overrides for 10 platforms) |
 
 ### Unified Three-Layer Entry Point
 
@@ -285,27 +285,30 @@ class MyNewGate(BaseGate):
 
 | Prefix | Range | Example |
 |------|------|------|
-| G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
-| V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
+| G0-G6 | Copy Gates | Fact check, humanizer, copy review, brand CTA, WeChat checks, HTML lint, tone check |
+| V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering, content semantic, TTS brand asset, MP3×SRT, six-step hard |
 | H0 | Human Review Gate | Human-in-the-loop content and video approval |
 | L1-L4 | Lifecycle Gates | Publish log, archive validation, platform integrity, translation quality |
+| D1-D7 | Distribution Gates | Standalone platform-specific rewrite gates (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok) |
+| P1-P4 | Repurpose Gates | Sub-pipeline deep repurpose gates (WeChat, Twitter/X, Newsletter, Bilibili) |
 
 ### Pipeline Modes
 
-The pipeline supports eight modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
+The pipeline supports nine modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|
-| `auto` | pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
-| `text_only` | CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
-| `text_with_cover` | CW → G0-G5 → V0 → L1-L4 | Text output plus a single cover image |
+| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
+| `text_only` | CW → G0-G6 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | CW → G0-G6 → V0 → L1-L4 | Text output plus a single cover image |
 | `video_only` | V0-V7 → H0 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
-| `image-carousel` | CW → G0-G5 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
-| `social-thread` | CW → G0-G5 → L1-L4 | Thread-style posts for social platforms |
-| `short-video` | CW → G0-G5 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
+| `image-carousel` | CW → G0-G6 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
+| `social-thread` | CW → G0-G6 → L1-L4 | Thread-style posts for social platforms |
+| `short-video` | CW → G0-G6 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
 | `qa_only` | G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
+| `repurpose` | CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4 | Full pipeline followed by platform-specific deep repurpose gates |
 
-Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, and `_QA_ONLY_GATE_NAMES`.
+Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, `_QA_ONLY_GATE_NAMES`, and `_REPURPOSE_GATE_NAMES`.
 
 ## Configuration Hierarchy
 
@@ -374,7 +377,7 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 | RL3 | Must not modify `mcp_allowlist.yaml` without explicit user request | Developer discipline |
 | RL4 | Tests must use synthetic fixtures from `tests/fixtures/synth/` | Developer discipline |
 | RL5 | Must use `automedia archive` command, never manual directory operations | Developer discipline |
-| RL6 | Follow gate naming convention: G0-G5, V0-V7, L1-L4, H0, CW, pre-gate | Developer discipline |
+| RL6 | Follow gate naming convention: G0-G6, V0-V7, L1-L4, D1-D7, P1-P4, H0, CW, pre-gate | Developer discipline |
 | RL7 | Must add new gates to `failure_modes.py` | Developer discipline |
 | RL8 | Must run pre-commit checks before committing | Pre-commit hooks (automated) |
 | RL9 | Respect GateHook readonly contract -- observe but do not modify | Developer discipline |
@@ -383,18 +386,19 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 
 ### Gate List
 
-21 gates across six phases. Gate order: pre-gate `→` CW `→` G0-G5 `→` V0-V7 `→` H0 `→` L1-L4.
+33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Gate order: pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of `repurpose` mode.
 
 | Phase | Gate | Name | Failure Mode |
 |-------|------|------|-------------|
 | Pre | pre-gate | Topic selection validation | stop |
-| Writing | CW | Content writing | stop |
+| Writing | CW | Content writing (with inline SEO scoring) | stop |
 | Copy | G0 | Fact check | stop |
 | Copy | G1 | Humanizer | retry |
 | Copy | G2 | Copy review | retry |
 | Copy | G3 | Brand CTA | stop |
 | Copy | G4 | WeChat checklist | stop |
 | Copy | G5 | HTML hard check | stop |
+| Copy | G6 | Tone check | stop |
 | Video | V0 | Lint | stop |
 | Video | V1 | Vision QA | stop |
 | Video | V2 | Pre-send Whisper | stop |
@@ -409,20 +413,46 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 | Lifecycle | L3 | Platform integrity | stop |
 | Lifecycle | L4 | Translation quality | retry |
 
+### Distribution Gates (D1-D7)
+
+Standalone rewrite gates invoked via `automedia distribute` CLI or `distribute_content` MCP tool. NOT part of the standard pipeline — run on-demand against already-published content.
+
+| Gate | Platform | Purpose |
+|------|----------|---------|
+| D1 | WeChat | Rewrite content for WeChat Official Account format |
+| D2 | Twitter/X | Rewrite content for Twitter/X short-form format |
+| D3 | Zhihu | Rewrite content for Zhihu long-form article format |
+| D4 | Xiaohongshu | Rewrite content for Xiaohongshu visual-first format |
+| D5 | Bilibili | Rewrite content for Bilibili video+text format |
+| D6 | YouTube | Rewrite content for YouTube video description format |
+| D7 | TikTok | Rewrite content for TikTok short-video script format |
+
+### Repurpose Gates (P1-P4)
+
+Sub-pipeline gates that run at the end of `repurpose` mode, performing deep content repurposing for specific platforms.
+
+| Gate | Platform | Purpose |
+|------|----------|---------|
+| P1 | WeChat | Deep repurpose for WeChat Official Account |
+| P2 | Twitter/X | Deep repurpose for Twitter/X thread format |
+| P3 | Newsletter | Deep repurpose for email newsletter format |
+| P4 | Bilibili | Deep repurpose for Bilibili video+article format |
+
 ### Pipeline Modes
 
 Eight modes select different gate subsets, defined in `automedia/pipelines/runner.py`:
 
 | Mode | Gates | Use Case |
 |------|-------|----------|
-| `auto` | pre-gate `→` CW `→` G0-G5 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
-| `text_only` | CW `→` G0-G5 `→` L1-L4 | Draft-only output |
-| `text_with_cover` | CW `→` G0-G5 `→` V0 `→` L1-L4 | Text + cover image |
+| `auto` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
+| `text_only` | CW `→` G0-G6 `→` L1-L4 | Draft-only output |
+| `text_with_cover` | CW `→` G0-G6 `→` V0 `→` L1-L4 | Text + cover image |
 | `video_only` | V0-V7 `→` H0 `→` L1-L4 | Video-only, reuse existing draft |
-| `image-carousel` | CW `→` G0-G5 `→` V0 `→` V6 `→` L1-L4 | Carousel-image output |
-| `social-thread` | CW `→` G0-G5 `→` L1-L4 | Thread-style posts |
-| `short-video` | CW `→` G0-G5 `→` V0-V6 `→` H0 `→` L1-L4 | Short-form video |
+| `image-carousel` | CW `→` G0-G6 `→` V0 `→` V6 `→` L1-L4 | Carousel-image output |
+| `social-thread` | CW `→` G0-G6 `→` L1-L4 | Thread-style posts |
+| `short-video` | CW `→` G0-G6 `→` V0-V6 `→` H0 `→` L1-L4 | Short-form video |
 | `qa_only` | G0 `→` G2 `→` G3 `→` V1 `→` V6 | Selective QA pass |
+| `repurpose` | CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 `→` P1-P4 | Full pipeline + deep repurpose for platform distribution |
 
 ## Account & Publishing Layer (PRD-4)
 

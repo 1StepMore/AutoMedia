@@ -33,10 +33,12 @@ Output:
 Registered MCP tools:
   - add_cron_schedule
   - add_pool_topic
+  - analyze_content
   - archive_project
   - batch_run
   - connect_account
   - disconnect_account
+  - distribute_content
   - engine_health
   - evaluate_content_quality
   - extract_brief
@@ -73,7 +75,7 @@ Registered MCP tools:
   - update_engine_config
 ```
 
-## Available Tools (50)
+## Available Tools (52)
 
 | Tool | Description |
 |------|------|
@@ -113,6 +115,8 @@ Registered MCP tools:
 | `get_account_health` | Check an account's health status |
 | `disconnect_account` | Disconnect/remove a platform account |
 | `publish_content` | Publish a project to a platform |
+| `distribute_content` | Distribute pipeline content to platforms via D-gates (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok) |
+| `analyze_content` | Compute content analytics (word count, sentiment, readability, brand mentions, SEO scores) |
 | `register_platform_adapter` | Register a platform adapter stub |
 | `add_cron_schedule` | Add a cron schedule entry |
 | `list_cron_schedules` | List all cron schedules |
@@ -336,7 +340,7 @@ One or more input parameters failed validation.
 
 | Tool | Condition | Resolution |
 |------|-----------|------------|
-| `run_pipeline` | Mode not in `VALID_MODES` | Pass a valid mode: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video` |
+| `run_pipeline` | Mode not in `VALID_MODES` | Pass a valid mode: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose` |
 | `run_pipeline` | Workflow name not found | Check workflow name with `list_workflows()` |
 | `run_pipeline_from_strategy` | Workflow name not found | Check workflow name with `list_workflows()` |
 | `archive_project` | Project status is not `published` and `force` is False | Either publish the project first, or pass `force=True` |

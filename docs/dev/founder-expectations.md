@@ -7,7 +7,7 @@
 
 ## 1. Why Founder's Expectations?
 
-AutoMedia has 2,955 test functions, 20 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
+AutoMedia has 2,955 test functions, 33 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
 
 **Does this project actually solve the problem I created it to solve?**
 
@@ -175,8 +175,8 @@ Expectations are grouped by journey phase.
 |-----------|---------------|
 | **Human: default mode** | Configurable. `automedia run --topic "X" --brand "Y"` uses whatever `default_mode` is set in `.automedia/config.yaml`. If unset, there is no default — user must specify `--mode`. |
 | **Agent: default mode** | `run_pipeline` MCP tool has `mode` parameter with the same default behavior — reads from config if available, otherwise requires explicit parameter. |
-| **Available modes** | 8 modes: `auto` (full pipeline: content → quality gates → video → lifecycle), `text_only` (content writing + quality gates, skip video), `text_with_cover` (text content with cover image), `video_only` (video processing only, uses existing content), `qa_only` (re-run selected quality gates on existing output), `image-carousel` (image carousel with lifecycle gates), `social-thread` (social media thread format), `short-video` (short-form video pipeline). |
-| **Implementation status** | ✅ 8 modes fully implemented with mode-specific gate lists in `_MODE_MAP` in `runner.py`: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`. |
+| **Available modes** | 9 modes: `auto` (full pipeline: content → quality gates → video → lifecycle), `text_only` (content writing + quality gates, skip video), `text_with_cover` (text content with cover image), `video_only` (video processing only, uses existing content), `qa_only` (re-run selected quality gates on existing output), `image-carousel` (image carousel with lifecycle gates), `social-thread` (social media thread format), `short-video` (short-form video pipeline), `repurpose` (full pipeline + deep platform repurpose via P1-P4). |
+| **Implementation status** | ✅ 9 modes fully implemented with mode-specific gate lists in `_MODE_MAP` in `runner.py`: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`. |
 | **Rationale** | `auto` mode may fail due to missing video deps; `text_only` is a conscious choice per run. No silent default that could fail unexpectedly. Mode determines what the pipeline produces; platform adapters then consume what they can from the output (see F34). |
 
 #### F08 — Runtime Output
@@ -816,7 +816,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Current state** | ❌ **Gap 3: Gate composition is global per mode.** 8 modes (`_MODE_MAP` in `runner.py`) define global gate lists. All platforms sharing the same mode run the exact same gate sequence. There is no mechanism to add/remove/modify gates per platform. |
+| **Current state** | ❌ **Gap 3: Gate composition is global per mode.** 9 modes (`_MODE_MAP` in `runner.py`) define global gate lists. All platforms sharing the same mode run the exact same gate sequence. There is no mechanism to add/remove/modify gates per platform. |
 | **Where the gap lives** | `automedia/pipelines/runner.py` lines 57–195: `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, etc. are static lists. `GateEngine` in `gate_engine.py` executes whatever gate list it receives. The gate list is built from mode alone — no platform influence. |
 | **What exists** | ✅ The 8-mode system + `_derive_mode_from_platforms()` (line 215) which maps platform categories to modes. Mode is platform-influenced at a coarse level (text-first → `text_only`, mixed-social → `auto`), but individual gate selection is not. |
 | **What's missing** | Platform-level gate modifiers: `platforms.<platform>.gates.include: ["G6"]` (add a custom gate for this platform only), `platforms.<platform>.gates.exclude: ["V3"]` (skip a gate for this platform), `platforms.<platform>.gates.override_failure_mode: {"G1": "stop"}` (change failure behavior per-platform). |
@@ -862,7 +862,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | UX Detail | Specification |
 |-----------|---------------|
 | **Current state** | ❌ **Gap 6: No "workflow" concept exists.** Everything is implicit in Python code. Pipeline behavior is determined by: mode + brand config + platform list + global defaults. There is no single declarative artifact that says "here is a complete recipe for producing WeChat articles." Users must understand `runner.py`, `_MODE_MAP`, gate names, config hierarchy, and override file layout to customize anything. |
-| **What exists** | ✅ Building blocks exist: 8 modes, 20 gates, 6-layer config, override system, cron scheduling, platform adapters. What's missing is the glue that binds them into named, reusable workflows. |
+| **What exists** | ✅ Building blocks exist: 9 modes, 33 gates, 6-layer config, override system, cron scheduling, platform adapters. What's missing is the glue that binds them into named, reusable workflows. |
 | **What's missing** | A `workflows.yaml` file (in project `.automedia/` or user `~/.automedia/`) defining named workflows. Each workflow specifies: `mode`, `platform` binding, `gates` (base + include/exclude), `prompt_overrides` (directory or inline), `media_spec_overrides`, and optional `schedule` (cron expression + count). |
 | **Example workflow** | ```yaml<br>workflows:<br>  wechat-daily:<br>    mode: text_only<br>    platforms: [wechat]<br>    gates:<br>      base: text_only<br>      exclude: [G2]  # skip copy review for daily runs<br>    prompts:<br>      dir: overrides/prompts/wechat/<br>    media:<br>      image: {width: 900, height: 383, format: jpg}<br>    schedule:<br>      expression: "0 9 * * *"<br>      count: 1<br>``` |
 | **Default behavior** | No `workflows.yaml` → system uses current behavior (mode-based gate lists, global prompts, brand platform list). Workflows are entirely opt-in. |
@@ -911,11 +911,11 @@ Reality:  I give a topic → AutoMedia writes and checks (text_only works)
 | Video → publish | ⚠️ Partial | WeChat ✅, Zhihu ✅, Xiaohongshu ⚠️ (manual only) |
 | **End-to-end: topic → published** | ⚠️ **Partial** | Works for text to WeChat/Zhihu; video and Xiaohongshu have gaps |
 
-### 4.2 "20 quality gates ensure quality"
+### 4.2 "33 quality gates ensure quality"
 
 ```
-Promise:  20 automated gates check every aspect of content quality
-Reality:  20 gates exist. G0/G1/G2 use hybrid LLM-first + fallback; others are deterministic/regex
+Promise:  33 automated gates check every aspect of content quality
+Reality:  33 gates exist across 8 families: G0-G6 (copy), V0-V7 (video), H0 (review), L1-L4 (lifecycle), D1-D7 (distribution), P1-P4 (repurpose). G0/G1/G2 use hybrid LLM-first + fallback; others are deterministic/regex.
 ```
 
 | Aspect | Status | Gap |
@@ -926,6 +926,7 @@ Reality:  20 gates exist. G0/G1/G2 use hybrid LLM-first + fallback; others are d
 | Brand CTA (G3) | ✅ Works | Pattern matching on known terms |
 | WeChat format (G4) | ✅ Works | Length/count checks |
 | HTML lint (G5) | ✅ Works | Tag validation |
+| Tone check (G6) | ✅ Works | LLM evaluation with deterministic fallback |
 | Video lint (V0) | ⚠️ Partial | File existence, not content quality |
 | Vision QA (V1) | ⚠️ Degrades | Falls back to pixel luminance on rate limit |
 | Whisper transcribe (V2) | ✅ Works | Full transcription |
@@ -934,13 +935,15 @@ Reality:  20 gates exist. G0/G1/G2 use hybrid LLM-first + fallback; others are d
 | MP3 vs SRT sync (V5) | ✅ Works | Timing alignment |
 | Subtitle render (V6) | ✅ Works | Pixel-level check |
 | Six-step hard (V7) | ⚠️ Partial | File existence + structure |
-| **Overall: 20 gates exist, ~12 do meaningful validation** | ⚠️ | Some gates are structural checks, not quality assertions |
+| D1-D7 distribution | ✅ Works | Platform-specific standalone rewrite gates |
+| P1-P4 repurpose | ✅ Works | Deep repurpose sub-pipeline gates |
+| **Overall: 33 gates exist across 8 families** | ⚠️ | Some gates are structural checks, not quality assertions |
 
 ### 4.3 "AI Agent can operate the pipeline"
 
 ```
 Promise:  AI coding agents (Claude Code, OpenCode, etc.) can run AutoMedia via MCP
-Reality:  MCP server exists with 41 tools, but agent integration quality varies
+Reality:  MCP server exists with 52 tools, but agent integration quality varies
 ```
 
 | Aspect | Status | Gap |
@@ -988,7 +991,7 @@ Not all expectations are equal. This matrix ranks all 55 expectations by **impor
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
 | **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others) |
-| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (8 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (2955 tests) |
+| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (9 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (2955 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
 | **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
@@ -1032,7 +1035,7 @@ class PhaseResult:
 
 @dataclass
 class ValueResult:
-    proposition: str                       # "topic to published", "20 gates", etc.
+    proposition: str                       # "topic to published", "33 gates", etc.
     verdict: Literal["fulfilled", "partial", "broken"]
     gaps: list[str]
 ```
@@ -1106,7 +1109,7 @@ This flow works. It's the project's strongest path.
 | Source path input | ✅ Implemented | `source_path` (local file/directory) + `source_url` (URL fetch) in `run_pipeline` |
 | Omni Triad processing | ✅ Implemented | OPP (extract), OL (localize), ORF (convert) — all with MCP tools |
 | Trending topic discovery | ✅ Implemented | `research_topics` MCP tool with LLM + trending data |
-| 8 pipeline modes | ✅ Implemented | auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video |
+| 9 pipeline modes | ✅ Implemented | auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose |
 | Publish automation model | ✅ Implemented | Three levels (auto/review/manual) per platform with credential refresh |
 | Brand→platform binding | ✅ Implemented | Brand config declares platforms; content type auto-derived |
 | Publish error recovery | ✅ Implemented | Retry + credential refresh + platform isolation |
@@ -1196,7 +1199,7 @@ An AI agent can evaluate the True Test by running each criterion and reporting P
 | End-to-end flow test (text_only) | ❓ Not performed |
 | End-to-end flow test (auto) | ❓ Not performed |
 | End-to-end flow test (publish) | ❓ Not performed |
-| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (8 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F37 (cron tools: add/list/remove/get_cron_health/test_cron_schedule), F42 (config introspection + search_assets MCP), F48 (v1 readable only) |
+| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (9 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F37 (cron tools: add/list/remove/get_cron_health/test_cron_schedule), F42 (config introspection + search_assets MCP), F48 (v1 readable only) |
 | Intentional divergences documented | ✅ Xiaohongshu manual-only (F32), IM notifications out of scope (agent framework responsibility) |
 | Milestone mapping | ✅ Defined and aligned with current scope |
 | True Test | ✅ Defined with 10-point agent-verifiable PASS/FAIL checklist |

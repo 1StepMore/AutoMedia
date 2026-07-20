@@ -37,7 +37,7 @@ A `status="partial"` means some gates passed but a `failure_mode="stop"` gate fa
 
 Each gate has a `failure_mode` defined at the class level:
 
-- **`"stop"`** — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: pre-gate, CW, G0, G3, G4, G5, V0, V1, V2, V3, V4, V6, V7, L1, L2, L3, L4, H0.
+- **`"stop"`** — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: pre-gate, CW, G0, G3, G4, G5, G6, V0, V1, V2, V3, V4, V6, V7, L1, L2, L3, L4, H0, D1-D7, P1-P4.
 - **`"retry"`** — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: G1, G2, V5.
 
 Gates with `"retry"` mode can be retried by re-running the pipeline with `resume_from` set to the failed gate name.
@@ -190,7 +190,7 @@ To work around allowlist restrictions:
 If an MCP tool call returns "tool not found":
 
 1. Verify the server is running: check that `python -m automedia.mcp.server` is still running
-2. Check the tool name against the 41 tools listed in AGENTS.md section 9
+2. Check the tool name against the 52 tools listed in AGENTS.md section 9
 3. Restart the server: kill the process and start it again
 
 ### Testing MCP tools directly
@@ -336,7 +336,7 @@ This scans directories for `00_project_info.json` files and reads metadata from 
 |-------|-------|----------|
 | `AUTOMEDIA_LLM_API_KEY` not set | Missing required environment variable | Set the API key: `export AUTOMEDIA_LLM_API_KEY=sk-...` or pass it in MCP config `env` |
 | Gate returns `"passed": False` with no error message | Gate completed but found issues in content (e.g. fact check failed) | Check the `result` dict gate-specific details. See section 4 above and `docs/dev/gate-failure-modes.md` |
-| `ValueError: Unknown pipeline mode '...'` | Invalid mode string passed to `run_full_pipeline()` | Use one of: `"auto"`, `"text_only"`, `"text_with_cover"`, `"video_only"`, `"qa_only"`, `"image-carousel"`, `"social-thread"`, `"short-video"` |
+| `ValueError: Unknown pipeline mode '...'` | Invalid mode string passed to `run_full_pipeline()` | Use one of: `"auto"`, `"text_only"`, `"text_with_cover"`, `"video_only"`, `"qa_only"`, `"image-carousel"`, `"social-thread"`, `"short-video"`, `"repurpose"` |
 | `ValueError: resume_from gate '...' not found in mode '...' gate list` | `resume_from` value does not match any gate name for the current mode | Check the mode's gate list in `automedia/pipelines/runner.py` (`_AUTO_GATE_NAMES`, etc.) |
 | `ModuleNotFoundError: No module named 'mcp'` | MCP dependencies not installed | Install with `pip install -e ".[mcp]"` |
 | `Permission denied` when accessing files via MCP | Path is not in `mcp_allowlist.yaml` | Ask the user to add the path to the allowlist, or use a path under `/tmp/automedia/` |

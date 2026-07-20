@@ -70,7 +70,7 @@ impact_map:
   # ─── Pipeline Runner ───────────────────────────
   - pattern: "pipelines/runner.py"
     affects:
-      - "F07 (pipeline modes — 8 modes)"
+      - "F07 (pipeline modes — 9 modes)"
       - "F11 (topic → article — core promise)"
       - "F17 (one-command run)"
       - "F21 (pipeline resume)"

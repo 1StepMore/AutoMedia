@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 13 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 16 subcommands.
 ---
 
 # CLI Reference
@@ -27,6 +27,8 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia run` | Execute production pipeline (single topic or batch via `--topics`) |
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
+| `automedia distribute` | Distribute pipeline content to platforms (D-gates with `--platforms`, `--all`, `--dry-run`) |
+| `automedia effects` | Compute content analytics stats (word count, sentiment, readability, brand mentions, SEO) |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs and pipeline runs |
 | `automedia account` | Platform account management |
@@ -154,7 +156,7 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 |------|------|------|--------|------|
 | `--topic` | `-t` | `str` | required | Content topic |
 | `--brand` | `-b` | `str` | required | Brand identifier |
-| `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video |
+| `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose |
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate |
 
 ## `automedia pool`
@@ -265,6 +267,65 @@ automedia archive <project-id> --force
 |------|------|------|--------|------|
 | `--force` | `-f` | `bool` | `False` | Force archive, skip published status check |
 | `--base-dir` | `-d` | `str` | `.` | Project root directory |
+
+## `automedia distribute`
+
+Distribute pipeline content to platforms via D1-D7 distribution gates.
+
+```bash
+# Distribute to specific platforms
+automedia distribute <project-id> --platforms wechat,twitter
+
+# Distribute to all platforms
+automedia distribute <project-id> --all
+
+# Dry run (preview without executing)
+automedia distribute <project-id> --platforms wechat --dry-run
+
+# Distribute via cron schedule
+automedia distribute <project-id> --all --cron
+```
+
+### Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `project_id` | `str` | Project ID (required) |
+
+### Flags
+
+| Flag | Short | Type | Default | Description |
+|------|------|------|--------|------|
+| `--platforms` | `-p` | `str` | `""` | Comma-separated list of target platforms |
+| `--all` | `-a` | `bool` | `False` | Distribute to all configured platforms |
+| `--dry-run` | `-d` | `bool` | `False` | Preview distribution without executing |
+| `--cron` | | `bool` | `False` | Run as cron job (suppresses interactive output) |
+
+## `automedia effects`
+
+Compute content analytics for a project.
+
+```bash
+# Compute all analytics for a project
+automedia effects <project-id>
+
+# Get analytics with summary
+automedia effects <project-id> --summary
+```
+
+### Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `project_id` | `str` | Project ID (required) |
+
+### Flags
+
+| Flag | Short | Type | Default | Description |
+|------|------|------|--------|------|
+| `--summary` | `-s` | `bool` | `False` | Print a human-readable summary |
+
+Analytics computed: word count, sentiment score, readability score, brand mention count, SEO scores (5 dimensions).
 
 ## `automedia adapter`
 

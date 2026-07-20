@@ -176,8 +176,7 @@ Pipeline finished: success
   Project dir: /var/automedia/projects/20260707_ai-video-tools
   Duration   : 342.5s
 
-  Gates executed: 20
-    ✓ D0 (0.50s)
+  Gates executed: 21
     ✓ pre-gate (0.32s)
     ✓ CW (8.00s)
     ✓ G0 (12.50s)
@@ -254,7 +253,39 @@ auto-publish is configured:
 cat 20260707_*/05_publish/publish_log.json
 ```
 
-### 4. Archive
+### 4. Distribute to Platforms
+
+After the pipeline completes, use the distribute command to rewrite content for specific platforms via D1-D7 distribution gates:
+
+```bash
+# Distribute to WeChat and Twitter
+automedia distribute <project-id> --platforms wechat,twitter
+
+# Distribute to all configured platforms
+automedia distribute <project-id> --all
+
+# Preview what would be distributed
+automedia distribute <project-id> --all --dry-run
+```
+
+Distribution gates are standalone LLM rewrites that adapt content to each platform's format and tone. They run independently from the main pipeline and can be invoked any number of times.
+
+For programmatic distribution, use the MCP tool:
+```
+distribute_content(project_id="<id>", platforms=["wechat", "twitter"])
+```
+
+### 5. View Content Analytics
+
+Get content metrics for a project:
+
+```bash
+automedia effects <project-id>
+```
+
+Returns: word count, sentiment score, readability score, brand mentions, and SEO scores across 5 dimensions.
+
+### 6. Archive
 
 After confirming the content has been successfully published:
 
