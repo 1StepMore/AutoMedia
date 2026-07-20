@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import fcntl
 import importlib
-import warnings
 import json
 import os
 import threading
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+import warnings
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -22,8 +22,8 @@ import yaml
 from pydantic import ValidationError
 from structlog import get_logger
 
-from automedia.core.logging import bind_correlation_id
 from automedia.core.llm_client import LLMError
+from automedia.core.logging import bind_correlation_id
 from automedia.exceptions import (
     AutoMediaError,
     BrandNotFoundError,
@@ -39,7 +39,12 @@ from automedia.mcp._state import (
 from automedia.mcp.allowlist import (
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response, validation_error_response
+from automedia.mcp.mcp_error import (
+    MCPErrorCode,
+    error_response,
+    success_response,
+    validation_error_response,
+)
 from automedia.mcp.server_types import (
     CronExpression,
     EngineModality,
@@ -264,7 +269,7 @@ def _read_active_pipelines() -> dict[str, dict[str, Any]]:
     if not path.is_file():
         return {}
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             fcntl.flock(fh, fcntl.LOCK_SH)
             data: dict[str, dict[str, Any]] = json.load(fh)
     except (json.JSONDecodeError, OSError, ValueError):
@@ -328,7 +333,7 @@ def _mark_lost_entries() -> None:
         return
     try:
         data = _read_active_pipelines()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         changed = False
         for pid, entry in data.items():
             status = entry.get("status", "")
@@ -582,6 +587,7 @@ def run_pipeline(
     source_url: str = "",
     workflow: str = "",
     director: bool = False,
+    platforms: str = "",
 ) -> dict[str, Any]:
     """Execute the full AutoMedia production pipeline in a background thread.
 
@@ -621,6 +627,10 @@ def run_pipeline(
         and the ``director`` HITL preset.  Gates with
         ``requires_approval`` will pause for external approve/reject
         calls via the MCP tools.  Default: ``False``.
+    platforms:
+        Comma-separated list of target platform names (e.g. ``"xiaohongshu,zhihu"``).
+        When provided, only gates relevant to those platforms are applied.
+        Empty string (default) applies all gates for the brand profile's platforms.
 
     Returns
     -------
@@ -629,6 +639,11 @@ def run_pipeline(
         ``{"status": "failed", "error": {"code": ..., "message": ..., "resolution": ...}}``
         on immediate failure.
     """
+    # Parse platforms string into list for downstream consumers
+    parsed_platforms: list[str] = (
+        [p.strip() for p in platforms.split(",") if p.strip()] if platforms else []
+    )
+
     # Pre-validate mode to fail fast
     # Uses VALID_MODES shared constant from runner.py (single source of truth)
     if mode not in VALID_MODES:
@@ -690,7 +705,7 @@ def run_pipeline(
         {
             "project_id": project_id,
             "status": "running",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             "mode": mode,
             "topic": topic,
             "current_gate": None,
@@ -718,6 +733,7 @@ def run_pipeline(
                 workflow=workflow or None,
                 director=director,
                 progress=progress,
+                platforms=parsed_platforms,
             )
             progress.project_id = result.project_id
             # Store token usage and estimated cost for get_pipeline_progress
@@ -741,7 +757,7 @@ def run_pipeline(
                 project_id,
                 {
                     "status": final_status,
-                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                    "ended_at": datetime.now(UTC).isoformat(),
                     "current_gate": progress.current_gate,
                 },
             )
@@ -906,7 +922,7 @@ def list_active_pipelines() -> dict[str, Any]:
     """
     try:
         data = _read_active_pipelines()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         five_min_ago = now - timedelta(minutes=5)
         pipelines: list[dict[str, Any]] = []
         for entry in data.values():

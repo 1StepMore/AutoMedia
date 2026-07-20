@@ -691,6 +691,7 @@ def run_full_pipeline(
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
+    platforms: list[str] | None = None,
 ) -> PipelineResult:
     """Execute the full AutoMedia production pipeline.
 
@@ -749,6 +750,10 @@ def run_full_pipeline(
         URL to fetch source content from.  Content is loaded and
         injected into ``gate_context["source_content"]``.  Falls back
         gracefully on error.
+    platforms:
+        Optional list of target platform names (e.g. ``["xiaohongshu", "zhihu"]``).
+        When provided, only gates relevant to those platforms are applied.
+        ``None`` (default) applies all gates for the brand profile's platforms.
 
     Returns
     -------
@@ -773,6 +778,7 @@ def run_full_pipeline(
         progress=progress,
         source_path=source_path,
         source_url=source_url,
+        platforms=platforms,
     )
 
 
@@ -793,12 +799,12 @@ def _run_pipeline(
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
+    platforms: list[str] | None = None,
 ) -> PipelineResult:
     from automedia.core.config_loader import load_config
-    from automedia.core.llm_client import get_usage_summary, reset_usage_tracking
+    from automedia.core.llm_client import reset_usage_tracking
     from automedia.core.logging import bind_correlation_id
     from automedia.core.project import Project
-    from automedia.pipelines.gate_engine import PipelineResult
 
     start = time.monotonic()
     correlation_id = bind_correlation_id()
@@ -825,7 +831,7 @@ def _run_pipeline(
 
         gate_names, gates = _select_gates(
             mode, brand_profile, resume_from, project.project_dir, progress,
-            workflow_obj=workflow_obj, brand=brand,
+            workflow_obj=workflow_obj, brand=brand, platforms=platforms,
         )
 
         gate_context = _build_pipeline_context(
@@ -933,24 +939,29 @@ def _select_gates(
     progress: PipelineProgress | None,
     workflow_obj: Any | None = None,
     brand: str | None = None,
+    platforms: list[str] | None = None,
 ) -> tuple[list[str], list[BaseGate]]:
     import automedia.gates  # noqa: F401
 
     gate_names, override_fm = _compose_gate_list(mode, platform_config=None)
 
     if brand_profile is not None and brand_profile.platforms:
-        brand_dict = asdict(brand_profile)
-        combined_gate_config = _collect_platform_gate_modifiers(
-            brand_dict, list(brand_profile.platforms)
-        )
-        if combined_gate_config:
-            gate_names, platform_ofm = _compose_gate_list(mode, {"gates": combined_gate_config})
-            override_fm = platform_ofm
-            log.info(
-                "pipeline.gate_modifiers_applied",
-                platform_count=len(brand_profile.platforms),
-                gate_count=len(gate_names),
+        active_platforms = list(brand_profile.platforms)
+        if platforms is not None:
+            active_platforms = [p for p in active_platforms if p in platforms]
+        if active_platforms:
+            brand_dict = asdict(brand_profile)
+            combined_gate_config = _collect_platform_gate_modifiers(
+                brand_dict, active_platforms
             )
+            if combined_gate_config:
+                gate_names, platform_ofm = _compose_gate_list(mode, {"gates": combined_gate_config})
+                override_fm = platform_ofm
+                log.info(
+                    "pipeline.gate_modifiers_applied",
+                    platform_count=len(active_platforms),
+                    gate_count=len(gate_names),
+                )
 
     # OverridesLoader YAML rules apply on top of brand profile modifiers
     if brand is not None:
