@@ -814,7 +814,8 @@ def _run_pipeline(
 
     try:
         config = load_config(config_dir=config_dir)
-        project = Project.init(topic, brand, tenant_id=tenant_id)
+        projects_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or None
+        project = Project.init(topic, brand, base_dir=projects_dir, tenant_id=tenant_id)
 
         brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
             mode, brand, project, workflow,

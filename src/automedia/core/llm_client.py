@@ -7,6 +7,7 @@ Config is read from the merged AutoMedia config dict at call time.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from typing import TYPE_CHECKING, Any
 
@@ -182,6 +183,52 @@ def _get_retryable_errors() -> tuple[type[BaseException], ...]:
 _RETRYABLE_ERRORS: tuple[type[BaseException], ...] = _get_retryable_errors()
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Fake LLM mode (AUTOMEDIA_FAKE_LLM env var)
+# ---------------------------------------------------------------------------
+
+_fake_llm_warned: bool = False
+
+
+def _is_fake_mode() -> bool:
+    """Check whether ``AUTOMEDIA_FAKE_LLM`` is set to a truthy value.
+
+    Acceptable values (case-insensitive): ``"1"``, ``"true"``, ``"yes"``.
+    """
+    return os.environ.get("AUTOMEDIA_FAKE_LLM", "").lower() in {"1", "true", "yes"}
+
+
+def _warn_fake_once() -> None:
+    """Emit a one-time warning that fake LLM mode is active."""
+    global _fake_llm_warned
+    if not _fake_llm_warned:
+        logger.warning(
+            "AUTOMEDIA_FAKE_LLM=1 active — returning deterministic mock responses"
+        )
+        _fake_llm_warned = True
+
+
+def _fake_structured_response(response_format: type) -> BaseModel:
+    """Return a deterministic canned instance of *response_format*.
+
+    Known gate result types receive realistic-looking data.  All others
+    receive a minimal ``{"passed": True}`` (or the closest valid variant).
+    """
+    _DISPATCH: dict[str, dict[str, object]] = {
+        "G0CheckResult": {"passed": True, "confidence": 0.95},
+        "G1CheckResult": {"score": 0.85, "humanized": True, "changes": []},
+        "G2CheckResult": {"issues": [], "score": 0.9},
+    }
+    name = response_format.__name__
+    if name in _DISPATCH:
+        return response_format.model_validate(_DISPATCH[name])
+    try:
+        return response_format.model_validate({"passed": True})
+    except Exception:
+        # Last resort: construct with zero-valued fields
+        return response_format.model_construct(passed=True)
 
 
 # ---------------------------------------------------------------------------
@@ -537,6 +584,16 @@ def llm_complete_structured_safe(
     LLMError
         On provider errors or unexpected failures.
     """
+    # Lazy config load (needed for fake-mode check)
+    if config is None:
+        from automedia.core.config_loader import load_config
+
+        config = load_config()
+
+    if _is_fake_mode():
+        _warn_fake_once()
+        return _fake_structured_response(response_format)
+
     return _structured_completion_with_fallback(
         prompt,
         response_format=response_format,
@@ -601,6 +658,10 @@ def llm_complete(
         from automedia.core.config_loader import load_config
 
         config = load_config()
+
+    if _is_fake_mode():
+        _warn_fake_once()
+        return f"This is a fake LLM response for: {prompt[:80]}..."
 
     llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
     client = _build_client(config, task_type=task_type)
@@ -689,6 +750,10 @@ def llm_complete_structured(
         from automedia.core.config_loader import load_config
 
         config = load_config()
+
+    if _is_fake_mode():
+        _warn_fake_once()
+        return _fake_structured_response(response_format)
 
     llm_cfg = config.get("llm", {}).get(task_type, {})
     client = _build_client(config, task_type=task_type)

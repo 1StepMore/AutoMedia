@@ -123,8 +123,10 @@ class Project:
         tenant_id:
             Tenant / namespace identifier.  Defaults to ``"default"``.
         base_dir:
-            Parent directory for the project.  When ``None`` the current
-            working directory is used.
+            Parent directory for the project.  When ``None`` the
+            ``AUTOMEDIA_PROJECTS_DIR`` environment variable is checked
+            first; if that is also unset the current working directory
+            is used.
 
         Returns
         -------
@@ -147,7 +149,8 @@ class Project:
         sanitize_path(brand)
 
         if base_dir is None:
-            base_dir = os.getcwd()
+            env_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "")
+            base_dir = str(Path(env_dir).resolve()) if env_dir else os.getcwd()
         base_dir = sanitize_path(base_dir)
 
         today = datetime.now(UTC).strftime("%Y%m%d")
