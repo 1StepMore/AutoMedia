@@ -513,6 +513,27 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         ],
         "docstring_ref": "gates/distribution/d7_tiktok.py",
     },
+    "P1": {
+        "description": (
+            "WeChat Repurpose Gate (P1) — runs a 3-step sub-pipeline"
+            " (rewrite -> fact_check -> humanize) to repurpose pipeline content"
+            " into WeChat Official Account article format"
+        ),
+        "common_causes": [
+            "LLM rewrite call failed or returned empty content",
+            "Rewritten output is shorter than the 500-character minimum",
+            "Fact-check LLM call failed (non-fatal, pipeline continues)",
+            "Humanize LLM call failed (non-fatal, falls back to rewritten content)",
+            "File write failed for output in 04_repurpose/wechat/",
+        ],
+        "fixes": [
+            "Retry the gate (failure_mode='retry') which re-runs the entire sub-pipeline",
+            "Ensure base content is long enough to produce a substantial rewrite",
+            "Verify project_dir is set in gate_context for file writing",
+            "Check LLM configuration (API key, model, endpoint)",
+        ],
+        "docstring_ref": "gates/sub_pipelines/p1_wechat.py",
+    },
     "D6": {
         "description": (
             "YouTube Standalone Rewrite Gate — rewrites pipeline content"
@@ -533,6 +554,72 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "Increase max_tokens to allow longer script generation",
         ],
         "docstring_ref": "gates/distribution/d6_youtube.py",
+    },
+    "P3": {
+        "description": (
+            "Newsletter Repurpose Gate (P3) — 3-step sub-pipeline that"
+            " rewrites base content into newsletter format (rewrite →"
+            " review → humanize) using newsletter-adapted prompt templates"
+        ),
+        "common_causes": [
+            "LLM rewrite call fails or returns empty content",
+            "Rewritten content is shorter than 300 characters minimum",
+            "LLM review or humanize call fails (non-fatal — continues with"
+            " rewritten content)",
+            "Output directory 04_repurpose/newsletter/ is not writable",
+        ],
+        "fixes": [
+            "Retry the gate (failure_mode='retry') which re-runs all three"
+            " sub-pipeline steps",
+            "Ensure base content is long enough for meaningful newsletter"
+            " generation",
+            "Check LLM configuration (API key, model, endpoint)",
+            "Verify project directory permissions for writing output files",
+        ],
+        "docstring_ref": "gates/sub_pipelines/p3_newsletter.py",
+    },
+    "P4": {
+        "description": (
+            "Bilibili Repurpose Gate (P4) — 3-step sub-pipeline (rewrite →"
+            " fact_check → humanize) for Bilibili-adapted video scripts in"
+            " Chinese, output to 04_repurpose/bilibili/"
+        ),
+        "common_causes": [
+            "Output is shorter than 500 characters after rewrite step",
+            "Missing [TIMESTAMP] or [SCENE] markers in the video script",
+            "LLM returned empty or malformed content in any sub-pipeline step",
+            "Fact-check or humanize LLM call returned non-parseable response",
+            "Content lacks a hook opening suitable for Bilibili's audience",
+        ],
+        "fixes": [
+            "Ensure the LLM prompt emphasises Chinese Bilibili video script format",
+            "Verify the generated content contains [TIMESTAMP] or [SCENE] markers",
+            "Retry with a different LLM model or increased max_tokens",
+            "Check LLM response format expectations for fact-check and humanize steps",
+            "Add explicit instructions for a hook opening in the first 10 seconds",
+        ],
+        "docstring_ref": "gates/sub_pipelines/p4_bilibili.py",
+    },
+    "P2": {
+        "description": (
+            "Twitter/X Repurpose Gate — rewrites base content into a Twitter/X"
+            " thread format with thread_format → fact_check → humanize sub-pipeline"
+        ),
+        "common_causes": [
+            "LLM provider returned an error or empty response during thread format step",
+            "Generated thread has fewer than 3 tweets",
+            "One or more tweets exceed the 280-character limit",
+            "Fact-check LLM call failed or returned unparseable JSON",
+            "Humanize prompt template not found for Twitter platform",
+        ],
+        "fixes": [
+            "Retry the gate (failure_mode='retry') which re-runs the LLM calls",
+            "Ensure base content is long enough to produce at least 3 tweets",
+            "Adjust thread format prompt to enforce 280-char limit per tweet",
+            "Verify the twitter/humanizer_g1 prompt template exists",
+            "Check that source_content is available for fact-checking",
+        ],
+        "docstring_ref": "gates/sub_pipelines/p2_twitter.py",
     },
     "H0": {
         "description": (

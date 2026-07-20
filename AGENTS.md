@@ -31,8 +31,8 @@ pip install -e ".[mcp]"
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 50 tools |
-| CLI | `automedia <subcommand>` | 14 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 52 tools |
+| CLI | `automedia <subcommand>` | 16 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -66,7 +66,7 @@ AutoMedia/
 │       │   ├── image_pipeline.py   # Image/video processing pipeline
 │       │   └── language_config.py  # Language configuration resolution
 │       │
-│       ├── gates/                  # Quality gates (21 implementations including H0)
+│       ├── gates/                  # Quality gates (33 implementations including H0, D1-D7, P1-P4)
 │       │   ├── base.py             # BaseGate ABC + GateRegistry singleton
 │       │   ├── failure_modes.py    # Failure mode knowledge base
 │       │   ├── fact_check.py       # G0
@@ -113,7 +113,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 50 tools
+│       │   ├── server.py           # FastMCP server — 52 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -178,7 +178,7 @@ AutoMedia/
 │       │
 │       ├── prompts/                # Jinja2 prompt templates (platform-scoped)
 │       │   ├── __init__.py             # load_prompt() with 3-layer resolution
-│       │   └── platforms/              # Platform-scoped templates (7 platforms)
+│       │   └── platforms/              # Platform-scoped templates (10 platforms)
 │       │
 │       ├── manifests/              # Default config + schemas
 │       │   ├── defaults.yaml       # Built-in default config
@@ -258,7 +258,7 @@ The pipeline runs an ordered sequence of gates. Each gate has a `failure_mode`:
 - **`"stop"`** — halts the entire pipeline on failure
 - **`"rewrite"`** — retries the gate (content regeneration)
 
-Gates are ordered: pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4. Eight pipeline modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`) select different gate subsets. See `automedia/pipelines/runner.py` for the exact lists.
+Gates are ordered: pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4. Nine pipeline modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`) select different gate subsets. D-gates (D1-D7) are standalone distribution gates invoked via CLI/MCP. P-gates (P1-P4) run as sub-pipelines at the end of repurpose mode. See `automedia/pipelines/runner.py` for the exact lists.
 
 ### 6-Layer Configuration
 Configuration merges from lowest to highest priority:
@@ -302,7 +302,7 @@ These constraints are enforced by the test suite and must never be violated:
 3. **MUST NOT** modify `automedia/mcp/mcp_allowlist.yaml` without explicit user request.
 4. **MUST** use synthetic test fixtures from `tests/fixtures/synth/` for testing. Zero production data in tests.
 5. **MUST** use `automedia archive` command for archiving projects — never manual directory operations.
-6. **MUST** follow the gate naming convention: G0-G5 (copy/content gates), V0-V7 (video/quality gates), L1-L4 (lifecycle gates). Additional gates include H0, pre-gate, and CW.
+6. **MUST** follow the gate naming convention: G0-G6 (copy/content gates), V0-V7 (video/quality gates), L1-L4 (lifecycle gates), D1-D7 (distribution gates), P1-P4 (sub-pipeline repurpose gates). Additional gates include H0, pre-gate, and CW.
 7. **MUST** add new gates to `automedia/gates/failure_modes.py` when creating them.
 8. **MUST NOT** skip pre-commit checks. Run `pre-commit run --all-files` before committing.
 9. **MUST** respect the GateHook readonly contract — hooks observe but never mutate.
@@ -401,7 +401,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (50 tools, +4 deprecated aliases)
+## 9. MCP Tools Quick Reference (52 tools, +4 deprecated aliases)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -425,6 +425,8 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `localize_output` | project_dir, target_langs | Translate all project drafts into multiple languages |
 | `format_output` | content, target_format, **options | Convert content format via ORF adapter |
 | `evaluate_content_quality` | content, criteria, brand | Score content quality against criteria (clarity, accuracy, brand voice, etc.) |
+| `analyze_content` | project_id | Analyze project content and return analytics stats (word count, sentiment, readability, brand mentions, SEO scores) |
+| `distribute_content` | project_id, platforms, all, dry_run, base_dir | Distribute pipeline content to targeted platforms via D-gates |
 | `connect_account` | platform, auth_type, credentials, label | Register a new platform account (returns account_id) |
 | `list_accounts` | platform, status | List registered accounts with optional filters |
 | `get_account_health` | account_id | Check an account's health status |
@@ -455,13 +457,15 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 
 ---
 
-## 10. CLI Commands Quick Reference (13 commands)
+## 10. CLI Commands Quick Reference (16 commands)
 
 | Command | Description |
 |---------|-------------|
 | `automedia run` | Execute the full AutoMedia production pipeline |
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
+| `automedia distribute` | Distribute pipeline content to platforms (D-gates with --platforms, --all, --dry-run) |
+| `automedia effects` | Compute content analytics stats (word count, sentiment, readability, SEO) |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
 | `automedia account` | Platform account management (connect, list, health, disconnect, refresh) |

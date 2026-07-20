@@ -4,6 +4,30 @@
 
 ### Added
 
+- **Distribution Gates (D1-D7)**: 7 standalone platform rewrite gates for WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, and TikTok. Each reads pipeline content, calls LLM with platform-specific prompts, and writes platform-adapted output to `04_distribution/{platform}/`. Failure mode entries, quality checks, and GateRegistry registration included.
+
+- **Repurpose Gates (P1-P4)**: 4 sub-pipeline repurpose gates for WeChat, Twitter/X, Newsletter, and Bilibili. Each runs a 3-step sub-pipeline (rewrite → fact_check → humanize) using platform-scoped prompts, powered by new `GateEngine.run_sub_pipeline()` infrastructure.
+
+- **G6 Tone Check Gate**: LLM-based brand tone consistency checker with 6 evaluation dimensions (voice personality, formality, emotional register, language style, cultural alignment, consistency). Includes deterministic keyword fallback and 17 TDD tests.
+
+- **`automedia distribute` CLI Command**: Distribute pipeline content to platforms via `--platforms` (comma-separated), `--all`, `--dry-run`, and `--cron` scheduling options. Integrated with DistributionLog tracking.
+
+- **`distribute_content` MCP Tool**: MCP tool for programmatic content distribution, sharing logic with the CLI command via `automedia/adapters/distribution.py`.
+
+- **Effects Analytics Package**: Content analytics with 5 stat functions (word_count, sentiment_score, readability_index, brand_mention_frequency, seo_score_aggregation). CLI via `automedia effects <project_id>` and MCP via `analyze_content`.
+
+- **Operational Distribution Analytics**: `DistributionLog` in asset_library tracking project→platform→timestamp→result for all distribution attempts.
+
+- **LinkedIn, Newsletter, and Douyin Prompt Templates**: 9 new platform-scoped Jinja2 templates (3 each with content_writer, copy_review_g2, humanizer_g1).
+
+- **SEO Scoring Inline in CW**: Content Writer gate now scores content on 5 SEO dimensions (keyword density, heading structure, meta readiness, readability, content freshness) with up to 2 internal retries for low scores.
+
+- **Repurpose Pipeline Mode**: New `repurpose` mode gate list running standard gates + P1-P4 at the end.
+
+- **`_PLATFORM_CATEGORIES` Extension**: Expanded from 7 to 21 platforms for correct auto-mode pipeline derivation.
+
+- **RL6 Regex Update**: `_VALID_GATE_NAME_RE` extended with `P\d+` pattern for sub-pipeline gate naming.
+
 - **Windows Deployment Support**: Full Windows deployment guide at `docs/user/windows-deployment.md` (WSL2, Docker Desktop, native Windows). PowerShell setup script at `scripts/setup.ps1`. Deployment overview at `docs/user/deployment.md` with method comparison table.
 
 - **Gate Modifier YAML Overrides**: OverridesLoader now accepts `gates.include`, `gates.exclude`, `gates.override_failure_mode` keys in YAML override rules. `validate_gate_modifiers()` returns `(included, excluded, overrides)` tuple for type-safe gate list composition. `override_failure_mode` applied per-instance via `object.__setattr__` (no BaseGate class mutation).

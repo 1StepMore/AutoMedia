@@ -3,16 +3,27 @@
 For each selected platform, runs the corresponding D-gate to rewrite the
 project's base content into the platform-specific format and writes the
 result under ``04_distribution/<platform>/`` in the project directory.
+
+Cron integration
+----------------
+Use ``--cron`` to schedule a distribution for later execution.  The entry
+is stored in ``cron/jobs.yaml`` under ``pipeline_schedules`` and is executed
+by the ``automedia cron run run-distribute`` command.
+
+Use ``--cron-list`` to view scheduled distributions and ``--cron-remove``
+to delete one.
 """
 
 from __future__ import annotations
 
 import importlib
 import json
+import re
 from pathlib import Path
 from typing import Any, cast
 
 import typer
+import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 
@@ -127,6 +138,24 @@ def distribute_cmd(
         "-d",
         help="Base directory to scan for projects.",
     ),
+    # ------------------------------------------------------------------
+    # Cron scheduling options
+    # ------------------------------------------------------------------
+    cron: str | None = typer.Option(
+        None,
+        "--cron",
+        help="Cron expression for scheduled distribution (e.g. '0 8 * * *').",
+    ),
+    cron_list: bool = typer.Option(
+        False,
+        "--cron-list",
+        help="List scheduled distributions.",
+    ),
+    cron_remove: str | None = typer.Option(
+        None,
+        "--cron-remove",
+        help="Name of scheduled distribution to remove (use --cron-list to see names).",
+    ),
 ) -> None:
     """Run D-gates to prepare project content for platform-specific distribution.
 
@@ -137,7 +166,200 @@ def distribute_cmd(
 
     Use ``--platforms`` to select specific platforms or ``--all`` to target every
     available platform.  Add ``--dry-run`` to preview the plan without executing.
+
+    Use ``--cron`` to schedule the distribution.  Use ``--cron-list`` to view
+    scheduled distributions and ``--cron-remove`` to delete one.
     """
+    # ------------------------------------------------------------------
+    # Resolve the jobs.yaml path (reuse MCP helper logic)
+    # ------------------------------------------------------------------
+    _jobs_yaml_path: Path | None = None
+
+    def _get_jobs_yaml() -> Path:
+        """Locate ``cron/jobs.yaml`` under the automedia package."""
+        nonlocal _jobs_yaml_path
+        if _jobs_yaml_path is None:
+            import automedia as _am_pkg
+            _jobs_yaml_path = (
+                Path(_am_pkg.__file__).resolve().parent / "cron" / "jobs.yaml"
+            )
+        return _jobs_yaml_path
+
+    def _read_schedules() -> list[dict[str, Any]]:
+        """Read ``pipeline_schedules`` from ``cron/jobs.yaml``."""
+        path = _get_jobs_yaml()
+        if not path.is_file():
+            return []
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            if not isinstance(data, dict):
+                return []
+            return data.get("pipeline_schedules", []) or []
+        except Exception:
+            return []
+
+    def _write_schedules(schedules: list[dict[str, Any]]) -> None:
+        """Write ``pipeline_schedules`` back to ``cron/jobs.yaml``."""
+        path = _get_jobs_yaml()
+        if path.is_file():
+            with open(path, encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+        else:
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        data["pipeline_schedules"] = schedules
+        with open(path, "w", encoding="utf-8") as fh:
+            yaml.dump(data, fh, default_flow_style=False, allow_unicode=True)
+
+    # ------------------------------------------------------------------
+    # Handle --cron-list: show scheduled distributions
+    # ------------------------------------------------------------------
+    if cron_list:
+        all_schedules = _read_schedules()
+        project_schedules = [
+            s for s in all_schedules
+            if s.get("name", "").startswith(f"distribute-{project_id}")
+        ]
+
+        if get_output_mode() == OutputMode.JSON:
+            output_text(
+                None,
+                data={
+                    "status": "ok",
+                    "project_id": project_id,
+                    "schedules": project_schedules,
+                    "count": len(project_schedules),
+                },
+            )
+            return
+
+        if not project_schedules:
+            typer.echo(f"No scheduled distributions found for project {project_id!r}.")
+            return
+
+        typer.echo(f"Scheduled distributions for project {project_id!r}:")
+        typer.echo("-" * 60)
+        for s in project_schedules:
+            name = s.get("name", "?")
+            expression = s.get("expression", s.get("schedule", "?"))
+            platforms_str = s.get("platforms", s.get("platform", ""))
+            typer.echo(f"  Name       : {name}")
+            typer.echo(f"  Schedule   : {expression}")
+            typer.echo(f"  Platforms  : {platforms_str}")
+            typer.echo()
+        return
+
+    # ------------------------------------------------------------------
+    # Handle --cron-remove: delete a scheduled distribution
+    # ------------------------------------------------------------------
+    if cron_remove:
+        all_schedules = _read_schedules()
+        before = len(all_schedules)
+        remaining = [s for s in all_schedules if s.get("name") != cron_remove]
+
+        if len(remaining) == before:
+            output_error(
+                f"Scheduled distribution {cron_remove!r} not found. "
+                "Use --cron-list to see available names."
+            )
+
+        _write_schedules(remaining)
+
+        if get_output_mode() == OutputMode.JSON:
+            output_text(
+                None,
+                data={
+                    "status": "ok",
+                    "removed": cron_remove,
+                    "project_id": project_id,
+                },
+            )
+            return
+
+        typer.secho(
+            f"Removed scheduled distribution {cron_remove!r}.",
+            fg=typer.colors.GREEN,
+        )
+        return
+
+    # ------------------------------------------------------------------
+    # Handle --cron: schedule a distribution
+    # ------------------------------------------------------------------
+    if cron:
+        # Validate cron expression (5 fields)
+        if not re.match(r"^(\S+\s+){4}\S+$", cron.strip()):
+            output_error(
+                f"Invalid cron expression {cron!r}: must have exactly 5 fields "
+                "(min hour day month weekday)."
+            )
+
+        # Resolve platform list
+        if all_platforms:
+            platform_list = ALL_PLATFORMS
+        elif platforms:
+            platform_list = [p.strip() for p in platforms.split(",") if p.strip()]
+            invalid = [p for p in platform_list if p not in _PLATFORM_GATES]
+            if invalid:
+                output_error(
+                    f"Unknown platform(s): {', '.join(invalid)}. "
+                    f"Valid platforms: {', '.join(ALL_PLATFORMS)}"
+                )
+        else:
+            platform_list = ALL_PLATFORMS
+
+        platforms_str = ",".join(platform_list)
+        name = f"distribute-{project_id}"
+
+        # Read existing schedules, check for duplicate name
+        schedules = _read_schedules()
+        if any(s.get("name") == name for s in schedules):
+            output_error(
+                f"A scheduled distribution named {name!r} already exists. "
+                "Use --cron-remove to remove it first."
+            )
+
+        # Build the CLI command that will be executed by the cron runner
+        command = f"automedia distribute {project_id} --platforms {platforms_str}"
+
+        entry: dict[str, Any] = {
+            "name": name,
+            "expression": cron,
+            "command": command,
+            "project_id": project_id,
+            "platforms": platforms_str,
+        }
+        schedules.append(entry)
+        _write_schedules(schedules)
+
+        if get_output_mode() == OutputMode.JSON:
+            output_text(
+                None,
+                data={
+                    "status": "ok",
+                    "name": name,
+                    "command": command,
+                    "expression": cron,
+                    "project_id": project_id,
+                    "platforms": platforms_str,
+                },
+            )
+            return
+
+        typer.secho(
+            f"Scheduled distribution: {name}",
+            fg=typer.colors.GREEN,
+        )
+        typer.echo(f"  Expression : {cron}")
+        typer.echo(f"  Command    : {command}")
+        typer.echo()
+        typer.echo(
+            "The schedule will be executed by the cron system when "
+            "'automedia cron run run-distribute' is triggered."
+        )
+        return
+
     # ------------------------------------------------------------------
     # Validate platform selection
     # ------------------------------------------------------------------

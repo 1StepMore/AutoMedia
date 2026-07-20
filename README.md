@@ -27,7 +27,7 @@ If you are an AI coding agent entering this codebase:
 ## Features
 
 - **Three-layer API**: SDK / CLI (14 commands) / MCP Server (50 tools)
-- **21 quality gates**: G0-G5 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate and CW
+- **29 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
 - **Workflow system**: Reusable `workflows.yaml` definitions with cascading config merge
@@ -275,13 +275,15 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (14 commands)
+### CLI (16 commands)
 
 | Command | Description |
 |---------|-------------|
 | `automedia run` | Execute production pipeline |
 | `automedia pool` | Topic pool management (list, add, score) |
 | `automedia projects` | List and manage production projects |
+| `automedia distribute` | Distribute pipeline content to platforms (D-gates) |
+| `automedia effects` | Compute content analytics stats for a project |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs + pipeline runs |
 | `automedia account` | Platform account management (connect, list, health, disconnect) |
@@ -292,7 +294,7 @@ result = run_full_pipeline(
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
 
-### MCP Server (50 tools)
+### MCP Server (52 tools)
 
 Start:
 
@@ -320,12 +322,14 @@ python -m automedia.mcp.server
 | `add_pool_topic` | Add a topic to the topic pool |
 | `pool_add_topic` | ⚠️ Deprecated: use add_pool_topic |
 | `publish_content` | Publish a project to a platform (supports auto/review/manual modes) |
+| `distribute_content` | Distribute pipeline content to platforms via D-gates |
 | `register_platform_adapter` | Register a publish adapter stub |
 | `extract_brief` | Extract content brief from document (OPP) |
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
 | `format_output` | Convert content format (ORF adapter) |
 | `evaluate_content_quality` | Score content quality against criteria |
+| `analyze_content` | Compute content analytics (word count, sentiment, readability, brand mentions, SEO scores) |
 | `run_batch` | Run pipeline sequentially for multiple topics |
 | `batch_run` | ⚠️ Deprecated: use run_batch |
 | `cancel_pipeline` | Cancel a running pipeline by project ID |
@@ -482,7 +486,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `cli/` | Typer CLI application (13 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
-| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (21 templates for 7 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (30 templates for 10 platforms) |
 | `asset_library/` | Vector store, document ingest, similarity search |
 
 ## Configuration
@@ -519,13 +523,15 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 | Range | Count | Purpose |
 |-------|-------|---------|
 | Pre-gate | 1 | Topic selection validation |
-| CW | 1 | Content writing |
-| G0-G5 | 6 | Copy gates: fact check, humanizer, copy review, brand CTA, WeChat checks, HTML lint |
+| CW | 1 | Content writing (with inline SEO scoring) |
+| G0-G6 | 7 | Copy gates: fact check, humanizer, copy review, brand CTA, WeChat checks, HTML lint, tone check |
 | V0-V7 | 8 | Video gates: lint, vision QA, Whisper, content semantic, TTS brand asset, MP3×SRT, subtitle render, six-step hard check |
 | H0 | 1 | Human-in-the-loop review for content and video quality approval |
 | L1-L4 | 4 | Lifecycle gates: publish log schema, archive validation, platform integrity, translation quality |
+| D1-D7 | 7 | Distribution gates: platform-specific standalone rewrites for WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok |
+| P1-P4 | 4 | Repurpose gates: sub-pipeline deep repurpose for WeChat, Twitter/X, Newsletter, Bilibili |
 
-**Total: 21 gates.** Gate order: pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4.
+**Total: 33 gates.** Gate order: pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4. D-gates invoked via `automedia distribute` CLI/MCP (not in pipeline). P-gates run at end of `repurpose` pipeline mode.
 
 ## Security
 

@@ -1,12 +1,17 @@
 """Quality gates — all concrete gate implementations are imported here for auto-registration in GateRegistry.
 
 Gate naming convention: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), D1-D9 (distribution),
-CW (content writer), pre-gate.
+P1-P9 (repurpose sub-pipelines), CW (content writer), pre-gate.
 """
 
 from structlog import get_logger
 
 log = get_logger(__name__)
+
+# Sub-pipeline repurpose gates (P-series)
+from automedia.gates.sub_pipelines import P1WechatGate
+from automedia.gates.sub_pipelines import P3NewsletterGate
+from automedia.gates.sub_pipelines import P4BilibiliRepurpose
 
 # Distribution gates (D-series)
 from automedia.gates.distribution import (
@@ -27,6 +32,9 @@ from automedia.gates.content_semantic import V3ContentSemantic
 
 # Content writer gate (between pre-gate and G0)
 from automedia.gates.content_writer import ContentWriterGate
+
+# Sub-pipeline repurpose gates (P-series)
+from automedia.gates.sub_pipelines.p2_twitter import P2TwitterGate
 from automedia.gates.copy_review import G2CopyReview
 from automedia.gates.fact_check import G0FactCheck
 
@@ -55,6 +63,10 @@ from automedia.gates.vision_qa import V1VisionQA
 from automedia.gates.wechat_checklist import G4WechatChecklist
 
 __all__ = [
+    # Sub-pipeline repurpose gates
+    "P1WechatGate",
+    "P2TwitterGate",
+    "P3NewsletterGate",
     # Distribution gates
     "D1Gate",
     "D2Gate",
@@ -63,7 +75,9 @@ __all__ = [
     "D5BilibiliRewrite",
     "D6YouTubeGate",
     "D7Gate",
-# Text-track gates (G0-G6)
+    # Repurpose gates
+    "P4BilibiliRepurpose",
+    # Text-track gates (G0-G6)
     "G0FactCheck",
     "G1Humanizer",
     "G2CopyReview",
@@ -90,6 +104,7 @@ __all__ = [
     "TopicSelectionGate",
     # HITL gate
     "H0HumanReviewGate",
+
     # Context
     "GateContext",
 ]
