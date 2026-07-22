@@ -393,6 +393,20 @@ result = run_full_pipeline(
 }
 ```
 
+**Cursor** (via `.cursor/mcp.json` at project root):
+
+```json
+{
+  "mcpServers": {
+    "automedia": {
+      "command": "python",
+      "args": ["-m", "automedia.mcp.server"],
+      "env": {"AUTOMEDIA_LLM_API_KEY": "${AUTOMEDIA_LLM_API_KEY}"}
+    }
+  }
+}
+```
+
 **OpenCode** (configured via `.opencode/package.json`):
 
 ```json
@@ -441,6 +455,7 @@ The project ships agent-specific config files at the repository root:
 
 | File | Tool | What it does |
 |------|------|-------------|
+| `.cursor/mcp.json` | Cursor | MCP server configuration |
 | `.opencode/` | OpenCode | MCP plugin config + agent skill files |
 | `.claude/settings.json` | Claude Code | MCP server configuration |
 | `.claude/rules.md` | Claude Code | Project-level rules, constraints, and conventions |
