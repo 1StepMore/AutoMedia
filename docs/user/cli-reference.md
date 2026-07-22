@@ -351,7 +351,7 @@ automedia adapter create --name youtube
 | Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
 | `--name` | `-n` | `str` | required | Platform name (e.g. youtube) |
-| `--output-dir` | `-o` | `str` | `automedia/adapters/platforms` | Output directory |
+| `--output-dir` | `-o` | `str` | `src/automedia/adapters/platforms` | Output directory |
 
 ## `automedia cron`
 

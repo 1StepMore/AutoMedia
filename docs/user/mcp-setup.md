@@ -230,6 +230,7 @@ The MCP server supports the following environment variables:
 | `AUTOMEDIA_MCP_ALLOWLIST_PATH` | Custom allowlist path override |
 | `AUTOMEDIA_MASTER_KEY` | Master key for credential encryption |
 | `AUTOMEDIA_LOG_LEVEL` | Log level (DEBUG, INFO, WARNING, ERROR) |
+| `AUTOMEDIA_FAKE_LLM` | Set to `1` to use deterministic mock LLM responses (no real API calls) |
 | `FEISHU_WEBHOOK_URL` | Feishu notification webhook |
 | `WX_APPID` | WeChat Official Account AppID |
 | `WX_APPSECRET` | WeChat Official Account AppSecret |

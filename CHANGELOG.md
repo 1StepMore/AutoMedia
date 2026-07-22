@@ -56,6 +56,18 @@
 
 - **8 stale test assertions updated**: Fixed outdated enum member sets, resolution strings, error-code defaults, tool-name lists, and exception-type mismatches in MCP and runner tests.
 
+- **`.cursor/mcp.json` for Cursor IDE**: Added MCP server connection config so Cursor opens with AutoMedia tools auto-discovered (Issue #54).
+
+- **`adapter create --output-dir` default**: Corrected default path from `automedia/adapters/platforms` to `src/automedia/adapters/platforms` (previously pointed at wrong relative path, used from repo root would miss `src/` prefix).
+
+### Docs
+
+- **README.md MCP examples**: Added Cursor to "MCP Client Configuration Examples" section and Agent Configuration table.
+- **api-reference.md param fix**: `run_full_pipeline()` `platform` → `platforms` (plural, `list[str] | None`) to match actual SDK signature.
+- **founder-expectations.md F10 update**: Noted `AUTOMEDIA_PROJECTS_DIR` env var can override the default project output directory.
+- **mcp-setup.md env var table**: Added `AUTOMEDIA_FAKE_LLM` to the supported environment variables list.
+- **cli-reference.md default fix**: `adapter create --output-dir` default corrected from `automedia/adapters/platforms` to `src/automedia/adapters/platforms`.
+
 ### Changed
 
 - **`_compose_gate_list()`**: OverridesLoader `gates` rules now feed into gate composition at runtime. `_collect_platform_gate_modifiers()` merges platform-specific gate modifiers from overrides.

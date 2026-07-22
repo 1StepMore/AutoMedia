@@ -207,7 +207,7 @@ Expectations are grouped by journey phase.
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Human: default path** | Current working directory, auto-named `{YYYYMMDD}_{slugified_topic}/`. E.g. `./20260714_ai视频工具对比/`. |
+| **Human: default path** | Current working directory (or `AUTOMEDIA_PROJECTS_DIR` environment variable override), auto-named `{YYYYMMDD}_{slugified_topic}/`. E.g. `./20260714_ai视频工具对比/`. |
 | **Agent: finding outputs** | `get_project_assets(project_dir)` returns list of all files with types. `get_pipeline_status(project_id)` returns `assets[]` with paths. Agent does not need to know the directory naming convention. |
 | **Inside project dir** | Standard subdirectory layout: `01_content/drafts/`, `02_images/`, `03_video/`, `04_subtitle/`, `05_review/`, `06_publish/`, plus `00_project_info.json` and `pipeline_md5.json`. |
 
