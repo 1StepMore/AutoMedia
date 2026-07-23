@@ -539,5 +539,19 @@ edit the canonical file in `.opencode/skills/` and sync the same content
 to `.claude/skills/` and `.codex/skills/`.
 
 Currently available skills:
-- `brand-strategy` — Brand positioning, audience analysis, competitive landscape
 - `project-validation` — Post-change validation against founder expectations
+- `doc-sync` — Documentation awareness & impact mapping. Use when code changes affect documentation — CLI/MCP tools, gates, config, API, pipelines, adapters, or any feature area. Maps code changes to docs that must be updated and provides verification steps.
+
+---
+
+## 14. User-Facing Skills (for Agents Using AutoMedia)
+
+Skills for agents who are **users** of AutoMedia (calling MCP tools to
+produce content) live in `docs/skills/`. These describe how to invoke
+AutoMedia tools effectively — they are **not** auto-discovered as
+OpenCode commands because they target a different audience than
+codebase maintainers.
+
+| File | Description |
+|------|-------------|
+| `docs/skills/brand-strategy.md` | How to call `run_brand_strategy` MCP tool — parameters, output structure, error handling |
