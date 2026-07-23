@@ -5,7 +5,7 @@
 **For:** OpenCode, Claude Code, Codex CLI, Hermes Agent — any AI agent validating AutoMedia
 **Date:** 2026-07-17
 **Strategy:** Every section asks a user question → executes scenarios → reports a binary verdict
-**Current Baseline:** evaluation-matrix.md 7.9/10 composite, ~2,955 tests (1 pre-existing failure)
+**Current Baseline:** evaluation-matrix.md 7.9/10 composite, ~3,379 tests (1 pre-existing failure)
 
 ---
 
@@ -13,12 +13,43 @@
 
 ```yaml
 1. Pick a USER QUESTION from the table of contents
-2. Read the scenarios under it
-3. Execute each scenario (CLI, MCP, or Python)
-4. Record the ACTUAL RESULT
-5. Compare ACTUAL vs EXPECTED
-6. Report the VERDICT at the end of the section
+2. Read the scenarios under it — each has a badge showing requirements
+3. Set per-scenario prerequisites (env vars, tools, deps)
+4. Execute each scenario (CLI, MCP, or Python)
+5. Record the ACTUAL RESULT — replace ⬜ with ✅/❌/⚠️/➖
+6. Compare ACTUAL vs EXPECTED — check the FAILED INDICATOR column
+7. Report the VERDICT at the end of the section
 ```
+
+### Scenario Badge Legend
+
+Each scenario has badges indicating what it requires to execute:
+
+| Badge | Meaning |
+|-------|---------|
+| 🟢 | Happy path — standard test, should succeed |
+| 🔴 | Error/boundary test — should fail gracefully |
+| 🔑 | Requires real LLM API key (`AUTOMEDIA_LLM_API_KEY`) |
+| 🔧 | Requires external dependencies (FFmpeg, Bun, edge-tts, Whisper) |
+| ⏱️ | Duration expectation (e.g., ⏱️~30s, ⏱️~5min) |
+| 🚧 | **NOT YET IMPLEMENTED** in codebase — scenario is aspirational/planned |
+| 🖥️ | Needs real display / browser for visual checks |
+
+### How to Determine PASS/FAIL
+
+For every scenario:
+
+1. **Run the exact command or code** shown.
+2. **Check the FAILED INDICATOR** column — this tells you the exact signal of failure (error message text, exit code, exception type, missing file).
+3. **Compare ACTUAL vs EXPECTED** behavior.
+4. **Replace ⬜ with the verdict.**
+
+| Verdict | Meaning |
+|---------|---------|
+| ✅ PASS | All checks match expected results |
+| ❌ FAIL | One or more checks did NOT match (record what failed) |
+| ⚠️ PARTIAL | Some checks pass, some fail (list which ones) |
+| ➖ SKIP | Scenario intentionally skipped (document reason, e.g. 🚧 not yet implemented) |
 
 The plan is designed so that any AI agent can execute it independently and report: **"✅ All PASS"** or **"❌ These N items FAILED"**.
 
@@ -150,7 +181,7 @@ export AUTOMEDIA_FAKE_LLM=1 AUTOMEDIA_FAKE_VIDEO=1 AUTOMEDIA_FAKE_TTS=1
 
 ### Scenarios
 
-#### 1.1 🟢 Happy Path — Full `auto` pipeline via CLI
+#### 1.1 🟢 🔧 ⏱️~2min — Full `auto` pipeline via CLI
 ```bash
 automedia run --topic "AI Video Tools Comparison 2026" --brand test-brand --mode auto --verbose
 ```
@@ -162,9 +193,11 @@ automedia run --topic "AI Video Tools Comparison 2026" --brand test-brand --mode
 - ✅ `00_project_info.json` exists with valid project metadata
 - ✅ `pipeline_md5.json` exists with gate checksums
 
+**Failed Indicator:** Exit code != 0, pipeline crashes before reaching L4, or project directory not created.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.2 🟢 Happy Path — Full `auto` pipeline via SDK
+#### 1.2 🟢 🔧 ⏱️~1min — Full `auto` pipeline via SDK
 ```python
 from automedia import run_full_pipeline
 result = run_full_pipeline(topic="AI Video Tools Comparison 2026", brand="test-brand", mode="auto")
@@ -174,12 +207,14 @@ print(f"Status: {result.status}, Project: {result.project_id}, Duration: {result
 - ✅ `result.status` is "success" or "partial"
 - ✅ `result.project_id` is a valid 12-char hex string
 - ✅ `result.total_duration_s` > 0
-- ✅ `result.gates_log` contains entries for all 22 standard gates in auto mode (plus D1-D7 available as standalone distribution gates)
+- ✅ `result.gates_log` contains entries for all **22 auto-mode gates**: `pre-gate, CW, G0, G1, G2, G3, G4, G5, G6, V0, V1, V2, V3, V4, V5, V6, V7, H0, L1, L2, L3, L4` (D1-D7 available as standalone distribution gates)
 - ✅ Each `GateLogEntry` has `gate_name`, `status`, `duration_s`
+
+**Failed Indicator:** `result.status` is "failed", gate count < 22, missing required gate name, or exception raised.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.3 🟢 Happy Path — Project structure verification
+#### 1.3 🟢 🔧 ⏱️~30s — Project structure verification
 ```python
 from pathlib import Path; from automedia import run_full_pipeline
 result = run_full_pipeline(topic="Auto Pipeline Test", brand="test-brand", mode="text_only")
@@ -192,45 +227,57 @@ assert "01_content" in subdirs
 ```
 **Expected Result:** ✅ Standard directory structure created, project metadata valid.
 
+**Failed Indicator:** AssertionError, missing subdirectory, or missing metadata file.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.4 🟢 Pipeline with `resume_from` — no-op when first run
+#### 1.4 🟢 ⏱️~30s — Pipeline with `resume_from` — no-op when first run
 ```bash
 automedia run --topic "Test Resume" --brand test-brand --mode text_only --resume-from G0
 ```
 **Expected Result:** ✅ Pipeline runs successfully (resume_from ignored on first run, no prior MD5).
 
+**Failed Indicator:** Crash or unhandled exception; pipeline fails with "no prior run found" error.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.5 🔴 Pipeline with empty topic
+#### 1.5 🔴 ⏱️~5s — Pipeline with empty topic
 ```bash
 automedia run --topic "" --brand test-brand --mode text_only
 ```
 **Expected Result:** ❌ Exit code != 0. Error message mentions "topic" is required or empty.
 
+**Failed Indicator:** Exit code 0 (passed when should fail) or unhandled traceback without error message.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.6 🔴 Pipeline with empty brand
+#### 1.6 🔴 ⏱️~5s — Pipeline with empty brand
 ```bash
 automedia run --topic "Test" --brand "" --mode text_only
 ```
 **Expected Result:** ❌ Exit code != 0. Error message mentions "brand" is required.
 
+**Failed Indicator:** Exit code 0 (passed when should fail) or unhandled traceback.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.7 🔴 Pipeline with invalid mode
+#### 1.7 🔴 ⏱️~5s — Pipeline with invalid mode
 ```bash
 automedia run --topic "Test" --brand test-brand --mode invalid_mode
 ```
 **Expected Result:** ❌ Exit code != 0. Error mentions invalid mode, lists valid modes.
 
+**Failed Indicator:** Exit code 0, or error does not mention valid mode options.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 1.8 🔴 Pipeline with invalid `resume_from` gate name
+#### 1.8 🔴 ⏱️~5s — Pipeline with invalid `resume_from` gate name
 ```bash
 automedia run --topic "Test" --brand test-brand --mode text_only --resume-from NONEXISTENT_GATE
 ```
 **Expected Result:** ❌ Pipeline may fail or skip unknown gate ref. Does NOT crash with unhandled exception.
+
+**Failed Indicator:** Unhandled exception/stack trace, Python traceback leaked to stdout.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
@@ -238,16 +285,16 @@ automedia run --topic "Test" --brand test-brand --mode text_only --resume-from N
 
 ### 📊 Q1 Verdict
 
-| Scenario | Result |
-|----------|--------|
-| 1.1 Happy path (CLI, auto) | ⬜ |
-| 1.2 Happy path (SDK, auto) | ⬜ |
-| 1.3 Project structure | ⬜ |
-| 1.4 Resume from (first run) | ⬜ |
-| 1.5 Empty topic | ⬜ |
-| 1.6 Empty brand | ⬜ |
-| 1.7 Invalid mode | ⬜ |
-| 1.8 Invalid resume gate | ⬜ |
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 1.1 Happy path (CLI, auto) | 🟢 🔧 ⏱️~2min | ⬜ |
+| 1.2 Happy path (SDK, auto) | 🟢 🔧 ⏱️~1min | ⬜ |
+| 1.3 Project structure | 🟢 🔧 ⏱️~30s | ⬜ |
+| 1.4 Resume from (first run) | 🟢 ⏱️~30s | ⬜ |
+| 1.5 Empty topic | 🔴 ⏱️~5s | ⬜ |
+| 1.6 Empty brand | 🔴 ⏱️~5s | ⬜ |
+| 1.7 Invalid mode | 🔴 ⏱️~5s | ⬜ |
+| 1.8 Invalid resume gate | 🔴 ⏱️~5s | ⬜ |
 
 **OVERALL: ⬜** (✅ if all pass, ❌ if any fail)
 
@@ -261,19 +308,21 @@ automedia run --topic "Test" --brand test-brand --mode text_only --resume-from N
 
 ### Scenarios
 
-#### 2.1 🟢 `text_only` mode — only copy gates run
+#### 2.1 🟢 🔧 ⏱️~1min — `text_only` mode — copy/content gates run
 ```bash
 automedia run --topic "Text Only Test" --brand test-brand --mode text_only --verbose
 ```
 **Expected Result:**
 - ✅ Pipeline completes
-- ✅ Gates executed: CW, G0, G1, G2, G3, G4, G5, H0, L1, L2, L3, L4 (12 gates)
+- ✅ Gates executed: CW, G0, G1, G2, G3, G4, G5, **G6**, H0, L1, L2, L3, L4 (**13 gates**)
 - ✅ Video gates V0-V7 NOT in gate log
 - ✅ `01_content/drafts/` directory has draft content
 
+**Failed Indicator:** Missing G6 from gate log, video gates unexpectedly present, no draft content.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.2 🟢 `video_only` mode — only video gates run
+#### 2.2 🟢 🔧 ⏱️~1min — `video_only` mode — only video gates run
 ```bash
 automedia run --topic "Video Only Test" --brand test-brand --mode video_only --verbose
 ```
@@ -283,46 +332,78 @@ automedia run --topic "Video Only Test" --brand test-brand --mode video_only --v
 - ✅ Content gates G0-G6 NOT in gate log
 - ✅ `03_video/` assets present
 
+**Failed Indicator:** Missing video gate, content gates unexpectedly present, no video assets.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.3 🟢 `qa_only` mode — only QA gates run
+#### 2.3 🟢 🔧 ⏱️~30s — `qa_only` mode — only QA gates run
 ```bash
 automedia run --topic "QA Only Test" --brand test-brand --mode qa_only --verbose
 ```
 **Expected Result:** ✅ Gates: G0, G2, G3, V1, V6 (5 gates). Gate log shows exactly 5 entries.
 
+**Failed Indicator:** More/fewer than 5 gates in log, or non-QA gates present.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.4 🟢 `image-carousel` mode
+#### 2.4 🟢 🔧 ⏱️~1min — `image-carousel` mode
 ```bash
 automedia run --topic "Carousel Test" --brand test-brand --mode image-carousel --verbose
 ```
 **Expected Result:** ✅ Gates: CW, G0-G6, L1-L4 (12 gates). Image carousel assets generated in `02_images/`.
 
+**Failed Indicator:** Missing CW or G6, no image assets, or lifecycle gates missing.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.5 🟢 `social-thread` mode
+#### 2.5 🟢 🔧 ⏱️~1min — `social-thread` mode
 ```bash
 automedia run --topic "Social Thread Test" --brand test-brand --mode social-thread --verbose
 ```
 **Expected Result:** ✅ Gates: CW, G0-G6, L1-L4 (12 gates). Content formatted as social thread.
 
+**Failed Indicator:** Missing G6, lifecycle gates missing, or gate count != 12.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.7 🟢 `repurpose` mode — full pipeline + P-gates
+#### 2.6 🟢 🔧 ⏱️~1min — `text_with_cover` mode — text + cover image
+```bash
+automedia run --topic "Cover Test" --brand test-brand --mode text_with_cover --verbose
+```
+**Expected Result:** ✅ Gates: CW, G0-G6, H0, L1-L4 (13 gates). Cover image generated in `02_images/`. Same gate set as text_only plus cover generation.
+
+**Failed Indicator:** Missing cover image, gate mismatch, or missing G6.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+#### 2.7 🟢 🔧 ⏱️~2min — `short-video` mode — full pipeline video focused
+```bash
+automedia run --topic "Short Video Test" --brand test-brand --mode short-video --verbose
+```
+**Expected Result:** ✅ Gates: pre-gate, CW, G0-G6, V0-V7, H0, L1-L4 (22 gates). Same gate set as `auto` mode. Video assets in `03_video/`.
+
+**Failed Indicator:** Missing any gate from the 22-gate list, or gate count < 22.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+#### 2.8 🟢 🔧 ⏱️~3min — `repurpose` mode — full pipeline + P-gates
 ```bash
 automedia run --topic "Repurpose Test" --brand test-brand --mode repurpose --verbose
 ```
 **Expected Result:** ✅ Pipeline completes. Gate log includes standard gates + P1-P4 at end. `04_repurpose/` directory created with subdirectories for each platform (wechat, twitter, newsletter, bilibili).
 
+**Failed Indicator:** Missing P-gates, no `04_repurpose/` directory, or missing subdirectories.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 2.6 🔴 Mode switching — no cross-contamination
+#### 2.9 🔴 🖥️ ⏱️~30s — Mode switching — no cross-contamination
 ```bash
 automedia run --topic "No Cross Contam" --brand test-brand --mode text_only
 automedia run --topic "No Cross Contam" --brand test-brand --mode video_only
 ```
 **Expected Result:** ✅ Both complete independently. Second run has different project_id. No file locking.
+
+**Failed Indicator:** Same project_id for both runs, or file locking error on parallel access.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
@@ -330,15 +411,17 @@ automedia run --topic "No Cross Contam" --brand test-brand --mode video_only
 
 ### 📊 Q2 Verdict
 
-| Scenario | Result |
-|----------|--------|
-| 2.1 text_only mode | ⬜ |
-| 2.2 video_only mode | ⬜ |
-| 2.3 qa_only mode | ⬜ |
-| 2.4 image-carousel mode | ⬜ |
-| 2.5 social-thread mode | ⬜ |
-| 2.6 No cross-contamination | ⬜ |
-| 2.7 repurpose mode | ⬜ |
+| Scenario | Badges | Expected Gates | Count | Result |
+|----------|--------|----------------|-------|--------|
+| 2.1 text_only | 🟢 🔧 ⏱️~1min | CW, G0-G6, H0, L1-L4 | 13 | ⬜ |
+| 2.2 video_only | 🟢 🔧 ⏱️~1min | V0-V7, L1-L4 | 12 | ⬜ |
+| 2.3 qa_only | 🟢 🔧 ⏱️~30s | G0, G2, G3, V1, V6 | 5 | ⬜ |
+| 2.4 image-carousel | 🟢 🔧 ⏱️~1min | CW, G0-G6, L1-L4 | 12 | ⬜ |
+| 2.5 social-thread | 🟢 🔧 ⏱️~1min | CW, G0-G6, L1-L4 | 12 | ⬜ |
+| 2.6 text_with_cover | 🟢 🔧 ⏱️~1min | CW, G0-G6, H0, L1-L4 | 13 | ⬜ |
+| 2.7 short-video | 🟢 🔧 ⏱️~2min | pre-gate, CW, G0-G6, V0-V7, H0, L1-L4 | 22 | ⬜ |
+| 2.8 repurpose | 🟢 🔧 ⏱️~3min | auto gates + P1-P4 | 26 | ⬜ |
+| 2.9 No cross-contamination | 🔴 ⏱️~30s | — | — | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -368,7 +451,12 @@ automedia run --topics "Good Topic,,Bad Topic (empty)" --brand test-brand --mode
 
 ---
 
-### 📊 Q3 Verdict | Scenario | Result | |----------|--------| | 3.1 Batch 3 topics | ⬜ | | 3.2 Failure isolation | ⬜ |
+### 📊 Q3 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 3.1 Batch 3 topics | ⬜ |
+| 3.2 Failure isolation | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -408,7 +496,13 @@ automedia run --topic "Test" --brand test-brand --mode qa_only --resume-from V0
 
 ---
 
-### 📊 Q4 Verdict | Scenario | Result | |----------|--------| | 4.1 Resume from G0 | ⬜ | | 4.2 Resume with missing MD5 | ⬜ | | 4.3 Resume from gate not in mode | ⬜ |
+### 📊 Q4 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 4.1 Resume from G0 | ⬜ |
+| 4.2 Resume with missing MD5 | ⬜ |
+| 4.3 Resume from gate not in mode | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -420,42 +514,70 @@ automedia run --topic "Test" --brand test-brand --mode qa_only --resume-from V0
 
 **Why this matters:** Runtime pipeline control is essential for production operations.
 
-#### 5.1 🟢 Skip a gate during pipeline execution
+#### 5.1 🟢 🔧 ⏱️~1min — Skip a gate during pipeline execution
 ```python
-# Via MCP: skip_gate(project_id="xxx", gate_name="G1")
+# Via MCP:
+#   skip_gate(project_id="xxx", gate_name="G1")
+# Via CLI:
+#   automedia skip-gate <project_id> G1
 ```
 **Expected Result:** ✅ Pipeline skips specified gate. Gate log marks as "skipped". Pipeline continues.
 
+**Failed Indicator:** Gate log shows gate as "failed" instead of "skipped", or pipeline stops.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 5.2 🟢 Cancel a running pipeline
+#### 5.2 🟢 🔧 ⏱️~1min — Cancel a running pipeline
 ```python
-# Via MCP: cancel_pipeline(project_id="xxx")
+# Via MCP:
+#   cancel_pipeline(project_id="xxx")
+# Via CLI:
+#   automedia cancel <project_id>
 ```
 **Expected Result:** ✅ Pipeline stops at next gate boundary. `cancelled` flag set. No corrupted output files.
 
+**Failed Indicator:** Pipeline continues running after cancel, or output files are corrupted.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 5.3 🟢 Pause and resume a running pipeline
+#### 5.3 🟢 🔧 ⏱️~1min — Pause and resume a running pipeline
 ```python
-# Via MCP: pause_pipeline(project_id="xxx") -> {paused: True}
-# Via MCP: resume_pipeline(project_id="xxx") -> {resumed: True}
+# Via MCP:
+#   pause_pipeline(project_id="xxx") -> {paused: True}
+#   resume_pipeline(project_id="xxx") -> {resumed: True}
+# Via CLI:
+#   automedia pause <project_id>
+#   automedia resume <project_id>
 ```
 **Expected Result:** ✅ Pipeline pauses between gates. Resumes from where paused. No duplicate gate execution.
 
+**Failed Indicator:** Duplicate gate execution after resume, or pipeline crashes on pause/resume.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-#### 5.4 🔴 Cancel non-existent pipeline
+#### 5.4 🔴 ⏱️~5s — Cancel non-existent pipeline
 ```python
-# Via MCP: cancel_pipeline(project_id="nonexistent")
+# Via MCP:
+#   cancel_pipeline(project_id="nonexistent")
+# Via CLI:
+#   automedia cancel nonexistent-project
 ```
 **Expected Result:** ❌ Returns NOT_FOUND error. Does NOT crash.
+
+**Failed Indicator:** Unhandled exception, Python traceback, or exit code 0.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q5 Verdict | Scenario | Result | |----------|--------| | 5.1 Skip gate | ⬜ | | 5.2 Cancel pipeline | ⬜ | | 5.3 Pause/resume | ⬜ | | 5.4 Cancel non-existent | ⬜ |
+### 📊 Q5 Verdict
+
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 5.1 Skip gate | 🟢 🔧 ⏱️~1min | ⬜ |
+| 5.2 Cancel pipeline | 🟢 🔧 ⏱️~1min | ⬜ |
+| 5.3 Pause/resume | 🟢 🔧 ⏱️~1min | ⬜ |
+| 5.4 Cancel non-existent | 🔴 ⏱️~5s | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -501,7 +623,14 @@ automedia distribute test-project --platforms nonexistent_platform
 
 ---
 
-### 📊 Q5b Verdict | Scenario | Result | |----------|--------| | 5b.1 Dry-run with platforms | ⬜ | | 5b.2 Dry-run with --all | ⬜ | | 5b.3 Invalid platform | ⬜ | | 5b.4 Distribution log | ⬜ |
+### 📊 Q5b Verdict
+
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 5b.1 Dry-run with platforms | 🟢 🔧 ⏱️~30s | ⬜ |
+| 5b.2 Dry-run with --all | 🟢 🔧 ⏱️~30s | ⬜ |
+| 5b.3 Invalid platform | 🔴 ⏱️~5s | ⬜ |
+| 5b.4 Distribution log | 🟢 ⏱️~10s | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -511,13 +640,17 @@ automedia distribute test-project --platforms nonexistent_platform
 
 ---
 
-## Q6: Does every MCP tool work correctly? (52 tools + 13 error codes)
+## Q6: Does every MCP tool work correctly? (59 tools total: 55 unique + 4 deprecated aliases + 13 error codes)
 
-**User says:** "I'm connecting via MCP protocol. I need all 52 tools to work as documented."
+**User says:** "I'm connecting via MCP protocol. I need all 59 tools to work as documented."
 
 **Why this matters:** MCP is the primary integration surface for AI agents. Broken tools break automation.
 
-### 6.1 🟢 Health check + onboarding tools (4 tools)
+> **Note on counts:** The MCP server registers **59 tool names**. Of these, **4 are deprecated aliases** (`batch_run`→`run_batch`, `engine_health`→`health_engine`, `mcp_help`→`help_mcp`, `pool_add_topic`→`add_pool_topic`). The count of **55 unique non-deprecated tools** is what matters for validation. The 4 deprecated aliases should still respond but with a deprecation notice.
+
+### 6.1 🟢 🔧 ⏱️~30s — Health check + onboarding tools (5 tools)
+The following tools are tested together as they cover server lifecycle introspection:
+`health_check`, `health_engine`, `onboard`, `init_config`, `get_redlines`
 ```python
 from automedia.mcp.server import create_server; import json
 server = create_server()
@@ -525,104 +658,133 @@ server = create_server()
 r = json.loads(server.call_tool("health_check", {}).content[0].text)
 assert r["status"] == "healthy" and r["version"] != "" and r["tools_count"] > 0
 assert "first_run" in r  # Boolean: True if no config initialized yet
-# engine_health
-r = json.loads(server.call_tool("engine_health", {}).content[0].text)
+# health_engine (preferred over deprecated engine_health)
+r = json.loads(server.call_tool("health_engine", {}).content[0].text)
 assert "engines" in r and r["healthy_count"] >= 0
 # onboard — guided setup for first-time users
 r = json.loads(server.call_tool("onboard", {}).content[0].text)
 assert "steps" in r and "status" in r
+# init_config — initialize configuration
+r = json.loads(server.call_tool("init_config", {}).content[0].text)
+assert "status" in r
+# get_redlines — agent red-line constraints
+r = json.loads(server.call_tool("get_redlines", {}).content[0].text)
+assert "redlines" in r or "constraints" in r
 ```
-**Expected Result:** ✅ All 4 return success with expected fields. `health_check.first_run` reflects real config state. `onboard()` returns structured setup steps.
+**Expected Result:** ✅ All 5 return success with expected fields. `health_check.first_run` reflects real config state. `onboard()` returns structured setup steps.
+
+**Failed Indicator:** Any tool raises exception, returns empty result, or missing required fields.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.2 🟢 Pipeline tools (9 tools)
-| Tool | Args | Expected |
-|------|------|----------|
-| `run_pipeline` | topic="MCP Test", brand="test-brand", mode="text_only" | `{project_id, status: "started"}` |
-| `get_pipeline_progress` | project_id | `{gates_done, gates_remaining, total_gates}` |
-| `get_pipeline_status` | project_id, base_dir | `{project: {...}, subdirs: [...]}` |
-| `cancel_pipeline` | project_id | `{cancelled: True}` |
-| `pause_pipeline` | project_id | `{paused: True}` |
-| `resume_pipeline` | paused project_id | `{resumed: True}` |
-| `retry_gate` | project_id, gate_name | `{retrying: True}` |
-| `skip_gate` | project_id, gate_name | `{skipping: True}` |
-| `list_active_pipelines` | no args | `{pipelines: [...], count}` |
+### 6.2 🟢 🔧 ⏱️~2min — Pipeline tools (9 tools)
+| Tool | Args | Expected | Failed Indicator |
+|------|------|----------|-----------------|
+| `run_pipeline` | topic="MCP Test", brand="test-brand", mode="text_only" | `{project_id, status: "started"}` | Exception or missing `project_id` |
+| `get_pipeline_progress` | project_id | `{gates_done, gates_remaining, total_gates}` | Missing key field |
+| `get_pipeline_status` | project_id, base_dir | `{project: {...}, subdirs: [...]}` | Missing `project` or `subdirs` |
+| `cancel_pipeline` | project_id | `{cancelled: True}` | Missing `cancelled` key |
+| `pause_pipeline` | project_id | `{paused: True}` | Missing `paused` key |
+| `resume_pipeline` | paused project_id | `{resumed: True}` | Missing `resumed` key |
+| `retry_gate` | project_id, gate_name | `{retrying: True}` | Missing `retrying` key |
+| `skip_gate` | project_id, gate_name | `{skipping: True}` | Missing `skipping` key |
+| `list_active_pipelines` | no args | `{pipelines: [...], count}` | Missing `pipelines` key |
 
 **Expected Result:** ✅ All 9 return success. Error tools on non-existent project return NOT_FOUND. Invalid mode returns INVALID_PARAM. `list_active_pipelines` returns running/paused/lost pipelines read from `~/.automedia/active_pipelines.json`.
 
+**Failed Indicator:** Any tool raises unhandled exception, returns unexpected response shape, or missing required fields.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.3 🟢 Project tools (5 tools)
-| Tool | Args | Expected |
-|------|------|----------|
-| `list_projects` | base_dir=".", status="" | `{projects: [...], count}` |
-| `get_project_assets` | project_dir | `{assets: [...], count}` |
-| `archive_project` | published project_id | `{archived: True}` |
-| `publish_content` | project_id, platform | `{published, platform, url}` |
-| `batch_run` | topics=[], brand, mode | `{results: [...], total, passed, failed}` |
+### 6.3 🟢 🔧 ⏱️~1min — Project tools (5 tools)
+Note: Use `run_batch` (preferred name) instead of deprecated `batch_run`.
+| Tool | Args | Expected | Failed Indicator |
+|------|------|----------|-----------------|
+| `list_projects` | base_dir=".", status="" | `{projects: [...], count}` | Missing `projects` key |
+| `get_project_assets` | project_dir | `{assets: [...], count}` | Missing `assets` key |
+| `archive_project` | published project_id | `{archived: True}` | Exception or wrong error code |
+| `publish_content` | project_id, platform | `{published, platform, url}` | Missing `published` key |
+| `run_batch` | topics=[], brand, mode | `{results: [...], total, passed, failed}` | Missing `results` key |
 
 **Expected Result:** ✅ All 5 return success. archive_project on non-published returns INVALID_PARAM (Red Line 8).
 
-**Actual Result:** _________ **PASS / FAIL:** _________
-
-### 6.4 🟢 Topic pool tools (3 tools)
-| Tool | Args | Expected |
-|------|------|----------|
-| `pool_add_topic` | title="Test", category="tech" | `{id, title, status: "pending"}` |
-| `list_topic_pool` | status="pending", category="tech" | `{topics: [...], count}` |
-| `select_topic` | category="tech" | `{selected: {...}}` or `{selected: null}` |
-
-**Expected Result:** ✅ All 3 return success. Empty title returns INVALID_PARAM. No pending topics returns `selected: null`.
+**Failed Indicator:** archive_project allows archiving non-published projects without --force. Any tool crashes instead of returning error struct.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.5 🟢 Research/Strategy tools (3 tools)
-| Tool | Args | Expected Structure |
-|------|------|-------------------|
-| `research_topics` | category="tech", count=3 | `{topics: [...], total_found}` |
-| `run_brand_strategy` | brand_name, industry, target_audience | 5-field strategy object |
-| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | `{strategy: {...}, pipeline_result: {...}}` |
+### 6.4 🟢 🔧 ⏱️~30s — Topic pool tools (4 tools)
+Note: `add_pool_topic` is the preferred name; `pool_add_topic` is the deprecated alias.
+| Tool | Args | Expected | Failed Indicator |
+|------|------|----------|-----------------|
+| `add_pool_topic` | title="Test", category="tech" | `{id, title, status: "pending"}` | Exception or missing `id` |
+| `list_topic_pool` | status="pending", category="tech" | `{topics: [...], count}` | Missing `topics` key |
+| `select_topic` | category="tech" | `{selected: {...}}` or `{selected: null}` | Neither shape returned |
+| `get_config` | no args | `{...config keys...}` | Missing expected config keys |
+
+**Expected Result:** ✅ All 4 return success. Empty title returns INVALID_PARAM. No pending topics returns `selected: null`. `get_config` returns merged configuration with secrets redacted.
+
+**Failed Indicator:** Empty title crashes (should return INVALID_PARAM). Secrets exposed in `get_config` output.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 6.5 🟢 🔧 ⏱️~30s — Research/Strategy tools (3 tools)
+| Tool | Args | Expected Structure | Failed Indicator |
+|------|------|-------------------|-----------------|
+| `research_topics` | category="tech", count=3 | `{topics: [...], total_found}` | Missing `topics` key |
+| `run_brand_strategy` | brand_name, industry, target_audience | 5-field strategy object | Missing expected strategy fields |
+| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | `{strategy: {...}, pipeline_result: {...}}` | Missing `strategy` or `pipeline_result` |
 
 **Expected Result:** ✅ All 3 succeed. In FAKE_LLM mode, return deterministic mock data.
 
+**Failed Indicator:** Exception in FAKE_LLM mode (should never need real API). Missing required fields.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.6 🟢 Omni Triad tools (4 tools)
-| Tool | Args | Expected |
-|------|------|----------|
-| `extract_brief` | file_path, source_lang, target_lang | `{md_content, manifest_json, warnings}` |
-| `localize_content` | md_content, source_lang, target_lang | `{translated_md, xliff_path, warnings}` |
-| `localize_output` | project_dir, target_langs | `{results: {lang: [files]}, warnings}` |
-| `format_output` | content, target_format | `{output_path, output_format}` |
+### 6.6 🟢 🔧 ⏱️~30s — Omni Triad tools (4 tools)
+| Tool | Args | Expected | Failed Indicator |
+|------|------|----------|-----------------|
+| `extract_brief` | file_path, source_lang, target_lang | `{md_content, manifest_json, warnings}` | Missing keys or exception |
+| `localize_content` | md_content, source_lang, target_lang | `{translated_md, xliff_path, warnings}` | Missing keys or exception |
+| `localize_output` | project_dir, target_langs | `{results: {lang: [files]}, warnings}` | Missing keys or exception |
+| `format_output` | content, target_format | `{output_path, output_format}` | Missing keys or exception |
 
 **Expected Result:** ✅ All 4 succeed. Unsupported format returns INVALID_PARAM. Non-existent file returns UNKNOWN gracefully.
 
+**Failed Indicator:** Unsupported format crashes instead of returning INVALID_PARAM. Non-existent file crashes instead of returning UNKNOWN.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.7 🟢 Content quality + analytics tools (2 tools)
+### 6.7 🟢 🔧 ⏱️~30s — Content quality + analytics tools (2 tools)
+Note: The analytics tool is registered as `effects_analyze_content` (not `analyze_content`).
 ```python
 r = json.loads(server.call_tool("evaluate_content_quality", {
     "content": "# Test\n\nParagraph.", "criteria": "general", "brand": "test-brand",
 }).content[0].text)
 assert "quality_score" in r and "issues" in r and "suggestions" in r
-# analyze_content — compute content analytics stats
-r = json.loads(server.call_tool("analyze_content", {
+# effects_analyze_content — compute content analytics stats
+r = json.loads(server.call_tool("effects_analyze_content", {
     "project_id": "test-project",
 }).content[0].text)
 assert "word_count" in r and "sentiment_score" in r and "readability_index" in r
 ```
-**Expected Result:** ✅ `evaluate_content_quality` returns `{quality_score, issues, suggestions, overall_assessment}`. Score is numeric. `analyze_content` returns stats with word_count, sentiment_score, readability_index, brand_mention_frequency, seo_score_aggregation.
+**Expected Result:** ✅ `evaluate_content_quality` returns `{quality_score, issues, suggestions, overall_assessment}`. Score is numeric. `effects_analyze_content` returns stats with word_count, sentiment_score, readability_index, brand_mention_frequency, seo_score_aggregation.
+
+**Failed Indicator:** Missing required result fields. `effects_analyze_content` not recognized (use exact function name).
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.8 🟢 Brand/Asset/Workflow/Cron/Account/Distribution tools (18 tools)
+### 6.8 🟢 🔧 ⏱️~2min — Brand/Asset/Workflow/Cron/Account/Distribution tools (20 tools)
+Note: 20 tools in this group (up from 18). Includes extra tools: `list_platforms`, `update_engine_config`, `add_brand`, `configure_llm`.
 | Tool | Happy Path | Expected | Error Path | Expected |
 |------|-----------|----------|------------|----------|
 | `list_brands` | no args | `{brands: [...], total}` | | |
+| `add_brand` | name="test", platform="wechat" | `{brand: {...}}` | duplicate | error |
 | `search_assets` | query="test", brand="test-brand" | `{results: [...], count}` | | |
 | `list_overridable_templates` | no args | `{templates: [...], count}` | | |
 | `list_workflows` | no args | `{workflows: [...], count}` | | |
+| `list_platforms` | no args | `{platforms: [...], count}` | | |
+| `configure_llm` | provider="openai", model="gpt-4" | `{configured: True}` | invalid provider | error |
+| `update_engine_config` | modality="video", setting="quality", value="high" | `{updated: True}` | invalid modality | INVALID_PARAM |
 | `add_cron_schedule` | name="test-job", expression="0 * * * *" | `{added: True, name}` | invalid expression | INVALID_PARAM |
 | `list_cron_schedules` | no args | `{schedules: [...], count}` | | |
 | `remove_cron_schedule` | name="test-job" | `{removed: True, name}` | non-existent | NOT_FOUND |
@@ -637,11 +799,13 @@ assert "word_count" in r and "sentiment_score" in r and "readability_index" in r
 | `reject_gate` | project_id, gate_name | `{rejected: True, reason: "..."}` | non-pending | INVALID_PARAM |
 | `get_pending_approvals` | project_id | `{pending: [...], count}` | | |
 
-**Expected Result:** ✅ All 18 tools succeed with expected shapes. Error paths return proper error codes. `distribute_content` returns platform→status mapping.
+**Expected Result:** ✅ All 20 tools succeed with expected shapes. Error paths return proper error codes. `distribute_content` returns platform→status mapping.
+
+**Failed Indicator:** Any tool raises unhandled exception. Error paths return Python traceback instead of structured error response.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.9 🟢 Register platform adapter (1 tool)
+### 6.9 🟢 🔧 ⏱️~10s — Register platform adapter (1 tool)
 ```python
 r = json.loads(server.call_tool("register_platform_adapter", {
     "platform_name": "test-platform", "adapter_class": "automedia.adapters.base.BasePlatformAdapter",
@@ -650,26 +814,30 @@ assert r.get("registered") or r.get("stub")
 ```
 **Expected Result:** ✅ Returns registered/stub response. Empty name returns INVALID_PARAM. Invalid class returns error.
 
+**Failed Indicator:** Empty name crashes instead of returning INVALID_PARAM. Exception on invalid class.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 6.10 🔴 MCP error codes — all 13 error codes
-| Error Code | Trigger | Expected Response Shape |
-|-----------|---------|------------------------|
-| `INVALID_PARAM` | `run_pipeline` with invalid mode | `{"success": false, "error": {"code": "INVALID_PARAM", "message": "...", "resolution": "..."}}` |
-| `NOT_FOUND` | `archive_project` non-existent project | same shape, code="NOT_FOUND" |
-| `PIPELINE_ERROR` | pipeline runtime failure | same shape, code="PIPELINE_ERROR" |
-| `ENGINE_ERROR` | engine health/dependency failure | same shape, code="ENGINE_ERROR" |
-| `ALLOWLIST_DENIED` | access path outside allowlist | same shape, code="ALLOWLIST_DENIED" |
-| `AUTH_ERROR` | invalid/expired platform credentials | same shape, code="AUTH_ERROR" |
-| `RATE_LIMITED` | too many concurrent pipelines (max 3) | same shape, code="RATE_LIMITED" |
-| `TIMEOUT` | pipeline or gate timeout | same shape, code="TIMEOUT" |
-| `CONFIG_ERROR` | missing/invalid configuration | same shape, code="CONFIG_ERROR" |
-| `DEPENDENCY_ERROR` | missing external dependency (bun, ffmpeg, etc.) | same shape, code="DEPENDENCY_ERROR" |
-| `GATE_ERROR` | gate execution failure | same shape, code="GATE_ERROR" |
-| `CANCELLED` | pipeline was cancelled | same shape, code="CANCELLED" |
-| `UNKNOWN` | unhandled exception | same shape, code="UNKNOWN" |
+### 6.10 🔴 ⏱️~2min — MCP error codes — all 13 error codes
+| Error Code | Trigger | Expected Response Shape | Failed Indicator |
+|-----------|---------|------------------------|-----------------|
+| `INVALID_PARAM` | `run_pipeline` with invalid mode | `{"success": false, "error": {"code": "INVALID_PARAM", "message": "...", "resolution": "..."}}` | Missing error.code or Python traceback |
+| `NOT_FOUND` | `archive_project` non-existent project | same shape, code="NOT_FOUND" | Wrong error code or no resolution |
+| `PIPELINE_ERROR` | pipeline runtime failure | same shape, code="PIPELINE_ERROR" | Wrong error code |
+| `ENGINE_ERROR` | engine health/dependency failure | same shape, code="ENGINE_ERROR" | Wrong error code |
+| `ALLOWLIST_DENIED` | access path outside allowlist | same shape, code="ALLOWLIST_DENIED" | Wrong error code |
+| `AUTH_ERROR` | invalid/expired platform credentials | same shape, code="AUTH_ERROR" | Wrong error code |
+| `RATE_LIMITED` | too many concurrent pipelines (max 3) | same shape, code="RATE_LIMITED" | Wrong error code |
+| `TIMEOUT` | pipeline or gate timeout | same shape, code="TIMEOUT" | Wrong error code |
+| `CONFIG_ERROR` | missing/invalid configuration | same shape, code="CONFIG_ERROR" | Wrong error code |
+| `DEPENDENCY_ERROR` | missing external dependency (bun, ffmpeg, etc.) | same shape, code="DEPENDENCY_ERROR" | Wrong error code |
+| `GATE_ERROR` | gate execution failure | same shape, code="GATE_ERROR" | Wrong error code |
+| `CANCELLED` | pipeline was cancelled | same shape, code="CANCELLED" | Wrong error code |
+| `UNKNOWN` | unhandled exception | same shape, code="UNKNOWN" | Wrong error code |
 
 **Expected Result:** ✅ Each returns proper MCPErrorCode. Error response has success=False + error.code/message/resolution. No Python traceback leaked.
+
+**Failed Indicator:** Any error response leaks Python traceback, missing `resolution` field, or returns HTTP-style status code instead of MCP error code.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
@@ -679,60 +847,70 @@ assert r.get("registered") or r.get("stub")
 
 | Tool Group | Count | Result |
 |-----------|-------|--------|
-| 6.1 Health check + onboarding | 4 | ⬜ |
+| 6.1 Health check + onboarding | 5 | ⬜ |
 | 6.2 Pipeline tools | 9 | ⬜ |
 | 6.3 Project tools | 5 | ⬜ |
-| 6.4 Topic pool | 3 | ⬜ |
+| 6.4 Topic pool + config | 4 | ⬜ |
 | 6.5 Research/Strategy | 3 | ⬜ |
 | 6.6 Omni Triad | 4 | ⬜ |
 | 6.7 Content quality + analytics | 2 | ⬜ |
-| 6.8 Brand/Asset/Workflow/Cron/Account/Distribution | 18 | ⬜ |
+| 6.8 Brand/Asset/Workflow/Cron/Account/Distribution | 21 | ⬜ |
 | 6.9 Register adapter | 1 | ⬜ |
 | 6.10 Error codes | 13 | ⬜ |
 
-**Total: 61 scenarios across 52 tools + 13 error codes**
+**Total: 67 scenarios across 59 tool registrations (55 unique + 4 deprecated aliases) + 13 error codes**
 
 **OVERALL: ⬜**
 
 ---
 
-## Q7: Does every CLI command work correctly? (16 commands)
+## Q7: Does every CLI command work correctly? (17 commands)
 
-**User says:** "I prefer using the terminal. I need all 16 CLI commands to work."
+**User says:** "I prefer using the terminal. I need all 17 CLI commands to work."
 
-### 7.1 🟢 Main help + version
+> **Commands in codebase:** `account`, `adapter`, `cron`, `hitl`, `mcp`, `omni`, `onboard`, `pool`, `projects` (sub-apps) + `run`, `distribute`, `effects`, `archive`, `doctor`, `history`, `init`, `rollback` (standalone fns) = 17 total.
+
+### 7.1 🟢 ⏱️~10s — Main help + version
 ```bash
 automedia --help; automedia --version
 ```
 **Expected Result:** ✅ `--help` shows all commands. `--version` shows version string. `--json` accepted.
 
+**Failed Indicator:** Missing commands in help output, or `--version` crashes.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.2 🟢 Each command's help works
+### 7.2 🟢 ⏱️~30s — Each command's help works
 ```bash
-for cmd in run pool projects distribute effects adapter cron archive init doctor omni hitl onboard account; do automedia $cmd --help; done
+for cmd in run pool projects distribute effects adapter cron archive init doctor omni hitl onboard account mcp history rollback; do automedia $cmd --help; done
 ```
-**Expected Result:** ✅ Every command has help output. No crashes.
+**Expected Result:** ✅ All 17 commands have help output. No crashes.
+
+**Failed Indicator:** Any command crashes on `--help`. Any command missing from output.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.3 🟢 `doctor` — dependency check
+### 7.3 🟢 🔧 ⏱️~30s — `doctor` — dependency check
 ```bash
 automedia doctor; automedia doctor --json
 ```
 **Expected Result:** ✅ Runs all checks. Structured output for each dep. `--json` outputs machine-readable JSON.
 
+**Failed Indicator:** Crash on doctor run. Missing dependency checks. `--json` returns non-JSON output.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.4 🟢 `init` — configuration init
+### 7.4 🟢 ⏱️~10s — `init` — configuration init
 ```bash
 automedia init --template minimal
 ```
 **Expected Result:** ✅ Creates `.automedia/` directory with default config. Does NOT overwrite existing config.
 
+**Failed Indicator:** Overwrites existing config without asking. Crash on init. Missing default config files.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.5 🟢 `archive` — Red Line 8 enforcement
+### 7.5 🟢 🔧 ⏱️~1min — `archive` — Red Line 8 enforcement
 ```bash
 automedia run --topic "Archive Test" --brand test-brand --mode text_only
 # Get project_id, then:
@@ -740,65 +918,81 @@ automedia archive PROJECT_ID --base-dir $AUTOMEDIA_PROJECTS_DIR
 ```
 **Expected Result:** ❌ If not published: exit != 0, error about status. ✅ If published: exit 0. ✅ With --force: exit 0 (but agent MUST NOT use --force — RL8).
 
+**Failed Indicator:** Archive succeeds on non-published project without --force. Archive crashes with traceback.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.6 🟢 `pool` — topic pool management
+### 7.6 🟢 🔧 ⏱️~30s — `pool` — topic pool management
 ```bash
 automedia pool list; automedia pool add "Test CLI Topic" --category tech; automedia pool list --status pending
 ```
 **Expected Result:** ✅ `pool list` returns topics. `pool add` adds, returns id. `pool list --status pending` shows new topic.
 
+**Failed Indicator:** Pool operations crash. Added topic not visible in list.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.7 🟢 `projects` — project listing
+### 7.7 🟢 🔧 ⏱️~30s — `projects` — project listing
 ```bash
 automedia projects list; automedia projects get PROJECT_ID
 ```
 **Expected Result:** ✅ Both work. `projects list` shows projects with status. `projects get` shows detailed info.
 
+**Failed Indicator:** Crash on listing. `projects get` with valid ID returns error.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.8 🟢 `cron` — cron health
+### 7.8 🟢 🔧 ⏱️~10s — `cron` — cron health
 ```bash
 automedia cron check-health
 ```
 **Expected Result:** ✅ Runs without crashing. Returns health status.
 
+**Failed Indicator:** Crash on check-health. Missing health status fields.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.9 🟢 `omni` — Omni Triad help
+### 7.9 🟢 ⏱️~10s — `omni` — Omni Triad help
 ```bash
 automedia omni --help
 ```
 **Expected Result:** ✅ Shows subcommands: start-all, start, localize, format-output, ingest. Each has proper docs.
 
+**Failed Indicator:** Missing subcommands. Crash on --help.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.10 🟢 `account` — account management
+### 7.10 🟢 🔧 ⏱️~30s — `account` — account management
 ```bash
 automedia account list; automedia account health ACCOUNT_ID
 ```
 **Expected Result:** ✅ `list` returns accounts (may be empty). `health` with valid ID returns status; invalid ID returns error.
 
+**Failed Indicator:** Crash on list or health. Non-existent account ID returns success instead of error.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.11 🟢 `hitl` — HITL config
+### 7.11 🟢 ⏱️~10s — `hitl` — HITL config
 ```bash
 automedia hitl preset list; automedia hitl config list
 ```
 **Expected Result:** ✅ Both work without crashing. Returns structured config info.
 
+**Failed Indicator:** Crash on preset list or config list.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.12 🟢 `onboard` — onboarding wizard
+### 7.12 🟢 ⏱️~10s — `onboard` — onboarding wizard
 ```bash
 automedia onboard status; automedia onboard list
 ```
 **Expected Result:** ✅ Both work. Returns onboarding status/progress info.
 
+**Failed Indicator:** Crash on status or list. Missing progress info.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.13 🟢 `distribute` — content distribution
+### 7.13 🟢 🔧 ⏱️~1min — `distribute` — content distribution
 ```bash
 automedia distribute --help
 automedia distribute test-project --platforms wechat,twitter --dry-run
@@ -806,14 +1000,48 @@ automedia distribute test-project --all --dry-run
 ```
 **Expected Result:** ✅ `--help` shows options (--platforms, --all, --dry-run, --cron). `--dry-run` with --platforms prints plan for specified platforms. `--all --dry-run` prints plan for all 7 D-gate platforms (wechat, twitter, zhihu, xiaohongshu, bilibili, youtube, tiktok). Exit code 0.
 
+**Failed Indicator:** Missing --dry-run flag. --all doesn't list all 7 platforms. Crash on distribute.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 7.14 🟢 `effects` — content analytics
+### 7.14 🟢 🔧 ⏱️~30s — `effects` — content analytics
 ```bash
 automedia effects --help
 automedia effects test-project --output json
 ```
 **Expected Result:** ✅ `--help` lists options (--output). `--output json` returns JSON with word_count, sentiment_score, readability_index, brand_mention_frequency, seo_score_aggregation. Exit code 0.
+
+**Failed Indicator:** Missing analytics fields. `--output json` returns non-JSON. Crash on missing project.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 7.15 🟢 ⏱️~10s — `history` — pipeline execution history
+```bash
+automedia history test-project
+```
+**Expected Result:** ✅ Shows pipeline execution history for the project. Returns timeline of gate executions.
+
+**Failed Indicator:** Crash on valid project ID. Missing timeline or gate info.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 7.16 🟢 ⏱️~10s — `rollback` — project rollback
+```bash
+automedia rollback test-project
+```
+**Expected Result:** ✅ Returns success or error about project status. Does not crash.
+
+**Failed Indicator:** Crash on valid project. Applies destructive action without confirmation.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 7.17 🟢 ⏱️~10s — `mcp` — MCP server management
+```bash
+automedia mcp --help
+```
+**Expected Result:** ✅ Shows MCP server management subcommands (start, stop, status). Each has proper docs.
+
+**Failed Indicator:** Crash on --help. Missing subcommands.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
@@ -821,24 +1049,27 @@ automedia effects test-project --output json
 
 ### 📊 Q7 Verdict
 
-| # | Command | Result |
-|---|---------|--------|
-| 7.1 | Main help + version | ⬜ |
-| 7.2 | Each command help | ⬜ |
-| 7.3 | doctor | ⬜ |
-| 7.4 | init | ⬜ |
-| 7.5 | archive (RL8) | ⬜ |
-| 7.6 | pool | ⬜ |
-| 7.7 | projects | ⬜ |
-| 7.8 | cron | ⬜ |
-| 7.9 | omni | ⬜ |
-| 7.10 | account | ⬜ |
-| 7.11 | hitl | ⬜ |
-| 7.12 | onboard | ⬜ |
-| 7.13 | distribute | ⬜ |
-| 7.14 | effects | ⬜ |
+| # | Command | Badges | Result |
+|---|---------|--------|--------|
+| 7.1 | Main help + version | 🟢 ⏱️~10s | ⬜ |
+| 7.2 | Each command help | 🟢 ⏱️~30s | ⬜ |
+| 7.3 | doctor | 🟢 🔧 ⏱️~30s | ⬜ |
+| 7.4 | init | 🟢 ⏱️~10s | ⬜ |
+| 7.5 | archive (RL8) | 🟢 🔧 ⏱️~1min | ⬜ |
+| 7.6 | pool | 🟢 🔧 ⏱️~30s | ⬜ |
+| 7.7 | projects | 🟢 🔧 ⏱️~30s | ⬜ |
+| 7.8 | cron | 🟢 🔧 ⏱️~10s | ⬜ |
+| 7.9 | omni | 🟢 ⏱️~10s | ⬜ |
+| 7.10 | account | 🟢 🔧 ⏱️~30s | ⬜ |
+| 7.11 | hitl | 🟢 ⏱️~10s | ⬜ |
+| 7.12 | onboard | 🟢 ⏱️~10s | ⬜ |
+| 7.13 | distribute | 🟢 🔧 ⏱️~1min | ⬜ |
+| 7.14 | effects | 🟢 🔧 ⏱️~30s | ⬜ |
+| 7.15 | history | 🟢 ⏱️~10s | ⬜ |
+| 7.16 | rollback | 🟢 ⏱️~10s | ⬜ |
+| 7.17 | mcp | 🟢 ⏱️~10s | ⬜ |
 
-**OVERALL: ⬜**
+**OVERALL: ⬜** (17 commands total)
 
 ---
 
@@ -875,7 +1106,13 @@ automedia projects list --json
 
 ---
 
-### 📊 Q8 Verdict | Scenario | Result | |----------|--------| | 8.1 Pipeline CLI vs SDK | ⬜ | | 8.2 Project listing CLI vs MCP | ⬜ | | 8.3 Archive CLI vs MCP | ⬜ |
+### 📊 Q8 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 8.1 Pipeline CLI vs SDK | ⬜ |
+| 8.2 Project listing CLI vs MCP | ⬜ |
+| 8.3 Archive CLI vs MCP | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -898,18 +1135,21 @@ pytest tests/test_gate_base.py tests/test_gate_engine.py tests/test_gate_hooks.p
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 9.2 🟢 All 21 auto-mode gates execute
+### 9.2 🟢 🔧 ⏱️~2min — All 22 auto-mode gates execute
 ```python
 from automedia import run_full_pipeline
 result = run_full_pipeline(topic="All Gates Test", brand="test-brand", mode="auto")
-auto_gates = ["pre-gate", "CW", "G0", "G1", "G2", "G3", "G4", "G5",
+auto_gates = ["pre-gate", "CW", "G0", "G1", "G2", "G3", "G4", "G5", "G6",
               "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7",
               "H0", "L1", "L2", "L3", "L4"]
 gate_names = [g.gate_name for g in result.gates_log]
+assert len(gate_names) == 22, f"Expected 22 auto gates, got {len(gate_names)}"
 for g in auto_gates:
     assert g in gate_names, f"Gate {g} missing"
 ```
-**Expected Result:** ✅ All 21 auto-mode gates execute. Each has status passed/skipped/failed. No gate raises unhandled exception.
+**Expected Result:** ✅ All **22** auto-mode gates execute (includes G6). Each has status passed/skipped/failed. No gate raises unhandled exception.
+
+**Failed Indicator:** Missing G6 from gate log. Gate count < 22. Any gate raises unhandled exception.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
@@ -926,7 +1166,13 @@ for g in auto_gates:
 
 ---
 
-### 📊 Q9 Verdict | Scenario | Result | |----------|--------| | 9.1 Gate test suite | ⬜ | | 9.2 All gates in auto | ⬜ | | 9.3 Gate artifacts | ⬜ |
+### 📊 Q9 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 9.1 Gate test suite | ⬜ |
+| 9.2 All gates in auto | ⬜ |
+| 9.3 Gate artifacts | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -967,7 +1213,15 @@ Mock gate raising ConnectionError.
 
 ---
 
-### 📊 Q10 Verdict | Scenario | Result | |----------|--------| | 10.1 stop halts | ⬜ | | 10.2 retry L1 quality retry | ⬜ | | 10.3 retry L2 regeneration | ⬜ | | 10.4 L0 tenacity retry | ⬜ | | 10.5 Configurable thresholds | ⬜ |
+### 📊 Q10 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 10.1 stop halts | ⬜ |
+| 10.2 retry L1 quality retry | ⬜ |
+| 10.3 retry L2 regeneration | ⬜ |
+| 10.4 L0 tenacity retry | ⬜ |
+| 10.5 Configurable thresholds | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1007,7 +1261,13 @@ automedia hitl preset list; automedia hitl config list
 
 ---
 
-### 📊 Q11 Verdict | Scenario | Result | |----------|--------| | 11.1 H0 gate | ⬜ | | 11.2 Approve/skip | ⬜ | | 11.3 HITL presets | ⬜ |
+### 📊 Q11 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 11.1 H0 gate | ⬜ |
+| 11.2 Approve/skip | ⬜ |
+| 11.3 HITL presets | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1093,7 +1353,15 @@ assert GateRegistry.get("G0")._failure_mode != "retry"
 
 ---
 
-### 📊 Q11B Verdict | Scenario | Result | |----------|--------| | 11B.1 Override YAML loading | ⬜ | | 11B.2 validate_gate_modifiers | ⬜ | | 11B.3 Platform gate merge | ⬜ | | 11B.4 Per-instance override | ⬜ | | 11B.5 Invalid failure mode | ⬜ |
+### 📊 Q11B Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 11B.1 Override YAML loading | ⬜ |
+| 11B.2 validate_gate_modifiers | ⬜ |
+| 11B.3 Platform gate merge | ⬜ |
+| 11B.4 Per-instance override | ⬜ |
+| 11B.5 Invalid failure mode | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1143,7 +1411,14 @@ automedia doctor
 
 ---
 
-### 📊 Q12 Verdict | Scenario | Result | |----------|--------| | 12.1 Missing base dir | ⬜ | | 12.2 Missing env vars | ⬜ | | 12.3 Invalid config | ⬜ | | 12.4 Missing dep (doctor) | ⬜ |
+### 📊 Q12 Verdict
+
+| Scenario | Result |
+|----------|--------|
+| 12.1 Missing base dir | ⬜ |
+| 12.2 Missing env vars | ⬜ |
+| 12.3 Invalid config | ⬜ |
+| 12.4 Missing dep (doctor) | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1186,9 +1461,13 @@ automedia archive PROJECT_ID  # Should fail (not published)
 
 ---
 
-### 📊 Q13 Verdict | Scenario | Result | |----------|--------| | 13.1 Path allowlist | ⬜ | | 13.2 Empty allowlist deny all | ⬜ | | 13.3 Red Line 8 | ⬜ |
+### 📊 Q13 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 13.1 Path allowlist | ⬜ |
+| 13.2 Empty allowlist deny all | ⬜ |
+| 13.3 Red Line 8 | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1223,9 +1502,13 @@ assert "pipelines" in data
 
 ---
 
-### 📊 Q14 Verdict | Scenario | Result | |----------|--------| | 14.1 Concurrent pipelines | ⬜ | | 14.2 Concurrent archives | ⬜ | | 14.3 Session recovery | ⬜ |
+### 📊 Q14 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 14.1 Concurrent pipelines | ⬜ |
+| 14.2 Concurrent archives | ⬜ |
+| 14.3 Session recovery | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1261,9 +1544,13 @@ Test that deep_merge creates new dict without modifying inputs.
 
 ---
 
-### 📊 Q15 Verdict | Scenario | Result | |----------|--------| | 15.1 Env overrides project config | ⬜ | | 15.2 Config dir is file | ⬜ | | 15.3 deep_merge non-destructive | ⬜ |
+### 📊 Q15 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 15.1 Env overrides project config | ⬜ |
+| 15.2 Config dir is file | ⬜ |
+| 15.3 deep_merge non-destructive | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1289,9 +1576,12 @@ Run twice, compare directory structures.
 
 ---
 
-### 📊 Q16 Verdict | Scenario | Result | |----------|--------| | 16.1 Same pipeline twice | ⬜ | | 16.2 Same config structure | ⬜ |
+### 📊 Q16 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 16.1 Same pipeline twice | ⬜ |
+| 16.2 Same config structure | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1313,9 +1603,12 @@ A hook that tries to mutate context dict should be rejected by type checker.
 
 ---
 
-### 📊 Q17 Verdict | Scenario | Result | |----------|--------| | 17.1 Hook dispatch order | ⬜ | | 17.2 Hook readonly | ⬜ |
+### 📊 Q17 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 17.1 Hook dispatch order | ⬜ |
+| 17.2 Hook readonly | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1345,9 +1638,12 @@ assert verify_md5(project_dir, "G0", "/path/to/file.md") == True
 
 ---
 
-### 📊 Q18 Verdict | Scenario | Result | |----------|--------| | 18.1 MD5 recorded | ⬜ | | 18.2 MD5 verifiable | ⬜ |
+### 📊 Q18 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 18.1 MD5 recorded | ⬜ |
+| 18.2 MD5 verifiable | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1382,9 +1678,12 @@ if hasattr(result, 'gates_log') and result.gates_log:
 
 ---
 
-### 📊 Q19 Verdict | Scenario | Result | |----------|--------| | 19.1 Metrics recorded | ⬜ | | 19.2 Cost/token data | ⬜ |
+### 📊 Q19 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 19.1 Metrics recorded | ⬜ |
+| 19.2 Cost/token data | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1425,9 +1724,11 @@ assert disconnect_data["success"]
 
 ---
 
-### 📊 Q20 Verdict | Scenario | Result | |----------|--------| | 20.1 Account lifecycle | ⬜ |
+### 📊 Q20 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 20.1 Account lifecycle | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1456,9 +1757,12 @@ with tempfile.TemporaryDirectory() as td:
 
 ---
 
-### 📊 Q21 Verdict | Scenario | Result | |----------|--------| | 21.1 Encrypt/decrypt round-trip | ⬜ | | 21.2 Missing master key | ⬜ |
+### 📊 Q21 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 21.1 Encrypt/decrypt round-trip | ⬜ |
+| 21.2 Missing master key | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1475,9 +1779,11 @@ flow = OAuth2ClientCredentialsFlow(client_id="id", client_secret="secret", token
 
 ---
 
-### 📊 Q22 Verdict | Scenario | Result | |----------|--------| | 22.1 Client credentials flow | ⬜ |
+### 📊 Q22 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 22.1 Client credentials flow | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1497,9 +1803,11 @@ assert token == "abc"  # Valid token returned
 
 ---
 
-### 📊 Q23 Verdict | Scenario | Result | |----------|--------| | 23.1 Token TTL refresh | ⬜ |
+### 📊 Q23 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 23.1 Token TTL refresh | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1530,9 +1838,12 @@ assert len(nodes) > 0
 
 ---
 
-### 📊 Q24 Verdict | Scenario | Result | |----------|--------| | 24.1 Preset loading | ⬜ | | 24.2 Override merging | ⬜ |
+### 📊 Q24 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 24.1 Preset loading | ⬜ |
+| 24.2 Override merging | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1552,9 +1863,11 @@ assert result is not None  # Agent returns immediately
 
 ---
 
-### 📊 Q25 Verdict | Scenario | Result | |----------|--------| | 25.1 Agent vs human routing | ⬜ |
+### 📊 Q25 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 25.1 Agent vs human routing | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1581,9 +1894,11 @@ assert artifact.metadata.get("human_skipped")
 
 ---
 
-### 📊 Q26 Verdict | Scenario | Result | |----------|--------| | 26.1 Approve/skip | ⬜ |
+### 📊 Q26 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 26.1 Approve/skip | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1593,7 +1908,9 @@ assert artifact.metadata.get("human_skipped")
 
 ## Q27: Does DecisionOrchestrator produce valid artifacts?
 
-### 27.1 🟢 DecisionArtifact serialization
+> **🚧 NOTE — PARTIALLY IMPLEMENTED:** The Decision Layer exists only as: `DecisionArtifact` (base.py), `audit.py`, and `schema_validator.py`. The `DecisionOrchestrator`, `BaseDecisionAgent`, `build.py`, `dependency.py`, `preflight.py`, and `diagnostic.py` modules referenced in AGENTS.md do **NOT yet exist**. Scenarios below only test what is implemented. Mark future modules as ➖ SKIP.
+
+### 27.1 🟢 ⏱️~10s — DecisionArtifact serialization
 ```python
 from automedia.decision.base import DecisionArtifact
 artifact = DecisionArtifact(type="brief", content={"key": "value"}, format="yaml")
@@ -1602,13 +1919,20 @@ serialized = artifact.serialize()
 deserialized = DecisionArtifact.deserialize(serialized)
 assert deserialized.content == artifact.content
 ```
-**Expected Result:** ✅ Artifact serializes/deserializes correctly. All 8 types supported. yaml/markdown/csv formats work.
+**Expected Result:** ✅ Artifact serializes/deserializes correctly. Available types: brief, strategy, review, audit_entry, metric, pipeline_config. Formats: yaml, json, markdown.
+
+**Failed Indicator:** Serialization raises exception. Round-trip loses data.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q27 Verdict | Scenario | Result | |----------|--------| | 27.1 Artifact serialization | ⬜ |
+### 📊 Q27 Verdict
+
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 27.1 Artifact serialization | 🟢 ⏱️~10s | ⬜ |
+| *DecisionOrchestrator* | 🚧 Not yet implemented | ➖ SKIP |
 
 **OVERALL: ⬜**
 
@@ -1616,7 +1940,7 @@ assert deserialized.content == artifact.content
 
 ## Q28: Does force-provenance audit logging work?
 
-### 28.1 🟢 Audit log written on force action
+### 28.1 🟢 ⏱️~10s — Audit log written on force action
 ```python
 from automedia.decision.audit import log_force_provenance
 log_force_provenance(action="force_archive", reason="Testing", agent="test")
@@ -1624,11 +1948,17 @@ log_force_provenance(action="force_archive", reason="Testing", agent="test")
 ```
 **Expected Result:** ✅ Audit entry written to ~/.automedia/audit/force_provenance.log. Entry has timestamp, action, reason, agent.
 
+**Failed Indicator:** Missing audit file. Entry missing required fields. Exception raised.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q28 Verdict | Scenario | Result | |----------|--------| | 28.1 Audit log written | ⬜ |
+### 📊 Q28 Verdict
+
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 28.1 Audit log written | 🟢 ⏱️~10s | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1636,7 +1966,7 @@ log_force_provenance(action="force_archive", reason="Testing", agent="test")
 
 ## Q29: Does schema validation work?
 
-### 29.1 🟢 Schema validation passes for valid data
+### 29.1 🟢 ⏱️~10s — Schema validation passes for valid data
 ```python
 from automedia.decision.schema_validator import validate_artifact
 result = validate_artifact("brief", {"key": "value"})
@@ -1644,11 +1974,18 @@ assert result["valid"] == True
 ```
 **Expected Result:** ✅ Known schemas accept valid data. Missing schemas return error gracefully.
 
+**Failed Indicator:** Valid data rejected. Schema not found raises exception instead of returning error dict.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q29 Verdict | Scenario | Result | |----------|--------| | 29.1 Schema validation | ⬜ |
+### 📊 Q29 Verdict
+
+| Scenario | Badges | Result |
+|----------|--------|--------|
+| 29.1 Schema validation | 🟢 ⏱️~10s | ⬜ |
+| *Schema for all 8 artifact types* | 🚧 Only "brief" schema exists | ⬜ |
 
 **OVERALL: ⬜**
 
@@ -1679,9 +2016,12 @@ pytest tests/test_gate_engine.py -v --timeout 30
 
 ---
 
-### 📊 Q30 Verdict | Scenario | Result | |----------|--------| | 30.1 Tenacity retry | ⬜ | | 30.2 Quality + regeneration | ⬜ |
+### 📊 Q30 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 30.1 Tenacity retry | ⬜ |
+| 30.2 Quality + regeneration | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1695,9 +2035,11 @@ Run pipeline that fails at a stop gate. Verify resume_from works to skip complet
 
 ---
 
-### 📊 Q31 Verdict | Scenario | Result | |----------|--------| | 31.1 Resume after failure | ⬜ |
+### 📊 Q31 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 31.1 Resume after failure | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1727,9 +2069,12 @@ python -c "from automedia.core.config_loader import load_config; c=load_config()
 
 ---
 
-### 📊 Q32 Verdict | Scenario | Result | |----------|--------| | 32.1 Config merge order | ⬜ | | 32.2 Env var mapping | ⬜ |
+### 📊 Q32 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 32.1 Config merge order | ⬜ |
+| 32.2 Env var mapping | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1774,9 +2119,13 @@ except ValueError:
 
 ---
 
-### 📊 Q33 Verdict | Scenario | Result | |----------|--------| | 33.1 Standard structure | ⬜ | | 33.2 Empty slug | ⬜ | | 33.3 Path traversal | ⬜ |
+### 📊 Q33 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 33.1 Standard structure | ⬜ |
+| 33.2 Empty slug | ⬜ |
+| 33.3 Path traversal | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1792,9 +2141,11 @@ pre-commit run --all-files
 
 ---
 
-### 📊 Q34 Verdict | Scenario | Result | |----------|--------| | 34.1 Pre-commit hooks | ⬜ |
+### 📊 Q34 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 34.1 Pre-commit hooks | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1812,9 +2163,11 @@ automedia pool --help
 
 ---
 
-### 📊 Q35 Verdict | Scenario | Result | |----------|--------| | 35.1 CLI help format | ⬜ |
+### 📊 Q35 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 35.1 CLI help format | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1825,17 +2178,23 @@ automedia pool --help
 ## Q36: Does real LLM produce acceptable quality?
 
 **Prerequisites:** Real LLM API key configured (not FAKE_LLM mode).
+```bash
+export AUTOMEDIA_LLM_API_KEY="sk-your-real-key"
+unset AUTOMEDIA_FAKE_LLM AUTOMEDIA_FAKE_VIDEO AUTOMEDIA_FAKE_TTS
+```
 
-### 36.1 🟢 Existing LLM test suite passes
+### 36.1 🟢 🔑 ⏱️~2min — Existing LLM test suite passes
 ```bash
 unset AUTOMEDIA_FAKE_LLM
 pytest tests/test_llm_client.py -v --timeout 120
 ```
 **Expected Result:** ✅ All LLM client tests pass. Structured output works. Retry on transient errors.
 
+**Failed Indicator:** Test failures due to API authentication, rate limiting, or response parsing.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
-### 36.2 🟢 Real LLM produces actual content
+### 36.2 🟢 🔑 ⏱️~10s — Real LLM produces actual content
 ```python
 from automedia.core.llm_client import llm_complete
 response = llm_complete(prompt="Say 'Hello World'")
@@ -1843,13 +2202,32 @@ assert "Hello" in response
 ```
 **Expected Result:** ✅ Returns actual LLM response (not mock). Response is coherent text.
 
+**Failed Indicator:** Empty response, API error, or LLMError raised. Response does not contain expected text.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 36.3 🟢 🔑 🔧 ⏱️~5min — Full pipeline with real LLM (text_only mode)
+```bash
+unset AUTOMEDIA_FAKE_LLM
+AUTOMEDIA_FAKE_VIDEO=1 AUTOMEDIA_FAKE_TTS=1 automedia run \
+  --topic "Real LLM Pipeline Test" --brand test-brand --mode text_only --verbose
+```
+**Expected Result:** ✅ Pipeline completes with real LLM-generated content. `01_content/drafts/` contains markdown files with coherent, non-template text. Gate log shows all 13 text_only gates executed. `pipeline_md5.json` written. Total duration < 5 minutes.
+
+**Failed Indicator:** Pipeline crashes with LLM API error. Content files contain template placeholders or are empty. Gate count != 13.
+
+**⚠️ Important:** This is the **most critical production validation test** — it validates the entire pipeline with real LLM inference. If this fails, production deployment is blocked.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q36 Verdict | Scenario | Result | |----------|--------| | 36.1 LLM test suite | ⬜ | | 36.2 Real LLM output | ⬜ |
+### 📊 Q36 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 36.1 LLM test suite | ⬜ |
+| 36.2 Real LLM output | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1890,35 +2268,51 @@ python -c "import ast; ast.parse(open('scripts/setup.ps1').read())" 2>&1 || echo
 
 ---
 
-### 📊 Q37 Verdict | Scenario | Result | |----------|--------| | 37.1 Doctor with real deps | ⬜ | | 37.2 HyperFrames check | ⬜ | | 37.3 Docker mcp-full profile | ⬜ | | 37.4 Windows setup.ps1 | ⬜ |
+### 📊 Q37 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 37.1 Doctor with real deps | ⬜ |
+| 37.2 HyperFrames check | ⬜ |
+| 37.3 Docker mcp-full profile | ⬜ |
+| 37.4 Windows setup.ps1 | ⬜ |**OVERALL: ⬜**
 
 ---
 
 ## Q38: Does performance meet production thresholds?
 
-### 38.1 🟢 Existing performance test suite
-```bash
-pytest tests/test_benchmarks/ -v --timeout 300 2>/dev/null || echo "No benchmark dir"
-```
-**Expected Result:** ✅ If benchmarks exist: they run and report throughput. If no benchmarks: note that performance benchmarking is not yet automated.
-
-**Actual Result:** _________ **PASS / FAIL:** _________
-
-### 38.2 🟢 Pipeline completes within reasonable time (text_only)
+### 38.1 🟢 🔧 ⏱️~5min — Performance timing for text_only pipeline
 ```bash
 time automedia run --topic "Perf Test" --brand test-brand --mode text_only
 ```
 **Expected Result:** ⚠️ With FAKE_LLM: < 30s. With real LLM: < 5min for short content.
 
+**Failed Indicator:** Pipeline takes > 30s in FAKE_LLM mode, or > 5min with real LLM for short (< 100 word) content.
+
+**Actual Result:** _________ **PASS / FAIL:** _________
+
+### 38.2 🟢 🔧 ⏱️~3min — Pipeline completes through all modes (smoke timing)
+```bash
+for mode in text_only video_only qa_only image-carousel social-thread; do
+    time automedia run --topic "Perf $mode" --brand test-brand --mode $mode
+done
+```
+**Expected Result:** ✅ All 5 modes complete successfully. Worst-case mode records total time. No mode takes > 2x the average.
+
+**Failed Indicator:** Any mode fails or hangs. Mode takes > 60s in FAKE mode. Inconsistent timing between modes.
+
+> **Note:** Automated performance benchmarks (`tests/test_benchmarks/`) are not yet implemented. Manual timing via `time` command is used instead.
+
 **Actual Result:** _________ **PASS / FAIL:** _________
 
 ---
 
-### 📊 Q38 Verdict | Scenario | Result | |----------|--------| | 38.1 Performance tests | ⬜ | | 38.2 Pipeline timing | ⬜ |
+### 📊 Q38 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 38.1 Performance tests | ⬜ |
+| 38.2 Pipeline timing | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1941,9 +2335,11 @@ except Exception as e:
 
 ---
 
-### 📊 Q39 Verdict | Scenario | Result | |----------|--------| | 39.1 Provider failover | ⬜ |
+### 📊 Q39 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 39.1 Provider failover | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -1977,9 +2373,13 @@ pytest tests/test_mcp/ -v --timeout 120
 
 ---
 
-### 📊 Q40 Verdict | Scenario | Result | |----------|--------| | 40.1 MCP server stdio | ⬜ | | 40.2 Invalid JSON-RPC | ⬜ | | 40.3 MCP test suite | ⬜ |
+### 📊 Q40 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 40.1 MCP server stdio | ⬜ |
+| 40.2 Invalid JSON-RPC | ⬜ |
+| 40.3 MCP test suite | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -2008,9 +2408,12 @@ echo "Final: $?"
 
 ---
 
-### 📊 Q41 Verdict | Scenario | Result | |----------|--------| | 41.1 5 consecutive runs | ⬜ | | 41.2 No file leak | ⬜ |
+### 📊 Q41 Verdict
 
-**OVERALL: ⬜**
+| Scenario | Result |
+|----------|--------|
+| 41.1 5 consecutive runs | ⬜ |
+| 41.2 No file leak | ⬜ |**OVERALL: ⬜**
 
 ---
 
@@ -2020,20 +2423,20 @@ echo "Final: $?"
 
 ## Overall PASS/FAIL Summary
 
-| Part | Section | Verdict |
-|------|---------|---------|
-| 1 | Core Pipeline Journeys | ⬜ |
-| 2 | MCP & CLI Surface Mastery | ⬜ |
-| 3 | Gate System Validation (incl. modifiers) | ⬜ |
-| 4 | Error & Boundary Matrix | ⬜ |
-| 5 | Production Trust | ⬜ |
-| 6 | Account & Credential Management | ⬜ |
-| 7 | HITL Framework | ⬜ |
-| 8 | Decision Layer | ⬜ |
-| 9 | Pipeline Infrastructure & Resilience | ⬜ |
-| 10 | Production Validation | ⬜ |
+| Part | Section | Questions | Verdict |
+|------|---------|-----------|---------|
+| 1 | Core Pipeline Journeys | Q1-Q5, Q5b | ⬜ |
+| 2 | MCP & CLI Surface Mastery | Q6-Q8 | ⬜ |
+| 3 | Gate System Validation (incl. modifiers) | Q9-Q11, Q11B | ⬜ |
+| 4 | Error & Boundary Matrix | Q12-Q15 | ⬜ |
+| 5 | Production Trust | Q16-Q19 | ⬜ |
+| 6 | Account & Credential Management | Q20-Q23 | ⬜ |
+| 7 | HITL Framework | Q24-Q26 | ⬜ |
+| 8 | Decision Layer | Q27-Q29 | 🚧 See per-scenario notes |
+| 9 | Pipeline Infrastructure & Resilience | Q30-Q35 | ⬜ |
+| 10 | Production Validation | Q36-Q41 | ⬜ |
 
-**GRAND TOTAL: ⬜ / 43 Questions**
+**GRAND TOTAL: ⬜ / 43 Questions** (Q27-Q29 partially implemented — some scenarios marked 🚧)
 
 **OVERALL VERDICT: ⬜**
 
@@ -2043,10 +2446,10 @@ echo "Final: $?"
 
 | Criteria | Status | Notes |
 |----------|--------|-------|
-| All 52 MCP tools respond correctly | ⬜ | Q6 |
-| All 16 CLI commands work | ⬜ | Q7 |
-| `auto` mode pipeline completes | ⬜ | Q1 |
-| All 9 modes (incl. repurpose) select correct gates | ⬜ | Q2 |
+| All 59 MCP tool registrations respond correctly (55 unique + 4 deprecated aliases) | ⬜ | Q6 |
+| All 17 CLI commands work | ⬜ | Q7 |
+| `auto` mode pipeline completes (22 gates) | ⬜ | Q1 |
+| All 9 modes (incl. repurpose, short-video, text_with_cover) select correct gates | ⬜ | Q2 |
 | Red Line 8 enforced | ⬜ | Q13 |
 | Path allowlist blocks unauthorized access | ⬜ | Q13 |
 | MD5 integrity tracking works | ⬜ | Q18 |
@@ -2060,6 +2463,8 @@ echo "Final: $?"
 | Project lifecycle correct | ⬜ | Q33 |
 | Pre-commit hooks pass | ⬜ | Q34 |
 | Performance meets thresholds | ⬜ | Q38 |
+| Decision Layer artifacts/schema/audit work | ⬜ | Q27-Q29 |
+| Full pipeline with real LLM produces content | ⬜ | Q36.3 |
 
 ---
 
@@ -2073,5 +2478,13 @@ echo "Final: $?"
 
 ---
 
-*Plan generated: 2026-07-17*
-*Based on: Omni Suite validation plan structure · AutoMedia codebase analysis (33,619 LOC core, 145+ test files, 52 MCP tools, 16 CLI commands, 33 gates, 9 pipeline modes)*
+*Plan generated: 2026-07-17 · Updated: 2026-07-23*
+*Based on: Omni Suite validation plan structure · AutoMedia codebase analysis (33,619 LOC core, 145+ test files, 59 MCP tools (55 unique + 4 deprecated), 17 CLI commands, 33 gates, 9 pipeline modes)*
+
+---
+
+### Changelog
+
+| Date | Changes |
+|------|---------|
+| 2026-07-23 | Q1: Added scenario badges, failed indicators, explicit 22-gate list. Q2: Added `text_with_cover` and `short-video` modes (9 total), fixed text_only to 13 gates (adds G6). Q5: Added CLI equivalents for all pipeline control scenarios. Q6: Updated tool count 52→59, added 10 missing tools, fixed `analyze_content`→`effects_analyze_content`, added per-tool failed indicators. Q7: Updated CLI count 16→17, added `history`/`rollback`/`mcp` commands. Q8-Q35: Fixed all 34 inline verdict table formatting issues, added badges. Q9.2: Fixed auto gate list to 22 (added G6). Q27-Q29: Added 🚧 flags for non-existent Decision Layer modules. Q36: Added full pipeline real-API test (36.3). Q38: Removed dead ref to `tests/test_benchmarks/`, replaced with manual timing scenarios. Added How-to-Use section with badge legend and pass/fail guide. |
