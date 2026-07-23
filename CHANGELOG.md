@@ -60,15 +60,19 @@
 
 - **`adapter create --output-dir` default**: Corrected default path from `automedia/adapters/platforms` to `src/automedia/adapters/platforms` (previously pointed at wrong relative path, used from repo root would miss `src/` prefix).
 
-### Docs
+- **Issue #56 — FAKE structured response missing `passed` field**: Added `"passed": True` to G1CheckResult and G2CheckResult mock dicts in `_fake_structured_response()`. Previously the Pydantic validation error blocked FAKE mode for G1/G2 gates entirely.
 
-- **README.md MCP examples**: Added Cursor to "MCP Client Configuration Examples" section and Agent Configuration table.
-- **api-reference.md param fix**: `run_full_pipeline()` `platform` → `platforms` (plural, `list[str] | None`) to match actual SDK signature.
-- **founder-expectations.md F10 update**: Noted `AUTOMEDIA_PROJECTS_DIR` env var can override the default project output directory.
-- **mcp-setup.md env var table**: Added `AUTOMEDIA_FAKE_LLM` to the supported environment variables list.
-- **cli-reference.md default fix**: `adapter create --output-dir` default corrected from `automedia/adapters/platforms` to `src/automedia/adapters/platforms`.
+- **Issue #57 — G1/G2 LLM check timeout too short**: `llm_check_with_fallback()` timeout default changed from 30s to 60s (configurable via `llm.text_generation.timeout` in `model_config.yaml`). Slow models like DeepSeek-V4-Flash no longer time out on content review.
+
+- **Issue #60 — AUTOMEDIA_CONFIG_DIR pointing to file**: `get_user_config_dir()` now logs a warning when `AUTOMEDIA_CONFIG_DIR` points to an existing file instead of a directory, preventing confusing downstream failures.
 
 ### Changed
+
+- **Issue #58 — Beta structured API cache**: `_provider_no_beta_api` flag caches that a provider rejected the OpenAI beta `chat.completions.parse` endpoint. On subsequent calls, the beta API attempt is skipped entirely, saving ~2-3s per gate for non-OpenAI providers.
+
+- **Issue #59 — FAKE_LLM config fallback**: `_is_fake_mode()` now accepts an optional `config` dict. When `AUTOMEDIA_FAKE_LLM` env var is not set, it falls back to checking `llm.fake_mode: true` in the merged config. The env var remains the primary mechanism; config provides a secondary path for environments where env vars are unwieldy.
+
+- **`llm_check_with_fallback()` timeout**: Now reads `llm.text_generation.timeout` from config when `timeout=None`, with 60s fallback. Overridable per call via the `timeout` parameter.
 
 - **`_compose_gate_list()`**: OverridesLoader `gates` rules now feed into gate composition at runtime. `_collect_platform_gate_modifiers()` merges platform-specific gate modifiers from overrides.
 - **`_build_gates_from_names()`**: Applies `override_failure_mode` from gate modifiers per-instance via `object.__setattr__`.

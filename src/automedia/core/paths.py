@@ -16,8 +16,11 @@ particularly useful in CI/CD, Docker, or other agent environments where
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "get_user_config_dir",
@@ -39,7 +42,14 @@ def get_user_config_dir() -> Path:
     """
     override = os.environ.get("AUTOMEDIA_CONFIG_DIR")
     if override:
-        return Path(os.path.expanduser(override)).resolve()
+        resolved = Path(os.path.expanduser(override)).resolve()
+        if resolved.exists() and not resolved.is_dir():
+            logger.warning(
+                "AUTOMEDIA_CONFIG_DIR=%r points to an existing file, not a directory. "
+                "Config loading may fail or behave unexpectedly.",
+                override,
+            )
+        return resolved
 
     try:
         return Path.home() / ".automedia"

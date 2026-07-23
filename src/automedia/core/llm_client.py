@@ -192,12 +192,21 @@ logger = logging.getLogger(__name__)
 _fake_llm_warned: bool = False
 
 
-def _is_fake_mode() -> bool:
-    """Check whether ``AUTOMEDIA_FAKE_LLM`` is set to a truthy value.
+def _is_fake_mode(config: dict[str, Any] | None = None) -> bool:
+    """Check whether fake LLM mode is active.
 
-    Acceptable values (case-insensitive): ``"1"``, ``"true"``, ``"yes"``.
+    Priority
+    --------
+    1. ``AUTOMEDIA_FAKE_LLM`` environment variable (fast, primary mechanism).
+    2. ``llm.fake_mode: true`` in the merged config file (fallback for
+       environments where env vars are not practical, e.g. compound shell
+       commands, container entrypoints, or systemd services).
     """
-    return os.environ.get("AUTOMEDIA_FAKE_LLM", "").lower() in {"1", "true", "yes"}
+    if os.environ.get("AUTOMEDIA_FAKE_LLM", "").lower() in {"1", "true", "yes"}:
+        return True
+    if config is not None:
+        return bool(config.get("llm", {}).get("fake_mode", False))
+    return False
 
 
 def _warn_fake_once() -> None:
@@ -218,8 +227,8 @@ def _fake_structured_response(response_format: type) -> BaseModel:
     """
     _DISPATCH: dict[str, dict[str, object]] = {
         "G0CheckResult": {"passed": True, "confidence": 0.95},
-        "G1CheckResult": {"score": 0.85, "humanized": True, "changes": []},
-        "G2CheckResult": {"issues": [], "score": 0.9},
+        "G1CheckResult": {"passed": True, "score": 0.85, "humanized": True, "changes": []},
+        "G2CheckResult": {"passed": True, "issues": [], "score": 0.9},
     }
     name = response_format.__name__
     if name in _DISPATCH:
@@ -424,6 +433,10 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
 
 _FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = _get_fallback_structured_errors()
 
+# Cache: once a provider fails the beta structured API, skip it on subsequent calls
+# to avoid wasting 2-3s per gate on the inevitable 400 response.
+_provider_no_beta_api: bool = False
+
 
 def _structured_completion_with_fallback(
     prompt: str,
@@ -496,24 +509,29 @@ def _structured_completion_with_fallback(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    try:
-        logger.info("Attempting structured completion via beta API")
-        response = _llm_structured_completion_with_retry(
-            client,
-            model=resolved_model,
-            messages=messages,
-            response_format=response_format,
-            temperature=resolved_temp,
-            max_tokens=resolved_max,
-        )
-        return response.choices[0].message.parsed
-    except _FALLBACK_STRUCTURED_ERRORS as exc:
-        logger.warning(
-            "Structured beta API not supported by provider (%s: %s). "
-            "Falling back to manual JSON parse.",
-            type(exc).__name__,
-            exc,
-        )
+    # Skip beta API entirely if the provider already proved it doesn't support it
+    if not _provider_no_beta_api:
+        try:
+            logger.info("Attempting structured completion via beta API")
+            response = _llm_structured_completion_with_retry(
+                client,
+                model=resolved_model,
+                messages=messages,
+                response_format=response_format,
+                temperature=resolved_temp,
+                max_tokens=resolved_max,
+            )
+            return response.choices[0].message.parsed
+        except _FALLBACK_STRUCTURED_ERRORS as exc:
+            logger.warning(
+                "Structured beta API not supported by provider (%s: %s). "
+                "Caching result — falling back for subsequent calls.",
+                type(exc).__name__,
+                exc,
+            )
+            _provider_no_beta_api = True
+    else:
+        logger.info("Skipping beta API (cached — provider does not support structured output)")
 
     try:
         response = _llm_chat_completion_with_retry(
@@ -590,7 +608,7 @@ def llm_complete_structured_safe(
 
         config = load_config()
 
-    if _is_fake_mode():
+    if _is_fake_mode(config):
         _warn_fake_once()
         return _fake_structured_response(response_format)
 
@@ -659,7 +677,7 @@ def llm_complete(
 
         config = load_config()
 
-    if _is_fake_mode():
+    if _is_fake_mode(config):
         _warn_fake_once()
         return f"This is a fake LLM response for: {prompt[:80]}..."
 
@@ -751,7 +769,7 @@ def llm_complete_structured(
 
         config = load_config()
 
-    if _is_fake_mode():
+    if _is_fake_mode(config):
         _warn_fake_once()
         return _fake_structured_response(response_format)
 
