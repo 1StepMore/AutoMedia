@@ -1,5 +1,76 @@
 # Changelog
 
+## [1.2.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.1.0...automedia-v1.2.0) (2026-07-23)
+
+
+### Features
+
+* **adapters:** add is_stub metadata and list_publishable_platforms tool ([#43](https://github.com/1StepMore/AutoMedia/issues/43) Gap 3) ([f62d333](https://github.com/1StepMore/AutoMedia/commit/f62d333ffe286cf3d92a1492196faf79eda29a07))
+* add .cursor/mcp.json for Cursor IDE MCP connection ([#54](https://github.com/1StepMore/AutoMedia/issues/54)) ([23e4c6b](https://github.com/1StepMore/AutoMedia/commit/23e4c6bef61b54a3e293d8e519851e8f700277a5))
+* add automedia init --template full ([ee60395](https://github.com/1StepMore/AutoMedia/commit/ee603955ce567276c77535ca731f07a7bcf2c6ae))
+* add list_workflows MCP tool, workflow pipeline param, director HITL preset, MCP approve/reject tools, GateEngine pause mode, director mode, and E2E tests ([629b92f](https://github.com/1StepMore/AutoMedia/commit/629b92f270629fad1f04a391eeb07a3baaa62083))
+* add platforms param to run_pipeline tool chain ([#51](https://github.com/1StepMore/AutoMedia/issues/51) Bug 2) ([40c80b7](https://github.com/1StepMore/AutoMedia/commit/40c80b7e0b22e7a7725053dd9dacd518acfac87f))
+* **cli:** add distribute command, MCP tool, cron, analytics, D-gate tests ([d1290cb](https://github.com/1StepMore/AutoMedia/commit/d1290cb4da83a281776c7967660b83502ac2dcf8))
+* **cli:** cron scheduling + D-gate TDD tests ([e9bb95e](https://github.com/1StepMore/AutoMedia/commit/e9bb95e65e80f0f31bca10ecd11ead40b5b26a08))
+* **core,scheduling:** add platform-aware cron filtering, workflows.yaml schema, WorkflowLoader, and pipeline integration ([b8adb5c](https://github.com/1StepMore/AutoMedia/commit/b8adb5ccba87631a8dc5112f82958ee3df027bd2))
+* **core:** add media spec resolver, platform prompts, gate wiring, gate modifiers, list_overridable_templates tool ([ad0b79b](https://github.com/1StepMore/AutoMedia/commit/ad0b79b70c2c18a8fffb888df0b85c63ee89ecb6))
+* **core:** add platform-scoped prompt resolution, media spec model, gate modifier schema, cron schema extension ([46c0df6](https://github.com/1StepMore/AutoMedia/commit/46c0df651bea1d9172b3b435201542332c638b1f))
+* **distribution:** add D1-D7 standalone rewrite gates ([eabe7e4](https://github.com/1StepMore/AutoMedia/commit/eabe7e45112ff4e6d79bb370564477c80279642c))
+* **engine:** GateEngine sub-pipeline infrastructure ([a68f96d](https://github.com/1StepMore/AutoMedia/commit/a68f96d830e80d187664c5a3189410b889426611))
+* lazy-load CLI commands for 7-10x cold-start improvement ([00f8d17](https://github.com/1StepMore/AutoMedia/commit/00f8d170c62986098675cfedc70416be876da269))
+* **llm:** implement AUTOMEDIA_FAKE_LLM mock intercept ([#48](https://github.com/1StepMore/AutoMedia/issues/48) Bug 2, [#50](https://github.com/1StepMore/AutoMedia/issues/50)) ([4c81330](https://github.com/1StepMore/AutoMedia/commit/4c81330dabe7e2ae05527d1435b7ab513f4fef5f))
+* **mcp:** add get_redlines() tool exposing agent red-line constraints ([#42](https://github.com/1StepMore/AutoMedia/issues/42) Gap 7) ([db65b8b](https://github.com/1StepMore/AutoMedia/commit/db65b8b8f9035dbf90114fd5ae04c10cb1ae0d53))
+* **mcp:** add init_config, configure_llm, and add_brand tool implementations ([d64097d](https://github.com/1StepMore/AutoMedia/commit/d64097d6d8dfb3f1e60c4df58bea580aa32ad44d))
+* **mcp:** add list_platforms() tool for enumerating publish targets ([#44](https://github.com/1StepMore/AutoMedia/issues/44) Gap 4) ([27f722e](https://github.com/1StepMore/AutoMedia/commit/27f722eba310a3e288cafb299207858eb85d7ccc))
+* **mcp:** register init_config, configure_llm, add_brand on MCP server ([a9f1eea](https://github.com/1StepMore/AutoMedia/commit/a9f1eea9cb57dbcf7fef4f6717219fc0a14a2e47))
+* **mcp:** replace hardcoded instructions with dynamic tool-registry generation ([#42](https://github.com/1StepMore/AutoMedia/issues/42) Gap 1) ([cff628e](https://github.com/1StepMore/AutoMedia/commit/cff628e49ff82c131a124116e2176996621b8ac3))
+* Phase 1 - foundation layer (tasks 1-8) ([a468efb](https://github.com/1StepMore/AutoMedia/commit/a468efb2a1970d45a1d45bebda231a5df30c0170))
+* Phase 2 - gate modifier wiring, Docker profiles, session recovery (tasks 9-12) ([4164748](https://github.com/1StepMore/AutoMedia/commit/416474842a52df34beb13ee4c9b7b154a4d85284))
+* Phase 3 - override_failure_mode application + CI deploy validation (tasks 13-14) ([2508154](https://github.com/1StepMore/AutoMedia/commit/2508154af54f220108ed029ee3ec182224db1d94))
+* **pipeline:** add progress fields is_running/is_failed/elapsed_s and since_index param ([0b3c616](https://github.com/1StepMore/AutoMedia/commit/0b3c61674dc3842213ef77ff48a11653c459c38e))
+* **pipeline:** effects analytics, G6 tone check gate ([5a0864a](https://github.com/1StepMore/AutoMedia/commit/5a0864ad1b437a5d3e5561cc33c102edf54ac298))
+* **pipeline:** integration tests ([60684dd](https://github.com/1StepMore/AutoMedia/commit/60684dd372266bfb3b0d78830d37cd8ef23d02ed))
+* **pipeline:** P1-P4 repurpose gates ([e5d1681](https://github.com/1StepMore/AutoMedia/commit/e5d16817e56133a418b1392954a45f682af4855a))
+* **pipeline:** repurpose pipeline mode ([eedd05f](https://github.com/1StepMore/AutoMedia/commit/eedd05f54ac384558ccb55c6095fa1b30f7d2a07))
+* sync YouTube/Bilibili/X platform configs, routing, and prompts ([61015fd](https://github.com/1StepMore/AutoMedia/commit/61015fdd80767d587efb46cec901790ff0f24acf))
+* Wave 1 - MCP progress fix, PipelineHistoryHook, rollback types ([ccd1bcd](https://github.com/1StepMore/AutoMedia/commit/ccd1bcd970a8008f17f8b0ac44025936989e6f75))
+* Wave 2 - welcome banner, init fix, path fixes, error output, doctor --fix ([b3e2835](https://github.com/1StepMore/AutoMedia/commit/b3e2835ffe8cd1e806af5e820fef8f1dbebdd9f4))
+* Wave 3 - lazy imports, history CLI, rollback CLI, AGENTS.md/README sync ([ef32af8](https://github.com/1StepMore/AutoMedia/commit/ef32af8c5f6faf31adfd765dfb42cdd5af76a1ff))
+* Wave 4 - rename MCP tools with backward-compatible aliases ([02aa41a](https://github.com/1StepMore/AutoMedia/commit/02aa41a8feaec1e01c4c203625a92a3b74018497))
+
+
+### Bug Fixes
+
+* address issues [#56](https://github.com/1StepMore/AutoMedia/issues/56) [#57](https://github.com/1StepMore/AutoMedia/issues/57) [#58](https://github.com/1StepMore/AutoMedia/issues/58) [#59](https://github.com/1StepMore/AutoMedia/issues/59) [#60](https://github.com/1StepMore/AutoMedia/issues/60) ([fc57fe4](https://github.com/1StepMore/AutoMedia/commit/fc57fe49b3c9603139925179f03ad1f547c434bf))
+* bump version assertion from 1.0.1 to 1.1.0 in test_cli.py ([#41](https://github.com/1StepMore/AutoMedia/issues/41)) ([d19e02f](https://github.com/1StepMore/AutoMedia/commit/d19e02fa363a4cc76805228422ce138e63894324))
+* **docs:** add recommended install section to AGENTS.md ([#43](https://github.com/1StepMore/AutoMedia/issues/43) Gap 5) ([d1ed715](https://github.com/1StepMore/AutoMedia/commit/d1ed715719a601c702a66b8ab448763070b232cd))
+* **docs:** correct tool counts, error shapes, code examples, and deprecation badges ([#45](https://github.com/1StepMore/AutoMedia/issues/45) P1-P3) ([ce03721](https://github.com/1StepMore/AutoMedia/commit/ce03721136ace8965fa879258b5d970c4ba6c8c3))
+* **llm:** change structured fallback log from info to warning ([#48](https://github.com/1StepMore/AutoMedia/issues/48) Bug 3) ([2b22b23](https://github.com/1StepMore/AutoMedia/commit/2b22b2392813766091d049b54fce044480f96bd8))
+* **mcp:** add deprecation warnings to 4 deprecated alias tools ([#42](https://github.com/1StepMore/AutoMedia/issues/42) Gap 6, [#43](https://github.com/1StepMore/AutoMedia/issues/43) Gap 7) ([78a62cc](https://github.com/1StepMore/AutoMedia/commit/78a62ccfa7c28da97c21272945347159907cb36d))
+* **mcp:** remove redundant 'error: null' from list_brands success response ([#44](https://github.com/1StepMore/AutoMedia/issues/44) Gap 3) ([b988b03](https://github.com/1StepMore/AutoMedia/commit/b988b039cd12676c675560702ef406c2b916daed))
+* **mcp:** remove redundant error_message key from error_response ([#42](https://github.com/1StepMore/AutoMedia/issues/42) Gap 4, [#44](https://github.com/1StepMore/AutoMedia/issues/44) Gap 6) ([08b732f](https://github.com/1StepMore/AutoMedia/commit/08b732f53e7a30e91019a12f678f6d634238a987))
+* **project:** wire AUTOMEDIA_PROJECTS_DIR into Project.init() ([#48](https://github.com/1StepMore/AutoMedia/issues/48) Bug 1) ([4c81330](https://github.com/1StepMore/AutoMedia/commit/4c81330dabe7e2ae05527d1435b7ab513f4fef5f))
+* Task 7 - move body/fallback paths under 02_images/, update AGENTS.md header ([762db1e](https://github.com/1StepMore/AutoMedia/commit/762db1ebf98dd7e9d8ec9e4998150787c88e94c6))
+* update stale test assertions for issue closures ([#48](https://github.com/1StepMore/AutoMedia/issues/48) [#50](https://github.com/1StepMore/AutoMedia/issues/50) [#51](https://github.com/1StepMore/AutoMedia/issues/51)) ([e7a80a2](https://github.com/1StepMore/AutoMedia/commit/e7a80a2f8c5ef56a8ecedb356c15e3836578c930))
+
+
+### Documentation
+
+* add AUTOMEDIA_FAKE_LLM and AUTOMEDIA_LLM_TIMEOUT to AGENTS.md and .env.example ([9f2d7a4](https://github.com/1StepMore/AutoMedia/commit/9f2d7a49f0463f24e03c5e8d0841721699620836))
+* add doc-sync skill, remove brand-strategy from AGENTS.md ([e0f5df2](https://github.com/1StepMore/AutoMedia/commit/e0f5df2f422f9dc933758322da2c44c06346f38c))
+* add Phase 1-4 entries to CHANGELOG (gate modifiers, Docker profiles, Windows docs, concurrency, onboarding) ([ed65ead](https://github.com/1StepMore/AutoMedia/commit/ed65eade790cf7b91cec3d34bf21cdcde0f8eb60))
+* create AGENT_QUICKSTART.md for agent onboarding ([#42](https://github.com/1StepMore/AutoMedia/issues/42) Gap 2) ([ff038a5](https://github.com/1StepMore/AutoMedia/commit/ff038a58cc3a826b02ea1ab0f42ef785132a3b50))
+* create error-code-reference.md for MCP tools ([#45](https://github.com/1StepMore/AutoMedia/issues/45) P4) ([0eb3cd8](https://github.com/1StepMore/AutoMedia/commit/0eb3cd8840341a11c4fe2e8a45413fe822e16837))
+* fix stale documentation across 5 doc files ([b808acd](https://github.com/1StepMore/AutoMedia/commit/b808acdd853ca19379149e427f6134c876674af5))
+* Phase 4 - Windows docs + deployment overview (tasks 15-16) ([af682be](https://github.com/1StepMore/AutoMedia/commit/af682be670c42d4905dc2ebb2be3c46ae2e1beb5))
+* update all docs/dev and docs/user for distribution features ([5fcd39f](https://github.com/1StepMore/AutoMedia/commit/5fcd39f103a9f89a88c4e1f0b7c15b58a4f714b5))
+* update all documentation for platform-workflow customization features ([88e8d0c](https://github.com/1StepMore/AutoMedia/commit/88e8d0cbedb92c9ecab59d28a0bb7516d976dbdf))
+* update founder expectations with status badges, Decision Layer gap ([9557aaa](https://github.com/1StepMore/AutoMedia/commit/9557aaa9dce46202629dd96eaaa8f64795679af7))
+* update platform counts to reflect bilibili onboarding ([f716993](https://github.com/1StepMore/AutoMedia/commit/f71699378010e94461fc44a3a9f91dbfa5d856fe))
+* update README, CHANGELOG, AGENTS.md with distribution features ([62427ab](https://github.com/1StepMore/AutoMedia/commit/62427ab7bf1362b2654b111ea513d4d1cab09ecd))
+* update validation master plan for current codebase ([cb49fbf](https://github.com/1StepMore/AutoMedia/commit/cb49fbf22223625174fca6b8aca6cd2eb5740b0c))
+* update validation master plan for distribution features ([ff45cbb](https://github.com/1StepMore/AutoMedia/commit/ff45cbbc47bc6f01ccb3bb9190dc9bc8fec74909))
+
 ## [Unreleased]
 
 ### Added
