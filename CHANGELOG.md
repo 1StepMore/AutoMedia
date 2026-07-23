@@ -66,6 +66,16 @@
 
 - **Issue #60 — AUTOMEDIA_CONFIG_DIR pointing to file**: `get_user_config_dir()` now logs a warning when `AUTOMEDIA_CONFIG_DIR` points to an existing file instead of a directory, preventing confusing downstream failures.
 
+### Docs
+
+- **AGENTS.md config table**: Added `AUTOMEDIA_LLM_TIMEOUT` and `AUTOMEDIA_FAKE_LLM` env vars to Config Key Reference.
+- **.env.example**: Added `AUTOMEDIA_LLM_TIMEOUT` and `AUTOMEDIA_FAKE_LLM` entries for LLM timeout and fake mode configuration.
+- **README.md Cursor config**: Added `.cursor/mcp.json` to MCP Client Configuration Examples and Agent Configuration table.
+- **api-reference.md param fix**: `run_full_pipeline()` `platform` → `platforms` (plural, `list[str] | None`).
+- **founder-expectations.md F10 update**: Noted `AUTOMEDIA_PROJECTS_DIR` env var can override project output directory.
+- **mcp-setup.md env var table**: Added `AUTOMEDIA_FAKE_LLM` to supported environment variables.
+- **cli-reference.md default fix**: `adapter create --output-dir` default corrected from `automedia/adapters/platforms` to `src/automedia/adapters/platforms`.
+
 ### Changed
 
 - **Issue #58 — Beta structured API cache**: `_provider_no_beta_api` flag caches that a provider rejected the OpenAI beta `chat.completions.parse` endpoint. On subsequent calls, the beta API attempt is skipped entirely, saving ~2-3s per gate for non-OpenAI providers.

@@ -490,6 +490,8 @@ Key `AUTOMEDIA_*` environment variables:
 | `AUTOMEDIA_LLM_API_KEY` | API key | (required) |
 | `AUTOMEDIA_LLM_TEMPERATURE` | LLM temperature | (varies) |
 | `AUTOMEDIA_LLM_MAX_TOKENS` | Max tokens per request | (varies) |
+| `AUTOMEDIA_LLM_TIMEOUT` | LLM request timeout (seconds) | `60` |
+| `AUTOMEDIA_FAKE_LLM` | Set to `1` to use deterministic mock LLM responses (no real API calls) | (unset) |
 | `AUTOMEDIA_DEFAULT_BRAND` | Default brand for pipelines | `my-brand` |
 | `AUTOMEDIA_DATA_DIR` | Data directory | `./data` |
 | `AUTOMEDIA_OUTPUT_DIR` | Output directory | `./output` |
