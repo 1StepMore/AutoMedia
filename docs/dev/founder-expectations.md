@@ -7,7 +7,7 @@
 
 ## 1. Why Founder's Expectations?
 
-AutoMedia has 2,955 test functions, 33 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
+AutoMedia has ~3,379 test functions, 33 quality gates, and three entry points. Tests prove the code is correct. But there's a harder question:
 
 **Does this project actually solve the problem I created it to solve?**
 
@@ -99,6 +99,8 @@ The journey has 9 phases. Each phase has specific expectations.
 
 ## 3. Expectation Catalog
 
+**Status legend:** ✅ Fully implemented | 🔄 Partially implemented (basic version works, enhancements pending) | ❌ Not yet implemented | 🚧 Under development
+
 Each expectation is a statement of what the founder expects the project to do.
 Expectations are grouped by journey phase.
 
@@ -106,7 +108,7 @@ Expectations are grouped by journey phase.
 
 > "I should be able to install and configure AutoMedia in minutes."
 
-#### F01 — Installation
+#### F01 — Installation ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -115,7 +117,7 @@ Expectations are grouped by journey phase.
 | **Expected UX on first install** | Install to first successful command under 5 minutes for a new user who can `pip install`. |
 | **Agent perspective** | Agent does not install AutoMedia. Agent connects to a running MCP server (`python -m automedia.mcp.server`). The MCP server must be started by the human or systemd. Agent's "install" is: MCP server is reachable and `health_check` returns OK. |
 
-#### F02 — First Command
+#### F02 — First Command ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -125,7 +127,7 @@ Expectations are grouped by journey phase.
 | **Output format — agent** | JSON-RPC over stdio. All tools return structured dicts. Tool descriptions are self-documenting via MCP protocol. |
 | **Key info visible** | Human: commands, config location, version. Agent: tool list, resource list, server instructions. |
 
-#### F03 — Configuration Initialization
+#### F03 — Configuration Initialization ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -135,7 +137,7 @@ Expectations are grouped by journey phase.
 | **Re-running init** | Idempotent: creates any missing files but never overwrites existing config. To reset fully, delete `.automedia/` and re-run init. |
 | **What init creates** | Full project skeleton: `config.yaml` + `brand_profile.yaml` + `model_config.yaml` + directory structure (`01_content/`, `02_images/`, `03_video/`, `04_subtitle/`, `05_review/`, `06_publish/`). |
 
-#### F04 — API Key Configuration
+#### F04 — API Key Configuration ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -146,7 +148,7 @@ Expectations are grouped by journey phase.
 | **Minimum friction — human** | Single env var is sufficient. User can `export AUTOMEDIA_LLM_API_KEY="..."` and immediately run a pipeline. No need for init wizard if env var is set. |
 | **Minimum friction — agent** | Agent assumes MCP server has key configured. If not, agent reports back to human: "AutoMedia MCP server needs AUTOMEDIA_LLM_API_KEY configured." |
 
-#### F05 — Brand Configuration
+#### F05 — Brand Configuration ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -160,7 +162,7 @@ Expectations are grouped by journey phase.
 | **Agent: discover brands** | `list_brands` MCP tool returns `[{"name": "wechat-tech", "industry": "tech"}, {"name": "xiaohongshu-lifestyle", "industry": "lifestyle"}]`. Previously a gap (agent was blind to available brands) — now discoverable. |
 | **Agent: multi-brand workflow** | Agent calls `list_brands` → picks best match for topic → passes brand string to `run_pipeline`. Fully autonomous brand selection. |
 
-#### F06 — Setup Verification
+#### F06 — Setup Verification ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -169,7 +171,7 @@ Expectations are grouped by journey phase.
 | **LLM check** | Human: `doctor` can confirm LLM API key is valid. Agent: no dedicated tool — agent may run a minimal pipeline and handle key errors. |
 | **Missing dep guidance** | For each missing dependency, `doctor` prints install instructions (`sudo apt install ffmpeg`, `brew install ffmpeg`, etc.). |
 
-#### F07 — Pipeline Mode Default
+#### F07 — Pipeline Mode Default ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -179,7 +181,7 @@ Expectations are grouped by journey phase.
 | **Implementation status** | ✅ 9 modes fully implemented with mode-specific gate lists in `_MODE_MAP` in `runner.py`: `auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`. |
 | **Rationale** | `auto` mode may fail due to missing video deps; `text_only` is a conscious choice per run. No silent default that could fail unexpectedly. Mode determines what the pipeline produces; platform adapters then consume what they can from the output (see F34). |
 
-#### F08 — Runtime Output
+#### F08 — Runtime Output ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -191,7 +193,7 @@ Expectations are grouped by journey phase.
 | **Pipeline completion — human** | Prints project directory path and list of core output files. Summary with total duration and final status. |
 | **Pipeline completion — agent** | Agent calls `get_pipeline_status(project_id)` which returns full `PipelineResult` as JSON with `status`, `gates_log[]`, `assets[]`. |
 
-#### F09 — Failure & Error Display
+#### F09 — Failure & Error Display ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -203,7 +205,7 @@ Expectations are grouped by journey phase.
 | **MCP tool error** | Returns structured JSON error dict with `error` key containing human-readable message. Agent-friendly: error keys are consistent, actionable. |
 | **Implementation status** | ✅ Working — structured errors throughout; tracebacks only surface with `--verbose` flag. `automedia/cli/output_format.py` provides `output_formatted_error()` and `output_pipeline_error()` which replace raw Python tracebacks with concise, actionable messages. All MCP tools return structured JSON error dicts with a consistent `error` key. Full tracebacks are still captured by structlog for debugging and are shown only when the caller passes `--verbose`. |
 
-#### F10 — Project Output Location
+#### F10 — Project Output Location ✅
 
 | UX Detail | Specification |
 |-----------|---------------|
@@ -215,7 +217,7 @@ Expectations are grouped by journey phase.
 
 > "I should be able to tell the system what to produce with minimal friction."
 
-#### F11 — Topic Input (Topic → Article)
+#### F11 — Topic Input (Topic → Article) ✅
 
 *Core promise: give a topic, get a full article.*
 
@@ -229,7 +231,7 @@ Expectations are grouped by journey phase.
 | **Agent workflow without a specific topic** | If agent has no explicit topic: `research_topics` → review results → `select_topic` from pool → `run_pipeline`. Fully autonomous. |
 | **Topic format** | Plain text string in any language. Slugified for project directory naming. |
 
-#### F12 — Input Source Material
+#### F12 — Input Source Material ✅
 
 *Beyond a topic string, I can give the system source material to work from.*
 
@@ -246,7 +248,7 @@ Expectations are grouped by journey phase.
 | **Implementation status** | ✅ Full implementation. `source_path` (local file/directory) and `source_url` (URL fetch) both supported in `run_pipeline`. Auto-detection of file types, mixed sources merged. Directory scan finds first readable file. |
 | **Material intended use** | Material serves as reference/inspiration, not strict source. The LLM uses it as context but can adapt, restructure, and transform. |
 
-#### F13 — Omni Triad Processing (Extract · Translate · Convert)
+#### F13 — Omni Triad Processing (Extract · Translate · Convert) ✅
 
 *I can process source documents through the Omni pipeline before content generation.*
 
@@ -263,7 +265,7 @@ Expectations are grouped by journey phase.
 | **Implementation status** | ✅ Full implementation. OPPAdapter (extraction via `extract_brief`), OLAdapter (localization via `localize_content` / `localize_output`), ORFAdapter (format conversion via `format_output`). All exposed as MCP tools. |
 | **Agent-friendly output** | All Omni tools return structured dicts with `{content, source_lang, target_lang, metadata}`. Agent can chain them without parsing text output. |
 
-#### F14 — Topic Pool Management
+#### F14 — Topic Pool Management ✅
 
 *I can maintain a pool of content ideas and let the system pick the best one.*
 
@@ -280,7 +282,7 @@ Expectations are grouped by journey phase.
 | **Cron collection** | External crond calls `automedia cron run` → runs `research_topics` → auto-adds results to pool |
 | **Pool isolation** | Each pool is a SQLite DB file. Separate pools per tenant/project if needed. |
 
-#### F15 — Trending Topic Discovery
+#### F15 — Trending Topic Discovery ✅
 
 *The system can discover what topics are currently hot.*
 
@@ -295,7 +297,7 @@ Expectations are grouped by journey phase.
 | **Implementation status** | ✅ Full implementation. `research_topics` MCP tool uses LLM with optional `trending_data` parameter. Results can flow through topic pool: `research_topics` → `add_pool_topic` → `select_topic` → `run_pipeline`. |
 | **Human review point** | Agent may present trending topics to human for approval before adding to pool (HITL gate). |
 
-#### F16 — Brand Selection at Input Time
+#### F16 — Brand Selection at Input Time ✅
 
 *When I run a pipeline, I can tell it which brand voice to use.*
 
@@ -314,7 +316,7 @@ Expectations are grouped by journey phase.
 
 > "I should be able to run a pipeline and know what's happening."
 
-#### F17 — One-Command Run
+#### F17 — One-Command Run ✅
 
 *Setup can be multi-step; daily repeat work must be one command.*
 
@@ -327,7 +329,7 @@ Expectations are grouped by journey phase.
 | **Setup vs repeat** | First-time user: `pip install → init → doctor → run` (4 steps). After setup: `run` only (1 step). |
 | **Agent setup expectation** | Agent expects MCP server running + `.automedia/` configured. No agent-side setup beyond connecting. |
 
-#### F18 — Progress Visibility
+#### F18 — Progress Visibility ✅
 
 *While running, I can see what's happening. Human sees terminal output; agent polls structured data.*
 
@@ -342,7 +344,7 @@ Expectations are grouped by journey phase.
 | **Agent: per-gate detail** | Each gate in response: `{name: "G0", status: "passed"|"failed"|"running", duration_s, checks: [{name, passed, detail}]}`. |
 | **Agent: final status** | Agent calls `get_pipeline_status(project_id)` after completion for full `PipelineResult` with assets and gates_log. |
 
-#### F19 — Gate Failure Detail
+#### F19 — Gate Failure Detail ✅
 
 *When a gate fails, I know exactly which one and why.*
 
@@ -354,7 +356,7 @@ Expectations are grouped by journey phase.
 | **Agent: actionable** | Error includes enough detail for agent to self-correct (e.g., "rewrite with more conversational tone"). |
 | **Error format consistency** | All gates use same error schema: `{check_name, actual_value, threshold, detail, suggestion}`. |
 
-#### F20 — Pipeline Resilience
+#### F20 — Pipeline Resilience ✅
 
 *If a gate fails, the pipeline doesn't crash — it follows defined failure behavior.*
 
@@ -367,7 +369,7 @@ Expectations are grouped by journey phase.
 | **Human: post-failure** | Terminal shows the failure clearly. "Pipeline stopped at G1 (humanizer). Use --resume to retry from this gate." |
 | **Agent: post-failure** | `get_pipeline_progress` shows all gates up to failure with their statuses. Agent decides next action: report to human, retry with different params, or resume. |
 
-#### F21 — Pipeline Resume
+#### F21 — Pipeline Resume ✅
 
 *I can resume a failed pipeline without starting over.*
 
@@ -380,7 +382,7 @@ Expectations are grouped by journey phase.
 | **Auto-detect logic** | Scan projects directory → find latest project with `status != "published"` → resume from last failed gate. If no failed project found, start fresh. |
 | **Idempotent resume** | Resuming an already-completed project is a no-op (returns success immediately). Resuming multiple times from same failure point produces same result (assuming same inputs). |
 
-#### F22 — Performance Expectation
+#### F22 — Performance Expectation ✅
 
 *A full pipeline run should complete in a reasonable timeframe.*
 
@@ -398,7 +400,7 @@ Expectations are grouped by journey phase.
 
 **Design principle**: Human is a **supervisor** (监工), not a hands-on operator. The agent runs gates, checks quality, and attempts self-recovery on failures. The human receives a concise summary and only intervenes for content quality before publishing.
 
-#### F23 — Output Summary
+#### F23 — Output Summary ✅
 
 *The agent presents a summary of what was produced. Human doesn't navigate directories.*
 
@@ -412,7 +414,7 @@ Expectations are grouped by journey phase.
 | **Agent: next step suggestion** | Summary includes a recommended action: review content, publish, or fix issues. |
 | **Human: deeper inspection** | From the summary, human can request more detail: "show me gate results" / "what failed?" **Not** done by browsing directories — done through agent conversation or CLI queries. |
 
-#### F24 — Article Quality (Not AI-Sounding)
+#### F24 — Article Quality (Not AI-Sounding) ✅
 
 *G1 (humanizer) gate checks that the article doesn't read like AI wrote it.*
 
@@ -424,7 +426,7 @@ Expectations are grouped by journey phase.
 | **On failure — human sees** | Summary shows: `G1 ❌ stop — 人类感得分 4/10，低于阈值 7/10。建议: 增加口语化表达。` or `G1 ⚠️ retry 后通过 (quality retry 2 次)` if auto-recovery succeeded. |
 | **Human intervention** | Human can: approve as-is, request rewrite with specific instructions, or manually edit. |
 
-#### F25 — Factual Accuracy
+#### F25 — Factual Accuracy ✅
 
 *G0 (fact check) verifies claims against source material.*
 
@@ -435,7 +437,7 @@ Expectations are grouped by journey phase.
 | **On failure — auto-recovery** | G0 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. Pipeline halts on failed fact check — no quality retry or regeneration. |
 | **Human sees** | Summary includes: `G0 ✅ 全部通过 (12 项核查)` or `G0 ⚠️ 3/12 项存疑` with details available on request. |
 
-#### F26 — Brand Compliance
+#### F26 — Brand Compliance ✅
 
 *G3 (brand CTA) gate ensures brand name, tone, and CTA rules are followed.*
 
@@ -445,7 +447,7 @@ Expectations are grouped by journey phase.
 | **On failure — auto-recovery** | G3 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. This is correct because deterministic pattern matches are idempotent — re-running with same content produces same result. Pipeline halts on any brand compliance failure. |
 | **Human sees** | Summary: `G3 ✅ 品牌合规` or `G3 ❌ — CTA 缺失。品牌要求末尾包含官网链接。` |
 
-#### F27 — Video & Subtitle Quality
+#### F27 — Video & Subtitle Quality 🔄
 
 *V0-V7 gates verify video integrity, subtitle readability, and audio/video sync.*
 
@@ -456,7 +458,7 @@ Expectations are grouped by journey phase.
 | **Video quality metrics** | Summary includes: video duration, resolution, subtitle readability score, audio sync status. |
 | **Human review** | Human can request agent to "show me the video" — agent provides file path. No auto-play. |
 
-#### F28 — Human Content Review Before Publish
+#### F28 — Human Content Review Before Publish ✅
 
 *Before publishing, the human reviews the article content.*
 
@@ -480,7 +482,7 @@ Expectations are grouped by journey phase.
 
 Platform → content type mapping is automatic: text-first platforms → text content; video-first → video; mixed → all types needed.
 
-#### F29 — Publish Automation Model
+#### F29 — Publish Automation Model ✅
 
 *Publishing behavior is configurable per platform, not a single on/off switch.*
 
@@ -497,7 +499,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Implementation status** | ✅ Full implementation. Three-level automation (auto/review/manual) per platform in brand config. `publish_engine.py` handles credential refresh, retry logic, and partial failure isolation across platforms. |
 | **Brand adaptation** | Content can be adapted per platform before publishing (same source, platform-optimized version). |
 
-#### F30 — WeChat Official Account
+#### F30 — WeChat Official Account ✅
 
 *Content published to WeChat as a draft, following WeChat Official Account API rules.*
 
@@ -509,7 +511,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Credential** | `AUTOMEDIA_WECHAT_APPID` + `AUTOMEDIA_WECHAT_APPSECRET` (or legacy `WX_APPID` / `WX_APPSECRET`). |
 | **Content format** | HTML body with WeChat-compatible styling. Title, cover image, author, body automatically set. |
 
-#### F31 — Zhihu (知乎)
+#### F31 — Zhihu (知乎) ✅
 
 *Content published to Zhihu as an article draft.*
 
@@ -520,7 +522,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Publish flow** | Draft created via Zhihu API. Human or agent can submit for review from draft. |
 | **Content format** | Markdown-compatible body with Zhihu-specific formatting (headings, code blocks, images). |
 
-#### F32 — Known Platform Divergences
+#### F32 — Known Platform Divergences ✅
 
 *Some platforms have no public publish API — these are documented divergences, not missing features.*
 
@@ -529,7 +531,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Xiaohongshu (intentional divergence)** | `xiaohongshu_publisher.py` returns `"not_implemented"` — the platform has no public API. Publishing is **manual-only** via the RED mobile app or web creator portal. Credentials are validated (cookie check) but no automated publish is attempted. Adding automated XHS publishing would require reverse-engineering private APIs, which is out of scope. |
 | **IM notifications** | Not in AutoMedia scope. Agent-to-human IM conversation (e.g., agent asking "shall I publish?") is handled by the agent framework (OpenCode, Claude Code, etc.), not by AutoMedia. AutoMedia provides the tools; the agent communicates results to the human via the agent framework's own notification layer. Feishu/Discord webhook adapters are out of scope — they duplicate agent framework responsibility. |
 
-#### F33 — Platform-Specific Formatting
+#### F33 — Platform-Specific Formatting ✅
 
 *Each platform gets content in the format it expects — handled automatically by the adapter.*
 
@@ -539,7 +541,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Human awareness** | Human doesn't need to know or care about format details. The system handles it. |
 | **Format types by category** | `text-first` → HTML / rich text. `video-first` → video file + metadata. `image-first` → image + caption. `mixed-social` → text + optional media. `notification-only` → structured message payloads. |
 
-#### F34 — Multi-Platform Routing
+#### F34 — Multi-Platform Routing ✅
 
 *Brand config binds to platforms; the system publishes to all bound platforms according to their automation levels. Mode determines what content is produced; platform adapters declare what they can consume.*
 
@@ -575,7 +577,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Implementation status** | ✅ Complete — all 19 platform adapters exist. WeChat ✅ full, Zhihu ✅ full, YouTube ✅ full, Twitter/X ✅ full, Reddit ✅ full, TikTok ✅ full, Facebook ✅ full, Instagram ✅ full, LinkedIn ✅ full, Medium ✅ full, WordPress ✅ full, Xiaohongshu ⚠️ manual-only stub, Douyin ⚠️ manual-only stub, Bilibili ⚠️ manual-only stub, Weibo ⚠️ manual-only stub, Toutiao ⚠️ manual-only stub, Baijiahao ⚠️ manual-only stub, Kuaishou ⚠️ manual-only stub, Juejin ⚠️ manual-only stub. 11 real API integrations + 8 intentional manual-only stubs (documented divergences, no API available). |
 | **Partial failure** | One platform failure doesn't block others. Skipped/failed platforms reported in summary. |
 
-#### F35 — Publish Error Handling
+#### F35 — Publish Error Handling ✅
 
 *When a platform publish fails, PublishEngine handles retry internally; agent sees the final result.*
 
@@ -595,7 +597,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 **Design principle**: Human gives the topic list (what to produce). Agent decides execution (how and when). Failures are handled by type: gate/content failures → skip and continue, system errors → stop.
 
-#### F36 — Batch Production
+#### F36 — Batch Production ✅
 
 *Multiple topics, one batch, sequential execution with per-topic reporting.*
 
@@ -610,7 +612,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Implementation status** | ✅ Documented orchestration pattern. Batch is caller-driven (CLI loop, agent loop, cron trigger). Each topic is a separate `run_pipeline` call. Per-topic reporting with continue-on-failure semantics. Pool-based batch via `list_topic_pool(limit=N)`. |
 | **No batch pipeline** | Batch is an orchestration pattern, not a new pipeline mode. `run_pipeline` always handles one topic. Batching is done by the caller (CLI loop, agent loop, cron trigger). |
 
-#### F37 — Scheduled Production
+#### F37 — Scheduled Production ✅
 
 *Cron-driven content production with fully configurable scheduling.*
 
@@ -627,7 +629,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Implementation status** | ✅ All 5 cron MCP tools implemented: `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule`, `get_cron_health`, `test_cron_schedule`. External crond triggers `automedia cron run`. |
 | **Human monitoring** | `automedia cron list` to see past runs. Agent uses `get_cron_health` (when implemented) to report proactively. |
 
-#### F38 — Customizable Topic Pipeline
+#### F38 — Customizable Topic Pipeline ✅
 
 *How topics are generated, scored, selected, and routed — all user-customizable.*
 
@@ -639,7 +641,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Customization scope** | All three stages (generate → score → select) are customizable independently via config. Defaults work out of the box; customization is progressive. |
 | **Agent: custom flow** | Agent can be told "use my custom topic generator" or "apply scoring rules from brand X" — respects the config. |
 
-#### F39 — Run Isolation
+#### F39 — Run Isolation ✅
 
 *Each pipeline run is fully isolated — failures don't cascade.*
 
@@ -657,7 +659,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 **Design principle**: The agent proactively reports production status (periodic summary) and answers ad-hoc queries on demand. Human never needs to browse directories directly.
 
-#### F40 — Project Overview
+#### F40 — Project Overview ✅
 
 *List all projects with status — agent presents proactively or on demand.*
 
@@ -670,7 +672,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Status categories** | `running`, `completed`, `partial` (some gates failed), `failed`, `published`, `archived`. |
 | **Summary depth** | By default: high-level by status group. On request: full detail with per-project gate results. |
 
-#### F41 — Asset Inspection
+#### F41 — Asset Inspection ✅
 
 *See what files a specific project produced.*
 
@@ -681,7 +683,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent tool** | `get_project_assets(project_dir)` — returns `[{path, type, size_bytes, modified_at}]`. Agent can filter by type (e.g., only videos). |
 | **Content preview** | Agent can read and summarize content on request: "给我看看文章摘要" → agent reads `draft.md` and extracts key points. |
 
-#### F42 — Config Introspection & Asset Library Search
+#### F42 — Config Introspection & Asset Library Search ✅
 
 *Agents can discover system configuration and search across all produced content.*
 
@@ -697,7 +699,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Search implementation status** | ✅ **Implemented.** `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. |
 | **Config implementation note** | ✅ Config introspection and brand discovery are implemented. |
 
-#### F43 — Pipeline Integrity Verification
+#### F43 — Pipeline Integrity Verification ✅
 
 *Each project's output integrity is verifiable via checksums.*
 
@@ -715,7 +717,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 **Design principle**: All eight phases' expectations converge on one property: the system must be safely extensible. New gates don't break old ones. Brand changes are isolated. Old projects remain readable.
 
-#### F44 — Gate Isolation
+#### F44 — Gate Isolation ✅
 
 *Adding or modifying a gate does not affect other gates.*
 
@@ -725,7 +727,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Isolation guarantee** | A gate reads from pipeline context and writes its results back. It never modifies another gate's state. Adding a new gate = new file + add to gate list in `runner.py`. No changes to existing gates. |
 | **Failure isolation** | One gate's failure does not crash other gates. Gate execution is sequential with error boundaries per gate. |
 
-#### F45 — Brand Isolation
+#### F45 — Brand Isolation ✅
 
 *Changing one brand's configuration does not affect other brands.*
 
@@ -735,7 +737,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Isolation guarantee** | Brands are stored as separate entries in `brand_profile.yaml`. Pipeline runs load only the selected brand's config. Changes to brand A do not affect brand B. |
 | **Cross-brand content** | Content produced for one brand is not reused for another brand unless explicitly configured. Brand voice, CTA, and platform routing are per-brand. |
 
-#### F46 — Override System
+#### F46 — Override System ✅
 
 *Custom rules and prompt overrides without modifying core code.*
 
@@ -746,18 +748,18 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Safety** | Overrides are additive. Removing an override file restores default behavior. No permanent changes to system code. |
 | **Override for iteration** | User can test new gate logic, change scoring rules, or adjust prompts without touching `src/automedia/`. |
 
-#### F47 — Regression Testing
+#### F47 — Regression Testing ✅
 
 *Tests catch regressions when code changes.*
 
 | UX Detail | Specification |
 |-----------|---------------|
-| **Current status** | ✅ 2,955 test functions across 145 files. CI runs on every push. |
+| **Current status** | ✅ ~3,379 test functions across 145+ files. CI runs on every push. |
 | **Test coverage** | Unit tests per gate, integration tests for pipeline, CLI tests, MCP tests, red line enforcement tests, E2E tests. |
 | **Adding new gates** | Each new gate must include tests. The `add-new-gate` skill enforces test creation. |
 | **Pre-commit hooks** | Ruff, mypy, and pre-commit checks run before every commit. |
 
-#### F48 — Forward Compatibility
+#### F48 — Forward Compatibility ✅
 
 *Old projects remain readable with new code.*
 
@@ -779,7 +781,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 
 **Current gap**: The pipeline has one set of prompts, one gate composition per mode, and one cron schedule for all platforms. Six specific gaps (G1–G6) exist, addressed by five implementation phases (P1–P5). The "director" preset in `hitl/config.py` validates this architecture.
 
-#### F49 — Prompt Platform Routing
+#### F49 — Prompt Platform Routing ✅
 
 *Gate prompts (CW, G0, G1, G2, etc.) are platform-aware — each platform can have its own prompt template.*
 
@@ -795,7 +797,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Per-platform differentiation** | WeChat → longer, more formal, WeChat-format HTML. Xiaohongshu → shorter, visual-first, image-heavy narrative. Zhihu → technical deep-dive, citation-heavy. Twitter → thread format with 280-char-aware segmentation. Douyin → conversational, hook-first, short-form narration. Each platform variant is a separate `*.j2` file. |
 | **Implementation phase** | **Phase 1 (P1)** — extend `OverridesLoader.load_prompts()` with platform resolution; add `platform` parameter to `load_prompt()` API; update CW, G0, G1, G2 gates to pass `gate_context.get("platforms", [])`; ship per-platform default prompts for the 6 most-used platforms. |
 
-#### F50 — Media Spec Mapping
+#### F50 — Media Spec Mapping ✅
 
 *Image/video dimensions and format requirements are declared per-platform in config, not hardcoded.*
 
@@ -810,7 +812,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent workflow** | Agent configures a new platform: "add YouTube with 4K video output" → sets `platforms.youtube.media.video.resolution: 3840x2160` in brand config. Pipeline generates appropriately sized output. |
 | **Implementation phase** | **Phase 1 (P1)** — define `PlatformMediaSpec` model in `automedia/core/`; add `get_platform_media_spec(platform, brand_config) -> dict` resolver; populate `defaults.yaml` with all platforms' media specs; update image/video pipelines to consume specs from resolver instead of hardcoded values. |
 
-#### F51 — Per-Platform Gate Composition
+#### F51 — Per-Platform Gate Composition ✅
 
 *Gate composition can vary per platform — add WeChat-specific checks, skip video gates for XHS text-only mode.*
 
@@ -826,7 +828,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Design constraints** | Platform gate modifiers must be validated: (1) cannot exclude gates that produce required artifacts for downstream gates, (2) cannot include a gate that doesn't exist, (3) CW cannot be excluded if content generation is needed, (4) lifecycle gates (L1–L4) are always required. |
 | **Implementation phase** | **Phase 2 (P2)** — define gate modifier schema in config; add `_apply_platform_gate_modifiers(base_gates, platform_config) -> list[str]` in `runner.py`; integrate into gate list building pipeline; add validation for constraint rules; expose effective gate list via `get_pipeline_progress` metadata. |
 
-#### F52 — Override System Discoverability
+#### F52 — Override System Discoverability ✅
 
 *All customizable prompts, rules, and variables are discoverable — documented naming conventions, schema reference, and an MCP tool to list them.*
 
@@ -840,7 +842,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent workflow** | Agent: "what can I customize?" → calls new `list_overridable_templates()` MCP tool → returns `[{name: "content_writer", variables: ["topic", "brand", "platform"], file: "overrides/prompts/content_writer.j2"}]`. Agent can then create or modify overrides via file operations. |
 | **Implementation phase** | **Phase 2 (P2)** — document all overrideable templates with their variables in `docs/dev/override-reference.md`; create `list_overridable_templates()` MCP tool; document rule YAML schema; add Jinja2 variable reference comments to every `.j2` file header. |
 
-#### F53 — Platform-Aware Cron Scheduling
+#### F53 — Platform-Aware Cron Scheduling ✅
 
 *Scheduled jobs can target specific platforms — "daily tech article published to WeChat and Zhihu" is a single schedule entry.*
 
@@ -855,7 +857,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent workflow** | Human: "每天上午9点产一篇科技文章只发微信" → Agent calls `add_cron_schedule(name="daily-wechat-tech", expression="0 9 * * *", brand="my-brand", platform=["wechat"])`. Cron runs at 9 AM → selects topic → runs pipeline → publishes to WeChat only. |
 | **Implementation phase** | **Phase 3 (P3)** — add `platform: list[str]` and `mode: str` optional parameters to `add_cron_schedule`; extend schedule YAML schema; update cron runner to filter platforms and override mode when these are set; update `list_cron_schedules` and `test_cron_schedule` to display the new fields. |
 
-#### F54 — Declarative Workflows
+#### F54 — Declarative Workflows ✅
 
 *A "workflow" is a named, composable pipeline recipe defined in YAML — platform bindings, gate list, prompt overrides, media specs, and scheduling all in one file.*
 
@@ -871,7 +873,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **MCP tool integration** | New `list_workflows()` tool returning all defined workflows. `run_pipeline` gains optional `workflow` parameter. When set, workflow config merges over (does not replace) brand config — workflow is a higher-priority layer in the 6+1 hierarchy. |
 | **Implementation phase** | **Phase 4 (P4)** — design `Workflow` Pydantic model; implement `WorkflowLoader` (analogous to `OverridesLoader`); add workflow resolution in `runner.py` (merge workflow config on top of mode + brand before gate list building); add `list_workflows` MCP tool; update `run_pipeline` to accept `workflow` parameter. |
 
-#### F55 — Implementation Roadmap
+#### F55 — Implementation Roadmap ✅
 
 *Five-phase plan to close all six gaps, with acceptance criteria per phase.*
 
@@ -943,7 +945,7 @@ Reality:  33 gates exist across 8 families: G0-G6 (copy), V0-V7 (video), H0 (rev
 
 ```
 Promise:  AI coding agents (Claude Code, OpenCode, etc.) can run AutoMedia via MCP
-Reality:  MCP server exists with 52 tools, but agent integration quality varies
+Reality:  MCP server exists with 59 tools (55 unique + 4 deprecated aliases), but agent integration quality varies
 ```
 
 | Aspect | Status | Gap |
@@ -991,7 +993,7 @@ Not all expectations are equal. This matrix ranks all 55 expectations by **impor
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
 | **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others) |
-| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (9 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (2955 tests) |
+| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (9 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (~3,379 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
 | **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
@@ -1098,6 +1100,7 @@ This flow works. It's the project's strongest path.
 | Full auto mode (topic→published) | ⚠️ Partial | Video deps + platform gaps break the chain |
 | LLM-based quality gates | ⚠️ Partial | G0/G1/G2 use LLM-first with fallback; other gates are regex-based |
 | Video without HyperFrames | ⚠️ Degraded | Subtitles check requires external renderer |
+| Decision Layer (PRD-3) — `DecisionOrchestrator`, `BaseDecisionAgent`, `build.py`, `dependency.py`, `preflight.py`, `diagnostic.py` | 🚧 **Not yet implemented** | Only `DecisionArtifact`, `audit.py`, and `schema_validator.py` exist. Internal arch component, not founder-facing. |
 | Discord notifications | ⏭️ Out of scope (intentional divergence) | Not implemented — no request for this feature |
 
 ### What's been resolved since last assessment:
@@ -1191,7 +1194,7 @@ An AI agent can evaluate the True Test by running each criterion and reporting P
 | Component | Status |
 |-----------|--------|
 | Framework design | ✅ Documented (this file) |
-| Expectation catalog | ✅ 55 expectations across 9 phases |
+| Expectation catalog | ✅ 55 expectations across 9 phases with status badges (✅/🔄/❌/🚧) |
 | **All 9 phases UX specs** | **✅ All expanded from sparse tables to full detail tables with dual perspective (Human + Agent). Phase 9 (Customize) added with per-platform workflow customization expectations F49–F55.** |
 | Core value propositions | ✅ 4 assessed with honest gaps; all known gaps documented (HITL corrected, config introspection resolved, IM notifications scoped out) |
 | Priority matrix | ✅ Updated — all 55 expectations mapped with importance × gap ratings |
@@ -1199,7 +1202,8 @@ An AI agent can evaluate the True Test by running each criterion and reporting P
 | End-to-end flow test (text_only) | ❓ Not performed |
 | End-to-end flow test (auto) | ❓ Not performed |
 | End-to-end flow test (publish) | ❓ Not performed |
-| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (9 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F37 (cron tools: add/list/remove/get_cron_health/test_cron_schedule), F42 (config introspection + search_assets MCP), F48 (v1 readable only) |
+| Expectation statuses filled in | ✅ Updated after D3 review pass: F07 (9 modes confirmed), F24/25/26/27 (3-level auto-recovery detailed), F32 (removed IM notifiers), F34 (platform matrix), F35 (PublishEngine retry), F37 (cron tools: add/list/remove/get_cron_health/test_cron_schedule), F42 (config introspection + search_assets MCP), F48 (v1 readable only). Stale numbers updated: 52→59 MCP tools, ~2,955→~3,379 tests. |
+| Decision Layer status documented | 🚧 Only `DecisionArtifact`, `audit.py`, `schema_validator.py` exist. `DecisionOrchestrator`, `BaseDecisionAgent`, and related modules not yet implemented (internal architecture, not founder-facing). |
 | Intentional divergences documented | ✅ Xiaohongshu manual-only (F32), IM notifications out of scope (agent framework responsibility) |
 | Milestone mapping | ✅ Defined and aligned with current scope |
 | True Test | ✅ Defined with 10-point agent-verifiable PASS/FAIL checklist |
@@ -1212,7 +1216,7 @@ This document was designed to be **honest**. Not to make the project look good, 
 
 Some expectations will show gaps. That is not failure — that is **direction**. Every gap is a candidate for the next improvement.
 
-The project is not done when all 2,955 tests pass.
+The project is not done when all ~3,379 tests pass.
 The project is done when the founder can say: **"Yes, this does what I wanted."**
 
 ---
