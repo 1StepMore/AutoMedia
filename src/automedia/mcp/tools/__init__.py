@@ -1,7 +1,8 @@
-"""MCP tool handler functions — module-level for testability.
+"""MCP tool handler functions — domain-specific submodules.
 
-This module is a backward-compatibility re-export shim.
-All functions have been moved to ``automedia.mcp.tools/`` submodules.
+All public symbols are re-exported from submodules so that
+``from automedia.mcp.tools import X`` continues to work after
+the refactor.
 """
 
 from automedia.mcp.tools._shared import *  # noqa: F401, F403
@@ -22,5 +23,10 @@ from automedia.mcp.tools.strategy import *  # noqa: F401, F403
 from automedia.mcp.tools.setup import *  # noqa: F401, F403
 from automedia.mcp.tools.prompts_meta import *  # noqa: F401, F403
 
-# Legacy alias — remove once all callers are updated.
-__all__ = []  # defined per-submodule
+# Explicitly re-export private helpers used by other modules and tests
+from automedia.mcp.tools._shared import (  # noqa: F401
+    _discover_projects,
+    _pipeline_result_to_dict,
+    _project_assets,
+    _resolve_projects_dir,
+)

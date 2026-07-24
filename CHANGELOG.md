@@ -4,6 +4,8 @@
 
 ### Added
 
+- **MCP Tools Module Refactor (PR #55)**: Split monolithic 3909-line `automedia/mcp/tools.py` into 17 domain-specific submodules under `automedia/mcp/tools/`. Each submodule (`health.py`, `config.py`, `brands.py`, `assets.py`, `topics.py`, `pipeline.py`, `approval.py`, `projects.py`, `publishing.py`, `cron_tools.py`, `strategy.py`, `setup.py`, `prompts_meta.py`, `omni.py`, `quality.py`, `redlines.py`) exports a focused set of tools. `tools.py` remains as a backward-compatible re-export shim. All shared state, constants, and helper functions moved to `tools/_shared.py`. No behavioral changes — all 59 MCP server tests pass.
+
 - **Distribution Gates (D1-D7)**: 7 standalone platform rewrite gates for WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, and TikTok. Each reads pipeline content, calls LLM with platform-specific prompts, and writes platform-adapted output to `04_distribution/{platform}/`. Failure mode entries, quality checks, and GateRegistry registration included.
 
 - **Repurpose Gates (P1-P4)**: 4 sub-pipeline repurpose gates for WeChat, Twitter/X, Newsletter, and Bilibili. Each runs a 3-step sub-pipeline (rewrite → fact_check → humanize) using platform-scoped prompts, powered by new `GateEngine.run_sub_pipeline()` infrastructure.
