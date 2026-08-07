@@ -56,7 +56,7 @@ MOCK_RESULTS: list[dict[str, Any]] = [
 class TestSearchAssets:
     """Tests for the ``search_assets`` MCP tool."""
 
-    @patch("automedia.asset_library.search_assets")
+    @patch("automedia.mcp.tools.assets._search_assets")
     def test_search_returns_structured_response(self, mock_search: MagicMock) -> None:
         """search_assets returns dict with results and count keys."""
         mock_search.return_value = MOCK_RESULTS
@@ -76,7 +76,7 @@ class TestSearchAssets:
         assert first["type"] == "article"
         assert first["lang"] == "en"
 
-    @patch("automedia.asset_library.search_assets")
+    @patch("automedia.mcp.tools.assets._search_assets")
     def test_search_respects_limit(self, mock_search: MagicMock) -> None:
         """search_assets limits results to the requested count."""
         many_results = [dict(r, title=f"Result {i}") for i in range(25) for r in MOCK_RESULTS[:1]]
@@ -92,7 +92,7 @@ class TestSearchAssets:
         assert len(result["results"]) == 10
         assert result["error"] is None
 
-    @patch("automedia.asset_library.search_assets")
+    @patch("automedia.mcp.tools.assets._search_assets")
     def test_search_empty_query(self, mock_search: MagicMock) -> None:
         """search_assets handles empty query gracefully (returns all assets)."""
         mock_search.return_value = MOCK_RESULTS
@@ -104,7 +104,7 @@ class TestSearchAssets:
         assert result["count"] == 3
         assert result["error"] is None
 
-    @patch("automedia.asset_library.search_assets")
+    @patch("automedia.mcp.tools.assets._search_assets")
     def test_search_with_filters(self, mock_search: MagicMock) -> None:
         """search_assets forwards filters to the underlying function."""
         mock_search.return_value = [MOCK_RESULTS[0]]
@@ -130,7 +130,7 @@ class TestSearchAssets:
         assert result["count"] == 1
         assert result["error"] is None
 
-    @patch("automedia.asset_library.search_assets")
+    @patch("automedia.mcp.tools.assets._search_assets")
     def test_search_error_handling(self, mock_search: MagicMock) -> None:
         """search_assets returns structured error on failure."""
         mock_search.side_effect = AutoMediaError("Database connection failed")

@@ -383,27 +383,52 @@ def _get_jobs_yaml_path() -> Path:
 
 
 def _read_pipeline_schedules() -> list[CronScheduleEntry]:
-    """Read pipeline schedules from the YAML file."""
+    """Read pipeline schedules from the YAML file.
+
+    The YAML file uses a ``{"pipeline_schedules": [...]}`` structure,
+    consistent with :func:`get_cron_health` and the cron CLI tests.
+    """
     path = _get_jobs_yaml_path()
     if not path.is_file():
         return []
     try:
         raw = path.read_text(encoding="utf-8")
-        data: list = yaml.safe_load(raw) or []
-        return [CronScheduleEntry(**entry) for entry in data]
+        data = yaml.safe_load(raw) or {}
+        if isinstance(data, list):
+            data = {}
+        entries: list = data.get("pipeline_schedules", [])
+        return [CronScheduleEntry(**entry) for entry in entries]
     except (yaml.YAMLError, OSError, ValidationError):
         log.warning("Failed to read pipeline schedules from %s", path)
         return []
 
 
 def _write_pipeline_schedules(schedules: list[CronScheduleEntry]) -> None:
-    """Write pipeline schedules to the YAML file."""
+    """Write pipeline schedules to the YAML file.
+
+    Writes in ``{"pipeline_schedules": [...]}`` structure so that
+    ``get_cron_health`` and the cron CLI tests read the correct format.
+    Preserves other top-level keys (e.g. ``jobs``) from the existing file.
+    """
     path = _get_jobs_yaml_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    existing: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            raw = path.read_text(encoding="utf-8")
+            loaded = yaml.safe_load(raw)
+            if isinstance(loaded, dict):
+                existing = loaded
+        except Exception:  # noqa: BLE001 — best-effort preserve
+            pass
+
+    existing["pipeline_schedules"] = [dict(s) for s in schedules]
+
     try:
         path.write_text(
             yaml.dump(
-                [dict(s) for s in schedules],
+                existing,
                 default_flow_style=False,
                 allow_unicode=True,
             ),

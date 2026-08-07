@@ -148,7 +148,7 @@ class TestAddBrand:
     def test_returns_success_with_brand_info(self) -> None:
         """add_brand returns success=True with brand metadata."""
         with patch(
-            "automedia.manifests.brand_profile_schema.save_brand_profile",
+            "automedia.mcp.tools.brands.save_brand_profile",
         ) as mock_save:
             result = add_brand(
                 name="test-brand",
@@ -173,7 +173,7 @@ class TestAddBrand:
     def test_with_minimal_fields(self) -> None:
         """add_brand works with only the required name field."""
         with patch(
-            "automedia.manifests.brand_profile_schema.save_brand_profile",
+            "automedia.mcp.tools.brands.save_brand_profile",
         ) as mock_save:
             result = add_brand(name="minimal-brand")
 
@@ -189,7 +189,7 @@ class TestAddBrand:
     def test_error_on_save_failure(self) -> None:
         """add_brand returns error when save_brand_profile raises."""
         with patch(
-            "automedia.manifests.brand_profile_schema.save_brand_profile",
+            "automedia.mcp.tools.brands.save_brand_profile",
             side_effect=OSError("save failed"),
         ):
             result = add_brand(name="")

@@ -60,7 +60,7 @@ def _build_profile(data: dict[str, Any]) -> BrandProfile:
 class TestListBrands:
     """Tests for the ``list_brands`` MCP tool."""
 
-    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.mcp.tools.brands.load_brand_profiles")
     def test_list_brands_with_data(self, mock_load: MagicMock) -> None:
         """list_brands returns all configured brands with their metadata."""
         tech_profile = _build_profile(MOCK_PROFILE_TECH)
@@ -91,7 +91,7 @@ class TestListBrands:
         assert lifestyle["aliases"] == ["lifestyle", "life-mag"]
         assert "error" not in result
 
-    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.mcp.tools.brands.load_brand_profiles")
     def test_list_brands_empty(self, mock_load: MagicMock) -> None:
         """list_brands returns empty list when no brands configured."""
         mock_load.return_value = {}
@@ -103,7 +103,7 @@ class TestListBrands:
         # Empty state is not an error
         assert "error" not in result
 
-    @patch("automedia.manifests.brand_profile_schema.load_brand_profiles")
+    @patch("automedia.mcp.tools.brands.load_brand_profiles")
     def test_list_brands_error(self, mock_load: MagicMock) -> None:
         """list_brands returns empty list with error on failure."""
         mock_load.side_effect = RuntimeError("Failed to load brand profiles")

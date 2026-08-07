@@ -26,7 +26,16 @@ from automedia.mcp.tools.prompts_meta import *  # noqa: F401, F403
 # Explicitly re-export private helpers used by other modules and tests
 from automedia.mcp.tools._shared import (  # noqa: F401
     _discover_projects,
+    _get_jobs_yaml_path,
+    _get_semaphore,
+    _lock,
     _pipeline_result_to_dict,
+    _pipeline_tracker,
     _project_assets,
+    _read_active_pipelines,
+    _read_pipeline_schedules,
+    _require_allowed,
     _resolve_projects_dir,
+    _update_pipeline_entry,
+    _write_pipeline_schedules,
 )
