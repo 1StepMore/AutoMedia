@@ -31,7 +31,7 @@ from automedia.pipelines.gate_engine import (
 class _AlwaysPassMockGate(BaseGate):
     """Mock gate that always passes — for director engine tests."""
 
-    _gate_name = "D0"
+    _gate_name = "D96"
     _failure_mode = "stop"
 
     def execute(
@@ -44,7 +44,7 @@ class _AlwaysPassMockGate(BaseGate):
 class _SecondMockGate(BaseGate):
     """Mock gate that always passes — second gate for multi-gate tests."""
 
-    _gate_name = "D1"
+    _gate_name = "D97"
     _failure_mode = "stop"
 
     def execute(
@@ -57,7 +57,7 @@ class _SecondMockGate(BaseGate):
 class _ThirdMockGate(BaseGate):
     """Mock gate that always passes — third gate for multi-gate tests."""
 
-    _gate_name = "D2"
+    _gate_name = "D98"
     _failure_mode = "stop"
 
     def execute(
@@ -461,8 +461,8 @@ class TestParallelPipelineIsolation:
         ok1, results1 = r1["return_value"]
         assert ok1 is True
         assert len(results1) == 2
-        assert results1[0]["gate"] == "D0"
-        assert results1[1]["gate"] == "D1"
+        assert results1[0]["gate"] == "D96"
+        assert results1[1]["gate"] == "D97"
 
         # Engine 2 still paused
         assert len(engine2.list_pending_approvals()) == 1
@@ -476,7 +476,7 @@ class TestParallelPipelineIsolation:
         ok2, results2 = r2["return_value"]
         assert ok2 is True
         assert len(results2) == 1
-        assert results2[0]["gate"] == "D2"
+        assert results2[0]["gate"] == "D98"
 
 
 # ===================================================================
