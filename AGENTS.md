@@ -519,6 +519,7 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/dev/override-reference.md` | Override system reference (rules, prompts, platform scoping) |
 | `CHANGELOG.md` | Version history |
 | `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for common pipeline, config, MCP, and gate issues |
+| `docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md` | 7-phase AI development methodology note (own your process, AFK implementation) |
 
 For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/agent-troubleshooting.md).
 
