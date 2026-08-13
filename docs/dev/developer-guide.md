@@ -521,3 +521,4 @@ Four account management tools added to the MCP surface:
 | ADR-002 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | HITL ↔ Decision Layer Decoupling |
 | ADR-003 | docs/adr/ADR-003-platform-rename-stdlib-conflict.md | Rename `platform/` to Avoid stdlib Conflict |
 | ADR-004 | docs/adr/ADR-004-mcp-server-decomposition.md | Decompose `mcp/server.py` Monolith |
+| ADR-005 | docs/adr/ADR-005-issue-driven-commits.md | Issue-Driven Atomic Commit Discipline |
