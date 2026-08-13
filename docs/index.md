@@ -67,6 +67,7 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
 | [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
+| [Architecture Decision Records](adr/ADR-001-singleton-registry-unification.md) | ADR-001..004, canonical source in docs/adr/ |
 
 ---
 
