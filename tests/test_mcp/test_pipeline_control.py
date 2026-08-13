@@ -48,7 +48,7 @@ class TestCancelPipeline:
     def test_cancel_valid_project(self) -> None:
         """cancel_pipeline returns cancelled=True for a valid project_id."""
         tracker = _make_tracker("proj_valid")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = cancel_pipeline("proj_valid")
 
         assert result["success"] is True
@@ -59,7 +59,7 @@ class TestCancelPipeline:
         """cancel_pipeline calls .cancel() on the PipelineProgress object."""
         tracker = _make_tracker("proj_abc")
         original_progress = tracker["proj_abc"]
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             cancel_pipeline("proj_abc")
 
         # Verify cancel() was called
@@ -67,7 +67,7 @@ class TestCancelPipeline:
 
     def test_cancel_unknown_project_returns_error(self) -> None:
         """cancel_pipeline returns error for unknown project_id."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = cancel_pipeline("proj_unknown")
 
         assert result["success"] is False
@@ -77,7 +77,7 @@ class TestCancelPipeline:
     def test_cancel_empty_tracker_returns_error(self) -> None:
         """cancel_pipeline returns error when tracker is empty."""
         tracker: dict[str, PipelineProgress] = {}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = cancel_pipeline("anything")
 
         assert result["success"] is False
@@ -85,7 +85,7 @@ class TestCancelPipeline:
     def test_cancel_with_different_project_id(self) -> None:
         """cancel_pipeline only cancels the specified project, not others."""
         tracker = _make_tracker("proj_one", "proj_two")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = cancel_pipeline("proj_one")
 
         assert result["success"] is True
@@ -105,7 +105,7 @@ class TestPausePipeline:
     def test_pause_valid_project(self) -> None:
         """pause_pipeline returns paused=True for a valid project_id."""
         tracker = _make_tracker("proj_valid")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = pause_pipeline("proj_valid")
 
         assert result["success"] is True
@@ -116,14 +116,14 @@ class TestPausePipeline:
         """pause_pipeline calls .pause() on the PipelineProgress object."""
         tracker = _make_tracker("proj_abc")
         original_progress = tracker["proj_abc"]
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             pause_pipeline("proj_abc")
 
         assert original_progress.is_paused() is True
 
     def test_pause_unknown_project_returns_error(self) -> None:
         """pause_pipeline returns error for unknown project_id."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = pause_pipeline("proj_unknown")
 
         assert result["success"] is False
@@ -133,7 +133,7 @@ class TestPausePipeline:
     def test_pause_then_resume_cycle(self) -> None:
         """A pipeline can be paused and then the pause state is visible."""
         tracker = _make_tracker("proj_cycle")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = pause_pipeline("proj_cycle")
 
         assert result["success"] is True
@@ -153,7 +153,7 @@ class TestResumePipeline:
         tracker = _make_tracker("proj_valid")
         # First pause it
         tracker["proj_valid"].pause()
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = resume_pipeline("proj_valid")
 
         assert result["success"] is True
@@ -164,14 +164,14 @@ class TestResumePipeline:
         """resume_pipeline calls .resume() on the PipelineProgress object."""
         tracker = _make_tracker("proj_abc")
         tracker["proj_abc"].pause()
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             resume_pipeline("proj_abc")
 
         assert tracker["proj_abc"].is_paused() is False
 
     def test_resume_unknown_project_returns_error(self) -> None:
         """resume_pipeline returns error for unknown project_id."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = resume_pipeline("proj_unknown")
 
         assert result["success"] is False
@@ -180,7 +180,7 @@ class TestResumePipeline:
     def test_resume_non_paused_pipeline(self) -> None:
         """Resuming a non-paused pipeline is a no-op but still succeeds."""
         tracker = _make_tracker("proj_running")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = resume_pipeline("proj_running")
 
         assert result["success"] is True
@@ -199,7 +199,7 @@ class TestRetryGate:
     def test_retry_valid_project_and_gate(self) -> None:
         """retry_gate returns retrying=True for valid project and gate."""
         tracker = _make_tracker("proj_valid")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = retry_gate("proj_valid", "G0")
 
         assert result["success"] is True
@@ -211,7 +211,7 @@ class TestRetryGate:
         """retry_gate calls .mark_retry_gate() on the progress object."""
         tracker = _make_tracker("proj_abc")
         original_progress = tracker["proj_abc"]
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             retry_gate("proj_abc", "V3")
 
         # Verify the gate was marked for retry by consuming it
@@ -219,7 +219,7 @@ class TestRetryGate:
 
     def test_retry_unknown_project_returns_error(self) -> None:
         """retry_gate returns error for unknown project_id."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = retry_gate("proj_unknown", "G0")
 
         assert result["success"] is False
@@ -228,7 +228,7 @@ class TestRetryGate:
     def test_retry_overwrites_previous_retry(self) -> None:
         """Calling retry_gate twice overwrites the previous retry gate."""
         tracker = _make_tracker("proj_overwrite")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             retry_gate("proj_overwrite", "G0")
             retry_gate("proj_overwrite", "V5")
 
@@ -246,7 +246,7 @@ class TestSkipGate:
     def test_skip_valid_project_and_gate(self) -> None:
         """skip_gate returns skipping=True for valid project and gate."""
         tracker = _make_tracker("proj_valid")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = skip_gate("proj_valid", "V0")
 
         assert result["success"] is True
@@ -258,14 +258,14 @@ class TestSkipGate:
         """skip_gate calls .mark_skip_gate() on the progress object."""
         tracker = _make_tracker("proj_abc")
         original_progress = tracker["proj_abc"]
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             skip_gate("proj_abc", "L1")
 
         assert original_progress.consume_skip_gate() == "L1"
 
     def test_skip_unknown_project_returns_error(self) -> None:
         """skip_gate returns error for unknown project_id."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = skip_gate("proj_unknown", "G0")
 
         assert result["success"] is False
@@ -274,7 +274,7 @@ class TestSkipGate:
     def test_skip_overwrites_previous_skip(self) -> None:
         """Calling skip_gate twice overwrites the previous skip gate."""
         tracker = _make_tracker("proj_overwrite")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             skip_gate("proj_overwrite", "G0")
             skip_gate("proj_overwrite", "L2")
 
@@ -292,13 +292,13 @@ class TestPipelineControlIntegration:
     def test_cancel_then_pause(self) -> None:
         """A pipeline can be cancelled and then pause returns error."""
         tracker = _make_tracker("proj_multi")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             # Cancel first
             cancel_result = cancel_pipeline("proj_multi")
             assert cancel_result["success"] is True
 
         # After cancel, the progress still exists, so pause should still work
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             pause_result = pause_pipeline("proj_multi")
             assert pause_result["success"] is True
             assert pause_result["paused"] is True
@@ -306,7 +306,7 @@ class TestPipelineControlIntegration:
     def test_retry_then_skip_same_gate(self) -> None:
         """retry_gate then skip_gate — skip overwrites retry."""
         tracker = _make_tracker("proj_rt")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             retry_gate("proj_rt", "G0")
             skip_gate("proj_rt", "G0")
 
@@ -317,7 +317,7 @@ class TestPipelineControlIntegration:
 
     def test_all_controls_unknown_project_returns_not_found(self) -> None:
         """All pipeline control tools return NOT_FOUND for unknown project."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             for func, args in [
                 (cancel_pipeline, ("unknown",)),
                 (pause_pipeline, ("unknown",)),
@@ -334,7 +334,7 @@ class TestPipelineControlIntegration:
     def test_all_controls_return_success_for_valid_project(self) -> None:
         """All pipeline control tools return success for a valid project."""
         tracker = _make_tracker("proj_all")
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             results = {
                 "cancel": cancel_pipeline("proj_all"),
                 "pause": pause_pipeline("proj_all"),
@@ -358,13 +358,13 @@ class TestPipelineControlErrorShape:
 
     def test_error_has_success_false(self) -> None:
         """Error responses have success=False."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = cancel_pipeline("nonexistent")
             assert result["success"] is False
 
     def test_error_has_error_key_with_code_message_resolution(self) -> None:
         """Error responses have an 'error' dict with code, message, resolution."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = cancel_pipeline("nonexistent")
 
         assert "error" in result
@@ -376,7 +376,7 @@ class TestPipelineControlErrorShape:
 
     def test_error_no_error_message_key(self) -> None:
         """Error responses do NOT include the redundant error_message key."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = cancel_pipeline("nonexistent")
 
         assert "error_message" not in result

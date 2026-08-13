@@ -35,7 +35,7 @@ _LAZY_MAP: dict[str, tuple[str, str]] = {
 }
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attribute loading
     """Lazy-import pipeline names on first attribute access."""
     if name in _LAZY_MAP:
         import importlib

@@ -247,9 +247,12 @@ class WorkflowLoader:
         # Platform validation
         platforms = data.get("platforms", [])
         if platforms:
-            # Lazy import to ensure adapters are registered
+            # Ensure built-in adapters are registered; the registry may have
+            # been cleared by tests, and module import only registers once.
+            from automedia.adapters import ensure_registered
             from automedia.adapters.registry import AdapterRegistry
 
+            ensure_registered()
             try:
                 available = AdapterRegistry.list()
             except Exception:

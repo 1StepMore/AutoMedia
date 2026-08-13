@@ -318,7 +318,7 @@ def _job_run_distribute() -> None:
         typer.echo(f"  [run-distribute] Executing: {name!r} ...")
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S602 — command strings come from trusted pipeline schedule config
                 command,
                 shell=True,
                 capture_output=True,

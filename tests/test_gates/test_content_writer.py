@@ -140,9 +140,9 @@ class TestExecute:
         assert result["content"] == MOCK_ARTICLE
         assert "output_path" in result
 
-        # LLM was called with the topic and brand
-        mock_llm.assert_called_once()
-        user_msg = mock_llm.call_args[0][0]
+        # LLM was called with the topic and brand (article + SEO scoring = 2 calls)
+        assert mock_llm.call_count >= 2
+        user_msg = mock_llm.call_args_list[0][0][0]
         assert "AI technology trends in 2025" in user_msg
         assert "testbrand" in user_msg
 
@@ -240,9 +240,9 @@ class TestExecute:
         assert result["gate"] == "CW"
         assert result["content"] == MOCK_ARTICLE
 
-        # LLM was called with the topic (brand defaults to empty)
-        mock_llm.assert_called_once()
-        user_msg = mock_llm.call_args[0][0]
+        # LLM was called with the topic (brand defaults to empty; article + SEO = 2 calls)
+        assert mock_llm.call_count >= 2
+        user_msg = mock_llm.call_args_list[0][0][0]
         assert "AI technology trends in 2025" in user_msg
 
         # Draft file was written
@@ -310,7 +310,7 @@ class TestExecute:
 
         assert result["passed"] is True
         # System prompt should be the custom one
-        _call_system_prompt = mock_llm.call_args[1].get("system_prompt")
+        _call_system_prompt = mock_llm.call_args_list[0][1].get("system_prompt")
         assert _call_system_prompt == custom_prompt, (
             f"Expected system_prompt={custom_prompt!r}, got {_call_system_prompt!r}"
         )

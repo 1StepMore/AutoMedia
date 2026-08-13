@@ -48,10 +48,18 @@ def _patch_jobs_yaml_path(
     jobs_yaml_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Redirect tools._get_jobs_yaml_path to the test path."""
-    import automedia.mcp.tools as tools_mod
+    """Redirect _get_jobs_yaml_path in both cron_tools and _shared modules.
 
-    monkeypatch.setattr(tools_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
+    ``cron_tools.get_cron_health`` calls ``_get_jobs_yaml_path`` via the
+    cron_tools local binding; ``_shared._read_pipeline_schedules`` calls it
+    via _shared's own globals.  Both must be patched for the temp path to
+    take effect throughout the cron subsystem.
+    """
+    import automedia.mcp.tools._shared as shared_mod
+    import automedia.mcp.tools.cron_tools as cron_tools_mod
+
+    monkeypatch.setattr(cron_tools_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
+    monkeypatch.setattr(shared_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
 
 
 # ---------------------------------------------------------------------------
@@ -64,11 +72,11 @@ class TestGetCronHealth:
 
     def test_missing_file(self, tmp_path: Path) -> None:
         """Missing jobs.yaml returns not-found result."""
-        import automedia.mcp.tools as tools_mod
+        import automedia.mcp.tools.cron_tools as cron_tools_mod
 
         # Point to a non-existent path
         missing = tmp_path / "nonexistent.yaml"
-        tools_mod._get_jobs_yaml_path = lambda: missing  # type: ignore[method-assign]
+        cron_tools_mod._get_jobs_yaml_path = lambda: missing  # type: ignore[method-assign]
 
         from automedia.mcp.tools import get_cron_health
 
@@ -107,9 +115,9 @@ class TestGetCronHealth:
 
     def test_invalid_expressions(self) -> None:
         """Invalid cron expressions are reported (manually crafted YAML)."""
-        import automedia.mcp.tools as tools_mod
+        import automedia.mcp.tools.cron_tools as cron_tools_mod
 
-        path = tools_mod._get_jobs_yaml_path()
+        path = cron_tools_mod._get_jobs_yaml_path()
         data = {
             "pipeline_schedules": [
                 {"name": "good", "expression": "0 8 * * *"},
@@ -127,9 +135,9 @@ class TestGetCronHealth:
 
     def test_with_static_jobs(self) -> None:
         """Static job definitions are reported."""
-        import automedia.mcp.tools as tools_mod
+        import automedia.mcp.tools.cron_tools as cron_tools_mod
 
-        path = tools_mod._get_jobs_yaml_path()
+        path = cron_tools_mod._get_jobs_yaml_path()
         data = {
             "jobs": [
                 {
@@ -160,7 +168,7 @@ class TestGetCronHealth:
 
     def test_both_schedules_and_jobs(self) -> None:
         """Both pipeline_schedules and static jobs are reported."""
-        import automedia.mcp.tools as tools_mod
+        import automedia.mcp.tools.cron_tools as cron_tools_mod
 
         data = {
             "pipeline_schedules": [
@@ -170,7 +178,7 @@ class TestGetCronHealth:
                 {"name": "job-1", "schedule": "30 9 * * *", "description": "Test job"},
             ],
         }
-        path = tools_mod._get_jobs_yaml_path()
+        path = cron_tools_mod._get_jobs_yaml_path()
         path.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
 
         from automedia.mcp.tools import get_cron_health
@@ -182,9 +190,9 @@ class TestGetCronHealth:
 
     def test_parse_error(self) -> None:
         """Malformed YAML returns parse error."""
-        import automedia.mcp.tools as tools_mod
+        import automedia.mcp.tools.cron_tools as cron_tools_mod
 
-        path = tools_mod._get_jobs_yaml_path()
+        path = cron_tools_mod._get_jobs_yaml_path()
         path.write_text("{invalid: yaml: *\n", encoding="utf-8")
 
         from automedia.mcp.tools import get_cron_health

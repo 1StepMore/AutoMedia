@@ -17,7 +17,7 @@ from automedia.pool.db import PoolDB
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 JOBS_YAML = PROJECT_ROOT / "src" / "automedia" / "cron" / "jobs.yaml"
 
-EXPECTED_JOBS = ["hot-collection", "semantic-audit", "publish-check", "watchdog"]
+EXPECTED_JOBS = ["hot-collection", "semantic-audit", "publish-check", "watchdog", "run-distribute"]
 REQUIRED_FIELDS = {"name", "schedule", "command", "on_failure", "timeout_s", "description"}
 VALID_ON_FAILURE = {"stop", "skip", "retry", "log"}
 
@@ -45,7 +45,7 @@ def test_yaml_is_parseable():
 
 
 def test_exactly_four_jobs():
-    assert len(_load_jobs()) == 4
+    assert len(_load_jobs()) == 5
 
 
 def test_job_names_are_expected():

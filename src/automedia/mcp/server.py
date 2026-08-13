@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 51 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 59 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -43,6 +43,7 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
+from automedia.effects.mcp import analyze_content as effects_analyze_content
 from automedia.mcp.accounts import (
     connect_account,
     disconnect_account,
@@ -55,6 +56,7 @@ from automedia.mcp.accounts import (
 # ---------------------------------------------------------------------------
 from automedia.mcp.allowlist import (
     _require_allowed,
+    check_path_allowed,
 )
 
 # ---------------------------------------------------------------------------
@@ -122,8 +124,6 @@ from automedia.mcp.tools import (
     test_cron_schedule,
     update_engine_config,
 )
-
-from automedia.effects.mcp import analyze_content as effects_analyze_content
 from automedia.mcp.tools_distribution import distribute_content
 
 # ---------------------------------------------------------------------------
@@ -194,6 +194,7 @@ __all__ = [
     "get_pending_approvals",
     # Allowlist helpers
     "_require_allowed",
+    "check_path_allowed",
     "mcp_help",
     "help_mcp",
     # Onboarding
@@ -363,7 +364,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 50 tools and 5 resources registered.
+        A fully configured server with all 59 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -1006,7 +1007,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 50 tools and 5 resources.",
+        description="AutoMedia MCP Server — stdio transport with 59 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",

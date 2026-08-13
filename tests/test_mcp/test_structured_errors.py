@@ -115,7 +115,7 @@ class TestGetPipelineProgressErrors:
 
     def test_unknown_project_returns_error_shape(self) -> None:
         """get_pipeline_progress with unknown project returns error."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = get_pipeline_progress("nonexistent")
 
         _assert_error_shape(result)
@@ -123,7 +123,7 @@ class TestGetPipelineProgressErrors:
 
     def test_empty_project_id_returns_error_shape(self) -> None:
         """get_pipeline_progress with empty id returns error."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = get_pipeline_progress("")
 
         _assert_error_shape(result)
@@ -135,8 +135,8 @@ class TestGetPipelineStatusErrors:
     def test_unknown_project_returns_error_shape(self) -> None:
         """get_pipeline_status with unknown project returns error."""
         with (
-            patch("automedia.mcp.tools._require_allowed"),
-            patch("automedia.mcp.tools._discover_projects", return_value=[]),
+            patch("automedia.mcp.tools.pipeline._require_allowed"),
+            patch("automedia.mcp.tools.projects._discover_projects", return_value=[]),
         ):
             result = get_pipeline_status(project_id="nonexistent", base_dir="/tmp")
 
@@ -146,7 +146,7 @@ class TestGetPipelineStatusErrors:
     def test_allowlist_denied_returns_error_shape(self) -> None:
         """get_pipeline_status with denied path returns error."""
         with patch(
-            "automedia.mcp.tools._require_allowed",
+            "automedia.mcp.tools.pipeline._require_allowed",
             side_effect=PermissionError("Path not allowed"),
         ):
             result = get_pipeline_status(project_id="test", base_dir="/restricted")
@@ -161,7 +161,7 @@ class TestListProjectsErrors:
     def test_allowlist_denied_returns_error(self) -> None:
         """list_projects with denied path returns error."""
         with patch(
-            "automedia.mcp.tools._require_allowed",
+            "automedia.mcp.tools.projects._require_allowed",
             side_effect=PermissionError("Path not allowed"),
         ):
             result = list_projects(base_dir="/restricted")
@@ -175,8 +175,8 @@ class TestArchiveProjectErrors:
     def test_project_not_found_returns_error_shape(self) -> None:
         """archive_project with missing project returns error."""
         with (
-            patch("automedia.mcp.tools._require_allowed"),
-            patch("automedia.mcp.tools._discover_projects", return_value=[]),
+            patch("automedia.mcp.tools.projects._require_allowed"),
+            patch("automedia.mcp.tools.projects._discover_projects", return_value=[]),
         ):
             result = archive_project(project_id="nonexistent", base_dir="/tmp")
 
@@ -186,7 +186,7 @@ class TestArchiveProjectErrors:
     def test_allowlist_denied_returns_error(self) -> None:
         """archive_project with denied path returns error."""
         with patch(
-            "automedia.mcp.tools._require_allowed",
+            "automedia.mcp.tools.projects._require_allowed",
             side_effect=PermissionError("Path not allowed"),
         ):
             result = archive_project(project_id="test", base_dir="/restricted")
@@ -216,7 +216,7 @@ class TestPipelineControlErrors:
         self, tool_func: Callable[..., dict[str, Any]], args: tuple[str, ...]
     ) -> None:
         """All pipeline control tools return error shape for unknown project."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = tool_func(*args)
 
         assert isinstance(result, dict)
@@ -253,7 +253,7 @@ class TestSuccessPaths:
         """cancel_pipeline success uses success_response."""
         progress = MagicMock()
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = cancel_pipeline("proj_valid")
 
         _assert_success_shape(result)
@@ -265,7 +265,7 @@ class TestSuccessPaths:
         """pause_pipeline success uses success_response."""
         progress = MagicMock()
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = pause_pipeline("proj_valid")
 
         _assert_success_shape(result)
@@ -276,7 +276,7 @@ class TestSuccessPaths:
         """resume_pipeline success uses success_response."""
         progress = MagicMock()
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = resume_pipeline("proj_valid")
 
         _assert_success_shape(result)
@@ -287,7 +287,7 @@ class TestSuccessPaths:
         """retry_gate success uses success_response."""
         progress = MagicMock()
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = retry_gate("proj_valid", "G0")
 
         _assert_success_shape(result)
@@ -298,7 +298,7 @@ class TestSuccessPaths:
         """skip_gate success uses success_response."""
         progress = MagicMock()
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = skip_gate("proj_valid", "G0")
 
         _assert_success_shape(result)
@@ -318,7 +318,7 @@ class TestSuccessPaths:
             "error": None,
         }
         tracker = {"proj_valid": progress}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = get_pipeline_progress("proj_valid")
 
         assert result["success"] is True
@@ -330,9 +330,9 @@ class TestSuccessPaths:
         from automedia.mcp.tools import list_projects
 
         with (
-            patch("automedia.mcp.tools._require_allowed"),
+            patch("automedia.mcp.tools.projects._require_allowed"),
             patch(
-                "automedia.mcp.tools._discover_projects",
+                "automedia.mcp.tools.projects._discover_projects",
                 return_value=[
                     {"project_id": "p1", "topic": "t1"},
                     {"project_id": "p2", "topic": "t2"},
@@ -408,7 +408,7 @@ class TestSearchAssetsErrors:
     def test_error_returns_proper_shape(self) -> None:
         """search_assets returns proper error shape on failure."""
         with patch(
-            "automedia.asset_library.search_assets",
+            "automedia.mcp.tools.assets._search_assets",
             side_effect=AutoMediaError("DB connection failed"),
         ):
             result = search_assets(query="test", brand="brand")
@@ -417,7 +417,7 @@ class TestSearchAssetsErrors:
 
     def test_empty_query_handled(self) -> None:
         """search_assets with empty query may succeed or error gracefully."""
-        with patch("automedia.asset_library.search_assets") as mock_sa:
+        with patch("automedia.mcp.tools.assets._search_assets") as mock_sa:
             mock_sa.return_value = []
             result = search_assets(query="", brand="brand")
 
@@ -435,7 +435,7 @@ class TestErrorShapeConsistency:
 
     def test_error_shape_has_consistent_keys(self) -> None:
         """All error responses have the same top-level keys."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             error_results = [
                 cancel_pipeline("x"),
                 pause_pipeline("x"),
@@ -450,7 +450,7 @@ class TestErrorShapeConsistency:
 
     def test_error_resolution_is_non_empty_string(self) -> None:
         """Error resolution is always a non-empty string."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             error_results = [
                 cancel_pipeline("x"),
                 pause_pipeline("x"),
@@ -466,7 +466,7 @@ class TestErrorShapeConsistency:
 
     def test_no_error_message_key_in_errors(self) -> None:
         """Error responses do NOT include the redundant error_message key."""
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             error_results = [
                 cancel_pipeline("x"),
                 pause_pipeline("x"),

@@ -134,10 +134,7 @@ def effects_cmd(
     content = _read_project_content(project["_dir"])
     brand_name = brand or project.get("brand", "")
 
-    if not content:
-        stats = _empty_stats()
-    else:
-        stats = _compute_all_stats(content, brand_name)
+    stats = _empty_stats() if not content else _compute_all_stats(content, brand_name)
 
     result: dict[str, Any] = {
         "status": "ok",
