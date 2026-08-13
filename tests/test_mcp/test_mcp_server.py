@@ -312,6 +312,7 @@ class TestServerCreation:
                 "add_brand",
                 "add_cron_schedule",
                 "add_pool_topic",
+                "analyze_content",
                 "approve_gate",
                 "archive_project",
                 "batch_run",
@@ -319,6 +320,7 @@ class TestServerCreation:
                 "configure_llm",
                 "connect_account",
                 "disconnect_account",
+                "distribute_content",
                 "engine_health",
                 "evaluate_content_quality",
                 "extract_brief",
@@ -730,6 +732,7 @@ class TestHelpers:
 
     def test_health_check_returns_ok(self) -> None:
         """health_check returns status=ok with version and uptime."""
+        create_server()  # registers tools, sets _tools_count
         result = health_check()
         assert result["status"] == "ok"
         assert result["version"] == "1.1.0"

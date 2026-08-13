@@ -12,11 +12,21 @@ import time
 import warnings
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from structlog import get_logger
 
 from automedia.core.overrides import OverridesLoader
+
+if TYPE_CHECKING:
+    from automedia.core.project import Project
+    from automedia.core.workflow import Workflow
+    from automedia.gates._context import GateContext
+    from automedia.gates.base import BaseGate, GateRegistry
+    from automedia.hooks.protocol import GateHook
+    from automedia.manifests.brand_profile_schema import BrandProfile
+    from automedia.pipelines.gate_engine import AssetInfo, GateLogEntry, PipelineResult
+    from automedia.pipelines.gate_types import PipelineProgress
 
 log = get_logger(__name__)
 
@@ -906,9 +916,9 @@ def _run_pipeline(
 def _resolve_brand_and_workflow(
     mode: str,
     brand: str,
-    project: Any,
+    project: Project,
     workflow: str | None,
-) -> tuple[Any | None, str, Any | None]:
+) -> tuple[BrandProfile | None, str, Workflow | None]:
     from automedia.core.workflow import WorkflowLoader
     from automedia.manifests.brand_profile_schema import (
         BrandProfile,
@@ -937,7 +947,7 @@ def _resolve_brand_and_workflow(
                 platforms=brand_profile.platforms,
             )
 
-    workflow_obj: Any = None
+    workflow_obj: Workflow | None = None
     if workflow is not None:
         try:
             workflow_loader = WorkflowLoader()
@@ -983,11 +993,11 @@ def _resolve_brand_and_workflow(
 
 def _select_gates(
     mode: str,
-    brand_profile: Any | None,
+    brand_profile: BrandProfile | None,
     resume_from: str | None,
     project_dir: str,
     progress: PipelineProgress | None,
-    workflow_obj: Any | None = None,
+    workflow_obj: Workflow | None = None,
     brand: str | None = None,
     platforms: list[str] | None = None,
 ) -> tuple[list[str], list[BaseGate]]:
@@ -1068,10 +1078,10 @@ def _build_pipeline_context(
     topic: str,
     brand: str,
     mode: str,
-    project: Any,
+    project: Project,
     config: dict[str, Any],
     tenant_id: str,
-    brand_profile: Any | None,
+    brand_profile: BrandProfile | None,
     director: bool,
     force_provenance: bool,
     default_lang: str | None,
@@ -1079,7 +1089,7 @@ def _build_pipeline_context(
     source_url: str,
     correlation_id: str,
     gate_names: list[str],
-) -> Any:
+) -> GateContext:
     from automedia.engines import resolve_engine
     from automedia.engines.errors import (
         EngineExecutionError,
@@ -1208,8 +1218,8 @@ def _setup_and_run_engine(
     gates: list[BaseGate],
     hooks: list[GateHook] | None,
     director: bool,
-    project: Any,
-    gate_context: Any,
+    project: Project,
+    gate_context: GateContext | dict[str, Any],
     progress: PipelineProgress | None,
 ) -> tuple[bool, list[dict[str, Any]]]:
     from automedia.hooks.cost_tracker import CostTracker
@@ -1235,8 +1245,8 @@ def _finalize_pipeline(
     success: bool,
     results: list[dict[str, Any]],
     mode: str,
-    gate_context: Any,
-    project: Any,
+    gate_context: GateContext | dict[str, Any],
+    project: Project,
     config: dict[str, Any],
     brand: str,
     topic: str,
@@ -1474,8 +1484,8 @@ def _resolve_source_material(
 
 
 def _collect_gate_failure_overrides(
-    brand_profile: Any | None = None,
-    workflow_obj: Any | None = None,
+    brand_profile: BrandProfile | None = None,
+    workflow_obj: Workflow | None = None,
     brand: str | None = None,
     base_overrides: dict[str, str] | None = None,
 ) -> dict[str, str]:
@@ -1520,8 +1530,12 @@ def _collect_gate_failure_overrides(
         modifiers = overrides_loader.load_gate_modifiers(brand)
         if modifiers and "override_failure_mode" in modifiers:
             result.update(modifiers["override_failure_mode"])
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug(
+            "pipeline.override_rules.load_failed",
+            brand=brand,
+            error=str(exc),
+        )
 
     # Source: Workflow gate modifiers
     if workflow_obj is not None and hasattr(workflow_obj, "gates") and workflow_obj.gates is not None:

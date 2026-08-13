@@ -2262,7 +2262,7 @@ docker compose --profile mcp-full down
 # On Windows (or cross-platform syntax check):
 python -c "import ast; ast.parse(open('scripts/setup.ps1').read())" 2>&1 || echo "PowerShell syntax checked manually"
 ```
-**Expected Result:** ✅ `setup.ps1` exists and is syntactically valid PowerShell. Covers: venv creation, pip install, `automedia init`, `automedia doctor`. [Windows Deployment Guide](docs/user/windows-deployment.md) documents WSL2, Docker Desktop, and native Windows paths.
+**Expected Result:** ✅ `setup.ps1` exists and is syntactically valid PowerShell. Covers: venv creation, pip install, `automedia init`, `automedia doctor`. [Windows Deployment Guide](user/windows-deployment.md) documents WSL2, Docker Desktop, and native Windows paths.
 
 **Actual Result:** _________ **PASS / FAIL:** _________
 

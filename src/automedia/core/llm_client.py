@@ -485,6 +485,8 @@ def _structured_completion_with_fallback(
     LLMError
         On provider errors or unexpected failures.
     """
+    global _provider_no_beta_api  # noqa: PLW0603 — module-level cache mutated deliberately
+
     if config is None:
         from automedia.core.config_loader import load_config
 

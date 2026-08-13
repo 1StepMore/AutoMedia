@@ -42,10 +42,12 @@ def _patch_jobs_yaml_path(
     jobs_yaml_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Redirect tools._get_jobs_yaml_path to the test path."""
-    import automedia.mcp.tools as tools_mod
+    """Redirect _get_jobs_yaml_path in both cron_tools and _shared modules."""
+    import automedia.mcp.tools._shared as shared_mod
+    import automedia.mcp.tools.cron_tools as cron_tools_mod
 
-    monkeypatch.setattr(tools_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
+    monkeypatch.setattr(cron_tools_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
+    monkeypatch.setattr(shared_mod, "_get_jobs_yaml_path", lambda: jobs_yaml_path)
 
 
 # ---------------------------------------------------------------------------
