@@ -32,6 +32,12 @@ repos:
         language: python
         types: [python]
         pass_filenames: false
+      - id: check-doc-consistency
+        name: check-doc-consistency
+        entry: python3 scripts/check-doc-consistency.py
+        language: system
+        always_run: true
+        pass_filenames: false
 
 ci:
   autofix_prs: true
