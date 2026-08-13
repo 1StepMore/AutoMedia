@@ -247,12 +247,12 @@ class WorkflowLoader:
         # Platform validation
         platforms = data.get("platforms", [])
         if platforms:
-            # Import the adapters *package* so its module-level
-            # AdapterRegistry.register() calls run; the registry module alone
-            # is empty until the package is imported.
-            import automedia.adapters  # noqa: F401 — triggers adapter registration
+            # Ensure built-in adapters are registered; the registry may have
+            # been cleared by tests, and module import only registers once.
+            from automedia.adapters import ensure_registered
             from automedia.adapters.registry import AdapterRegistry
 
+            ensure_registered()
             try:
                 available = AdapterRegistry.list()
             except Exception:
