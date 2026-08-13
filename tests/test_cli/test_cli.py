@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
+from automedia._version import __version__
 from automedia.cli.app import app
 from automedia.pipelines.gate_engine import PipelineResult
 from automedia.pool.db import PoolDB
@@ -41,13 +42,13 @@ class TestMainApp:
     def test_version_flag_prints_version(self) -> None:
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "1.1.0" in result.output
+        assert __version__ in result.output
 
     def test_version_flag_exits_early(self) -> None:
         """--version should exit before running any command."""
         result = runner.invoke(app, ["--version", "run", "--topic", "x", "--brand", "y"])
         assert result.exit_code == 0
-        assert "1.1.0" in result.output
+        assert __version__ in result.output
         assert "Pipeline" not in result.output
 
     def test_help_contains_epilog(self) -> None:
