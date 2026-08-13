@@ -32,6 +32,7 @@ FROM python:3.11-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -69,9 +70,9 @@ RUN curl -fsSL https://bun.sh/install | bash \
     && bun --version
 RUN pip install --no-cache-dir edge-tts faster-whisper
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium-browser \
+    chromium \
     && rm -rf /var/lib/apt/lists/*
 RUN python -c "import edge_tts; print(f'edge-tts {edge_tts.__version__}')" \
     && python -c "import faster_whisper; print(f'faster-whisper {faster_whisper.__version__}')" \
-    && chromium-browser --version
+    && chromium --version
 USER automedia

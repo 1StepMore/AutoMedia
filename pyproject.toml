@@ -48,7 +48,7 @@ Documentation = "https://github.com/1stepmore/automedia/tree/main/docs"
 openai = ["openai>=2.45.0"]
 anthropic = ["anthropic>=0.116.0"]
 rich = ["rich>=15.0.0"]
-mcp = ["mcp>=1.0"]
+mcp = ["mcp>=1.0,<2"]
 
 omni-core = ["lxml>=6", "python-docx>=1.2", "python-pptx>=1.0", "openpyxl>=3.1", "pandas>=2"]
 omni-pdf = ["pymupdf>=1.24"]

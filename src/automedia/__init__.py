@@ -1,5 +1,7 @@
 """AutoMedia — automated media production pipeline."""
 
+from typing import Any
+
 from automedia._version import __version__
 from automedia.exceptions import (
     AccountError,
@@ -41,7 +43,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attribute loading
     """Lazy-import heavy sub-modules on first attribute access."""
     _lazy: dict[str, tuple[str, str]] = {
         "AssetInfo": ("automedia.pipelines.gate_engine", "AssetInfo"),
