@@ -97,3 +97,5 @@ Implementation plan:
 - **`_ALLOWED_OUTPUT_FORMATS`** is used by `format_output` — ensure it's accessible from `tools.py` via import from `allowlist.py`.
 - **Test path imports:** Even with re-exports, some test files import from `automedia.mcp.server` directly. Those will continue to work via re-exports. No test changes needed.
 - **`create_server()` length:** After extraction, `create_server()` will still be ~200 lines (14 tool registrations + 3 resource registrations + instructions). This is fine — it's intentionally declarative boilerplate that maps names ↔ handlers ↔ descriptions.
+
+> **Closure (2026-08):** full module split landed in PR #55; facade parity for check_path_allowed completed in this work.

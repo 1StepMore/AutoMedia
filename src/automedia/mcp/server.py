@@ -55,6 +55,7 @@ from automedia.mcp.accounts import (
 # ---------------------------------------------------------------------------
 from automedia.mcp.allowlist import (
     _require_allowed,
+    check_path_allowed,
 )
 
 # ---------------------------------------------------------------------------
@@ -194,6 +195,7 @@ __all__ = [
     "get_pending_approvals",
     # Allowlist helpers
     "_require_allowed",
+    "check_path_allowed",
     "mcp_help",
     "help_mcp",
     # Onboarding
