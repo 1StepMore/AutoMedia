@@ -1,0 +1,93 @@
+# ===== Production / Real Data =====
+/automedia-package/
+/automedia-infrastructure-*.zip
+/solution-wise/
+/projects/
+/test-*/
+202607*/
+PRD/
+/hyperframes-workflow-templates/
+
+# ===== Pipeline Output Directories =====
+0[1-6]_*/
+
+# ===== Internal / Developer-Only Docs =====
+AutoMedia-*.md
+docs/production-e2e-test-design.md
+/Production/
+/Pool/pool.db
+/Assets/
+/handoff/
+/env_pack/
+/home-renanzai/
+
+# ===== Local config & tooling =====
+.automedia/
+.omo/
+/.hermes/
+
+# ===== Credentials & Secrets =====
+.env
+.env.*.local
+deploy/systemd/*.env
+*.pem
+*.key
+*_credentials.yaml
+*_credentials.json
+oscreds.yaml
+api_key
+*secret*
+*.token
+
+# ===== Python Bytecode & Build =====
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# ===== Node / JS =====
+node_modules/
+.bun/
+
+# ===== Logs / Temp =====
+*.log
+*.tmp
+nohup.out
+
+# ===== Metrics / Reports =====
+pipeline_md5.json
+production_metrics.json
+
+# ===== IDE / Editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===== Test Fixtures (synth allowed; real data blocked) =====
+!tests/fixtures/synth/
+tests/fixtures/synth/**/real_*
+tests/fixtures/synth/**/credential*
+tests/fixtures/synth/**/api_key*
+
+# ===== Binary / Model Files =====
+*.bin
+*.safetensors
+*.gguf
+*.h5
+*.parquet
+
+site/
+*.cover

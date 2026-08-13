@@ -1,0 +1,77 @@
+site_name: AutoMedia
+site_description: Automated media production pipeline documentation
+site_url: https://1stepmore.github.io/automedia
+repo_url: https://github.com/1stepmore/automedia
+edit_uri: edit/main/docs/
+
+exclude_docs: archived/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - content.code.copy
+  palette:
+    primary: indigo
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/1stepmore/automedia
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - User Introduction: user/user-introduction.md
+    - Developer Guide: dev/developer-guide.md
+    - Glossary: glossary.md
+    - Agent Troubleshooting: dev/agent-troubleshooting.md
+  - Core Concepts:
+    - HITL Framework: user/hitl-framework.md
+    - Omni Triad Integration: user/omni-integration.md
+    - Asset Library: user/asset-library.md
+  - API & CLI:
+    - API Reference: user/api-reference.md
+    - CLI Reference: user/cli-reference.md
+    - MCP Setup: user/mcp-setup.md
+  - Deployment:
+    - Deployment Options: user/deployment.md
+    - Windows Deployment: user/windows-deployment.md
+  - Runbook:
+    - Production Workflow: user/production-workflow.md
+    - Gate Failure Modes: dev/gate-failure-modes.md
+    - Cron Troubleshooting: dev/cron-troubleshooting.md
+    - API Gotchas: dev/api-gotchas.md
+  - Developer:
+    - Project Validation Framework: dev/project-validation-framework.md
+    - Founder Expectations: dev/founder-expectations.md
+    - Evaluation Matrix Principles: dev/evaluation-matrix-principles.md
+    - Forward Compatibility: dev/forward-compat.md
+    - Deep Module RFC-001: dev/deep-module-rfc-001.md
+    - Override Reference: dev/override-reference.md
+    - Validation Master Plan: automedia-validation-master-plan.md
+    - AI Development Methodology: dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md
+  - Skills:
+    - Brand Strategy: skills/brand-strategy.md
+    - Pipeline Workflow: skills/pipeline-workflow.md
+    - Distribution Workflow: skills/distribution-workflow.md
+    - Batch Workflow: skills/batch-workflow.md
+  - Architecture Decisions:
+    - ADR-001 Singleton Registry: adr/ADR-001-singleton-registry-unification.md
+    - ADR-002 HITL Decision Layer: adr/ADR-002-hitl-decision-layer-decoupling.md
+    - ADR-003 Platform Rename: adr/ADR-003-platform-rename-stdlib-conflict.md
+    - ADR-004 MCP Server Decomposition: adr/ADR-004-mcp-server-decomposition.md
+    - ADR-005 Issue-Driven Commits: adr/ADR-005-issue-driven-commits.md

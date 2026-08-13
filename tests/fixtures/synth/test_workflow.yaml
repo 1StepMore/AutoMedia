@@ -1,0 +1,24 @@
+# Synthetic workflow fixture for integration testing — zero real brand data.
+# Compatible with automedia.core.workflow.WorkflowLoader.
+name: test_workflow
+mode: text_only
+platforms:
+  - wechat
+  - zhihu
+brand: TestBrand
+gates:
+  include:
+    - G0
+    - G1
+  exclude:
+    - V0
+    - V1
+prompts:
+  cw: "Write about {topic} in a professional tone"
+media:
+  wechat:
+    width: 1080
+    height: 1920
+schedule:
+  expression: "0 6 * * 1"
+  count: 3

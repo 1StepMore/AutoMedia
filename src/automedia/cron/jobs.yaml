@@ -1,0 +1,39 @@
+jobs:
+- command: automedia cron run pool-collect
+  depends_on: null
+  description: 每日 08:00 采集各平台热点数据进 pool.db
+  name: hot-collection
+  on_failure: log
+  schedule: 0 8 * * *
+  timeout_s: 600
+- command: automedia cron run pool-score
+  depends_on:
+  - hot-collection
+  description: 每日 08:05 对 pool 中的话题评分排序, 依赖 hot-collection
+  name: semantic-audit
+  on_failure: log
+  schedule: 5 8 * * *
+  timeout_s: 300
+- command: automedia cron run publish-check
+  depends_on:
+  - semantic-audit
+  description: 每日 08:30 检查是否有待发布内容, 依赖 semantic-audit
+  name: publish-check
+  on_failure: log
+  schedule: 30 8 * * *
+  timeout_s: 120
+- command: automedia cron check-health
+  depends_on: null
+  description: 每日 09:30 执行全系统健康检查
+  name: watchdog
+  on_failure: log
+  schedule: 30 9 * * *
+  timeout_s: 60
+- command: automedia cron run run-distribute
+  depends_on: null
+  description: 执行已排期的分发任务
+  name: run-distribute
+  on_failure: log
+  schedule: 0 6 * * *
+  timeout_s: 600
+pipeline_schedules: []

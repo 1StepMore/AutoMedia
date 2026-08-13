@@ -1,0 +1,20 @@
+Generate a detailed Stable Diffusion / ComfyUI image prompt for a body/illustration image.
+
+Topic: {{ topic }}
+{% if brand %}Brand context: {{ brand }}
+{% endif %}Image index: {{ image_index }}
+
+The prompt must be in English, comma-separated keywords/phrases format optimized for text-to-image generation.
+Include ALL of the following elements:
+- Subject: the main subject, actions, and objects in the scene — make it specific to the topic
+- Style: artistic medium and visual style (digital painting, concept art, photograph, illustration, 3D render, cinematic, etc.)
+- Lighting: light source and quality (golden hour, dramatic side lighting, soft diffused light, rim light, studio lighting, volumetric, etc.)
+- Colors: dominant color palette and harmony (vibrant, pastel, monochrome, warm tones, cool tones, complementary, analogous, etc.)
+- Composition: framing and perspective (close-up, wide shot, bird's eye view, rule of thirds, leading lines, depth of field, etc.)
+- Mood: emotional atmosphere (serene, energetic, mysterious, cinematic, cozy, majestic, dramatic, futuristic, etc.)
+
+Start with quality tags: masterpiece, best quality, highly detailed, 8k, ultra-detailed, sharp focus.
+
+Each image index represents a different visual angle or aspect of the topic. Vary the prompts across images — do NOT repeat the same template or phrasing between different indices.
+
+Return ONLY the comma-separated prompt text. No explanations, no markdown formatting.

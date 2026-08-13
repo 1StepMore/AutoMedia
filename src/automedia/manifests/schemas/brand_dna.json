@@ -1,0 +1,1 @@
+{"required": ["brand_name", "vision", "mission", "values", "personality", "tone_of_voice"], "properties": {"brand_name": "string", "vision": "string", "mission": "string", "values": "array", "personality": "string", "tone_of_voice": "string", "multilingual_slogans": "object"}}

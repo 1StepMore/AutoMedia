@@ -1,0 +1,10 @@
+# omni_allowlist.yaml — Path allowlist for Omni file operations
+# Reference template. Actual config lives at ~/.automedia/omni_allowlist.yaml
+
+allowed_paths:
+  - ~/Documents/briefs
+  - /tmp/automedia
+
+write_paths:
+  - ~/Documents/output
+  - /tmp/automedia/output

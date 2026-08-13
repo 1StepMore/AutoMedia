@@ -1,0 +1,31 @@
+# ol_config.yaml — Omni-Localizer (OL) independent LLM configuration
+# When ol.llm_* fields are set here they override omni_config.yaml:ol.*
+# Reference template. Actual config lives at ~/.automedia/ol_config.yaml
+
+source_lang: en
+target_lang: zh
+
+llm_pool:
+  # Translation pipeline — used by OLAdapter.translate()
+  translation:
+    provider: openai      # llm provider name
+    model: gpt-4          # model name for translation
+    temperature: 0.3      # low for consistent translation
+    max_retries: 3
+    timeout: 120
+
+  # Quality judging — used by OLAdapter.judge()
+  judging:
+    provider: openai
+    model: gpt-4
+    temperature: 0.1      # near-deterministic for scoring
+    max_retries: 2
+    timeout: 60
+
+  # Format restoration — used after XLIFF round-trip
+  restoration:
+    provider: openai
+    model: gpt-4
+    temperature: 0.2
+    max_retries: 3
+    timeout: 90

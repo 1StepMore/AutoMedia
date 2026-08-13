@@ -1,0 +1,1 @@
+{"required": ["product_positioning", "feature_priorities", "localization_selling_points", "optimization_recommendations"], "properties": {"product_positioning": "string", "feature_priorities": "array", "localization_selling_points": "array", "optimization_recommendations": "array"}}

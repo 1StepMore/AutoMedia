@@ -1,0 +1,6 @@
+# Synthetic workflow that extends test_workflow_base — tests deep-merge inheritance.
+name: test_workflow_extends
+extends: test_workflow_base
+mode: text_only
+platforms:
+  - zhihu

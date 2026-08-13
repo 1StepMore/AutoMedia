@@ -1,0 +1,1 @@
+{"required": ["idea", "market", "stage", "mode"], "properties": {"idea": "string", "market": "string", "stage": "string", "mode": "string", "existing_assets": "number"}}

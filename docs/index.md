@@ -1,0 +1,115 @@
+---
+title: Home
+description: AutoMedia — automated media production pipeline for content teams and AI coding agents.
+---
+
+# Welcome to AutoMedia
+
+Automated Media Production Pipeline — for content teams and AI coding agents.
+
+---
+
+## What is AutoMedia?
+
+AutoMedia automates content production from **topic selection** through **draft writing**, **video generation**, **subtitle rendering**, and **multi-platform publishing**. It handles the repetitive parts of media production so you can focus on creative decisions.
+
+**Stats:** 33,619 LOC (core) · ~90,000+ LOC (total) · 442+ Python files · Python 3.11+ · MIT License
+
+---
+
+## Features
+
+- **Three-layer API** — Python SDK / CLI (17 commands) / MCP Server (59 tools)
+- **33 quality gates** — G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), D1-D7 (distribution), P1-P4 (repurpose)
+- **6-layer configuration** — defaults → project → user → overrides → prompts → env vars
+- **Topic pool** — SQLite-backed with scoring, dedup, scheduling
+- **Platform adapters** — Extensible publish targets
+- **Omni Triad** — OPP (extraction), OL (localization), ORF (format conversion)
+- **Human-in-the-loop** — Review gates for content and video quality approval
+- **Platform-scoped prompts** — Per-platform prompt templates with 3-layer resolution (brand > platform > global)
+- **Workflow system** — Reusable `workflows.yaml` definitions with cascade merge
+- **Director mode** — HITL gate approval with GateEngine pause/resume
+- **Override system** — Gate rules, media specs, and prompt overrides per brand/platform
+- **MCP-native** — Works with Claude Desktop/Code, OpenCode, Codex CLI, Cline, OpenClaw
+
+---
+
+## Quick Start
+
+```bash
+# Install
+pip install -e .
+
+# Initialize configuration
+automedia init
+
+# Check dependencies
+automedia doctor
+
+# Run full pipeline
+automedia run --topic "Your Topic Here" --brand my-brand
+
+# Text-only mode (skip video generation)
+automedia run --topic "..." --brand my-brand --mode text_only
+```
+
+---
+
+## Documentation
+
+| Section | Description |
+|---------|-------------|
+| [Developer Guide](dev/developer-guide.md) | Full setup and development guide |
+| [API Reference](user/api-reference.md) | Python SDK API documentation |
+| [CLI Reference](user/cli-reference.md) | Command-line interface reference |
+| [MCP Setup](user/mcp-setup.md) | MCP server setup for AI agents |
+| [HITL Framework](user/hitl-framework.md) | Human-in-the-loop review gates |
+| [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
+| [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
+| [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
+| [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
+| [Architecture Decision Records](adr/ADR-001-singleton-registry-unification.md) | ADR-001..ADR-005, canonical source in docs/adr/ |
+
+---
+
+## Runbook
+
+Troubleshooting and operational guides:
+
+| Guide | Description |
+|-------|-------------|
+| [Gate Failure Modes](dev/gate-failure-modes.md) | Diagnosing and fixing gate failures |
+| [Production Workflow](user/production-workflow.md) | Daily production operations |
+| [Cron Troubleshooting](dev/cron-troubleshooting.md) | Debugging scheduled jobs |
+| [API Gotchas](dev/api-gotchas.md) | Common API pitfalls and solutions |
+
+---
+
+## Skills for Pipeline Operators
+
+How-to guides for agents using AutoMedia's MCP tools to produce, distribute, and batch content:
+
+| Skill | Description |
+|-------|-------------|
+| [Brand Strategy](skills/brand-strategy.md) | Generate brand positioning and messaging with `run_brand_strategy` |
+| [Pipeline Workflow](skills/pipeline-workflow.md) | Run a single project end to end: strategy, topic, `run_pipeline`, progress, archive |
+| [Distribution Workflow](skills/distribution-workflow.md) | Publish or distribute finished content with `distribute_content` and `publish_content` |
+| [Batch Workflow](skills/batch-workflow.md) | Produce multiple topics sequentially with `run_batch` |
+
+---
+
+## For AI Agents
+
+AutoMedia is MCP-native. Connect any MCP client to get started:
+
+```bash
+python -m automedia.mcp.server
+```
+
+See [MCP Setup](user/mcp-setup.md) for client configuration examples (Claude Desktop, OpenCode, Codex CLI, Hermes Agent).
+
+---
+
+## License
+
+MIT License. See [LICENSE](https://github.com/1stepmore/automedia/blob/main/LICENSE) for details.

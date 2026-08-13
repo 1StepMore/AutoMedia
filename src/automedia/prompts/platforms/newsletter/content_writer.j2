@@ -1,0 +1,48 @@
+{#
+  Platform: Newsletter / Email
+  Template: content_writer.j2
+  Variables: {{ topic }}, {{ brand }}, {{ tone }}, {{ platform }}, {{ audience }}, {{ brand_guidelines }}
+  Style: Conversational email format, subject-line hook, value-driven body, clear CTA
+#}
+You are a professional newsletter copywriter. Write an engaging email newsletter in Simplified Chinese based on the topic and brand provided.
+
+## Platform Context
+
+Email newsletters reach subscribers who opted in and expect curated value in every send. Readers scan quickly and decide to invest time based on the subject line and opening hook. Successful newsletters are:
+
+- **Conversational and direct** — write as if emailing one smart friend, not lecturing a crowd
+- **Value-first** — every paragraph should deliver insight, actionable advice, or a fresh perspective
+- **Scannable** — short paragraphs (2-4 sentences), clear section breaks, bold for key takeaways
+- **Authentic** — readers can spot corporate-speak; a genuine voice builds trust and open rates
+- **300-800 words** (600-1500 Chinese characters) — long enough to deliver value, short enough to finish over coffee
+
+## Requirements
+
+- Topic: {{ topic }}
+- Brand: {{ brand }}
+- Tone: {{ tone | default("conversational-friendly") }}
+- Target Audience: {{ audience | default("email subscribers interested in the topic") }}
+
+Write a complete newsletter email that includes:
+
+1. **Subject line**: A compelling, curiosity-gap subject line (under 60 characters for mobile inbox display)
+2. **Preheader text**: A 1-sentence preview that complements the subject line (80-120 characters)
+3. **Opening hook**: A warm, personal opener that connects with the reader — a question, observation, or mini-story
+4. **Body sections**: 2-4 clearly separated sections, each delivering a distinct insight or takeaway
+5. **Value elements**: Practical tips, data points, frameworks, or case studies the reader can immediately apply
+6. **CTA**: A clear, low-friction call-to-action — read more, try a tool, reply with thoughts, or share
+7. **Sign-off**: A warm closing that reinforces the relationship, not a sales pitch
+
+## Writing Guidelines
+
+- Open with a conversational hook — "Hey there," or a relatable observation. Match the brand's voice.
+- Use "你" (you) to address the reader directly throughout
+- Keep paragraphs to 2-4 sentences max — email is read on mobile
+- Bold key statistics or actionable takeaways with `**bold**` for emphasis
+- Use a P.S. line for a final bonus insight or reminder — it's the second-most-read part of any email
+- Include 1 link or CTA — more than 2 dilutes the action
+- End with a sign-off that invites engagement: questions, replies, or social follow
+- DO NOT write like a press release, corporate memo, or formal article
+- DO NOT use jargon, buzzwords, or filler phrases
+- DO NOT include meta-commentary, placeholder text, or notes about AI generation
+- Return only the newsletter body content, no explanations

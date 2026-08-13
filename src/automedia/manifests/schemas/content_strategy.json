@@ -1,0 +1,1 @@
+{"required": ["core_message_house", "content_pillars", "channel_matrix", "content_calendar_framework"], "properties": {"core_message_house": "object", "content_pillars": "array", "channel_matrix": "object", "content_calendar_framework": "array"}}

@@ -1,0 +1,558 @@
+"""``automedia cron`` — run cron jobs and health checks."""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import typer
+
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+from automedia.pool.collector import HotCollector
+from automedia.pool.db import PoolDB
+from automedia.pool.dedup import TopicDeduplicator
+from automedia.pool.scorer import TopicScorer
+
+app = typer.Typer(name="cron", help="Run scheduled jobs and health checks.")
+
+# ---------------------------------------------------------------------------
+# Known cron jobs
+# ---------------------------------------------------------------------------
+
+_KNOWN_JOBS: dict[str, str] = {
+    "pool-collect": "Collect new topics into the pool.",
+    "pool-score": "Score and rank pool topics.",
+    "pool-prune": "Prune stale pool entries.",
+    "publish-check": "Check for unpublished ready content.",
+    "watchdog": "Run the 4-step system health check (alias for check-health).",
+    "run-pipeline": "Execute a scheduled pipeline run from cron/jobs.yaml.",
+    "run-distribute": "Execute scheduled distribution commands from cron/jobs.yaml.",
+}
+
+_DEFAULT_DB = Path(".automedia") / "pool.db"
+
+
+# ---------------------------------------------------------------------------
+# cron run
+# ---------------------------------------------------------------------------
+
+
+@app.command("run")
+def cron_run(
+    job_name: str = typer.Argument(..., help="Name of the cron job to execute."),
+    timeout: int = typer.Option(120, "--timeout", help="Job timeout in seconds."),
+) -> None:
+    """Execute a named cron job."""
+    if job_name not in _KNOWN_JOBS:
+        output_error(f"Unknown job {job_name!r}. Known jobs: {list(_KNOWN_JOBS)}")
+
+    if get_output_mode() == OutputMode.TEXT:
+        typer.echo(f"Running cron job: {job_name} — {_KNOWN_JOBS[job_name]}")
+
+    # Dispatch to the appropriate handler
+    handlers: dict[str, Callable[[], None]] = {
+        "pool-collect": _job_pool_collect,
+        "pool-score": _job_pool_score,
+        "pool-prune": _job_pool_prune,
+        "publish-check": _job_publish_check,
+        "watchdog": _job_watchdog,
+        "run-pipeline": _job_run_pipeline,
+        "run-distribute": _job_run_distribute,
+    }
+
+    try:
+        handlers[job_name]()
+    except Exception as exc:
+        output_error(f"Job {job_name!r} failed: {exc}", code=0)
+        raise typer.Exit(code=1) from exc
+
+    output_text(
+        f"Job {job_name!r} completed.",
+        data={"status": "ok", "job": job_name},
+        green=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Job: pool-collect
+# ---------------------------------------------------------------------------
+
+
+def _job_pool_collect() -> None:
+    """Collect hot topics from HotCollector and persist them into pool.db.
+
+    Uses :class:`TopicDeduplicator` to avoid inserting titles that already
+    exist in the pool.
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        collector = HotCollector()
+        topics = collector.collect_all()
+
+        dedup = TopicDeduplicator()
+        existing = db.list_topics()
+        existing_titles = [t["title"] for t in existing]
+
+        inserted = 0
+        skipped = 0
+        for t in topics:
+            if dedup.is_duplicate(t["title"], existing_titles):
+                skipped += 1
+                continue
+            db.add_topic(
+                {
+                    "title": t["title"],
+                    "url": t.get("url", ""),
+                    "source": t.get("source", ""),
+                    "score": t.get("heat_score", 0.0),
+                    "status": "pending",
+                }
+            )
+            existing_titles.append(t["title"])
+            inserted += 1
+
+        typer.echo(
+            f"  [pool-collect] Collected {len(topics)} topics: "
+            f"{inserted} inserted, {skipped} dedup-skipped."
+        )
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: pool-score
+# ---------------------------------------------------------------------------
+
+
+def _job_pool_score() -> None:
+    """Score all pending topics using :class:`TopicScorer` and update pool.db.
+
+    Growth score is stored as the primary ``score`` column value.
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        scorer = TopicScorer()
+        pending = db.list_topics(status="pending")
+
+        scored = 0
+        for t in pending:
+            # Build the topic dict expected by TopicScorer
+            score_input = {
+                "title": t["title"],
+                "heat_score": t.get("score", 0.0),
+                "collected_at": t.get("created_at", ""),
+            }
+            growth = scorer.score_growth(score_input)
+            db.update_score(t["id"], round(growth, 4))
+            scored += 1
+
+        typer.echo(f"  [pool-score] Scored {scored} pending topic(s).")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: pool-prune
+# ---------------------------------------------------------------------------
+
+
+def _job_pool_prune() -> None:
+    """Remove stale pending topics older than 7 days from pool.db."""
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+        # Collect IDs of topics to prune
+        cur = db.conn.execute(
+            "SELECT id FROM topics WHERE status = 'pending' AND created_at < ?",
+            (cutoff,),
+        )
+        ids = [row[0] for row in cur.fetchall()]
+        removed = db.delete_topics(ids)
+
+        typer.echo(f"  [pool-prune] Removed {removed} stale pending topic(s).")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Job: publish-check
+# ---------------------------------------------------------------------------
+
+
+def _job_publish_check() -> None:
+    """Scan for projects that have ``selected`` topics awaiting publish.
+
+    Reports the count of selected topics in pool.db and any project
+    directories with a ``06_publish`` sub-directory that is empty
+    (i.e. content produced but not yet published).
+    """
+    db = PoolDB(_DEFAULT_DB)
+    try:
+        selected = db.list_topics(status="selected")
+        typer.echo(
+            f"  [publish-check] {len(selected)} topic(s) in 'selected' status awaiting publish."
+        )
+
+        # Scan for project dirs with empty 06_publish (content ready, not published)
+        ready_projects: list[str] = []
+        base = Path(".")
+        for info_file in sorted(base.glob("*/00_project_info.json")):
+            proj_dir = info_file.parent
+            publish_dir = proj_dir / "06_publish"
+            if publish_dir.is_dir() and not any(publish_dir.iterdir()):
+                ready_projects.append(proj_dir.name)
+
+        if ready_projects:
+            typer.echo(
+                f"  [publish-check] {len(ready_projects)} project(s) with empty publish dir:"
+            )
+            for name in ready_projects:
+                typer.echo(f"    - {name}")
+        else:
+            typer.echo("  [publish-check] No projects pending publish.")
+    finally:
+        db.close()
+
+
+def _job_watchdog() -> None:
+    """Delegate to the check-health command handler."""
+    cron_check_health()
+
+
+# ---------------------------------------------------------------------------
+# Job: run-pipeline (cron dispatcher path — runs all schedules)
+# ---------------------------------------------------------------------------
+
+
+def _job_run_pipeline() -> None:
+    """Execute all pipeline schedules from ``cron/jobs.yaml``.
+
+    Reads every schedule defined in ``pipeline_schedules`` and runs
+    each one sequentially.  Per-schedule errors are collected and
+    reported — a single failing schedule does **not** stop the batch.
+    """
+    from automedia.cron.runner import run_scheduled_pipeline
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    if not schedules:
+        typer.echo("  [run-pipeline] No pipeline schedules defined in cron/jobs.yaml.")
+        return
+
+    results: list[dict[str, Any]] = []
+    for entry in schedules:
+        name = entry.get("name", "unnamed")
+        typer.echo(f"  [run-pipeline] Running schedule: {name!r} ...")
+        try:
+            res = run_scheduled_pipeline(entry)
+            results.append(res)
+            status = res.get("status", "unknown")
+            if status == "failed":
+                typer.secho(
+                    f"  [run-pipeline] {name!r} FAILED: {res.get('error', 'unknown error')}",
+                    fg=typer.colors.RED,
+                )
+            else:
+                typer.echo(
+                    f"  [run-pipeline] {name!r} → {status}  "
+                    f"(topic={res.get('topic', '')}, "
+                    f"project_id={res.get('project_id', '')})"
+                )
+        except Exception as exc:
+            typer.secho(
+                f"  [run-pipeline] {name!r} EXCEPTION: {exc}",
+                fg=typer.colors.RED,
+            )
+            results.append({
+                "status": "failed",
+                "error": {
+                    "code": "CLI_ERROR",
+                    "message": str(exc),
+                    "resolution": "Check the error message and fix the issue before retrying",
+                },
+                "name": name,
+            })
+
+    passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
+    failed = len(results) - passed
+    typer.echo(
+        f"  [run-pipeline] Batch complete: {passed} passed, {failed} failed "
+        f"(out of {len(results)} schedules)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Job: run-distribute
+# ---------------------------------------------------------------------------
+
+
+def _job_run_distribute() -> None:
+    """Execute scheduled distribution commands from pipeline_schedules.
+
+    Reads every schedule entry in ``pipeline_schedules`` that has a
+    ``command`` field starting with ``automedia distribute`` and executes
+    it via ``subprocess.run``.  Per-entry errors are collected and
+    reported — a single failure does not stop the batch.
+    """
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    distribute_entries = [
+        s for s in schedules
+        if s.get("command", "").startswith("automedia distribute")
+    ]
+
+    if not distribute_entries:
+        typer.echo("  [run-distribute] No scheduled distributions found.")
+        return
+
+    results: list[dict[str, Any]] = []
+    for entry in distribute_entries:
+        name = entry.get("name", "unnamed")
+        command = entry.get("command", "")
+        typer.echo(f"  [run-distribute] Executing: {name!r} ...")
+
+        try:
+            proc = subprocess.run(  # noqa: S602 — command strings come from trusted pipeline schedule config
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if proc.returncode == 0:
+                typer.echo(f"  [run-distribute] {name!r} → ok")
+                results.append({"name": name, "status": "success"})
+            else:
+                error_msg = proc.stderr.strip() or f"exit code {proc.returncode}"
+                typer.secho(
+                    f"  [run-distribute] {name!r} FAILED: {error_msg}",
+                    fg=typer.colors.RED,
+                )
+                results.append({"name": name, "status": "failed", "error": error_msg})
+        except subprocess.TimeoutExpired:
+            typer.secho(
+                f"  [run-distribute] {name!r} TIMEOUT (exceeded 600s)",
+                fg=typer.colors.RED,
+            )
+            results.append({"name": name, "status": "failed", "error": "timeout"})
+        except Exception as exc:
+            typer.secho(
+                f"  [run-distribute] {name!r} EXCEPTION: {exc}",
+                fg=typer.colors.RED,
+            )
+            results.append({"name": name, "status": "failed", "error": str(exc)})
+
+    passed = sum(1 for r in results if r.get("status") == "success")
+    failed = len(results) - passed
+    typer.echo(
+        f"  [run-distribute] Batch complete: {passed} passed, {failed} failed "
+        f"(out of {len(results)} entries)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# cron run-pipeline (standalone command)
+# ---------------------------------------------------------------------------
+
+
+@app.command("run-pipeline")
+def cron_run_pipeline(
+    name: str = typer.Option(
+        "",
+        "--name",
+        "-n",
+        help="Schedule name to run (empty = run all schedules).",
+    ),
+    pool_db_path: str = typer.Option(
+        "",
+        "--pool-db",
+        help="Explicit path to the topic pool SQLite database.",
+    ),
+) -> None:
+    """Execute a scheduled pipeline run from ``cron/jobs.yaml``.
+
+    Reads the ``pipeline_schedules`` section of the cron YAML config,
+    selects a topic from the pool, runs the full pipeline with the
+    configured **mode**, and optionally publishes to a **platform**.
+
+    When ``--name`` is provided only that schedule is executed.
+    When ``--name`` is empty **all** schedules are executed sequentially.
+    """
+    from automedia.cron.runner import run_scheduled_pipeline
+    from automedia.mcp.tools import _read_pipeline_schedules
+
+    schedules = _read_pipeline_schedules()
+    if not schedules:
+        output_error("No pipeline schedules found in cron/jobs.yaml.")
+
+    if name:
+        matched = [s for s in schedules if s.get("name") == name]
+        if not matched:
+            available = [s.get("name", "?") for s in schedules]
+            output_error(
+                f"Schedule {name!r} not found. "
+                f"Available schedules: {available}"
+            )
+        entries = matched
+    else:
+        entries = schedules
+
+    results: list[dict[str, Any]] = []
+    for entry in entries:
+        sched_name = entry.get("name", "unnamed")
+        if get_output_mode() == OutputMode.TEXT:
+            typer.echo(f"Running pipeline schedule: {sched_name!r}")
+
+        try:
+            res = run_scheduled_pipeline(entry, pool_db_path=pool_db_path)
+            results.append(res)
+
+            if output_text(None, data=res):
+                continue
+
+            status = res.get("status", "unknown")
+            if status == "failed":
+                typer.secho(
+                    f"  ✗ {sched_name!r} failed: {res.get('error', 'unknown')}",
+                    fg=typer.colors.RED,
+                )
+            else:
+                typer.secho(
+                    f"  ✓ {sched_name!r} → {status}  "
+                    f"(topic={res.get('topic', '')}, "
+                    f"project_id={res.get('project_id', '')})",
+                    fg=typer.colors.GREEN,
+                )
+        except Exception as exc:
+            error_dict = {
+                "code": "CLI_ERROR",
+                "message": str(exc),
+                "resolution": "Check the error message and fix the issue before retrying",
+            }
+            results.append({"status": "failed", "error": error_dict, "name": sched_name})
+            output_text(
+                f"  ✗ {sched_name!r} exception: {exc}",
+                data={"status": "failed", "error": error_dict, "name": sched_name},
+            )
+
+    if output_text(None, data={"results": results, "count": len(results)}):
+        failed = sum(1 for r in results if r.get("status") == "failed")
+        if failed:
+            raise typer.Exit(code=1)
+        return
+
+    passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
+    failed = len(results) - passed
+    if failed:
+        typer.secho(
+            f"\n{passed}/{len(results)} schedules completed, {failed} failed.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+    typer.secho(
+        f"\nAll {len(results)} schedule(s) completed successfully.",
+        fg=typer.colors.GREEN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# cron check-health
+# ---------------------------------------------------------------------------
+
+
+@app.command("check-health")
+def cron_check_health() -> None:
+    """Run a 4-step health check of the AutoMedia system."""
+    checks: list[tuple[str, bool, str]] = []
+
+    # 1. Config directory exists
+    config_dir = Path(".automedia")
+    config_ok = config_dir.is_dir()
+    checks.append((".automedia/ config directory", config_ok, "exists" if config_ok else "missing"))
+
+    # 2. Pool DB accessible
+    pool_db_path = _DEFAULT_DB
+    pool_ok = False
+    pool_detail = str(pool_db_path)
+    if pool_db_path.is_file():
+        try:
+            db = PoolDB(pool_db_path)
+            db.conn.execute("SELECT COUNT(*) FROM topics")
+            pool_ok = True
+            pool_detail = f"{pool_db_path} (queryable)"
+            db.close()
+        except Exception as exc:
+            pool_detail = f"{pool_db_path} (error: {exc})"
+    checks.append(("pool.db accessible", pool_ok, pool_detail))
+
+    # 3. Core dependencies installed (python + ffmpeg minimum)
+    dep_details: list[str] = []
+    dep_ok = True
+    py_ok = sys.version_info >= (3, 11)
+    if not py_ok:
+        dep_ok = False
+    dep_details.append(f"python {sys.version_info.major}.{sys.version_info.minor}")
+    ffmpeg_path = shutil.which("ffmpeg")
+    if not ffmpeg_path:
+        dep_ok = False
+    dep_details.append(f"ffmpeg={'yes' if ffmpeg_path else 'no'}")
+    checks.append(("core dependencies", dep_ok, ", ".join(dep_details)))
+
+    # 4. jobs.yaml valid
+    yaml_ok = False
+    yaml_detail = "not found"
+    import automedia as _am_pkg
+
+    _pkg_root = Path(_am_pkg.__file__).resolve().parent
+    jobs_yaml = _pkg_root / "cron" / "jobs.yaml"
+    if not jobs_yaml.is_file():
+        jobs_yaml = Path("automedia") / "cron" / "jobs.yaml"
+    if jobs_yaml.is_file():
+        try:
+            import yaml
+
+            with open(jobs_yaml, encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            if isinstance(data, dict) and "jobs" in data and isinstance(data["jobs"], list):
+                yaml_ok = True
+                yaml_detail = f"{len(data['jobs'])} jobs defined"
+            else:
+                yaml_detail = "missing 'jobs' key"
+        except Exception as exc:
+            yaml_detail = f"parse error: {exc}"
+    checks.append(("jobs.yaml valid", yaml_ok, yaml_detail))
+
+    all_ok = all(ok for _, ok, _ in checks)
+
+    if output_text(
+        None,
+        data={
+            "status": "ok" if all_ok else "error",
+            "checks": [
+                {"name": name, "passed": ok, "detail": detail} for name, ok, detail in checks
+            ],
+        },
+    ):
+        if not all_ok:
+            raise typer.Exit(code=1)
+        return
+
+    # Print results
+    typer.echo("Health Check:")
+    typer.echo("-" * 50)
+    for name, ok, detail in checks:
+        icon = "✓" if ok else "✗"
+        colour = typer.colors.GREEN if ok else typer.colors.RED
+        typer.secho(f"  {icon} {name}: {detail}", fg=colour)
+
+    if not all_ok:
+        typer.secho("\nSome checks failed.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    typer.secho("\nAll checks passed.", fg=typer.colors.GREEN)

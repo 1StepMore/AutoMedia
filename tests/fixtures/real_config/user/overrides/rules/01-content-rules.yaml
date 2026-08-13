@@ -1,0 +1,12 @@
+# Regression test: Layer 4 — override rules
+# Highest-priority file-based config layer.
+# All values are sanitized.
+content:
+  default_tone: casual
+  min_title_length: 15
+  max_title_length: 80
+
+platforms:
+  wechat:
+    enabled: true
+    default_style: article

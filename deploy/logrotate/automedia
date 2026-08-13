@@ -1,0 +1,9 @@
+/var/log/automedia/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

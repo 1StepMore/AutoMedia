@@ -1,0 +1,11 @@
+# Regression test: Layer 3 — user-level model configuration
+# Overrides project config (Layer 2).
+# All values are sanitized.
+llm:
+  text_generation:
+    model: claude-3-opus
+    max_tokens: 4096
+
+content:
+  default_tone: professional
+  default_language: en

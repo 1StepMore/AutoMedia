@@ -1,0 +1,84 @@
+preset_name: semi-automated
+description: "Semi-automated: decision+preference nodes are human, execution nodes are agent"
+nodes:
+  brand_questionnaire:
+    type: decision
+    autoset: human
+  build_scale_routing:
+    type: decision
+    autoset: human
+  mode_confirmation:
+    type: decision
+    autoset: human
+  brand_positioning:
+    type: decision
+    autoset: human
+  market_research:
+    type: execution
+    autoset: agent
+  audience_segmentation:
+    type: preference
+    autoset: human
+  competitor_analysis:
+    type: execution
+    autoset: agent
+  brand_health_diagnosis:
+    type: decision
+    autoset: human
+  market_revalidation:
+    type: preference
+    autoset: human
+  audience_deepening:
+    type: preference
+    autoset: human
+  competitor_tracking:
+    type: preference
+    autoset: human
+  content_asset_audit:
+    type: decision
+    autoset: human
+  product_optimization:
+    type: decision
+    autoset: human
+  content_marketing_strategy:
+    type: decision
+    autoset: human
+  asset_library_planning:
+    type: decision
+    autoset: human
+  tagging_and_ingestion:
+    type: execution
+    autoset: agent
+  content_calendar:
+    type: preference
+    autoset: human
+  script_generation:
+    type: execution
+    autoset: agent
+  pipeline_execution:
+    type: execution
+    autoset: agent
+  quality_review:
+    type: decision
+    autoset: human
+  execution_handbook:
+    type: execution
+    autoset: agent
+  ab_test_setup:
+    type: execution
+    autoset: agent
+  progress_report:
+    type: execution
+    autoset: agent
+  publishing:
+    type: execution
+    autoset: agent
+  monitoring:
+    type: execution
+    autoset: agent
+  brand_dna_refresh:
+    type: decision
+    autoset: human
+  next_cycle_planning:
+    type: decision
+    autoset: human
