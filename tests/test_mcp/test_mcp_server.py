@@ -16,6 +16,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
+from automedia._version import __version__
 from automedia.mcp.allowlist import (
     _load_allowlist,
     _reset_allowlist_cache,
@@ -735,7 +736,7 @@ class TestHelpers:
         create_server()  # registers tools, sets _tools_count
         result = health_check()
         assert result["status"] == "ok"
-        assert result["version"] == "1.1.0"
+        assert result["version"] == __version__
         assert result["uptime_s"] >= 0
         assert result["tools_count"] >= 20
 
