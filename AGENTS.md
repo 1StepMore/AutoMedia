@@ -512,6 +512,7 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 | `docs/user/hitl-framework.md` | Human-in-the-loop framework docs |
 | `docs/user/omni-integration.md` | Omni Triad integration docs |
 | `docs/user/asset-library.md` | Asset library documentation |
+| `docs/glossary.md` | Plain-language AutoMedia term glossary for agents |
 | `docs/dev/gate-failure-modes.md` | Gate failure troubleshooting |
 | `docs/user/production-workflow.md` | Production operations guide |
 | `docs/dev/cron-troubleshooting.md` | Cron job debugging |
