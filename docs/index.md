@@ -85,6 +85,19 @@ Troubleshooting and operational guides:
 
 ---
 
+## Skills for Pipeline Operators
+
+How-to guides for agents using AutoMedia's MCP tools to produce, distribute, and batch content:
+
+| Skill | Description |
+|-------|-------------|
+| [Brand Strategy](docs/skills/brand-strategy.md) | Generate brand positioning and messaging with `run_brand_strategy` |
+| [Pipeline Workflow](docs/skills/pipeline-workflow.md) | Run a single project end to end: strategy, topic, `run_pipeline`, progress, archive |
+| [Distribution Workflow](docs/skills/distribution-workflow.md) | Publish or distribute finished content with `distribute_content` and `publish_content` |
+| [Batch Workflow](docs/skills/batch-workflow.md) | Produce multiple topics sequentially with `run_batch` |
+
+---
+
 ## For AI Agents
 
 AutoMedia is MCP-native. Connect any MCP client to get started:
