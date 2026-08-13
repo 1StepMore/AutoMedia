@@ -7,13 +7,11 @@ that existing code (including tests) can continue to import from
 
 from __future__ import annotations
 
+import contextlib
 import fcntl
 import json
 import os
 import threading
-import time
-import uuid
-import warnings
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict
@@ -22,30 +20,30 @@ import yaml
 from pydantic import ValidationError
 from structlog import get_logger
 
-from automedia.core.llm_client import LLMError
-from automedia.core.logging import bind_correlation_id
-from automedia.exceptions import (
+from automedia.core.llm_client import LLMError  # noqa: F401 — re-exported via tools/__init__.py
+from automedia.core.logging import bind_correlation_id  # noqa: F401 — re-exported
+from automedia.exceptions import (  # noqa: F401 — re-exported
     AutoMediaError,
     BrandNotFoundError,
     ConfigError,
     ModuleLoadError,
     PipelineError,
 )
-from automedia.mcp._state import (
+from automedia.mcp._state import (  # noqa: F401 — re-exported
     _SERVER_START,
     _lock,
     _pipeline_tracker,
 )
-from automedia.mcp.allowlist import (
+from automedia.mcp.allowlist import (  # noqa: F401 — re-exported
     _ALLOWED_OUTPUT_FORMATS,
 )
-from automedia.mcp.mcp_error import (
+from automedia.mcp.mcp_error import (  # noqa: F401 — re-exported
     MCPErrorCode,
     error_response,
     success_response,
     validation_error_response,
 )
-from automedia.mcp.server_types import (
+from automedia.mcp.server_types import (  # noqa: F401 — re-exported
     CronExpression,
     EngineModality,
     NonEmptyStr,
@@ -53,13 +51,13 @@ from automedia.mcp.server_types import (
     ProjectStatusFilter,
     ResearchPattern,
 )
-from automedia.pipelines.gate_engine import (
+from automedia.pipelines.gate_engine import (  # noqa: F401 — re-exported
     PipelineProgress,
     PipelineResult,
     get_registered_engine,
     list_registered_engines,
 )
-from automedia.pipelines.runner import VALID_MODES
+from automedia.pipelines.runner import VALID_MODES  # noqa: F401 — re-exported
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -279,10 +277,8 @@ def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
             os.fsync(fh.fileno())
         tmp.rename(path)
     except OSError:
-        try:
+        with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
         raise
 
 
@@ -313,7 +309,7 @@ def _mark_lost_entries() -> None:
         data = _read_active_pipelines()
         now = datetime.now(UTC)
         changed = False
-        for pid, entry in data.items():
+        for _pid, entry in data.items():
             status = entry.get("status", "")
             if status != "running":
                 continue
@@ -420,8 +416,8 @@ def _write_pipeline_schedules(schedules: list[CronScheduleEntry]) -> None:
             loaded = yaml.safe_load(raw)
             if isinstance(loaded, dict):
                 existing = loaded
-        except Exception:  # noqa: BLE001 — best-effort preserve
-            pass
+        except Exception as exc:  # noqa: BLE001 — best-effort preserve
+            log.debug("Failed to read existing pipeline schedules; starting fresh", error=str(exc))
 
     existing["pipeline_schedules"] = [dict(s) for s in schedules]
 

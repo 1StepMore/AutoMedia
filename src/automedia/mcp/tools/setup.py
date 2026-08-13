@@ -200,7 +200,7 @@ def onboard(
 
         # Configure LLM via configure_llm (delegates to CLI init logic)
         if llm_provider:
-            llm_result = configure_llm(provider=llm_provider, api_key=llm_key)
+            configure_llm(provider=llm_provider, api_key=llm_key)
             results["llm"] = {
                 "provider": llm_provider,
                 "config_file": str(user_cfg_dir / "model_config.yaml"),
@@ -225,7 +225,7 @@ def onboard(
 
         # Create brand profile via add_brand (delegates to brand profile schema)
         if brand_name:
-            brand_result = add_brand(name=brand_name)
+            add_brand(name=brand_name)
             results["brand"] = {
                 "brand_name": brand_name,
                 "config_file": str(user_cfg_dir / "brand_profiles.yaml"),

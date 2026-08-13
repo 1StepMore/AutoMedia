@@ -43,6 +43,7 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
+from automedia.effects.mcp import analyze_content as effects_analyze_content
 from automedia.mcp.accounts import (
     connect_account,
     disconnect_account,
@@ -123,8 +124,6 @@ from automedia.mcp.tools import (
     test_cron_schedule,
     update_engine_config,
 )
-
-from automedia.effects.mcp import analyze_content as effects_analyze_content
 from automedia.mcp.tools_distribution import distribute_content
 
 # ---------------------------------------------------------------------------

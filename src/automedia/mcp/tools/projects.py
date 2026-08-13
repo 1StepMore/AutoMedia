@@ -6,7 +6,6 @@ from typing import Any
 
 from structlog import get_logger
 
-from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools._shared import (
     MCPErrorCode,
     NonEmptyStr,

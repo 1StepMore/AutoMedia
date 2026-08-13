@@ -1,14 +1,13 @@
 """Prompt template metadata tools — list_overridable_templates."""
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
 from structlog import get_logger
 
 from automedia.mcp.tools._shared import (
-    MCPErrorCode,
-    error_response,
     success_response,
 )
 
@@ -86,10 +85,8 @@ def list_overridable_templates() -> dict[str, Any]:
         ``purpose``, ``overridden``, ``override_path``, and
         ``platform_overrides``.
     """
-    try:
+    with contextlib.suppress(Exception):
         from automedia.prompts import load_prompt as _  # noqa: F401 — ensure prompts module loaded
-    except Exception:
-        pass
 
     from automedia.core.paths import get_user_config_dir
 

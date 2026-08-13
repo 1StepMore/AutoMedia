@@ -1,26 +1,23 @@
 """Cron schedule management MCP tools."""
 from __future__ import annotations
 
-import re
 from typing import Any
 
 import yaml
 from structlog import get_logger
 
+from automedia.exceptions import ConfigError
 from automedia.mcp.tools._shared import (
+    VALID_MODES,
     CronExpression,
-    CronScheduleEntry,
     MCPErrorCode,
     NonEmptyStr,
-    VALID_MODES,
     _get_jobs_yaml_path,
     _read_pipeline_schedules,
     _write_pipeline_schedules,
     error_response,
-    log,
     success_response,
 )
-from automedia.exceptions import ConfigError
 
 log = get_logger(__name__)
 
@@ -178,7 +175,7 @@ def list_workflows() -> dict[str, Any]:
         workflows = loader.load_all()
 
         result: list[dict[str, Any]] = []
-        for name, wf in sorted(workflows.items()):
+        for _name, wf in sorted(workflows.items()):
             entry: dict[str, Any] = {
                 "name": wf.name,
                 "mode": wf.mode,

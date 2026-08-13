@@ -11,11 +11,11 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.mcp.tools._shared import (
+    VALID_MODES,
     MCPErrorCode,
     NonEmptyStr,
     PipelineMode,
     PipelineProgress,
-    VALID_MODES,
     _discover_projects,
     _estimate_cost,
     _get_max_concurrent_pipelines,
@@ -28,7 +28,6 @@ from automedia.mcp.tools._shared import (
     _validate_workflow,
     bind_correlation_id,
     error_response,
-    log,
     success_response,
 )
 

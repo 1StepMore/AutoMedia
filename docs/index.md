@@ -91,10 +91,10 @@ How-to guides for agents using AutoMedia's MCP tools to produce, distribute, and
 
 | Skill | Description |
 |-------|-------------|
-| [Brand Strategy](docs/skills/brand-strategy.md) | Generate brand positioning and messaging with `run_brand_strategy` |
-| [Pipeline Workflow](docs/skills/pipeline-workflow.md) | Run a single project end to end: strategy, topic, `run_pipeline`, progress, archive |
-| [Distribution Workflow](docs/skills/distribution-workflow.md) | Publish or distribute finished content with `distribute_content` and `publish_content` |
-| [Batch Workflow](docs/skills/batch-workflow.md) | Produce multiple topics sequentially with `run_batch` |
+| [Brand Strategy](skills/brand-strategy.md) | Generate brand positioning and messaging with `run_brand_strategy` |
+| [Pipeline Workflow](skills/pipeline-workflow.md) | Run a single project end to end: strategy, topic, `run_pipeline`, progress, archive |
+| [Distribution Workflow](skills/distribution-workflow.md) | Publish or distribute finished content with `distribute_content` and `publish_content` |
+| [Batch Workflow](skills/batch-workflow.md) | Produce multiple topics sequentially with `run_batch` |
 
 ---
 
