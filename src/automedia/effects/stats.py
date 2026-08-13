@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # word_count
 # ---------------------------------------------------------------------------
@@ -66,7 +65,7 @@ _POSITIVE_WORDS: frozenset[str] = frozenset({
     "breakthrough", "revolutionary", "game-changing",
     # Chinese positive
     "好", "优秀", "出色", "精彩", "棒", "厉害", "赞", "完美",
-    "创新", "强大", "有效", "实用", "可靠", "出色", "优越",
+    "创新", "强大", "有效", "实用", "可靠", "优越",
     "一流", "顶尖", "突破", "革命性",
 })
 

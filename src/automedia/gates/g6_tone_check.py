@@ -10,7 +10,6 @@ fully deterministic for unit testing.
 
 from __future__ import annotations
 
-import json
 from typing import Any, cast
 
 from structlog import get_logger
@@ -294,7 +293,6 @@ class G6ToneCheckGate(BaseGate):
             )
 
             if llm_result.get("method") == "llm":
-                all_passed = llm_result["passed"]
                 checks = self._build_llm_checks(llm_result)
                 result = build_gate_result(
                     checks,

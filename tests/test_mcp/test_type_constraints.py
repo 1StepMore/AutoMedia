@@ -132,7 +132,7 @@ class TestProjectStatusFilterValidation:
         from automedia.mcp.tools import list_projects
 
         with (
-            patch("automedia.mcp.tools._require_allowed"),
+            patch("automedia.mcp.tools.pipeline._require_allowed"),
             patch("automedia.mcp.tools._discover_projects", return_value=[]),
         ):
             # The type hint is ProjectStatusFilter = Literal["published", "archived", "failed", ""]
@@ -151,7 +151,7 @@ class TestProjectStatusFilterValidation:
 
         for status in ("published", "archived", "failed", ""):
             with (
-                patch("automedia.mcp.tools._require_allowed"),
+                patch("automedia.mcp.tools.pipeline._require_allowed"),
                 patch("automedia.mcp.tools._discover_projects", return_value=[]),
             ):
                 result = list_projects(base_dir="/tmp", status=status)
@@ -174,7 +174,7 @@ class TestNonEmptyStrParameterValidation:
         """
         from automedia.mcp.tools import get_pipeline_progress
 
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = get_pipeline_progress("")
 
         # Empty string won't be in tracker -> NOT_FOUND
@@ -185,7 +185,7 @@ class TestNonEmptyStrParameterValidation:
         """cancel_pipeline with empty string returns NOT_FOUND."""
         from automedia.mcp.tools import cancel_pipeline
 
-        with patch("automedia.mcp.tools._pipeline_tracker", {}):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", {}):
             result = cancel_pipeline("")
 
         assert result["success"] is False
@@ -199,7 +199,7 @@ class TestNonEmptyStrParameterValidation:
         from automedia.mcp.tools import retry_gate
 
         tracker = {"proj1": MagicMock()}
-        with patch("automedia.mcp.tools._pipeline_tracker", tracker):
+        with patch("automedia.mcp.tools.pipeline._pipeline_tracker", tracker):
             result = retry_gate("proj1", "")
 
         # Empty gate name is technically valid at runtime (it's just a string)

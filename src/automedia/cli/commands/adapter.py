@@ -83,7 +83,7 @@ _ADAPTER_TEMPLATE = textwrap.dedent('''\
 def adapter_create(
     name: str = typer.Option(..., "--name", "-n", help="Platform name (e.g. youtube)."),
     output_dir: str = typer.Option(
-        "automedia/adapters/platforms",
+        "src/automedia/adapters/platforms",
         "--output-dir",
         "-o",
         help="Directory to write the adapter file.",

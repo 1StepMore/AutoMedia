@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  50 tools
+   │   select_topic, run_pipeline, ...    │  52 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -195,14 +195,14 @@ External Call Layer
 |------|------|
 | `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`), overrides (`overrides.py`), media specs (`media_spec.py`), workflows (`workflow.py`) |
 | `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
-| `gates/` | 21 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
+| `gates/` | 33 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
 | `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
 | `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
 | `cron/` | Scheduled job YAML definitions (`jobs.yaml`), pipeline schedule runner (`runner.py`) |
 | `mcp/` | MCP Server implementation (`server.py`), stdio transport |
-| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (21 platform overrides for 7 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (30 platform overrides for 10 platforms) |
 
 ### Unified Three-Layer Entry Point
 
@@ -285,27 +285,30 @@ class MyNewGate(BaseGate):
 
 | Prefix | Range | Example |
 |------|------|------|
-| G0-G5 | Copy Gates | Fact check, humanizer, copy review, brand CTA |
-| V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering |
+| G0-G6 | Copy Gates | Fact check, humanizer, copy review, brand CTA, WeChat checks, HTML lint, tone check |
+| V0-V7 | Video Gates | Lint, Vision QA, Whisper, subtitle rendering, content semantic, TTS brand asset, MP3×SRT, six-step hard |
 | H0 | Human Review Gate | Human-in-the-loop content and video approval |
 | L1-L4 | Lifecycle Gates | Publish log, archive validation, platform integrity, translation quality |
+| D1-D7 | Distribution Gates | Standalone platform-specific rewrite gates (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok) |
+| P1-P4 | Repurpose Gates | Sub-pipeline deep repurpose gates (WeChat, Twitter/X, Newsletter, Bilibili) |
 
 ### Pipeline Modes
 
-The pipeline supports eight modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
+The pipeline supports nine modes, each running a different subset of gates. The mode is selected via the `--mode` CLI flag, the `mode` parameter in the SDK, or the `mode` field in the MCP `run_pipeline` tool.
 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|
-| `auto` | pre-gate → CW → G0-G5 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
-| `text_only` | CW → G0-G5 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
-| `text_with_cover` | CW → G0-G5 → V0 → L1-L4 | Text output plus a single cover image |
+| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
+| `text_only` | CW → G0-G6 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | CW → G0-G6 → V0 → L1-L4 | Text output plus a single cover image |
 | `video_only` | V0-V7 → H0 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
-| `image-carousel` | CW → G0-G5 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
-| `social-thread` | CW → G0-G5 → L1-L4 | Thread-style posts for social platforms |
-| `short-video` | CW → G0-G5 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
+| `image-carousel` | CW → G0-G6 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
+| `social-thread` | CW → G0-G6 → L1-L4 | Thread-style posts for social platforms |
+| `short-video` | CW → G0-G6 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
 | `qa_only` | G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
+| `repurpose` | CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4 | Full pipeline followed by platform-specific deep repurpose gates |
 
-Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, and `_QA_ONLY_GATE_NAMES`.
+Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, `_QA_ONLY_GATE_NAMES`, and `_REPURPOSE_GATE_NAMES`.
 
 ## Configuration Hierarchy
 
@@ -374,7 +377,7 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 | RL3 | Must not modify `mcp_allowlist.yaml` without explicit user request | Developer discipline |
 | RL4 | Tests must use synthetic fixtures from `tests/fixtures/synth/` | Developer discipline |
 | RL5 | Must use `automedia archive` command, never manual directory operations | Developer discipline |
-| RL6 | Follow gate naming convention: G0-G5, V0-V7, L1-L4, H0, CW, pre-gate | Developer discipline |
+| RL6 | Follow gate naming convention: G0-G6, V0-V7, L1-L4, D1-D7, P1-P4, H0, CW, pre-gate | Developer discipline |
 | RL7 | Must add new gates to `failure_modes.py` | Developer discipline |
 | RL8 | Must run pre-commit checks before committing | Pre-commit hooks (automated) |
 | RL9 | Respect GateHook readonly contract -- observe but do not modify | Developer discipline |
@@ -383,18 +386,19 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 
 ### Gate List
 
-21 gates across six phases. Gate order: pre-gate `→` CW `→` G0-G5 `→` V0-V7 `→` H0 `→` L1-L4.
+33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Gate order: pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of `repurpose` mode.
 
 | Phase | Gate | Name | Failure Mode |
 |-------|------|------|-------------|
 | Pre | pre-gate | Topic selection validation | stop |
-| Writing | CW | Content writing | stop |
+| Writing | CW | Content writing (with inline SEO scoring) | stop |
 | Copy | G0 | Fact check | stop |
 | Copy | G1 | Humanizer | retry |
 | Copy | G2 | Copy review | retry |
 | Copy | G3 | Brand CTA | stop |
 | Copy | G4 | WeChat checklist | stop |
 | Copy | G5 | HTML hard check | stop |
+| Copy | G6 | Tone check | stop |
 | Video | V0 | Lint | stop |
 | Video | V1 | Vision QA | stop |
 | Video | V2 | Pre-send Whisper | stop |
@@ -409,20 +413,46 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 | Lifecycle | L3 | Platform integrity | stop |
 | Lifecycle | L4 | Translation quality | retry |
 
+### Distribution Gates (D1-D7)
+
+Standalone rewrite gates invoked via `automedia distribute` CLI or `distribute_content` MCP tool. NOT part of the standard pipeline — run on-demand against already-published content.
+
+| Gate | Platform | Purpose |
+|------|----------|---------|
+| D1 | WeChat | Rewrite content for WeChat Official Account format |
+| D2 | Twitter/X | Rewrite content for Twitter/X short-form format |
+| D3 | Zhihu | Rewrite content for Zhihu long-form article format |
+| D4 | Xiaohongshu | Rewrite content for Xiaohongshu visual-first format |
+| D5 | Bilibili | Rewrite content for Bilibili video+text format |
+| D6 | YouTube | Rewrite content for YouTube video description format |
+| D7 | TikTok | Rewrite content for TikTok short-video script format |
+
+### Repurpose Gates (P1-P4)
+
+Sub-pipeline gates that run at the end of `repurpose` mode, performing deep content repurposing for specific platforms.
+
+| Gate | Platform | Purpose |
+|------|----------|---------|
+| P1 | WeChat | Deep repurpose for WeChat Official Account |
+| P2 | Twitter/X | Deep repurpose for Twitter/X thread format |
+| P3 | Newsletter | Deep repurpose for email newsletter format |
+| P4 | Bilibili | Deep repurpose for Bilibili video+article format |
+
 ### Pipeline Modes
 
 Eight modes select different gate subsets, defined in `automedia/pipelines/runner.py`:
 
 | Mode | Gates | Use Case |
 |------|-------|----------|
-| `auto` | pre-gate `→` CW `→` G0-G5 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
-| `text_only` | CW `→` G0-G5 `→` L1-L4 | Draft-only output |
-| `text_with_cover` | CW `→` G0-G5 `→` V0 `→` L1-L4 | Text + cover image |
+| `auto` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
+| `text_only` | CW `→` G0-G6 `→` L1-L4 | Draft-only output |
+| `text_with_cover` | CW `→` G0-G6 `→` V0 `→` L1-L4 | Text + cover image |
 | `video_only` | V0-V7 `→` H0 `→` L1-L4 | Video-only, reuse existing draft |
-| `image-carousel` | CW `→` G0-G5 `→` V0 `→` V6 `→` L1-L4 | Carousel-image output |
-| `social-thread` | CW `→` G0-G5 `→` L1-L4 | Thread-style posts |
-| `short-video` | CW `→` G0-G5 `→` V0-V6 `→` H0 `→` L1-L4 | Short-form video |
+| `image-carousel` | CW `→` G0-G6 `→` V0 `→` V6 `→` L1-L4 | Carousel-image output |
+| `social-thread` | CW `→` G0-G6 `→` L1-L4 | Thread-style posts |
+| `short-video` | CW `→` G0-G6 `→` V0-V6 `→` H0 `→` L1-L4 | Short-form video |
 | `qa_only` | G0 `→` G2 `→` G3 `→` V1 `→` V6 | Selective QA pass |
+| `repurpose` | CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 `→` P1-P4 | Full pipeline + deep repurpose for platform distribution |
 
 ## Account & Publishing Layer (PRD-4)
 
@@ -483,183 +513,12 @@ Four account management tools added to the MCP surface:
 
 ## Architecture Decisions
 
-<!-- Source: docs/dev/adr/architecture-decisions.md -->
-
-### ADR-001: Singleton Registry Unification
-
-**Status:** Accepted `·` Effort: Medium (1-2 days)
-
-#### Context
-
-Three singleton registries exist in the codebase with different internal mechanics:
-
-| Registry | File | Singleton Mechanism | Registration Style | API Surface |
-|----------|------|-------------------|-------------------|-------------|
-| `GateRegistry` | `gates/base.py` | `__new__` with `_instance` class var | `__init_subclass__` auto-registration + manual `register()` | `register()`, `get()`, `list()`, `clear()`, `get_all()`, `__contains__`, `__len__`, `__repr__` |
-| `AdapterRegistry` | `adapters/registry.py` | `__new__` with `_instance` class var | Manual `register()` | `register()`, `get()`, `list()`, `clear()` -- all `@classmethod` |
-| `OmniToolRegistry` | `omni/registry.py` | `__new__` with `_instance` class var | Manual `register()` | `register()`, `get()`, `list_tools()`, `list()` (deprecated), `clear()` -- all `@classmethod` |
-
-All three share a core pattern (singleton instance, string-keyed dict, CRUD methods) but diverge in whether methods are `@classmethod` vs instance methods, naming conventions, and extras like `get_all()`, `__contains__`, and validation logic.
-
-#### Options Considered
-
-**Option A: Leave as-is (Do nothing).** Zero risk but perpetuates inconsistency.
-
-**Option B: Extract a common `BaseRegistry` mixin class.** DRY, consistent API, one place to fix if the pattern evolves. Requires a minor version bump and updating all three registries in one PR.
-
-**Option C: Standardize `OmniToolRegistry` and `AdapterRegistry` to match `GateRegistry` interface.** Less refactoring than Option B but duplication remains.
-
-#### Recommended Approach
-
-**Option B: Extract a common `BaseRegistry` mixin class.**
-
-Implementation plan:
-
-1. Create `automedia/core/registry.py` with a `BaseRegistry` that implements singleton via `__new__`, provides `register(key, value)`, `get(key)`, `list()`, `clear()`, `__contains__`, `__len__`, `__repr__`, and a `_validate(key, value)` hook for subclasses.
-2. Refactor `GateRegistry` to inherit from `BaseRegistry`, override `_validate()` for regex and duplicate checks.
-3. Refactor `AdapterRegistry` to inherit from `BaseRegistry`, override `_validate()` to enforce non-empty `platform_name`.
-4. Refactor `OmniToolRegistry` to inherit from `BaseRegistry`, keep `list_tools()` as primary and `list()` as deprecated alias.
-
-#### Rationale
-
-The three registries share roughly 70% structural code. Extracting a base eliminates duplication and makes adding a new registry trivial (10 lines instead of 60). A minor version bump signals backward-compatible addition.
-
-#### Watch Out For
-
-- Module-level import order: `BaseRegistry` must be importable without circular deps.
-- `GateRegistry.__init_subclass__` auto-registration is unique to gates and should stay in `BaseGate`, not in `BaseRegistry`.
-- Test `clear()` isolation must reset instance state, not class state, to avoid cross-module test leakage.
-
-### ADR-002: HITL `↔` Decision Layer Decoupling
-
-**Status:** Implemented `·` Effort: Medium (1-2 days)
-
-> **Note:** This ADR was rendered moot by the D3 cleanup, which removed the entire `automedia/decision/` package. The HITL framework now has no dependency on the decision layer.
-
-#### Context
-
-The `hitl/` and `decision/` packages had a bidirectional import dependency:
-
-| Direction | File | Import | Severity |
-|-----------|------|--------|----------|
-| `hitl/` `→` `decision/` | `hitl/config.py:11` | `from automedia.decision import dependency` | **Hard** -- module-level, used at import time |
-| `hitl/` `→` `decision/` | `hitl/executor.py:29` | `from automedia.decision.base import DecisionArtifact` | **Medium** -- type annotation |
-| `decision/` `→` `hitl/` | `decision/orchestrator.py:35` | `from automedia.hitl.executor import NodeExecutor` | **Soft** -- wrapped in try/except |
-| `decision/` `→` `hitl/` | `decision/cli/solution.py:344` | `from automedia.hitl.config import HITLConfig` | **Hard** -- direct import |
-
-This meant importing `HITLConfig` immediately pulled in the entire decision graph, and HITL could not be used or tested without the decision package installed.
-
-#### Options Considered
-
-**Option A: Define a `NodeProvider` Protocol in HITL, inject from decision.** Clean dependency inversion; HITL becomes fully standalone; testable with mock providers. Requires minor breaking change to `HITLConfig.__init__` signature.
-
-**Option B: Move preset construction entirely into the decision layer.** Decision owns its node metadata; HITL has zero knowledge of decision. Adds boilerplate bridge module.
-
-**Option C: Soften with deferred import + type stub.** Minimal change but does not truly decouple.
-
-#### Recommended Approach
-
-**Option A: Define a `NodeProvider` Protocol in HITL, inject from decision.**
-
-Implementation plan:
-
-1. Create `automedia/hitl/protocol.py` with a `NodeProvider` protocol class.
-2. Refactor `hitl/config.py` to accept an optional `node_provider` parameter and make `_BUILTIN_PRESETS` lazy.
-3. Refactor `hitl/executor.py` to use a local `DecisionArtifact` Protocol or guard with `TYPE_CHECKING`.
-4. Create `automedia/decision/hitl_provider.py` that wires decision as `NodeProvider`.
-5. Refactor `decision/orchestrator.py` to use the provider pattern.
-
-#### Rationale
-
-Standalone HITL framework importable and testable without decision. Clean one-way dependency direction (`decision/` `→` `hitl/`). Backward compatible via optional parameter.
-
-### ADR-003: Rename `platform/` to Avoid stdlib Conflict
-
-**Status:** Accepted `·` Effort: Quick (&lt; 1 hour)
-
-#### Context
-
-The directory `src/automedia/platform/` contains `xiaohongshu.py` and `zhihu_draft.py`. Python 3 has a stdlib module called `platform`. When any file inside `automedia` does `import platform`, the import system may resolve to the local `automedia.platform` package instead of the stdlib, depending on `sys.path` order. No file currently uses `import platform`, but any future or third-party code that does will be silently broken.
-
-Additionally, the two modules are conceptually "platform-specific draft formatting" and belong more naturally under `automedia/adapters/platforms/`.
-
-#### Options Considered
-
-**Option A: Rename to `platform_drafts/`.** Simple, avoids conflict, clear name. Breaks external imports of `automedia.platform`.
-
-**Option B: Merge into `adapters/platforms/`.** Eliminates the namespace entirely and consolidates all platform adapters in one place. Risk of naming collision with existing `XiaohongshuPublisher`.
-
-**Option C: Keep but add `# type: ignore` and absolute imports.** Fragile; everyone must remember the workaround.
-
-#### Recommended Approach
-
-**Option A: Rename to `platform_drafts/`** (with backward-compat shim).
-
-Implementation plan:
-
-1. `git mv src/automedia/platform/ src/automedia/platform_drafts/`
-2. Update `platform_drafts/__init__.py` imports.
-3. Create `src/automedia/platform/__init__.py` as a backward-compat shim with deprecation warning.
-4. Update all existing imports of `automedia.platform` across the codebase.
-5. Schedule removal of the shim for v2.0.
-
-#### Rationale
-
-Minimizes risk (rename is fast, localized, no business logic changes). Backward compat via shim `__init__.py`. No merge complexity unlike Option B. Touches only 4 files.
-
-#### Watch Out For
-
-- Use `git mv` to preserve file history.
-- Announce deprecation in CHANGELOG under a "Deprecations" section for v1.x, remove shim in v2.0.
-
-### ADR-004: Decompose `mcp/server.py` Monolith
-
-**Status:** Accepted `·` Effort: Medium (1-2 days)
-
-> **Note:** This ADR was partially implemented. The tools extraction (`mcp/tools.py`) was completed, but the full 4-module split (allowlist, tools, resources, server) was not fully carried out.
-
-#### Context
-
-`src/automedia/mcp/server.py` was 1,228 lines with a single public API surface (`create_server()` + tool functions). It contained 5 distinct logical sections:
-
-| Section | Lines | Contents |
-|---------|-------|----------|
-| Allowlist helpers | 50-145 | `_load_allowlist`, `check_path_allowed`, `_require_allowed` |
-| Helper utilities | 148-220 | `_resolve_projects_dir`, `_discover_projects`, `_project_assets` |
-| Pipeline tracker | 226-233 | Global `_pipeline_tracker` dict, `_lock`, `_SERVER_START` |
-| Tool handlers (14) | 237-941 | All tool functions (each 30-120 lines) |
-| Server factory + resources | 971-1189 | `create_server()`, 3 resource functions |
-| CLI entry point | 1197-1228 | `main()` |
-
-The file was imported from 50 import sites across 7 test files, so any decomposition had to preserve backward-compatible import paths.
-
-#### Options Considered
-
-**Option A: Split into 4 modules with backward-compat re-exports.** Clean separation, single-responsibility, each module roughly 300-400 lines. Backward compat via re-exports. 50 test import sites need updating (mitigated by re-exports).
-
-**Option B: Extract tools only.** Minimal diff, addresses the largest section, but leaves 600+ lines in `server.py`.
-
-**Option C: Keep monolithic.** Zero risk but the file continues to grow with each new tool.
-
-#### Recommended Approach
-
-**Option A: Split into 4 modules with backward-compat re-exports.**
-
-Implementation plan:
-
-1. Create `mcp/allowlist.py` for allowlist helpers and constants.
-2. Create `mcp/tools.py` for all 14 tool handler functions.
-3. Create `mcp/resources.py` for helper utilities, pipeline tracker, and resource functions.
-4. Update `mcp/server.py` to import from submodules, keep `create_server()` and `main()`, add backward-compat re-exports.
-5. Update `mcp/__init__.py` imports to point to `mcp/tools.py` for individual tools.
-
-#### Rationale
-
-Backward compat guaranteed via re-exports (zero changes to 50 test import sites). Clear single-responsibility modules. Incremental adoption possible file-by-file.
-
-#### Watch Out For
-
-- `_pipeline_tracker` accessed by multiple tools -- use a shared `_state` module.
-- `_ALLOWED_OUTPUT_FORMATS` used by `format_output` -- ensure accessible from `tools.py`.
-- Test path imports continue to work through re-exports.
-- `create_server()` will still be roughly 200 lines after extraction but that is acceptable for declarative boilerplate.
+<!-- Source: docs/adr/ -->
+
+| ADR | File | Title |
+|-----|------|-------|
+| ADR-001 | docs/adr/ADR-001-singleton-registry-unification.md | Singleton Registry Unification |
+| ADR-002 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | HITL ↔ Decision Layer Decoupling |
+| ADR-003 | docs/adr/ADR-003-platform-rename-stdlib-conflict.md | Rename `platform/` to Avoid stdlib Conflict |
+| ADR-004 | docs/adr/ADR-004-mcp-server-decomposition.md | Decompose `mcp/server.py` Monolith |
+| ADR-005 | docs/adr/ADR-005-issue-driven-commits.md | Issue-Driven Atomic Commit Discipline |

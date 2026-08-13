@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (14 commands) / MCP Server (50 tools)
+- **Three-layer API**: SDK / CLI (17 commands) / MCP Server (59 tools)
 - **29 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -275,7 +275,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (16 commands)
+### CLI (17 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -293,8 +293,11 @@ result = run_full_pipeline(
 | `automedia omni` | Omni Triad operations (ingest, localize, format-output) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
+| `automedia mcp` | MCP server management |
+| `automedia history` | Show pipeline execution history for a project |
+| `automedia rollback` | Roll back a project: archive it and revert status to draft |
 
-### MCP Server (52 tools)
+### MCP Server (59 tools)
 
 Start:
 
@@ -393,6 +396,20 @@ result = run_full_pipeline(
 }
 ```
 
+**Cursor** (via `.cursor/mcp.json` at project root):
+
+```json
+{
+  "mcpServers": {
+    "automedia": {
+      "command": "python",
+      "args": ["-m", "automedia.mcp.server"],
+      "env": {"AUTOMEDIA_LLM_API_KEY": "${AUTOMEDIA_LLM_API_KEY}"}
+    }
+  }
+}
+```
+
 **OpenCode** (configured via `.opencode/package.json`):
 
 ```json
@@ -441,6 +458,7 @@ The project ships agent-specific config files at the repository root:
 
 | File | Tool | What it does |
 |------|------|-------------|
+| `.cursor/mcp.json` | Cursor | MCP server configuration |
 | `.opencode/` | OpenCode | MCP plugin config + agent skill files |
 | `.claude/settings.json` | Claude Code | MCP server configuration |
 | `.claude/rules.md` | Claude Code | Project-level rules, constraints, and conventions |
@@ -458,7 +476,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  50 tools      |     |  14 commands       |
+  |  59 tools      |     |  17 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -483,7 +501,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (13 command modules) |
+| `cli/` | Typer CLI application (17 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
 | `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (30 templates for 10 platforms) |
@@ -617,6 +635,8 @@ MIT License. See `LICENSE` for details.
 | `docs/user/omni-integration.md` | English | Omni Triad integration |
 | `docs/user/hitl-framework.md` | English | HITL framework |
 | `docs/user/asset-library.md` | English | Asset library |
+| `docs/glossary.md` | English | AutoMedia term glossary for agents |
+| `docs/adr/ADR-005-issue-driven-commits.md` | English | ADR-005: Issue-Driven Atomic Commit Discipline |
 | `docs/dev/gate-failure-modes.md` | English | Gate failure troubleshooting |
 | `docs/user/windows-deployment.md` | English | Windows deployment (WSL2, Docker, native) |
 | `docs/user/production-workflow.md` | English | Production operations |

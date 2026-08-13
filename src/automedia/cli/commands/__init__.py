@@ -12,7 +12,7 @@ import importlib
 from typing import Any
 
 
-def lazy_import(name: str) -> Any:
+def lazy_import(name: str) -> Any:  # noqa: ANN401 — dynamic module import returns arbitrary command module
     """Lazy-import a name from ``automedia.cli.commands.<name>``.
 
     Usage::

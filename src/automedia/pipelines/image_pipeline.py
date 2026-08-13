@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from structlog import get_logger
+
+if TYPE_CHECKING:
+    from automedia.engines.base import BaseImageEngine
 
 from automedia.core.llm_client import LLMError, llm_complete
 

@@ -2,6 +2,7 @@ name: CI
 
 permissions:
   contents: read
+  pull-requests: read
 
 on:
   push:
@@ -27,6 +28,8 @@ jobs:
           pip install -e ".[dev]"
       - name: Ruff
         run: ruff check src/automedia/ --ignore E501,E402,N806,E741
+      - name: Doc consistency
+        run: python3 scripts/check-doc-consistency.py
       - name: Docstring coverage (interrogate)
         continue-on-error: true
         run: interrogate src/automedia/
@@ -116,6 +119,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   checkov:
     runs-on: ubuntu-latest
     steps:

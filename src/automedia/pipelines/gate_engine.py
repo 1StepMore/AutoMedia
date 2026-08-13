@@ -22,7 +22,12 @@ from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateHook
 from automedia.pipelines.gate_types import (
+    GateErrorResult,  # noqa: F401 — re-exported for backward compatibility
+    GateProgressEvent,  # noqa: F401 — re-exported for backward compatibility
     PipelineProgress,
+    ProgressData,  # noqa: F401 — re-exported for backward compatibility
+    _hitl_lock,  # noqa: F401 — re-exported for backward compatibility
+    _hitl_waiters,  # noqa: F401 — re-exported for backward compatibility
 )
 
 log = get_logger(__name__)
@@ -32,7 +37,7 @@ _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, Type
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
 # ``_hitl_lock`` and ``_hitl_waiters`` live in ``gate_types.py`` and are
-# re-imported above for backward compatibility.
+# re-exported above for backward compatibility.
 
 # Engine registry for MCP approve/reject tools (director mode).
 # Maps ``project_id`` to ``GateEngine``.  Populated by ``run_full_pipeline``

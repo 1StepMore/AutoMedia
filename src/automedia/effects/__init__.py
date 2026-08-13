@@ -16,6 +16,8 @@ Top-level exports
 
 from __future__ import annotations
 
+from typing import Any
+
 from automedia.effects.stats import (
     brand_mention_frequency,
     readability_index,
@@ -34,7 +36,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attribute loading
     """Lazy-import the ``analyze_content`` MCP tool function."""
     _lazy: dict[str, tuple[str, str]] = {
         "analyze_content": ("automedia.effects.mcp", "analyze_content"),

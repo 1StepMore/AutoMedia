@@ -388,6 +388,222 @@ Validate the quality of translated content across target languages.
 cat <project-dir>/00_project_info.json | python3 -m json.tool | grep translation_quality
 ```
 
+## G6: Tone Check Gate
+
+Brand tone consistency gate. Uses LLM evaluation with deterministic fallback to verify content aligns with the brand's defined tone and voice.
+
+**Common failure causes:**
+
+- Content tone deviates from brand profile (e.g., too casual when brand is professional)
+- Brand personality attributes (e.g., "authoritative", "playful") not reflected in writing
+- Inconsistent tone across different sections of the same article
+- Voice attributes from brand profile are missing or contradicted
+
+**Remediation:**
+
+- Adjust the prompt to emphasize brand tone requirements
+- Verify brand profile has specific tone and personality attributes defined
+- Rewrite sections that deviate from the target tone
+- Run G6 with updated branding parameters
+
+## D1: WeChat Distribution Gate
+
+Standalone gate for rewriting content in WeChat Official Account format.
+
+**Common failure causes:**
+
+- Content not converted to WeChat-compatible HTML
+- WeChat-specific formatting (line spacing, font size) not applied
+- Cover image not referenced correctly
+- WeChat CTA not included
+
+**Remediation:**
+
+- Ensure output includes WeChat-compatible HTML structure
+- Apply WeChat line spacing and font conventions
+- Reference the correct cover image path
+- Include WeChat-specific CTA
+
+## D2: Twitter/X Distribution Gate
+
+Standalone gate for rewriting content as Twitter/X threads.
+
+**Common failure causes:**
+
+- Content exceeds Twitter/X character limits per post
+- Thread structure not logically segmented
+- Images/media not attached to appropriate tweets
+- Hashtags missing or excessive
+
+**Remediation:**
+
+- Split content into 280-character-aware segments
+- Ensure each tweet in the thread is self-contained
+- Attach media to the most relevant tweet
+- Limit hashtags to 2-3 per tweet
+
+## D3: Zhihu Distribution Gate
+
+Standalone gate for rewriting content in Zhihu long-form article format.
+
+**Common failure causes:**
+
+- Content not formatted for Zhihu's Markdown variant
+- Zhihu-specific section formatting missing
+- Citations not in Zhihu reference format
+- Title does not match Zhihu's question-answer paradigm
+
+**Remediation:**
+
+- Convert to Zhihu-compatible Markdown
+- Use proper heading hierarchy for Zhihu articles
+- Format citations per Zhihu's reference style
+- Frame content as an answer to a specific question
+
+## D4: Xiaohongshu Distribution Gate
+
+Standalone gate for rewriting content in Xiaohongshu visual-first format.
+
+**Common failure causes:**
+
+- Content too text-heavy for Xiaohongshu's visual format
+- Image placement suggestions missing
+- Title not engaging enough for the platform
+- Hashtags not relevant or too few
+
+**Remediation:**
+
+- Restructure content as image-description pairs
+- Add image placement markers at natural break points
+- Create a hook-driven opening title
+- Include 5-10 relevant platform hashtags
+
+## D5: Bilibili Distribution Gate
+
+Standalone gate for rewriting content in Bilibili video+text format.
+
+**Common failure causes:**
+
+- Content not segmented for timed comments (danmaku)
+- Script not structured for video narration
+- Video chapter markers missing
+- Description lacks Bilibili-style formatting
+
+**Remediation:**
+
+- Add danmaku trigger points at engaging moments
+- Structure script with clear video chapter markers
+- Include on-screen text suggestions
+- Format description with Bilibili conventions
+
+## D6: YouTube Distribution Gate
+
+Standalone gate for rewriting content in YouTube video description format.
+
+**Common failure causes:**
+
+- Description too short or too long
+- Timestamp chapter markers missing
+- Links/CTAs not included
+- Tags/keywords not optimized for search
+
+**Remediation:**
+
+- Structure description with timestamps, links, and CTAs
+- Add 5-7 timestamp chapter markers
+- Include relevant links and social media CTAs
+- Add 10-15 relevant tags/keywords
+
+## D7: TikTok Distribution Gate
+
+Standalone gate for rewriting content in TikTok short-video script format.
+
+**Common failure causes:**
+
+- Script too long for 60-second format
+- Hook not engaging enough for first 3 seconds
+- Text overlay suggestions missing
+- Trending audio/sound references absent
+
+**Remediation:**
+
+- Condense script to 30-60 seconds
+- Start with a strong hook in the first 3 seconds
+- Add text overlay placement suggestions at key moments
+- Reference trending sounds or effects where appropriate
+
+## P1: WeChat Repurpose Gate
+
+Deep repurpose gate for WeChat content. Part of the `repurpose` pipeline mode sub-pipeline.
+
+**Common failure causes:**
+
+- Repurposed content loses original article's core message
+- Platform-native features (templates, card layouts) not utilized
+- Content length does not match WeChat's optimal range
+- Cross-promotion from original platform not handled
+
+**Remediation:**
+
+- Preserve the core thesis while adapting format
+- Leverage WeChat-specific content blocks (cards, galleries)
+- Adjust length to 1500-3000 characters for WeChat
+- Add appropriate cross-platform references
+
+## P2: Twitter/X Repurpose Gate
+
+Deep repurpose gate for Twitter/X thread content. Part of the `repurpose` pipeline mode sub-pipeline.
+
+**Common failure causes:**
+
+- Thread lacks a compelling narrative arc
+- Individual tweets not self-contained
+- Visual media suggestions missing
+- Engagement hooks (polls, questions) not included
+
+**Remediation:**
+
+- Structure thread with clear hook → body → conclusion arc
+- Ensure each tweet is independently understandable
+- Suggest media attachments for key tweets
+- Add engagement prompts at strategic positions
+
+## P3: Newsletter Repurpose Gate
+
+Deep repurpose gate for email newsletter content. Part of the `repurpose` pipeline mode sub-pipeline.
+
+**Common failure causes:**
+
+- Content too long for email digest format
+- Newsletter structure (header, sections, footer) missing
+- Personalization tokens ({{name}}, {{date}}) absent
+- Call-to-action not prominent enough
+
+**Remediation:**
+
+- Condense to 500-1000 words suitable for email
+- Apply standard newsletter template structure
+- Include personalization placeholders
+- Ensure CTA is visible above the fold
+
+## P4: Bilibili Repurpose Gate
+
+Deep repurpose gate for Bilibili video+article content. Part of the `repurpose` pipeline mode sub-pipeline.
+
+**Common failure causes:**
+
+- Repurposed content does not fit Bilibili's unique culture
+- Danmaku interaction points missing
+- Video script lacks Bilibili-style pacing
+- Article companion content not structured properly
+
+**Remediation:**
+
+- Adapt tone for Bilibili's community-centric culture
+- Add danmaku bait at key moments
+- Structure script with Bilibili's fast-paced editing in mind
+- Format companion article with proper column structure
+
 ## H0: Human Review Gate
 
 Pre-publish human-in-the-loop review gate. Pauses the pipeline and waits for human approval before allowing content to proceed to publishing.

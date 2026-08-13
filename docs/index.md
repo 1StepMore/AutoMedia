@@ -19,8 +19,8 @@ AutoMedia automates content production from **topic selection** through **draft 
 
 ## Features
 
-- **Three-layer API** — Python SDK / CLI (14 commands) / MCP Server (50 tools)
-- **21 quality gates** — G0-G5 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle)
+- **Three-layer API** — Python SDK / CLI (17 commands) / MCP Server (59 tools)
+- **33 quality gates** — G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), D1-D7 (distribution), P1-P4 (repurpose)
 - **6-layer configuration** — defaults → project → user → overrides → prompts → env vars
 - **Topic pool** — SQLite-backed with scoring, dedup, scheduling
 - **Platform adapters** — Extensible publish targets
@@ -66,6 +66,9 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [HITL Framework](user/hitl-framework.md) | Human-in-the-loop review gates |
 | [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
 | [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
+| [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
+| [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
+| [Architecture Decision Records](adr/ADR-001-singleton-registry-unification.md) | ADR-001..ADR-005, canonical source in docs/adr/ |
 
 ---
 
@@ -79,6 +82,19 @@ Troubleshooting and operational guides:
 | [Production Workflow](user/production-workflow.md) | Daily production operations |
 | [Cron Troubleshooting](dev/cron-troubleshooting.md) | Debugging scheduled jobs |
 | [API Gotchas](dev/api-gotchas.md) | Common API pitfalls and solutions |
+
+---
+
+## Skills for Pipeline Operators
+
+How-to guides for agents using AutoMedia's MCP tools to produce, distribute, and batch content:
+
+| Skill | Description |
+|-------|-------------|
+| [Brand Strategy](skills/brand-strategy.md) | Generate brand positioning and messaging with `run_brand_strategy` |
+| [Pipeline Workflow](skills/pipeline-workflow.md) | Run a single project end to end: strategy, topic, `run_pipeline`, progress, archive |
+| [Distribution Workflow](skills/distribution-workflow.md) | Publish or distribute finished content with `distribute_content` and `publish_content` |
+| [Batch Workflow](skills/batch-workflow.md) | Produce multiple topics sequentially with `run_batch` |
 
 ---
 

@@ -138,7 +138,7 @@ def llm_check_with_fallback(
     check_type: str,
     prompt_template_name: str,
     deterministic_fn: Callable[[str], LLMCheckResult],
-    timeout: int = 30,
+    timeout: int | None = None,
     **kwargs: Any,  # noqa: ANN401 — passthrough to load_prompt()
 ) -> LLMCheckResult:
     """Run an LLM-based check with deterministic fallback.
@@ -160,7 +160,9 @@ def llm_check_with_fallback(
         Fallback function that takes *text* and returns a dict with
         ``passed`` (bool) and ``issues`` (list[str]) keys.
     timeout:
-        Maximum seconds to wait for the LLM response. Defaults to 30.
+        Maximum seconds to wait for the LLM response.
+        ``None`` (default) reads from ``llm.text_generation.timeout`` in
+        config, falling back to 60s.
     **kwargs:
         Additional template variables passed to :func:`load_prompt`.
 
@@ -177,6 +179,16 @@ def llm_check_with_fallback(
         - ``brand_compliance``: bool (G2 only) — brand compliance flag
     """
     global _llm_success_count, _fallback_count
+
+    # Resolve timeout: config → default (60s)
+    if timeout is None:
+        try:
+            from automedia.core.config_loader import load_config
+
+            cfg = load_config()
+            timeout = cfg.get("llm", {}).get("text_generation", {}).get("timeout", 60)
+        except Exception:
+            timeout = 60
 
     result_model = _RESULT_MODELS.get(check_type)
     if result_model is None:

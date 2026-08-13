@@ -27,7 +27,7 @@ from automedia.pipelines.gate_engine import (
 class _MockDirectorGate(BaseGate):
     """Mock gate that always passes — for director MCP tool tests."""
 
-    _gate_name = "D5"
+    _gate_name = "D95"
     _failure_mode = "stop"
 
     def execute(
@@ -43,7 +43,7 @@ class _MockDirectorGate(BaseGate):
 
 
 def _build_paused_engine(
-    gate_name: str = "D5",
+    gate_name: str = "D95",
 ) -> tuple[GateEngine, threading.Thread, dict[str, Any]]:
     """Create a GateEngine paused on approval and return (engine, thread, results).
 
@@ -90,13 +90,13 @@ class TestApproveGate:
         try:
             result = approve_gate(
                 project_id="proj_approve_valid",
-                gate_name="D5",
+                gate_name="D95",
             )
 
             assert result["success"] is True
             assert result["approved"] is True
             assert result["project_id"] == "proj_approve_valid"
-            assert result["gate_name"] == "D5"
+            assert result["gate_name"] == "D95"
 
             thread.join(timeout=3)
             assert results["done"]
@@ -110,7 +110,7 @@ class TestApproveGate:
 
     def test_approve_gate_unknown_project_returns_error(self) -> None:
         """approve_gate returns error for unknown project_id."""
-        result = approve_gate(project_id="nonexistent", gate_name="D5")
+        result = approve_gate(project_id="nonexistent", gate_name="D95")
 
         assert result["success"] is False
         assert "error" in result
@@ -131,7 +131,7 @@ class TestApproveGate:
             assert result["error"]["code"] == "INVALID_PARAM"
 
             # Clean up the paused engine
-            engine.resume("D5", approved=True)
+            engine.resume("D95", approved=True)
             thread.join(timeout=3)
         finally:
             unregister_engine("proj_wrong_gate")
@@ -153,14 +153,14 @@ class TestRejectGate:
         try:
             result = reject_gate(
                 project_id="proj_reject_valid",
-                gate_name="D5",
+                gate_name="D95",
                 reason="Content needs revision",
             )
 
             assert result["success"] is True
             assert result["rejected"] is True
             assert result["project_id"] == "proj_reject_valid"
-            assert result["gate_name"] == "D5"
+            assert result["gate_name"] == "D95"
 
             thread.join(timeout=3)
             assert results["done"]
@@ -175,7 +175,7 @@ class TestRejectGate:
 
     def test_reject_gate_unknown_project_returns_error(self) -> None:
         """reject_gate returns error for unknown project_id."""
-        result = reject_gate(project_id="nonexistent", gate_name="D5")
+        result = reject_gate(project_id="nonexistent", gate_name="D95")
 
         assert result["success"] is False
         assert result["error"]["code"] == "NOT_FOUND"
@@ -195,7 +195,7 @@ class TestRejectGate:
             assert result["error"]["code"] == "INVALID_PARAM"
 
             # Clean up the paused engine
-            engine.resume("D5", approved=True)
+            engine.resume("D95", approved=True)
             thread.join(timeout=3)
         finally:
             unregister_engine("proj_reject_wrong")
@@ -221,19 +221,19 @@ class TestGetPendingApprovals:
             assert result["count"] == 1
             assert len(result["pending_approvals"]) == 1
             assert result["pending_approvals"][0]["project_id"] == "proj_pending_filter"
-            assert result["pending_approvals"][0]["gate_name"] == "D5"
+            assert result["pending_approvals"][0]["gate_name"] == "D95"
             assert result["pending_approvals"][0]["status"] == "awaiting_approval"
 
             # Clean up
-            engine.resume("D5", approved=True)
+            engine.resume("D95", approved=True)
             thread.join(timeout=3)
         finally:
             unregister_engine("proj_pending_filter")
 
     def test_get_pending_approvals_no_project_filter(self) -> None:
         """get_pending_approvals without project_id returns all pending gates."""
-        engine1, t1, r1 = _build_paused_engine("D5")
-        engine2, t2, r2 = _build_paused_engine("D5")
+        engine1, t1, r1 = _build_paused_engine("D95")
+        engine2, t2, r2 = _build_paused_engine("D95")
         register_engine("proj_all_1", engine1)
         register_engine("proj_all_2", engine2)
 
@@ -248,8 +248,8 @@ class TestGetPendingApprovals:
             assert project_ids == {"proj_all_1", "proj_all_2"}
 
             # Clean up
-            engine1.resume("D5", approved=True)
-            engine2.resume("D5", approved=True)
+            engine1.resume("D95", approved=True)
+            engine2.resume("D95", approved=True)
             t1.join(timeout=3)
             t2.join(timeout=3)
         finally:
