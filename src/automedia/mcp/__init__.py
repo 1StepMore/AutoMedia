@@ -1,6 +1,6 @@
 """MCP (Model Context Protocol) server — JSON-RPC over stdio.
 
-Exposes 50 tools for pipeline execution, topic management, Omni Triad
+Exposes 59 tools for pipeline execution, topic management, Omni Triad
 operations, account management, and platform adapter registration.
 """
 

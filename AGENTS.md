@@ -31,8 +31,8 @@ pip install -e ".[mcp]"
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 52 tools |
-| CLI | `automedia <subcommand>` | 16 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 59 tools |
+| CLI | `automedia <subcommand>` | 17 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -97,7 +97,7 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│   │       └── commands/           # 13 command modules
+│   │       └── commands/           # 17 command modules
 │       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
@@ -113,7 +113,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 52 tools
+│       │   ├── server.py           # FastMCP server — 59 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -401,7 +401,7 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (52 tools, +4 deprecated aliases)
+## 9. MCP Tools Quick Reference (59 tools, incl. 4 deprecated aliases)
 
 The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
 
@@ -457,7 +457,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 
 ---
 
-## 10. CLI Commands Quick Reference (16 commands)
+## 10. CLI Commands Quick Reference (17 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -475,6 +475,9 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
+| `automedia mcp` | MCP server management |
+| `automedia history` | Show pipeline execution history for a project |
+| `automedia rollback` | Roll back a project: archive it and revert status to draft |
 
 ---
 
