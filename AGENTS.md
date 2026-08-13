@@ -378,7 +378,8 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 3. Implement `execute(self, gate_context: dict) -> dict`
 4. Add a failure mode entry in `automedia/gates/failure_modes.py`
 5. Add the gate name to the appropriate gate list in `automedia/pipelines/runner.py` (`_AUTO_GATE_NAMES`, etc.)
-6. Create tests in `tests/test_gates/`
+6. Write an ADR entry in `docs/adr/` documenting the new gate's design decision
+7. Create tests in `tests/test_gates/`
 
 ### Add a New CLI Command
 1. Create a file in `automedia/cli/commands/`
