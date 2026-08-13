@@ -10,10 +10,10 @@ from typing import Any
 import yaml
 from structlog import get_logger
 
+import automedia.mcp.tools._shared as _shared_mod
 from automedia.exceptions import AutoMediaError
 from automedia.mcp._state import _SERVER_START
 from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
-import automedia.mcp.tools._shared as _shared_mod
 
 log = get_logger(__name__)
 
@@ -57,7 +57,7 @@ def _detect_first_run() -> bool:
                 llm = data.get("llm", {}).get("text_generation", {})
                 has_llm_config_file = bool(llm.get("api_key"))
             except Exception:
-                pass
+                log.debug("Failed to read model_config.yaml while checking first-run state")
 
         has_llm_key = llm_key_env or has_llm_config_file
 

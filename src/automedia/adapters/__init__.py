@@ -1,5 +1,7 @@
 """AutoMedia platform adapters."""
 
+import contextlib
+
 from automedia.adapters.base import AUTOMATION_DEFAULTS, AutomationLevel, BasePlatformAdapter
 from automedia.adapters.platforms.baijiahao_publisher import BaijiahaoPublisher  # noqa: E402
 from automedia.adapters.platforms.bilibili_publisher import BilibiliPublisher  # noqa: E402
@@ -37,26 +39,44 @@ from automedia.adapters.publish_engine import (
 )
 from automedia.adapters.registry import AdapterRegistry
 
-AdapterRegistry.register(WechatPublisher)
-AdapterRegistry.register(FeishuNotifier)
-AdapterRegistry.register(XiaohongshuPublisher)
-AdapterRegistry.register(TwitterPublisher)
-AdapterRegistry.register(YouTubePublisher)
-AdapterRegistry.register(ZhihuPublisher)
-AdapterRegistry.register(RedditPublisher)
-AdapterRegistry.register(LinkedInPublisher)
-AdapterRegistry.register(FacebookPublisher)
-AdapterRegistry.register(TikTokPublisher)
-AdapterRegistry.register(MediumPublisher)
-AdapterRegistry.register(InstagramPublisher)
-AdapterRegistry.register(WordPressPublisher)
-AdapterRegistry.register(DouyinPublisher)
-AdapterRegistry.register(BilibiliPublisher)
-AdapterRegistry.register(WeiboPublisher)
-AdapterRegistry.register(ToutiaoPublisher)
-AdapterRegistry.register(BaijiahaoPublisher)
-AdapterRegistry.register(KuaishouPublisher)
-AdapterRegistry.register(JuejinPublisher)
+_BUILTIN_ADAPTERS: tuple[type[BasePlatformAdapter], ...] = (
+    WechatPublisher,
+    FeishuNotifier,
+    XiaohongshuPublisher,
+    TwitterPublisher,
+    YouTubePublisher,
+    ZhihuPublisher,
+    RedditPublisher,
+    LinkedInPublisher,
+    FacebookPublisher,
+    TikTokPublisher,
+    MediumPublisher,
+    InstagramPublisher,
+    WordPressPublisher,
+    DouyinPublisher,
+    BilibiliPublisher,
+    WeiboPublisher,
+    ToutiaoPublisher,
+    BaijiahaoPublisher,
+    KuaishouPublisher,
+    JuejinPublisher,
+)
+
+
+def ensure_registered() -> None:
+    """Idempotently register all built-in adapters.
+
+    Registration normally happens once at module import, but tests that call
+    ``AdapterRegistry.clear()`` empty the singleton; re-importing this module
+    does not re-run module-level code.  Call this before validating platform
+    names so the registry always contains the built-in set.
+    """
+    for adapter_cls in _BUILTIN_ADAPTERS:
+        with contextlib.suppress(KeyError):
+            AdapterRegistry.register(adapter_cls)  # already registered
+
+
+ensure_registered()
 
 __all__ = [
     "AutomationLevel",

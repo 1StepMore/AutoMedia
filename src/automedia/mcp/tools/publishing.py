@@ -2,13 +2,10 @@
 from __future__ import annotations
 
 import importlib
-import re
-import warnings
 from typing import Any
 
 from structlog import get_logger
 
-from automedia.adapters.publish_engine import PublishEngine
 from automedia.exceptions import AutoMediaError, ModuleLoadError
 from automedia.mcp.tools._shared import (
     MCPErrorCode,
@@ -17,7 +14,6 @@ from automedia.mcp.tools._shared import (
     _require_allowed,
     _resolve_projects_dir,
     error_response,
-    log,
     success_response,
 )
 

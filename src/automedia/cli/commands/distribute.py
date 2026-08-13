@@ -20,12 +20,15 @@ import importlib
 import json
 import re
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import typer
 import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+
+if TYPE_CHECKING:
+    from automedia.gates.base import BaseGate
 
 # ---------------------------------------------------------------------------
 # Platform → D-gate mapping
@@ -102,7 +105,7 @@ def _load_project_content(project_dir: Path) -> tuple[str, str | None]:
     return content, title
 
 
-def _import_gate_class(platform: str):
+def _import_gate_class(platform: str) -> type[BaseGate]:
     """Lazy-import the D-gate class for *platform*."""
     module_path = _PLATFORM_MODULES[platform]
     mod = importlib.import_module(module_path)

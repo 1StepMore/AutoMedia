@@ -12,11 +12,11 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 
-class ProjectAction(str, Enum):
+class ProjectAction(StrEnum):
     """Actions recorded in the pipeline history log.
 
     Each value is a short snake_case string stored in the history database.
