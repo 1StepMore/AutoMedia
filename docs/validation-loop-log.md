@@ -12,6 +12,11 @@
 - failed 唯一 = text-only-journey（fake-LLM 局限，见坑 #4）
 - unconfigured 7 = 环境缺失（见下表）
 
+真 LLM 模式（20260815-024524，OpenCode Go deepseek-v4-flash）：**81 passed / 2 failed / 8 unconfigured**（347.9s）
+- ✅ text-only-journey 转绿（真 LLM 产生 >500c draft）
+- ❌ run-brand-strategy-llm / run-pipeline-from-strategy-llm failed = **LLM 时段波动**（log "Invalid JSON: EOF...input_value=''" = DeepSeek 空 content → fallback 救回；单独复跑 passed 24.9s / 94.9s）
+- unconfigured：7 环境缺失 + 1 统计口径差异（汇总 8，清单 7）
+
 ### 9 个 failed 定性（均非产品代码 bug）
 
 | 场景 | 定性 | 修复 |
@@ -34,3 +39,5 @@
 3. **AUTOMEDIA_PROJECTS_DIR 必须与场景硬编码路径一致**：text-only-journey 的 run 与验证步骤查 `/tmp/automedia/journey-projects`——runner env 设别的路径会导致 run 写 A、验证查 B 失败
 4. **fake-LLM 局限**：fake 模式 draft 产物 ~86b，无法满足 `-size +500c` 类 non-trivial 断言——需真 LLM 的场景在 fake 模式预期 failed（定性记录，非产品 bug）
 5. **step detail 为空是引擎特性**：CLI/tool 步骤失败时 `detail` 字段可能空——定性需直接调用底层工具/命令看真实错误（如 add_pool_topic 直调）
+6. **`.env` 里 OPENCODE_GO_API_KEY 出现两次**（90/443 行）——`grep | cut` 会拼两行（key 含换行符）→ 连接错误/403；取最后一行定义（`tail -1`）
+7. **OpenCode Go 不支持 beta structured parse**（response_format 400 "This response_format type is unavailable now"）——AutoMedia 的 fallback 自动降级 json_object（json_object 直测 OK，无需改代码）；但 DeepSeek reasoning 空 content（#178 类）→ parse 失败 → 依赖 fallback/重试救回（strategy-llm 场景单独复跑可过）
