@@ -2478,7 +2478,49 @@ echo "Final: $?"
 
 ---
 
-*Plan generated: 2026-07-17 · Updated: 2026-07-23*
+## Validation 循环治理规范（2026-08-15）
+
+> 跨项目通用规范见全局 skill `validation-framework-execution` → `references/validation-run-governance.md`。本文是 AutoMedia 落地版。
+
+### 循环契约
+
+**开始前必读**：
+1. 本 master-plan（场景库 + PASS/FAIL 判定）
+2. 坑清单（`docs/` 下如有 LOOP-LOG；暂无则本循环创建）
+3. 上次 run 记录：`validation-runs/latest` + `scenarios.json`
+4. coverage baseline（`automedia validate coverage` 首跑建立）
+
+**结束后必形成**：
+1. run 记录（`automedia validate run` 自动写入 `validation-runs/<ts>/`）
+2. 坑清单更新（新坑当天追加）
+3. issue + PR（代码层 bug → issue → 修复 → PR）
+4. validation 报告（结果分布 + failed 定性 + 修复验证 + 基线对比 + 遗留）
+5. 交付包（正式交付时 → `04-Output/artifacts/deliverables/AutoMedia/`）
+
+### 失败定性协议
+
+任何 failed 先**单独复现定性**，不直接报"回归"：LLM 波动（单独 passed + log 大量 parse 失败）/ 场景断言漂移（改场景不改产品）/ 代码 bug（单独仍 failed → issue + PR）/ 数据漂移 / 环境（记录 unconfigured）。并发失败：单独 passed = 并发放大器（降并发）；单独 failed = 真问题。
+
+### LLM 稳定性门禁
+
+全量跑前短探测（env-gated LLM 场景单跑 <60s passed 即稳定）；波动时段结果不参与回归判定；LLM 重场景并发 ≤2。
+
+### 归档映射
+
+| 层 | 去处 |
+|----|------|
+| 代码/场景/文档 | repo 内（版本化）|
+| run 记录 | `validation-runs/`（gitignore）|
+| 交付包 | `04-Output/artifacts/deliverables/AutoMedia/` |
+| 中间件/log/临时脚本 | `99-Tools/validation-scratch/AutoMedia/`（**不是 /tmp**）|
+
+### 交付物审查
+
+验收 = **打开产物审查**（内容非空、相关性、无 EMPTY/VAGUE、真实文件），不是 matrix 数字。CLI：`automedia validate run --scenario <name>` + 人工打开产物核对。
+
+---
+
+*Plan generated: 2026-07-17 · Updated: 2026-08-15*
 *Based on: Omni Suite validation plan structure · AutoMedia codebase analysis (33,619 LOC core, 145+ test files, 59 MCP tools (55 unique + 4 deprecated), 17 CLI commands, 33 gates, 9 pipeline modes)*
 
 ---
