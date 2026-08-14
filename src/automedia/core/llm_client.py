@@ -9,9 +9,9 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -213,9 +213,7 @@ def _warn_fake_once() -> None:
     """Emit a one-time warning that fake LLM mode is active."""
     global _fake_llm_warned
     if not _fake_llm_warned:
-        logger.warning(
-            "AUTOMEDIA_FAKE_LLM=1 active — returning deterministic mock responses"
-        )
+        logger.warning("AUTOMEDIA_FAKE_LLM=1 active — returning deterministic mock responses")
         _fake_llm_warned = True
 
 
@@ -327,6 +325,7 @@ def _llm_chat_completion_with_retry(
     messages: list[dict[str, str]],  # type: ignore[type-arg]  # OpenAI expects ChatCompletionMessageParam, not plain dict[str, str]
     temperature: float,
     max_tokens: int,
+    response_format: dict[str, str] | None = None,
 ) -> ChatCompletion:
     """Call ``client.chat.completions.create`` with exponential-backoff retry.
 
@@ -335,6 +334,13 @@ def _llm_chat_completion_with_retry(
 
     Token usage from the response is automatically recorded in the
     thread-local :class:`_UsageTracker`.
+
+    Parameters
+    ----------
+    response_format:
+        Optional ``response_format`` dict (e.g. ``{"type": "json_object"}``)
+        passed to the provider.  Structured-output fallback paths use this to
+        nudge providers that accept ``json_object`` mode.
     """
 
     @retry(
@@ -344,12 +350,15 @@ def _llm_chat_completion_with_retry(
         reraise=True,
     )
     def _call() -> ChatCompletion:
-        return client.chat.completions.create(
-            model=model,
-            messages=messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        return client.chat.completions.create(**kwargs)
 
     response = _call()
 
@@ -438,6 +447,38 @@ _FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = _get_fallback_str
 _provider_no_beta_api: bool = False
 
 
+def _strip_markdown_fence(raw_text: str) -> str:
+    """Strip a markdown code fence (````` ```json ... ``` `````) from LLM output.
+
+    Some providers (e.g. bigmodel.cn GLM) return 200 OK from the
+    ``beta.chat.completions.parse`` endpoint but ignore the requested schema
+    and wrap the JSON payload in a markdown code fence.  Pydantic's
+    ``model_validate_json`` rejects fenced text, so strip a leading
+    `` ```json`` / `` ``` `` line and the trailing `` ``` `` line before
+    parsing.
+
+    Parameters
+    ----------
+    raw_text:
+        The raw LLM response text, possibly fenced.
+
+    Returns
+    -------
+    str
+        The text with a single surrounding markdown code fence removed, when
+        present; otherwise the input unchanged (whitespace-trimmed).
+    """
+    text = raw_text.strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.splitlines()
+    if lines and lines[0].strip().startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
 def _structured_completion_with_fallback(
     prompt: str,
     *,
@@ -512,6 +553,7 @@ def _structured_completion_with_fallback(
     messages.append({"role": "user", "content": prompt})
 
     # Skip beta API entirely if the provider already proved it doesn't support it
+    response: ChatCompletion | ParsedChatCompletion | None = None
     if not _provider_no_beta_api:
         try:
             logger.info("Attempting structured completion via beta API")
@@ -523,7 +565,29 @@ def _structured_completion_with_fallback(
                 temperature=resolved_temp,
                 max_tokens=resolved_max,
             )
-            return response.choices[0].message.parsed
+            try:
+                return cast(BaseModel, response.choices[0].message.parsed)
+            except ValidationError:
+                # Lazy-parse SDKs raise here.  Fall through to the manual
+                # parse path, which reuses the response content and strips
+                # markdown fences.
+                logger.warning(
+                    "Beta structured completion returned content that failed "
+                    "schema validation (%s) — falling back to manual JSON parse.",
+                    response_format.__name__,
+                )
+        except ValidationError:
+            # openai >=2.0 parses eagerly inside parse(): the SDK raises
+            # ValidationError for fenced/non-schema JSON before returning.
+            # Cache the skip — a provider that ignores the schema contract
+            # (e.g. bigmodel.cn) will fail identically on every call.
+            logger.warning(
+                "Beta structured completion returned content that failed "
+                "schema validation (%s) — caching skip, falling back to "
+                "manual JSON parse.",
+                response_format.__name__,
+            )
+            _provider_no_beta_api = True
         except _FALLBACK_STRUCTURED_ERRORS as exc:
             logger.warning(
                 "Structured beta API not supported by provider (%s: %s). "
@@ -535,21 +599,41 @@ def _structured_completion_with_fallback(
     else:
         logger.info("Skipping beta API (cached — provider does not support structured output)")
 
-    try:
-        response = _llm_chat_completion_with_retry(
-            client,
-            model=resolved_model,
-            messages=messages,
-            temperature=resolved_temp,
-            max_tokens=resolved_max,
-        )
-    except Exception as exc:
-        raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+    if response is None:
+        try:
+            response = _llm_chat_completion_with_retry(
+                client,
+                model=resolved_model,
+                messages=messages,
+                temperature=resolved_temp,
+                max_tokens=resolved_max,
+                response_format={"type": "json_object"},
+            )
+        except _FALLBACK_STRUCTURED_ERRORS:
+            # Provider may reject json_object mode (e.g. OpenAI requires the
+            # word "json" in the prompt; some providers refuse it outright).
+            # Retry once without the format constraint.
+            logger.warning(
+                "Provider rejected response_format=json_object — retrying "
+                "without the format constraint."
+            )
+            try:
+                response = _llm_chat_completion_with_retry(
+                    client,
+                    model=resolved_model,
+                    messages=messages,
+                    temperature=resolved_temp,
+                    max_tokens=resolved_max,
+                )
+            except Exception as exc:
+                raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+        except Exception as exc:
+            raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
 
     raw_text: str = response.choices[0].message.content or ""
 
     try:
-        return response_format.model_validate_json(raw_text)  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+        return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
     except Exception as exc:
         raise LLMError(
             f"Failed to parse LLM response as {response_format.__name__}: {exc}"
@@ -806,4 +890,15 @@ def llm_complete_structured(
     except Exception as exc:
         raise LLMError(f"LLM structured completion failed: {exc}") from exc
 
-    return response.choices[0].message.parsed
+    try:
+        return cast(BaseModel, response.choices[0].message.parsed)
+    except ValidationError:
+        # Provider returned 200 OK but ignored the schema (e.g. fenced JSON) —
+        # retry against the raw content with fence stripping.
+        raw_text: str = response.choices[0].message.content or ""
+        try:
+            return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+        except Exception as exc:
+            raise LLMError(
+                f"Failed to parse LLM response as {response_format.__name__}: {exc}"
+            ) from exc

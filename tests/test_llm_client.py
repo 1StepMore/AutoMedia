@@ -19,9 +19,10 @@ import sys
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
 from automedia.core.llm_client import (
     LLMError,
@@ -31,6 +32,7 @@ from automedia.core.llm_client import (
     _llm_structured_completion_with_retry,
     llm_complete,
     llm_complete_structured,
+    llm_complete_structured_safe,
 )
 
 # ---------------------------------------------------------------------------
@@ -41,8 +43,11 @@ from automedia.core.llm_client import (
 @pytest.fixture(autouse=True)
 def _clear_automedia_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove AUTOMEDIA_* env vars so tests are isolated."""
+    from automedia.core import llm_client as _llm_client_module
+
     for key in [k for k in os.environ if k.startswith("AUTOMEDIA_")]:
         monkeypatch.delenv(key, raising=False)
+    _llm_client_module._provider_no_beta_api = False
 
 
 # ---------------------------------------------------------------------------
@@ -863,3 +868,149 @@ class TestConfigFallback:
             result = llm_complete_structured("test prompt", response_format=dict, config=None)
             mock_load.assert_called_once()
             assert result == {"parsed": True}
+
+
+# =========================================================================
+# 7. Markdown-fence robustness (bigmodel.cn ignores the schema contract)
+# =========================================================================
+
+
+class _FencedOutput(BaseModel):
+    """Structured model used to exercise fence stripping in tests."""
+
+    value: str
+
+
+def _fenced_response(content: str) -> MagicMock:
+    """Build a beta structured response whose ``.parsed`` raises ValidationError."""
+    response = MagicMock()
+    response.choices = [MagicMock()]
+
+    def _raise() -> None:
+        raise ValidationError.from_exception_data(_FencedOutput.__name__, line_errors=[])
+
+    type(response.choices[0].message).parsed = PropertyMock(side_effect=_raise)
+    response.choices[0].message.content = content
+    return response
+
+
+class TestStripMarkdownFence:
+    """_strip_markdown_fence removes a surrounding ```json fence."""
+
+    def test_plain_json_unchanged(self) -> None:
+        """Unfenced JSON passes through trimmed."""
+        from automedia.core.llm_client import _strip_markdown_fence
+
+        assert _strip_markdown_fence('{"a": 1}') == '{"a": 1}'
+
+    def test_fenced_json_stripped(self) -> None:
+        """A ```json ... ``` fence is removed."""
+        from automedia.core.llm_client import _strip_markdown_fence
+
+        fenced = '```json\n{"value": "x"}\n```'
+        assert _strip_markdown_fence(fenced) == '{"value": "x"}'
+
+    def test_bare_fence_stripped(self) -> None:
+        """A ``` fence without the json tag is also removed."""
+        from automedia.core.llm_client import _strip_markdown_fence
+
+        fenced = '```\n{"value": "x"}\n```'
+        assert _strip_markdown_fence(fenced) == '{"value": "x"}'
+
+    def test_missing_closing_fence_returns_trimmed(self) -> None:
+        """A dangling opening fence degrades to whitespace-trimmed text."""
+        from automedia.core.llm_client import _strip_markdown_fence
+
+        assert _strip_markdown_fence('```json\n{"value": "x"}') == '{"value": "x"}'
+
+
+class TestFencedResponseHandling:
+    """Providers returning fenced JSON through the beta endpoint parse correctly."""
+
+    @patch("automedia.core.llm_client._build_client")
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    def test_llm_complete_structured_strips_fence_on_parsed_failure(
+        self,
+        mock_retry: MagicMock,
+        mock_build: MagicMock,
+    ) -> None:
+        """When .parsed raises ValidationError, the fenced content is parsed."""
+        fenced = '```json\n{"value": "hello"}\n```'
+        mock_retry.return_value = _fenced_response(fenced)
+        mock_build.return_value = MagicMock()
+        config = _make_llm_config()
+        result = llm_complete_structured("Hello", response_format=_FencedOutput, config=config)
+        assert isinstance(result, _FencedOutput)
+        assert result.value == "hello"
+
+    @patch("automedia.core.llm_client._build_client")
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    def test_fallback_strips_fence_when_beta_parsed_fails(
+        self,
+        mock_retry: MagicMock,
+        mock_build: MagicMock,
+    ) -> None:
+        """The safe path falls through to manual parse with fence stripping."""
+        fenced = '```json\n{"value": "world"}\n```'
+        mock_retry.return_value = _fenced_response(fenced)
+        mock_build.return_value = MagicMock()
+        config = _make_llm_config()
+        result = llm_complete_structured_safe("Hello", response_format=_FencedOutput, config=config)
+        assert isinstance(result, _FencedOutput)
+        assert result.value == "world"
+
+    @patch("automedia.core.llm_client._build_client")
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    def test_fallback_manual_parse_strips_fence(
+        self,
+        mock_retry: MagicMock,
+        mock_build: MagicMock,
+    ) -> None:
+        """The manual-parse fallback path strips fences from raw content."""
+        fenced = '```json\n{"value": "manual"}\n```'
+        mock_retry.side_effect = AttributeError("no beta API")
+        mock_build.return_value = MagicMock()
+        config = _make_llm_config()
+        chat_response = MagicMock()
+        chat_response.choices = [MagicMock()]
+        chat_response.choices[0].message.content = fenced
+        with patch(
+            "automedia.core.llm_client._llm_chat_completion_with_retry",
+            return_value=chat_response,
+        ):
+            result = llm_complete_structured_safe(
+                "Hello", response_format=_FencedOutput, config=config
+            )
+        assert isinstance(result, _FencedOutput)
+        assert result.value == "manual"
+
+    @patch("automedia.core.llm_client._build_client")
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    def test_fallback_eager_validation_error_caches_skip(
+        self,
+        mock_retry: MagicMock,
+        mock_build: MagicMock,
+    ) -> None:
+        """openai >=2.0 raises ValidationError eagerly inside parse(): the
+        safe path caches the skip and recovers via the manual chat call."""
+        import automedia.core.llm_client as _llm_client_module
+
+        fenced = '```json\n{"value": "eager"}\n```'
+        mock_retry.side_effect = ValidationError.from_exception_data(
+            _FencedOutput.__name__, line_errors=[]
+        )
+        mock_build.return_value = MagicMock()
+        config = _make_llm_config()
+        chat_response = MagicMock()
+        chat_response.choices = [MagicMock()]
+        chat_response.choices[0].message.content = fenced
+        with patch(
+            "automedia.core.llm_client._llm_chat_completion_with_retry",
+            return_value=chat_response,
+        ):
+            result = llm_complete_structured_safe(
+                "Hello", response_format=_FencedOutput, config=config
+            )
+        assert isinstance(result, _FencedOutput)
+        assert result.value == "eager"
+        assert _llm_client_module._provider_no_beta_api is True
