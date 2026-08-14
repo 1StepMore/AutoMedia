@@ -334,6 +334,7 @@ class TestServerCreation:
                 "get_pipeline_status",
                 "get_project_assets",
                 "get_redlines",
+                "get_validation_report",
                 "health_check",
                 "health_engine",
                 "help_mcp",
@@ -346,6 +347,7 @@ class TestServerCreation:
                 "list_platforms",
                 "list_projects",
                 "list_topic_pool",
+                "list_validation_scenarios",
                 "list_workflows",
                 "localize_content",
                 "localize_output",
@@ -364,11 +366,13 @@ class TestServerCreation:
                 "run_brand_strategy",
                 "run_pipeline",
                 "run_pipeline_from_strategy",
+                "run_validation_scenario",
                 "search_assets",
                 "select_topic",
                 "skip_gate",
                 "test_cron_schedule",
                 "update_engine_config",
+                "validation_coverage_audit",
             ]
         )
         assert tool_names == expected
