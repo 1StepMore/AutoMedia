@@ -242,6 +242,11 @@ LazyTyperGroup.register_fn(
     "distribute_cmd",
     help_text="Run D-gates to prepare project content for distribution platforms.",
 )
+LazyTyperGroup.register_sub_app(
+    "validate",
+    "automedia.cli.commands.validate",
+    help_text="Run the agent-tester validation suite (list, run, report, diff, coverage).",
+)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,465 @@
+"""``automedia validate`` — run the agent-tester validation suite (plan W4-T1).
+
+CLI surface for the validation framework: five sub-commands.
+
+* ``list`` — load the scenario library and list scenarios (load only, no
+  engine run).  This is the NON-recursive meta command that covers the whole
+  family for the coverage audit (Momus improvement #1: ``validate`` is the
+  18th CLI command; the committed ``cli/validate-list-meta.yaml`` scenario
+  asserts its output).
+* ``run`` — run ONE named scenario through the engine against the real MCP
+  server (``create_server()``).  ``--scenario`` is REQUIRED: the name filter
+  is the recursion bound (plan review fix M5 — a meta scenario must never be
+  able to trigger an unbounded ``validate run`` chain).
+* ``report`` — render the run record for a run.  Delegates to W4-T3's
+  renderer (``automedia.validation.report``) when present; a minimal text
+  fallback (verdicts table + per-scenario status lines) ships until then.
+  Final wiring lands in W4-T7.
+* ``diff`` — diff the latest two runs.  Delegates to W4-T4's
+  ``automedia.validation.diff`` when present; the minimal fallback prints the
+  latest two run names.  Final wiring lands in W4-T7.
+* ``coverage`` — run the deterministic coverage audit
+  (``automedia.validation.coverage.coverage_audit``, W3-T7) and print the
+  per-surface summary.
+
+Exit-code contract (typer conventions per ``doctor.py``): ``run`` exits 1
+when the scenario status is ``failed``, 0 otherwise (passed / unconfigured /
+partial-pass / recovered) with a clear status line; ``coverage`` exits 1 when
+``missing`` is non-empty (excluding boundary-only); usage errors exit 2
+(typer/click default).  ``--json`` switches every command to machine-readable
+JSON via the shared ``--json`` global flag (``automedia.cli.output``).
+"""
+
+from __future__ import annotations
+
+import importlib
+import json
+from dataclasses import replace
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import typer
+
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_json
+from automedia.validation.engine import make_adapters, run_validation_scenario
+from automedia.validation.loader import LoadError, load_scenarios
+from automedia.validation.persist import (
+    PersistError,
+    latest_run,
+    list_runs,
+    persist_run,
+    write_latest_pointer,
+)
+
+app = typer.Typer(name="validate", help="Run the agent-tester validation suite.")
+
+_ENV_GATE_CHOICES = ("report", "skip")
+
+
+# ---------------------------------------------------------------------------
+# validate list
+# ---------------------------------------------------------------------------
+
+
+@app.command("list")
+def validate_list() -> None:
+    """List all validation scenarios (load only — no engine run)."""
+    try:
+        scenarios = load_scenarios()
+    except LoadError as exc:
+        output_error(f"Failed to load scenarios: {exc}")
+        return
+    rows: list[tuple[str, str, str]] = []
+    for scenario in scenarios:
+        hint_parts: list[str] = []
+        if scenario.requires_env:
+            hint_parts.append("env-gated: " + ", ".join(scenario.requires_env))
+        if scenario.error_boundary:
+            hint_parts.append("boundary probe")
+        if scenario.regression:
+            hint_parts.append("regression")
+        rows.append((scenario.name, scenario.category, "; ".join(hint_parts)))
+
+    if get_output_mode() == OutputMode.JSON:
+        output_json(
+            {
+                "total": len(rows),
+                "scenarios": [
+                    {"name": name, "category": category, "hints": hints}
+                    for name, category, hints in rows
+                ],
+            }
+        )
+        return
+
+    typer.echo(f"Scenario list ({len(rows)} scenarios)")
+    for name, category, hints in rows:
+        typer.echo(f"  {name:<45} {category:<12} {hints}")
+    typer.echo("")
+    typer.echo("Run one: automedia validate run --scenario <name>")
+
+
+# ---------------------------------------------------------------------------
+# validate run
+# ---------------------------------------------------------------------------
+
+
+@app.command("run")
+def validate_run(
+    scenario: str = typer.Option(
+        ...,
+        "--scenario",
+        help=(
+            "Scenario name to run (required — the recursion bound: only one "
+            "named scenario can be dispatched per invocation)."
+        ),
+    ),
+    env_gate: str = typer.Option(
+        "report",
+        "--env-gate",
+        help=(
+            "'report' (default) shows unconfigured when required env vars are "
+            "missing; 'skip' runs the scenario even when env vars are missing."
+        ),
+    ),
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help="Directory for immutable run records (gitignored).",
+    ),
+) -> None:
+    """Run ONE named scenario via the engine against the real MCP server.
+
+    Exit codes: 1 when the scenario status is ``failed``; 0 otherwise
+    (passed / unconfigured / partial-pass / recovered) with a clear status
+    line.  Run from the repo root so relative artifact paths resolve.
+    """
+    if env_gate not in _ENV_GATE_CHOICES:
+        raise typer.BadParameter(
+            f"must be one of {', '.join(_ENV_GATE_CHOICES)}"
+        ) from None
+    try:
+        scenarios = load_scenarios()
+    except LoadError as exc:
+        output_error(f"Failed to load scenarios: {exc}")
+        return
+    by_name = {s.name: s for s in scenarios}
+    target = by_name.get(scenario)
+    if target is None:
+        names = ", ".join(sorted(by_name)[:30])
+        more = f", ... ({len(by_name)} total)" if len(by_name) > 30 else ""
+        output_error(
+            f"Unknown scenario {scenario!r}. Available scenarios: {names}{more}"
+        )
+        return
+    if env_gate == "skip" and target.requires_env:
+        target = replace(target, requires_env=[])
+
+    from automedia.mcp.server import create_server
+
+    adapters = make_adapters(create_server())
+    root = Path(runs_root)
+    record = run_validation_scenario(target, adapters, run_root=root)
+    run_record: dict[str, object] = {
+        "trace_id": record["trace_id"],
+        "generated_at": datetime.now(UTC).isoformat(),
+        "scenarios": [record],
+    }
+    try:
+        record_path = persist_run(root, run_record)
+        write_latest_pointer(root, record_path.parent.name)
+    except PersistError as exc:
+        output_error(f"Could not persist run record: {exc}")
+        return
+
+    status = str(record.get("status", "?"))
+    summary = record.get("summary")
+    if isinstance(summary, dict):
+        total = summary.get("total", "?")
+        passed = summary.get("passed", 0)
+    else:
+        total = passed = "?"
+
+    if get_output_mode() == OutputMode.JSON:
+        raw_steps = record.get("steps")
+        step_rows: list[dict[str, object]] = []
+        if isinstance(raw_steps, list):
+            for step in raw_steps:
+                if isinstance(step, dict):
+                    step_rows.append(
+                        {
+                            "step_index": step.get("step_index"),
+                            "name": step.get("name"),
+                            "status": step.get("status"),
+                            "passed": step.get("passed"),
+                            "duration": step.get("duration"),
+                            "failures": step.get("failures", []),
+                        }
+                    )
+        output_json(
+            {
+                "scenario": scenario,
+                "status": status,
+                "summary": summary if isinstance(summary, dict) else {},
+                "reason": record.get("reason"),
+                "run_dir": record_path.parent.name,
+                "steps": step_rows,
+            }
+        )
+    else:
+        line = f"Scenario: {scenario}\nStatus: {status}"
+        if status == "unconfigured":
+            line += f" ({record.get('reason')})"
+        elif isinstance(summary, dict):
+            line += f" ({passed}/{total} steps passed)"
+        typer.echo(line)
+        raw_steps = record.get("steps")
+        if status == "failed" and isinstance(raw_steps, list):
+            for step in raw_steps:
+                if isinstance(step, dict) and not step.get("passed"):
+                    failures = "; ".join(str(f) for f in step.get("failures", []))
+                    typer.echo(
+                        f"  step {step.get('step_index')} ({step.get('name')}): "
+                        f"{step.get('status')} - {failures}"
+                    )
+        typer.echo(f"Run recorded: {record_path}")
+
+    if status == "failed":
+        raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# validate report
+# ---------------------------------------------------------------------------
+
+
+@app.command("report")
+def validate_report(
+    run: str = typer.Option(
+        "latest",
+        "--run",
+        help="Run directory name, or 'latest' (the latest.txt pointer).",
+    ),
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help="Directory of immutable run records (gitignored).",
+    ),
+) -> None:
+    """Render the report for a run (W4-T3 renderer, minimal fallback)."""
+    root = Path(runs_root)
+    run_name = latest_run(root) if run == "latest" else run
+    if run_name is None:
+        output_error(f"No runs recorded under {root} (no latest.txt pointer).")
+        return
+    record_path = root / run_name / "scenarios.json"
+    if not record_path.is_file():
+        output_error(f"No run record at {record_path}.")
+        return
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    if get_output_mode() == OutputMode.JSON:
+        output_json(_render_report_json(record))
+        return
+    typer.echo(_render_report(record, run_name=run_name, runs_root=root))
+
+
+def _render_report(record: dict[str, Any], *, run_name: str, runs_root: Path) -> str:
+    """Render a run record to text: W4-T3 renderer when present, else the
+    minimal fallback (verdicts table + per-scenario status lines).  W4-T7
+    wires the final renderer contract."""
+    try:
+        from automedia.validation.report import render_report  # W4-T3 (parallel task)
+    except ImportError:
+        return _fallback_report(record, run_name=run_name)
+    if callable(render_report):
+        try:
+            rendered = render_report(record, runs_root=runs_root)
+            if isinstance(rendered, str) and rendered:
+                return rendered
+        except Exception:  # noqa: S110 - renderer contract wired finally in W4-T7; fallback is pinned interim behavior
+            pass
+    return _fallback_report(record, run_name=run_name)
+
+
+def _render_report_json(record: dict[str, Any]) -> dict[str, Any]:
+    """W4-T3's JSON projection when present, else the raw record."""
+    try:
+        from automedia.validation.report import render_report_json  # W4-T3
+    except ImportError:
+        return record
+    if callable(render_report_json):
+        try:
+            rendered = render_report_json(record)
+            if isinstance(rendered, dict):
+                return rendered
+        except Exception:  # noqa: S110 - renderer contract wired finally in W4-T7; raw record is pinned interim behavior
+            pass
+    return record
+
+
+def _fallback_report(record: dict[str, Any], *, run_name: str) -> str:
+    """Minimal report: verdict counts + one status line per scenario."""
+    lines = [f"Run: {run_name}"]
+    generated = record.get("generated_at")
+    if generated:
+        lines.append(f"Generated at: {generated}")
+    trace = record.get("trace_id")
+    if trace:
+        lines.append(f"Trace ID: {trace}")
+    scenarios = record.get("scenarios")
+    if not isinstance(scenarios, list):
+        lines.append("(no scenarios in record)")
+        return "\n".join(lines)
+    verdicts: dict[str, int] = {}
+    for entry in scenarios:
+        if not isinstance(entry, dict):
+            continue
+        status = str(entry.get("status", "unknown"))
+        verdicts[status] = verdicts.get(status, 0) + 1
+    lines.append("")
+    lines.append("Verdicts:")
+    for status in sorted(verdicts):
+        lines.append(f"  {status:<13} {verdicts[status]}")
+    lines.append("")
+    lines.append("Scenarios:")
+    for entry in scenarios:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("scenario", "?")
+        status = entry.get("status", "?")
+        detail = ""
+        if status == "unconfigured":
+            detail = f" ({entry.get('reason')})"
+        elif isinstance(entry.get("summary"), dict):
+            summary = entry["summary"]
+            detail = f" ({summary.get('passed')}/{summary.get('total')} steps passed)"
+        lines.append(f"  [{status:<12}] {name}{detail}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# validate diff
+# ---------------------------------------------------------------------------
+
+
+@app.command("diff")
+def validate_diff(
+    baseline: str | None = typer.Option(
+        None,
+        "--baseline",
+        help="Baseline run record path (JSON) to diff against.",
+    ),
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help="Directory of immutable run records (gitignored).",
+    ),
+) -> None:
+    """Diff the latest two runs (W4-T4 module when present, minimal fallback)."""
+    root = Path(runs_root)
+    runs = list_runs(root)
+    if not runs:
+        output_error(f"No runs recorded under {root}.")
+        return
+    payload: dict[str, Any] = {"runs": runs[:2], "baseline": baseline}
+    diff_result, diff_error = _compute_diff(root, baseline)
+    if diff_result is not None:
+        payload["diff"] = diff_result
+    if diff_error is not None:
+        payload["diff_error"] = diff_error
+    if get_output_mode() == OutputMode.JSON:
+        output_json(payload)
+        return
+    typer.echo("Latest two runs:")
+    for name in runs[:2]:
+        typer.echo(f"  {name}")
+    if baseline:
+        typer.echo(f"Baseline: {baseline}")
+    if diff_result is not None:
+        typer.echo("Diff summary:")
+        typer.echo(json.dumps(diff_result, indent=2, default=str))
+    elif diff_error is not None:
+        typer.echo(f"Diff unavailable: {diff_error}")
+
+
+def _compute_diff(
+    runs_root: Path, baseline: str | None
+) -> tuple[dict[str, Any] | None, str | None]:
+    """W4-T4's diff when present; ``(None, None)`` when the module is absent
+    (the minimal fallback prints the latest two run names only).  W4-T7
+    wires the final diff contract."""
+    try:
+        diff_mod: Any = importlib.import_module("automedia.validation.diff")
+    except ImportError:
+        return None, None
+    diff_latest = getattr(diff_mod, "diff_latest", None)
+    if not callable(diff_latest):
+        return None, None
+    diff_error_cls: Any = getattr(diff_mod, "DiffError", ValueError)
+    baseline_path = Path(baseline) if baseline is not None else None
+    try:
+        result = diff_latest(runs_root, baseline_path=baseline_path)
+    except diff_error_cls as exc:
+        return None, str(exc)
+    if isinstance(result, dict):
+        return result, None
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+# validate coverage
+# ---------------------------------------------------------------------------
+
+
+@app.command("coverage")
+def validate_coverage() -> None:
+    """Run the coverage audit over the scenario library.
+
+    Exit 1 when ``missing`` is non-empty (declared but not covered,
+    excluding boundary-only probes which are listed loudly instead).
+    """
+    from automedia.validation.coverage import coverage_audit
+
+    try:
+        audit = coverage_audit()
+    except (LoadError, OSError) as exc:
+        output_error(f"Coverage audit failed: {exc}")
+        return
+    summary = audit.get("summary", {})
+    missing_mcp = list(audit.get("missing_mcp", []))
+    missing_cli = list(audit.get("missing_cli", []))
+
+    if get_output_mode() == OutputMode.JSON:
+        output_json(audit)
+    else:
+        typer.echo("Coverage audit")
+        typer.echo(
+            "  CLI: "
+            f"declared={summary.get('cli_declared')} "
+            f"used={summary.get('cli_used')} "
+            f"covered={summary.get('cli_covered')} "
+            f"missing={summary.get('cli_missing')} "
+            f"boundary_only={summary.get('cli_boundary_only')} "
+            f"phantom={summary.get('cli_phantom')}"
+        )
+        typer.echo(
+            "  MCP: "
+            f"declared={summary.get('mcp_declared')} "
+            f"used={summary.get('mcp_used')} "
+            f"covered={summary.get('mcp_covered')} "
+            f"missing={summary.get('mcp_missing')} "
+            f"boundary_only={summary.get('mcp_boundary_only')} "
+            f"phantom={summary.get('mcp_phantom')}"
+        )
+        if missing_mcp:
+            typer.echo(f"  Missing MCP tools (declared, not covered): {', '.join(missing_mcp)}")
+        if missing_cli:
+            typer.echo(
+                f"  Missing CLI commands (declared, not covered): {', '.join(missing_cli)}"
+            )
+        if not missing_mcp and not missing_cli:
+            typer.echo("  missing = 0 (excluding boundary-only, listed above)")
+
+    if missing_mcp or missing_cli:
+        raise typer.Exit(code=1)

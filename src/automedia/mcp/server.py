@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 59 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 63 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -125,6 +125,12 @@ from automedia.mcp.tools import (
     update_engine_config,
 )
 from automedia.mcp.tools_distribution import distribute_content
+from automedia.validation.mcp_tools import (
+    get_validation_report,
+    list_validation_scenarios,
+    run_validation_scenario,
+    validation_coverage_audit,
+)
 
 # ---------------------------------------------------------------------------
 # Public API — backward-compatible re-exports
@@ -203,6 +209,11 @@ __all__ = [
     "distribute_content",
     # Effects
     "effects_analyze_content",
+    # Validation tools (agent-tester validation surface)
+    "list_validation_scenarios",
+    "run_validation_scenario",
+    "get_validation_report",
+    "validation_coverage_audit",
 ]
 
 
@@ -364,7 +375,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 59 tools and 6 resources registered.
+        A fully configured server with all 63 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -902,6 +913,52 @@ def create_server() -> FastMCP:
     )(update_engine_config)
 
     # ------------------------------------------------------------------
+    # Validation tools (agent-tester validation surface, plan W4-T2)
+    # ------------------------------------------------------------------
+
+    mcp.tool(
+        description=(
+            "List the agent-tester validation scenario library. "
+            "Loads every committed scenario (AUTOMEDIA_VALIDATION_SCENARIOS_DIR "
+            "when set, else the repo scenarios/ directory) and returns name, "
+            "description, category, and a static status_hint per scenario "
+            "(ready / requires-env / error-boundary probe)."
+        ),
+    )(list_validation_scenarios)
+
+    mcp.tool(
+        description=(
+            "Run ONE named validation scenario in-process against this server. "
+            "scenario_name is REQUIRED (the name filter is the recursion bound). "
+            "Returns the run record: status passed/failed/partial-pass/"
+            "recovered/unconfigured, per-step traces, summary, trace_id. "
+            "save=True persists an immutable scenarios.json under runs_root "
+            "(default validation-runs/, created on demand). In-process "
+            "isolation: MCP runs share server state (GateRegistry), so "
+            "mutating scenarios prefer the CLI surface. Suite runs are "
+            "CLI-only (automedia validate run) — this tool never runs the "
+            "whole library."
+        ),
+    )(run_validation_scenario)
+
+    mcp.tool(
+        description=(
+            "Read a persisted validation run record. With no run_dir, reads "
+            "the latest run named by latest.txt. Returns {run_dir, trace_id, "
+            "generated_at, scenarios} — the suite record shape."
+        ),
+    )(get_validation_report)
+
+    mcp.tool(
+        description=(
+            "Run the static coverage audit over the validation scenario "
+            "library: declared/used/covered/missing/phantom/boundary-only "
+            "sets for the MCP and CLI surfaces plus a numeric summary. "
+            "Deterministic — regex/parse only, no runtime probes."
+        ),
+    )(validation_coverage_audit)
+
+    # ------------------------------------------------------------------
     # Help/introspection tool
     # ------------------------------------------------------------------
 
@@ -1007,7 +1064,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 59 tools and 6 resources.",
+        description="AutoMedia MCP Server — stdio transport with 63 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",
