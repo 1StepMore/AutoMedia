@@ -14,6 +14,10 @@ class TestCLIPipelineProgressRetry:
         # These kwargs match what gate_engine.py passes during quality retry
         progress.on_gate_start("G2", attempt_number=2, retry_level="quality")
         assert progress.current_gate == "G2"
+        # Stop the heartbeat thread: on_gate_start spawns a daemon thread that
+        # writes "  ·\n" to stdout every 10 s; leaking it pollutes later
+        # CliRunner captures (JSON assertions in test_w4_surface flake).
+        progress.on_gate_end("G2", True, 0.0)
 
     def test_on_gate_end_accepts_retry_kwargs(self) -> None:
         """on_gate_end with attempt_number/retry_level does not crash."""
