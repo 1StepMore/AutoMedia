@@ -26,14 +26,14 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (17 commands) / MCP Server (59 tools)
-- **29 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
+- **Three-layer API**: SDK / CLI (18 commands) / MCP Server (63 tools)
+- **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
 - **Workflow system**: Reusable `workflows.yaml` definitions with cascading config merge
 - **Director mode**: Human-in-the-loop approval via GateEngine pause/resume with MCP approve/reject tools
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
-- **Platform adapter system**: Extensible publish targets — 20 registered adapters (13 real API + 7 documented manual-only stubs)
+- **Platform adapter system**: Extensible publish targets — 20 registered adapters (12 real API + 8 stubs)
 - **Account & credential management**: AES-256-GCM encrypted store, OAuth2/Cookie/API Key auth flows, session management
 - **Omni Triad**: OPP (extraction), OL (localization), ORF (format conversion)
 - **Human-in-the-loop**: Review gates for content and video quality approval
@@ -275,7 +275,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (17 commands)
+### CLI (18 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -296,8 +296,9 @@ result = run_full_pipeline(
 | `automedia mcp` | MCP server management |
 | `automedia history` | Show pipeline execution history for a project |
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
+| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage) |
 
-### MCP Server (59 tools)
+### MCP Server (63 tools)
 
 Start:
 
@@ -318,6 +319,7 @@ python -m automedia.mcp.server
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress (returns gates_done, gates_remaining, total_gates) |
 | `get_pipeline_status` | Query project status from its info file |
+| `list_active_pipelines` | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |
 | `list_projects` | List all projects under a base directory |
 | `get_project_assets` | List asset files in a project directory |
 | `archive_project` | Archive a project (enforces Red Line 8) |
@@ -327,6 +329,7 @@ python -m automedia.mcp.server
 | `publish_content` | Publish a project to a platform (supports auto/review/manual modes) |
 | `distribute_content` | Distribute pipeline content to platforms via D-gates |
 | `register_platform_adapter` | Register a publish adapter stub |
+| `list_platforms` | List all registered publishing platforms |
 | `extract_brief` | Extract content brief from document (OPP) |
 | `localize_content` | Translate markdown content (OL shield pipeline) |
 | `localize_output` | Translate all project drafts into multiple languages |
@@ -347,7 +350,12 @@ python -m automedia.mcp.server
 | `test_cron_schedule` | Validate cron expression and compute next trigger times |
 | `search_assets` | Search produced content via keyword + semantic search |
 | `list_brands` | Return all configured brands with profile metadata |
+| `add_brand` | Create a new brand profile (name required; industry and target audience optional) |
 | `get_config` | Return merged configuration (secrets redacted) |
+| `init_config` | Initialize AutoMedia configuration: create `.automedia/` and a default `config.yaml` |
+| `configure_llm` | Configure the LLM provider in `~/.automedia/model_config.yaml` (provider, model, optional API key) |
+| `onboard` | One-step onboarding: configure the LLM and create a brand profile without interactive prompts |
+| `get_redlines` | Return the list of agent red-line constraints |
 | `connect_account` | Register a new platform account |
 | `list_accounts` | List all registered accounts with optional filters |
 | `get_account_health` | Check an account's health status |
@@ -359,6 +367,10 @@ python -m automedia.mcp.server
 | `get_pending_approvals` | List all gates awaiting human approval in director mode |
 | `help_mcp` | Get a categorized listing of all MCP tools with descriptions |
 | `mcp_help` | ⚠️ Deprecated: use help_mcp |
+| `list_validation_scenarios` | List the agent-tester validation scenario library (name, description, category, status hint) |
+| `run_validation_scenario` | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
+| `get_validation_report` | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
+| `validation_coverage_audit` | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
 
 ### SDK with Workflow and Director
 
@@ -476,7 +488,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  59 tools      |     |  17 commands       |
+  |  63 tools      |     |  18 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -493,7 +505,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 |---------|---------------|
 | `core/` | Config loading (6-layer), project management, credential loading, health checks, overrides, media specs, workflow loading |
 | `pipelines/` | Pipeline orchestration, GateEngine (with pause/resume for director mode), audio/video pipelines |
-| `gates/` | 21 gate implementations + failure mode knowledge base |
+| `gates/` | 33 gate implementations + failure mode knowledge base |
 | `hooks/` | GateHook observer protocol (readonly), MD5 tracking, metrics |
 | `adapters/` | Platform publish adapter registry + base classes |
 | `accounts/` | Encrypted credential store, account registry, auth flow engine, session manager |
@@ -501,7 +513,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (17 command modules) |
+| `cli/` | Typer CLI application (18 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
 | `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (30 templates for 10 platforms) |

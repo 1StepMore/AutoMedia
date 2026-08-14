@@ -158,6 +158,7 @@
 ### Docs
 
 - **AGENTS.md config table**: Added `AUTOMEDIA_LLM_TIMEOUT` and `AUTOMEDIA_FAKE_LLM` env vars to Config Key Reference.
+- **Doc↔reality drift fixes (README.md/AGENTS.md)**: Corrected gate counts ("29 quality gates" → "33", "21 gate implementations" → "33" in README Features/Core Subpackages, matching Gate System "Total: 33 gates"), adapter split ("13 real + 7 stubs" → "12 real + 8 stubs"), added the 7 previously undocumented MCP tools (add_brand, configure_llm, get_redlines, init_config, list_active_pipelines, list_platforms, onboard) to both tool tables, and updated MCP/CLI count prose (59→63 tools, 17→18 commands) across README, AGENTS.md, and docs/index.md. The `automedia validate` CLI command and 4 validation MCP tools were added to README's tables alongside the AGENTS.md Validation Layer section.
 - **.env.example**: Added `AUTOMEDIA_LLM_TIMEOUT` and `AUTOMEDIA_FAKE_LLM` entries for LLM timeout and fake mode configuration.
 - **README.md Cursor config**: Added `.cursor/mcp.json` to MCP Client Configuration Examples and Agent Configuration table.
 - **api-reference.md param fix**: `run_full_pipeline()` `platform` → `platforms` (plural, `list[str] | None`).
