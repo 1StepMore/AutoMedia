@@ -28,7 +28,14 @@ jobs:
           pip install -e ".[dev]"
       - name: Ruff
         run: ruff check src/automedia/ --ignore E501,E402,N806,E741
-      - name: Doc consistency
+      - name: Doc consistency (numeric claims + doc↔reality audit, W5-T3)
+        # W5-T3 reconciliation DECISION (pinned): the W3-T8 doc↔reality
+        # audit runs INSIDE check-doc-consistency.py (one doc step, strict
+        # superset — numeric claims + table/gate/adapter reality). The step
+        # fails on audit findings with severity high/medium; the single
+        # permanent LOW note (refuted effects_analyze_content allegation,
+        # recommendation "None") is informational — W5-T2 zeroed every
+        # high/medium finding, so this pin keeps the gate green-able.
         run: python3 scripts/check-doc-consistency.py
       - name: Docstring coverage (interrogate)
         continue-on-error: true
@@ -87,6 +94,28 @@ jobs:
         continue-on-error: ${{ matrix.python-version != '3.11' }}
         run: python3 -m pytest --cov=src/automedia --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -q --tb=short
 
+      - name: Validation coverage audit (W5-T3; exit 1 when missing != 0)
+        # Pinned policy (plan W5-T3): uncovered declared surface (missing)
+        # fails the gate — a regression signal, never silently absorbed.
+        # Boundary-only probes are excluded by the audit itself and listed
+        # loudly in its director_waiver_note.
+        if: matrix.python-version == '3.11'
+        run: |
+          python3 -m automedia.validation.coverage > /tmp/validation-coverage-audit.json
+          python3 - <<'EOF'
+          import json, sys
+          audit = json.load(open("/tmp/validation-coverage-audit.json"))
+          s = audit["summary"]
+          missing = s["mcp_missing"] + s["cli_missing"]
+          print(
+              f"coverage audit: mcp declared={s['mcp_declared']} covered={s['mcp_covered']} "
+              f"missing={s['mcp_missing']} phantom={s['mcp_phantom']} | "
+              f"cli declared={s['cli_declared']} covered={s['cli_covered']} "
+              f"missing={s['cli_missing']} phantom={s['cli_phantom']}"
+          )
+          sys.exit(1 if missing else 0)
+          EOF
+
   test-omni:
     runs-on: ubuntu-latest
     strategy:
@@ -121,6 +150,33 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Agent-tester validation gate for pull requests (plan W5-T3): maps the
+  # PR's changed files to the affected scenario subset via
+  # scripts/validation_affected.py, runs it through the real engine, and
+  # applies the PINNED exit policy (any scenario FAIL -> exit 1;
+  # unconfigured-only -> exit 0 — the env gate short-circuits env-gated
+  # scenarios before any dispatch, so this job never makes LLM calls: the
+  # job env carries no credentials).
+  validation-affected:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Affected-area validation run (mapper -> runner)
+        run: |
+          changed=$(git diff --name-only origin/main...HEAD || true)
+          echo "changed files: ${changed:-<none>}"
+          python3 scripts/validation_affected.py $changed > /tmp/affected.txt
+          echo "affected scenarios:"; cat /tmp/affected.txt
+          python3 scripts/validation_run_affected.py $(cat /tmp/affected.txt)
   checkov:
     runs-on: ubuntu-latest
     steps:
