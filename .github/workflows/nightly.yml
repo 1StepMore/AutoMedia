@@ -96,3 +96,78 @@ jobs:
           name: test-results-${{ matrix.python-version }}
           path: test-results.xml
           retention-days: 30
+
+  # ── Agent-tester validation (plan W5-T3) ──────────────────────────────────
+
+  # Runs the WHOLE scenario library through the real engine (same runner
+  # script as the PR affected-area gate, full-suite marker). PINNED exit
+  # policy: any scenario FAIL -> exit 1; unconfigured-only -> exit 0.
+  # The `env -u` guard keeps the run credential-free even if the runner
+  # host exports an LLM key, so every LLM-gated scenario short-circuits to
+  # `unconfigured` (env gate, W1-T5) — never a paid call, never a rate
+  # budget burn. No persisted state (save=False); the meta scenario's own
+  # validation-runs/ is self-cleaned by its cleanup step.
+  validation-full-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --dev
+      - name: Full validation suite (credential-free)
+        run: |
+          env -u AUTOMEDIA_LLM_API_KEY uv run python3 scripts/validation_run_affected.py --all
+
+  # Scheduled draft-only publish proof (Momus improvement #2): runs ONLY
+  # the publish-draft-only scenario on a credentialed host. PROVISIONING:
+  # the job SKIPS until the operator adds the GitHub secrets — the canary
+  # is AUTOMEDIA_LLM_API_KEY, and the env mapping below lists the 21
+  # canonical AUTOMEDIA_* credential vars (the scenario's requires_env).
+  # SAFETY (pinned in the scenario header): a credentialed publish is
+  # draft-only ONLY when the brand profile sets `automation: review` — the
+  # host must configure ~/.automedia/brand_profiles.yaml accordingly; the
+  # scenario targets instagram (manual by default) so it can never
+  # auto-publish even with credentials. KNOWN PORTABILITY GAP: scenario
+  # step 4 references a dev-host .venv python path — the credentialed host
+  # must reproduce that layout (W5-T6 candidate).
+  validation-draft-publish:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AUTOMEDIA_LLM_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --dev
+      - name: Draft-only publish scenario (credentialed host)
+        env:
+          AUTOMEDIA_WECHAT_APPID: ${{ secrets.AUTOMEDIA_WECHAT_APPID }}
+          AUTOMEDIA_WECHAT_APPSECRET: ${{ secrets.AUTOMEDIA_WECHAT_APPSECRET }}
+          AUTOMEDIA_ZHIHU_COOKIE: ${{ secrets.AUTOMEDIA_ZHIHU_COOKIE }}
+          AUTOMEDIA_YOUTUBE_CLIENT_ID: ${{ secrets.AUTOMEDIA_YOUTUBE_CLIENT_ID }}
+          AUTOMEDIA_YOUTUBE_CLIENT_SECRET: ${{ secrets.AUTOMEDIA_YOUTUBE_CLIENT_SECRET }}
+          AUTOMEDIA_YOUTUBE_REFRESH_TOKEN: ${{ secrets.AUTOMEDIA_YOUTUBE_REFRESH_TOKEN }}
+          AUTOMEDIA_WORDPRESS_URL: ${{ secrets.AUTOMEDIA_WORDPRESS_URL }}
+          AUTOMEDIA_WORDPRESS_TOKEN: ${{ secrets.AUTOMEDIA_WORDPRESS_TOKEN }}
+          AUTOMEDIA_MEDIUM_TOKEN: ${{ secrets.AUTOMEDIA_MEDIUM_TOKEN }}
+          AUTOMEDIA_REDDIT_CLIENT_ID: ${{ secrets.AUTOMEDIA_REDDIT_CLIENT_ID }}
+          AUTOMEDIA_REDDIT_CLIENT_SECRET: ${{ secrets.AUTOMEDIA_REDDIT_CLIENT_SECRET }}
+          AUTOMEDIA_REDDIT_USERNAME: ${{ secrets.AUTOMEDIA_REDDIT_USERNAME }}
+          AUTOMEDIA_REDDIT_PASSWORD: ${{ secrets.AUTOMEDIA_REDDIT_PASSWORD }}
+          AUTOMEDIA_TWITTER_BEARER_TOKEN: ${{ secrets.AUTOMEDIA_TWITTER_BEARER_TOKEN }}
+          AUTOMEDIA_LINKEDIN_TOKEN: ${{ secrets.AUTOMEDIA_LINKEDIN_TOKEN }}
+          AUTOMEDIA_INSTAGRAM_TOKEN: ${{ secrets.AUTOMEDIA_INSTAGRAM_TOKEN }}
+          AUTOMEDIA_INSTAGRAM_USER_ID: ${{ secrets.AUTOMEDIA_INSTAGRAM_USER_ID }}
+          AUTOMEDIA_TIKTOK_ACCESS_TOKEN: ${{ secrets.AUTOMEDIA_TIKTOK_ACCESS_TOKEN }}
+          AUTOMEDIA_FACEBOOK_PAGE_TOKEN: ${{ secrets.AUTOMEDIA_FACEBOOK_PAGE_TOKEN }}
+          AUTOMEDIA_FACEBOOK_PAGE_ID: ${{ secrets.AUTOMEDIA_FACEBOOK_PAGE_ID }}
+          AUTOMEDIA_FEISHU_WEBHOOK_URL: ${{ secrets.AUTOMEDIA_FEISHU_WEBHOOK_URL }}
+        run: |
+          uv run python3 scripts/validation_run_affected.py publish/publish-draft-only-real-adapters.yaml

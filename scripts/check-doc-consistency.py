@@ -11,6 +11,25 @@ Scanned by default: README.md, AGENTS.md, docs/index.md and the mcp module
 docstrings in ``src/automedia/mcp/__init__.py`` and
 ``src/automedia/mcp/server.py``.
 
+W5-T3 RECONCILIATION DECISION (plan agent-tester-validation W5-T3, pinned):
+the W3-T8 doc↔reality audit (``automedia.validation.doc_reality``) runs
+HERE — the existing doc-consistency step is EXTENDED, not replaced, and no
+second doc step is added to CI.  Rationale: the two checks overlap on the
+MCP/CLI docs-vs-code theme but each covers claim types the other cannot —
+this script verifies NUMERIC claims (``59 tools``), the audit verifies
+TABLE membership + gate/adapter counts — so merging them keeps one doc gate
+that is a strict superset.
+
+AUDIT SEVERITY POLICY (W5-T3, pinned, empirical): the step fails on
+findings with severity high or medium; ``low`` findings are informational
+and never fail the gate.  Rationale: W5-T2 zeroed every high/medium
+finding, but the audit carries ONE permanent low note — the refuted
+``effects_analyze_content`` allegation (recommendation "None — docs match
+code", do-NOT-touch per W5-T2).  Exit-on-any-finding would keep the doc
+gate red forever; the high/medium pin stays a hard gate (all real drift —
+omitted tools, wrong gate/adapter counts — is high/medium) while the
+informational note is shown, not blocking.
+
 KNOWN LIMITATION (enforcement gap): ``docs/user/cli-reference.md``,
 ``docs/user/mcp-setup.md`` and ``docs/user/api-reference.md`` are NOT
 scanned by default — they are reconciled manually in the doc-sync workflow
@@ -33,6 +52,7 @@ import click
 
 from automedia.cli.app import app as _cli_app
 from automedia.mcp.server import create_server
+from automedia.validation.doc_reality import doc_reality_audit
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -136,6 +156,26 @@ def _scan_file(path: Path, tool_count: int, command_count: int) -> list[Finding]
     return findings
 
 
+def _run_doc_reality_audit() -> tuple[list[str], list[str]]:
+    """Run the W3-T8 doc↔reality audit; lines split blocking vs informational.
+
+    Blocking = findings with severity high/medium (every real drift class);
+    informational = low findings (the permanent refuted-allegation note).
+    See the module docstring for the pinned severity policy.
+    """
+    audit = doc_reality_audit()
+    findings = audit.get("findings") or []
+    blocking: list[str] = []
+    informational: list[str] = []
+    for finding in findings:
+        line = (
+            f"  [{finding['severity']}] {finding['doc']}: '{finding['claim']}' "
+            f"— reality: {finding['reality']} (fix: {finding['recommendation']})"
+        )
+        (blocking if finding["severity"] != "low" else informational).append(line)
+    return blocking, informational
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the consistency check; return 0 when all checks pass, 1 otherwise."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -167,10 +207,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
-    if all_findings:
-        print(f"\nFAIL: {len(all_findings)} stale doc claim(s) found")
+    blocking, informational = _run_doc_reality_audit()
+    for line in informational:
+        print(f"{line}  [informational]")
+    for line in blocking:
+        print(line)
+    if all_findings or blocking:
+        total = len(all_findings) + len(blocking)
+        print(f"\nFAIL: {len(all_findings)} stale numeric claim(s) + "
+              f"{len(blocking)} blocking doc↔reality finding(s) = {total}")
         return 1
-    print("\nOK: all doc numeric claims match derived counts")
+    print("\nOK: all doc numeric claims match derived counts; doc↔reality audit clean")
     return 0
 
 
