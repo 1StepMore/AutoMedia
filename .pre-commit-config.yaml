@@ -10,7 +10,9 @@ repos:
     rev: v1.13.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
+        # types-all is uninstallable since types-pkg-resources was yanked
+        # from PyPI; mypy runs with --ignore-missing-imports so stubs are
+        # not required.
         args: [--ignore-missing-imports]
 
   - repo: https://github.com/gitleaks/gitleaks
@@ -28,8 +30,12 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest tests/ -x -q
-        language: python
+        # python3 -m pytest puts the repo root on sys.path — required for
+        # `from tests.mock_llm import ...` (bare pytest lacks it). Runs in the
+        # system interpreter (dev env has pytest; the isolated pre-commit venv
+        # only installs the package itself).
+        entry: python3 -m pytest tests/ -x -q
+        language: system
         types: [python]
         pass_filenames: false
       - id: check-doc-consistency
