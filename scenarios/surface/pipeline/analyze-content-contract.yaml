@@ -1,0 +1,31 @@
+name: analyze-content-contract
+description: "analyze_content (registered name of the effects analyzer; the README/AGENTS.md call it effects_analyze_content — known doc drift) computes stats for a synthetic project and returns a status envelope without a success key."
+intent: "Prove the analytics surface answers a real call on a synthetic project. The tool does not wrap its return via success_response (returns {status: ok, project_id, stats}, verified empirically), so the honest check is the call completing with the ok status — mirroring the help_mcp precedent."
+category: surface
+requires_env: []
+steps:
+  - name: create a synthetic project with a draft
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json plus 01_content/drafts/draft.md under /tmp/automedia/w3t1-analyze/projects/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; proj = pathlib.Path("/tmp/automedia/w3t1-analyze/projects/validation-synthetic"); (proj / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (proj / "00_project_info.json").write_text(json.dumps({"project_id": "5f3a9c2e8b1d", "topic": "validation-synthetic", "brand": "w3t1-validation-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"})); (proj / "01_content" / "drafts" / "draft.md").write_text("# Draft\n\nbody content for the analytics probe.")'
+    expect:
+      exit_code: 0
+  - name: analyze_content computes stats
+    kind: tool
+    check: "analyze_content completes and returns the analytics payload (status ok, project_id, stats). No success key is present (the tool flattens via a plain dict, verified empirically), so the call completing with status ok is the honest check."
+    standard: founder-expectations.F02
+    tool: analyze_content
+    arguments:
+      project_id: "5f3a9c2e8b1d"
+      base_dir: /tmp/automedia/w3t1-analyze/projects
+    expect: {}
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-analyze
+    expect:
+      exit_code: 0

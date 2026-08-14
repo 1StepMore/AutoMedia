@@ -1,0 +1,18 @@
+name: run-brand-strategy-llm
+description: run_brand_strategy generates a structured brand strategy via the LLM; it cannot run without a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
+intent: Prove the brand-strategy surface's real contract (LLM-gated structured output) and the honest unconfigured state when the credential is absent.
+category: surface
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+steps:
+  - name: run_brand_strategy returns the strategy
+    kind: tool
+    check: "run_brand_strategy returns success: true carrying the structured strategy output (brand_positioning, audience_analysis, competitive_landscape, key_differentiators, suggested_messaging)."
+    standard: tool.contract
+    tool: run_brand_strategy
+    arguments:
+      brand_name: w3t1-validation-brand
+      industry: SaaS
+      target_audience: CTOs of mid-size tech companies
+    expect:
+      success: true

@@ -1,0 +1,15 @@
+name: register-platform-adapter-stub
+description: register_platform_adapter without an adapter_class acknowledges the platform as a pure stub and returns a success envelope carrying registered false and stub true.
+intent: "Prove the adapter-registration surface's documented stub contract (PRD-1 NG6): the placeholder path answers deterministically without mutating the registry."
+category: surface
+requires_env: []
+steps:
+  - name: register_platform_adapter acknowledges the stub
+    kind: tool
+    check: "register_platform_adapter returns success: true carrying platform, registered false and stub true with instructions (verified empirically: the pure-stub path never touches AdapterRegistry)."
+    standard: tool.contract
+    tool: register_platform_adapter
+    arguments:
+      platform_name: w3t1-testplat
+    expect:
+      success: true

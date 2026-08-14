@@ -1,0 +1,45 @@
+name: validation-self-check
+description: "The validation surface validates itself: run_validation_scenario executes a bounded named scenario, get_validation_report reads the persisted record, validation_coverage_audit audits the whole library."
+intent: "Cover the three uncovered validation MCP tools (run_validation_scenario, get_validation_report, validation_coverage_audit) so the coverage audit reaches missing = ∅ (plan C2). The run step names health-check-baseline — a deterministic scenario whose steps never invoke validation tools — so the name filter bounds recursion (review fix M5). get_validation_report has no runs_root parameter (it reads the default validation-runs/ root), so step 1 saves there and step 2 reads latest via latest.txt."
+category: meta
+requires_env: []
+steps:
+  - name: run a named scenario in-process
+    kind: tool
+    check: "run_validation_scenario executes health-check-baseline through the real dispatcher and reports status passed."
+    standard: tool.contract
+    tool: run_validation_scenario
+    arguments:
+      scenario_name: health-check-baseline
+      runs_root: validation-runs
+      save: true
+    timeout_seconds: 120
+    expect:
+      success: true
+  - name: read the persisted run record
+    kind: tool
+    check: "get_validation_report reads the just-saved record through the latest.txt pointer."
+    standard: tool.contract
+    tool: get_validation_report
+    arguments: {}
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: audit coverage over this library
+    kind: tool
+    check: "validation_coverage_audit reports the static coverage sets over the whole library."
+    standard: tool.contract
+    tool: validation_coverage_audit
+    arguments: {}
+    timeout_seconds: 60
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the runs root created by the save
+    kind: cli
+    check: "rm -rf removes the validation-runs scratch directory (gitignored) created by step 1."
+    standard: founder-expectations.F01
+    command: rm -rf validation-runs
+    timeout_seconds: 30
+    expect:
+      exit_code: 0

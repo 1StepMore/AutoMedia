@@ -1,0 +1,15 @@
+name: list-accounts-masterkey
+description: "list_accounts returns the registered accounts in a success envelope; the account store requires AUTOMEDIA_MASTER_KEY (verified empirically: without it the tool raises), so a missing key gates the scenario to unconfigured."
+intent: Prove the account-listing surface answers with the isolated registry, and the honest unconfigured state without the store master key.
+category: surface
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: list_accounts returns the account list
+    kind: tool
+    check: "list_accounts returns success: true carrying accounts and count (verified empirically with a synthetic master key: an empty isolated registry yields count 0, not an error)."
+    standard: tool.contract
+    tool: list_accounts
+    arguments: {}
+    expect:
+      success: true

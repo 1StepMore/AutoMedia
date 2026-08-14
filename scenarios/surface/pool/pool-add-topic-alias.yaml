@@ -1,0 +1,43 @@
+name: pool-add-topic-alias
+description: "pool_add_topic (deprecated alias) returns the same success envelope shape as add_pool_topic (verified empirically: both success: true with id/title/category/status)."
+intent: Prove the deprecated pool alias keeps the canonical contract so agents calling the old name get identical surface behavior.
+category: surface
+requires_env: []
+steps:
+  - name: create the temp pool directory
+    kind: cli
+    check: mkdir -p creates /tmp/automedia/w3t1-poolalias so PoolDB can create the database files inside it.
+    standard: founder-expectations.F01
+    command: mkdir -p /tmp/automedia/w3t1-poolalias
+    expect:
+      exit_code: 0
+  - name: pool_add_topic alias adds to the temp pool
+    kind: tool
+    check: "pool_add_topic returns success: true carrying id, title, category and status (same shape as the canonical add_pool_topic)."
+    standard: tool.contract
+    tool: pool_add_topic
+    arguments:
+      title: w3t1-alias-topic
+      category: tech
+      pool_db_path: /tmp/automedia/w3t1-poolalias/alias.db
+    expect:
+      success: true
+  - name: add_pool_topic canonical adds identically
+    kind: tool
+    check: "add_pool_topic returns the same success envelope shape as the alias (empirical alias contract check)."
+    standard: tool.contract
+    tool: add_pool_topic
+    arguments:
+      title: w3t1-canonical-topic
+      category: tech
+      pool_db_path: /tmp/automedia/w3t1-poolalias/canonical.db
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the temp pools
+    kind: cli
+    check: rm -rf removes the temp pool databases created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-poolalias
+    expect:
+      exit_code: 0

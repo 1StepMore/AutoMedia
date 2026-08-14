@@ -1,0 +1,17 @@
+name: cron-cli-surface
+description: automedia cron --help exits 0 and prints the cron sub-commands (run, run-pipeline, check-health), proving the cron command is registered.
+intent: Prove the cron CLI surface is callable and exposes its real contract (run, run-pipeline, check-health sub-commands) without executing any jobs.
+category: cli
+requires_env: []
+steps:
+  - name: cron --help shows sub-commands
+    kind: cli
+    check: "automedia cron --help exits 0 and prints usage text naming the cron sub-commands."
+    standard: founder-expectations.F02
+    command: automedia cron --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "cron"
+        - "run"

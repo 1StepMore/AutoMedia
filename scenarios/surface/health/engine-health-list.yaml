@@ -1,0 +1,14 @@
+name: engine-health-list
+description: health_engine reports the installation status of every engine dependency (comfyui, whisper, edge-tts, hyperframes, chrome, ffmpeg, bun, llm_api) in a success envelope.
+intent: Prove the engine-health surface answers a real call on a clean env, so agents can check engine readiness before invoking engine-dependent tools.
+category: surface
+requires_env: []
+steps:
+  - name: health_engine returns engine dependency status
+    kind: tool
+    check: "health_engine returns success: true carrying engines, healthy_count and unhealthy_count (the dependency list contract, verified empirically on a clean env)."
+    standard: tool.contract
+    tool: health_engine
+    arguments: {}
+    expect:
+      success: true

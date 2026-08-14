@@ -1,0 +1,14 @@
+name: get-config-baseline
+description: The get_config MCP tool returns the merged configuration with secrets redacted.
+intent: Prove the configuration surface answers without credentials, so a clean env can read non-secret config through the MCP surface.
+category: baseline
+requires_env: []
+steps:
+  - name: get_config returns the merged config
+    kind: tool
+    check: "get_config returns success: true carrying the redacted merged config dict."
+    standard: tool.contract
+    tool: get_config
+    arguments: {}
+    expect:
+      success: true

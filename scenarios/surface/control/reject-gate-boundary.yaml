@@ -1,0 +1,16 @@
+name: reject-gate-boundary
+description: "BOUNDARY-ONLY probe (director-waiver required — never GREEN-asserted): reject_gate reports NOT_FOUND for a project_id with no active engine in this process (success: false, structured error)."
+intent: "Prove the director-mode reject surface's boundary contract. The success path requires a live paused gate in a running engine with a runtime project_id (owned by the lifecycle journeys); on a clean env the honest contract is the structured NOT_FOUND error. The probe passes on error and fails only on full success."
+category: surface
+error_boundary: true
+steps:
+  - name: reject_gate errors on an unknown project
+    kind: tool
+    check: "reject_gate returns success: false with a structured NOT_FOUND error for a bogus project_id (verified empirically: No active engine found for project_id 000000000000)."
+    standard: tool.contract
+    tool: reject_gate
+    arguments:
+      project_id: "000000000000"
+      gate_name: G0
+    expect: {}
+    error_boundary: true

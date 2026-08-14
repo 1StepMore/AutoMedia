@@ -1,0 +1,16 @@
+name: publish-content-probe
+description: "publish_content reports NOT_FOUND for a project_id that has no project on disk (success: false, structured error) — the probe expects that error. Depth scenarios for the publish trio belong to W3-T5."
+intent: "Prove the publish surface's minimal contract on a clean env: an unknown project yields the structured NOT_FOUND error, never a silent success."
+category: surface
+requires_env: []
+steps:
+  - name: publish_content errors on an unknown project
+    kind: tool
+    check: "publish_content returns success: false with a structured NOT_FOUND error for a bogus project_id (verified empirically: Project 000000000000 not found) — the boundary probe expects the error."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: "000000000000"
+      platform: wechat
+    expect: {}
+    error_boundary: true

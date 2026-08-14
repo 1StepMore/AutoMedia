@@ -1,0 +1,17 @@
+name: account-cli-surface
+description: automedia account --help exits 0 and prints the account sub-commands (connect, list, health, disconnect), proving the account command is registered.
+intent: Prove the account CLI surface is callable and exposes its real contract (connect/list/health/disconnect sub-commands) without mutating any credentials.
+category: cli
+requires_env: []
+steps:
+  - name: account --help shows sub-commands
+    kind: cli
+    check: "automedia account --help exits 0 and prints usage text naming the account sub-commands."
+    standard: founder-expectations.F02
+    command: automedia account --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "account"
+        - "connect"

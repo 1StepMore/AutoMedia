@@ -1,0 +1,14 @@
+name: list-brands-baseline
+description: The list_brands MCP tool answers with the configured brand list (an absent brand profile is an empty list, never an error).
+intent: Prove the brand surface answers without credentials; load_brand_profiles never raises on a missing profile file.
+category: baseline
+requires_env: []
+steps:
+  - name: list_brands returns the brand list
+    kind: tool
+    check: "list_brands returns success: true carrying brands and total."
+    standard: tool.contract
+    tool: list_brands
+    arguments: {}
+    expect:
+      success: true

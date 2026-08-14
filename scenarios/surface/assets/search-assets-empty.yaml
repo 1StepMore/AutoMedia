@@ -1,0 +1,16 @@
+name: search-assets-empty
+description: search_assets answers with a success envelope on an empty asset library (no keywords, no Chroma vectors means an empty result list, not an error).
+intent: Prove the asset-search surface answers without credentials or an LLM, so agents can query brand assets on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: search_assets returns the empty result list
+    kind: tool
+    check: "search_assets returns success: true carrying results, count and error (verified empirically: an empty asset library yields count 0 with error null, not an error)."
+    standard: tool.contract
+    tool: search_assets
+    arguments:
+      query: w3t1-no-such-asset
+      brand: w3t1-validation-brand
+    expect:
+      success: true

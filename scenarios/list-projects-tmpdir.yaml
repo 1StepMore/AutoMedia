@@ -1,0 +1,30 @@
+name: list-projects-tmpdir
+description: list_projects scans an allowlisted temp directory under /tmp/automedia/ and answers success on an empty project root.
+intent: Prove the project-listing surface works against an allowlist-safe temporary directory without touching repo state.
+category: baseline
+requires_env: []
+steps:
+  - name: create the temp project root
+    kind: cli
+    check: mkdir -p creates /tmp/automedia/w2t3-list-projects so list_projects has a real allowlisted directory to scan.
+    standard: founder-expectations.F01
+    command: mkdir -p /tmp/automedia/w2t3-list-projects
+    expect:
+      exit_code: 0
+  - name: list_projects scans the temp root
+    kind: tool
+    check: "list_projects returns success: true (an empty root is an empty project list, not an error)."
+    standard: tool.contract
+    tool: list_projects
+    arguments:
+      base_dir: /tmp/automedia/w2t3-list-projects
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the temp project root
+    kind: cli
+    check: rm -rf removes the temp directory created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2t3-list-projects
+    expect:
+      exit_code: 0

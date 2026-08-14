@@ -1,0 +1,14 @@
+name: health-check-baseline
+description: The health_check MCP tool answers with a success envelope carrying server status fields.
+intent: Prove the MCP server's first-call surface answers a real health_check before any agent relies on it for production work.
+category: baseline
+requires_env: []
+steps:
+  - name: health_check returns a success envelope
+    kind: tool
+    check: "health_check returns success: true carrying the server status (verified envelope keys: status, version, uptime_s, tools_count, first_run)."
+    standard: tool.contract
+    tool: health_check
+    arguments: {}
+    expect:
+      success: true

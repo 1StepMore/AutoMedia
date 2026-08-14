@@ -1,0 +1,112 @@
+# W3-T5 publish draft-only scenario (plan agent-tester-validation W3-T5)
+#
+# DESIGN + SAFETY NOTES (verified empirically 2026-08-14, recorded in
+# .omo/notepads/agent-tester-validation/learnings.md):
+#   - This scenario is env-gated on the 12 REAL adapters' credentials. Without
+#     them (the honest state on dev boxes and CI) the engine reports
+#     unconfigured with the missing-var list — nothing runs, nothing posts.
+#     That is the primary verified path of this scenario.
+#   - The draft-only contract lives at the ENGINE level: automation=review
+#     routes to adapter.publish(..., draft_only=True) (publish_engine.py:680-685
+#     account path / :730-735 legacy path), producing status draft_created,
+#     while automation=auto routes to _publish_with_retry (:692-698 / :737-742)
+#     — full publish. A credentialed run of publish_content(mode=auto) is
+#     draft-only ONLY when the brand profile sets automation: review for the
+#     platform. W5-T3's scheduled draft-only publish job (GitHub secrets /
+#     credentialed host) MUST configure ~/.automedia/brand_profiles.yaml with
+#     automation: review for every enabled platform — this scenario documents
+#     that prerequisite; it does not create the profile.
+#   - CRITICAL (verified by reading publish_engine.py:703-748): publish_content
+#     delegates to PublishEngine.publish_all, which iterates ALL registered
+#     platforms in legacy mode (the `platform` argument only selects which
+#     result to return). On a fully credentialed host WITHOUT the review
+#     profile, any publish_content call would auto-publish every auto-default
+#     platform. Therefore this scenario's steps never call publish_content for
+#     an auto-default platform: step 3 targets instagram, whose default
+#     automation level is manual (AUTOMATION_DEFAULTS) — the engine skips it
+#     (publish_engine.py:713-720) in every default environment, so the step
+#     can never publish even with credentials present.
+#   - Verified MCP envelope for the skipped platform (real server, clean env):
+#     {"success": true, "published": false, "platform": <name>, "url": ""}.
+name: publish-draft-only-real-adapters
+description: "Without the 12 real adapters' credentials this scenario reports unconfigured; with them, its steps assert the never-auto-publish gate and the real-adapter registry contract."
+intent: "Prove the draft-only publish contract honestly: real adapters require credentials (unconfigured without them), and the publish surface refuses to auto-publish manual-level platforms even when invoked."
+category: publish
+requires_env:
+  - AUTOMEDIA_WECHAT_APPID
+  - AUTOMEDIA_WECHAT_APPSECRET
+  - AUTOMEDIA_ZHIHU_COOKIE
+  - AUTOMEDIA_YOUTUBE_CLIENT_ID
+  - AUTOMEDIA_YOUTUBE_CLIENT_SECRET
+  - AUTOMEDIA_YOUTUBE_REFRESH_TOKEN
+  - AUTOMEDIA_WORDPRESS_URL
+  - AUTOMEDIA_WORDPRESS_TOKEN
+  - AUTOMEDIA_MEDIUM_TOKEN
+  - AUTOMEDIA_REDDIT_CLIENT_ID
+  - AUTOMEDIA_REDDIT_CLIENT_SECRET
+  - AUTOMEDIA_REDDIT_USERNAME
+  - AUTOMEDIA_REDDIT_PASSWORD
+  - AUTOMEDIA_TWITTER_BEARER_TOKEN
+  - AUTOMEDIA_LINKEDIN_TOKEN
+  - AUTOMEDIA_INSTAGRAM_TOKEN
+  - AUTOMEDIA_INSTAGRAM_USER_ID
+  - AUTOMEDIA_TIKTOK_ACCESS_TOKEN
+  - AUTOMEDIA_FACEBOOK_PAGE_TOKEN
+  - AUTOMEDIA_FACEBOOK_PAGE_ID
+  - AUTOMEDIA_FEISHU_WEBHOOK_URL
+steps:
+  - name: create the synthetic project
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project.py schema: project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w3t5-draftonly-projects/ for the publish probes."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w3t5-draftonly-projects/w3t5-draftonly/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "w3t5draftonly01", "topic": "synthetic draft-only probe", "brand": "w3t5-synthetic-brand", "tenant_id": "w3t5", "created_at": "2026-08-14T00:00:00Z", "status": "published"}))'
+    expect:
+      exit_code: 0
+  - name: list_platforms enumerates the real adapters
+    kind: tool
+    check: "list_platforms returns success: true carrying the registered platform list (20 adapters: 12 real + 8 stubs, verified)."
+    standard: tool.contract
+    tool: list_platforms
+    arguments: {}
+    expect:
+      success: true
+  - name: publish_content on a manual-level platform never auto-publishes
+    kind: tool
+    check: "publish_content(platform=instagram, mode=auto) returns success: true with published: false — instagram's default automation level is manual (AUTOMATION_DEFAULTS), so the engine skips it (publish_engine.py:713-720) in every default environment; the step proves the never-auto-publish gate and posts zero content (verified envelope: success true, published false, no url)."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: w3t5draftonly01
+      platform: instagram
+      base_dir: /tmp/automedia/w3t5-draftonly-projects
+    expect:
+      success: true
+  - name: the 12 real adapters register as non-stub
+    kind: cli
+    check: "the 12 real adapters (wechat, zhihu, youtube, wordpress, medium, reddit, twitter, linkedin, instagram, tiktok, facebook, feishu) register with is_stub=False — the draft-only capability set (verified adapter classes and the registry)."
+    standard: tool.contract
+    command: |-
+      /mnt/d/贯维/AutoMedia/.venv/bin/python -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["wechat","zhihu","youtube","wordpress","medium","reddit","twitter","linkedin","instagram","tiktok","facebook","feishu"]; [print("REAL %s is_stub=%s" % (n, AdapterRegistry.get(n).is_stub)) for n in ns]'
+    expect:
+      stdout_has:
+        - "REAL wechat is_stub=False"
+        - "REAL zhihu is_stub=False"
+        - "REAL youtube is_stub=False"
+        - "REAL wordpress is_stub=False"
+        - "REAL medium is_stub=False"
+        - "REAL reddit is_stub=False"
+        - "REAL twitter is_stub=False"
+        - "REAL linkedin is_stub=False"
+        - "REAL instagram is_stub=False"
+        - "REAL tiktok is_stub=False"
+        - "REAL facebook is_stub=False"
+        - "REAL feishu is_stub=False"
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t5-draftonly-projects
+    expect:
+      exit_code: 0

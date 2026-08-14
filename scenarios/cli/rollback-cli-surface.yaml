@@ -1,0 +1,16 @@
+name: rollback-cli-surface
+description: automedia rollback --help exits 0 and prints usage naming the required project_id argument, proving the rollback command is registered.
+intent: Prove the rollback CLI surface is callable and exposes its real contract (project_id argument, base-dir option) without rolling back any project.
+category: cli
+requires_env: []
+steps:
+  - name: rollback --help shows the usage contract
+    kind: cli
+    check: "automedia rollback --help exits 0 and prints usage text naming the rollback function."
+    standard: founder-expectations.F02
+    command: automedia rollback --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "rollback"

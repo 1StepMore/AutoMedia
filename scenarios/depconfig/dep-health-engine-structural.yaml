@@ -1,0 +1,14 @@
+name: dep-health-engine-structural
+description: "health_engine returns a success envelope carrying the per-engine dependency status list plus healthy and unhealthy counts."
+intent: "Prove the health_engine tool contract on any machine. The real return shape is success_response with engines, healthy_count and unhealthy_count: the success envelope is always true even when engines are missing, and each engine entry carries name and installed. success: true is therefore the honest assertion; data_has is deliberately absent because tool returns are flattened (no nested data dict)."
+category: baseline
+requires_env: []
+steps:
+  - name: health_engine reports engine status
+    kind: tool
+    check: "health_engine returns a success envelope with an engines list carrying each engine name and installed flag, plus healthy_count and unhealthy_count."
+    standard: tool.contract
+    tool: health_engine
+    arguments: {}
+    expect:
+      success: true

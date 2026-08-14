@@ -1,0 +1,2258 @@
+{
+  "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+  "generated_at": "2026-08-14T07:51:13.994675+00:00",
+  "scenarios": [
+    {
+      "scenario": "archive-refusal-redline8",
+      "status": "passed",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "python3 -c 'import json, pathlib; p = pathlib.Path(\"/tmp/automedia/w2t3-archive-project/validation-synthetic/00_project_info.json\"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({\"project_id\": \"5f3a9c2e8b1d\", \"topic\": \"validation-synthetic\", \"brand\": \"validation-brand\", \"tenant_id\": \"\", \"created_at\": \"2026-08-14T00:00:00+00:00\", \"status\": \"draft\"}))'",
+          "surface": "cli",
+          "name": "create a synthetic unpublished project",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.072,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "a python3 one-liner writes a synthetic 00_project_info.json (schema as automedia/core/project.py writes: project_id, topic, brand, tenant_id, created_at, plus status: draft) under /tmp/automedia/w2t3-archive-project/.",
+          "standard": "founder-expectations.F01",
+          "output": {
+            "success": true,
+            "exit_code": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        },
+        {
+          "step_index": 2,
+          "target": "archive_project",
+          "surface": "tool",
+          "name": "archive_project refuses the draft project",
+          "arguments": {
+            "project_id": "5f3a9c2e8b1d",
+            "base_dir": "/tmp/automedia/w2t3-archive-project",
+            "force": false
+          },
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.011,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "archive_project returns success: false with a structured error, because the project status is draft (not published) and force is false (Red Line 8 refusal).",
+          "standard": "tool.contract",
+          "output": {
+            "archived": false,
+            "success": false,
+            "error": {
+              "code": "INVALID_PARAM",
+              "message": "Refused: project status is 'draft', not 'published'. Set force=True to override (Red Line 8).",
+              "resolution": "Check the parameter values and try again"
+            }
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "step_index": 0,
+          "target": "rm -rf /tmp/automedia/w2t3-archive-project",
+          "surface": "cli",
+          "name": "remove the synthetic project tree",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.002,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "rm -rf removes the temp project tree created by this scenario.",
+          "standard": "founder-expectations.F01",
+          "output": {
+            "success": true,
+            "exit_code": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      ],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "doctor-cli-contract",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "automedia --json doctor",
+          "surface": "cli",
+          "name": "doctor lists every dependency",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 2.834,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "doctor prints a JSON payload naming each dependency (python, ffmpeg, and the rest) with an installed flag.",
+          "standard": "cli.doctor",
+          "output": {
+            "success": false,
+            "exit_code": 1,
+            "stdout": "{\n  \"status\": \"error\",\n  \"dependencies\": [\n    {\n      \"name\": \"python\",\n      \"installed\": true,\n      \"version\": \"Python 3.14.4\",\n      \"path\": \"/usr/bin/python3\"\n    },\n    {\n      \"name\": \"bun\",\n      \"installed\": true,\n      \"version\": \"1.3.14\",\n      \"path\": \"/home/renanzai/.bun/bin/bun\"\n    },\n    {\n      \"name\": \"ffmpeg\",\n      \"installed\": true,\n      \"version\": \"ffmpeg version 6.0-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2000-2023 the FFmpeg developers\",\n      \"path\": \"/home/renanzai/.local/bin/ffmpeg\"\n    },\n    {\n      \"name\": \"whisper\",\n      \"installed\": false,\n      \"version\": null,\n      \"path\": null\n    },\n    {\n      \"name\": \"edge-tts\",\n      \"installed\": false,\n      \"version\": null,\n      \"path\": null\n    },\n    {\n      \"name\": \"hyperframes\",\n      \"installed\": false,\n      \"version\": null,\n      \"path\": null\n    },\n    {\n      \"name\": \"comfyui\",\n      \"installed\": false,\n      \"version\": null,\n      \"path\": null\n    },\n    {\n      \"name\": \"chrome\",\n      \"installed\": false,\n      \"version\": null,\n      \"path\": null,\n      \"headless_ok\": false,\n      \"headless_message\": null\n    },\n    {\n      \"name\": \"llm_api\",\n      \"installed\": false,\n      \"version\": \"No API key for provider 'openai'. Set AUTOMEDIA_LLM_API_KEY, add to model_config.yaml, or run `automedia init`.\",\n      \"path\": null\n    }\n  ]\n}\n",
+            "stderr": "2026-08-14T07:51:10.395717Z [warning  ] ComfyUI not reachable ([Errno 111] Connection refused) [automedia.core.doctor]\n"
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "effects-cli-contract",
+      "status": "passed",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "automedia effects --help",
+          "surface": "cli",
+          "name": "effects --help shows the usage contract",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.613,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "automedia effects --help exits 0 and prints usage that names the required PROJECT_ID argument.",
+          "standard": "founder-expectations.F02",
+          "output": {
+            "success": true,
+            "exit_code": 0,
+            "stdout": "Usage: automedia effects [OPTIONS] {project_id}\n\n  Compute content analytics for a project.\n\nArguments:\n  project_id  Project ID to analyse.  [required]\n\nOptions:\n  -d, --base-dir <str>  Base directory to scan for projects.  [default: .]\n  -b, --brand <str>     Brand name for mention tracking.\n  -o, --output <str>    Output format: json or table.  [default: table]\n  --help                Show this message and exit.\n",
+            "stderr": ""
+          }
+        },
+        {
+          "step_index": 2,
+          "target": "automedia effects",
+          "surface": "cli",
+          "name": "effects without PROJECT_ID enforces the argument",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.634,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "automedia effects without the required argument exits 2 and reports the missing argument on stderr. Only the version-independent substring 'Missing argument' is asserted: typer versions differ in parameter-name casing ('PROJECT_ID' vs 'project_id').",
+          "standard": "founder-expectations.F02",
+          "output": {
+            "success": false,
+            "exit_code": 2,
+            "stdout": "",
+            "stderr": "Usage: automedia effects [OPTIONS] {project_id}\nTry 'automedia effects --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Missing argument 'project_id'.                                               │\n╰──────────────────────────────────────────────────────────────────────────────╯\n"
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "get-config-baseline",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "get_config",
+          "surface": "tool",
+          "name": "get_config returns the merged config",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.042,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "get_config returns success: true carrying the redacted merged config dict.",
+          "standard": "tool.contract",
+          "output": {
+            "success": true,
+            "config": {
+              "project": {
+                "name": "AutoMedia",
+                "version": "1.0.0",
+                "description": "Automated multi-platform content publishing system"
+              },
+              "paths": {
+                "data_dir": "./data",
+                "output_dir": "./output",
+                "cache_dir": "./cache",
+                "log_dir": "./logs",
+                "pool_db": "./data/pool.db"
+              },
+              "llm": {
+                "text_generation": {
+                  "provider": "openai",
+                  "model": "gpt-4o-mini",
+                  "api_key": "***REDACTED***",
+                  "temperature": 0.7,
+                  "max_tokens": "***REDACTED***",
+                  "timeout": 60
+                }
+              },
+              "content": {
+                "default_tone": "neutral",
+                "default_language": "zh",
+                "min_title_length": 10,
+                "max_title_length": 100
+              },
+              "platforms": {
+                "wechat": {
+                  "enabled": false,
+                  "adapter": "wechat",
+                  "default_style": "article"
+                },
+                "zhihu": {
+                  "enabled": false,
+                  "adapter": "zhihu",
+                  "default_style": "answer"
+                },
+                "xiaohongshu": {
+                  "enabled": false,
+                  "adapter": "xiaohongshu",
+                  "default_style": "note"
+                },
+                "youtube": {
+                  "enabled": false,
+                  "adapter": "youtube",
+                  "default_style": "video"
+                },
+                "tiktok": {
+                  "enabled": false,
+                  "adapter": "tiktok",
+                  "default_style": "short_video"
+                },
+                "twitter": {
+                  "enabled": false,
+                  "adapter": "twitter",
+                  "default_style": "tweet"
+                },
+                "bilibili": {
+                  "enabled": false,
+                  "adapter": "bilibili",
+                  "default_style": "video"
+                }
+              },
+              "cron": {
+                "enabled": true,
+                "jobs_dir": "automedia/cron/jobs.yaml"
+              },
+              "pool": {
+                "retention_days": 7,
+                "max_pending_topics": 1000,
+                "enable_llm_scoring": true
+              },
+              "gate_engine": {
+                "max_retries": 3,
+                "retry_delay": 1.0
+              },
+              "engines": {
+                "tts": {
+                  "default": "edge-tts",
+                  "edge-tts": {
+                    "voice": "zh-CN-YunxiNeural"
+                  },
+                  "voice": "zh-CN-YunxiNeural"
+                },
+                "asr": {
+                  "default": "whisper",
+                  "whisper": {
+                    "model": "tiny",
+                    "language": "zh"
+                  }
+                },
+                "image": {
+                  "default": "comfyui",
+                  "comfyui": {
+                    "host": "127.0.0.1",
+                    "port": 8188,
+                    "protocol": "http",
+                    "timeout": 300
+                  }
+                },
+                "video": {
+                  "default": "ffmpeg",
+                  "hyperframes": {
+                    "quality": "high",
+                    "chrome_path": null
+                  }
+                }
+              },
+              "pipeline": {
+                "video": {
+                  "enabled": true
+                },
+                "audio": {
+                  "enabled": true
+                },
+                "image": {
+                  "enabled": true,
+                  "comfyui": {
+                    "host": "127.0.0.1",
+                    "port": 8188,
+                    "protocol": "http",
+                    "timeout": 300
+                  }
+                },
+                "text": {
+                  "enabled": true
+                },
+                "max_concurrent_pipelines": 3
+              },
+              "my-brand": {
+                "brand_name": "my-brand",
+                "industry": "tech",
+                "target_audience": "developers",
+                "tone_guidelines": "Professional and approachable"
+              },
+              "llm_provider": "openai",
+              "llm_base_url": "",
+              "llm_api_key": "***REDACTED***",
+              "minimal-brand": {
+                "brand_name": "minimal-brand"
+              },
+              "test-brand": {
+                "brand_name": "test-brand",
+                "industry": "Technology",
+                "target_audience": "Developers"
+              },
+              "projects": {
+                "dir": "/tmp/automedia/baseline-projects"
+              }
+            }
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "health-check-baseline",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "health_check",
+          "surface": "tool",
+          "name": "health_check returns a success envelope",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.001,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "health_check returns success: true carrying the server status (verified envelope keys: status, version, uptime_s, tools_count, first_run).",
+          "standard": "tool.contract",
+          "output": {
+            "success": true,
+            "status": "ok",
+            "version": "1.2.0",
+            "uptime_s": 24.69,
+            "tools_count": 59,
+            "first_run": false
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "help-mcp-manifest",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "help_mcp",
+          "surface": "tool",
+          "name": "help_mcp returns the tool manifest",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.001,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "help_mcp completes and returns its categorized tool listing (categories, tool_count, hint). Known product gap: help_mcp does NOT wrap its envelope via success_response (returns no success key, verified empirically), so no success assertion is made; the call completing with the manifest content is the honest check for this surface.",
+          "standard": "founder-expectations.F02",
+          "output": {
+            "categories": {
+              "Account Management": [
+                {
+                  "name": "connect_account",
+                  "description": "Register a new platform account for publishing. Returns the account_id and metadata.",
+                  "parameters": {
+                    "properties": {
+                      "platform": {
+                        "title": "Platform",
+                        "type": "string"
+                      },
+                      "auth_type": {
+                        "default": "api_key",
+                        "title": "Auth Type",
+                        "type": "string"
+                      },
+                      "credentials": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Credentials"
+                      },
+                      "label": {
+                        "default": "",
+                        "title": "Label",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "platform"
+                    ],
+                    "title": "connect_accountArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "disconnect_account",
+                  "description": "Disconnect/remove a platform account. Requires account_id.",
+                  "parameters": {
+                    "properties": {
+                      "account_id": {
+                        "minLength": 1,
+                        "title": "Account Id",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "account_id"
+                    ],
+                    "title": "disconnect_accountArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Add / Create": [
+                {
+                  "name": "add_brand",
+                  "description": "Create a new brand profile. Writes to ~/.automedia/brand_profiles.yaml using the brand profile schema.  The brand name is required; industry and target_audience are optional. Returns success status and brand metadata.",
+                  "parameters": {
+                    "properties": {
+                      "name": {
+                        "title": "Name",
+                        "type": "string"
+                      },
+                      "industry": {
+                        "default": "",
+                        "title": "Industry",
+                        "type": "string"
+                      },
+                      "target_audience": {
+                        "default": "",
+                        "title": "Target Audience",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "title": "add_brandArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "add_cron_schedule",
+                  "description": "Add a cron schedule entry. Takes a unique name, a 5-field cron expression, optional brand, category, and count. Validates the cron expression format and prevents duplicate names. Appends to cron/jobs.yaml.",
+                  "parameters": {
+                    "properties": {
+                      "name": {
+                        "minLength": 1,
+                        "title": "Name",
+                        "type": "string"
+                      },
+                      "expression": {
+                        "pattern": "^(\\S+\\s+){4}\\S+$",
+                        "title": "Expression",
+                        "type": "string"
+                      },
+                      "brand": {
+                        "default": "",
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "category": {
+                        "default": "",
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "count": {
+                        "default": 1,
+                        "title": "Count",
+                        "type": "integer"
+                      },
+                      "platform": {
+                        "default": "",
+                        "title": "Platform",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "",
+                        "title": "Mode",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "expression"
+                    ],
+                    "title": "add_cron_scheduleArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "add_pool_topic",
+                  "description": "Add a topic to the topic pool. Takes title, optional category, and optional pool_db_path. Returns the new topic id, title, category, and status.",
+                  "parameters": {
+                    "properties": {
+                      "title": {
+                        "title": "Title",
+                        "type": "string"
+                      },
+                      "category": {
+                        "default": "",
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "pool_db_path": {
+                        "default": "",
+                        "title": "Pool Db Path",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title"
+                    ],
+                    "title": "add_pool_topicArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Approval": [
+                {
+                  "name": "approve_gate",
+                  "description": "Approve a gate output and resume pipeline execution. Finds the active engine for project_id and calls resume() with approved=True. Takes project_id, gate_name, and optional modifications dict. Returns approved status.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "gate_name": {
+                        "minLength": 1,
+                        "title": "Gate Name",
+                        "type": "string"
+                      },
+                      "modifications": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Modifications"
+                      }
+                    },
+                    "required": [
+                      "project_id",
+                      "gate_name"
+                    ],
+                    "title": "approve_gateArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "reject_gate",
+                  "description": "Reject a gate output and resume pipeline execution. Finds the active engine for project_id and calls resume() with approved=False. Takes project_id, gate_name, and optional reason string. Returns rejected status.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "gate_name": {
+                        "minLength": 1,
+                        "title": "Gate Name",
+                        "type": "string"
+                      },
+                      "reason": {
+                        "default": "",
+                        "title": "Reason",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id",
+                      "gate_name"
+                    ],
+                    "title": "reject_gateArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Archive": [
+                {
+                  "name": "archive_project",
+                  "description": "Archive a project. Red Line 8: refuses unless status is 'published' or force=True.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "base_dir": {
+                        "default": ".",
+                        "title": "Base Dir",
+                        "type": "string"
+                      },
+                      "force": {
+                        "default": false,
+                        "title": "Force",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "archive_projectArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Batch Operations": [
+                {
+                  "name": "batch_run",
+                  "description": "⚠️ DEPRECATED: Use run_batch instead. Execute pipelines for multiple topics sequentially. Takes a list of topics, brand, and optional mode (auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video). A single topic failure does not stop the batch. Returns per-topic results with a pass/fail summary.",
+                  "parameters": {
+                    "properties": {
+                      "topics": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "title": "Topics",
+                        "type": "array"
+                      },
+                      "brand": {
+                        "minLength": 1,
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "auto",
+                        "enum": [
+                          "auto",
+                          "text_only",
+                          "text_with_cover",
+                          "video_only",
+                          "qa_only",
+                          "image-carousel",
+                          "social-thread",
+                          "short-video"
+                        ],
+                        "title": "Mode",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "topics",
+                      "brand"
+                    ],
+                    "title": "batch_runArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Content Quality": [
+                {
+                  "name": "analyze_content",
+                  "description": "Compute content analytics for a project. Scans the project's 01_content/drafts/ for markdown files and returns word count, sentiment, readability, and brand mentions. Takes project_id and optional base_dir.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "base_dir": {
+                        "default": "",
+                        "title": "Base Dir",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "analyze_contentArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "evaluate_content_quality",
+                  "description": "Evaluate content quality using an LLM. Scores content against specified criteria (clarity, accuracy, brand voice, etc.) and returns a quality score (0.0-1.0), issues with severity prefixes, concrete suggestions, and an overall assessment with verdict.",
+                  "parameters": {
+                    "properties": {
+                      "content": {
+                        "title": "Content",
+                        "type": "string"
+                      },
+                      "criteria": {
+                        "default": "general",
+                        "title": "Criteria",
+                        "type": "string"
+                      },
+                      "brand": {
+                        "default": "",
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "pattern": {
+                        "default": "b",
+                        "enum": [
+                          "a",
+                          "b"
+                        ],
+                        "title": "Pattern",
+                        "type": "string"
+                      },
+                      "platform": {
+                        "default": "",
+                        "title": "Platform",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content"
+                    ],
+                    "title": "evaluate_content_qualityArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Document Processing": [
+                {
+                  "name": "extract_brief",
+                  "description": "Extract a content brief from a document file using OPP. Processes the document through OPPAdapter.extract() and returns structured markdown content, a manifest JSON with segment metadata, and any warnings encountered.",
+                  "parameters": {
+                    "properties": {
+                      "file_path": {
+                        "title": "File Path",
+                        "type": "string"
+                      },
+                      "source_lang": {
+                        "default": "auto",
+                        "title": "Source Lang",
+                        "type": "string"
+                      },
+                      "target_lang": {
+                        "default": "en",
+                        "title": "Target Lang",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "file_path"
+                    ],
+                    "title": "extract_briefArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "format_output",
+                  "description": "Convert content to the specified output format. Delegates to ORFAdapter.convert() to transform content into the requested format. Returns the output path, format identifier, and any warnings or errors.",
+                  "parameters": {
+                    "properties": {
+                      "content": {
+                        "title": "Content",
+                        "type": "string"
+                      },
+                      "target_format": {
+                        "title": "Target Format",
+                        "type": "string"
+                      },
+                      "options": {
+                        "title": "Options"
+                      }
+                    },
+                    "required": [
+                      "content",
+                      "target_format",
+                      "options"
+                    ],
+                    "title": "format_outputArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "localize_content",
+                  "description": "Translate markdown content from source to target language. Delegates to OLAdapter.translate() which uses the OL shield → LLM-translate → repair → unshield pipeline. Returns the translated markdown, optional XLIFF path, and warnings.",
+                  "parameters": {
+                    "properties": {
+                      "md_content": {
+                        "title": "Md Content",
+                        "type": "string"
+                      },
+                      "source_lang": {
+                        "title": "Source Lang",
+                        "type": "string"
+                      },
+                      "target_lang": {
+                        "title": "Target Lang",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "md_content",
+                      "source_lang",
+                      "target_lang"
+                    ],
+                    "title": "localize_contentArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "localize_output",
+                  "description": "Translate all project drafts into multiple target languages. Reads markdown from 01_content/drafts/, translates via OLAdapter, writes translated files to 05_publish/{lang}/. Returns a mapping of language code to list of output file paths.",
+                  "parameters": {
+                    "properties": {
+                      "project_dir": {
+                        "title": "Project Dir",
+                        "type": "string"
+                      },
+                      "target_langs": {
+                        "title": "Target Langs",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_dir",
+                      "target_langs"
+                    ],
+                    "title": "localize_outputArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Get / Query": [
+                {
+                  "name": "get_account_health",
+                  "description": "Check an account's health status. Returns status, platform, and last health check time.",
+                  "parameters": {
+                    "properties": {
+                      "account_id": {
+                        "minLength": 1,
+                        "title": "Account Id",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "account_id"
+                    ],
+                    "title": "get_account_healthArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_config",
+                  "description": "Return merged configuration (excluding secrets). When key is empty, returns all non-secret config keys. When key is specified (e.g. 'llm.temperature'), returns that value. Dot-notation traversal is supported. Secret keys (containing 'key', 'secret', 'password', or 'token') are redacted.",
+                  "parameters": {
+                    "properties": {
+                      "key": {
+                        "default": "",
+                        "title": "Key",
+                        "type": "string"
+                      }
+                    },
+                    "title": "get_configArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_cron_health",
+                  "description": "Check cron system health. Validates cron/jobs.yaml schedule definitions and reports schedule counts. Does not include runtime monitoring data because AutoMedia has no built-in cron daemon — scheduling is delegated to an external crond. Returns jobs_valid, schedule_count, valid/invalid expression counts, static job definitions, and a note about limitations.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "get_cron_healthArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_pending_approvals",
+                  "description": "List gates currently awaiting approval in active pipelines. When project_id is provided, filters to that project only. Returns a list of pending approvals with gate_name and status.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "default": "",
+                        "title": "Project Id",
+                        "type": "string"
+                      }
+                    },
+                    "title": "get_pending_approvalsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_pipeline_progress",
+                  "description": "Get the current progress of a running pipeline by project_id. Returns the current gate, all gate progress events (start / passed / failed), and any errors captured from the background thread. Poll this after run_pipeline to observe execution.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "since_index": {
+                        "default": 0,
+                        "title": "Since Index",
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "get_pipeline_progressArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_pipeline_status",
+                  "description": "Return the current status / progress of a pipeline run by project ID.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "base_dir": {
+                        "default": ".",
+                        "title": "Base Dir",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "get_pipeline_statusArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_project_assets",
+                  "description": "Return the list of asset files inside a project directory.",
+                  "parameters": {
+                    "properties": {
+                      "project_dir": {
+                        "title": "Project Dir",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_dir"
+                    ],
+                    "title": "get_project_assetsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "get_redlines",
+                  "description": "Return the list of agent red-line constraints. The 9 red lines are MUST/MUST NOT rules that agents must obey while working in this codebase — sourced from AGENTS.md §5.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "get_redlinesArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Help / Introspection": [
+                {
+                  "name": "help_mcp",
+                  "description": "Get a categorized listing of all available MCP tools with descriptions. Use this to discover what tools are available.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "help_mcpArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "List / Browse": [
+                {
+                  "name": "list_accounts",
+                  "description": "List all registered accounts with optional platform/status filters. Returns account metadata.",
+                  "parameters": {
+                    "properties": {
+                      "platform": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Platform"
+                      },
+                      "status": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Status"
+                      }
+                    },
+                    "title": "list_accountsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_active_pipelines",
+                  "description": "Return all active and recently-finished pipelines. Reads the persistent session tracker (active_pipelines.json) and returns pipelines that are currently running, finished within the last 5 minutes, or marked 'lost' from a previous server session. Each entry includes project_id, status, current_gate, elapsed_s, mode, and topic. Survives server restarts.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "list_active_pipelinesArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_brands",
+                  "description": "List all configured brands with full profile metadata. Returns structured list including aliases, CTA principles, blocked words, tone guidelines, brand identity, languages, industry, target audience, personality, and platforms. Returns empty list when no brands configured (not an error).",
+                  "parameters": {
+                    "properties": {},
+                    "title": "list_brandsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_cron_schedules",
+                  "description": "List cron schedule entries from cron/jobs.yaml with optional platform and mode filters. Returns entries sorted by name with their expression, brand, category, count, platform, and mode fields.",
+                  "parameters": {
+                    "properties": {
+                      "platform": {
+                        "default": "",
+                        "title": "Platform",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "",
+                        "title": "Mode",
+                        "type": "string"
+                      }
+                    },
+                    "title": "list_cron_schedulesArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_overridable_templates",
+                  "description": "List all overridable prompt templates with metadata (variables, purpose, override status). Checks ~/.automedia/overrides/prompts/ for existing overrides. Returns template names, their Jinja2 variables, purpose descriptions, and whether a user override exists.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "list_overridable_templatesArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_platforms",
+                  "description": "List all registered publishing platforms. Returns sorted list platform names and total count. Returns empty list when no adapters are registered (not an error).",
+                  "parameters": {
+                    "properties": {},
+                    "title": "list_platformsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_projects",
+                  "description": "List all projects found under a base directory, optionally filtered by status.",
+                  "parameters": {
+                    "properties": {
+                      "base_dir": {
+                        "default": ".",
+                        "title": "Base Dir",
+                        "type": "string"
+                      },
+                      "status": {
+                        "default": "",
+                        "enum": [
+                          "published",
+                          "archived",
+                          "failed",
+                          ""
+                        ],
+                        "title": "Status",
+                        "type": "string"
+                      }
+                    },
+                    "title": "list_projectsArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_topic_pool",
+                  "description": "List topics in the pool, optionally filtered by status or category.",
+                  "parameters": {
+                    "properties": {
+                      "status": {
+                        "default": "",
+                        "title": "Status",
+                        "type": "string"
+                      },
+                      "category": {
+                        "default": "",
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "pool_db_path": {
+                        "default": "",
+                        "title": "Pool Db Path",
+                        "type": "string"
+                      }
+                    },
+                    "title": "list_topic_poolArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "list_workflows",
+                  "description": "List all defined workflow configurations. Discovers workflow YAML files from .automedia/workflows/ and ~/.automedia/workflows/. Returns name, mode, platforms, and optional schedule/brand/gates/prompts/media for each workflow. Returns empty list when no workflows are defined.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "list_workflowsArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Other": [
+                {
+                  "name": "cancel_pipeline",
+                  "description": "Cancel a running pipeline by project_id. Sets the cancellation flag so the pipeline exits after the current gate completes.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "cancel_pipelineArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "mcp_help",
+                  "description": "⚠️ DEPRECATED: Use help_mcp instead. Get a categorized listing of all available MCP tools with descriptions. Use this to discover what tools are available.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "mcp_helpArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "pause_pipeline",
+                  "description": "Pause a running pipeline by project_id. Signals the pipeline to pause after the current gate completes.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "pause_pipelineArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "resume_pipeline",
+                  "description": "Resume a paused pipeline by project_id. Resumes execution of a previously paused pipeline.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "resume_pipelineArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "retry_gate",
+                  "description": "Mark a specific gate for retry in a running pipeline. Takes project_id and gate_name (e.g. 'G0', 'V3'). The pipeline will re-execute the named gate on its next iteration.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "gate_name": {
+                        "minLength": 1,
+                        "title": "Gate Name",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id",
+                      "gate_name"
+                    ],
+                    "title": "retry_gateArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "skip_gate",
+                  "description": "Mark a specific gate for skipping in a running pipeline. Takes project_id and gate_name (e.g. 'G0', 'V3'). The pipeline will skip the named gate on its next iteration.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "gate_name": {
+                        "minLength": 1,
+                        "title": "Gate Name",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id",
+                      "gate_name"
+                    ],
+                    "title": "skip_gateArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Publishing": [
+                {
+                  "name": "distribute_content",
+                  "description": "Distribute a project's content to one or more platforms. Takes project_id, optional comma-separated platforms (e.g. 'wechat,zhihu'), all (bool) to distribute to every registered platform, dry_run (bool) to validate without publishing, and optional base_dir. Returns a mapping of platform -> status and a summary string. When all=True, overrides the platforms parameter.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "platforms": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Platforms"
+                      },
+                      "all": {
+                        "default": false,
+                        "title": "All",
+                        "type": "boolean"
+                      },
+                      "dry_run": {
+                        "default": false,
+                        "title": "Dry Run",
+                        "type": "boolean"
+                      },
+                      "base_dir": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Base Dir"
+                      }
+                    },
+                    "required": [
+                      "project_id"
+                    ],
+                    "title": "distribute_contentArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "publish_content",
+                  "description": "Publish a project to a platform. Takes project_id, platform name, optional account_id, and optional base_dir. Returns the publish result including URL.",
+                  "parameters": {
+                    "properties": {
+                      "project_id": {
+                        "minLength": 1,
+                        "title": "Project Id",
+                        "type": "string"
+                      },
+                      "platform": {
+                        "title": "Platform",
+                        "type": "string"
+                      },
+                      "account_id": {
+                        "default": "",
+                        "title": "Account Id",
+                        "type": "string"
+                      },
+                      "base_dir": {
+                        "default": "",
+                        "title": "Base Dir",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "auto",
+                        "title": "Mode",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "project_id",
+                      "platform"
+                    ],
+                    "title": "publish_contentArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Registration": [
+                {
+                  "name": "register_platform_adapter",
+                  "description": "Register a platform adapter (stub). Provide platform_name and optional adapter_class dotted path.",
+                  "parameters": {
+                    "properties": {
+                      "platform_name": {
+                        "title": "Platform Name",
+                        "type": "string"
+                      },
+                      "adapter_class": {
+                        "default": "",
+                        "title": "Adapter Class",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "platform_name"
+                    ],
+                    "title": "register_platform_adapterArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Remove / Delete": [
+                {
+                  "name": "remove_cron_schedule",
+                  "description": "Remove a cron schedule entry by name. Returns an error if the name is not found.",
+                  "parameters": {
+                    "properties": {
+                      "name": {
+                        "minLength": 1,
+                        "title": "Name",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "title": "remove_cron_scheduleArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Research": [
+                {
+                  "name": "research_topics",
+                  "description": "Research trending or high-potential topics within a category using LLM. Takes a category name, optional count (default 5), and optional trending data. Returns a structured list of topics with angles, confidence scores, and format recommendations. The result is ready to feed into the topic pool. Requires AUTOMEDIA_TAVILY_API_KEY for real-time trending data; defaults to simulated results when the env var is not set.",
+                  "parameters": {
+                    "properties": {
+                      "category": {
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "count": {
+                        "default": 5,
+                        "title": "Count",
+                        "type": "integer"
+                      },
+                      "trending_data": {
+                        "default": "",
+                        "title": "Trending Data",
+                        "type": "string"
+                      },
+                      "pattern": {
+                        "default": "b",
+                        "enum": [
+                          "a",
+                          "b"
+                        ],
+                        "title": "Pattern",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "category"
+                    ],
+                    "title": "research_topicsArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Run / Execute": [
+                {
+                  "name": "run_batch",
+                  "description": "Execute pipelines for multiple topics sequentially. Takes a list of topics, brand, and optional mode (auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video). A single topic failure does not stop the batch. Returns per-topic results with a pass/fail summary.",
+                  "parameters": {
+                    "properties": {
+                      "topics": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "title": "Topics",
+                        "type": "array"
+                      },
+                      "brand": {
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "auto",
+                        "title": "Mode",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "topics",
+                      "brand"
+                    ],
+                    "title": "run_batchArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "run_brand_strategy",
+                  "description": "Generate a brand strategy using LLM-driven analysis. Takes brand_name, industry, target_audience, and optional context. Returns a structured strategy with brand positioning, audience analysis, competitive landscape, key differentiators, and suggested messaging.",
+                  "parameters": {
+                    "properties": {
+                      "brand_name": {
+                        "title": "Brand Name",
+                        "type": "string"
+                      },
+                      "industry": {
+                        "title": "Industry",
+                        "type": "string"
+                      },
+                      "target_audience": {
+                        "title": "Target Audience",
+                        "type": "string"
+                      },
+                      "context": {
+                        "default": "",
+                        "title": "Context",
+                        "type": "string"
+                      },
+                      "pattern": {
+                        "default": "b",
+                        "enum": [
+                          "a",
+                          "b"
+                        ],
+                        "title": "Pattern",
+                        "type": "string"
+                      },
+                      "platform": {
+                        "default": "",
+                        "title": "Platform",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "brand_name",
+                      "industry",
+                      "target_audience"
+                    ],
+                    "title": "run_brand_strategyArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "run_pipeline",
+                  "description": "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON. Modes: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video. Accepts optional workflow name to apply workflow-level config overrides.",
+                  "parameters": {
+                    "properties": {
+                      "topic": {
+                        "minLength": 1,
+                        "title": "Topic",
+                        "type": "string"
+                      },
+                      "brand": {
+                        "minLength": 1,
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "auto",
+                        "enum": [
+                          "auto",
+                          "text_only",
+                          "text_with_cover",
+                          "video_only",
+                          "qa_only",
+                          "image-carousel",
+                          "social-thread",
+                          "short-video"
+                        ],
+                        "title": "Mode",
+                        "type": "string"
+                      },
+                      "decision_mode": {
+                        "default": "build",
+                        "title": "Decision Mode",
+                        "type": "string"
+                      },
+                      "tenant_id": {
+                        "default": "default",
+                        "title": "Tenant Id",
+                        "type": "string"
+                      },
+                      "resume_from": {
+                        "default": "",
+                        "title": "Resume From",
+                        "type": "string"
+                      },
+                      "source_path": {
+                        "default": "",
+                        "title": "Source Path",
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "default": "",
+                        "title": "Source Url",
+                        "type": "string"
+                      },
+                      "workflow": {
+                        "default": "",
+                        "title": "Workflow",
+                        "type": "string"
+                      },
+                      "director": {
+                        "default": false,
+                        "title": "Director",
+                        "type": "boolean"
+                      },
+                      "platforms": {
+                        "default": "",
+                        "title": "Platforms",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "topic",
+                      "brand"
+                    ],
+                    "title": "run_pipelineArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "run_pipeline_from_strategy",
+                  "description": "Generate a content strategy via LLM then execute the AutoMedia production pipeline. Takes topic, brand, optional mode (auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video), optional strategy_context, and optional workflow name. Returns both the strategy output and the pipeline result.",
+                  "parameters": {
+                    "properties": {
+                      "topic": {
+                        "minLength": 1,
+                        "title": "Topic",
+                        "type": "string"
+                      },
+                      "brand": {
+                        "minLength": 1,
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "mode": {
+                        "default": "auto",
+                        "enum": [
+                          "auto",
+                          "text_only",
+                          "text_with_cover",
+                          "video_only",
+                          "qa_only",
+                          "image-carousel",
+                          "social-thread",
+                          "short-video"
+                        ],
+                        "title": "Mode",
+                        "type": "string"
+                      },
+                      "strategy_context": {
+                        "default": "",
+                        "title": "Strategy Context",
+                        "type": "string"
+                      },
+                      "pattern": {
+                        "default": "b",
+                        "enum": [
+                          "a",
+                          "b"
+                        ],
+                        "title": "Pattern",
+                        "type": "string"
+                      },
+                      "platform": {
+                        "default": "",
+                        "title": "Platform",
+                        "type": "string"
+                      },
+                      "workflow": {
+                        "default": "",
+                        "title": "Workflow",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "topic",
+                      "brand"
+                    ],
+                    "title": "run_pipeline_from_strategyArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Search": [
+                {
+                  "name": "search_assets",
+                  "description": "Search the asset library for brand assets. Performs combined SQLite keyword search and Chroma semantic search. Takes query, brand, optional limit (default 10), and optional filters (type, tags, lang, stage). Returns ranked results with relevance scores, metadata, and content. Empty query returns all assets filtered by other criteria (not an error).",
+                  "parameters": {
+                    "properties": {
+                      "query": {
+                        "title": "Query",
+                        "type": "string"
+                      },
+                      "brand": {
+                        "minLength": 1,
+                        "title": "Brand",
+                        "type": "string"
+                      },
+                      "limit": {
+                        "default": 10,
+                        "title": "Limit",
+                        "type": "integer"
+                      },
+                      "type": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Type"
+                      },
+                      "tags": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Tags"
+                      },
+                      "lang": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Lang"
+                      },
+                      "stage": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Stage"
+                      }
+                    },
+                    "required": [
+                      "query",
+                      "brand"
+                    ],
+                    "title": "search_assetsArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Server / Engine": [
+                {
+                  "name": "engine_health",
+                  "description": "⚠️ DEPRECATED: Use health_engine instead. Check all engine-related dependencies (ComfyUI, hyperframes, edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return their installation and health status.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "engine_healthArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "health_check",
+                  "description": "Return server health status — version, uptime in seconds, and the number of registered tools.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "health_checkArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "health_engine",
+                  "description": "Check all engine-related dependencies (ComfyUI, hyperframes, edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return their installation and health status.",
+                  "parameters": {
+                    "properties": {},
+                    "title": "health_engineArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Setup / Configuration": [
+                {
+                  "name": "configure_llm",
+                  "description": "Configure the LLM provider for AutoMedia. Writes provider, optional model, and optional API key to ~/.automedia/model_config.yaml. WARNING: Storing API keys in config files is less secure than using AUTOMEDIA_LLM_API_KEY environment variable. Returns success status, provider, model, and config file path.",
+                  "parameters": {
+                    "properties": {
+                      "provider": {
+                        "default": "",
+                        "title": "Provider",
+                        "type": "string"
+                      },
+                      "model": {
+                        "default": "",
+                        "title": "Model",
+                        "type": "string"
+                      },
+                      "api_key": {
+                        "default": "",
+                        "title": "Api Key",
+                        "type": "string"
+                      }
+                    },
+                    "title": "configure_llmArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "init_config",
+                  "description": "Initialize AutoMedia configuration with sensible defaults. Creates the .automedia/ directory structure and a default config.yaml.  When project_dir is provided, creates there; otherwise uses the current working directory. Returns the config directory and file paths.",
+                  "parameters": {
+                    "properties": {
+                      "project_dir": {
+                        "default": "",
+                        "title": "Project Dir",
+                        "type": "string"
+                      }
+                    },
+                    "title": "init_configArguments",
+                    "type": "object"
+                  }
+                },
+                {
+                  "name": "onboard",
+                  "description": "One-step onboarding: configure LLM and create a brand profile. Accepts brand_name, llm_provider, llm_key, and optional base_url. Delegates to the same config-writing logic as the CLI onboard wizard. Returns success status, brand name, provider, and config directory.",
+                  "parameters": {
+                    "properties": {
+                      "brand_name": {
+                        "default": "",
+                        "title": "Brand Name",
+                        "type": "string"
+                      },
+                      "llm_provider": {
+                        "default": "",
+                        "title": "Llm Provider",
+                        "type": "string"
+                      },
+                      "llm_key": {
+                        "default": "",
+                        "title": "Llm Key",
+                        "type": "string"
+                      },
+                      "base_url": {
+                        "default": "",
+                        "title": "Base Url",
+                        "type": "string"
+                      }
+                    },
+                    "title": "onboardArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Test / Validate": [
+                {
+                  "name": "test_cron_schedule",
+                  "description": "Test and validate a cron expression. Returns whether the 5-field expression is syntactically valid, and if croniter is available, computes the next N trigger times. Accepts an optional count parameter (default 5, max 20).",
+                  "parameters": {
+                    "properties": {
+                      "expression": {
+                        "pattern": "^(\\S+\\s+){4}\\S+$",
+                        "title": "Expression",
+                        "type": "string"
+                      },
+                      "count": {
+                        "default": 5,
+                        "title": "Count",
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "expression"
+                    ],
+                    "title": "test_cron_scheduleArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Topic Pool": [
+                {
+                  "name": "pool_add_topic",
+                  "description": "⚠️ DEPRECATED: Use add_pool_topic instead. Add a topic to the topic pool. Takes title, optional category, and optional pool_db_path. Returns the new topic id, title, category, and status.",
+                  "parameters": {
+                    "properties": {
+                      "title": {
+                        "title": "Title",
+                        "type": "string"
+                      },
+                      "category": {
+                        "default": "",
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "pool_db_path": {
+                        "default": "",
+                        "title": "Pool Db Path",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title"
+                    ],
+                    "title": "pool_add_topicArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Topic Selection": [
+                {
+                  "name": "select_topic",
+                  "description": "Select the highest-scored pending topic from the pool. Returns the selected topic and remaining count.",
+                  "parameters": {
+                    "properties": {
+                      "category": {
+                        "default": "",
+                        "title": "Category",
+                        "type": "string"
+                      },
+                      "tenant_id": {
+                        "default": "default",
+                        "title": "Tenant Id",
+                        "type": "string"
+                      },
+                      "pool_db_path": {
+                        "default": "",
+                        "title": "Pool Db Path",
+                        "type": "string"
+                      }
+                    },
+                    "title": "select_topicArguments",
+                    "type": "object"
+                  }
+                }
+              ],
+              "Update": [
+                {
+                  "name": "update_engine_config",
+                  "description": "Update an engine configuration setting. Writes a YAML override to ~/.automedia/overrides/rules/. Modality: tts, asr, image, or video. Setting: e.g. default, voice, host, port, model.",
+                  "parameters": {
+                    "properties": {
+                      "modality": {
+                        "enum": [
+                          "tts",
+                          "asr",
+                          "image",
+                          "video"
+                        ],
+                        "title": "Modality",
+                        "type": "string"
+                      },
+                      "setting": {
+                        "title": "Setting",
+                        "type": "string"
+                      },
+                      "value": {
+                        "title": "Value",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modality",
+                      "setting",
+                      "value"
+                    ],
+                    "title": "update_engine_configArguments",
+                    "type": "object"
+                  }
+                }
+              ]
+            },
+            "tool_count": 59,
+            "hint": "Call a tool by name from the categories above. Use get_pipeline_progress to poll async tasks."
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "text-only-journey",
+      "status": "unconfigured",
+      "steps": [],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "reason": "missing env: AUTOMEDIA_LLM_API_KEY",
+      "error_boundary": false
+    },
+    {
+      "scenario": "list-brands-baseline",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "list_brands",
+          "surface": "tool",
+          "name": "list_brands returns the brand list",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.001,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "list_brands returns success: true carrying brands and total.",
+          "standard": "tool.contract",
+          "output": {
+            "success": true,
+            "brands": [
+              {
+                "name": "minimal-brand",
+                "aliases": [],
+                "cta_principles": [],
+                "blocked_words": [],
+                "tone_guidelines": "",
+                "brand_identity": "",
+                "languages": {},
+                "industry": "",
+                "target_audience": "",
+                "personality": "",
+                "platforms": []
+              },
+              {
+                "name": "test-brand",
+                "aliases": [],
+                "cta_principles": [],
+                "blocked_words": [],
+                "tone_guidelines": "",
+                "brand_identity": "",
+                "languages": {},
+                "industry": "Technology",
+                "target_audience": "Developers",
+                "personality": "",
+                "platforms": []
+              }
+            ],
+            "total": 2
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "list-platforms-baseline",
+      "status": "passed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "list_platforms",
+          "surface": "tool",
+          "name": "list_platforms returns the platform list",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.365,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "list_platforms returns success: true carrying platforms and total.",
+          "standard": "tool.contract",
+          "output": {
+            "success": true,
+            "platforms": [
+              "baijiahao",
+              "bilibili",
+              "douyin",
+              "facebook",
+              "feishu",
+              "instagram",
+              "juejin",
+              "kuaishou",
+              "linkedin",
+              "medium",
+              "reddit",
+              "tiktok",
+              "toutiao",
+              "twitter",
+              "wechat",
+              "weibo",
+              "wordpress",
+              "xiaohongshu",
+              "youtube",
+              "zhihu"
+            ],
+            "total": 20
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "list-projects-tmpdir",
+      "status": "passed",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "mkdir -p /tmp/automedia/w2t3-list-projects",
+          "surface": "cli",
+          "name": "create the temp project root",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.006,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "mkdir -p creates /tmp/automedia/w2t3-list-projects so list_projects has a real allowlisted directory to scan.",
+          "standard": "founder-expectations.F01",
+          "output": {
+            "success": true,
+            "exit_code": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        },
+        {
+          "step_index": 2,
+          "target": "list_projects",
+          "surface": "tool",
+          "name": "list_projects scans the temp root",
+          "arguments": {
+            "base_dir": "/tmp/automedia/w2t3-list-projects"
+          },
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.0,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "list_projects returns success: true (an empty root is an empty project list, not an error).",
+          "standard": "tool.contract",
+          "output": {
+            "success": true,
+            "projects": [],
+            "count": 0
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "step_index": 0,
+          "target": "rm -rf /tmp/automedia/w2t3-list-projects",
+          "surface": "cli",
+          "name": "remove the temp project root",
+          "arguments": {},
+          "passed": true,
+          "status": "passed",
+          "failures": [],
+          "duration": 0.003,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "rm -rf removes the temp directory created by this scenario.",
+          "standard": "founder-expectations.F01",
+          "output": {
+            "success": true,
+            "exit_code": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      ],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    },
+    {
+      "scenario": "list-validation-scenarios-meta",
+      "status": "failed",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "recovered": 0,
+        "artifacts_missing": []
+      },
+      "steps": [
+        {
+          "step_index": 1,
+          "target": "list_validation_scenarios",
+          "surface": "tool",
+          "name": "list_validation_scenarios answers",
+          "arguments": {},
+          "passed": false,
+          "status": "failed",
+          "failures": [
+            "expect.success: expected True, observed False"
+          ],
+          "duration": 0.0,
+          "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+          "check": "list_validation_scenarios returns success: true (the tool does not exist yet, W4-T2, so this step is expected to fail in the current baseline; it is a real scenario, not a probe).",
+          "standard": "tool.contract",
+          "output": {
+            "success": false,
+            "error": "Unknown tool: list_validation_scenarios"
+          }
+        }
+      ],
+      "cleanup": [],
+      "trace_id": "2b4bbe5c-2f5d-4534-b5ac-1a9f5c90a248",
+      "error_boundary": false
+    }
+  ],
+  "baseline": true,
+  "note": "Pre-flight baseline (W2-T4): the FIRST recorded run of the validation library against the current product on a clean env (no AUTOMEDIA_LLM_API_KEY). RED/unconfigured rows here are honest evidence of product gaps (per guide §4.5 RED-first, §7.2), not framework defects. Later waves turn these RED->GREEN; the W4-T4 diff computes against THIS record. Regenerate with: env -u AUTOMEDIA_LLM_API_KEY AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/baseline-projects .venv/bin/python /tmp/opencode/baseline_run.py"
+}

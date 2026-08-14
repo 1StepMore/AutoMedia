@@ -1,0 +1,14 @@
+name: list-topic-pool-empty
+description: list_topic_pool answers on an empty in-memory pool with a success envelope (an empty pool is an empty list, not an error).
+intent: Prove the pool-listing surface answers without credentials or an LLM, so agents can query the pool on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: list_topic_pool returns the empty pool
+    kind: tool
+    check: "list_topic_pool returns success: true carrying topics and count (verified empirically: empty in-memory pool yields count 0, not an error)."
+    standard: tool.contract
+    tool: list_topic_pool
+    arguments: {}
+    expect:
+      success: true

@@ -1,0 +1,32 @@
+name: get-pipeline-status-synthetic
+description: get_pipeline_status resolves a synthetic project info file under an allowlisted temp base dir and returns the project metadata plus subdirs in a success envelope.
+intent: Prove the project-status surface reads real project info files from disk (no LLM), so agents can query status on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: create a synthetic project info file
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w3t1-status/projects/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w3t1-status/projects/validation-synthetic/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "5f3a9c2e8b1d", "topic": "validation-synthetic", "brand": "w3t1-validation-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"}))'
+    expect:
+      exit_code: 0
+  - name: get_pipeline_status resolves the project
+    kind: tool
+    check: "get_pipeline_status returns success: true carrying project and subdirs for the synthetic project (verified empirically against /tmp/automedia/w3t1-status/projects)."
+    standard: tool.contract
+    tool: get_pipeline_status
+    arguments:
+      project_id: "5f3a9c2e8b1d"
+      base_dir: /tmp/automedia/w3t1-status/projects
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-status
+    expect:
+      exit_code: 0

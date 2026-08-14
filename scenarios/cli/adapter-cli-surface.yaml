@@ -1,0 +1,17 @@
+name: adapter-cli-surface
+description: automedia adapter --help exits 0 and prints the platform adapter sub-commands (list, create), proving the adapter command is registered.
+intent: Prove the adapter CLI surface is callable and exposes its real contract (list/create sub-commands) without generating any adapter files.
+category: cli
+requires_env: []
+steps:
+  - name: adapter --help shows sub-commands
+    kind: cli
+    check: "automedia adapter --help exits 0 and prints usage text naming the adapter sub-commands."
+    standard: founder-expectations.F02
+    command: automedia adapter --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "adapter"
+        - "list"

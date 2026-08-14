@@ -1,0 +1,28 @@
+name: connect-account-masterkey
+description: "connect_account registers a platform account with synthetic credentials and returns a success envelope; the account store requires AUTOMEDIA_MASTER_KEY (verified empirically: without it the tool errors), so a missing key gates the scenario to unconfigured."
+intent: Prove the account-registration surface's real contract with an isolated config dir (synthetic credentials only), with a paired cleanup step per guide §4.6.
+category: surface
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: connect_account registers the synthetic account
+    kind: tool
+    check: "connect_account returns success: true carrying the account metadata (verified empirically with a synthetic master key: the registry accepts platform, credentials and label and returns account_id)."
+    standard: tool.contract
+    tool: connect_account
+    arguments:
+      platform: wechat
+      auth_type: api_key
+      credentials:
+        api_key: w3t1-synthetic-key
+      label: w3t1-validation
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the isolated account store
+    kind: cli
+    check: rm -rf removes the isolated accounts store directory written by connect_account (config-dir-scoped, never the real user config).
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-config/accounts
+    expect:
+      exit_code: 0

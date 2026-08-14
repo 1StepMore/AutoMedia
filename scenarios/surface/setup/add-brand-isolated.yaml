@@ -1,0 +1,24 @@
+name: add-brand-isolated
+description: add_brand creates a brand profile in the isolated brand_profiles.yaml and returns a success envelope (industry and target_audience optional).
+intent: Prove the brand-creation surface answers a real call against the isolated config dir, so agents can bootstrap brands without touching the real user config.
+category: surface
+requires_env: []
+steps:
+  - name: add_brand creates the isolated profile
+    kind: tool
+    check: "add_brand returns success: true carrying brand_name, industry and target_audience (verified empirically: the profile is written to the isolated brand_profiles.yaml)."
+    standard: tool.contract
+    tool: add_brand
+    arguments:
+      name: w3t1-validation-brand
+      industry: SaaS
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the isolated brand profile
+    kind: cli
+    check: rm -f removes the isolated brand_profiles.yaml entry written by this scenario (config-dir-scoped, never the real user config).
+    standard: founder-expectations.F01
+    command: rm -f /tmp/automedia/w3t1-config/brand_profiles.yaml
+    expect:
+      exit_code: 0

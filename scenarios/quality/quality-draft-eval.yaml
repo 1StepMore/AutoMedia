@@ -1,0 +1,125 @@
+# W3-T4 human-quality scenario: real-LLM evaluation of a produced draft
+# (plan agent-tester-validation W3-T4: "real-LLM evaluation of produced
+# draft/translation against evaluation-matrix 8 dims (P0-P5), scores recorded
+# for trend").
+#
+# PASS SEMANTICS PINNED (guide §2.7 partial-pass + review fix m11):
+#   - PASS means the artifact was PRODUCED and INSPECTED: step 1 proves the
+#     fixture draft exists as a non-trivial file (founder-expectations.F01
+#     artifact_exists family), step 2 runs a real-LLM quality evaluation of
+#     that same draft (founder-expectations.true-test, the publishable-content
+#     standard; T3 "topic to draft.md" is the mandatory True Test clause).
+#   - PARTIAL-PASS GUARDRAIL (review fix m12): min_passing 1 + pass_ratio 0.5
+#     let the artifact step alone carry a partial-pass verdict, but a
+#     partial-pass run REQUIRES director review before anything ships — the
+#     run record lists every failed step with its trace; partial-pass never
+#     hides a failure and is never reported as GREEN.
+#   - A score drop between runs is a REGRESSION SIGNAL: the tool's
+#     quality_score/overall_assessment land in the step output, which the
+#     engine persists verbatim in the run record (engine.py: output in every
+#     step trace), so W4-T4 quality-trend diffing can compare them.
+#
+# KNOWN ISSUE ON THIS BOX (recorded in
+# .omo/notepads/agent-tester-validation/issues.md): the provider configured in
+# the repo .env (open.bigmodel.cn GLM) returns json-fenced structured output,
+# and llm_client.py:552 model_validate_json does not strip the code fences ->
+# pydantic json_invalid -> VALIDATION_ERROR -> evaluate_content_quality
+# honestly reports success: false. Step 2 is therefore expected RED with a
+# real key on this box; recorded RED, never faked GREEN. When the fence
+# defect is fixed, this step turns GREEN and the scenario becomes fully
+# passed.
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (step 1 and the artifact expects resolve
+#         scenarios/fixtures/sample-draft.md against the engine cwd)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to
+#         unconfigured without it — honesty.unconfigured, guide §4.2)
+#   engine call: load_scenarios("scenarios/quality") then run each scenario
+#         via run_validation_scenario(..., server=create_server(), cwd=".")
+#   Rate limits (issues.md): ONE real-LLM call per scenario, run scenarios
+#         sequentially — never run this scenario concurrently with another
+#         real-LLM scenario.
+
+name: quality-draft-eval
+description: A committed synthetic draft is inspected as a produced artifact and scored by a real LLM against the evaluation-matrix dimension criteria, with partial-pass semantics pinned to the director-review guardrail.
+intent: "Prove the human-quality leg of the validation framework: a produced draft is both PRODUCED-AND-INSPECTED (artifact steps, F01) and evaluated by a real LLM against the evaluation-matrix dimensions (clarity, accuracy, brand voice, structure mirror the 8 dims' content-facing checks, P0-P5 severity semantics), the quality scores persist in the run record for W4-T4 trend diffing, and a partial-pass verdict (min_passing 1 / pass_ratio 0.5) REQUIRES director review per guide §2.7."
+category: quality
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+min_passing: 1
+pass_ratio: 0.5
+steps:
+  - name: produced draft artifact exists and is non-trivial
+    kind: file
+    check: "The fixture draft scenarios/fixtures/sample-draft.md exists, is non-empty, and is at least 1024 bytes — the artifact the scenario must PRODUCE-AND-INSPECT (never assumed), per the F01 ever-green clause."
+    standard: founder-expectations.F01
+    command: scenarios/fixtures/sample-draft.md
+    expect:
+      artifact_exists: scenarios/fixtures/sample-draft.md
+      artifact_nonempty: scenarios/fixtures/sample-draft.md
+      artifact_size_min: 1024
+    collect_artifacts:
+      - path: scenarios/fixtures/sample-draft.md
+        required: true
+  - name: real-LLM evaluation scores the draft against evaluation-matrix dimensions
+    kind: tool
+    check: "evaluate_content_quality returns a success envelope carrying the structured evaluation (quality_score, issues, suggestions, overall_assessment) for the fixture draft body, scored under the evaluation-matrix dimension criteria 'clarity, accuracy, brand voice, structure' (the 8 dims' content-facing mirror: accuracy/dim3, structure/dim5, brand voice per the tone-check clause, clarity/dim1 agent-facing readability), with pattern defaulting to 'b' (real LLM, NOT the raw-data 'a' shortcut); the scores land in the step output and persist in the run record so W4-T4 can diff them for regression signals."
+    standard: founder-expectations.true-test
+    tool: evaluate_content_quality
+    arguments:
+      content: |-
+        # How AI Agents Are Changing Content Teams (And What That Means for You)
+
+        ## The Short Version
+
+        Content teams spend most of their week on work that feels productive but is
+        actually repetitive: researching a topic, drafting the first version, fixing
+        grammar, and reformatting the same piece for three different platforms. AI
+        agents do not replace the editorial judgment at the center of good content,
+        but they do compress the distance between an idea and a publishable draft.
+
+        This article explains, in plain terms, what changes for editors, writers, and
+        managers when an AI agent joins the team — and what stays exactly the same.
+
+        ## What an AI Agent Actually Does
+
+        An agent is not a search box that returns links. It is a system that can take
+        a brief ("write a 800-word explainer on X for a B2B audience") and execute a
+        sequence of steps: outline, draft, check against the brief, revise, and hand
+        the result back. The key idea is delegation with supervision: the agent does
+        the legwork, the human keeps the judgment.
+
+        Three concrete gains show up within the first week:
+
+        1. Research summaries arrive in minutes instead of hours.
+        2. First drafts arrive with structure, not a blank page.
+        3. Repurposing one article into a newsletter and a short post stops being a
+           separate project.
+
+        ## What Does Not Change
+
+        Editorial judgment is still the product. Someone must decide what is true,
+        what is worth saying, and what the audience actually needs. Agents make
+        mistakes with confidence, so fact-checking and tone review stay human tasks.
+        The teams that get the most value treat the agent as a very fast junior
+        colleague: review everything, say no often, and keep a clear style guide.
+
+        ## A Practical Starting Point
+
+        Start with one narrow workflow, not ten. Pick the step your team repeats most
+        (the research brief is usually the best candidate), run it with a human
+        reviewer for two weeks, and measure the time saved per piece. Then expand.
+        The goal is not to publish faster at any cost; it is to publish the same
+        quality with more time left for the work only humans can do.
+
+        ## The Bottom Line
+
+        AI agents change how content teams spend their hours, not what they stand
+        for. The teams that adopt them deliberately — with review loops, style
+        guides, and human sign-off on every piece — keep their quality bar and gain
+        back the week. That is the real win.
+      criteria: "clarity, accuracy, brand voice, structure"
+      brand: "my-brand"
+    timeout_seconds: 300
+    expect:
+      success: true

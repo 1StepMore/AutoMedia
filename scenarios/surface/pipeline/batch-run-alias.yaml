@@ -1,0 +1,28 @@
+name: batch-run-alias
+description: "batch_run (deprecated alias) returns the same success envelope shape as run_batch for an empty topic list (verified empirically: both success: true with results/total/passed/failed)."
+intent: Prove the deprecated batch alias keeps the canonical contract so agents calling the old name get identical surface behavior.
+category: surface
+requires_env: []
+steps:
+  - name: batch_run alias summarizes the empty batch
+    kind: tool
+    check: "batch_run returns success: true carrying results, total, passed and failed (same shape as the canonical run_batch; no pipeline executes for an empty topic list)."
+    standard: tool.contract
+    tool: batch_run
+    arguments:
+      topics: []
+      brand: w3t1-validation-brand
+      mode: text_only
+    expect:
+      success: true
+  - name: run_batch canonical summarizes identically
+    kind: tool
+    check: "run_batch returns the same success envelope shape as the alias (empirical alias contract check)."
+    standard: tool.contract
+    tool: run_batch
+    arguments:
+      topics: []
+      brand: w3t1-validation-brand
+      mode: text_only
+    expect:
+      success: true

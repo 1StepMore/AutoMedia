@@ -1,0 +1,16 @@
+name: disconnect-account-masterkey
+description: "disconnect_account reports NOT_FOUND for an unknown account_id (success: false, structured error) — the probe expects that error. The store requires AUTOMEDIA_MASTER_KEY, so a missing key gates the scenario to unconfigured. Account ids are random (acc_<platform>_<8-hex>), so the success path needs a live registered account (owned by the connect-account scenario)."
+intent: "Prove the account-disconnect surface's boundary contract on an isolated registry: an unknown id yields the structured NOT_FOUND error, never a silent success."
+category: surface
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: disconnect_account errors on an unknown account
+    kind: tool
+    check: "disconnect_account returns success: false with a structured NOT_FOUND error for a bogus account_id (verified empirically with a synthetic master key: Account not found) — the boundary probe expects the error."
+    standard: tool.contract
+    tool: disconnect_account
+    arguments:
+      account_id: acc_wechat_deadbeef
+    expect: {}
+    error_boundary: true

@@ -1,0 +1,31 @@
+name: select-topic-pending
+description: select_topic picks the highest-scored pending topic from a seeded temp pool and returns it in a success envelope.
+intent: Prove the topic-selection surface works against an allowlisted temp pool without an LLM, so agents can consume the pool on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: seed a pending topic into the temp pool
+    kind: cli
+    check: "a python3 one-liner (stdlib sqlite3) creates /tmp/automedia/w3t1-select/pool.db with the topics schema and inserts one pending topic (score 0.9)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import sqlite3, pathlib; p = pathlib.Path("/tmp/automedia/w3t1-select/pool.db"); p.parent.mkdir(parents=True, exist_ok=True); db = sqlite3.connect(p); db.execute("CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, url TEXT, source TEXT, category TEXT, status TEXT DEFAULT \x27pending\x27, score REAL DEFAULT 0.0, tenant_id TEXT DEFAULT \x27default\x27, created_at TEXT DEFAULT (datetime(\x27now\x27)), updated_at TEXT DEFAULT (datetime(\x27now\x27)))"); db.execute("INSERT INTO topics (title, category, score, status) VALUES (?, ?, ?, ?)", ("w3t1 pending topic", "tech", 0.9, "pending")); db.commit(); db.close()'
+    expect:
+      exit_code: 0
+  - name: select_topic picks the pending topic
+    kind: tool
+    check: "select_topic returns success: true carrying the selected topic and remaining_count (verified empirically against the seeded temp pool)."
+    standard: tool.contract
+    tool: select_topic
+    arguments:
+      pool_db_path: /tmp/automedia/w3t1-select/pool.db
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the temp pool
+    kind: cli
+    check: rm -rf removes the temp pool created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-select
+    expect:
+      exit_code: 0

@@ -1,0 +1,17 @@
+name: mcp-cli-surface
+description: automedia mcp --help exits 0 and prints the MCP server configuration contract (client option), proving the mcp command is registered.
+intent: Prove the mcp CLI surface is callable and exposes its real contract (server configuration generation with client option) without printing any config.
+category: cli
+requires_env: []
+steps:
+  - name: mcp --help shows the usage contract
+    kind: cli
+    check: "automedia mcp --help exits 0 and prints usage text naming the MCP server configuration function."
+    standard: founder-expectations.F02
+    command: automedia mcp --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "MCP"
+        - "configuration"

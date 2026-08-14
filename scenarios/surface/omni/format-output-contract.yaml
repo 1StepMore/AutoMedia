@@ -1,0 +1,18 @@
+name: format-output-contract
+description: "When AUTOMEDIA_VALIDATION_EXPECT_ORF is set, format_output answers with a structured error envelope (success: false) — the options kwarg is misrouted into ConverterOptions (orf_adapter.py:58); without the flag the scenario stays unconfigured, so orf-less machines never trip it."
+intent: "Record the honest current contract of the format-conversion surface: on the orf-installed canonical env (declared by the scenario-owner flag AUTOMEDIA_VALIDATION_EXPECT_ORF) the tool deterministically returns the structured error envelope (success: false) — the surface answers honestly, never raises. The flag must only be set on runners with the orf package installed: with orf the defect manifests (success: false); without orf the adapter's ImportError path masks it (success: true with warnings), so setting the flag there fails honestly. The step asserts the envelope; once the options-kwarg misrouting is fixed, the assertion flips and the scenario is updated to success: true."
+category: surface
+requires_env:
+  - AUTOMEDIA_VALIDATION_EXPECT_ORF
+steps:
+  - name: format_output answers with the structured error envelope
+    kind: tool
+    check: "format_output returns success: false with a structured UNKNOWN error (verified empirically with orf installed: ConverterOptions.__init__() got an unexpected keyword argument 'options' — the wrapper omni.py:305-312 passes the FastMCP-generated options kwarg through **options, so ConverterOptions(**options) at orf_adapter.py:58 receives the literal keyword options and raises TypeError; the except Exception path turns it into the structured envelope, never a raise). The flag AUTOMEDIA_VALIDATION_EXPECT_ORF declares this runner has orf installed; on a box WITHOUT orf the adapter's ImportError path masks the defect (returns success: true with warnings), so the flag must not be set there."
+    standard: tool.contract
+    tool: format_output
+    arguments:
+      content: "# Title\n\nbody text"
+      target_format: html
+      options: {}
+    expect:
+      success: false
