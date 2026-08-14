@@ -31,8 +31,8 @@ pip install -e ".[mcp]"
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 59 tools |
-| CLI | `automedia <subcommand>` | 17 commands via typer |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 63 tools |
+| CLI | `automedia <subcommand>` | 18 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 All three share the same `run_full_pipeline()` implementation in `automedia/pipelines/runner.py`.
@@ -97,7 +97,7 @@ AutoMedia/
 │       │
 │       ├── cli/                    # Typer CLI application
 │       │   ├── app.py              # Main app — registers all commands
-│   │       └── commands/           # 17 command modules
+│   │       └── commands/           # 18 command modules
 │       │       ├── account.py      # automedia account
 │       │       ├── run.py          # automedia run
 │       │       ├── pool.py         # automedia pool
@@ -113,7 +113,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│       │   ├── server.py           # FastMCP server — 59 tools
+│   │       ├── server.py           # FastMCP server — 63 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -402,9 +402,9 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (59 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference (63 tools, incl. 4 deprecated aliases)
 
-The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`).
+The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`). The four validation tools below are the agent-tester validation surface; see the Validation Layer section for how to drive them.
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
@@ -416,11 +416,13 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | project_id | Poll a running pipeline's gate-by-gate progress |
 | `get_pipeline_status` | project_id, base_dir | Query project status from its info file |
+| `list_active_pipelines` | — | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |
 | `list_projects` | base_dir, status | List all projects found under a base directory |
 | `get_project_assets` | project_dir | List asset files in a project directory |
 | `archive_project` | project_id, base_dir, force | Archive a project (Red Line 8 enforced) |
 | `list_topic_pool` | status, category, pool_db_path | List topics in the pool with optional filters |
 | `register_platform_adapter` | platform_name, adapter_class | Register a publish adapter (stub until PRD-1 NG6) |
+| `list_platforms` | — | List all registered publishing platforms |
 | `extract_brief` | file_path, source_lang, target_lang | Extract a content brief from a document using OPP |
 | `localize_content` | md_content, source_lang, target_lang | Translate markdown content via OL shield pipeline |
 | `localize_output` | project_dir, target_langs | Translate all project drafts into multiple languages |
@@ -444,7 +446,12 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `test_cron_schedule` | expression, count | Validate cron expression and compute next trigger times |
 | `search_assets` | query, brand, limit, filters | Search produced content via keyword + semantic search |
 | `list_brands` | — | Return all configured brands with profile metadata |
+| `add_brand` | name, industry, target_audience | Create a new brand profile (name required; industry and target audience optional) |
 | `get_config` | key | Return merged configuration (secrets redacted) |
+| `init_config` | project_dir | Initialize AutoMedia configuration: create `.automedia/` and a default `config.yaml` |
+| `configure_llm` | provider, model, api_key | Configure the LLM provider in `~/.automedia/model_config.yaml` |
+| `onboard` | brand_name, llm_provider, llm_key, base_url | One-step onboarding: configure the LLM and create a brand profile without interactive prompts |
+| `get_redlines` | — | Return the list of agent red-line constraints |
 | `cancel_pipeline` | project_id | Cancel a running pipeline by project_id (sets cancellation flag) |
 | `pause_pipeline` | project_id | Pause a running pipeline by project_id |
 | `resume_pipeline` | project_id | Resume a paused pipeline by project_id |
@@ -455,10 +462,14 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `update_engine_config` | modality, setting, value | Update an engine configuration setting |
 | `help_mcp` | — | Get a categorized listing of all available MCP tools with descriptions |
 | `mcp_help` | — | ⚠️ Deprecated: use help_mcp |
+| `list_validation_scenarios` | — | List the agent-tester validation scenario library (name, description, category, status hint) |
+| `run_validation_scenario` | scenario_name, runs_root, save | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
+| `get_validation_report` | run_dir | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
+| `validation_coverage_audit` | — | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
 
 ---
 
-## 10. CLI Commands Quick Reference (17 commands)
+## 10. CLI Commands Quick Reference (18 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -479,10 +490,74 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia mcp` | MCP server management |
 | `automedia history` | Show pipeline execution history for a project |
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
+| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage) |
 
 ---
 
-## 11. Config Key Reference
+## 11. Validation Layer
+
+AutoMedia is an agent-oriented product, and its validation framework makes the agents the testers. Any agent can prove the product works before relying on it: it runs real calls against the live surface, grades each response against a declared expect block, and writes an immutable run record. Humans are the director: they review the record and its artifacts and sign it off. Nothing the agent decides alone is final, and nothing the director has not seen is accepted.
+
+### Driving surface
+
+CLI (run from the repo root so relative artifact paths resolve):
+
+- `automedia validate list`: load the scenario library and list every scenario (load only, no engine run)
+- `automedia validate run --scenario <name>`: run ONE named scenario against the real MCP server; `--scenario` is required (the recursion bound); exits 1 when the status is failed
+- `automedia validate report [--run <name|latest>]`: render the run record for a run, defaulting to the latest
+- `automedia validate diff [--baseline <path>]`: diff the latest two runs against each other or a baseline record
+- `automedia validate coverage`: run the static coverage audit; exits 1 when declared-but-missing is non-empty
+
+MCP tools:
+
+- `list_validation_scenarios`: list the scenario library (name, description, category, status hint)
+- `run_validation_scenario`: run ONE named scenario in-process against the server; scenario_name is required, save=True persists an immutable record
+- `get_validation_report`: read a persisted run record from validation-runs/ (defaults to the latest run)
+- `validation_coverage_audit`: compute the static coverage audit (declared/used/covered/missing/phantom per surface)
+
+### The evidence contract
+
+**How to read a scenario (mirrors scenarios/README.md):**
+
+1. `name` is the identity. It must be unique across the library and survive renames of the file that contains it.
+2. `description` says, in one or two sentences, what the scenario proves.
+3. `intent` says WHY it exists. Schema-required; read it first.
+4. `requires_env` lists the environment variables the scenario needs. A missing one gates the whole scenario to `unconfigured`, never a pass.
+5. `steps` are ordered, top to bottom. Each step is one real call plus an expect block; a later step can depend on earlier state.
+6. Per step: `kind` picks the surface (`tool`, `cli`, `file`); `check` says WHAT to verify; `standard` cites a key that must exist in STANDARDS.md.
+7. `expect` holds the assertions on the real response. Every assertion present must hold for the step to pass.
+8. `recovery_steps` repair state after a primary step fails; `cleanup_steps` remove scenario-created state after the run. Neither proves the capability under test.
+9. Artifacts are the evidence. `collect_artifacts` copies files into the run record; the `artifact_*` expect keys grade them.
+10. `min_passing` and `pass_ratio` set the partial-pass policy; `regression` pins the scenario to a specific bug or fix.
+
+**The 5 statuses:**
+
+- `passed`: every primary step met its expect block and reached the surface.
+- `failed`: at least one primary step failed its expect and no partial-pass policy saved it.
+- `unconfigured`: a required environment variable was missing, so nothing ran. It is a state, never a verdict of acceptance; it appears with its reason and an empty step list.
+- `recovered`: a primary step failed and a recovery step succeeded. The failure stays in the run record; recovery never erases RED.
+- `partial-pass`: some steps failed, but the header's `min_passing` or `pass_ratio` policy was met. Partial-pass never hides a failure.
+
+**Honesty rules:**
+
+- Unconfigured never passes and never fails silently. A missing prerequisite is reported loudly with its reason.
+- RED first. Record the honest negative state before fixing anything. A result that jumps straight to GREEN with no recorded RED is suspect and is re-run from the pre-flight baseline.
+- Artifacts must be shown. GREEN means the call succeeded, the artifact exists, and that artifact was carried to the director.
+- Director sign-off. The director appends the run name, date, and verdict to `signed.txt` in the run directory; the agent grades, the human disposes.
+
+### Where things live
+
+- `scenarios/`: the committed scenario library (one YAML file per scenario).
+- `scenarios/STANDARDS.md`: the handbook of 28 standard keys that every step's `standard:` must cite; unknown keys are rejected at load time.
+- `scenarios/baseline/`: the committed pre-flight baseline run record and the coverage audit.
+- `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer; evidence of a moment in time, not source.
+- `AUTOMEDIA_VALIDATION_SCENARIOS_DIR`: environment override that replaces the default scenarios directory.
+
+Any agent can drive this layer standalone. Hermes, Claude Code, Codex CLI, and OpenCode all read this file; the surface is CLI and MCP only, no product UI required. An agent that has never seen the framework can list, run, report, and diff scenarios without reading anything else, and can always check `scenarios/README.md` for the full reference.
+
+---
+
+## 12. Config Key Reference
 
 Key `AUTOMEDIA_*` environment variables:
 
@@ -505,7 +580,7 @@ These env vars are mapped to `llm.text_generation.*` config keys by `automedia/c
 
 ---
 
-## 12. Documentation Index
+## 13. Documentation Index
 
 | File | Content |
 |------|---------|
@@ -530,7 +605,7 @@ For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/ag
 
 ---
 
-## 13. Skills
+## 14. Skills
 
 Skills (agent instructions for specific tasks) are stored in
 `.opencode/skills/` and are available to **all agent types** — OpenCode,
@@ -552,7 +627,7 @@ Currently available skills:
 
 ---
 
-## 14. User-Facing Skills (for Agents Using AutoMedia)
+## 15. User-Facing Skills (for Agents Using AutoMedia)
 
 Skills for agents who are **users** of AutoMedia (calling MCP tools to
 produce content) live in `docs/skills/`. These describe how to invoke

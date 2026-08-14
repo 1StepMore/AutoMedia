@@ -36,3 +36,10 @@ body:
     attributes:
       label: Environment
       placeholder: "Python version, OS, LLM provider..."
+  - type: input
+    id: regression-scenario
+    attributes:
+      label: Regression scenario
+      description: Name of the validation scenario that pins this bug (from scenarios/regression/ or the library). Required — the fix must make it GREEN.
+    validations:
+      required: true
