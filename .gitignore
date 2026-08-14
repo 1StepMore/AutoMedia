@@ -91,3 +91,4 @@ tests/fixtures/synth/**/api_key*
 
 site/
 *.cover
+validation-runs/
