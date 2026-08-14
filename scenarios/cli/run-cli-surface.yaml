@@ -1,0 +1,17 @@
+name: run-cli-surface
+description: automedia run --help exits 0 and prints usage naming the pipeline mode and required brand argument, proving the run command is registered and documented.
+intent: Prove the run CLI surface is callable and exposes its real contract (mode, brand, topic options) without executing a pipeline — the journeys own full runs.
+category: cli
+requires_env: []
+steps:
+  - name: run --help shows the usage contract
+    kind: cli
+    check: "automedia run --help exits 0 and prints usage text naming the pipeline and the required --brand option."
+    standard: founder-expectations.F02
+    command: automedia run --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "pipeline"
+        - "brand"

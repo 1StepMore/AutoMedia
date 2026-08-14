@@ -1,0 +1,23 @@
+name: onboard-isolated
+description: "onboard runs the one-step onboarding against the isolated config dir: it creates a brand profile when brand_name is given and skips LLM configuration when no provider is given, returning a success envelope."
+intent: Prove the onboarding surface answers a real call without credentials (LLM step skipped), so agents can bootstrap from the MCP surface on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: onboard creates the brand without LLM config
+    kind: tool
+    check: "onboard returns success: true carrying brand_name and brand metadata (verified empirically: with brand_name set and llm_provider empty, only the brand profile is written to the isolated config dir)."
+    standard: tool.contract
+    tool: onboard
+    arguments:
+      brand_name: w3t1-onboard-brand
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the isolated brand profile
+    kind: cli
+    check: rm -f removes the isolated brand_profiles.yaml entry written by this scenario (config-dir-scoped, never the real user config).
+    standard: founder-expectations.F01
+    command: rm -f /tmp/automedia/w3t1-config/brand_profiles.yaml
+    expect:
+      exit_code: 0

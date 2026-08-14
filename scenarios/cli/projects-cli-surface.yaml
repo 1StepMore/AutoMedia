@@ -1,0 +1,17 @@
+name: projects-cli-surface
+description: automedia projects --help exits 0 and prints the project management sub-commands (list, get, get-assets), proving the projects command is registered.
+intent: Prove the projects CLI surface is callable and exposes its real contract (list/get/get-assets sub-commands) without scanning any directory.
+category: cli
+requires_env: []
+steps:
+  - name: projects --help shows sub-commands
+    kind: cli
+    check: "automedia projects --help exits 0 and prints usage text naming the project sub-commands."
+    standard: founder-expectations.F02
+    command: automedia projects --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "projects"
+        - "list"

@@ -1,0 +1,31 @@
+name: extract-brief-markdown
+description: extract_brief extracts a structured brief from a markdown file via OPP and returns the markdown content plus manifest in a success envelope (no LLM required for plain markdown extraction, verified empirically).
+intent: Prove the extraction surface works deterministically on an allowlisted temp file, so agents can ingest briefs on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: create a markdown brief file
+    kind: cli
+    check: "a python3 one-liner writes /tmp/automedia/w3t1-brief/brief.md so extract_brief has a real allowlisted file to parse."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; p = pathlib.Path("/tmp/automedia/w3t1-brief/brief.md"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("# Brief\n\n## Section\n\nSome content for the extraction probe.")'
+    expect:
+      exit_code: 0
+  - name: extract_brief parses the markdown
+    kind: tool
+    check: "extract_brief returns success: true carrying md_content, manifest_json and warnings (verified empirically: OPP parses plain markdown without any LLM call)."
+    standard: tool.contract
+    tool: extract_brief
+    arguments:
+      file_path: /tmp/automedia/w3t1-brief/brief.md
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the brief file
+    kind: cli
+    check: rm -rf removes the temp brief file created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-brief
+    expect:
+      exit_code: 0

@@ -1,0 +1,22 @@
+name: engine-health-alias
+description: "engine_health (deprecated alias) returns the same envelope shape as health_engine (verified empirically: both success: true with engines/healthy_count/unhealthy_count keys)."
+intent: Prove the deprecated alias keeps the canonical contract so agents calling the old name get the same surface behavior.
+category: surface
+requires_env: []
+steps:
+  - name: engine_health alias answers
+    kind: tool
+    check: "engine_health returns success: true carrying the engine dependency list (same shape as health_engine)."
+    standard: tool.contract
+    tool: engine_health
+    arguments: {}
+    expect:
+      success: true
+  - name: health_engine canonical answers identically
+    kind: tool
+    check: "health_engine returns the same success envelope shape as the alias (empirical alias contract check)."
+    standard: tool.contract
+    tool: health_engine
+    arguments: {}
+    expect:
+      success: true

@@ -1,0 +1,77 @@
+# W3-T5 publish stub-contract scenario (plan agent-tester-validation W3-T5)
+#
+# SAFETY + CONTRACT NOTES (verified empirically 2026-08-14, recorded in
+# .omo/notepads/agent-tester-validation/learnings.md):
+#   - 8 STUB adapters (is_stub=True, F32/F34 intentional divergence): xiaohongshu,
+#     douyin, bilibili, weibo, baijiahao, juejin, kuaishou, toutiao. Their
+#     publish() returns {"status": "not_implemented", "platform": <name>,
+#     "reason": <human-readable why>} and NEVER posts (verified live for all 8).
+#   - The MCP surface does NOT surface the stub contract: publish_content on a
+#     stub returns the flat envelope {"success": true, "published": false,
+#     "platform": "xiaohongshu", "url": ""} (verified live; mode=publish forces
+#     automation auto, and without credentials the engine skips on validate,
+#     while with credentials the stub's publish() still returns not_implemented
+#     with zero side effects). distribute_content(non-dry-run) reports the stub
+#     as "failed" (disabled adapter yields no engine result) — documented, not
+#     asserted.
+#   - Therefore the stub contract (status not_implemented + reason present) is
+#     asserted at the adapter level through the SDK surface (step 3), and the
+#     MCP envelope is asserted for its honest zero-post shape (step 2).
+name: publish-stub-contract
+description: "The 8 stub adapters return status not_implemented with a reason and never post; the MCP publish envelope on a stub platform is honestly published: false."
+intent: "Prove the F34 stub contract: every stub platform reports not_implemented with a reason through the shipped adapter surface, and no stub call can publish content."
+category: publish
+requires_env: []
+steps:
+  - name: create the synthetic project
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project.py schema: project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w3t5-stub-projects/ for the publish probes."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w3t5-stub-projects/w3t5-stub/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "w3t5stub000001", "topic": "synthetic stub probe", "brand": "w3t5-synthetic-brand", "tenant_id": "w3t5", "created_at": "2026-08-14T00:00:00Z", "status": "published"}))'
+    expect:
+      exit_code: 0
+  - name: publish_content on a stub platform never posts
+    kind: tool
+    check: "publish_content(platform=xiaohongshu, mode=publish) returns success: true with published: false — the stub cannot publish; the envelope honestly reports published false with no url (verified live), and the stub's publish() returns not_implemented with zero side effects even when credentials are present."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: w3t5stub000001
+      platform: xiaohongshu
+      base_dir: /tmp/automedia/w3t5-stub-projects
+      mode: publish
+    expect:
+      success: true
+  - name: every stub adapter returns not_implemented with a reason
+    kind: cli
+    check: "each of the 8 stub adapters (xiaohongshu, douyin, bilibili, weibo, baijiahao, juejin, kuaishou, toutiao) returns status not_implemented with a non-empty reason from publish() — the F34 stub contract."
+    standard: tool.contract
+    command: |-
+      /mnt/d/贯维/AutoMedia/.venv/bin/python -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["xiaohongshu","douyin","bilibili","weibo","baijiahao","juejin","kuaishou","toutiao"]; rows=[]; [(rows.append(AdapterRegistry.get(n)().publish("/tmp/x", {"topic": "t"}))) for n in ns]; [print("STUB %s status=%s reason=%s" % (ns[i], rows[i].get("status"), bool(rows[i].get("reason")))) for i in range(len(ns))]'
+    expect:
+      stdout_has:
+        - "STUB xiaohongshu status=not_implemented reason=True"
+        - "STUB douyin status=not_implemented reason=True"
+        - "STUB bilibili status=not_implemented reason=True"
+        - "STUB weibo status=not_implemented reason=True"
+        - "STUB baijiahao status=not_implemented reason=True"
+        - "STUB juejin status=not_implemented reason=True"
+        - "STUB kuaishou status=not_implemented reason=True"
+        - "STUB toutiao status=not_implemented reason=True"
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t5-stub-projects
+    expect:
+      exit_code: 0
+  - name: remove the distribution-log database created by the publish probe
+    kind: cli
+    check: "publish_content logs the distribution attempt to ~/.automedia/asset-library/<brand>/index.sqlite (verified publishing.py:108-133); this removes that side-effect database."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import shutil, os; shutil.rmtree(os.path.expanduser("~/.automedia/asset-library/w3t5-synthetic-brand"), ignore_errors=True)'
+    expect:
+      exit_code: 0

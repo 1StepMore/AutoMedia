@@ -1,0 +1,35 @@
+name: dep-doctor-structural
+description: "automedia --json doctor emits a JSON payload on stdout that names every known dependency with an installed flag, and that payload parses as JSON on any machine."
+intent: "Prove the structural contract of the doctor JSON payload. The dependency list is static (python, bun, ffmpeg, whisper, edge-tts, hyperframes, comfyui, chrome, llm_api), so every name appears with an installed flag regardless of machine state, and the payload always parses as JSON. exit_code and success are deliberately NOT asserted: doctor exits 1 whenever any dependency is missing, which is machine-dependent. JSON parseability is proven by a python3 one-liner that re-invokes doctor itself and json.loads its stdout, so no shell pipe is needed."
+category: baseline
+requires_env: []
+steps:
+  - name: doctor lists every dependency
+    kind: cli
+    check: "doctor prints a JSON payload carrying a dependencies list where every known dependency appears by name with an installed flag."
+    standard: cli.doctor
+    command: automedia --json doctor
+    timeout_seconds: 180
+    expect:
+      stdout_has:
+        - dependencies
+        - installed
+        - python
+        - bun
+        - ffmpeg
+        - whisper
+        - edge-tts
+        - hyperframes
+        - comfyui
+        - chrome
+        - llm_api
+  - name: doctor JSON payload parses
+    kind: cli
+    check: "A python3 one-liner re-runs doctor in JSON mode and json.loads its stdout; python exits 0 only when the payload parses as JSON."
+    standard: cli.doctor
+    command: python3 -c "import json, subprocess; out = subprocess.run(['automedia', '--json', 'doctor'], capture_output=True, text=True, timeout=150).stdout; data = json.loads(out); print('JSON_OK', len(data['dependencies']))"
+    timeout_seconds: 180
+    expect:
+      exit_code: 0
+      stdout_has:
+        - JSON_OK

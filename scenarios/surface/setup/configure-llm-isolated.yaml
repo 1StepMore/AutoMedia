@@ -1,0 +1,24 @@
+name: configure-llm-isolated
+description: configure_llm writes the provider and model to the isolated model_config.yaml and returns a success envelope (no api_key is passed, so no secret is written).
+intent: Prove the LLM-configuration surface answers a real call against the isolated config dir, without ever storing a credential.
+category: surface
+requires_env: []
+steps:
+  - name: configure_llm writes the provider config
+    kind: tool
+    check: "configure_llm returns success: true carrying provider, model and config_file (verified empirically: the isolated model_config.yaml is written; no api_key argument is passed so no secret lands on disk)."
+    standard: tool.contract
+    tool: configure_llm
+    arguments:
+      provider: deepseek
+      model: deepseek-chat
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the isolated LLM config
+    kind: cli
+    check: rm -f removes the isolated model_config.yaml written by this scenario (config-dir-scoped, never the real user config).
+    standard: founder-expectations.F01
+    command: rm -f /tmp/automedia/w3t1-config/model_config.yaml
+    expect:
+      exit_code: 0

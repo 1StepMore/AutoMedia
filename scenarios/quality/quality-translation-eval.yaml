@@ -1,0 +1,119 @@
+# W3-T4 human-quality scenario: real-LLM evaluation of a produced translation
+# (translation variant of quality-draft-eval.yaml; plan agent-tester-validation
+# W3-T4 "real-LLM evaluation of produced draft/translation against
+# evaluation-matrix 8 dims (P0-P5), scores recorded for trend").
+#
+# PASS SEMANTICS PINNED (guide §2.7 partial-pass + review fix m11): identical
+# to the draft variant — PASS means the translation artifact was PRODUCED and
+# INSPECTED (step 1: fixture translation exists as a non-trivial file,
+# founder-expectations.F01) AND scored by a real LLM (step 2:
+# founder-expectations.true-test — translated content must be publishable-
+# quality content; the criteria mirror gate.L4's translation-quality
+# threshold: clarity, accuracy, brand voice, fluency, fidelity).
+#
+# PARTIAL-PASS GUARDRAIL (review fix m12): min_passing 1 + pass_ratio 0.5 let
+# the artifact step alone carry a partial-pass verdict, but a partial-pass
+# run REQUIRES director review before anything ships — the run record lists
+# every failed step with its trace; partial-pass never hides a failure and is
+# never reported as GREEN.
+#
+# SCORE PERSISTENCE: the tool's quality_score/overall_assessment land in the
+# step output, which the engine persists verbatim in the run record (engine.py
+# output in every step trace), so W4-T4 quality-trend diffing can compare
+# translation scores across runs; a score drop is a regression signal.
+#
+# KNOWN ISSUE ON THIS BOX (recorded in
+# .omo/notepads/agent-tester-validation/issues.md): the provider configured in
+# the repo .env (open.bigmodel.cn GLM) returns json-fenced structured output,
+# and llm_client.py:552 model_validate_json does not strip the code fences ->
+# pydantic json_invalid -> VALIDATION_ERROR -> evaluate_content_quality
+# honestly reports success: false. Step 2 is therefore expected RED with a
+# real key on this box; recorded RED, never faked GREEN.
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (step 1 and the artifact expects resolve
+#         scenarios/fixtures/sample-translation.md against the engine cwd)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to
+#         unconfigured without it — honesty.unconfigured, guide §4.2)
+#   engine call: load_scenarios("scenarios/quality") then run each scenario
+#         via run_validation_scenario(..., server=create_server(), cwd=".")
+#   Rate limits (issues.md): ONE real-LLM call per scenario, run scenarios
+#         sequentially — never run this scenario concurrently with another
+#         real-LLM scenario.
+
+name: quality-translation-eval
+description: A committed synthetic translation is inspected as a produced artifact and scored by a real LLM against translation-quality criteria mirroring the L4 threshold and the evaluation-matrix dimensions, with partial-pass semantics pinned to the director-review guardrail.
+intent: "Prove the translation leg of human-quality validation: a produced translation is both PRODUCED-AND-INSPECTED (artifact step, F01) and evaluated by a real LLM under translation-quality criteria (clarity, accuracy, brand voice, fluency, fidelity — the gate.L4 threshold analogue and the evaluation-matrix dimensions' content-facing mirror), with scores persisted in the run record for W4-T4 trend diffing and partial-pass (min_passing 1 / pass_ratio 0.5) REQUIRING director review per guide §2.7."
+category: quality
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+min_passing: 1
+pass_ratio: 0.5
+steps:
+  - name: produced translation artifact exists and is non-trivial
+    kind: file
+    check: "The fixture translation scenarios/fixtures/sample-translation.md exists, is non-empty, and is at least 1024 bytes — the artifact the scenario must PRODUCE-AND-INSPECT (never assumed), per the F01 ever-green clause."
+    standard: founder-expectations.F01
+    command: scenarios/fixtures/sample-translation.md
+    expect:
+      artifact_exists: scenarios/fixtures/sample-translation.md
+      artifact_nonempty: scenarios/fixtures/sample-translation.md
+      artifact_size_min: 1024
+    collect_artifacts:
+      - path: scenarios/fixtures/sample-translation.md
+        required: true
+  - name: real-LLM evaluation scores the translation against translation-quality criteria
+    kind: tool
+    check: "evaluate_content_quality returns a success envelope carrying the structured evaluation (quality_score, issues, suggestions, overall_assessment) for the fixture translation body, scored under the translation-quality criteria 'clarity, accuracy, brand voice, fluency, fidelity' (the gate.L4 translated-content quality threshold and the evaluation-matrix dimensions' content-facing mirror), with pattern defaulting to 'b' (real LLM, NOT the raw-data 'a' shortcut); the scores land in the step output and persist in the run record so W4-T4 can diff them for regression signals."
+    standard: founder-expectations.true-test
+    tool: evaluate_content_quality
+    arguments:
+      content: |-
+        # AI 智能体如何改变内容团队（以及这对你意味着什么）
+
+        ## 摘要
+
+        内容团队把一周的大部分时间花在看起来高产、实际上重复的工作上：调研选题、
+        撰写初稿、修改语法、把同一篇文章改写成三种平台格式。AI 智能体不会取代内容
+        创作中真正核心的编辑判断，但它能大幅缩短从灵感到可发布草稿之间的距离。
+
+        本文用平实的语言说明：当 AI 智能体加入团队后，编辑、作者和管理者的工作会
+        发生哪些变化——以及哪些事情完全不变。
+
+        ## AI 智能体到底做什么
+
+        智能体不是返回链接的搜索引擎。它是一个能够接收简报（例如"为 B2B 读者写一篇
+        800 字的某某主题科普文"）并按顺序执行一系列步骤的系统：列提纲、起草、对照
+        简报检查、修改、交回结果。核心思想是"委派加监督"：智能体负责跑腿，人负责
+        判断。
+
+        第一周内就能看到三个实实在在的收益：
+
+        1. 调研摘要从几小时缩短到几分钟。
+        2. 初稿自带结构，而不是一张白纸。
+        3. 把一篇文章改写成 newsletter 和短贴文，不再是一个独立的项目。
+
+        ## 什么不会改变
+
+        编辑判断仍然是产品本身。必须有人决定什么是对的、什么值得写、受众真正需要
+        什么。智能体会自信地犯错，因此事实核查和语气审核仍然是人的工作。收益最大
+        的团队把智能体当作一个非常快的初级同事：凡事都要审、经常说"不"、并保持
+        清晰的风格指南。
+
+        ## 一个务实的起点
+
+        从一条狭窄的工作流开始，而不是十条。选择团队重复最多的环节（调研简报通常
+        是最佳候选），让真人审阅者运行两周，衡量每篇文章节省的时间，然后再扩展。
+        目标不是为了更快而牺牲质量地发布，而是在保持同等质量的前提下，把更多时间
+        留给只有人类才能完成的工作。
+
+        ## 结论
+
+        AI 智能体改变的是内容团队的时间分配，而不是团队的立场。那些有意识地采用它
+        的团队——建立审阅循环、风格指南、并对每一篇内容保留人工签核——既能守住质量
+        底线，又能赢回一周的时间。这才是真正的胜利。
+      criteria: "clarity, accuracy, brand voice, fluency, fidelity"
+      brand: "my-brand"
+    timeout_seconds: 300
+    expect:
+      success: true

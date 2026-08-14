@@ -1,0 +1,31 @@
+name: get-project-assets-synthetic
+description: get_project_assets lists the asset files inside a synthetic project directory and returns them in a success envelope.
+intent: Prove the asset-listing surface reads a real project directory from disk (no LLM), so agents can inspect produced assets on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: create a synthetic project with one asset
+    kind: cli
+    check: "a python3 one-liner creates /tmp/automedia/w3t1-assets/proj/01_content/drafts/draft.md so get_project_assets has a real directory to scan."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; p = pathlib.Path("/tmp/automedia/w3t1-assets/proj/01_content/drafts/draft.md"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("# Draft\n\nasset body")'
+    expect:
+      exit_code: 0
+  - name: get_project_assets lists the asset
+    kind: tool
+    check: "get_project_assets returns success: true carrying assets and count (verified empirically: the synthetic draft appears in the asset list)."
+    standard: tool.contract
+    tool: get_project_assets
+    arguments:
+      project_dir: /tmp/automedia/w3t1-assets/proj
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-assets
+    expect:
+      exit_code: 0

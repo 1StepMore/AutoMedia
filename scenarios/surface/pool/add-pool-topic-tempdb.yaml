@@ -1,0 +1,32 @@
+name: add-pool-topic-tempdb
+description: add_pool_topic inserts a topic into a temp pool database and returns the new topic id, title, category and status in a success envelope.
+intent: Prove the pool-mutation surface works against an allowlisted temp database (no LLM, no repo state), with a paired cleanup step per guide §4.6.
+category: surface
+requires_env: []
+steps:
+  - name: create the temp pool directory
+    kind: cli
+    check: mkdir -p creates /tmp/automedia/w3t1-addpool so PoolDB can create the database file inside it.
+    standard: founder-expectations.F01
+    command: mkdir -p /tmp/automedia/w3t1-addpool
+    expect:
+      exit_code: 0
+  - name: add_pool_topic adds to the temp pool
+    kind: tool
+    check: "add_pool_topic returns success: true carrying id, title, category and status pending (verified empirically against /tmp/automedia/w3t1-addpool/pool.db)."
+    standard: tool.contract
+    tool: add_pool_topic
+    arguments:
+      title: w3t1-added-topic
+      category: tech
+      pool_db_path: /tmp/automedia/w3t1-addpool/pool.db
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the temp pool
+    kind: cli
+    check: rm -rf removes the temp pool database created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-addpool
+    expect:
+      exit_code: 0

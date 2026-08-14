@@ -1,0 +1,16 @@
+name: test-cron-schedule-valid
+description: test_cron_schedule validates a syntactically correct 5-field cron expression and returns a success envelope (next_triggers may be None when croniter is not installed — the validation contract still holds).
+intent: Prove the cron-expression validation surface answers deterministically without credentials.
+category: surface
+requires_env: []
+steps:
+  - name: test_cron_schedule validates the expression
+    kind: tool
+    check: "test_cron_schedule returns success: true carrying valid, expression and next_triggers (verified empirically: a valid 5-field expression is accepted; without croniter installed next_triggers is None with an explanatory note, and the envelope stays success)."
+    standard: tool.contract
+    tool: test_cron_schedule
+    arguments:
+      expression: "0 9 * * 1"
+      count: 3
+    expect:
+      success: true

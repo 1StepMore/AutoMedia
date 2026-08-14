@@ -1,0 +1,16 @@
+name: distribute-content-probe
+description: "distribute_content rejects a call with neither platforms nor all=true (success: false, INVALID_PARAM) — the probe expects that error. Depth scenarios for the publish trio belong to W3-T5."
+intent: "Prove the distribution surface's parameter contract on a clean env: an empty target list is refused before any project lookup, so agents must pass platforms or all=true."
+category: surface
+requires_env: []
+steps:
+  - name: distribute_content errors without targets
+    kind: tool
+    check: "distribute_content returns success: false with a structured INVALID_PARAM error when neither platforms nor all is provided (verified empirically: No target platforms...) — the boundary probe expects the error."
+    standard: tool.contract
+    tool: distribute_content
+    arguments:
+      project_id: "000000000000"
+      dry_run: true
+    expect: {}
+    error_boundary: true

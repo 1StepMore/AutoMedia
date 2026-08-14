@@ -1,0 +1,15 @@
+name: get-pipeline-progress-probe
+description: "get_pipeline_progress reports NOT_FOUND for a project_id that has no active pipeline in this process (success: false, structured error) — the probe expects that error."
+intent: "Prove the polling surface's boundary contract on a clean env: with no live pipeline (the success path needs a running background pipeline with a runtime project_id, owned by W3-T3), the honest observable contract is the structured NOT_FOUND error."
+category: surface
+requires_env: []
+steps:
+  - name: get_pipeline_progress errors on an unknown project
+    kind: tool
+    check: "get_pipeline_progress returns success: false with a structured NOT_FOUND error for a bogus project_id (verified empirically: No active pipeline found for project_id 000000000000) — the boundary probe expects the error."
+    standard: tool.contract
+    tool: get_pipeline_progress
+    arguments:
+      project_id: "000000000000"
+    expect: {}
+    error_boundary: true

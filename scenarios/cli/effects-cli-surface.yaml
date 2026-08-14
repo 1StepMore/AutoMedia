@@ -1,0 +1,16 @@
+name: effects-cli-surface
+description: automedia effects --help exits 0 and prints usage naming the required PROJECT_ID argument, proving the effects command is registered.
+intent: Prove the effects CLI surface is callable and exposes its real contract (Project ID argument) without touching any project state.
+category: cli
+requires_env: []
+steps:
+  - name: effects --help shows the usage contract
+    kind: cli
+    check: "automedia effects --help exits 0 and prints usage text naming the required PROJECT_ID argument."
+    standard: founder-expectations.F02
+    command: automedia effects --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Project ID to analyse."

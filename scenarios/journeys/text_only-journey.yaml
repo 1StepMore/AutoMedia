@@ -1,0 +1,94 @@
+# W2-T5 text_only journey scaffold (plan agent-tester-validation W2-T5)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
+#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
+#   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
+#                                     scenarios_dir="scenarios", runs_root="validation-runs")
+# Project dirs are created under AUTOMEDIA_PROJECTS_DIR (verified: runner.py:883
+# reads the env var; Project.init falls back to cwd when unset) — so the journey
+# MUST be run from the controlled cwd with the env exported, and NEVER from the
+# repo root, or project dirs land at the repo root. The controlled projects dir
+# is scratch space owned by the runner; this scenario adds no cleanup_steps
+# because project dir names embed today's date (project.py:156-158) and a random
+# project_id (project.py:174), so a cleanup path cannot be named statically.
+#
+# HONESTY + DESIGN NOTES (verified empirically 2026-08-14, recorded in
+# .omo/notepads/agent-tester-validation/learnings.md):
+#   - gate_records_pass is NOT asserted: the only gate-record JSON the product
+#     writes after a text_only run is pipeline_md5.json, whose top-level
+#     "gates" key is a DICT (md5_tracker.py:57-61), while the framework's
+#     gate_records_pass contract requires a NON-EMPTY LIST (expects.py
+#     _GATE_RECORD_KEYS) or a "status" in {passed, complete, completed,
+#     success}. 00_project_info.json carries no status/gates keys (project.py
+#     init writes project_id/topic/brand/tenant_id/created_at only; the
+#     pipeline never updates it — rollback_types.update_project_status is
+#     called only by the rollback CLI). Gate lifecycle rows live in
+#     .automedia/history.db (SQLite, not JSON). So "gate records on a static
+#     path" is impossible with the current surface; the closest shipped-surface
+#     proofs are steps 2-3 (projects list reads 00_project_info.json; find
+#     proves the draft artifact produced by the real run). Full gate-record
+#     inspection is deferred until the product exposes list-shaped records.
+#   - The run step asserts exit_code 0 + the "Pipeline finished:" marker, NOT
+#     "Pipeline finished: success": verified a completed text_only run prints
+#     "Pipeline finished: partial" (exit 0) when a stop gate fails (observed
+#     with G4 under a mock LLM) and "Pipeline finished: success" when all
+#     gates pass — both exit 0 (run.py:334-336,366-367: only status "failed"
+#     raises Exit(1)). exit 0 + marker = the pipeline ran to completion.
+#   - Draft path is dynamic (<ts>_draft.md in 01_content/drafts/), so the
+#     draft check is a cli find step (find globs its own pattern without
+#     shell; CLIAdapter runs shell=False — verified shlex.split parses fine).
+#   - The quality spot-check is intentionally light (a static sample through
+#     the real-LLM evaluate_content_quality tool); W3-T4 owns deep real-LLM
+#     quality scoring of produced drafts against the evaluation-matrix.
+
+name: text-only-journey
+description: A real text_only pipeline run from the CLI produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
+intent: "Prove the shipped text_only production path end-to-end with a real LLM: topic to draft artifact in one CLI call, the produced project visible through the shipped projects surface, and the quality-evaluation tool answering a real-LLM assessment — the W2-T5 journey scaffold behind every future per-mode journey."
+category: journey
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+steps:
+  - name: text_only pipeline completes
+    kind: cli
+    check: "A real text_only pipeline run for a fixed topic and brand completes and prints the completion marker (T3 of the True Test: topic to draft.md in one sitting, no docs)."
+    standard: founder-expectations.true-test
+    command: automedia run --topic "AI agents for content teams" --brand my-brand --mode text_only
+    timeout_seconds: 1500
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: project visible through the shipped surface
+    kind: cli
+    check: automedia projects list reads the 00_project_info.json the real run wrote and prints the project's topic row (artifact produced by a real run, never assumed).
+    standard: founder-expectations.F01
+    command: automedia projects list --base-dir /tmp/automedia/journey-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "AI agents for content teams"
+  - name: non-trivial draft artifact exists
+    kind: cli
+    check: The run produced a non-trivial draft markdown file under 01_content/drafts/ in the controlled projects dir (the artifact the pipeline must show the director, not an assumed one).
+    standard: founder-expectations.F01
+    command: find /tmp/automedia/journey-projects -name "*_draft.md" -size +500c
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "_draft.md"
+  - name: real-LLM quality spot-check answers
+    kind: tool
+    check: The evaluate_content_quality tool returns a success envelope with a structured LLM quality assessment for a sample (light scaffold spot-check; deep scoring is W3-T4's scope).
+    standard: tool.contract
+    tool: evaluate_content_quality
+    arguments:
+      content: "AI agents are transforming content teams by handling research, drafting, and review loops, letting humans focus on editorial judgment."
+      criteria: "clarity, accuracy, brand voice"
+      brand: "my-brand"
+    timeout_seconds: 300
+    expect:
+      success: true

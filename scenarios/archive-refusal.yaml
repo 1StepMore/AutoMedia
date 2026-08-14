@@ -1,0 +1,33 @@
+name: archive-refusal-redline8
+description: "archive_project refuses to archive an unpublished project unless force is set, honoring Red Line 8 (verified: refuses when the project status is draft)."
+intent: Prove the archive surface enforces Red Line 8, so agents cannot archive unpublished projects through the MCP tool.
+category: baseline
+requires_env: []
+steps:
+  - name: create a synthetic unpublished project
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (schema as automedia/core/project.py writes: project_id, topic, brand, tenant_id, created_at, plus status: draft) under /tmp/automedia/w2t3-archive-project/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w2t3-archive-project/validation-synthetic/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "5f3a9c2e8b1d", "topic": "validation-synthetic", "brand": "validation-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"}))'
+    expect:
+      exit_code: 0
+  - name: archive_project refuses the draft project
+    kind: tool
+    check: "archive_project returns success: false with a structured error, because the project status is draft (not published) and force is false (Red Line 8 refusal)."
+    standard: tool.contract
+    tool: archive_project
+    arguments:
+      project_id: "5f3a9c2e8b1d"
+      base_dir: /tmp/automedia/w2t3-archive-project
+      force: false
+    expect:
+      success: false
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2t3-archive-project
+    expect:
+      exit_code: 0

@@ -1,0 +1,16 @@
+name: init-cli-surface
+description: automedia init --help exits 0 and prints usage naming the Initialize contract (template, omni options), proving the init command is registered.
+intent: Prove the init CLI surface is callable and exposes its real contract (template mode, omni flag) without writing any config files.
+category: cli
+requires_env: []
+steps:
+  - name: init --help shows the usage contract
+    kind: cli
+    check: "automedia init --help exits 0 and prints usage text naming the Initialize function."
+    standard: founder-expectations.F02
+    command: automedia init --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Initialize"

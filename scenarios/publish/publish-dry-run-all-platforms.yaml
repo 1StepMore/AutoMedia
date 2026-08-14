@@ -1,0 +1,63 @@
+# W3-T5 publish dry-run scenario (plan agent-tester-validation W3-T5)
+#
+# SAFETY + CONTRACT NOTES (verified empirically 2026-08-14, recorded in
+# .omo/notepads/agent-tester-validation/learnings.md):
+#   - The publish dry-run surface is the MCP tool distribute_content
+#     (mcp/tools_distribution.py:18-128) delegating to
+#     automedia.adapters.distribution.distribute_to_platforms. The CLI
+#     `automedia distribute --dry-run` is a DIFFERENT surface (D-gate content
+#     rewriting, distribute.py) — do not conflate them.
+#   - Verified response shape (real server, clean env, synthetic project):
+#     {"success": true, "platforms": {<20 names>: "would_fail" ...},
+#      "summary": "0/20 platforms would succeed", "dry_run": true}.
+#     All 20 platforms report "would_fail" without credentials; the status
+#     vocabulary is would_succeed/would_fail — never "success" — which is the
+#     zero-posts proof at the response level.
+#   - The dry-run code path calls ONLY adapter.validate(artifact_dir) per
+#     platform (distribution.py:152-177); publish() is never reached, so zero
+#     posts is a code-level guarantee, not just a naming convention.
+#   - Tool steps return a FLAT envelope (no nested "data" dict), so the honest
+#     expect assertion is success: true; the full response (dry_run: true +
+#     would_fail statuses) is captured in the step trace for the director.
+name: publish-dry-run-all-platforms
+description: "distribute_content with dry_run=true over all 20 registered platforms validates pre-conditions without publishing anything."
+intent: "Prove the publish distribution surface's dry-run contract: a dry_run call across every registered platform posts zero content and reports per-platform would_succeed/would_fail statuses."
+category: publish
+requires_env: []
+steps:
+  - name: create the synthetic project
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project.py schema: project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w3t5-dryrun-projects/ so distribute_content has a real project to resolve."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w3t5-dryrun-projects/w3t5-dryrun/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "w3t5dryrun0001", "topic": "synthetic dry-run probe", "brand": "w3t5-synthetic-brand", "tenant_id": "w3t5", "created_at": "2026-08-14T00:00:00Z", "status": "published"}))'
+    expect:
+      exit_code: 0
+  - name: list_platforms enumerates the registry
+    kind: tool
+    check: "list_platforms returns success: true carrying the registered platform list (20 adapters: 12 real + 8 stubs, verified)."
+    standard: tool.contract
+    tool: list_platforms
+    arguments: {}
+    expect:
+      success: true
+  - name: distribute_content dry_run over all platforms
+    kind: tool
+    check: "distribute_content(all=true, dry_run=true) returns success: true carrying dry_run: true and a per-platform would_succeed/would_fail status for all 20 platforms — the dry-run path calls adapter.validate() only, never publish(), so zero posts (verified distribution.py:152-177)."
+    standard: tool.contract
+    tool: distribute_content
+    arguments:
+      project_id: w3t5dryrun0001
+      all: true
+      dry_run: true
+      base_dir: /tmp/automedia/w3t5-dryrun-projects
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t5-dryrun-projects
+    expect:
+      exit_code: 0

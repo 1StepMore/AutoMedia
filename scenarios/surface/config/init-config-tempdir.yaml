@@ -1,0 +1,23 @@
+name: init-config-tempdir
+description: init_config creates the .automedia directory structure and a default config.yaml in a given project directory, returning a success envelope.
+intent: Prove the setup surface answers a real call without touching the repo root (temp dir only), so agents can bootstrap a project from the MCP surface.
+category: surface
+requires_env: []
+steps:
+  - name: init_config writes config into the temp dir
+    kind: tool
+    check: "init_config returns success: true carrying config_dir and config_file for /tmp/automedia/w3t1-initcfg (verified empirically: .automedia/config.yaml created)."
+    standard: tool.contract
+    tool: init_config
+    arguments:
+      project_dir: /tmp/automedia/w3t1-initcfg
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the temp config tree
+    kind: cli
+    check: rm -rf removes the .automedia tree created by init_config.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w3t1-initcfg
+    expect:
+      exit_code: 0

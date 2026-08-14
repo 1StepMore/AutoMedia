@@ -1,0 +1,14 @@
+name: list-validation-scenarios-meta
+description: "The validation surface exposes a meta tool that lists the scenario library itself. Known: the tool ships in W4-T2, so this scenario is expected RED in the current baseline."
+intent: Prove the validation MCP surface is discoverable by the same agents it validates; this RED-first marker turns GREEN when the tool lands in W4-T2.
+category: baseline
+requires_env: []
+steps:
+  - name: list_validation_scenarios answers
+    kind: tool
+    check: "list_validation_scenarios returns success: true (the tool does not exist yet, W4-T2, so this step is expected to fail in the current baseline; it is a real scenario, not a probe)."
+    standard: tool.contract
+    tool: list_validation_scenarios
+    arguments: {}
+    expect:
+      success: true

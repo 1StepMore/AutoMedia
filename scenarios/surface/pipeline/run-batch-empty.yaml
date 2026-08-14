@@ -1,0 +1,17 @@
+name: run-batch-empty
+description: run_batch with an empty topic list returns immediately with a zeroed per-topic summary in a success envelope (no LLM call happens for an empty batch).
+intent: Prove the batch surface's deterministic empty-batch contract without credentials, so agents can rely on the summary shape before running real batches.
+category: surface
+requires_env: []
+steps:
+  - name: run_batch summarizes the empty batch
+    kind: tool
+    check: "run_batch returns success: true carrying results, total, passed and failed (verified empirically: an empty topic list yields total 0 without any pipeline execution)."
+    standard: tool.contract
+    tool: run_batch
+    arguments:
+      topics: []
+      brand: w3t1-validation-brand
+      mode: text_only
+    expect:
+      success: true

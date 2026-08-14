@@ -1,0 +1,14 @@
+name: list-overridable-templates
+description: list_overridable_templates returns the known Jinja2 prompt templates with variables, purpose and override status in a success envelope.
+intent: Prove the prompt-template metadata surface answers without credentials, so agents can discover overridable templates and their variables.
+category: surface
+requires_env: []
+steps:
+  - name: list_overridable_templates returns template metadata
+    kind: tool
+    check: "list_overridable_templates returns success: true carrying templates, count and overrides_dir (verified empirically: built-in template metadata is always returned; an isolated config has no overrides)."
+    standard: tool.contract
+    tool: list_overridable_templates
+    arguments: {}
+    expect:
+      success: true

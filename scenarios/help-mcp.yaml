@@ -1,0 +1,13 @@
+name: help-mcp-manifest
+description: help_mcp returns the runtime tool manifest, a categorized listing with a tool count, as the MCP first-call discovery surface.
+intent: Prove an agent can discover the shipped tool set at runtime via the tool manifest before relying on any single tool.
+category: baseline
+requires_env: []
+steps:
+  - name: help_mcp returns the tool manifest
+    kind: tool
+    check: "help_mcp completes and returns its categorized tool listing (categories, tool_count, hint). Known product gap: help_mcp does NOT wrap its envelope via success_response (returns no success key, verified empirically), so no success assertion is made; the call completing with the manifest content is the honest check for this surface."
+    standard: founder-expectations.F02
+    tool: help_mcp
+    arguments: {}
+    expect: {}

@@ -1,0 +1,34 @@
+name: remove-cron-schedule-cycle
+description: "remove_cron_schedule removes a schedule entry it can deterministically re-add first: the scenario adds w3t1-remove-me, removes it, and proves both steps return success envelopes."
+intent: Prove the cron-schedule removal surface's full mutation cycle (add then remove, both green) so agents can manage schedules on the isolated config.
+category: surface
+requires_env: []
+steps:
+  - name: add_cron_schedule creates the entry to remove
+    kind: tool
+    check: "add_cron_schedule returns success: true for the w3t1-remove-me entry (setup for the removal cycle)."
+    standard: tool.contract
+    tool: add_cron_schedule
+    arguments:
+      name: w3t1-remove-me
+      expression: "0 8 * * *"
+    expect:
+      success: true
+  - name: remove_cron_schedule removes it
+    kind: tool
+    check: "remove_cron_schedule returns success: true carrying removed and name for the entry added in the previous step (verified empirically: a present entry is removed and acknowledged)."
+    standard: tool.contract
+    tool: remove_cron_schedule
+    arguments:
+      name: w3t1-remove-me
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove_cron_schedule best-effort second removal
+    kind: tool
+    check: "remove_cron_schedule on an already-removed name errors NOT_FOUND, which is fine here — cleanup is best-effort and never influences the verdict."
+    standard: tool.contract
+    tool: remove_cron_schedule
+    arguments:
+      name: w3t1-remove-me
+    expect: {}

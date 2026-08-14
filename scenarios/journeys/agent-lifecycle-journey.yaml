@@ -1,0 +1,242 @@
+# W3-T3 agent-user lifecycle journey (plan agent-tester-validation W3-T3)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  /tmp/automedia/agent-lifecycle-cwd   (controlled working directory)
+#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/agent-lifecycle-projects
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key> (scenario gates to unconfigured without it)
+#   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/agent-lifecycle-cwd",
+#                                     scenarios_dir="scenarios", runs_root="validation-runs")
+#   The run_pipeline background thread (step 7) reads AUTOMEDIA_PROJECTS_DIR
+#   from the suite process env (runner.py:883), so the controlled projects dir
+#   MUST be exported or the real project lands at the repo root. NEVER run from
+#   the repo root.
+#
+# ASYNC SURFACE CONTRACT (pinned, review fix m13):
+#   run_pipeline is a background-thread tool (pipeline.py:51-241): it returns
+#   immediately with {"project_id", "status": "started"} and the REAL pipeline
+#   keeps running in a daemon thread. This journey NEVER asserts synchronous
+#   completion. Step 7 asserts the async protocol directly: the call returns
+#   within a 180s cap — a real text_only run takes 20-45 min, so a step that
+#   passes inside the cap IS the proof the surface did not block. The poll
+#   steps (8-9) use list_active_pipelines, the NO-ARG polling surface: it reads
+#   the persistent session tracker (active_pipelines.json) and reflects the
+#   real background pipeline (status/current_gate/elapsed_s/mode/topic) — the
+#   static-YAML-compatible way to poll a pipeline whose project_id is random
+#   per run (uuid4, pipeline.py:170). get_pipeline_progress (step 10) is
+#   id-bound, so a static scenario cannot address the live run's id; step 10
+#   pins its error envelope honestly, and the README progress contract
+#   (gates_done/gates_remaining/total_gates) is documented in the step check.
+#   run_batch is NOT pinned here: pipeline.py:244-315 shows it is actually
+#   synchronous (blocking), so only run_pipeline carries the async contract.
+#
+# SYNTHETIC PROJECT (steps 11-15):
+#   run_pipeline's project_id is random per run, so distribute/effects/archive
+#   cannot be statically addressed at the real run's project. Steps 11-15
+#   exercise the lifecycle tail against a fixed-id synthetic project
+#   ("deadbeef00ab", status draft, same 00_project_info.json shape the real
+#   run writes — project.py:177-187) under the controlled projects dir. The
+#   real run's existence is proven by the poll steps (8-9) and documented;
+#   static-id project-dir proof belongs to the synchronous W2-T5 journey.
+#   Archive (step 15) honestly expects the Red Line 8 refusal: a text_only run
+#   never publishes, so "refuse" is the truthful outcome for this journey's
+#   project.
+#
+# SIDE EFFECTS + HONEST STATUSES:
+#   - run_pipeline writes ~/.automedia/active_pipelines.json (the shipped
+#     session tracker; stale entries are marked "lost" after 24h,
+#     _shared.py:303-334). The real project dir lands under
+#     AUTOMEDIA_PROJECTS_DIR with a random name — it cannot be statically
+#     cleaned (same convention as text_only-journey.yaml); cleanup here
+#     removes only what this scenario names.
+#   - Real-LLM runs are 20-45 min on this box (429 rate limits). Verified path
+#     for this session: unconfigured without the key (the env gate fires
+#     before any step). The deterministic prefix (steps 1-6) and tail
+#     (11-15) are GREEN-verified standalone without a key; the async pair
+#     (7-10) is green on the envelope contract. FULL journey GREEN requires a
+#     key-configured box and a completed run — record honest statuses, never
+#     fake GREEN.
+#   - `automedia init` (the real wizard) mutates ~/.automedia/model_config.yaml
+#     and is deliberately NOT invoked; step 1 uses `init --help`, the cheapest
+#     real onboard contract.
+
+name: agent-user-lifecycle-journey
+description: "An agent's full lifecycle against the shipped surfaces: onboard (init help + doctor + connect_account honest error), pool select, async run_pipeline, progress polling, distribute dry-run, effects analytics, and the Red Line 8 archive refusal."
+intent: "Prove the agent-facing lifecycle contract end to end: every step an agent takes from first contact to archival answers honestly — the async run_pipeline protocol returns immediately and stays pollable, the distribute dry-run posts nothing, effects computes real analytics, and archive refuses unpublished projects (Red Line 8)."
+category: journey
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+steps:
+  - name: onboard via init help contract
+    kind: cli
+    check: "automedia init --help exits 0 and prints the init usage contract. The real init wizard mutates ~/.automedia/model_config.yaml, so the help contract is the honest, side-effect-free onboard probe (F02: first surface call returns visible non-empty output)."
+    standard: founder-expectations.F02
+    command: automedia init --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Initialize AutoMedia configuration."
+  - name: doctor lists dependencies structurally
+    kind: cli
+    check: "doctor prints the dependency-listing contract (each dep by name with installed status, JSON-parseable). exit_code is deliberately NOT asserted: doctor exits 1 when a dep is missing, which is machine-dependent (cli.doctor contract)."
+    standard: cli.doctor
+    command: automedia --json doctor
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - python
+        - ffmpeg
+  - name: connect_account answers honestly without credentials
+    kind: tool
+    check: "connect_account with NO credentials returns success: false with a structured error envelope ('credentials must be provided'), never a crash and never a fabricated account. The honest-unconfigured contract: the tool tells the agent exactly what is missing instead of pretending success (tool.contract error shape)."
+    standard: tool.contract
+    tool: connect_account
+    arguments:
+      platform: wechat
+    timeout_seconds: 60
+    expect:
+      success: false
+  - name: fresh topic pool db
+    kind: cli
+    check: "rm -f guarantees the pool db is fresh (idempotent): a stale db from a previous run could hold already-selected topics and make select_topic fail. The db is recreated by add_pool_topic below."
+    standard: founder-expectations.F01
+    command: rm -f /tmp/automedia/agent-lifecycle-cwd/lifecycle-pool.db
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: seed the pool with a synthetic pending topic
+    kind: tool
+    check: "add_pool_topic creates the SQLite pool db at the allowlisted /tmp path (PoolDB auto-creates the schema) and inserts one pending topic — the pool content the agent then selects."
+    standard: tool.contract
+    tool: add_pool_topic
+    arguments:
+      title: "AI agents for content teams"
+      category: tech
+      pool_db_path: /tmp/automedia/agent-lifecycle-cwd/lifecycle-pool.db
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: select_topic returns the pending topic
+    kind: tool
+    check: "select_topic returns success: true and selects the highest-scored pending topic — the only topic in this fresh db — and marks it selected (the topic the agent then runs)."
+    standard: tool.contract
+    tool: select_topic
+    arguments:
+      category: tech
+      pool_db_path: /tmp/automedia/agent-lifecycle-cwd/lifecycle-pool.db
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: run_pipeline returns immediately (async protocol)
+    kind: tool
+    check: "ASync CONTRACT PINNED: run_pipeline returns success: true with {project_id, status: started} WITHOUT waiting for completion — the real text_only pipeline takes 20-45 min, so passing inside this 180s cap IS the proof the surface is background-thread and never blocks. The pipeline keeps running in a daemon thread; nothing here asserts synchronous completion."
+    standard: tool.contract
+    tool: run_pipeline
+    arguments:
+      topic: "AI agents for content teams"
+      brand: my-brand
+      mode: text_only
+    timeout_seconds: 180
+    expect:
+      success: true
+  - name: poll the running pipeline (1/2)
+    kind: tool
+    check: "list_active_pipelines is the no-arg async polling surface: it reads the persistent session tracker and reflects the background pipeline started above (entries carry status/current_gate/elapsed_s/mode/topic). Flat envelope: assert success: true only."
+    standard: tool.contract
+    tool: list_active_pipelines
+    arguments: {}
+    timeout_seconds: 120
+    expect:
+      success: true
+  - name: poll the running pipeline (2/2)
+    kind: tool
+    check: "Second bounded poll (cadence is set by step order, total poll budget ~4 min): the async surface keeps answering success while the background pipeline progresses. A journey must bound its polls — never loop for the full 20-45 min run."
+    standard: tool.contract
+    tool: list_active_pipelines
+    arguments: {}
+    timeout_seconds: 120
+    expect:
+      success: true
+  - name: get_pipeline_progress id contract
+    kind: tool
+    check: "get_pipeline_progress is id-bound and run_pipeline generates a random project_id per run (uuid4), so a static scenario cannot address the live run's id. This probe pins the error contract: an unknown id returns success: false with an actionable NOT_FOUND envelope ('No active pipeline found... Check project_id or start a pipeline first'). The README progress contract — gates_done/gates_remaining/total_gates — is served for live ids (gate_types.py get_progress); polling a live id requires the run_pipeline response, which only a dynamic agent call can capture (framework limitation, see header)."
+    standard: tool.contract
+    tool: get_pipeline_progress
+    arguments:
+      project_id: deadbeef00ab
+    timeout_seconds: 60
+    expect:
+      success: false
+  - name: create the synthetic project for the lifecycle tail
+    kind: cli
+    check: "a python3 one-liner writes a synthetic project under the controlled projects dir: 00_project_info.json (same shape project.py:177-187 writes: project_id, topic, brand, tenant_id, created_at, plus status: draft) and a non-trivial draft in 01_content/drafts/ so effects computes real analytics. The real run's project has a random id, so the fixed-id synthetic is the static-YAML-compatible stand-in."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/agent-lifecycle-projects/validation-synthetic"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "deadbeef00ab", "topic": "validation-synthetic", "brand": "my-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("AI agents are transforming content teams by handling research, drafting, and review loops, letting humans focus on editorial judgment.")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: distribute dry-run posts nothing
+    kind: tool
+    check: "distribute_content with dry_run: true validates preconditions per platform (adapter.validate) and returns success: true with dry_run: true and would_succeed/would_fail per platform — zero posts by construction. The dry-run contract: the agent can preview distribution risk without publishing."
+    standard: tool.contract
+    tool: distribute_content
+    arguments:
+      project_id: deadbeef00ab
+      platforms: wechat
+      all: false
+      dry_run: true
+      base_dir: /tmp/automedia/agent-lifecycle-projects
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: effects computes analytics for the project
+    kind: cli
+    check: "automedia effects resolves the project by id and prints JSON analytics (word_count, sentiment, readability, brand mentions) computed from the real draft artifact — evidence the analyze surface works on project content, not a stub."
+    standard: founder-expectations.F01
+    command: automedia effects deadbeef00ab --base-dir /tmp/automedia/agent-lifecycle-projects --output json
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - deadbeef00ab
+        - word_count
+  - name: project visible through the shipped listing surface
+    kind: cli
+    check: "automedia projects list reads 00_project_info.json under the controlled projects dir and prints the synthetic project's topic row (the same info-file shape the real run writes). The real run's row carries a random id and topic 'AI agents for content teams' — visible here once the background run reaches Project.init, but not statically assertable."
+    standard: founder-expectations.F01
+    command: automedia projects list --base-dir /tmp/automedia/agent-lifecycle-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - validation-synthetic
+  - name: archive refuses the unpublished project (Red Line 8)
+    kind: tool
+    check: "archive_project returns success: false with a structured error because the project status is draft, not published, and force is false — the Red Line 8 refusal. Honest outcome: a text_only lifecycle never publishes, so 'refuse' is what a truthful agent sees."
+    standard: tool.contract
+    tool: archive_project
+    arguments:
+      project_id: deadbeef00ab
+      base_dir: /tmp/automedia/agent-lifecycle-projects
+      force: false
+    timeout_seconds: 60
+    expect:
+      success: false
+cleanup_steps:
+  - name: remove the journey scratch dir
+    kind: cli
+    check: "rm -rf removes the controlled cwd (holds the temp pool db) created by this scenario. The real pipeline project under AUTOMEDIA_PROJECTS_DIR is NOT removed: its name embeds a random project_id and cannot be statically named."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/agent-lifecycle-cwd
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the synthetic validation-synthetic project created by this scenario (leaves the real pipeline's project dir untouched).
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/agent-lifecycle-projects/validation-synthetic
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

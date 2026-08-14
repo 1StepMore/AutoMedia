@@ -1,0 +1,26 @@
+name: effects-cli-contract
+description: "automedia effects exposes its real contract, verified against the shipped effects_cmd signature: --help exits 0 with usage text naming the required PROJECT_ID argument, and running without it exits 2 with a missing-argument error."
+intent: Prove the effects CLI surface is callable and enforces its required argument without touching any project state.
+category: baseline
+requires_env: []
+steps:
+  - name: effects --help shows the usage contract
+    kind: cli
+    check: automedia effects --help exits 0 and prints usage that names the required PROJECT_ID argument.
+    standard: founder-expectations.F02
+    command: automedia effects --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Project ID to analyse."
+  - name: effects without PROJECT_ID enforces the argument
+    kind: cli
+    check: "automedia effects without the required argument exits 2 and reports the missing argument on stderr. Only the version-independent substring 'Missing argument' is asserted: typer versions differ in parameter-name casing ('PROJECT_ID' vs 'project_id')."
+    standard: founder-expectations.F02
+    command: automedia effects
+    timeout_seconds: 60
+    expect:
+      exit_code: 2
+      stderr_has:
+        - "Missing argument"
