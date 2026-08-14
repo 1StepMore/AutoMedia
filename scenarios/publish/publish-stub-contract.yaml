@@ -48,7 +48,7 @@ steps:
     check: "each of the 8 stub adapters (xiaohongshu, douyin, bilibili, weibo, baijiahao, juejin, kuaishou, toutiao) returns status not_implemented with a non-empty reason from publish() — the F34 stub contract."
     standard: tool.contract
     command: |-
-      /mnt/d/贯维/AutoMedia/.venv/bin/python -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["xiaohongshu","douyin","bilibili","weibo","baijiahao","juejin","kuaishou","toutiao"]; rows=[]; [(rows.append(AdapterRegistry.get(n)().publish("/tmp/x", {"topic": "t"}))) for n in ns]; [print("STUB %s status=%s reason=%s" % (ns[i], rows[i].get("status"), bool(rows[i].get("reason")))) for i in range(len(ns))]'
+      python3 -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["xiaohongshu","douyin","bilibili","weibo","baijiahao","juejin","kuaishou","toutiao"]; rows=[]; [(rows.append(AdapterRegistry.get(n)().publish("/tmp/x", {"topic": "t"}))) for n in ns]; [print("STUB %s status=%s reason=%s" % (ns[i], rows[i].get("status"), bool(rows[i].get("reason")))) for i in range(len(ns))]'
     expect:
       stdout_has:
         - "STUB xiaohongshu status=not_implemented reason=True"

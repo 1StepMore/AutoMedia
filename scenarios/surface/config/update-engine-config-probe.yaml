@@ -3,6 +3,8 @@ description: "update_engine_config errors on this runtime instead of writing the
 intent: "Record the current honest contract of the engine-config surface: on this runtime it cannot complete; the probe documents the defect until the product fix lands (regression flywheel turns it GREEN)."
 category: surface
 requires_env: []
+regression: true
+regression_issue: "update_engine_config crashes on Python 3.14 (datetime.UTC AttributeError at src/automedia/mcp/tools/config.py:129)"
 steps:
   - name: update_engine_config errors on this runtime
     kind: tool

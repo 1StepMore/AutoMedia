@@ -87,7 +87,7 @@ steps:
     check: "the 12 real adapters (wechat, zhihu, youtube, wordpress, medium, reddit, twitter, linkedin, instagram, tiktok, facebook, feishu) register with is_stub=False — the draft-only capability set (verified adapter classes and the registry)."
     standard: tool.contract
     command: |-
-      /mnt/d/贯维/AutoMedia/.venv/bin/python -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["wechat","zhihu","youtube","wordpress","medium","reddit","twitter","linkedin","instagram","tiktok","facebook","feishu"]; [print("REAL %s is_stub=%s" % (n, AdapterRegistry.get(n).is_stub)) for n in ns]'
+      python3 -c 'import automedia.adapters; from automedia.adapters.registry import AdapterRegistry; ns=["wechat","zhihu","youtube","wordpress","medium","reddit","twitter","linkedin","instagram","tiktok","facebook","feishu"]; [print("REAL %s is_stub=%s" % (n, AdapterRegistry.get(n).is_stub)) for n in ns]'
     expect:
       stdout_has:
         - "REAL wechat is_stub=False"
