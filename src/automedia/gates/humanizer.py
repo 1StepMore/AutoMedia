@@ -498,6 +498,73 @@ def _check_repetitive_structures(content: str) -> CheckResult:
 # Rewriting helpers
 # ---------------------------------------------------------------------------
 
+# Rewrite-time sentence-boundary patterns.
+#
+# The check-time patterns are anchored with "^" and applied per-sentence, so
+# they match at the start of EVERY sentence. _rewrite_content applies them to
+# the whole text, where "^" only matches at position 0 — mid-text sentence
+# starts were never rewritten (issue #74: de-AI pass rate 33.3%). These
+# rewrite-time versions re-anchor at any sentence boundary instead.
+_SENTENCE_BOUNDARY = r"(?:\A|(?<=[.!?。！？]))\s*"
+
+
+def _unanchor_pattern(source: str) -> tuple[str, str]:
+    """Split a pattern into ``(inline_flags, body)`` with the leading ``^`` removed.
+
+    Python requires inline flags (``(?i)``) at the very start of the pattern,
+    so they are returned separately and re-prepended before the boundary
+    prefix by :func:`_rewrite_patterns`.
+    """
+    flags = ""
+    body = source
+    flag_match = re.match(r"\(\?[aiLmsux]+\)", body)
+    if flag_match:
+        flags = flag_match.group(0)
+        body = body[flag_match.end() :]
+    if body.startswith("^"):
+        body = body[1:]
+    return flags, body
+
+
+def _rewrite_patterns(patterns: list[re.Pattern[str]]) -> list[re.Pattern[str]]:
+    """Re-anchor check-time sentence patterns at any sentence boundary.
+
+    The prefix consumes the whitespace after sentence punctuation; the
+    replacement callback in :func:`_rewrite_content` puts one space back when
+    whitespace was actually consumed, so English sentences never fuse
+    ("fast.we") and Chinese text gains no spurious space after 。！？.
+    """
+    out: list[re.Pattern[str]] = []
+    for pat in patterns:
+        flags, body = _unanchor_pattern(pat.pattern)
+        out.append(re.compile(flags + _SENTENCE_BOUNDARY + body))
+    return out
+
+
+_REWRITE_HOLLOW_RES = _rewrite_patterns(_HOLLOW_INTRO_RES)
+_REWRITE_VAGUE_RES = _rewrite_patterns(_VAGUE_SUBJECT_RES)
+_REWRITE_FILLER_RES = _rewrite_patterns([_FILLER_RE, _CN_FILLER_RE])
+_REWRITE_TEMPLATE_RES = _rewrite_patterns(_TEMPLATE_CONCLUSION_RES)
+
+
+def _remove_sentence_initial(match: re.Match[str]) -> str:
+    """Replacement for sentence-initial removal that preserves sentence spacing.
+
+    The boundary prefix consumed any whitespace between the punctuation and
+    the removed phrase; restore a single space when that happened so
+    "fast. Furthermore" -> "fast. we" rather than "fast.we". CJK text has no
+    space to consume, so nothing is added.
+    """
+    text = match.string
+    if (
+        match.group(0)
+        and match.group(0)[0].isspace()
+        and match.start() > 0
+        and text[match.start() - 1] in ".!?。！？"
+    ):
+        return " "
+    return ""
+
 
 def _rewrite_content(content: str) -> str:
     """Apply all rewriting rules to produce a more human-sounding version."""
@@ -506,23 +573,23 @@ def _rewrite_content(content: str) -> str:
     # 1. Remove overused adverbs
     text = _ADVERB_RE.sub("", text)
 
-    # 2. Remove hollow intros
-    for pat in _HOLLOW_INTRO_RES:
-        text = pat.sub("", text)
+    # 2. Remove hollow intros at any sentence start
+    for pat in _REWRITE_HOLLOW_RES:
+        text = pat.sub(_remove_sentence_initial, text)
 
     # 3. Remove vague subjects (replace with empty — will be cleaned up)
-    for pat in _VAGUE_SUBJECT_RES:
-        text = pat.sub("", text)
+    for pat in _REWRITE_VAGUE_RES:
+        text = pat.sub(_remove_sentence_initial, text)
 
     # 4. Remove filler connectors at sentence starts
-    text = _FILLER_RE.sub("", text)
-    text = _CN_FILLER_RE.sub("", text)
+    for pat in _REWRITE_FILLER_RES:
+        text = pat.sub(_remove_sentence_initial, text)
 
     # 5. Long conjunctions — no simple rewrite, just flag (handled by check)
 
-    # 6. Remove template conclusions
-    for pat in _TEMPLATE_CONCLUSION_RES:
-        text = pat.sub("", text)
+    # 6. Remove template conclusions at any sentence start
+    for pat in _REWRITE_TEMPLATE_RES:
+        text = pat.sub(_remove_sentence_initial, text)
 
     # 7. Replace over-academic vocabulary
     def _replace_academic(m: re.Match[str]) -> str:
