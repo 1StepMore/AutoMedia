@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.0...automedia-v1.4.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* **gates:** rewrite removes sentence-initial patterns at every sentence start ([#75](https://github.com/1StepMore/AutoMedia/issues/75)) ([c6f5800](https://github.com/1StepMore/AutoMedia/commit/c6f5800e2b0995e81d90b62b79d290c3353290dd))
+
+
+### Documentation
+
+* **acceptance:** first formal acceptance run report for 1.4.0 (84/0/7, real LLM) ([#76](https://github.com/1StepMore/AutoMedia/issues/76)) ([9ea4618](https://github.com/1StepMore/AutoMedia/commit/9ea4618259604e910b146267b9ebe7728044fba6))
+
 ## [1.4.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.3.0...automedia-v1.4.0) (2026-08-15)
 
 
