@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.3.0...automedia-v1.4.0) (2026-08-15)
+
+
+### Features
+
+* **gates:** Chinese AI-taste detection (G1) + bidirectional fact-check (G0) ([#73](https://github.com/1StepMore/AutoMedia/issues/73)) ([82c3bf4](https://github.com/1StepMore/AutoMedia/commit/82c3bf446167de39c29ec586897fd97a58db4927))
+* **llm:** provider fallback chain for llm_complete family ([#71](https://github.com/1StepMore/AutoMedia/issues/71)) ([894e52d](https://github.com/1StepMore/AutoMedia/commit/894e52d6e640e17f6bd8e6884907071c8d33c849))
+
 ## [1.3.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.2.0...automedia-v1.3.0) (2026-08-15)
 
 
