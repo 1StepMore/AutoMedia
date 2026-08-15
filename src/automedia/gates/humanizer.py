@@ -12,6 +12,11 @@ Detects and rewrites common AI-generated text patterns:
     8. absolute_assertions     — 绝对化断言 (always, never, everyone knows)
     9. repetitive_structures   — 重复性结构
 
+    Categories 2-4, 6-8 also match Chinese AI-taste patterns (空洞开头,
+    笼统主语, 句首废话连接词, 模板化总结, 官腔黑话, 绝对化表述); the
+    sentence splitter handles Chinese sentence-enders (。！？) so all
+    sentence-based checks work on Chinese text.
+
 When ``gate_context["_mock_results"]`` is present, each check's result is
 driven from that dict instead of running real detection — making the gate
 fully deterministic for unit testing.
@@ -76,6 +81,17 @@ _HOLLOW_INTROS: list[str] = [
     r"(?i)^In this day and age[,.]?\s*",
     r"(?i)^As we all know[,.]?\s*",
     r"(?i)^Needless to say[,.]?\s*",
+    # Chinese hollow intros (空洞开头) — sentence-initial AI-taste openers
+    r"^值得注意的是[，,]?",
+    r"^值得一提的是[，,]?",
+    r"^总的来说[，,]?",
+    r"^众所周知[，,]?",
+    r"^不难发现[，,]?",
+    r"^在当今社会[，,]?",
+    r"^在当今时代[，,]?",
+    r"^我们需要认识到[，,]?",
+    r"^不可否认的是[，,]?",
+    r"^随着[^。！？，,]+的发展[，,]?",
 ]
 _HOLLOW_INTRO_RES: list[re.Pattern[str]] = [re.compile(p) for p in _HOLLOW_INTROS]
 
@@ -88,6 +104,11 @@ _VAGUE_SUBJECTS: list[str] = [
     r"(?i)^It is important to\b",
     r"(?i)^It is essential to\b",
     r"(?i)^It is crucial to\b",
+    # Chinese vague subjects (笼统主语)
+    r"^我们应该",
+    r"^我们必须",
+    r"^我们需要",
+    r"^大家都要",
 ]
 _VAGUE_SUBJECT_RES: list[re.Pattern[str]] = [re.compile(p) for p in _VAGUE_SUBJECTS]
 
@@ -108,6 +129,28 @@ _FILLER_RE = re.compile(
     r"(?i)^(?:" + "|".join(re.escape(c) for c in _FILLER_CONNECTORS) + r")[,.]?\s+",
 )
 
+# Pattern 4b: Chinese filler connectors — sentence-initial, but Chinese has
+# no whitespace after punctuation, so the suffix rule differs from _FILLER_RE
+_CN_FILLER_CONNECTORS: list[str] = [
+    "更为重要的是",
+    "与此同时",
+    "总而言之",
+    "综上所述",
+    "由此可见",
+    "另一方面",
+    "更重要的是",
+    "一方面",
+    "此外",
+    "然而",
+    "因此",
+    "首先",
+    "其次",
+    "最后",
+]
+_CN_FILLER_RE = re.compile(
+    r"^(?:" + "|".join(re.escape(c) for c in _CN_FILLER_CONNECTORS) + r")[，,]?",
+)
+
 # Pattern 5: Long conjunctions (3+ "and"/"or" in a single sentence)
 _LONG_CONJUNCTION_RE = re.compile(
     r"(?:\b(?:and|or)\b.*?){3,}",
@@ -124,6 +167,13 @@ _TEMPLATE_CONCLUSIONS: list[str] = [
     r"(?i)^In essence[,.]?\s*",
     r"(?i)^To conclude[,.]?\s*",
     r"(?i)^Wrapping up[,.]?\s*",
+    # Chinese template conclusions (模板化总结) — longer phrases first so that
+    # e.g. 总而言之 wins over its prefix 总之
+    r"^综上所述[，,]?",
+    r"^总而言之[，,]?",
+    r"^由此可见[，,]?",
+    r"^总的来说[，,]?",
+    r"^总之[，,]?",
 ]
 _TEMPLATE_CONCLUSION_RES: list[re.Pattern[str]] = [re.compile(p) for p in _TEMPLATE_CONCLUSIONS]
 
@@ -168,6 +218,19 @@ _ACADEMIC_WORD_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Pattern 7b: Chinese officialese / buzzwords (官腔黑话) — detection only;
+# \b boundaries do not apply between CJK characters, so a separate regex is
+# used. 生态 is guarded so the legitimate 生态系统 is not flagged.
+_CN_ACADEMIC_PATTERNS: list[str] = [
+    r"赋能",
+    r"抓手",
+    r"闭环",
+    r"颗粒度",
+    r"底层逻辑",
+    r"生态(?!系统)",
+]
+_CN_ACADEMIC_RE = re.compile("|".join(_CN_ACADEMIC_PATTERNS))
+
 # Pattern 8: Absolute assertions
 _ABSOLUTE_PATTERNS: list[str] = [
     r"\balways\b",
@@ -179,6 +242,17 @@ _ABSOLUTE_PATTERNS: list[str] = [
     r"\bno one can deny\b",
     r"\bit is universally\b",
     r"\bthere is no doubt\b",
+    # Chinese absolute assertions (绝对化表述) — multi-char strong forms only,
+    # so neutral technical uses of 绝对/必然 (绝对值, 必然事件) stay unflagged
+    r"毫无疑问",
+    r"毋庸置疑",
+    r"一定会",
+    r"永远不会",
+    r"所有人都",
+    r"没有任何人",
+    r"唯一的方法",
+    r"绝对不可能",
+    r"必然会",
 ]
 _ABSOLUTE_RE = re.compile(
     "|".join(_ABSOLUTE_PATTERNS),
@@ -186,7 +260,12 @@ _ABSOLUTE_RE = re.compile(
 )
 
 # Pattern 9: Repetitive structures — same word starting 3+ consecutive sentences
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+#
+# Sentence splitter: splits after English [.!?] followed by whitespace (as
+# before) AND after Chinese sentence-enders 。！？ — where the next character
+# is a CJK character the split is zero-width because Chinese text has no
+# spaces. English-only text behaves exactly as the previous regex.
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])(?:\s+|(?=[\u4e00-\u9fff]))")
 
 
 _EXPECTED_MAP: dict[str, str] = {
@@ -228,7 +307,7 @@ def _check_hollow_intros(content: str) -> CheckResult:
         for pat in _HOLLOW_INTRO_RES:
             m = pat.search(sent)
             if m:
-                found.append(m.group().strip().rstrip(",."))
+                found.append(m.group().strip().rstrip(",，."))
                 break
     if not found:
         return {"name": "hollow_intros", "passed": True, "detail": "no hollow intros found"}
@@ -264,8 +343,10 @@ def _check_filler_connectors(content: str) -> CheckResult:
     found: list[str] = []
     for sent in sentences:
         m = _FILLER_RE.match(sent)
+        if m is None:
+            m = _CN_FILLER_RE.match(sent)
         if m:
-            found.append(m.group().strip().rstrip(",."))
+            found.append(m.group().strip().rstrip(",，."))
     if not found:
         return {"name": "filler_connectors", "passed": True, "detail": "no filler connectors found"}
     return {
@@ -307,7 +388,7 @@ def _check_template_conclusions(content: str) -> CheckResult:
         for pat in _TEMPLATE_CONCLUSION_RES:
             m = pat.search(sent)
             if m:
-                found.append(m.group().strip().rstrip(",."))
+                found.append(m.group().strip().rstrip(",，."))
                 break
     if not found:
         return {
@@ -325,6 +406,7 @@ def _check_template_conclusions(content: str) -> CheckResult:
 def _check_overacademic_vocabulary(content: str) -> CheckResult:
     """Check 7: Detect over-academic vocabulary."""
     matches = _ACADEMIC_WORD_RE.findall(content)
+    matches.extend(_CN_ACADEMIC_RE.findall(content))
     if not matches:
         return {
             "name": "overacademic_vocabulary",
@@ -371,8 +453,14 @@ def _check_repetitive_structures(content: str) -> CheckResult:
     for sent in sentences:
         words = sent.split()
         if words:
-            # Normalize: lowercase, strip punctuation
-            first = re.sub(r"[^\w]", "", words[0]).lower()
+            first_raw = words[0]
+            cjk = re.search(r"[\u4e00-\u9fff]", first_raw)
+            if cjk is not None and cjk.start() == 0:
+                # CJK text has no spaces — use the first character as the opening
+                first = first_raw[0]
+            else:
+                # Normalize: lowercase, strip punctuation
+                first = re.sub(r"[^\w]", "", first_raw).lower()
             opening_words.append(first)
 
     # Find runs of same opening word
@@ -428,6 +516,7 @@ def _rewrite_content(content: str) -> str:
 
     # 4. Remove filler connectors at sentence starts
     text = _FILLER_RE.sub("", text)
+    text = _CN_FILLER_RE.sub("", text)
 
     # 5. Long conjunctions — no simple rewrite, just flag (handled by check)
 
@@ -458,6 +547,15 @@ def _rewrite_content(content: str) -> str:
         "no one can deny": "many would agree",
         "it is universally": "it is widely",
         "there is no doubt": "there is strong evidence",
+        "毫无疑问": "可以说",
+        "毋庸置疑": "可以说",
+        "一定会": "可能会",
+        "永远不会": "通常不会",
+        "所有人都": "大多数人",
+        "没有任何人": "很少有人",
+        "唯一的方法": "比较有效的方法",
+        "绝对不可能": "基本不可能",
+        "必然会": "很可能会",
     }
 
     def _soften_absolute(m: re.Match[str]) -> str:

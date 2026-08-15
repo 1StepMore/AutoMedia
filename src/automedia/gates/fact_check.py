@@ -18,6 +18,8 @@ falling back to the deterministic substring-matching logic.
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from typing import Any
 
 from structlog import get_logger
@@ -73,6 +75,165 @@ def _run_deterministic_checks(
 
 
 # ---------------------------------------------------------------------------
+# Number normalization helpers (used by _check_number_verification)
+# ---------------------------------------------------------------------------
+
+# Window radius (in characters) around a label occurrence in which a number
+# phrase is examined for contradictions. Phrases are contiguous, so the radius
+# only bounds how far qualifiers/units may extend.
+_WINDOW_RADIUS = 20
+
+# Chinese number qualifiers that may precede a figure ("约82.7亿" ≈ "roughly
+# 82.7 hundred million"). Stripped from the left before parsing; longest
+# prefixes first so "达到" wins over "达".
+_NUMBER_QUALIFIER_PREFIXES: tuple[str, ...] = ("大约", "达到", "超过", "约", "近", "达")
+
+# Chinese unit suffixes that may follow a figure ("82.7亿元", "12%", "50人").
+# Longest suffixes are tried first ("万元" before "万", "美元" before "元").
+# NOTE: this is a *strip* list only — magnitude conversion is intentionally
+# NOT applied (see _normalize_number): 87.2亿 and 87.2 both normalize to 87.2.
+_NUMBER_UNIT_SUFFIXES: tuple[str, ...] = (
+    "万元",
+    "美元",
+    "元",
+    "亿",
+    "万",
+    "%",
+    "％",
+    "人",
+    "家",
+    "个",
+    "台",
+)
+
+# Single characters that may sit between a label and its number phrase on
+# either side (qualifiers, light connectors, whitespace). Punctuation such as
+# "，" "。" "、" stops the scan, so unrelated figures are never inspected.
+_NUMBER_GLUE_CHARS: frozenset[str] = frozenset("约大约近达达到超过为是了 （(：: \t")
+
+# Unit suffixes flattened to single characters for the left/right phrase scans.
+_UNIT_SUFFIX_CHARS: frozenset[str] = frozenset("".join(_NUMBER_UNIT_SUFFIXES))
+
+# Number token: digits with optional thousands separators and decimal part.
+_NUMBER_TOKEN_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+# Label candidates used by the reverse-direction check. English source labels
+# map to common Chinese glosses so proximity checks still fire against Chinese
+# content. This is a documented *heuristic* pinned by tests, NOT an NLP
+# solution: only these exact strings are recognized, and short glosses like
+# "率"/"用户" may occasionally match inside unrelated words (效率, 汇率, ...).
+_NUMBER_LABEL_GLOSS: dict[str, tuple[str, ...]] = {
+    "market_size": ("规模", "市场规模"),
+    "revenue": ("营收", "收入", "销售额"),
+    "growth_rate": ("增长", "增幅", "增速"),
+    "user_count": ("用户", "用户数"),
+    "price": ("价格", "单价"),
+    "percentage": ("占比", "比例", "百分比"),
+    "total": ("总量", "总额", "总数"),
+    "rate": ("率",),
+}
+
+
+def _normalize_number(text: str) -> float | None:
+    """Normalize a Chinese/plain number token to ``float``.
+
+    Strips leading qualifiers (约/大约/近/达/达到/超过), trailing unit
+    suffixes (亿/万/元/万元/%/％/美元/人/家/个/台) and thousands separators,
+    then parses as float. Returns ``None`` when the remainder is not a number.
+
+    Known limitation (intentional): 亿/万 magnitude conversion is NOT applied
+    — "87.2亿" and "87.2" both normalize to 87.2, so this helper cannot tell
+    "87.2亿" apart from "87.2" (documented; out of scope for the heuristic).
+    """
+    s = text.strip()
+    if not s:
+        return None
+
+    # Strip leading qualifiers, repeatedly ("大约近82.7").
+    stripped = True
+    while stripped:
+        stripped = False
+        for prefix in _NUMBER_QUALIFIER_PREFIXES:
+            if s.startswith(prefix):
+                s = s[len(prefix) :]
+                stripped = True
+                break
+
+    # Strip trailing unit suffixes, repeatedly ("82.7亿元" → "82.7").
+    stripped = True
+    while stripped:
+        stripped = False
+        for suffix in _NUMBER_UNIT_SUFFIXES:
+            if s.endswith(suffix):
+                s = s[: -len(suffix)]
+                stripped = True
+                break
+
+    # Remove thousands separators (commas between digits).
+    s = re.sub(r"(?<=\d),(?=\d)", "", s)
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _numbers_close(a: float | None, b: float | None) -> bool:
+    """Return True when both numbers parse and agree within float noise."""
+    if a is None or b is None:
+        return False
+    return abs(a - b) < 1e-9
+
+
+def _left_number_phrase(content: str, label_start: int) -> str | None:
+    """Return the number phrase immediately left of a label occurrence, or None.
+
+    A phrase is ``[qualifier]* [digits] [unit]*`` directly adjacent to the
+    label ("82.7亿元规模" → "82.7亿元"). Any non-glue character (punctuation,
+    ordinary text) ends the scan, which is what keeps unrelated figures out.
+    """
+    i = label_start - 1
+    limit = max(0, label_start - _WINDOW_RADIUS)
+    # Unit suffixes, right-to-left.
+    while i >= limit and content[i] in _UNIT_SUFFIX_CHARS:
+        i -= 1
+    num_end = i + 1
+    # Digits and separators.
+    while i >= limit and (content[i].isdigit() or content[i] in ".,"):
+        i -= 1
+    num_start = i + 1
+    if num_start >= num_end:
+        return None
+    # Qualifiers / connectors.
+    while i >= limit and content[i] in _NUMBER_GLUE_CHARS:
+        i -= 1
+    return content[i + 1 : num_end]
+
+
+def _right_number_phrase(content: str, label_end: int) -> str | None:
+    """Return the number phrase immediately right of a label occurrence, or None.
+
+    Same phrase shape as :func:`_left_number_phrase`, mirrored ("市场规模达
+    87.2亿元" → "达87.2亿元").
+    """
+    j = label_end
+    limit = min(len(content), label_end + _WINDOW_RADIUS)
+    # Qualifiers / connectors.
+    while j < limit and content[j] in _NUMBER_GLUE_CHARS:
+        j += 1
+    num_start = j
+    # Digits and separators.
+    while j < limit and (content[j].isdigit() or content[j] in ".,"):
+        j += 1
+    num_end = j
+    if num_start >= num_end:
+        return None
+    # Unit suffixes.
+    while j < limit and content[j] in _UNIT_SUFFIX_CHARS:
+        j += 1
+    return content[num_start:j]
+
+
+# ---------------------------------------------------------------------------
 # Individual check functions
 # ---------------------------------------------------------------------------
 
@@ -111,7 +272,18 @@ def _check_source_trace(content: str, source_url: str, source_data: dict[str, An
 
 
 def _check_number_verification(content: str, source_data: dict[str, Any]) -> CheckResult:
-    """Step 2: Verify that numbers in *content* match *source_data.key_numbers*."""
+    """Step 2: Verify that numbers in *content* match *source_data.key_numbers*.
+
+    Bidirectional check per key (label, expected_value):
+
+    * Forward (containment): the expected value must appear in content,
+      normalized (thousands separators / trailing zeros tolerated).
+    * Reverse (proximity): every occurrence of the label (or a Chinese gloss
+      of it, see ``_NUMBER_LABEL_GLOSS``) is examined for a directly adjacent
+      number phrase; any phrase that normalizes to a different value than
+      ``expected_value`` is reported as a contradiction. Numbers not adjacent
+      to a matched label are never inspected.
+    """
     name = "number_verification"
     key_numbers: dict[str, str] = source_data.get("key_numbers", {})
 
@@ -121,13 +293,121 @@ def _check_number_verification(content: str, source_data: dict[str, Any]) -> Che
     mismatches: list[str] = []
     for label, expected_value in key_numbers.items():
         expected_str = str(expected_value)
-        # Check if the expected number appears in content
+        expected_num = _normalize_number(expected_str)
+
+        # Forward direction: source value must appear in content.
         if expected_str not in content:
-            mismatches.append(f"expected '{label}'={expected_str} not found in content")
+            found = False
+            if expected_num is not None:
+                for token in _NUMBER_TOKEN_RE.finditer(content):
+                    if _numbers_close(_normalize_number(token.group(0)), expected_num):
+                        found = True
+                        break
+            if not found:
+                mismatches.append(f"expected '{label}'={expected_str} not found in content")
+
+        # Reverse direction: numbers adjacent to a matching label must agree.
+        if expected_num is None:
+            continue  # numeric comparison impossible; forward check already ran
+
+        content_lower = content.lower()
+        candidates = (label.lower(), *(_NUMBER_LABEL_GLOSS.get(label, ())))
+        details: set[str] = set()
+        for candidate in candidates:
+            start = 0
+            while True:
+                idx = content_lower.find(candidate, start)
+                if idx == -1:
+                    break
+                for phrase in (
+                    _left_number_phrase(content, idx),
+                    _right_number_phrase(content, idx + len(candidate)),
+                ):
+                    if phrase is None:
+                        continue
+                    num = _normalize_number(phrase)
+                    if num is not None and not _numbers_close(num, expected_num):
+                        token_match = _NUMBER_TOKEN_RE.search(phrase)
+                        shown_num = token_match.group(0) if token_match else phrase
+                        details.add(
+                            f"content value {shown_num} for '{label}' "
+                            f"contradicts source value {expected_str}"
+                        )
+                start = idx + len(candidate)
+        mismatches.extend(sorted(details))
 
     if mismatches:
         return {"name": name, "passed": False, "detail": "; ".join(mismatches)}
     return {"name": name, "passed": True, "detail": f"all {len(key_numbers)} key_numbers verified"}
+
+
+# ---------------------------------------------------------------------------
+# Timeline date parsing helpers (used by _check_timeline)
+# ---------------------------------------------------------------------------
+
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_CN_FULL_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+_CN_YEAR_MONTH_RE = re.compile(r"(\d{4})年(\d{1,2})月(?!\d{1,2}日)")
+_CN_MONTH_DAY_RE = re.compile(r"(\d{1,2})月(\d{1,2})日")
+
+
+def _iter_content_dates(content: str, pub_dt: datetime) -> list[tuple[str, datetime]]:
+    """Parse ISO and Chinese dates from *content*, deduplicated by date.
+
+    Chinese forms handled:
+
+    * "X年X月X日" and "X年X月" — explicit year, parsed as-is
+    * "X月X日" — year inferred from ``pub_dt.year``; when the parsed month is
+      11+ months after the published month (classic Dec/Jan rollover), the
+      year is decremented so "12月31日" in a January article refers to the
+      previous December.
+    """
+    found: list[tuple[str, datetime]] = []
+
+    for m in _ISO_DATE_RE.finditer(content):
+        try:
+            found.append((m.group(0), datetime.fromisoformat(m.group(0))))
+        except ValueError:
+            continue
+
+    # Full "X年X月X日" spans shadow the bare "X月X日" pattern inside them.
+    full_spans: list[tuple[int, int]] = []
+    for m in _CN_FULL_DATE_RE.finditer(content):
+        year, month, day = (int(g) for g in m.groups())
+        try:
+            found.append((m.group(0), datetime(year, month, day)))
+        except ValueError:
+            continue
+        full_spans.append(m.span())
+
+    for m in _CN_YEAR_MONTH_RE.finditer(content):
+        year, month = (int(g) for g in m.groups())
+        try:
+            found.append((m.group(0), datetime(year, month, 1)))
+        except ValueError:
+            continue
+
+    for m in _CN_MONTH_DAY_RE.finditer(content):
+        if any(s <= m.start() < e for s, e in full_spans):
+            continue
+        month, day = (int(g) for g in m.groups())
+        year = pub_dt.year
+        if month - pub_dt.month >= 11:
+            year -= 1
+        try:
+            found.append((m.group(0), datetime(year, month, day)))
+        except ValueError:
+            continue
+
+    unique: list[tuple[str, datetime]] = []
+    seen: set[tuple[int, int, int]] = set()
+    for raw, dt in found:
+        key = (dt.year, dt.month, dt.day)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append((raw, dt))
+    return unique
 
 
 def _check_timeline(content: str, source_data: dict[str, Any]) -> CheckResult:
@@ -137,9 +417,6 @@ def _check_timeline(content: str, source_data: dict[str, Any]) -> CheckResult:
 
     if not published_date:
         return {"name": name, "passed": True, "detail": "no published_date to check against"}
-
-    import re
-    from datetime import datetime
 
     # Try to parse the published_date
     try:
@@ -151,18 +428,15 @@ def _check_timeline(content: str, source_data: dict[str, Any]) -> CheckResult:
             "detail": f"cannot parse published_date: {published_date}",
         }
 
-    # Look for ISO-like dates in content
-    date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-    content_dates = date_pattern.findall(content)
+    # Strip timezone so naive content dates compare safely (an aware
+    # published_date previously crashed the comparison with TypeError).
+    if pub_dt.tzinfo is not None:
+        pub_dt = pub_dt.replace(tzinfo=None)
 
     future_dates: list[str] = []
-    for d_str in content_dates:
-        try:
-            d = datetime.fromisoformat(d_str)
-            if d > pub_dt:
-                future_dates.append(d_str)
-        except ValueError:
-            continue
+    for _raw, d in _iter_content_dates(content, pub_dt):
+        if d > pub_dt:
+            future_dates.append(d.strftime("%Y-%m-%d"))
 
     if future_dates:
         return {
