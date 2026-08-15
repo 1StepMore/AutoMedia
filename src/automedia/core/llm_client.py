@@ -602,8 +602,6 @@ def _structured_completion_with_fallback(
 
         config = load_config()
 
-    llm_cfg = config.get("llm", {}).get(task_type, {})
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -863,8 +861,6 @@ def llm_complete(
         _warn_fake_once()
         return f"This is a fake LLM response for: {prompt[:80]}..."
 
-    llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -976,8 +972,6 @@ def llm_complete_structured(
     if _is_fake_mode(config):
         _warn_fake_once()
         return _fake_structured_response(response_format)
-
-    llm_cfg = config.get("llm", {}).get(task_type, {})
 
     messages: list[dict[str, str]] = []
     if system_prompt:
