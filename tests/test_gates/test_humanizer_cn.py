@@ -440,3 +440,52 @@ class TestCnEnglishRegression:
     def test_english_rewrite_unchanged(self) -> None:
         result = _rewrite_content("In today's world, technology matters.")
         assert "in today" not in result.lower()
+
+
+class TestRewriteRemovesMidTextSentenceStarts:
+    """issue #74: rewrite previously only removed sentence-initial patterns at
+    the very start of the text (^ anchored on the whole string); mid-text
+    sentence starts survived, leaving the detector re-flagging the content.
+    """
+
+    def test_removes_mid_text_template_conclusion(self) -> None:
+        result = _rewrite_content("人工智能正在改变世界。综上所述，这是一个重要的趋势。")
+        assert "综上所述" not in result
+        assert _check_template_conclusions(result)["passed"] is True
+
+    def test_removes_mid_text_filler_connector(self) -> None:
+        result = _rewrite_content("人工智能发展迅速。此外，我们还需要关注监管问题。")
+        assert "此外" not in result
+        assert _check_filler_connectors(result)["passed"] is True
+
+    def test_removes_mid_text_hollow_intro(self) -> None:
+        result = _rewrite_content("人工智能发展迅速。值得注意的是，这项技术需要谨慎对待。")
+        assert "值得注意的是" not in result
+        assert _check_hollow_intros(result)["passed"] is True
+
+    def test_removes_sequential_cn_fillers(self) -> None:
+        text = "首先，我们需要明确目标。其次，我们要制定计划。最后，严格执行。"
+        result = _rewrite_content(text)
+        for phrase in ("首先", "其次", "最后"):
+            assert phrase not in result, f"{phrase} should be removed"
+        assert _check_filler_connectors(result)["passed"] is True
+
+    def test_removes_mid_text_vague_subject(self) -> None:
+        result = _rewrite_content("人工智能发展迅速。我们应该加强监管。")
+        assert "我们应该" not in result
+        assert _check_vague_subjects(result)["passed"] is True
+
+    def test_english_mid_text_removed_with_space_preserved(self) -> None:
+        result = _rewrite_content(
+            "AI is growing fast. Furthermore, we must act now. "
+            "In conclusion, the outlook is good."
+        )
+        assert "furthermore" not in result.lower()
+        assert "in conclusion" not in result.lower()
+        assert "fast. we" in result  # inter-sentence space not fused
+        assert _check_filler_connectors(result)["passed"] is True
+        assert _check_template_conclusions(result)["passed"] is True
+
+    def test_text_start_removal_unchanged(self) -> None:
+        result = _rewrite_content("综上所述，人工智能是未来的方向。")
+        assert "综上所述" not in result
