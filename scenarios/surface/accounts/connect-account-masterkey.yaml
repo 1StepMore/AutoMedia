@@ -14,6 +14,7 @@ steps:
       platform: wechat
       auth_type: api_key
       credentials:
+        # checkov:skip=CKV_SECRET_6:synthetic fixture credential, not a real secret
         api_key: w3t1-synthetic-key
       label: w3t1-validation
     expect:
