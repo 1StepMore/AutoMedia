@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.2.0...automedia-v1.3.0) (2026-08-15)
+
+
+### Features
+
+* **ci:** validation CI wiring (affected-area mapper + runner + workflows) ([f354ddb](https://github.com/1StepMore/AutoMedia/commit/f354ddbf1e3551df982475707efdd251fb0be33c))
+* **scenarios:** validation scenario library (91 scenarios + standards handbook + baseline) ([2c11689](https://github.com/1StepMore/AutoMedia/commit/2c116895a71080d7cb6638c3d131eb4d727504ec))
+* **validate:** automedia validate CLI + 4 MCP validation tools + report/diff/signoff/regression ([2bd1579](https://github.com/1StepMore/AutoMedia/commit/2bd1579c60dc1a42cb760686c46699c77f106e88))
+* **validation:** agent-tester validation engine (schema/loader/standards/adapters/expects/env-gate/engine/persist) ([388584e](https://github.com/1StepMore/AutoMedia/commit/388584ef2c55554a20233b539b3bfbba42bf204d))
+
+
+### Bug Fixes
+
+* **llm:** handle fenced-JSON structured output from schema-ignoring providers ([37f2329](https://github.com/1StepMore/AutoMedia/commit/37f23294245c6edc9500ec7b2e21706eff18596d))
+* **validation:** final-wave review fixes — regression pin for update_engine_config defect + portable interpreter paths ([13bf18b](https://github.com/1StepMore/AutoMedia/commit/13bf18b2238e82951463b41a46633b4eeb83626d))
+* **validation:** silence checkov CKV_SECRET_6 false positive on synthetic fixture key ([#70](https://github.com/1StepMore/AutoMedia/issues/70)) ([5a1f94b](https://github.com/1StepMore/AutoMedia/commit/5a1f94bb3bb654f017e268557a1091cc0438af45))
+
+
+### Documentation
+
+* **validation:** add loop governance section (contract, failure triage, archive map) ([#68](https://github.com/1StepMore/AutoMedia/issues/68)) ([6847a73](https://github.com/1StepMore/AutoMedia/commit/6847a73c3b82792e8713adb3dd59f3f155f4b547))
+* **validation:** AGENTS.md Validation Layer + doc drift fixes + guide + changelog ([2bafe2e](https://github.com/1StepMore/AutoMedia/commit/2bafe2ed0bef7b5ec97f8b863d72ee9c560fc615))
+* **validation:** first-run loop log — env pitfalls (PATH, dir deps, fake-LLM limits) ([#69](https://github.com/1StepMore/AutoMedia/issues/69)) ([0c9644c](https://github.com/1StepMore/AutoMedia/commit/0c9644c621682bb101bfd5a83b76c76274345466))
+
 ## [1.2.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.1.0...automedia-v1.2.0) (2026-08-13)
 
 
