@@ -255,6 +255,7 @@ class LLMError(AutoMediaError):
 def _build_client(
     config: dict[str, Any],
     task_type: str = "text_generation",
+    provider_spec: dict[str, Any] | None = None,
 ) -> OpenAI:
     """Build an ``openai.OpenAI`` client from *config*.
 
@@ -268,6 +269,10 @@ def _build_client(
     task_type:
         Config section to read (e.g. ``text_generation``, ``vision``,
         ``subtitle_proofread``).  Defaults to ``text_generation``.
+    provider_spec:
+        Optional per-provider spec (used by the fallback chain).  When
+        given, overrides the ``llm.<task_type>`` block for provider,
+        model, base_url and api_key.
 
     Returns
     -------
@@ -289,6 +294,8 @@ def _build_client(
         ) from None
 
     llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
+    if provider_spec is not None:
+        llm_cfg = provider_spec
     provider: str = llm_cfg.get("provider", "") or ""
     api_key: str = llm_cfg.get("api_key", "") or ""
 
@@ -312,6 +319,66 @@ def _build_client(
         client_kwargs["base_url"] = base_url
 
     return OpenAI(**client_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Provider fallback chain
+# ---------------------------------------------------------------------------
+
+
+def _iter_provider_specs(
+    config: dict[str, Any],
+    task_type: str,
+) -> list[dict[str, Any]]:
+    """Return the provider chain for *task_type* as a list of specs.
+
+    The first element is the primary ``llm.<task_type>`` block; any
+    ``fallback:`` list entries (each an independent provider spec with
+    provider/model/base_url/api_key) follow in order.  An empty list
+    means no usable configuration.
+
+    Fallback entries inherit unspecified fields from the primary block,
+    so a fallback may override only ``provider``/``model``/``base_url``
+    and keep the primary's temperature/max_tokens.
+    """
+    llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
+    if not isinstance(llm_cfg, dict) or not llm_cfg:
+        return []
+    primary = {k: v for k, v in llm_cfg.items() if k != "fallback"}
+    chain: list[dict[str, Any]] = [primary]
+    fallbacks = llm_cfg.get("fallback", [])
+    if isinstance(fallbacks, list):
+        for fb in fallbacks:
+            if isinstance(fb, dict) and fb.get("provider"):
+                merged = dict(primary)
+                merged.update({k: v for k, v in fb.items() if k != "fallback"})
+                chain.append(merged)
+    return chain
+
+
+def _retryable_fallback_errors() -> tuple[type[BaseException], ...]:
+    """Exception types that justify switching to the next provider.
+
+    Provider-unavailable errors (rate limit, timeout, connection,
+    auth/API errors) mean the current provider is unusable for this
+    request — move down the chain.  ``LLMError`` is included because
+    ``llm_complete*`` wrap low-level errors in it; local configuration
+    errors (missing model) also surface as LLMError.
+    """
+    try:
+        import openai
+
+        return (LLMError, openai.APIError, openai.APITimeoutError, openai.APIConnectionError)
+    except ImportError:
+        return (LLMError,)
+
+
+_FALLBACK_ERRORS: tuple[type[BaseException], ...] = _retryable_fallback_errors()
+
+
+def _should_try_next_provider(exc: BaseException) -> bool:
+    """Whether *exc* should trigger the next provider in the chain."""
+    return isinstance(exc, _FALLBACK_ERRORS)
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +511,9 @@ _FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = _get_fallback_str
 
 # Cache: once a provider fails the beta structured API, skip it on subsequent calls
 # to avoid wasting 2-3s per gate on the inevitable 400 response.
-_provider_no_beta_api: bool = False
+# Keyed by provider so the fallback chain can switch to a provider that
+# DOES support structured output even when the primary does not.
+_provider_no_beta_api: dict[str, bool] = {}
 
 
 def _strip_markdown_fence(raw_text: str) -> str:
@@ -533,111 +602,136 @@ def _structured_completion_with_fallback(
 
         config = load_config()
 
-    llm_cfg = config.get("llm", {}).get(task_type, {})
-    client = _build_client(config, task_type=task_type)
-
-    resolved_model: str = model or llm_cfg.get("model", "")
-    if not resolved_model:
-        raise LLMError(
-            f"No model configured for structured output in llm.{task_type}.model. "
-            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
-        )
-    resolved_temp: float = (
-        temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
-    )
-    resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    # Skip beta API entirely if the provider already proved it doesn't support it
-    response: ChatCompletion | ParsedChatCompletion | None = None
-    if not _provider_no_beta_api:
-        try:
-            logger.info("Attempting structured completion via beta API")
-            response = _llm_structured_completion_with_retry(
-                client,
-                model=resolved_model,
-                messages=messages,
-                response_format=response_format,
-                temperature=resolved_temp,
-                max_tokens=resolved_max,
-            )
-            try:
-                return cast(BaseModel, response.choices[0].message.parsed)
-            except ValidationError:
-                # Lazy-parse SDKs raise here.  Fall through to the manual
-                # parse path, which reuses the response content and strips
-                # markdown fences.
-                logger.warning(
-                    "Beta structured completion returned content that failed "
-                    "schema validation (%s) — falling back to manual JSON parse.",
-                    response_format.__name__,
-                )
-        except ValidationError:
-            # openai >=2.0 parses eagerly inside parse(): the SDK raises
-            # ValidationError for fenced/non-schema JSON before returning.
-            # Cache the skip — a provider that ignores the schema contract
-            # (e.g. bigmodel.cn) will fail identically on every call.
-            logger.warning(
-                "Beta structured completion returned content that failed "
-                "schema validation (%s) — caching skip, falling back to "
-                "manual JSON parse.",
-                response_format.__name__,
-            )
-            _provider_no_beta_api = True
-        except _FALLBACK_STRUCTURED_ERRORS as exc:
-            logger.warning(
-                "Structured beta API not supported by provider (%s: %s). "
-                "Caching result — falling back for subsequent calls.",
-                type(exc).__name__,
-                exc,
-            )
-            _provider_no_beta_api = True
-    else:
-        logger.info("Skipping beta API (cached — provider does not support structured output)")
-
-    if response is None:
-        try:
-            response = _llm_chat_completion_with_retry(
-                client,
-                model=resolved_model,
-                messages=messages,
-                temperature=resolved_temp,
-                max_tokens=resolved_max,
-                response_format={"type": "json_object"},
-            )
-        except _FALLBACK_STRUCTURED_ERRORS:
-            # Provider may reject json_object mode (e.g. OpenAI requires the
-            # word "json" in the prompt; some providers refuse it outright).
-            # Retry once without the format constraint.
-            logger.warning(
-                "Provider rejected response_format=json_object — retrying "
-                "without the format constraint."
-            )
-            try:
-                response = _llm_chat_completion_with_retry(
-                    client,
-                    model=resolved_model,
-                    messages=messages,
-                    temperature=resolved_temp,
-                    max_tokens=resolved_max,
-                )
-            except Exception as exc:
-                raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
-        except Exception as exc:
-            raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
-
-    raw_text: str = response.choices[0].message.content or ""
-
-    try:
-        return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
-    except Exception as exc:
+    specs = _iter_provider_specs(config, task_type)
+    if not specs:
         raise LLMError(
-            f"Failed to parse LLM response as {response_format.__name__}: {exc}"
-        ) from exc
+            f"No LLM provider configured in llm.{task_type}. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+        )
+
+    errors: list[str] = []
+    for spec in specs:
+        provider_key: str = spec.get("provider", "openai") or "openai"
+        try:
+            client = _build_client(config, task_type=task_type, provider_spec=spec)
+            resolved_model: str = model or spec.get("model", "")
+            if not resolved_model:
+                raise LLMError(
+                    f"No model configured for structured output in llm.{task_type}.model. "
+                    "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+                )
+            resolved_temp: float = (
+                temperature if temperature is not None else spec.get("temperature", 0.7)
+            )
+            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+
+            # Skip beta API entirely if the provider already proved it doesn't support it
+            response: ChatCompletion | ParsedChatCompletion | None = None
+            if not _provider_no_beta_api.get(provider_key, False):
+                try:
+                    logger.info("Attempting structured completion via beta API")
+                    response = _llm_structured_completion_with_retry(
+                        client,
+                        model=resolved_model,
+                        messages=messages,
+                        response_format=response_format,
+                        temperature=resolved_temp,
+                        max_tokens=resolved_max,
+                    )
+                    try:
+                        return cast(BaseModel, response.choices[0].message.parsed)
+                    except ValidationError:
+                        # Lazy-parse SDKs raise here.  Fall through to the manual
+                        # parse path, which reuses the response content and strips
+                        # markdown fences.
+                        logger.warning(
+                            "Beta structured completion returned content that failed "
+                            "schema validation (%s) — falling back to manual JSON parse.",
+                            response_format.__name__,
+                        )
+                except ValidationError:
+                    # openai >=2.0 parses eagerly inside parse(): the SDK raises
+                    # ValidationError for fenced/non-schema JSON before returning.
+                    # Cache the skip — a provider that ignores the schema contract
+                    # (e.g. bigmodel.cn) will fail identically on every call.
+                    logger.warning(
+                        "Beta structured completion returned content that failed "
+                        "schema validation (%s) — caching skip, falling back to "
+                        "manual JSON parse.",
+                        response_format.__name__,
+                    )
+                    _provider_no_beta_api[provider_key] = True
+                except _FALLBACK_STRUCTURED_ERRORS as exc:
+                    logger.warning(
+                        "Structured beta API not supported by provider (%s: %s). "
+                        "Caching result — falling back for subsequent calls.",
+                        type(exc).__name__,
+                        exc,
+                    )
+                    _provider_no_beta_api[provider_key] = True
+            else:
+                logger.info("Skipping beta API (cached — provider does not support structured output)")
+
+            if response is None:
+                try:
+                    response = _llm_chat_completion_with_retry(
+                        client,
+                        model=resolved_model,
+                        messages=messages,
+                        temperature=resolved_temp,
+                        max_tokens=resolved_max,
+                        response_format={"type": "json_object"},
+                    )
+                except _FALLBACK_STRUCTURED_ERRORS:
+                    # Provider may reject json_object mode (e.g. OpenAI requires the
+                    # word "json" in the prompt; some providers refuse it outright).
+                    # Retry once without the format constraint.
+                    logger.warning(
+                        "Provider rejected response_format=json_object — retrying "
+                        "without the format constraint."
+                    )
+                    try:
+                        response = _llm_chat_completion_with_retry(
+                            client,
+                            model=resolved_model,
+                            messages=messages,
+                            temperature=resolved_temp,
+                            max_tokens=resolved_max,
+                        )
+                    except Exception as exc:
+                        raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+                except Exception as exc:
+                    raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+
+            raw_text: str = response.choices[0].message.content or ""
+
+            try:
+                return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+            except Exception as exc:
+                raise LLMError(
+                    f"Failed to parse LLM response as {response_format.__name__}: {exc}"
+                ) from exc
+        except Exception as exc:
+            errors.append(f"{provider_key}: {exc}")
+            logger.warning(
+                "structured completion provider %r failed (%s); %d provider(s) remaining",
+                provider_key,
+                exc,
+                len(specs) - len(errors),
+            )
+            if not _should_try_next_provider(exc):
+                raise
+            continue
+
+    raise LLMError(
+        f"LLM structured completion failed for all {len(specs)} provider(s): "
+        + "; ".join(errors)
+    )
 
 
 def llm_complete_structured_safe(
@@ -767,39 +861,59 @@ def llm_complete(
         _warn_fake_once()
         return f"This is a fake LLM response for: {prompt[:80]}..."
 
-    llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
-    client = _build_client(config, task_type=task_type)
-
-    resolved_model: str = model or llm_cfg.get("model", "")
-    if not resolved_model:
-        raise LLMError(
-            f"No model configured in llm.{task_type}.model. "
-            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
-        )
-    resolved_temp: float = (
-        temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
-    )
-    resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 2048)
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    try:
-        response = _llm_chat_completion_with_retry(
-            client,
-            model=resolved_model,
-            messages=messages,
-            temperature=resolved_temp,
-            max_tokens=resolved_max,
+    specs = _iter_provider_specs(config, task_type)
+    if not specs:
+        raise LLMError(
+            f"No LLM provider configured in llm.{task_type}. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
         )
-    except Exception as exc:
-        raise LLMError(f"LLM completion failed: {exc}") from exc
 
-    choice = response.choices[0]
-    content: str = choice.message.content or ""
-    return content
+    errors: list[str] = []
+    for spec in specs:
+        spec_provider: str = spec.get("provider", "openai") or "openai"
+        try:
+            client = _build_client(config, task_type=task_type, provider_spec=spec)
+            resolved_model: str = model or spec.get("model", "")
+            if not resolved_model:
+                raise LLMError(
+                    f"No model configured in llm.{task_type}.model. "
+                    "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+                )
+            resolved_temp: float = (
+                temperature if temperature is not None else spec.get("temperature", 0.7)
+            )
+            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 2048)
+
+            response = _llm_chat_completion_with_retry(
+                client,
+                model=resolved_model,
+                messages=messages,
+                temperature=resolved_temp,
+                max_tokens=resolved_max,
+            )
+            choice = response.choices[0]
+            content: str = choice.message.content or ""
+            return content
+        except Exception as exc:
+            errors.append(f"{spec_provider}: {exc}")
+            logger.warning(
+                "llm_complete provider %r failed (%s); %d provider(s) remaining",
+                spec_provider,
+                exc,
+                len(specs) - len(errors),
+            )
+            if not _should_try_next_provider(exc):
+                raise LLMError(f"LLM completion failed: {exc}") from exc
+            continue
+
+    raise LLMError(
+        f"LLM completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
+    )
 
 
 def llm_complete_structured(
@@ -859,46 +973,71 @@ def llm_complete_structured(
         _warn_fake_once()
         return _fake_structured_response(response_format)
 
-    llm_cfg = config.get("llm", {}).get(task_type, {})
-    client = _build_client(config, task_type=task_type)
-
-    resolved_model: str = model or llm_cfg.get("model", "")
-    if not resolved_model:
-        raise LLMError(
-            f"No model configured for structured output in llm.{task_type}.model. "
-            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
-        )
-    resolved_temp: float = (
-        temperature if temperature is not None else llm_cfg.get("temperature", 0.7)
-    )
-    resolved_max: int = max_tokens if max_tokens is not None else llm_cfg.get("max_tokens", 4096)
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    try:
-        response = _llm_structured_completion_with_retry(
-            client,
-            model=resolved_model,
-            messages=messages,
-            response_format=response_format,
-            temperature=resolved_temp,
-            max_tokens=resolved_max,
+    specs = _iter_provider_specs(config, task_type)
+    if not specs:
+        raise LLMError(
+            f"No LLM provider configured in llm.{task_type}. "
+            "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
         )
-    except Exception as exc:
-        raise LLMError(f"LLM structured completion failed: {exc}") from exc
 
-    try:
-        return cast(BaseModel, response.choices[0].message.parsed)
-    except ValidationError:
-        # Provider returned 200 OK but ignored the schema (e.g. fenced JSON) —
-        # retry against the raw content with fence stripping.
-        raw_text: str = response.choices[0].message.content or ""
+    errors: list[str] = []
+    for spec in specs:
+        spec_provider: str = spec.get("provider", "openai") or "openai"
         try:
-            return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+            client = _build_client(config, task_type=task_type, provider_spec=spec)
+            resolved_model: str = model or spec.get("model", "")
+            if not resolved_model:
+                raise LLMError(
+                    f"No model configured for structured output in llm.{task_type}.model. "
+                    "Set it in ~/.automedia/model_config.yaml or pass model= explicitly."
+                )
+            resolved_temp: float = (
+                temperature if temperature is not None else spec.get("temperature", 0.7)
+            )
+            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+
+            try:
+                response = _llm_structured_completion_with_retry(
+                    client,
+                    model=resolved_model,
+                    messages=messages,
+                    response_format=response_format,
+                    temperature=resolved_temp,
+                    max_tokens=resolved_max,
+                )
+            except Exception as exc:
+                raise LLMError(f"LLM structured completion failed: {exc}") from exc
+
+            try:
+                return cast(BaseModel, response.choices[0].message.parsed)
+            except ValidationError:
+                # Provider returned 200 OK but ignored the schema (e.g. fenced JSON) —
+                # retry against the raw content with fence stripping.
+                raw_text: str = response.choices[0].message.content or ""
+                try:
+                    return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+                except Exception as exc:
+                    raise LLMError(
+                        f"Failed to parse LLM response as {response_format.__name__}: {exc}"
+                    ) from exc
         except Exception as exc:
-            raise LLMError(
-                f"Failed to parse LLM response as {response_format.__name__}: {exc}"
-            ) from exc
+            errors.append(f"{spec_provider}: {exc}")
+            logger.warning(
+                "llm_complete_structured provider %r failed (%s); %d provider(s) remaining",
+                spec_provider,
+                exc,
+                len(specs) - len(errors),
+            )
+            if not _should_try_next_provider(exc):
+                raise LLMError(f"LLM structured completion failed: {exc}") from exc
+            continue
+
+    raise LLMError(
+        f"LLM structured completion failed for all {len(specs)} provider(s): "
+        + "; ".join(errors)
+    )
