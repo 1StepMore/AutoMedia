@@ -47,7 +47,7 @@ def _clear_automedia_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
     for key in [k for k in os.environ if k.startswith("AUTOMEDIA_")]:
         monkeypatch.delenv(key, raising=False)
-    _llm_client_module._provider_no_beta_api = False
+    _llm_client_module._provider_no_beta_api = {}
 
 
 # ---------------------------------------------------------------------------
@@ -1013,4 +1013,192 @@ class TestFencedResponseHandling:
             )
         assert isinstance(result, _FencedOutput)
         assert result.value == "eager"
-        assert _llm_client_module._provider_no_beta_api is True
+        assert _llm_client_module._provider_no_beta_api.get("test-provider") is True
+
+
+# ===========================================================================
+# Provider fallback chain (2026-08-15)
+# ===========================================================================
+
+
+class TestProviderFallbackChain:
+    """llm_complete falls back to the next provider when the primary fails."""
+
+    @staticmethod
+    def _resp(content: str) -> MagicMock:
+        """Build a mock chat response carrying *content*."""
+        response = MagicMock()
+        response.choices = [MagicMock()]
+        response.choices[0].message.content = content
+        return response
+
+    def _make_fallback_config(self) -> dict[str, Any]:
+        return {
+            "llm": {
+                "text_generation": {
+                    "provider": "primary-provider",
+                    "model": "primary-model",
+                    "api_key": "sk-primary",
+                    "base_url": "https://primary.test/v1",
+                    "fallback": [
+                        {
+                            "provider": "backup-provider",
+                            "model": "backup-model",
+                            "api_key": "sk-backup",
+                            "base_url": "https://backup.test/v1",
+                        },
+                        {
+                            "provider": "last-provider",
+                            "model": "last-model",
+                            "api_key": "sk-last",
+                            "base_url": "https://last.test/v1",
+                        },
+                    ],
+                }
+            }
+        }
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_falls_back_when_primary_raises_llm_error(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+    ) -> None:
+        """Primary raises LLMError; backup succeeds and is returned."""
+        config = self._make_fallback_config()
+
+        def _side_effect(client, **kwargs):
+            provider = getattr(client, "_provider_tag", "")
+            if provider == "primary-provider":
+                raise LLMError("primary down")
+            return self._resp("from backup")
+
+        def _build_side_effect(*args, **kwargs):
+            spec = kwargs.get("provider_spec") or {}
+            client = MagicMock()
+            client._provider_tag = spec.get("provider", "")
+            return client
+
+        with patch(
+            "automedia.core.llm_client._build_client",
+            side_effect=_build_side_effect,
+        ), patch(
+            "automedia.core.llm_client._llm_chat_completion_with_retry",
+            side_effect=_side_effect,
+        ):
+            result = llm_complete("Hello", config=config)
+        assert result == "from backup"
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_uses_last_provider_when_all_but_last_fail(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+    ) -> None:
+        """First two providers fail; the last one answers."""
+        config = self._make_fallback_config()
+
+        def _side_effect(client, **kwargs):
+            provider = getattr(client, "_provider_tag", "")
+            if provider == "last-provider":
+                return self._resp("from last")
+            raise LLMError(f"{provider} down")
+
+        def _build_side_effect(*args, **kwargs):
+            spec = kwargs.get("provider_spec") or {}
+            client = MagicMock()
+            client._provider_tag = spec.get("provider", "")
+            return client
+
+        with patch(
+            "automedia.core.llm_client._build_client",
+            side_effect=_build_side_effect,
+        ), patch(
+            "automedia.core.llm_client._llm_chat_completion_with_retry",
+            side_effect=_side_effect,
+        ):
+            result = llm_complete("Hello", config=config)
+        assert result == "from last"
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_raises_after_all_providers_fail(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+    ) -> None:
+        """All providers fail -> LLMError naming every provider."""
+        config = self._make_fallback_config()
+
+        def _side_effect(client, **kwargs):
+            raise LLMError("down")
+
+        def _build_side_effect(*args, **kwargs):
+            spec = kwargs.get("provider_spec") or {}
+            client = MagicMock()
+            client._provider_tag = spec.get("provider", "")
+            return client
+
+        with patch(
+            "automedia.core.llm_client._build_client",
+            side_effect=_build_side_effect,
+        ), patch(
+            "automedia.core.llm_client._llm_chat_completion_with_retry",
+            side_effect=_side_effect,
+        ):
+            with pytest.raises(LLMError, match="primary-provider.*backup-provider.*last-provider"):
+                llm_complete("Hello", config=config)
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_no_fallback_preserves_single_provider_behavior(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+    ) -> None:
+        """Config without fallback still works (backward compat)."""
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = self._resp("single")
+        config = _make_llm_config()
+        result = llm_complete("Hello", config=config)
+        assert result == "single"
+
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_structured_falls_back_on_primary_failure(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+    ) -> None:
+        """llm_complete_structured falls back when primary raises."""
+        config = self._make_fallback_config()
+
+        def _side_effect(client, **kwargs):
+            provider = getattr(client, "_provider_tag", "")
+            if provider == "backup-provider":
+                resp = MagicMock()
+                resp.choices = [MagicMock()]
+                resp.choices[0].message.parsed = _FencedOutput(value="structured ok")
+                return resp
+            raise LLMError("primary down")
+
+        def _build_side_effect(*args, **kwargs):
+            spec = kwargs.get("provider_spec") or {}
+            client = MagicMock()
+            client._provider_tag = spec.get("provider", "")
+            return client
+
+        with patch(
+            "automedia.core.llm_client._build_client",
+            side_effect=_build_side_effect,
+        ), patch(
+            "automedia.core.llm_client._llm_structured_completion_with_retry",
+            side_effect=_side_effect,
+        ):
+            result = llm_complete_structured(
+                "Hello", response_format=_FencedOutput, config=config
+            )
+        assert isinstance(result, _FencedOutput)
+        assert result.value == "structured ok"
