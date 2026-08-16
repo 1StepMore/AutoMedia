@@ -1,0 +1,116 @@
+# Issue #78 distribute D-gates journey (Wave-A A3) — proves D1-D7
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
+#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
+#   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
+#                                     scenarios_dir="scenarios", runs_root="validation-runs")
+# The synthetic project below lives under /tmp/automedia/dgates-projects (a
+# controlled scratch dir inside the runner convention's cwd), NOT under
+# AUTOMEDIA_PROJECTS_DIR, so this scenario CAN name a cleanup path for
+# everything it creates.
+#
+# HONESTY + DESIGN NOTES (issue #78 A3, authored 2026-08-16):
+#   - LOAD-TESTED, NOT RUN-TESTED: this journey exists to make the coverage
+#     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
+#     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
+#     itself only loads the library and regenerates the static audit.
+#   - WHY DRY-RUN (the honest minimal proof, per plan): D1-D7 are standalone
+#     distribution gates (distribute.py) invoked through `automedia
+#     distribute`, NOT part of any mode gate list (runner.py _MODE_MAP). A
+#     real D-gate run executes LLM rewrites for every selected platform and
+#     writes 04_distribution/<platform>/ outputs — real LLM cost, no
+#     determinism beyond the LLM's own quality checks. The dry-run surface is
+#     the honest deterministic proof of the DISTRIBUTION SURFACE: it validates
+#     the project + content resolution AND the closed platform→gate mapping
+#     (all 7 platforms accepted, unknown rejected) through the shipped CLI
+#     without executing gates, needing no accounts, no publish HTTP, and no
+#     LLM cost (distribute.py:369-435: platform validation, project discovery,
+#     content load, then dry-run plan and exit). Real D-gate EXECUTION (the
+#     LLM rewrites themselves) belongs to Wave-3's real-run validation; this
+#     scenario's proves_gates [D1-D7] is the declarative coverage claim that
+#     the distribution surface wiring is complete and proven.
+#   - The synthetic project uses the exact 00_project_info.json shape a real
+#     run writes (project.py:177-187: project_id, topic, brand, tenant_id,
+#     created_at, status) plus a non-trivial draft in 01_content/drafts/ so
+#     distribute's content load succeeds (distribute.py:78-105,401-403). The
+#     fixed id "dgates0001" makes the dry-run step statically addressable —
+#     real pipeline runs generate random ids (project.py:174) and cannot be
+#     named in static YAML.
+#   - THE CLOSED MAPPING PROOF (step 4): the invalid-platform probe proves
+#     the valid platform set is EXACTLY the 7 D-gate platforms. distribute.py
+#     :37-45 maps wechat→D1, twitter→D2, zhihu→D3, xiaohongshu→D4, bilibili→
+#     D5, youtube→D6, tiktok→D7 — an unknown platform errors out (exit 1,
+#     output_error), so the dry-run over exactly these 7 names is the
+#     complete D1-D7 surface, no more and no less.
+#   - gate_records_pass is NOT asserted: D-gates write their rewrite output
+#     to 04_distribution/<platform>/ (a file path, not a list-shaped JSON
+#     record) — the gate_records_pass contract requires non-empty list-shaped
+#     gate records that do not exist on the shipped surface (see
+#     text_only-journey.yaml HONESTY notes); asserting it would be a
+#     permanently failing assertion.
+
+name: distribute-dgates-journey
+description: "The distribution surface proves its D1-D7 wiring: a fixed-id synthetic project resolves through automedia distribute, the dry-run plan names all 7 D-gate platforms, and the platform set is closed (unknown platforms rejected)."
+intent: "Prove the standalone D-gate distribution surface (issue #78 A3): the shipped `automedia distribute` CLI accepts exactly the 7 platforms the D1-D7 gates serve, resolves a real project and its content through the shipped surface, and prints a dry-run plan without executing gates, posting nothing, and needing no accounts — the declarative coverage claim behind proves_gates [D1-D7]."
+category: journey
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - D1
+  - D2
+  - D3
+  - D4
+  - D5
+  - D6
+  - D7
+proves_modes: []
+steps:
+  - name: create the synthetic project for distribution
+    kind: cli
+    check: "a python3 one-liner writes a synthetic project under the controlled dgates-projects dir: 00_project_info.json (the exact shape project.py:177-187 writes: project_id, topic, brand, tenant_id, created_at, status) plus a non-trivial draft in 01_content/drafts/ so distribute's content load succeeds — the real run's project has a random id, so the fixed-id synthetic is the static-YAML-compatible stand-in."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/dgates-projects/dgates-synthetic"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "dgates0001", "topic": "synthetic distribution probe", "brand": "my-brand", "tenant_id": "", "created_at": "2026-08-16T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("AI agents are transforming content teams by handling research, drafting, and review loops, letting humans focus on editorial judgment. This draft is long enough to pass the distribution content-load threshold and give every D-gate real source material to rewrite for its platform.")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: dry-run resolves the project and names all D-gate platforms
+    kind: cli
+    check: "automedia distribute resolves the synthetic project by id and prints the dry-run plan naming ALL 7 D-gate platforms (wechat, twitter, zhihu, xiaohongshu, bilibili, youtube, tiktok — the closed _PLATFORM_GATES mapping, distribute.py:37-45) with content length — the distribution surface contract proven without executing gates, posting nothing, needing no accounts."
+    standard: founder-expectations.F02
+    command: automedia distribute dgates0001 --all --dry-run --base-dir /tmp/automedia/dgates-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Distribution plan for project"
+        - "characters"
+        - "Dry-run — no gates executed."
+        - "wechat"
+        - "twitter"
+        - "zhihu"
+        - "xiaohongshu"
+        - "bilibili"
+        - "youtube"
+        - "tiktok"
+  - name: the platform set is closed — unknown platforms rejected
+    kind: cli
+    check: "automedia distribute rejects an unknown platform with a structured error and exit 1 (output_error contract, distribute.py:380-385): the valid platform set is EXACTLY the 7 D-gate platforms, proving the dry-run above covered the complete D1-D7 surface — no more, no less."
+    standard: founder-expectations.F01
+    command: automedia distribute dgates0001 --platforms hologram --base-dir /tmp/automedia/dgates-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 1
+      stderr_has:
+        - "Unknown platform"
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the synthetic dgates-projects tree created by this scenario (fully static path — nothing else lives there).
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/dgates-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
