@@ -42,6 +42,13 @@
 #   - The quality spot-check is intentionally light (a static sample through
 #     the real-LLM evaluate_content_quality tool); W3-T4 owns deep real-LLM
 #     quality scoring of produced drafts against the evaluation-matrix.
+#   - ISSUE #78 A3: proves_gates is derived EXACTLY from
+#     _MODE_MAP["text_only"] in src/automedia/pipelines/runner.py (CW, G0-G6,
+#     H0, L1-L4 — 13 gates; NO V-gates and NO pre-gate) and proves_modes names
+#     the mode. These headers are declarative coverage metadata consumed by
+#     the static audit (issue #78 A2), NOT step assertions — the audit is
+#     complete purely by their presence. This journey is load-tested by the
+#     A3/A4 wave and run-tested by Wave-3's real-run validation.
 
 name: text-only-journey
 description: A real text_only pipeline run from the CLI produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
@@ -49,6 +56,22 @@ intent: "Prove the shipped text_only production path end-to-end with a real LLM:
 category: journey
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - CW
+  - G0
+  - G1
+  - G2
+  - G3
+  - G4
+  - G5
+  - G6
+  - H0
+  - L1
+  - L2
+  - L3
+  - L4
+proves_modes:
+  - text_only
 steps:
   - name: text_only pipeline completes
     kind: cli

@@ -1,0 +1,118 @@
+# Issue #78 video_only mode journey (Wave-A A3) — proves the video-mode gate list
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
+#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
+#   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
+#                                     scenarios_dir="scenarios", runs_root="validation-runs")
+# Project dirs are created under AUTOMEDIA_PROJECTS_DIR (verified: runner.py:883
+# reads the env var; Project.init falls back to cwd when unset) — so the journey
+# MUST be run from the controlled cwd with the env exported, and NEVER from the
+# repo root, or project dirs land at the repo root. The controlled projects dir
+# is scratch space owned by the runner; this scenario adds no cleanup_steps
+# because project dir names embed today's date (project.py:156-158) and a random
+# project_id (project.py:174), so a cleanup path cannot be named statically.
+#
+# HONESTY + DESIGN NOTES (issue #78 A3, authored 2026-08-16):
+#   - LOAD-TESTED, NOT RUN-TESTED: this journey exists to make the coverage
+#     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
+#     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
+#     itself only loads the library and regenerates the static audit.
+#   - proves_gates is derived EXACTLY from _MODE_MAP["video_only"] in
+#     src/automedia/pipelines/runner.py (V0-V7, L1-L4 — 12 gates; NO CW, NO
+#     G-gates, NO H0: video_only never writes a draft — runner.py:1201-1205
+#     substitutes a "[content skipped in video_only mode]" placeholder when
+#     CW is absent — verified by eye and enforced by the coverage audit).
+#     proves_modes names the mode.
+#   - ARTIFACT STEP IS DIFFERENT BY DESIGN: because video_only runs no CW,
+#     no *_draft.md is written; the honest artifact proof of the real run is
+#     the gate-lifecycle database .automedia/history.db under the project dir
+#     — PipelineHistoryHook (hooks/pipeline_history.py) writes a "started"
+#     row on before_gate and a "completed" row on after_gate for every gate
+#     that ran, so a run that printed "Pipeline finished:" (exit 0) MUST have
+#     written rows. That is the artifact the director can inspect, and it is
+#     produced by the real run, never assumed.
+#   - gate_records_pass is NOT asserted, for the same reason as
+#     text_only-journey.yaml: the only gate-record JSON the product writes is
+#     pipeline_md5.json whose top-level "gates" key is a DICT (md5_tracker.py
+#     :57-61), and gate lifecycle rows live in .automedia/history.db (SQLite,
+#     not JSON) — list-shaped gate records do not exist on the shipped
+#     surface, so gate_records_pass would be a permanently failing assertion.
+#   - The run step asserts exit_code 0 + the "Pipeline finished:" marker, NOT
+#     "Pipeline finished: success": a completed run prints "Pipeline
+#     finished: partial" (exit 0) when a stop gate fails and "success" when
+#     all gates pass — both exit 0 (run.py:334-336,366-367: only status
+#     "failed" raises Exit(1)). exit 0 + marker = the pipeline ran to
+#     completion through the video-mode gate list.
+#   - The quality spot-check is intentionally light (a static sample through
+#     the real-LLM evaluate_content_quality tool); W3-T4 owns deep real-LLM
+#     quality scoring of produced drafts against the evaluation-matrix.
+#   - Topic "Turning blog posts into video essays" is unique to this journey
+#     so the projects-list step cannot cross-match another journey's project
+#     (all journeys share the controlled projects dir).
+
+name: video-only-journey
+description: A real video_only pipeline run from the CLI (V0-V7 → L1-L4) completes and leaves the gate-lifecycle artifact of the real run in the project, and the real-LLM quality-evaluation surface answers.
+intent: "Prove the shipped video_only production path end-to-end with a real LLM: the V0-V7 → L1-L4 gate list runs to completion in one CLI call, the produced project visible through the shipped projects surface, the run's gate-lifecycle artifact inspectable by the director, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the video_only mode gates (issue #78)."
+category: journey
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - V0
+  - V1
+  - V2
+  - V3
+  - V4
+  - V5
+  - V6
+  - V7
+  - L1
+  - L2
+  - L3
+  - L4
+proves_modes:
+  - video_only
+steps:
+  - name: video_only pipeline completes
+    kind: cli
+    check: "A real video_only pipeline run for a fixed topic and brand completes and prints the completion marker (T3 of the True Test: topic to output in one sitting, no docs)."
+    standard: founder-expectations.true-test
+    command: automedia run --topic "Turning blog posts into video essays" --brand my-brand --mode video_only
+    timeout_seconds: 1500
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: project visible through the shipped surface
+    kind: cli
+    check: automedia projects list reads the 00_project_info.json the real run wrote and prints the project's topic row (artifact produced by a real run, never assumed).
+    standard: founder-expectations.F01
+    command: automedia projects list --base-dir /tmp/automedia/journey-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Turning blog posts into video essays"
+  - name: run's gate-lifecycle artifact exists
+    kind: cli
+    check: "The run's gate-lifecycle database .automedia/history.db exists and carries rows in the controlled projects dir. video_only runs no CW gate, so no *_draft.md is written (runner.py:1201-1205 placeholder); the lifecycle DB is the artifact the real run produced — every gate that ran recorded a started/completed row (PipelineHistoryHook)."
+    standard: founder-expectations.F01
+    command: find /tmp/automedia/journey-projects -name "history.db" -size +100c
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "history.db"
+  - name: real-LLM quality spot-check answers
+    kind: tool
+    check: The evaluate_content_quality tool returns a success envelope with a structured LLM quality assessment for a sample (light scaffold spot-check; deep scoring is W3-T4's scope).
+    standard: tool.contract
+    tool: evaluate_content_quality
+    arguments:
+      content: "A video essay turns a blog post into a narrative: script the argument first, then cut visuals that reinforce each claim rather than decorate it."
+      criteria: "clarity, accuracy, brand voice"
+      brand: "my-brand"
+    timeout_seconds: 300
+    expect:
+      success: true
