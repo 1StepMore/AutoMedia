@@ -15,14 +15,7 @@
 
 ### 坑清单（迭代前必查！）
 
-1. **CLI 场景需要 automedia 在 PATH**：场景 command 是 `automedia ...` 无路径前缀——跑 validation 前 `export PATH=$PWD/.venv/bin:$PATH`，否则全部 cli 场景 OSError failed
-2. **场景硬编码 /tmp 路径需要预先 mkdir**：`/tmp/automedia/agent-lifecycle-cwd/`（lifecycle pool db 父目录）——rm -f 不建目录
-3. **AUTOMEDIA_PROJECTS_DIR 必须与场景硬编码路径一致**：text-only-journey 的 run 与验证步骤查 `/tmp/automedia/journey-projects`——runner env 设别的路径会导致 run 写 A、验证查 B 失败
-4. **fake-LLM 局限**：fake 模式 draft 产物 ~86b，无法满足 `-size +500c` 类 non-trivial 断言——需真 LLM 的场景在 fake 模式预期 failed（定性记录，非产品 bug）
-5. **step detail 为空是引擎特性**：CLI/tool 步骤失败时 `detail` 字段可能空——定性需直接调用底层工具/命令看真实错误（如 add_pool_topic 直调）
-6. **`.env` 里 OPENCODE_GO_API_KEY 出现两次**（90/443 行）——`grep | cut` 会拼两行（key 含换行符）→ 连接错误/403；取最后一行定义（`tail -1`）
-7. **OpenCode Go 不支持 beta structured parse**（response_format 400 "This response_format type is unavailable now"）——AutoMedia 的 fallback 自动降级 json_object（json_object 直测 OK，无需改代码）；但 DeepSeek reasoning 空 content（#178 类）→ parse 失败 → 依赖 fallback/重试救回（strategy-llm 场景单独复跑可过）
-8. **DeepSeek 间歇性截断 JSON（2026-08-16 新增）**：`evaluate_content_quality` 等 LLM 工具在波动时段返回截断 JSON（`Invalid JSON: EOF at line 9 column 16, input_value='{"quality_score": 0....'`）——同一 content 直调 3 连发 26.7s/20.3s/17.6s 全 OK 证明是间歇性。全量跑后 3 个 journey spot-check 步骤同批 failed 时优先怀疑时段波动，单独复跑定性后再动代码
+新坑 #8（2026-08-16 追加；坑 #1-7 见下方 2026-08-15 首轮清单）：**DeepSeek 间歇性截断 JSON**——`evaluate_content_quality` 等 LLM 工具在波动时段返回截断 JSON（`Invalid JSON: EOF at line 9 column 16, input_value='{"quality_score": 0....'`）；同一 content 直调 3 连发 26.7s/20.3s/17.6s 全 OK 证明是间歇性。全量跑后 3 个 journey spot-check 步骤同批 failed 时优先怀疑时段波动，单独复跑定性后再动代码
 
 ## 2026-08-15 首轮 validation（fake 确定性模式）
 
