@@ -15,6 +15,7 @@ from automedia.detectors import (
     DetectorRegistry,
     DetectorResult,
     DeterministicTasteDetector,
+    GPTZeroStyleApiDetector,
 )
 
 
@@ -25,11 +26,11 @@ class TestDetectorRegistrySingleton:
         """Every DetectorRegistry() call returns the same instance."""
         assert DetectorRegistry() is DetectorRegistry()
 
-    def test_list_is_sorted_and_contains_deterministic(self) -> None:
-        """list() returns sorted names including the built-in detector."""
+    def test_list_is_sorted_and_contains_builtins(self) -> None:
+        """list() returns sorted names including both built-in detectors."""
         names = DetectorRegistry().list()
         assert names == sorted(names)
-        assert names == ["deterministic_taste"]
+        assert names == ["deterministic_taste", "gptzero_style_api"]
 
     def test_get_returns_detector_class(self) -> None:
         """get() resolves a registered detector by name."""
@@ -103,9 +104,11 @@ class TestDetectorRegistryClear:
             assert len(registry) == 0
             assert "deterministic_taste" not in registry
             registry.register(DeterministicTasteDetector)
-            assert len(registry) == 1
+            registry.register(GPTZeroStyleApiDetector)
+            assert len(registry) == 2
             assert "deterministic_taste" in registry
         finally:
             # Restore the full registry for the rest of the suite.
             registry.clear()
             registry.register(DeterministicTasteDetector)
+            registry.register(GPTZeroStyleApiDetector)

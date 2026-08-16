@@ -13,6 +13,9 @@ Built-in detectors:
 - ``deterministic_taste`` — env-free; reuses the G1 humanizer's 9 regex
   categories strictly by import (no pattern duplication).  Scores
   ``ai_score = failing / total`` and passes when ``ai_score <= 0.5``.
+- ``gptzero_style_api`` — env-gated external-API placeholder; gated on
+  ``AUTOMEDIA_DETECTOR_GPTZERO_API_KEY``.  Never makes a network call in
+  this build and raises instead of fabricating evidence.
 
 Convenience API:
 
@@ -26,6 +29,7 @@ that rewritten output no longer reads as AI-written.
 
 from __future__ import annotations
 
+from automedia.detectors.adapters import GPTZeroStyleApiDetector
 from automedia.detectors.base import BaseDetector, DetectorResult
 from automedia.detectors.deterministic import DeterministicTasteDetector
 from automedia.detectors.registry import DetectorRegistry
@@ -35,6 +39,7 @@ __all__ = [
     "DetectorResult",
     "DetectorRegistry",
     "DeterministicTasteDetector",
+    "GPTZeroStyleApiDetector",
     "list_detectors",
     "detect_text",
 ]
