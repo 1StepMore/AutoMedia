@@ -20,10 +20,20 @@ Detects and rewrites common AI-generated text patterns:
 When ``gate_context["_mock_results"]`` is present, each check's result is
 driven from that dict instead of running real detection — making the gate
 fully deterministic for unit testing.
+
+Humanize→verify closed loop (issue #62, Wave-B B4): when enabled via
+``gate_context["config"]["gates"]["humanizer"]["verify_loop"]``
+(``enabled: true``, ``max_iterations`` >= 1, default 3), the rewritten
+output is verified with the deterministic AI-taste detector from
+``automedia.detectors`` and the gate iterates rewrite→verify up to the
+budget.  The result then exposes ``detector_score`` (final ai_score) and
+``verify_iterations``.  The loop is OFF by default and never changes the
+result shape when disabled.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
@@ -279,6 +289,45 @@ _EXPECTED_MAP: dict[str, str] = {
     "absolute_assertions": "No absolute assertion patterns",
     "repetitive_structures": "No repetitive sentence-opening structures",
 }
+
+# ---------------------------------------------------------------------------
+# Humanize→verify closed loop config (issue #62, Wave-B B4)
+# ---------------------------------------------------------------------------
+
+_VERIFY_LOOP_ENV = "AUTOMEDIA_HUMANIZER_VERIFY_LOOP"
+_VERIFY_LOOP_DEFAULT_ITERATIONS = 3
+
+
+def _resolve_verify_loop_config(config: dict[str, Any] | None) -> tuple[bool, int]:
+    """Resolve the humanize→verify loop toggle, returning (enabled, max_iterations).
+
+    Primary source — the merged config in ``gate_context["config"]``:
+
+        gates:
+          humanizer:
+            verify_loop:
+              enabled: false      # bool, default False (loop OFF by default)
+              max_iterations: 3   # int, default 3, coerced to >= 1
+
+    Backstop — env var ``AUTOMEDIA_HUMANIZER_VERIFY_LOOP`` (any value other
+    than ``""`` or ``"0"`` enables the loop with the config/default budget).
+    """
+    cfg = config if isinstance(config, dict) else {}
+    gates_cfg = cfg.get("gates")
+    humanizer_cfg = gates_cfg.get("humanizer") if isinstance(gates_cfg, dict) else None
+    vloop_cfg = humanizer_cfg.get("verify_loop") if isinstance(humanizer_cfg, dict) else None
+    vloop = vloop_cfg if isinstance(vloop_cfg, dict) else {}
+
+    enabled = bool(vloop.get("enabled", False))
+    env_flag = os.environ.get(_VERIFY_LOOP_ENV, "")
+    if env_flag.strip() not in ("", "0"):
+        enabled = True
+
+    try:
+        max_iterations = int(vloop.get("max_iterations", _VERIFY_LOOP_DEFAULT_ITERATIONS))
+    except (TypeError, ValueError):
+        max_iterations = _VERIFY_LOOP_DEFAULT_ITERATIONS
+    return enabled, max(1, max_iterations)
 
 
 # ---------------------------------------------------------------------------
@@ -662,10 +711,18 @@ class G1Humanizer(BaseGate):
         - ``config`` (optional): dict with optional key ``enable_llm``
           (default ``True``) — when ``True``, attempts LLM-based evaluation
           first, falling back to deterministic regex detection.
+        - ``config["gates"]["humanizer"]["verify_loop"]`` (optional): dict
+          with ``enabled`` (bool, default ``False``) and ``max_iterations``
+          (int, default 3, minimum 1) — when enabled, the rewritten output
+          is verified with the deterministic AI-taste detector and the
+          result gains ``detector_score`` + ``verify_iterations`` (issue
+          #62, Wave-B B4).  Env backstop: ``AUTOMEDIA_HUMANIZER_VERIFY_LOOP``
+          (any value other than ``""``/``"0"``) enables the loop.
 
     Returns:
         dict with keys: ``passed``, ``gate``, ``checks``, ``modified_content``,
-        ``error``.
+        ``error`` — plus, when the verify loop is enabled, ``detector_score``
+        (float) and ``verify_iterations`` (int).
     """
 
     _gate_name = "G1"
@@ -684,6 +741,7 @@ class G1Humanizer(BaseGate):
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
         config: dict[str, Any] = gate_context.get("config", {})
         enable_llm: bool = config.get("enable_llm", True) if isinstance(config, dict) else True
+        verify_enabled, max_iterations = _resolve_verify_loop_config(config)
 
         # Detect target platform for platform-scoped prompt overrides
         brand_platforms: list[str] = gate_context.get("brand_platforms", [])
@@ -694,15 +752,18 @@ class G1Humanizer(BaseGate):
         # ------------------------------------------------------------------
         if mock_results is not None:
             checks = self._run_deterministic(content, mock_results)
-            all_passed = all(c["passed"] for c in checks)
-            modified_content: str | None = None
-            if not all_passed and content:
-                modified_content = _rewrite_content(content)
+            modified_content, verify_extra = self._finalize_rewrite(
+                content,
+                checks,
+                verify_enabled=verify_enabled,
+                max_iterations=max_iterations,
+            )
             return build_gate_result(
                 checks,
                 gate="G1",
                 expected_map=_EXPECTED_MAP,
                 modified_content=modified_content,
+                **verify_extra,
             )
 
         # ------------------------------------------------------------------
@@ -744,10 +805,12 @@ class G1Humanizer(BaseGate):
                     {"name": name, "passed": passed, "detail": detail} for name in _CHECK_NAMES
                 ]
 
-            all_passed = all(c["passed"] for c in checks)
-            modified_content = None
-            if not all_passed and content:
-                modified_content = _rewrite_content(content)
+            modified_content, verify_extra = self._finalize_rewrite(
+                content,
+                checks,
+                verify_enabled=verify_enabled,
+                max_iterations=max_iterations,
+            )
 
             return build_gate_result(
                 checks,
@@ -755,26 +818,115 @@ class G1Humanizer(BaseGate):
                 expected_map=_EXPECTED_MAP,
                 modified_content=modified_content,
                 method=method,
+                **verify_extra,
             )
 
         # ------------------------------------------------------------------
         # Deterministic-only path (enable_llm=False or empty content)
         # ------------------------------------------------------------------
         checks = self._run_deterministic(content, None)
-        all_passed = all(c["passed"] for c in checks)
-        modified_content = None
-        if not all_passed and content:
-            modified_content = _rewrite_content(content)
+        modified_content, verify_extra = self._finalize_rewrite(
+            content,
+            checks,
+            verify_enabled=verify_enabled,
+            max_iterations=max_iterations,
+        )
         return build_gate_result(
             checks,
             gate="G1",
             expected_map=_EXPECTED_MAP,
             modified_content=modified_content,
+            **verify_extra,
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _finalize_rewrite(
+        self,
+        content: str,
+        checks: list[CheckResult],
+        *,
+        verify_enabled: bool,
+        max_iterations: int,
+    ) -> tuple[str | None, dict[str, Any]]:
+        """Compute the final ``modified_content`` and verify-loop extras (B4).
+
+        Runs the normal rewrite when any check failed, then — only when
+        *verify_enabled* — the humanize→verify closed loop.  Returns
+        ``(final_content, extras)`` where *extras* carries ``detector_score``
+        and ``verify_iterations`` when the loop ran, and is empty otherwise
+        (so the toggle-off result dict stays byte-identical).
+        """
+        all_passed = all(c["passed"] for c in checks)
+        modified_content = None
+        if not all_passed and content:
+            modified_content = _rewrite_content(content)
+        final_content, detector_score, verify_iterations = self._run_verify_loop(
+            content,
+            modified_content,
+            enabled=verify_enabled,
+            max_iterations=max_iterations,
+        )
+        extras: dict[str, Any] = {}
+        if verify_enabled:
+            extras["detector_score"] = detector_score
+            extras["verify_iterations"] = verify_iterations
+        return final_content, extras
+
+    def _run_verify_loop(
+        self,
+        content: str,
+        modified_content: str | None,
+        *,
+        enabled: bool,
+        max_iterations: int,
+    ) -> tuple[str | None, float | None, int]:
+        """Humanize→verify closed loop over the candidate output (issue #62, B4).
+
+        When *enabled* is False this is a pure pass-through returning
+        ``(modified_content, None, 0)`` — the detector is never invoked.
+
+        When enabled, the candidate (the rewrite if one happened, else the
+        original content) is verified with the deterministic AI-taste
+        detector and the rewrite is repeated with the detector's verdict as
+        feedback up to *max_iterations* times.  Returns
+        ``(final_content, detector_score, verify_iterations)`` where
+        ``detector_score`` is the FINAL output's ai_score.
+
+        Termination is guaranteed three ways: the detector passes, the
+        rewrite stops making progress (identical consecutive outputs), or
+        the iteration budget is exhausted.
+        """
+        if not enabled:
+            return modified_content, None, 0
+
+        # Local import: automedia.detectors.deterministic imports this
+        # module at load time (the 9 check functions), so a module-level
+        # import here would form an import cycle.  By the time execute()
+        # runs, every module is fully loaded — the local import is safe.
+        from automedia.detectors import DeterministicTasteDetector
+
+        detector = DeterministicTasteDetector()
+        if modified_content is not None:
+            rewrote = True
+            candidate = modified_content
+        else:
+            rewrote = False
+            candidate = content
+        for i in range(1, max_iterations + 1):
+            result = detector.detect(candidate)
+            if result["passed"] or i >= max_iterations:
+                return (candidate if rewrote else None), result["ai_score"], i
+            next_candidate = _rewrite_content(candidate)
+            if next_candidate == candidate:
+                # No progress — stop to guarantee termination.
+                return (candidate if rewrote else None), result["ai_score"], i
+            rewrote = True
+            candidate = next_candidate
+        # Unreachable (max_iterations >= 1), present for the type checker.
+        return None, 0.0, max_iterations
 
     def _run_deterministic(
         self,

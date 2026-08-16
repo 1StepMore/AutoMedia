@@ -177,6 +177,10 @@
 
 - **Cost Data Exposure**: `_UsageTracker` cost and token data exposed per-thread on `run_pipeline` result. No cross-pipeline aggregation — per-invocation only.
 
+- **AI-Taste Detector Framework (issue #62)**: New pluggable `automedia.detectors` package — `BaseDetector` ABC + `DetectorRegistry` singleton with auto-registration, built-in `deterministic_taste` detector reusing the G1 humanizer's 9 regex categories strictly by import (`ai_score` = failing/total, AI-written when > 0.5), and env-gated `gptzero_style_api` external adapter (`AUTOMEDIA_DETECTOR_GPTZERO_API_KEY`). Convenience API: `list_detectors()`, `detect_text()`.
+
+- **G1 Humanize-Verify Loop (issue #62)**: G1 humanizer verifies rewritten output with the deterministic AI-taste detector, iterating rewrite→verify up to `max_iterations` (default 3). OFF by default — toggle via config `gates.humanizer.verify_loop.enabled` or env `AUTOMEDIA_HUMANIZER_VERIFY_LOOP=1`. When enabled, the gate result exposes `detector_score` (final ai_score) and `verify_iterations`.
+
 ### Fixed
 
 - **Bug 3 — Incorrect log level in structured fallback**: `llm_client.py` structured response fallback changed from `logger.info` to `logger.warning` to match the actual severity of the event (Issue #48).
