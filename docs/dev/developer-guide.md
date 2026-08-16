@@ -196,6 +196,7 @@ External Call Layer
 | `core/` | Configuration loading (`config_loader.py`), project management (`project.py`), credential management (`credential_loader.py`), health check (`doctor.py`), overrides (`overrides.py`), media specs (`media_spec.py`), workflows (`workflow.py`) |
 | `pipelines/` | Pipeline orchestration (`runner.py`), Gate engine (`gate_engine.py`), audio/video pipelines |
 | `gates/` | 33 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
+| `detectors/` | Pluggable AI-writing-taste detector framework (`base.py` BaseDetector ABC, `registry.py` DetectorRegistry, `deterministic.py` built-in detector reusing G1's 9 regex checks, `adapters.py` env-gated external detectors) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
 | `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
@@ -223,6 +224,7 @@ automedia/                  # Core Python package
   core/                     # Infrastructure
   pipelines/                # Pipeline orchestration
   gates/                    # Gate implementations
+  detectors/                # AI-writing-taste detectors (issue #62)
   adapters/                 # Platform adapters
   hooks/                    # GateHook
   manifests/                # Config file schema

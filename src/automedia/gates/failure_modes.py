@@ -44,13 +44,31 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "Sentence structure remains overly uniform (same length, same opening patterns)",
             "Emotional tone still flat or robotic",
             "Transition phrases between paragraphs are formulaic",
+            "Verify loop (issue #62) reports detector_score > 0.5 on the final"
+            " output — the rewritten text still reads AI-written (e.g. CN officialese"
+            " 赋能/闭环/底层逻辑 or hollow intros like 值得注意的是)",
         ],
         "fixes": [
             "Replace AI transition phrases with natural conversational alternatives",
             "Vary sentence length and opening word choices",
             "Inject appropriate emotional markers (exclamations, rhetorical questions)",
             "Rewrite formulaic paragraph openings with context-specific hooks",
+            "When the verify loop reports AI-written output, inspect the failing"
+            " checks in the detector detail (e.g. hollow_intros,"
+            " overacademic_vocabulary) and remove the flagged patterns directly —"
+            " the CN 官腔黑话 patterns (赋能/抓手/闭环/颗粒度/底层逻辑/生态) are"
+            " detection-only and are NOT rewritten automatically",
         ],
+        "verify_loop": (
+            "Humanize→verify closed loop (issue #62, B4) — OFF by default.  Enable via"
+            " config gates.humanizer.verify_loop.enabled=true (max_iterations, default 3)"
+            " or env AUTOMEDIA_HUMANIZER_VERIFY_LOOP=1.  The rewritten output is verified"
+            " with the deterministic_taste detector (automedia.detectors); when enabled"
+            " the gate result exposes detector_score (float 0..1, final ai_score; > 0.5"
+            " = still AI-written) and verify_iterations (int).  The loop stops when the"
+            " detector passes, the rewrite stops making progress, or the budget is"
+            " exhausted."
+        ),
         "docstring_ref": "gates/humanizer.py",
     },
     "G2": {
