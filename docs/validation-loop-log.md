@@ -3,6 +3,20 @@
 > 机制（对齐 AutoInfo 2026-08-15 规范）：每次迭代循环的关键事件、根因、修复、验证结果必须记录在此；
 > 每次迭代开始前必复查「坑清单」；新坑当天追加（现象 → 根因 → 预防）。
 
+## 2026-08-16 第二轮 validation（真 LLM 模式，PR #79/#80 后 100 场景）
+
+### 结果
+
+真 LLM 全量（20260816-184308，100 场景，2008s）：**90 passed / 3 failed / 7 unconfigured**
+- 3 failed 全为 PR #79 新增 journey 场景（qa-only / short-video / social-thread）的第 4 步 `real-LLM quality spot-check answers`
+- 单独复跑定性：qa-only 88.0s ✅ / short-video 130.9s ✅ / social-thread 第 1-3 次失败、第 4 次 177.2s ✅ → **LLM 时段波动（DeepSeek 间歇性截断 JSON）**，非代码 bug。3 个场景重试后全部转绿（93 passed / 0 failed / 7 unconfigured）
+- 证据：直调 `evaluate_content_quality` 工具 3 连发全 OK（26.7s / 20.3s / 17.6s），同一 content 之前失败之后成功——间歇性输出截断（`Invalid JSON: EOF at line 9 column 16, input_value='{"quality_score": 0....n ], "suggestions":'`）
+- unconfigured 7 = 与首轮完全一致（masterkey ×4 / WECHAT+ZHIHU / EXPECT_MISSING_FFMPEG+EXPECT_ORF 验证开关），客观缺 env
+
+### 坑清单（迭代前必查！）
+
+新坑 #8（2026-08-16 追加；坑 #1-7 见下方 2026-08-15 首轮清单）：**DeepSeek 间歇性截断 JSON**——`evaluate_content_quality` 等 LLM 工具在波动时段返回截断 JSON（`Invalid JSON: EOF at line 9 column 16, input_value='{"quality_score": 0....'`）；同一 content 直调 3 连发 26.7s/20.3s/17.6s 全 OK 证明是间歇性。全量跑后 3 个 journey spot-check 步骤同批 failed 时优先怀疑时段波动，单独复跑定性后再动代码
+
 ## 2026-08-15 首轮 validation（fake 确定性模式）
 
 ### 结果
