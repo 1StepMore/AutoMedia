@@ -10,14 +10,25 @@ runtime probe (guide §5.1 determinism requirement):
   file; 59 registrations at lines 377-922 today).  CLI commands come from
   ``src/automedia/cli/app.py`` ``register_sub_app``/``register_fn``
   registrations (17 pre-existing; the W4 ``validate`` command is counted
-  automatically because the audit reads the live file).
+  automatically because the audit reads the live file).  Gates and modes
+  (issue #78) come from the pipeline source constants: ``_MODE_MAP`` keys
+  in ``src/automedia/pipelines/runner.py`` name the modes, and the
+  ``_<MODE>_GATE_NAMES`` lists it references define each mode's gate set;
+  the declared gates are the union across all mode lists plus the
+  standalone D-gates (D1-D7), whose ``_gate_name`` class attributes live in
+  ``src/automedia/gates/distribution/*.py`` (never referenced by a mode
+  list — the union must still include them, 33 gates / 9 modes).
 * ``scenario_used`` — every tool-kind ``tool:`` name and every cli-kind
   ``command:`` subcommand declared by the loaded scenarios (including
   recovery and cleanup steps: they are declared adapter calls too).  A
   cli-kind command counts only when its first token is ``automedia`` and it
   names a subcommand (the next non-flag token, so ``automedia --json doctor``
   → ``doctor``); non-automedia commands (``python3``, ``rm``, ``ls``,
-  ``find``, ``mkdir``, ...) are setup, not surface, and are ignored.
+  ``find``, ``mkdir``, ...) are setup, not surface, and are ignored.  For
+  the pipeline surfaces, the scenarios' declarative ``proves_gates``/
+  ``proves_modes`` headers name what they prove (a gate or mode is "used"
+  when any non-boundary scenario proves it; boundary-only proves are the
+  third class below).
 * derived sets — ``covered`` = declared ∩ used, ``missing`` = declared −
   covered, ``phantom`` = used − declared.
 
@@ -65,6 +76,7 @@ pre-flight baseline).
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import shlex
@@ -82,6 +94,7 @@ _FROM_IMPORT_RE = re.compile(
     r"^\s*from\s+[\w.]+\s+import\s+(?:\(([^)]*)\)|([^\n#]+))", re.MULTILINE
 )
 _CLI_REG_RE = re.compile(r'register_(?:sub_app|fn)\(\s*["\']([^"\']+)["\']')
+_GATE_NAME_ASSIGN_RE = re.compile(r'^\s*_gate_name\s*=\s*"([^"]+)"', re.MULTILINE)
 
 
 def coverage_audit(
@@ -89,19 +102,25 @@ def coverage_audit(
     *,
     server_path: str | Path | None = None,
     app_path: str | Path | None = None,
+    runner_path: str | Path | None = None,
+    distribution_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Deterministic coverage audit over the scenario library (guide §5.1).
 
     ``scenarios_dir`` defaults to the loader's default (env override
     ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` else repo-root ``scenarios/``);
     ``server_path``/``app_path`` default to the repo's ``mcp/server.py`` and
-    ``cli/app.py``.  Returns the full audit dict (declared/used/covered/
-    missing/phantom/boundary-only sets, boundary scenario files, waiver and
-    phantom notes, and a numeric summary).
+    ``cli/app.py``; ``runner_path``/``distribution_path`` default to the
+    repo's ``pipelines/runner.py`` and ``gates/distribution/`` (the gate and
+    mode declared surfaces, issue #78).  Returns the full audit dict
+    (declared/used/covered/missing/phantom/boundary-only sets per surface —
+    mcp, cli, gates, modes —, boundary scenario files, waiver and phantom
+    notes, and a numeric summary).
     """
     root = default_scenarios_dir() if scenarios_dir is None else Path(scenarios_dir)
     server_src = _read_declared_source(server_path, "src/automedia/mcp/server.py")
     app_src = _read_declared_source(app_path, "src/automedia/cli/app.py")
+    declared_gates, declared_modes = _declared_pipeline_surfaces(runner_path, distribution_path)
 
     declared_mcp = _declared_mcp(server_src)
     declared_cli = _declared_cli(app_src)
@@ -110,40 +129,68 @@ def coverage_audit(
 
     used_mcp: set[str] = set()
     used_cli: set[str] = set()
+    used_gates: set[str] = set()
+    used_modes: set[str] = set()
     boundary_mcp: set[str] = set()
     boundary_cli: set[str] = set()
+    boundary_gates: set[str] = set()
+    boundary_modes: set[str] = set()
     boundary_files: list[str] = []
     for scenario in scenarios:
         tools, clis = _scenario_targets(scenario)
         used_mcp |= tools
         used_cli |= clis
+        used_gates |= set(scenario.proves_gates)
+        used_modes |= set(scenario.proves_modes)
         if scenario.error_boundary:
             boundary_mcp |= tools
             boundary_cli |= clis
+            boundary_gates |= set(scenario.proves_gates)
+            boundary_modes |= set(scenario.proves_modes)
             boundary_files.append(file_map.get(scenario.name, scenario.name))
 
     declared_mcp_set = set(declared_mcp)
     declared_cli_set = set(declared_cli)
+    declared_gates_set = set(declared_gates)
+    declared_modes_set = set(declared_modes)
     covered_mcp = sorted(declared_mcp_set & used_mcp - boundary_mcp)
     covered_cli = sorted(declared_cli_set & used_cli - boundary_cli)
+    covered_gates = sorted(declared_gates_set & used_gates - boundary_gates)
+    covered_modes = sorted(declared_modes_set & used_modes - boundary_modes)
     missing_mcp = sorted(declared_mcp_set - set(covered_mcp) - boundary_mcp)
     missing_cli = sorted(declared_cli_set - set(covered_cli) - boundary_cli)
+    missing_gates = sorted(declared_gates_set - set(covered_gates) - boundary_gates)
+    missing_modes = sorted(declared_modes_set - set(covered_modes) - boundary_modes)
     phantom_mcp = sorted(used_mcp - declared_mcp_set)
     phantom_cli = sorted(used_cli - declared_cli_set)
+    phantom_gates = sorted(used_gates - declared_gates_set)
+    phantom_modes = sorted(used_modes - declared_modes_set)
 
     return {
         "declared_mcp": declared_mcp,
         "declared_cli": declared_cli,
+        "declared_gates": declared_gates,
+        "declared_modes": declared_modes,
         "used_mcp": sorted(used_mcp),
         "used_cli": sorted(used_cli),
+        "used_gates": sorted(used_gates),
+        "used_modes": sorted(used_modes),
         "covered_mcp": covered_mcp,
         "covered_cli": covered_cli,
+        "covered_gates": covered_gates,
+        "covered_modes": covered_modes,
         "missing_mcp": missing_mcp,
         "missing_cli": missing_cli,
+        "missing_gates": missing_gates,
+        "missing_modes": missing_modes,
         "phantom_mcp": phantom_mcp,
         "phantom_cli": phantom_cli,
+        "phantom_gates": phantom_gates,
+        "phantom_modes": phantom_modes,
         "boundary_only_mcp": sorted(boundary_mcp),
         "boundary_only_cli": sorted(boundary_cli),
+        "boundary_only_gates": sorted(boundary_gates),
+        "boundary_only_modes": sorted(boundary_modes),
         "error_boundary_scenarios": sorted(boundary_files),
         "director_waiver_note": _director_waiver_note(sorted(boundary_mcp)),
         "phantom_note": _phantom_note(phantom_mcp, phantom_cli),
@@ -160,6 +207,18 @@ def coverage_audit(
             "cli_missing": len(missing_cli),
             "cli_phantom": len(phantom_cli),
             "cli_boundary_only": len(boundary_cli),
+            "gates_declared": len(declared_gates),
+            "gates_used": len(used_gates),
+            "gates_covered": len(covered_gates),
+            "gates_missing": len(missing_gates),
+            "gates_phantom": len(phantom_gates),
+            "gates_boundary_only": len(boundary_gates),
+            "modes_declared": len(declared_modes),
+            "modes_used": len(used_modes),
+            "modes_covered": len(covered_modes),
+            "modes_missing": len(missing_modes),
+            "modes_phantom": len(phantom_modes),
+            "modes_boundary_only": len(boundary_modes),
         },
     }
 
@@ -208,6 +267,72 @@ def _declared_cli(src: str) -> list[str]:
     """Extract command names from app.py ``register_sub_app``/``register_fn``
     registrations (the string-literal first argument)."""
     return sorted(set(_CLI_REG_RE.findall(src)))
+
+
+def _parse_mode_map(runner_src: str) -> dict[str, list[str]]:
+    """Extract ``_MODE_MAP`` (mode → gate-name list) from runner.py source.
+
+    The module is read as text and parsed with :mod:`ast` — never imported —
+    so the audit stays a static pass (guide §5.1) with no pipeline side
+    effects; the constants are the single source of truth, so the declared
+    surfaces cannot drift from the real mode definitions.  Gate-name list
+    constants (``_<MODE>_GATE_NAMES: list[str] = [...]``) are resolved by
+    name from the same module body.
+    """
+    tree = ast.parse(runner_src)
+    gate_lists: dict[str, list[str]] = {}
+    mode_map: dict[str, list[str]] = {}
+    for node in tree.body:
+        target = None
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+        elif isinstance(node, ast.AnnAssign):
+            target = node.target
+        if not isinstance(target, ast.Name):
+            continue
+        value = getattr(node, "value", None)
+        if target.id.endswith("_GATE_NAMES") and isinstance(value, ast.List):
+            gate_lists[target.id] = [
+                element.value
+                for element in value.elts
+                if isinstance(element, ast.Constant) and isinstance(element.value, str)
+            ]
+        elif target.id == "_MODE_MAP" and isinstance(value, ast.Dict):
+            for key, val in zip(value.keys, value.values, strict=False):
+                if (
+                    isinstance(key, ast.Constant)
+                    and isinstance(key.value, str)
+                    and isinstance(val, ast.Name)
+                ):
+                    mode_map[key.value] = gate_lists.get(val.id, [])
+    return mode_map
+
+
+def _declared_pipeline_surfaces(
+    runner_path: str | Path | None,
+    distribution_path: str | Path | None,
+) -> tuple[list[str], list[str]]:
+    """Declared gate and mode names from the pipeline source constants.
+
+    Modes are the ``_MODE_MAP`` keys; gates are the union across that map's
+    per-mode lists.  D-gates (D1-D7) are standalone distribution gates never
+    referenced by a mode list, so the union is completed with the
+    ``_gate_name`` class attributes in ``src/automedia/gates/distribution/*.py``
+    — the declared set is 33 gates / 9 modes and drifts automatically with
+    the source constants (issue #78 A2).
+    """
+    runner_src = _read_declared_source(runner_path, "src/automedia/pipelines/runner.py")
+    mode_map = _parse_mode_map(runner_src)
+    gates = set().union(*mode_map.values()) if mode_map else set()
+    dist_dir = (
+        _repo_root() / "src/automedia/gates/distribution"
+        if distribution_path is None
+        else Path(distribution_path)
+    )
+    if dist_dir.is_dir():
+        for path in sorted(dist_dir.glob("*.py")):
+            gates.update(_GATE_NAME_ASSIGN_RE.findall(path.read_text(encoding="utf-8")))
+    return sorted(gates), sorted(mode_map)
 
 
 def _scenario_targets(scenario: Scenario) -> tuple[set[str], set[str]]:
