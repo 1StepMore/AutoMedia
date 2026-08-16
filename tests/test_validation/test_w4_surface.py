@@ -102,9 +102,7 @@ class TestMetaScenarioContract:
         for name in META_SCENARIOS:
             assert name in by_name, f"meta scenario {name!r} missing from library"
 
-    def test_meta_scenario_is_env_free_and_loads_clean(
-        self, library: list[Scenario]
-    ) -> None:
+    def test_meta_scenario_is_env_free_and_loads_clean(self, library: list[Scenario]) -> None:
         """requires_env == [] + every cited standard known (recursion guard
         parity with the W3-T9 smoke test's meta assertions)."""
         by_name = {scenario.name: scenario for scenario in library}
@@ -143,9 +141,7 @@ class TestMetaScenarioContract:
 class TestValidateCliRealLibrary:
     """The validate family answers against the real committed library."""
 
-    def test_validate_list_json_shows_meta_scenario(
-        self, library: list[Scenario]
-    ) -> None:
+    def test_validate_list_json_shows_meta_scenario(self, library: list[Scenario]) -> None:
         result = runner.invoke(app, ["--json", "validate", "list"])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -154,22 +150,26 @@ class TestValidateCliRealLibrary:
         assert names == {scenario.name for scenario in library}
         assert META_SCENARIO in names
 
-    def test_validate_coverage_exits_0_with_missing_zero(
-        self, library_root: Path
-    ) -> None:
-        """The regenerated audit: missing = 0 on both surfaces -> exit 0."""
+    def test_validate_coverage_exits_1_with_gate_mode_gaps(self, library_root: Path) -> None:
+        """Issue #78 A2 interim state: mcp/cli surfaces are fully covered
+        (missing = 0), but the new gate/mode surfaces are declared (33/9)
+        and not yet covered by any committed scenario (A3 authors them) —
+        the extended exit contract (declared-but-missing on ANY surface)
+        therefore exits 1 and names the new surfaces.  Once A3 lands,
+        missing → 0 and this flips back to exit 0."""
         result = runner.invoke(app, ["validate", "coverage"])
-        assert result.exit_code == 0
-        assert "missing = 0" in result.output
-        assert "mcp_missing" in result.output or "missing=" in result.output
+        assert result.exit_code == 1
+        assert "Missing gates" in result.output
+        assert "Missing modes" in result.output
 
-    def test_validate_coverage_json_regenerated_numbers(
-        self, library_root: Path
-    ) -> None:
+    def test_validate_coverage_json_regenerated_numbers(self, library_root: Path) -> None:
         """W4-T7 regeneration pins: mcp 63 declared / 56 covered / 0 missing;
-        cli 18 / 18 / 0; both phantom = 0; boundary_only 7 (waiver)."""
+        cli 18 / 18 / 0; both phantom = 0; boundary_only 7 (waiver).
+        Issue #78 A2 adds the pipeline surfaces: gates 33 declared /
+        modes 9 declared, all missing until A3 authors the scenarios
+        (exit 1 by the extended contract)."""
         result = runner.invoke(app, ["--json", "validate", "coverage"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         summary: dict[str, Any] = json.loads(result.output)["summary"]
         assert summary["mcp_declared"] == 63
         assert summary["mcp_used"] == 63
@@ -181,6 +181,10 @@ class TestValidateCliRealLibrary:
         assert summary["cli_covered"] == 18
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
+        assert summary["gates_declared"] == 33
+        assert summary["gates_missing"] == 33
+        assert summary["modes_declared"] == 9
+        assert summary["modes_missing"] == 9
 
 
 # ===================================================================
@@ -191,9 +195,7 @@ class TestValidateCliRealLibrary:
 class TestValidationToolsRealDispatcher:
     """The bits W4-T2 did not pin: meta-scenario listing + regenerated audit."""
 
-    def test_list_validation_scenarios_includes_meta_self_check(
-        self, server: FastMCP
-    ) -> None:
+    def test_list_validation_scenarios_includes_meta_self_check(self, server: FastMCP) -> None:
         payload = _call_tool(server, "list_validation_scenarios", {})
         assert payload["success"] is True
         assert payload["count"] >= 91  # 90 committed + validation-self-check
