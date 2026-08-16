@@ -1,4 +1,5 @@
 {
+  "signoff": "1StepMore <140780063+1StepMore@users.noreply.github.com>",
   "packages": {
     ".": {
       "release-type": "python",
