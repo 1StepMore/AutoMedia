@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+import yaml
 
 import automedia.validation as validation
 from automedia.validation.schema import (
@@ -380,6 +381,63 @@ class TestErrorBoundary:
         )
         assert s.error_boundary is True
         assert s.steps[0].error_boundary is True
+
+
+class TestProvesMetadata:
+    """``proves_gates``/``proves_modes`` (issue #78): declarative coverage
+    metadata consumed by the coverage audit, never by the engine.
+
+    Both fields are optional (default []), parsed as lists of non-empty
+    unique strings; wrong element types, empty names, duplicates and
+    non-list values raise :class:`SchemaError` naming the field (the
+    closed-schema contract)."""
+
+    def test_parses_from_yaml_scenario(self) -> None:
+        """A fixture YAML doc carrying both fields parses into the model."""
+        doc = yaml.safe_load(
+            """\
+name: mode-run-fixture
+description: A synthetic pipeline-mode fixture scenario.
+intent: Prove the coverage audit reads proves_gates and proves_modes.
+proves_gates: [G0, V1, L2]
+proves_modes: [text_only, auto]
+steps:
+  - name: call the tool
+    kind: tool
+    check: The tool answers.
+    standard: tool.contract
+    tool: health_check
+    arguments: {}
+    expect:
+      success: true
+"""
+        )
+        s = Scenario.from_dict(doc)
+        assert s.proves_gates == ["G0", "V1", "L2"]
+        assert s.proves_modes == ["text_only", "auto"]
+
+    def test_defaults_to_empty(self) -> None:
+        s = Scenario.from_dict(scenario())
+        assert s.proves_gates == []
+        assert s.proves_modes == []
+
+    def test_duplicates_rejected(self) -> None:
+        with pytest.raises(SchemaError, match="duplicate"):
+            Scenario.from_dict(scenario(proves_gates=["G0", "G0"]))
+        with pytest.raises(SchemaError, match="duplicate"):
+            Scenario.from_dict(scenario(proves_modes=["auto", "auto"]))
+
+    def test_wrong_element_type_rejected(self) -> None:
+        with pytest.raises(SchemaError, match=r"proves_gates\[0\]"):
+            Scenario.from_dict(scenario(proves_gates=[1]))
+
+    def test_empty_string_element_rejected(self) -> None:
+        with pytest.raises(SchemaError, match=r"proves_gates\[0\]"):
+            Scenario.from_dict(scenario(proves_gates=[""]))
+
+    def test_non_list_rejected(self) -> None:
+        with pytest.raises(SchemaError, match="proves_modes"):
+            Scenario.from_dict(scenario(proves_modes="text_only"))
 
 
 class TestNonDictInput:

@@ -203,6 +203,23 @@ class Step:
         )
 
 
+def _expect_declarative_list(value: object, where: str) -> list[str]:
+    """Parse a scenario-header list of non-empty, unique names.
+
+    ``proves_gates``/``proves_modes`` are declarative coverage metadata
+    (issue #78): each element must be a non-empty string, and no name may
+    repeat — a scenario proves a gate or mode once, or not at all.
+    """
+    items = _expect_str_list(value, where)
+    for index, item in enumerate(items):
+        if not item.strip():
+            raise SchemaError(f"{where}[{index}]: expected a non-empty name, got {item!r}")
+    dupes = sorted({item for item in set(items) if items.count(item) > 1})
+    if dupes:
+        raise SchemaError(f"{where}: duplicate name(s) {dupes!r} (each must be unique)")
+    return items
+
+
 @dataclass(frozen=True)
 class Scenario:
     """A declarative script of real calls against the live system (guide §2.1)."""
@@ -220,6 +237,11 @@ class Scenario:
     regression_issue: str | None = None
     error_boundary: bool = False
     cleanup_steps: list[Step] = field(default_factory=list)
+    # Declarative coverage metadata (issue #78): which gates and pipeline
+    # modes the scenario proves.  Purely declarative — the coverage audit
+    # consumes them; the engine ignores them.
+    proves_gates: list[str] = field(default_factory=list)
+    proves_modes: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: object) -> Scenario:
@@ -269,6 +291,12 @@ class Scenario:
             steps=steps,
             cleanup_steps=_parse_items(
                 data.get("cleanup_steps", []), prefix + "cleanup_steps", Step.from_dict
+            ),
+            proves_gates=_expect_declarative_list(
+                data.get("proves_gates", []), prefix + "proves_gates"
+            ),
+            proves_modes=_expect_declarative_list(
+                data.get("proves_modes", []), prefix + "proves_modes"
             ),
         )
 

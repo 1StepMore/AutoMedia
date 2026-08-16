@@ -25,7 +25,8 @@ CLI surface for the validation framework: five sub-commands.
 Exit-code contract (typer conventions per ``doctor.py``): ``run`` exits 1
 when the scenario status is ``failed``, 0 otherwise (passed / unconfigured /
 partial-pass / recovered) with a clear status line; ``coverage`` exits 1 when
-``missing`` is non-empty (excluding boundary-only); usage errors exit 2
+``missing`` is non-empty on ANY surface (mcp, cli, and — issue #78 — gates
+and modes; boundary-only excluded); usage errors exit 2
 (typer/click default).  ``--json`` switches every command to machine-readable
 JSON via the shared ``--json`` global flag (``automedia.cli.output``).
 """
@@ -136,9 +137,7 @@ def validate_run(
     line.  Run from the repo root so relative artifact paths resolve.
     """
     if env_gate not in _ENV_GATE_CHOICES:
-        raise typer.BadParameter(
-            f"must be one of {', '.join(_ENV_GATE_CHOICES)}"
-        ) from None
+        raise typer.BadParameter(f"must be one of {', '.join(_ENV_GATE_CHOICES)}") from None
     try:
         scenarios = load_scenarios()
     except LoadError as exc:
@@ -149,9 +148,7 @@ def validate_run(
     if target is None:
         names = ", ".join(sorted(by_name)[:30])
         more = f", ... ({len(by_name)} total)" if len(by_name) > 30 else ""
-        output_error(
-            f"Unknown scenario {scenario!r}. Available scenarios: {names}{more}"
-        )
+        output_error(f"Unknown scenario {scenario!r}. Available scenarios: {names}{more}")
         return
     if env_gate == "skip" and target.requires_env:
         target = replace(target, requires_env=[])
@@ -416,8 +413,9 @@ def _compute_diff(
 def validate_coverage() -> None:
     """Run the coverage audit over the scenario library.
 
-    Exit 1 when ``missing`` is non-empty (declared but not covered,
-    excluding boundary-only probes which are listed loudly instead).
+    Exit 1 when ``missing`` is non-empty on any surface (MCP tools, CLI
+    commands, and — issue #78 — gates and modes), excluding boundary-only
+    probes which are listed loudly instead.
     """
     from automedia.validation.coverage import coverage_audit
 
@@ -429,6 +427,8 @@ def validate_coverage() -> None:
     summary = audit.get("summary", {})
     missing_mcp = list(audit.get("missing_mcp", []))
     missing_cli = list(audit.get("missing_cli", []))
+    missing_gates = list(audit.get("missing_gates", []))
+    missing_modes = list(audit.get("missing_modes", []))
 
     if get_output_mode() == OutputMode.JSON:
         output_json(audit)
@@ -452,14 +452,34 @@ def validate_coverage() -> None:
             f"boundary_only={summary.get('mcp_boundary_only')} "
             f"phantom={summary.get('mcp_phantom')}"
         )
+        typer.echo(
+            "  Gates: "
+            f"declared={summary.get('gates_declared')} "
+            f"used={summary.get('gates_used')} "
+            f"covered={summary.get('gates_covered')} "
+            f"missing={summary.get('gates_missing')} "
+            f"boundary_only={summary.get('gates_boundary_only')} "
+            f"phantom={summary.get('gates_phantom')}"
+        )
+        typer.echo(
+            "  Modes: "
+            f"declared={summary.get('modes_declared')} "
+            f"used={summary.get('modes_used')} "
+            f"covered={summary.get('modes_covered')} "
+            f"missing={summary.get('modes_missing')} "
+            f"boundary_only={summary.get('modes_boundary_only')} "
+            f"phantom={summary.get('modes_phantom')}"
+        )
         if missing_mcp:
             typer.echo(f"  Missing MCP tools (declared, not covered): {', '.join(missing_mcp)}")
         if missing_cli:
-            typer.echo(
-                f"  Missing CLI commands (declared, not covered): {', '.join(missing_cli)}"
-            )
-        if not missing_mcp and not missing_cli:
+            typer.echo(f"  Missing CLI commands (declared, not covered): {', '.join(missing_cli)}")
+        if missing_gates:
+            typer.echo(f"  Missing gates (declared, not covered): {', '.join(missing_gates)}")
+        if missing_modes:
+            typer.echo(f"  Missing modes (declared, not covered): {', '.join(missing_modes)}")
+        if not (missing_mcp or missing_cli or missing_gates or missing_modes):
             typer.echo("  missing = 0 (excluding boundary-only, listed above)")
 
-    if missing_mcp or missing_cli:
+    if missing_mcp or missing_cli or missing_gates or missing_modes:
         raise typer.Exit(code=1)

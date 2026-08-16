@@ -72,6 +72,8 @@ Header fields:
 | `requires_http` | no | Flag that the scenario needs a live HTTP service (see §2.5) |
 | `min_passing` / `pass_ratio` | no | Partial-pass policy (see §2.7) |
 | `regression: true` + `regression_issue` | no | Marks a regression scenario and pins it to a bug reference |
+| `proves_gates` | no | Declarative coverage metadata: the product gates this scenario proves (for example `G0`, `CW`, `pre-gate`); consumed by the coverage audit (see §5) |
+| `proves_modes` | no | Declarative coverage metadata: the product run modes this scenario proves (for example `text_only`); consumed by the coverage audit (see §5) |
 
 The steps list is the core of the file. It is ordered: the adapter executes steps top to bottom, and a later step can depend on state an earlier step created. Each step carries its own expect block; that block is what turns a real call into a graded judgment. A scenario with no steps is a declaration, not a proof.
 
@@ -137,6 +139,8 @@ The loader is the contract. A scenario that reaches the executor was already val
 | `category` | no | general |
 | `requires_env` | no | empty list |
 | `requires_http` | no | false |
+| `proves_gates` | no | empty list |
+| `proves_modes` | no | empty list |
 | `timeout_seconds` (per step) | no | project default ceiling |
 | `cleanup_steps` | no | empty list |
 | `min_passing` / `pass_ratio` | no | absent, meaning all-or-nothing (see §2.7) |
@@ -567,11 +571,11 @@ which parts of the product surface are actually exercised by scenarios? It is
 the first of three loops that keep the layer honest over time, and the other
 two depend on it.
 
-The audit works on three sets. `declared` is everything the product claims to
-ship: the tool list, the CLI command table, the route map, the library entry
-points. `scenario_used` is what the scenarios actually step against, read out
-of the scenario files by the adapter calls they declare. Everything else is
-derived from those two. A small worked walkthrough:
+The audit works from two source sets. `declared` is everything the product
+claims to ship: the tool list, the CLI command table, the route map, the
+library entry points. `scenario_used` is what the scenarios actually step
+against, read out of the scenario files by the adapter calls they declare.
+Everything else is derived from those two. A small worked walkthrough:
 
 ```
 declared      = {list_items, create_item, update_item, delete_item, export}
@@ -589,6 +593,18 @@ phantom  = scenario_used − declared  = {export_csv}
 | `covered = declared ∩ scenario_used` | claimed and proven exercised | set intersection |
 | `missing = declared − covered` | claimed but never exercised | set difference |
 | `phantom = scenario_used − declared` | exercised but undeclared or invented | set difference; contributes zero |
+| `boundary_only` | used surfaces that only error-boundary probes touch | set difference; listed loudly, never counted as covered |
+
+The set-family runs per surface, not once for the whole product. A product that
+ships several surfaces, a tool server, a CLI, and for pipeline-shaped products
+the gates and modes those tools drive, gets one set-family per surface, so a
+gap in one surface cannot hide behind a healthy count in another. The
+`declared` set always comes from that surface's own source of truth: a tool
+list, a command table, and for gates and modes a static parse of the product's
+mode map and gate declarations, never a hand-maintained copy that can drift.
+Scenarios say which gates and modes they prove through the header's
+`proves_gates` and `proves_modes` fields (see §2.1), which keeps the audit
+complete purely by reading the suite.
 
 Two of these sets demand policy, not just arithmetic. `missing` is the
 actionable half. A declared surface with no scenario is either a gap to close
@@ -608,7 +624,10 @@ tests the dispatcher, not the surface, so it must be classified explicitly as
 an error-boundary probe and never silently counted as coverage. The audit needs
 a place for it, an allowlist, so that the exception is declared rather than
 accidental. An error-boundary probe that is not marked is just a phantom hiding
-behind intent.
+behind intent. Boundary-only probes are excluded from `covered` on their
+surface and listed in the `boundary_only` set instead, so a scenario that only
+proves the error path never inflates the happy-path count; the director sees
+them as declared probes, not as missing or phantom coverage.
 
 The audit itself has three requirements. It must be deterministic: regex or
 static parsing over committed source and scenario files, never a runtime probe.
@@ -617,7 +636,10 @@ different answers on different days; static parse returns the same sets for the
 same commit, which is what makes the result comparable across time. It must be
 automatable: one command, runnable in CI or as its own scenario. A coverage
 check nobody runs is a comment, and running it as a scenario subjects the audit
-to the same verdict machinery as everything else. And its output must be
+to the same verdict machinery as everything else. The command should fail loud:
+when `missing` is non-empty on any surface, it exits non-zero, so a
+declared-but-unexercised surface blocks acceptance instead of printing a
+footnote. And its output must be
 committed. The audit result is an artifact like any other: versioned, diffable,
 reviewable. Coverage is a set, not a count: a count catches size drift, while
 set membership catches a scenario that swapped one surface for another at the
@@ -633,6 +655,22 @@ in the run diff (see §5.4).
 > regression count with its issue numbers in the summary line.
 > Because the scenario loader recursive-globs the scenarios directory, the audit always sees the current suite, including everything under
 > `regression/`.
+>
+> **Worked example (AutoMedia, the source project).** The audit this pattern was
+> distilled from reports four surfaces: MCP tools, CLI commands, gates, and
+> pipeline modes. Each surface carries the same set-family (`declared`, `used`,
+> `covered`, `missing`, `phantom`, `boundary_only`) plus summary counts. The
+> gate and mode `declared` sets are derived, never hardcoded: the audit
+> statically parses the pipeline runner's mode map for the mode names and reads
+> the `_gate_name` attributes off the distribution gate modules for the gate
+> names, so adding a gate or mode in source automatically extends `declared`.
+> Scenarios declare what they prove through the header's `proves_gates` and
+> `proves_modes` lists, boundary-only scenarios (`error_boundary: true`) are
+> excluded from `covered`, and the standard handbook gains one `gate.*` key per
+> gate and one `mode.*` key per mode for steps that want to cite them. The
+> audit command prints a per-surface line for all four surfaces and exits 1 when
+> `missing` is non-empty on any of them, so a declared-but-uncovered gate or
+> mode blocks acceptance exactly like a missing tool or command would.
 
 ### §5.2 The regression flywheel
 
