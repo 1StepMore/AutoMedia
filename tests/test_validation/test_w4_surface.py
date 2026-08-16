@@ -150,26 +150,27 @@ class TestValidateCliRealLibrary:
         assert names == {scenario.name for scenario in library}
         assert META_SCENARIO in names
 
-    def test_validate_coverage_exits_1_with_gate_mode_gaps(self, library_root: Path) -> None:
-        """Issue #78 A2 interim state: mcp/cli surfaces are fully covered
-        (missing = 0), but the new gate/mode surfaces are declared (33/9)
-        and not yet covered by any committed scenario (A3 authors them) —
-        the extended exit contract (declared-but-missing on ANY surface)
-        therefore exits 1 and names the new surfaces.  Once A3 lands,
-        missing → 0 and this flips back to exit 0."""
+    def test_validate_coverage_exits_0_all_surfaces_covered(self, library_root: Path) -> None:
+        """Issue #78 final contract (A3 landed): every one of the 33 gates and
+        9 pipeline modes is proven by a committed journey scenario, so the
+        extended exit contract (declared-but-missing on ANY surface exits 1)
+        now exits 0 — the Gates/Modes lines print covered=declared and
+        missing=0, and the "missing = 0" summary line is shown."""
         result = runner.invoke(app, ["validate", "coverage"])
-        assert result.exit_code == 1
-        assert "Missing gates" in result.output
-        assert "Missing modes" in result.output
+        assert result.exit_code == 0
+        assert "Coverage audit" in result.output
+        assert "Gates:" in result.output
+        assert "Modes:" in result.output
+        assert "missing = 0 (excluding boundary-only, listed above)" in result.output
 
     def test_validate_coverage_json_regenerated_numbers(self, library_root: Path) -> None:
         """W4-T7 regeneration pins: mcp 63 declared / 56 covered / 0 missing;
         cli 18 / 18 / 0; both phantom = 0; boundary_only 7 (waiver).
-        Issue #78 A2 adds the pipeline surfaces: gates 33 declared /
-        modes 9 declared, all missing until A3 authors the scenarios
-        (exit 1 by the extended contract)."""
+        Issue #78 final contract (A3 landed): the pipeline surfaces are fully
+        covered by the committed journeys — gates 33 declared / 33 covered /
+        0 missing, modes 9 / 9 / 0 — so the audit exits 0."""
         result = runner.invoke(app, ["--json", "validate", "coverage"])
-        assert result.exit_code == 1
+        assert result.exit_code == 0
         summary: dict[str, Any] = json.loads(result.output)["summary"]
         assert summary["mcp_declared"] == 63
         assert summary["mcp_used"] == 63
@@ -182,9 +183,15 @@ class TestValidateCliRealLibrary:
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
         assert summary["gates_declared"] == 33
-        assert summary["gates_missing"] == 33
+        assert summary["gates_used"] == 33
+        assert summary["gates_covered"] == 33
+        assert summary["gates_missing"] == 0
+        assert summary["gates_phantom"] == 0
         assert summary["modes_declared"] == 9
-        assert summary["modes_missing"] == 9
+        assert summary["modes_used"] == 9
+        assert summary["modes_covered"] == 9
+        assert summary["modes_missing"] == 0
+        assert summary["modes_phantom"] == 0
 
 
 # ===================================================================
