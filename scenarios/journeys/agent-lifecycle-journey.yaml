@@ -58,6 +58,13 @@
 #   - `automedia init` (the real wizard) mutates ~/.automedia/model_config.yaml
 #     and is deliberately NOT invoked; step 1 uses `init --help`, the cheapest
 #     real onboard contract.
+#   - ISSUE #78 A3: proves_gates is derived EXACTLY from
+#     _MODE_MAP["text_only"] (CW, G0-G6, H0, L1-L4 — 13 gates): step 7 starts
+#     a real text_only pipeline through run_pipeline (mode: text_only), so the
+#     journey's declarative coverage claim is the text_only gate list, the
+#     same set text-only-journey.yaml proves synchronously. The headers are
+#     declarative coverage metadata consumed by the static audit (issue #78
+#     A2), NOT step assertions.
 
 name: agent-user-lifecycle-journey
 description: "An agent's full lifecycle against the shipped surfaces: onboard (init help + doctor + connect_account honest error), pool select, async run_pipeline, progress polling, distribute dry-run, effects analytics, and the Red Line 8 archive refusal."
@@ -65,6 +72,22 @@ intent: "Prove the agent-facing lifecycle contract end to end: every step an age
 category: journey
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - CW
+  - G0
+  - G1
+  - G2
+  - G3
+  - G4
+  - G5
+  - G6
+  - H0
+  - L1
+  - L2
+  - L3
+  - L4
+proves_modes:
+  - text_only
 steps:
   - name: onboard via init help contract
     kind: cli

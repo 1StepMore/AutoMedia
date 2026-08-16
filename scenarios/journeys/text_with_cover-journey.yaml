@@ -1,0 +1,117 @@
+# Issue #78 text_with_cover mode journey (Wave-A A3) — proves the cover-mode gate list
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
+#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
+#   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
+#   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
+#                                     scenarios_dir="scenarios", runs_root="validation-runs")
+# Project dirs are created under AUTOMEDIA_PROJECTS_DIR (verified: runner.py:883
+# reads the env var; Project.init falls back to cwd when unset) — so the journey
+# MUST be run from the controlled cwd with the env exported, and NEVER from the
+# repo root, or project dirs land at the repo root. The controlled projects dir
+# is scratch space owned by the runner; this scenario adds no cleanup_steps
+# because project dir names embed today's date (project.py:156-158) and a random
+# project_id (project.py:174), so a cleanup path cannot be named statically.
+#
+# HONESTY + DESIGN NOTES (issue #78 A3, authored 2026-08-16):
+#   - LOAD-TESTED, NOT RUN-TESTED: this journey exists to make the coverage
+#     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
+#     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
+#     itself only loads the library and regenerates the static audit.
+#   - proves_gates is derived EXACTLY from _MODE_MAP["text_with_cover"] in
+#     src/automedia/pipelines/runner.py (CW, G0-G6, H0, L1-L4 — 13 gates; the
+#     same gate set as text_only, WITH H0 and NO V-gates: the cover work is a
+#     post-pipeline ImagePipeline call, not a gate — verified by eye and
+#     enforced by the coverage audit). proves_modes names the mode.
+#   - gate_records_pass is NOT asserted, for the same reason as
+#     text_only-journey.yaml: the only gate-record JSON the product writes is
+#     pipeline_md5.json whose top-level "gates" key is a DICT (md5_tracker.py
+#     :57-61), and gate lifecycle rows live in .automedia/history.db (SQLite,
+#     not JSON) — list-shaped gate records do not exist on the shipped
+#     surface, so gate_records_pass would be a permanently failing assertion.
+#   - The run step asserts exit_code 0 + the "Pipeline finished:" marker, NOT
+#     "Pipeline finished: success": a completed run prints "Pipeline
+#     finished: partial" (exit 0) when a stop gate fails and "success" when
+#     all gates pass — both exit 0 (run.py:334-336,366-367: only status
+#     "failed" raises Exit(1)). exit 0 + marker = the pipeline ran to
+#     completion through the cover-mode gate list.
+#   - Draft path is dynamic (<ts>_draft.md in 01_content/drafts/, written by
+#     the CW gate — text_with_cover mode includes CW), so the draft check is
+#     a cli find step (find globs its own pattern without shell; CLIAdapter
+#     runs shell=False — verified shlex.split parses fine). The generated
+#     cover image (ImagePipeline.generate_single_cover) is a bonus artifact,
+#     not asserted: cover generation can fail softly (runner.py:1305-1322
+#     warns and continues), so asserting it would be flaky, not honest.
+#   - The quality spot-check is intentionally light (a static sample through
+#     the real-LLM evaluate_content_quality tool); W3-T4 owns deep real-LLM
+#     quality scoring of produced drafts against the evaluation-matrix.
+#   - Topic "Cover images that boost article engagement" is unique to this
+#     journey so the projects-list step cannot cross-match another journey's
+#     project (all journeys share the controlled projects dir).
+
+name: text-with-cover-journey
+description: A real text_with_cover pipeline run from the CLI (CW → G0-G6 → H0 → L1-L4 with cover generation) produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
+intent: "Prove the shipped text_with_cover production path end-to-end with a real LLM: topic to draft artifact in one CLI call through the cover-mode gate list, the produced project visible through the shipped projects surface, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the text_with_cover mode gates (issue #78)."
+category: journey
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - CW
+  - G0
+  - G1
+  - G2
+  - G3
+  - G4
+  - G5
+  - G6
+  - H0
+  - L1
+  - L2
+  - L3
+  - L4
+proves_modes:
+  - text_with_cover
+steps:
+  - name: text_with_cover pipeline completes
+    kind: cli
+    check: "A real text_with_cover pipeline run for a fixed topic and brand completes and prints the completion marker (T3 of the True Test: topic to draft.md in one sitting, no docs)."
+    standard: founder-expectations.true-test
+    command: automedia run --topic "Cover images that boost article engagement" --brand my-brand --mode text_with_cover
+    timeout_seconds: 1500
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: project visible through the shipped surface
+    kind: cli
+    check: automedia projects list reads the 00_project_info.json the real run wrote and prints the project's topic row (artifact produced by a real run, never assumed).
+    standard: founder-expectations.F01
+    command: automedia projects list --base-dir /tmp/automedia/journey-projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Cover images that boost article engagement"
+  - name: non-trivial draft artifact exists
+    kind: cli
+    check: The run produced a non-trivial draft markdown file under 01_content/drafts/ in the controlled projects dir (the artifact the pipeline must show the director, not an assumed one).
+    standard: founder-expectations.F01
+    command: find /tmp/automedia/journey-projects -name "*_draft.md" -size +500c
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "_draft.md"
+  - name: real-LLM quality spot-check answers
+    kind: tool
+    check: The evaluate_content_quality tool returns a success envelope with a structured LLM quality assessment for a sample (light scaffold spot-check; deep scoring is W3-T4's scope).
+    standard: tool.contract
+    tool: evaluate_content_quality
+    arguments:
+      content: "A strong cover image earns the click: three proven patterns are contrast, a single focal subject, and text that promises the article's payoff."
+      criteria: "clarity, accuracy, brand voice"
+      brand: "my-brand"
+    timeout_seconds: 300
+    expect:
+      success: true
