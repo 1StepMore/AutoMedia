@@ -506,14 +506,14 @@ CLI (run from the repo root so relative artifact paths resolve):
 - `automedia validate run --scenario <name>`: run ONE named scenario against the real MCP server; `--scenario` is required (the recursion bound); exits 1 when the status is failed
 - `automedia validate report [--run <name|latest>]`: render the run record for a run, defaulting to the latest
 - `automedia validate diff [--baseline <path>]`: diff the latest two runs against each other or a baseline record
-- `automedia validate coverage`: run the static coverage audit; exits 1 when declared-but-missing is non-empty
+- `automedia validate coverage`: run the static coverage audit over CLI, MCP, gates, and pipeline modes surfaces; exits 1 when declared-but-missing is non-empty on any surface
 
 MCP tools:
 
 - `list_validation_scenarios`: list the scenario library (name, description, category, status hint)
 - `run_validation_scenario`: run ONE named scenario in-process against the server; scenario_name is required, save=True persists an immutable record
 - `get_validation_report`: read a persisted run record from validation-runs/ (defaults to the latest run)
-- `validation_coverage_audit`: compute the static coverage audit (declared/used/covered/missing/phantom per surface)
+- `validation_coverage_audit`: compute the static coverage audit (declared/used/covered/missing/phantom/boundary-only per surface: CLI, MCP, gates, pipeline modes)
 
 ### The evidence contract
 
@@ -547,8 +547,8 @@ MCP tools:
 
 ### Where things live
 
-- `scenarios/`: the committed scenario library (one YAML file per scenario).
-- `scenarios/STANDARDS.md`: the handbook of 28 standard keys that every step's `standard:` must cite; unknown keys are rejected at load time.
+- `scenarios/`: the committed scenario library (100 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).
+- `scenarios/STANDARDS.md`: the handbook of standard keys (14 core keys plus 33 `gate.*` and 9 `mode.*`) that every step's `standard:` must cite; unknown keys are rejected at load time.
 - `scenarios/baseline/`: the committed pre-flight baseline run record and the coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer; evidence of a moment in time, not source.
 - `AUTOMEDIA_VALIDATION_SCENARIOS_DIR`: environment override that replaces the default scenarios directory.
