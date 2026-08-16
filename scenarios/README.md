@@ -86,7 +86,9 @@ inside names the most recent run.
 | `pass_ratio` | Fraction of primary steps that must succeed | Partial-pass policy for scenarios whose step count grows |
 | `regression: true` | Marks the scenario as pinned to a specific fix | The regression flywheel: it must stay green forever |
 | `regression_issue` | Bug or issue reference for the pinned fix | Required whenever `regression: true`; lets a reader jump from name to fix |
-| `error_boundary: true` | The scenario's probes EXPECT an error to occur | The coverage audit reads it as an allowlisted probe, never as phantom or missing coverage |
+| `error_boundary: true` | The scenario's probes EXPECT an error to occur | The coverage audit reads it as an allowlisted probe: excluded from `covered`, listed loudly, never phantom or missing coverage |
+| `proves_gates` | List of gate names the scenario proves (for example `G0`, `CW`, `pre-gate`) | Declarative coverage metadata; the coverage audit reads it to compute which declared gates the suite exercises |
+| `proves_modes` | List of pipeline mode names the scenario proves (for example `text_only`) | Declarative coverage metadata; the coverage audit reads it to compute which declared modes the suite exercises |
 | `steps` | Ordered list of primary steps | The body of the proof; execution order is top to bottom |
 | `cleanup_steps` | Best-effort state removal after the main steps | Leaves the surface as it was found; never influences the scenario status |
 
@@ -292,8 +294,25 @@ then fix toward GREEN.
 The long-lived MCP server must call the `*_async` engine cores from its own
 running loop; the sync wrappers shown above are for the CLI and tests.
 
-A `automedia validate` command family (list, run, report, diff, coverage) is
-planned for a later wave. Until it lands, drive the engine directly as shown.
+The `automedia validate` command family drives this layer from the CLI:
+
+- `automedia validate list` — load the scenario library and list every scenario
+  (load only, no engine run)
+- `automedia validate run --scenario <name>` — run ONE named scenario against
+  the real MCP server; `--scenario` is required (the recursion bound)
+- `automedia validate report [--run <name|latest>]` — render the run record for
+  a run, defaulting to the latest
+- `automedia validate diff [--baseline <path>]` — diff the latest two runs
+  against each other or a baseline record
+- `automedia validate coverage` — run the static coverage audit, which reports
+  `declared`/`used`/`covered`/`missing`/`phantom`/`boundary_only` per surface
+  for four surfaces (CLI, MCP, gates, pipeline modes); it exits 1 when
+  `missing` is non-empty on any surface
+
+The same surface is exposed as four MCP tools: `list_validation_scenarios`,
+`run_validation_scenario`, `get_validation_report`, and
+`validation_coverage_audit`. Drive the engine directly as shown above when you
+need to run the whole suite in-process.
 
 ## Regression flywheel
 
