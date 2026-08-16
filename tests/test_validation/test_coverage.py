@@ -93,6 +93,25 @@ steps:
     expect: {{}}
 """
 
+PROVES_SCENARIO = """\
+name: {name}
+description: Synthetic fixture proving gates and a pipeline mode.
+intent: Prove the coverage audit consumes proves_gates/proves_modes.
+category: pipeline
+error_boundary: {boundary}
+proves_gates: [{gates}]
+proves_modes: [{modes}]
+steps:
+  - name: call the tool
+    kind: tool
+    check: The tool answers.
+    standard: tool.contract
+    tool: health_check
+    arguments: {{}}
+    expect:
+      success: true
+"""
+
 CLI_SCENARIO = """\
 name: cli-mixed-steps
 description: Synthetic cli-kind fixture.
@@ -216,9 +235,7 @@ class TestShape:
 
 
 class TestDeclaredMCP:
-    def test_regex_extracts_tool_calls_and_ignores_tool_declarations(
-        self, tmp_path: Path
-    ) -> None:
+    def test_regex_extracts_tool_calls_and_ignores_tool_declarations(self, tmp_path: Path) -> None:
         result = _audit(
             tmp_path,
             {"health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check")},
@@ -234,11 +251,7 @@ class TestDeclaredMCP:
         # The scenario calls the CALLABLE name (fn.__name__), not the alias.
         result = _audit(
             tmp_path,
-            {
-                "analyze.yaml": TOOL_SCENARIO.format(
-                    name="analyze-fixture", tool="analyze_content"
-                )
-            },
+            {"analyze.yaml": TOOL_SCENARIO.format(name="analyze-fixture", tool="analyze_content")},
         )
         assert "analyze_content" in result["covered_mcp"]
         assert "effects_analyze_content" not in result["declared_mcp"]
@@ -256,15 +269,11 @@ class TestDeclaredCLI:
 
 
 class TestUsedExtraction:
-    def test_tool_and_cli_targets_with_non_automedia_commands_ignored(
-        self, tmp_path: Path
-    ) -> None:
+    def test_tool_and_cli_targets_with_non_automedia_commands_ignored(self, tmp_path: Path) -> None:
         result = _audit(
             tmp_path,
             {
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
                 "cli.yaml": CLI_SCENARIO,
             },
         )
@@ -280,11 +289,7 @@ class TestUsedExtraction:
     ) -> None:
         lib = _write_lib(
             tmp_path,
-            {
-                "tool.yaml": TOOL_SCENARIO.format(
-                    name="tool-fixture", tool="health_check"
-                )
-            },
+            {"tool.yaml": TOOL_SCENARIO.format(name="tool-fixture", tool="health_check")},
         )
         cleanup = lib / "cleanup.yaml"
         cleanup.write_text(
@@ -323,9 +328,7 @@ class TestUsedExtraction:
 class TestMissingScenariosDir:
     def test_nonexistent_dir_yields_empty_used_sets(self, tmp_path: Path) -> None:
         server, app = _write_declared(tmp_path)
-        result = coverage_audit(
-            tmp_path / "does-not-exist", server_path=server, app_path=app
-        )
+        result = coverage_audit(tmp_path / "does-not-exist", server_path=server, app_path=app)
         assert result["used_mcp"] == []
         assert result["used_cli"] == []
         assert result["missing_mcp"] == result["declared_mcp"]
@@ -338,15 +341,11 @@ class TestBoundaryOnly:
         result = _audit(
             tmp_path,
             {
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
                 "cancel.yaml": BOUNDARY_SCENARIO.format(
                     name="cancel-boundary-fixture", tool="cancel_pipeline"
                 ),
-                "pool.yaml": TOOL_SCENARIO.format(
-                    name="pool-fixture", tool="pool_add_topic"
-                ),
+                "pool.yaml": TOOL_SCENARIO.format(name="pool-fixture", tool="pool_add_topic"),
                 "analyze.yaml": TOOL_SCENARIO.format(
                     name="analyze-fixture", tool="analyze_content"
                 ),
@@ -363,9 +362,7 @@ class TestBoundaryOnly:
         assert "cancel_pipeline" in result["director_waiver_note"]
         assert "Phantom = used minus declared" in result["phantom_note"]
 
-    def test_step_level_boundary_within_normal_scenario_stays_covered(
-        self, tmp_path: Path
-    ) -> None:
+    def test_step_level_boundary_within_normal_scenario_stays_covered(self, tmp_path: Path) -> None:
         # Only scenario-level error_boundary reclassifies (plan: the audit
         # reads the scenario level only).
         step_probe = TOOL_SCENARIO.format(name="probe-fixture", tool="cancel_pipeline")
@@ -375,9 +372,7 @@ class TestBoundaryOnly:
         result = _audit(
             tmp_path,
             {
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
                 "probe.yaml": step_probe,
             },
         )
@@ -404,12 +399,8 @@ class TestPhantom:
         result = _audit(
             tmp_path,
             {
-                "ghost.yaml": TOOL_SCENARIO.format(
-                    name="ghost-fixture", tool="ghost_tool"
-                ),
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "ghost.yaml": TOOL_SCENARIO.format(name="ghost-fixture", tool="ghost_tool"),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
             },
         )
         assert result["phantom_mcp"] == ["ghost_tool"]
@@ -421,9 +412,7 @@ class TestPhantom:
             tmp_path,
             {
                 "cli.yaml": CLI_SCENARIO,
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
             },
         )
         assert result["phantom_cli"] == ["validate"]
@@ -436,15 +425,11 @@ class TestMissingEmpty:
         result = _audit(
             tmp_path,
             {
-                "health.yaml": TOOL_SCENARIO.format(
-                    name="health-fixture", tool="health_check"
-                ),
+                "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
                 "cancel.yaml": BOUNDARY_SCENARIO.format(
                     name="cancel-boundary-fixture", tool="cancel_pipeline"
                 ),
-                "pool.yaml": TOOL_SCENARIO.format(
-                    name="pool-fixture", tool="pool_add_topic"
-                ),
+                "pool.yaml": TOOL_SCENARIO.format(name="pool-fixture", tool="pool_add_topic"),
                 "analyze.yaml": TOOL_SCENARIO.format(
                     name="analyze-fixture", tool="analyze_content"
                 ),
@@ -467,9 +452,7 @@ class TestMissingEmpty:
 class TestDeterminism:
     def test_same_inputs_produce_identical_output(self, tmp_path: Path) -> None:
         files = {
-            "health.yaml": TOOL_SCENARIO.format(
-                name="health-fixture", tool="health_check"
-            ),
+            "health.yaml": TOOL_SCENARIO.format(name="health-fixture", tool="health_check"),
             "cancel.yaml": BOUNDARY_SCENARIO.format(
                 name="cancel-boundary-fixture", tool="cancel_pipeline"
             ),
@@ -489,3 +472,110 @@ class TestDeterminism:
         )
         assert result["covered_mcp"] == sorted(result["covered_mcp"])
         assert result["declared_mcp"] == sorted(result["declared_mcp"])
+
+
+class TestGateModeSurfaces:
+    """Issue #78 A2: the audit computes gate and mode coverage.
+
+    Declared sets come from the REAL repo source constants (runner.py
+    ``_MODE_MAP`` + the distribution gates' ``_gate_name`` attributes — 33
+    gates / 9 modes, never hardcoded); used/covered/missing/phantom mirror
+    the mcp/cli logic, boundary scenarios excluded from covered exactly as
+    the existing surfaces."""
+
+    def test_proves_gates_and_modes_mark_surfaces_covered(self, tmp_path: Path) -> None:
+        result = _audit(
+            tmp_path,
+            {
+                "proves.yaml": PROVES_SCENARIO.format(
+                    name="proves-fixture", boundary="false", gates="G0, V1", modes="text_only"
+                )
+            },
+        )
+        assert "G0" in result["covered_gates"]
+        assert "V1" in result["covered_gates"]
+        assert "G0" not in result["missing_gates"]
+        assert result["covered_modes"] == ["text_only"]
+        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G0", "V1"})
+        assert result["missing_modes"] == sorted(set(result["declared_modes"]) - {"text_only"})
+        assert result["phantom_gates"] == []
+        assert result["phantom_modes"] == []
+
+    def test_boundary_proves_are_third_class(self, tmp_path: Path) -> None:
+        """Scenario-level error_boundary proves are listed loudly, excluded
+        from covered AND from missing (the mcp/cli boundary policy)."""
+        result = _audit(
+            tmp_path,
+            {
+                "boundary.yaml": PROVES_SCENARIO.format(
+                    name="boundary-fixture", boundary="true", gates="H0", modes="auto"
+                )
+            },
+        )
+        assert result["boundary_only_gates"] == ["H0"]
+        assert result["boundary_only_modes"] == ["auto"]
+        assert "H0" not in result["covered_gates"]
+        assert "H0" not in result["missing_gates"]
+        assert "auto" not in result["covered_modes"]
+        assert "auto" not in result["missing_modes"]
+        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"H0"})
+        assert result["missing_modes"] == sorted(set(result["declared_modes"]) - {"auto"})
+
+    def test_undeclared_proves_are_phantom(self, tmp_path: Path) -> None:
+        """Phantom is pure for gates/modes too: used minus declared."""
+        result = _audit(
+            tmp_path,
+            {
+                "ghost.yaml": PROVES_SCENARIO.format(
+                    name="ghost-fixture", boundary="false", gates="Z9", modes="hologram"
+                )
+            },
+        )
+        assert result["phantom_gates"] == ["Z9"]
+        assert result["phantom_modes"] == ["hologram"]
+
+    def test_declared_counts_from_real_runner_constants(self, tmp_path: Path) -> None:
+        """33 gates / 9 modes from the REAL runner.py + distribution sources
+        (empty synthetic library: used = ∅, everything missing)."""
+        result = _audit(tmp_path, {})
+        summary = result["summary"]
+        assert summary["gates_declared"] == 33
+        assert summary["modes_declared"] == 9
+        assert len(result["declared_gates"]) == 33
+        assert len(result["declared_modes"]) == 9
+        assert summary["gates_used"] == 0
+        assert summary["modes_used"] == 0
+        assert summary["gates_missing"] == 33
+        assert summary["modes_missing"] == 9
+        assert result["missing_gates"] == result["declared_gates"]
+        assert result["missing_modes"] == result["declared_modes"]
+        for key in (
+            "declared_gates",
+            "declared_modes",
+            "used_gates",
+            "used_modes",
+            "covered_gates",
+            "covered_modes",
+            "missing_gates",
+            "missing_modes",
+            "phantom_gates",
+            "phantom_modes",
+            "boundary_only_gates",
+            "boundary_only_modes",
+        ):
+            assert key in result, f"audit output missing key {key!r}"
+        for key in (
+            "gates_declared",
+            "gates_used",
+            "gates_covered",
+            "gates_missing",
+            "gates_phantom",
+            "gates_boundary_only",
+            "modes_declared",
+            "modes_used",
+            "modes_covered",
+            "modes_missing",
+            "modes_phantom",
+            "modes_boundary_only",
+        ):
+            assert key in summary, f"summary missing key {key!r}"
