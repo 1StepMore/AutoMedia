@@ -79,6 +79,21 @@ style.
 - Inject appropriate emotional markers (exclamations, rhetorical questions)
 - Replace formulaic paragraph openings with context-relevant hooks
 
+**Detector verify loop (issue #62):**
+
+- OFF by default. Enable via config `gates.humanizer.verify_loop.enabled: true`
+  (`max_iterations`, default 3) or env `AUTOMEDIA_HUMANIZER_VERIFY_LOOP=1`.
+- When enabled, the rewritten output is verified with the `deterministic_taste`
+  detector (from `automedia.detectors`); the gate result exposes
+  `detector_score` (float 0..1, final ai_score; > 0.5 = still AI-written) and
+  `verify_iterations` (int). The loop stops when the detector passes, the
+  rewrite stops making progress, or the budget is exhausted.
+- If `detector_score > 0.5`: the text still reads AI-written. Check the failing
+  checks named in the detector detail (e.g. `hollow_intros`,
+  `overacademic_vocabulary`) and remove those patterns directly — the CN
+  官腔黑话 patterns (赋能 / 抓手 / 闭环 / 颗粒度 / 底层逻辑 / 生态) are
+  detection-only and are NOT removed by the rewrite.
+
 **Quick checklist:**
 
 ```

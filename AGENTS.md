@@ -90,6 +90,12 @@ AutoMedia/
 │       │   ├── content_writer.py   # CW
 │       │   └── translation_quality.py # L4
 │       │
+│       ├── detectors/              # Pluggable AI-writing-taste detectors (issue #62)
+│       │   ├── base.py             # BaseDetector ABC + DetectorResult + auto-registration
+│       │   ├── registry.py         # DetectorRegistry singleton (BaseRegistry-based)
+│       │   ├── deterministic.py    # deterministic_taste — reuses G1 humanizer's 9 regex checks
+│       │   └── adapters.py         # gptzero_style_api — env-gated external detector (AUTOMEDIA_DETECTOR_GPTZERO_API_KEY)
+│       │
 │       ├── hooks/                  # Readonly observer protocol
 │       │   ├── protocol.py         # GateHook Protocol + GateObserver base
 │       │   ├── md5_tracker.py      # MD5 checksum tracking → pipeline_md5.json
