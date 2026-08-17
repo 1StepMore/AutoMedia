@@ -1,0 +1,25 @@
+name: regression-83-configure-llm-preserves-fallback
+description: The save_model_config writer preserves an existing fallback chain when updating provider and model, proving the fix for issue #83 where configure_llm did a destructive full-file overwrite.
+intent: Pin the issue #83 regression: configure_llm (and onboard) must use the merge-preserving save_model_config writer instead of a destructive overwrite, so that an existing LLM fallback chain is never silently destroyed.
+category: regression
+regression: true
+regression_issue: "#83"
+requires_env: []
+steps:
+  - name: save_model_config preserves fallback chain on update
+    kind: cli
+    check: "Run the committed regression-83 helper, which seeds an isolated model_config.yaml with a fallback list, calls save_model_config to update provider and model, then verifies the fallback chain survived and the new values were written."
+    standard: tool.contract
+    command: python3 scripts/regression_83_check.py
+    timeout_seconds: 30
+    expect:
+      stdout_has:
+        - REG83_FALLBACK_PRESERVED
+cleanup_steps:
+  - name: remove leftover reg83 temp config directories
+    kind: cli
+    check: "Best-effort removal of any leftover /tmp/automedia/reg83-* directories (the helper self-cleans via TemporaryDirectory, so this is a safety net only)."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/reg83-*
+    expect:
+      exit_code: 0
