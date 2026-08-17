@@ -7,9 +7,98 @@ import subprocess
 from typing import Any
 
 import typer
+import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_json
 from automedia.core.doctor import Doctor
+from automedia.core.paths import get_user_config_dir
+
+# Official API hosts per provider, matched case-insensitively against the
+# configured ``base_url`` host. Used by the model-vs-endpoint heuristic.
+_OFFICIAL_HOSTS: dict[str, str] = {
+    "deepseek": "api.deepseek.com",
+    "openai": "api.openai.com",
+    "anthropic": "api.anthropic.com",
+    "openrouter": "openrouter.ai",
+}
+
+_NO_FALLBACK_MSG = (
+    "No LLM fallback chain configured. If the primary provider fails, calls fail "
+    "immediately. Re-run `automedia onboard --step llm` to add a backup provider, "
+    "or edit model_config.yaml."
+)
+
+
+def _is_official_model(provider: str, model: str) -> bool:
+    """Return ``True`` when *model* is a known official family for *provider*."""
+    p = provider.lower()
+    m = model.lower()
+    if p == "deepseek":
+        return m.startswith("deepseek-chat")
+    if p == "openai":
+        return m.startswith("gpt-4o") or m.startswith("gpt-4.1") or m.startswith("gpt-5")
+    if p == "anthropic":
+        return m.startswith("claude-")
+    return False
+
+
+def _collect_llm_warnings() -> tuple[str | None, list[str]]:
+    """Collect advisory warnings about the LLM/fallback configuration.
+
+    Returns ``(config_path, warnings)`` where *config_path* is ``None`` when no
+    ``model_config.yaml`` exists. Warnings are advisory only — they never affect
+    the doctor exit code.
+    """
+    config_path = get_user_config_dir() / "model_config.yaml"
+    if not config_path.is_file():
+        return (None, [])
+
+    path_str = str(config_path)
+    try:
+        with open(config_path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except yaml.YAMLError:
+        return (path_str, ["model_config.yaml is not valid YAML"])
+
+    if not isinstance(data, dict):
+        return (path_str, ["model_config.yaml is not valid YAML"])
+
+    warnings: list[str] = []
+    tg = data.get("llm", {})
+    if not isinstance(tg, dict):
+        tg = {}
+    tg = tg.get("text_generation", {})
+    if not isinstance(tg, dict):
+        tg = {}
+
+    fallback = tg.get("fallback")
+    if not isinstance(fallback, list) or not fallback:
+        warnings.append(_NO_FALLBACK_MSG)
+    else:
+        for i, entry in enumerate(fallback, start=1):
+            if not isinstance(entry, dict) or not (
+                entry.get("provider") and entry.get("api_key") and entry.get("base_url")
+            ):
+                warnings.append(
+                    f"fallback entry {i} is incomplete (missing provider, api_key, or base_url)."
+                )
+
+    provider = tg.get("provider")
+    model = tg.get("model")
+    base_url = tg.get("base_url")
+    if provider and model and base_url:
+        official_host = _OFFICIAL_HOSTS.get(str(provider).lower())
+        if (
+            official_host
+            and _is_official_model(str(provider), str(model))
+            and official_host not in str(base_url).lower()
+        ):
+            warnings.append(
+                f"Primary model {model!r} may not match base_url {base_url!r} "
+                f"for provider {provider!r}."
+            )
+
+    return (path_str, warnings)
 
 
 def _is_piped_script(instruction: str) -> bool:
@@ -112,9 +201,14 @@ def doctor_cmd(
 
     if get_output_mode() == OutputMode.JSON:
         all_ok = all(dep["installed"] for dep in results)
+        config_path, llm_warnings = _collect_llm_warnings()
         payload: dict[str, Any] = {
             "status": "ok" if all_ok else "error",
             "dependencies": results,
+            "llm": {
+                "model_config": config_path,
+                "warnings": llm_warnings,
+            },
         }
         if install_missing:
             missing_instructions = {}
@@ -157,6 +251,14 @@ def doctor_cmd(
             all_ok = False
 
     typer.echo("-" * 60)
+
+    config_path, llm_warnings = _collect_llm_warnings()
+    if llm_warnings:
+        if config_path is not None:
+            typer.echo("LLM Configuration:")
+        for warning in llm_warnings:
+            typer.secho(f"  ⚠ {warning}", fg=typer.colors.YELLOW)
+
     if all_ok:
         typer.secho("All dependencies satisfied.", fg=typer.colors.GREEN)
     else:
