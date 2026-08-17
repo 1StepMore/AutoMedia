@@ -16,7 +16,6 @@ All config files are plain YAML — agents can read/write them directly.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +25,7 @@ import yaml
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.config_loader import load_config
 from automedia.core.paths import get_user_config_dir
+from automedia.manifests.model_config_schema import save_model_config
 
 _USER_CFG_DIR = get_user_config_dir()
 _MANIFESTS_DIR = Path(__file__).resolve().parent.parent.parent / "manifests"
@@ -101,12 +101,46 @@ def _step_llm() -> None:
     if base_url:
         data["llm"]["text_generation"]["base_url"] = base_url
 
-    _USER_CFG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(cfg_path, "w", encoding="utf-8") as fh:
-        yaml.dump(data, fh, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    os.chmod(cfg_path, 0o600)
+    save_model_config(cfg_path, data)
     _print_success(str(cfg_path))
     typer.echo("  Tip: You can also set AUTOMEDIA_LLM_API_KEY env var instead.")
+
+    written = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    existing_fallback = (
+        written.get("llm", {}).get("text_generation", {}).get("fallback") or []
+    )
+    if not existing_fallback:
+        typer.secho(
+            "\n  Warning: No LLM fallback chain configured. If the primary provider fails, "
+            "calls will fail immediately.",
+            fg=typer.colors.YELLOW,
+        )
+        add_fallback = typer.prompt("  Add a backup LLM provider?", default="n")
+        if add_fallback.strip().lower() in ("y", "yes"):
+            fb_provider = typer.prompt("  Fallback provider")
+            fb_model = typer.prompt("  Fallback model")
+            fb_api_key = typer.prompt(
+                "  Fallback API key (optional)", default="", hide_input=True
+            )
+            fb_base_url = typer.prompt("  Fallback API base URL (optional)", default="")
+            fb_entry: dict[str, str] = {
+                "provider": fb_provider,
+                "model": fb_model,
+            }
+            if fb_api_key:
+                fb_entry["api_key"] = fb_api_key
+            if fb_base_url:
+                fb_entry["base_url"] = fb_base_url
+            save_model_config(
+                cfg_path,
+                {"llm": {"text_generation": {"fallback": [fb_entry]}}},
+            )
+            typer.secho("  Fallback provider added.", fg=typer.colors.GREEN)
+        else:
+            typer.echo(
+                "  You can add a fallback provider later via "
+                "'automedia onboard --step llm'."
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +234,8 @@ def _step_pipeline() -> None:
     pipeline = existing.get("pipeline", {})
 
     mode = typer.prompt(
-        "Default mode (auto / text_only / text_with_cover / video_only / qa_only / image-carousel / social-thread / short-video)",
+        "Default mode (auto / text_only / text_with_cover / video_only / qa_only / "
+        "image-carousel / social-thread / short-video)",
         default="auto",
     )
     text_enabled = typer.prompt(
