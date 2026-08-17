@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 from structlog import get_logger
 
+from automedia.manifests.model_config_schema import save_model_config
 from automedia.mcp.tools._shared import (
     MCPErrorCode,
     error_response,
@@ -138,9 +139,7 @@ def configure_llm(
         if api_key:
             llm_config["llm"]["text_generation"]["api_key"] = api_key
 
-        with open(_MODEL_CONFIG_FILE, "w", encoding="utf-8") as f:
-            yaml.dump(llm_config, f, default_flow_style=False)
-        os.chmod(_MODEL_CONFIG_FILE, 0o600)
+        save_model_config(_MODEL_CONFIG_FILE, llm_config)
 
         return success_response(
             {
@@ -209,19 +208,10 @@ def onboard(
             # Write base_url separately if provided
             if base_url:
                 cfg_path = user_cfg_dir / "model_config.yaml"
-                if cfg_path.exists():
-                    raw = cfg_path.read_text(encoding="utf-8")
-                    data = yaml.safe_load(raw) or {}
-                    llm_node = data.setdefault("llm", {}).setdefault(
-                        "text_generation", {}
-                    )
-                    llm_node["base_url"] = base_url
-                    cfg_path.write_text(
-                        yaml.dump(
-                            data, default_flow_style=False, allow_unicode=True
-                        ),
-                        encoding="utf-8",
-                    )
+                save_model_config(
+                    cfg_path,
+                    {"llm": {"text_generation": {"base_url": base_url}}},
+                )
 
         # Create brand profile via add_brand (delegates to brand profile schema)
         if brand_name:

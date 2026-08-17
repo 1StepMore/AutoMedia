@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from automedia.mcp.tools import add_brand, configure_llm, init_config
+from automedia.mcp.tools import add_brand, configure_llm, init_config, onboard
 
 # ===================================================================
 # Tests: init_config
@@ -136,6 +136,154 @@ class TestConfigureLLM:
         assert result["success"] is True
         assert result["provider"] == ""
 
+    def test_preserves_existing_fallback(self, tmp_path: Path) -> None:
+        """configure_llm preserves an existing fallback list on update."""
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text(
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: old-provider\n"
+            "    model: old-model\n"
+            "    fallback:\n"
+            "      - provider: fallback-provider\n"
+            "        model: fallback-model\n",
+            encoding="utf-8",
+        )
+        with (
+            patch(
+                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
+                tmp_path,
+            ),
+            patch(
+                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
+                cfg_file,
+            ),
+        ):
+            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        assert result["success"] is True
+        content = cfg_file.read_text(encoding="utf-8")
+        assert "fallback-provider" in content
+        assert "fallback-model" in content
+        assert "deepseek" in content
+        assert "deepseek-chat" in content
+
+    def test_preserves_existing_base_url(self, tmp_path: Path) -> None:
+        """configure_llm preserves an existing base_url when not updated."""
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text(
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: old-provider\n"
+            "    base_url: https://custom.example.com/v1\n",
+            encoding="utf-8",
+        )
+        with (
+            patch(
+                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
+                tmp_path,
+            ),
+            patch(
+                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
+                cfg_file,
+            ),
+        ):
+            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        assert result["success"] is True
+        content = cfg_file.read_text(encoding="utf-8")
+        assert "https://custom.example.com/v1" in content
+        assert "deepseek" in content
+
+    def test_regression_83_configure_llm_preserves_fallback(self, tmp_path: Path) -> None:
+        """Regression #83: configure_llm must not destroy an existing fallback chain.
+
+        Before the fix, configure_llm did a destructive full-file overwrite of
+        model_config.yaml, silently destroying any existing LLM fallback list.
+        The fix makes it use the merge-preserving save_model_config writer so
+        that absent keys (like fallback) are kept intact while provider/model
+        are updated.
+        """
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text(
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: old-provider\n"
+            "    model: old-model\n"
+            "    fallback:\n"
+            "      - provider: fb-provider\n"
+            "        model: fb-model\n",
+            encoding="utf-8",
+        )
+        with (
+            patch(
+                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
+                tmp_path,
+            ),
+            patch(
+                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
+                cfg_file,
+            ),
+        ):
+            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        assert result["success"] is True
+        content = cfg_file.read_text(encoding="utf-8")
+        assert "deepseek" in content
+        assert "deepseek-chat" in content
+        assert "fb-provider" in content
+        assert "fb-model" in content
+
+
+# ===================================================================
+# Tests: onboard
+# ===================================================================
+
+
+class TestOnboard:
+    """Tests for the ``onboard`` MCP tool."""
+
+    @patch("automedia.core.paths.get_user_config_dir")
+    def test_base_url_merge_preserves_fallback(
+        self,
+        mock_get_user_config_dir: object,
+        tmp_path: Path,
+    ) -> None:
+        """onboard's base_url merge preserves an existing fallback list."""
+        mock_get_user_config_dir.return_value = tmp_path
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text(
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: old-provider\n"
+            "    fallback:\n"
+            "      - provider: fallback-provider\n"
+            "        model: fallback-model\n",
+            encoding="utf-8",
+        )
+        with (
+            patch(
+                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
+                tmp_path,
+            ),
+            patch(
+                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
+                cfg_file,
+            ),
+        ):
+            result = onboard(
+                llm_provider="deepseek",
+                llm_key="sk-test-123",
+                base_url="https://custom.example.com/v1",
+            )
+
+        assert result["success"] is True
+        content = cfg_file.read_text(encoding="utf-8")
+        assert "fallback-provider" in content
+        assert "fallback-model" in content
+        assert "https://custom.example.com/v1" in content
+        assert "deepseek" in content
+
 
 # ===================================================================
 # Tests: add_brand
@@ -208,8 +356,6 @@ class TestToolsImport:
 
     def test_all_tools_available(self) -> None:
         """All three tool functions are importable."""
-        from automedia.mcp.tools import add_brand, configure_llm, init_config
-
         assert callable(init_config)
         assert callable(configure_llm)
         assert callable(add_brand)
