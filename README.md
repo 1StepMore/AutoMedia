@@ -532,6 +532,8 @@ Six-layer priority hierarchy (lowest to highest):
 
 Each layer merges with the one below it. See `.env.example` for all supported environment variables.
 
+Updates to `model_config.yaml` (via `configure_llm`, `automedia init`, or `automedia onboard`) are merge-based, so an existing LLM fallback chain is preserved when you change the primary provider or model.
+
 ## Deployment
 
 AutoMedia supports four deployment methods: Docker, native pip install,

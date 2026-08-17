@@ -126,6 +126,7 @@ Registered MCP tools:
 | `search_assets` | Search produced content via keyword + semantic search |
 | `list_brands` | Return all configured brands with profile metadata |
 | `get_config` | Return merged configuration (secrets redacted) |
+| `configure_llm` | Configure the LLM provider in `~/.automedia/model_config.yaml` (preserves an existing LLM fallback chain) |
 
 ## MCP Client Configuration
 

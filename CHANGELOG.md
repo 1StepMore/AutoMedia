@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Bug Fixes
+
+* **llm:** configure_llm and onboard now merge into model_config.yaml instead of overwriting — existing LLM fallback chains are preserved
+* **llm:** add save_model_config writer for merge-preserving model_config.yaml updates
+
+### Features
+
+* **cli:** automedia doctor reports advisory LLM configuration warnings (missing/incomplete fallback chain, model/base_url mismatch) in human and --json output
+
 ## [1.4.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.0...automedia-v1.4.1) (2026-08-15)
 
 
