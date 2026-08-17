@@ -455,7 +455,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `add_brand` | name, industry, target_audience | Create a new brand profile (name required; industry and target audience optional) |
 | `get_config` | key | Return merged configuration (secrets redacted) |
 | `init_config` | project_dir | Initialize AutoMedia configuration: create `.automedia/` and a default `config.yaml` |
-| `configure_llm` | provider, model, api_key | Configure the LLM provider in `~/.automedia/model_config.yaml` |
+| `configure_llm` | provider, model, api_key | Configure the LLM provider in `~/.automedia/model_config.yaml` (preserves an existing LLM fallback chain) |
 | `onboard` | brand_name, llm_provider, llm_key, base_url | One-step onboarding: configure the LLM and create a brand profile without interactive prompts |
 | `get_redlines` | — | Return the list of agent red-line constraints |
 | `cancel_pipeline` | project_id | Cancel a running pipeline by project_id (sets cancellation flag) |

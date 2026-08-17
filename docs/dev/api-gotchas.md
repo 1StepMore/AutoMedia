@@ -77,6 +77,14 @@ AUTOMEDIA_FOO_BAR_BAZ=val  →  {"foo": {"bar": {"baz": "val"}}}
 **Gotcha:** Do not use extra underscores in variable names, or they will
 produce unexpected nested structures.
 
+### `save_model_config` merges, it does not overwrite
+
+`save_model_config(path, updates)` (used by `configure_llm`, `automedia init`,
+and `automedia onboard`) deep-merges a partial update into the existing
+`model_config.yaml`. Keys you do not touch, notably the LLM `fallback` chain,
+are preserved. Do not assume a reconfigure wipes the fallback chain, and do
+not hand-write an overwrite that drops it.
+
 ## Pipeline Execution
 
 ### `run_full_pipeline()` does not throw exceptions

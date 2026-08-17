@@ -442,6 +442,8 @@ The interactive wizard prompts for the following:
 - API base URL
 - API key (hidden input)
 
+Reconfiguring preserves an existing LLM fallback chain in `model_config.yaml`; only the fields you change are updated.
+
 ## `automedia doctor`
 
 System dependency and runtime environment health check.
@@ -451,6 +453,8 @@ automedia doctor
 ```
 
 Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.
+
+When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the `llm` field. These warnings are advisory and do not affect the exit code.
 
 ## `automedia omni`
 
@@ -499,3 +503,5 @@ automedia onboard
 # List available wizards
 automedia onboard list
 ```
+
+The LLM step preserves an existing fallback chain in `model_config.yaml` and offers fallback guidance during the flow.
