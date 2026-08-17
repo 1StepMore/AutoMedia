@@ -4,7 +4,7 @@
 /solution-wise/
 /projects/
 /test-*/
-202607*/
+202[0-9]*/
 PRD/
 /hyperframes-workflow-templates/
 
@@ -25,6 +25,10 @@ docs/production-e2e-test-design.md
 .automedia/
 .omo/
 /.hermes/
+
+# Local-agent-only maintainer skills (not for AutoMedia users)
+.opencode/skills/issue-triage.md
+.opencode/skills/pr-review-merge.md
 
 # ===== Credentials & Secrets =====
 .env
