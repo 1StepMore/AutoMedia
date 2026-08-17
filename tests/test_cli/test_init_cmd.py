@@ -240,7 +240,7 @@ class TestInitInteractive:
         result = runner.invoke(
             app,
             ["init"],
-            input="openai\ngpt-4o-mini\nsk-test123\nhttps://api.openai.com/v1\n",
+            input="openai\ngpt-4o-mini\nsk-test123\nhttps://api.openai.com/v1\nn\n",
         )
         assert result.exit_code == 0
         clean = _strip_ansi(result.output)
@@ -273,7 +273,7 @@ class TestInitInteractive:
         result = runner.invoke(
             app,
             ["init"],
-            input="deepseek\ndeepseek-chat\nsk-ds-key\n\n",
+            input="deepseek\ndeepseek-chat\nsk-ds-key\n\nn\n",
         )
         assert result.exit_code == 0
 
@@ -300,7 +300,7 @@ class TestInitInteractive:
         result = runner.invoke(
             app,
             ["init"],
-            input="\n\nsk-some-key\n\n",
+            input="\n\nsk-some-key\n\nn\n",
         )
         assert result.exit_code == 0
 
@@ -310,6 +310,190 @@ class TestInitInteractive:
         assert config["llm"]["text_generation"]["model"] == "gpt-4o-mini"
         assert config["llm"]["text_generation"]["api_key"] == "sk-some-key"
         assert "base_url" not in config["llm"]["text_generation"]
+
+
+# =========================================================================
+# LLM fallback preservation + guidance (issue #83)
+# =========================================================================
+
+
+class TestInitFallback:
+    """Tests for LLM fallback preservation and interactive guidance."""
+
+    def test_write_model_config_preserves_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An existing fallback chain survives a re-write with new primary keys."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        cfg_dir = tmp_path / ".automedia"
+        cfg_dir.mkdir(parents=True)
+        cfg_file = cfg_dir / "model_config.yaml"
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_file)
+
+        cfg_file.write_text(
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: old-provider\n"
+            "    model: old-model\n"
+            "    api_key: old-key\n"
+            "    fallback:\n"
+            "      - provider: fb\n"
+            "        model: fb-m\n"
+            "        api_key: fb-key\n",
+            encoding="utf-8",
+        )
+
+        init_mod._write_model_config(
+            {"llm": {"text_generation": {"provider": "deepseek", "model": "deepseek-chat"}}}
+        )
+
+        with open(cfg_file) as fh:
+            config = yaml.safe_load(fh)
+        tg = config["llm"]["text_generation"]
+        assert tg["provider"] == "deepseek"
+        assert tg["model"] == "deepseek-chat"
+        assert tg["fallback"] == [{"provider": "fb", "model": "fb-m", "api_key": "fb-key"}]
+
+    def test_write_model_config_serializes_fallback_in_comments_mode(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Fallback is serialized as an indented YAML list in comments mode."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        cfg_dir = tmp_path / ".automedia"
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_dir / "model_config.yaml")
+
+        data = {
+            "llm": {
+                "text_generation": {
+                    "provider": "deepseek",
+                    "model": "deepseek-chat",
+                    "fallback": [{"provider": "openai", "model": "gpt-4o-mini"}],
+                }
+            }
+        }
+        init_mod._write_model_config(data)
+
+        yaml_text = (cfg_dir / "model_config.yaml").read_text(encoding="utf-8")
+        assert "fallback:" in yaml_text
+        assert "provider: openai" in yaml_text
+        assert "model: gpt-4o-mini" in yaml_text
+
+        with open(cfg_dir / "model_config.yaml") as fh:
+            config = yaml.safe_load(fh)
+        assert config["llm"]["text_generation"]["fallback"] == [
+            {"provider": "openai", "model": "gpt-4o-mini"}
+        ]
+
+    def test_interactive_adds_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The wizard writes a fallback entry when the user accepts the prompt."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
+        monkeypatch.setattr(
+            init_mod, "_MODEL_CONFIG_FILE", tmp_path / ".automedia" / "model_config.yaml"
+        )
+
+        result = runner.invoke(
+            app,
+            ["init"],
+            input=(
+                "deepseek\ndeepseek-chat\nsk-ds-key\n\n"
+                "y\nopenai\ngpt-4o-mini\nsk-fb-key\nhttps://api.openai.com/v1\n"
+            ),
+        )
+        assert result.exit_code == 0
+
+        with open(tmp_path / ".automedia" / "model_config.yaml") as fh:
+            config = yaml.safe_load(fh)
+        tg = config["llm"]["text_generation"]
+        assert tg["fallback"] == [
+            {
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-fb-key",
+                "base_url": "https://api.openai.com/v1",
+            }
+        ]
+
+    def test_interactive_decline_leaves_no_fallback_and_warns(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Declining the fallback prompt leaves no fallback and prints a warning."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
+        monkeypatch.setattr(
+            init_mod, "_MODEL_CONFIG_FILE", tmp_path / ".automedia" / "model_config.yaml"
+        )
+
+        result = runner.invoke(
+            app,
+            ["init"],
+            input="deepseek\ndeepseek-chat\nsk-ds-key\n\nn\n",
+        )
+        assert result.exit_code == 0
+
+        clean = _strip_ansi(result.output)
+        assert "fallback" in clean.lower()
+
+        with open(tmp_path / ".automedia" / "model_config.yaml") as fh:
+            config = yaml.safe_load(fh)
+        assert "fallback" not in config["llm"]["text_generation"]
+
+    def test_interactive_rerun_preserves_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Re-running the wizard preserves an existing fallback chain."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", tmp_path / ".automedia")
+        monkeypatch.setattr(
+            init_mod, "_MODEL_CONFIG_FILE", tmp_path / ".automedia" / "model_config.yaml"
+        )
+
+        # First run: accept a fallback.
+        result = runner.invoke(
+            app,
+            ["init"],
+            input=(
+                "deepseek\ndeepseek-chat\nsk-ds-key\n\n"
+                "y\nopenai\ngpt-4o-mini\nsk-fb-key\n\n"
+            ),
+        )
+        assert result.exit_code == 0
+
+        # Second run: the fallback already exists, so no prompt is shown.
+        result = runner.invoke(
+            app,
+            ["init"],
+            input="deepseek\ndeepseek-chat\nsk-ds-key-2\n\nn\n",
+        )
+        assert result.exit_code == 0
+
+        with open(tmp_path / ".automedia" / "model_config.yaml") as fh:
+            config = yaml.safe_load(fh)
+        tg = config["llm"]["text_generation"]
+        assert tg["provider"] == "deepseek"
+        assert tg["api_key"] == "sk-ds-key-2"
+        assert tg["fallback"] == [
+            {"provider": "openai", "model": "gpt-4o-mini", "api_key": "sk-fb-key"}
+        ]
 
 
 # =========================================================================
