@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.5.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.1...automedia-v1.5.0) (2026-08-21)
+
+
+### Features
+
+* **cli:** doctor reports advisory LLM configuration warnings ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([4994dd1](https://github.com/1StepMore/AutoMedia/commit/4994dd13abe7db49feff5f3f40b0bb9390c75a95))
+* **detectors:** ai-taste detector framework + G1 humanize-verify loop ([#62](https://github.com/1StepMore/AutoMedia/issues/62)) ([5ff9175](https://github.com/1StepMore/AutoMedia/commit/5ff91756036098f695a8b78469043e0afa55eb18))
+* **detectors:** env-gated external detector adapter ([22137d3](https://github.com/1StepMore/AutoMedia/commit/22137d34ae18de2652d5e03d07db33fcbb17ec0d))
+* **detectors:** pluggable AI-taste detector framework (base+registry) ([659b183](https://github.com/1StepMore/AutoMedia/commit/659b183a3dab65f224ae9c443e7c14d1caf68560))
+* **gates:** G1 humanize-verify loop with detector_score (off by default) ([#62](https://github.com/1StepMore/AutoMedia/issues/62)) ([edcad29](https://github.com/1StepMore/AutoMedia/commit/edcad29aeaa6a5f9682cf728a20c6bddf5233d60))
+* **llm:** add merge-preserving save_model_config writer ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([687a8bf](https://github.com/1StepMore/AutoMedia/commit/687a8bfbc8cfa4ddf2664b5ec7f9ab9abaedb5eb))
+* **scenarios:** distribution D-gates journey proving D1-D7 ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([c3e9a6d](https://github.com/1StepMore/AutoMedia/commit/c3e9a6d17880ffbe8b1fb261f81ca05cc9da390a))
+* **scenarios:** mode journeys proving all 9 pipeline modes ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([2fb5189](https://github.com/1StepMore/AutoMedia/commit/2fb5189d9648bee806e4addf3c6b1c5b0a701c93))
+* **validation:** AutoInfo-style artifact-assertion matrix for validate matrix ([#86](https://github.com/1StepMore/AutoMedia/issues/86)) ([458a641](https://github.com/1StepMore/AutoMedia/commit/458a641e42100997080a07ae465b7ec584fa1136))
+* **validation:** AutoInfo-style matrix + hard safety + diff upgrade ([#86](https://github.com/1StepMore/AutoMedia/issues/86)) ([159ac4f](https://github.com/1StepMore/AutoMedia/commit/159ac4f842b86679781364d362513479e8ab810a))
+* **validation:** gate and mode coverage audit surfaces ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([6309da7](https://github.com/1StepMore/AutoMedia/commit/6309da725f9894f95b18aa7cdebb83628d926bb2))
+* **validation:** gate/mode coverage audit + scenarios proving all 9 modes and D-gates ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([0480030](https://github.com/1StepMore/AutoMedia/commit/048003076b57267ad57bdb1d8fcc4b020a59f784))
+* **validation:** track gates and modes proven by scenarios ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([63bbfac](https://github.com/1StepMore/AutoMedia/commit/63bbfacf7479a407fa41f79a761396beb5c42fe9))
+
+
+### Bug Fixes
+
+* **cli:** init preserves fallback chain + interactive fallback guidance ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([dd89b0e](https://github.com/1StepMore/AutoMedia/commit/dd89b0ed8ea81eb9a2477e67afe15b83a85671c7))
+* **cli:** onboard step preserves fallback chain + fallback guidance ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([c7e655a](https://github.com/1StepMore/AutoMedia/commit/c7e655a700fd0f680d4998d0e6a2b10e56151d01))
+* **mcp:** configure_llm/onboard preserve LLM fallback via merge ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([e38b7a7](https://github.com/1StepMore/AutoMedia/commit/e38b7a7a2aec62f3f2d7832d735ef9b74be91589))
+
+
+### Documentation
+
+* **gates:** document G1 verify-loop failure mode, env vars, and changelog ([#62](https://github.com/1StepMore/AutoMedia/issues/62)) ([cd7394d](https://github.com/1StepMore/AutoMedia/commit/cd7394d81ef995f43f509e18fd45f566e6d9ee37))
+* **llm:** document fallback preservation + doctor LLM warnings ([#83](https://github.com/1StepMore/AutoMedia/issues/83)) ([2c771ac](https://github.com/1StepMore/AutoMedia/commit/2c771ac075d1c0002873057514b14b65e4772409))
+* **validation:** dedupe 2026-08-16 pit list — keep only new pit [#8](https://github.com/1StepMore/AutoMedia/issues/8) ([9952954](https://github.com/1StepMore/AutoMedia/commit/9952954229ae5005eb87c103ed8e5e09e63325f4))
+* **validation:** document proves_gates/proves_modes and gate/mode coverage audit ([#78](https://github.com/1StepMore/AutoMedia/issues/78)) ([020f9b8](https://github.com/1StepMore/AutoMedia/commit/020f9b82a1d970e60d9f296fbcf396dba664342c))
+* **validation:** loop-log 2026-08-16 — 100 场景第二轮 + DeepSeek 间歇截断坑 ([17d0589](https://github.com/1StepMore/AutoMedia/commit/17d058908a4308406912f3d3ea70e78379a0e1b4))
+* **validation:** LOOP-LOG 2026-08-16 — 100 场景第二轮 + DeepSeek 间歇截断坑 ([3e8d0a7](https://github.com/1StepMore/AutoMedia/commit/3e8d0a7a361fa9c2734879c8c6283b895161c0b1))
+
 ## [Unreleased]
 
 ### Bug Fixes
