@@ -542,12 +542,19 @@ def validate_coverage() -> None:
 
 
 @app.command("matrix")
-def validate_matrix() -> None:
-    """Render the validation matrix: per-scenario surface coverage + last-run
-    status (issue #86).  Non-recursive like ``list`` — no scenario argument."""
+def validate_matrix(
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help="Directory of immutable run records (gitignored).",
+    ),
+) -> None:
+    """Render the validation matrix: coverage grid + run-record assertion
+    cards + diff classification (issue #86).  Non-recursive like ``list`` —
+    no scenario argument."""
     from automedia.validation.matrix import build_matrix
 
-    matrix = build_matrix()
+    matrix = build_matrix(runs_root=runs_root)
     if get_output_mode() == OutputMode.JSON:
         output_json(matrix)
         return
@@ -578,3 +585,60 @@ def _render_matrix_text(matrix: dict[str, Any]) -> None:
     hard_names = matrix.get("flags", {}).get("hard", []) or []
     hard_line = ", ".join(str(name) for name in hard_names) if hard_names else "(none)"
     typer.echo(f"Hard-safety scenarios: {hard_line}")
+
+    _render_assertion_section(matrix)
+
+
+def _render_assertion_section(matrix: dict[str, Any]) -> None:
+    """The run-record assertion half: report cards + per-step truth table +
+    diff four-way classification (AutoInfo 04-MATRIX, issue #86)."""
+    cards = matrix.get("report_cards") or []
+    assertions = matrix.get("assertions") or {}
+    diff = matrix.get("diff")
+
+    typer.echo("")
+    typer.echo("## Report cards (latest run)")
+    if not cards:
+        typer.echo("  (no run record yet — run scenarios to produce evidence)")
+    for card in sorted(cards, key=lambda c: str(c.get("scenario") or "")):
+        name = card.get("scenario", "?")
+        status = card.get("status", "?")
+        hard = "HARD" if card.get("hard_safety_violation") else "ok"
+        counts = card.get("assertions") or {}
+        diff_label = card.get("diff", "-")
+        typer.echo(
+            f"  {name} [{status} {hard} "
+            f"steps={counts.get('passed', 0)}/{counts.get('total', 0)} "
+            f"diff={diff_label}]"
+        )
+        for failure in card.get("failures", []):
+            typer.echo(f"    ! {failure}")
+        for idx, code in (card.get("exit_codes") or {}).items():
+            typer.echo(f"    exit[{idx}]={code}")
+
+    typer.echo("")
+    typer.echo("## Assertions (per step)")
+    for name in sorted(assertions):
+        typer.echo(f"  {name}:")
+        for step in assertions[name]:
+            status = step.get("status", "?")
+            hard = " HARD" if step.get("hard_safety") else ""
+            exit_code = step.get("exit_code")
+            exit_part = f" exit={exit_code}" if exit_code is not None else ""
+            typer.echo(
+                f"    {step.get('step_index')}. {step.get('target') or step.get('name')} "
+                f"[{step.get('surface')}] {status}{hard}{exit_part}"
+            )
+            for failure in step.get("failures", []):
+                typer.echo(f"      ! {failure}")
+
+    if diff is None:
+        typer.echo("")
+        typer.echo("## Diff: (no baseline or fewer than two runs to compare)")
+        return
+    typer.echo("")
+    typer.echo("## Diff")
+    for bucket in ("new_passes", "new_failures", "regressed", "improved"):
+        names = diff.get(bucket) or []
+        label = ", ".join(str(n) for n in names) if names else "(none)"
+        typer.echo(f"  {bucket}: {label}")

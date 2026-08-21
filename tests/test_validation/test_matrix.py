@@ -353,13 +353,20 @@ class TestShape:
                 "health.yaml": TOOL_SCENARIO.format(name="health-fixture"),
             },
         )
-        matrix = build_matrix(lib)
+        matrix = build_matrix(lib, runs_root=tmp_path / "no-runs")
         assert set(matrix) == {
             "surfaces",
             "scenarios",
             "rows",
             "flags",
             "summary",
+            "report_cards",
+            "assertions",
+            "diff",
         }
         assert matrix["summary"] == matrix["summary"]  # verbatim audit summary
         assert set(matrix["flags"]) == {"hard", "boundary_only", "missing"}
+        # the assertion half is run-record-derived: no runs → empty, never a crash
+        assert matrix["report_cards"] == []
+        assert matrix["assertions"] == {}
+        assert matrix["diff"] is None
