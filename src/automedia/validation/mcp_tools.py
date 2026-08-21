@@ -272,10 +272,44 @@ def validation_coverage_audit() -> dict[str, Any]:
     return success_response(audit)
 
 
+def validation_matrix() -> dict[str, Any]:
+    """Run the validation matrix: per-scenario surface coverage + last-run status.
+
+    Wraps ``automedia.validation.matrix.build_matrix`` (lazy import so a
+    missing module surfaces as an error envelope, never an import-time
+    crash): surfaces (mcp/cli/gates/modes coverage sets), per-scenario
+    rows with surface cells and last-run status, hard-safety flags.
+    Non-recursive: takes no scenario name.
+
+    Returns
+    -------
+    dict
+        The matrix dict flattened under ``success``.
+    """
+    try:
+        from automedia.validation.matrix import build_matrix
+    except ImportError as exc:
+        return error_response(
+            MCPErrorCode.IMPORT_ERROR,
+            f"validation matrix module unavailable: {exc}",
+            "Reinstall the automedia package",
+        )
+    try:
+        matrix = build_matrix()
+    except Exception as exc:  # noqa: BLE001 - envelope, never crash the server
+        return error_response(
+            MCPErrorCode.VALIDATION_ERROR,
+            f"validation matrix failed: {exc}",
+            "Fix the scenario library first (see list_validation_scenarios)",
+        )
+    return success_response(matrix)
+
+
 __all__ = [
     "DEFAULT_RUNS_ROOT",
     "get_validation_report",
     "list_validation_scenarios",
     "run_validation_scenario",
     "validation_coverage_audit",
+    "validation_matrix",
 ]

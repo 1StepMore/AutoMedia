@@ -1,12 +1,12 @@
-"""MCP surface tests for the 4 validation tools (plan W4-T2).
+"""MCP surface tests for the 5 validation tools (plan W4-T2, issue #86).
 
 Registered in ``create_server()``: ``list_validation_scenarios``,
 ``run_validation_scenario``, ``get_validation_report``,
-``validation_coverage_audit``.  These tests drive the REAL server through
-``FastMCP.call_tool`` (the actual dispatcher, in-process) with both valid
-and invalid arguments — never the handler functions in isolation, so the
-envelope shapes, the async Context injection, and the pydantic argument
-validation are all exercised.
+``validation_coverage_audit``, ``validation_matrix``.  These tests drive the
+REAL server through ``FastMCP.call_tool`` (the actual dispatcher,
+in-process) with both valid and invalid arguments — never the handler
+functions in isolation, so the envelope shapes, the async Context
+injection, and the pydantic argument validation are all exercised.
 
 PLACEMENT (documented): ``tests/test_validation/`` — the tools are the MCP
 surface of the validation layer (handlers live in
@@ -18,8 +18,8 @@ module skips.  NOT e2e-marked: every test is fast (no network, no LLM, no
 CLI subprocess) and runs in the default pytest gate.
 
 Committed-library expectations (as of 2026-08-14): 91 scenarios (90 +
-W4-T7's ``validation-self-check`` meta scenario), 63 MCP tools after
-W4-T2 (59 + 4), ``health-check-baseline`` is the
+W4-T7's ``validation-self-check`` meta scenario), 64 MCP tools after
+W4-T2 + issue #86 (59 + 5), ``health-check-baseline`` is the
 deterministic GREEN-able scenario (its only step calls ``health_check``,
 expect ``success: true`` — it passed the W2-T3/W3 empirical suites).
 """
@@ -42,6 +42,7 @@ EXPECTED_VALIDATION_TOOLS: frozenset[str] = frozenset(
         "run_validation_scenario",
         "get_validation_report",
         "validation_coverage_audit",
+        "validation_matrix",
     }
 )
 
@@ -90,20 +91,20 @@ def _call_tool(server: FastMCP, name: str, arguments: dict[str, Any]) -> dict[st
 
 
 class TestRegistration:
-    """The 4 tools are registered and surface in help_mcp automatically."""
+    """The 5 tools are registered and surface in help_mcp automatically."""
 
-    def test_four_validation_tools_registered(self, server: FastMCP) -> None:
-        """59 pre-existing tools + 4 validation tools = 63 (AGENTS.md update is W5-T1)."""
+    def test_five_validation_tools_registered(self, server: FastMCP) -> None:
+        """59 pre-existing tools + 5 validation tools = 64 (AGENTS.md update is W5-T1)."""
         names = set(server._tool_manager._tools.keys())
         assert names >= EXPECTED_VALIDATION_TOOLS, (
             f"missing validation tools: {sorted(EXPECTED_VALIDATION_TOOLS - names)}"
         )
-        assert len(names) == 63
+        assert len(names) == 64
 
     def test_tools_appear_in_help_mcp(self, server: FastMCP) -> None:
         """The registry population in create_server picks up the new tools."""
         payload = _call_tool(server, "help_mcp", {})
-        assert payload["tool_count"] == 63
+        assert payload["tool_count"] == 64
         listed = {
             entry["name"]
             for category in payload["categories"].values()
@@ -260,21 +261,22 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 63 declared / 56 covered / 0 missing (the W4-T7 meta scenario
-    ``validation-self-check`` covers the remaining 3 tools) and cli 18 / 18
-    / 0.  This test pins that post-W4-T7 reality.
+    mcp 64 declared / 57 covered / 0 missing (the W4-T7 meta scenario
+    ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
+    covers ``validation_matrix``) and cli 18 / 18 / 0.  This test pins the
+    post-W4-T7 reality with the 5th validation tool (issue #86).
     """
 
-    def test_audit_reflects_the_four_new_registrations(self, server: FastMCP) -> None:
+    def test_audit_reflects_the_five_new_registrations(self, server: FastMCP) -> None:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # 59 pre-existing + the 4 new tools
-        assert summary["mcp_declared"] == 63
-        assert summary["mcp_used"] == 63
-        # the meta scenarios cover all 4 validation tools (W4-T7's
-        # validation-self-check closed the 3-tool gap) -> missing = 0
-        assert summary["mcp_covered"] == 56
+        # 59 pre-existing + the 5 new tools
+        assert summary["mcp_declared"] == 64
+        assert summary["mcp_used"] == 64
+        # the meta scenarios cover all 5 validation tools (W4-T7's
+        # validation-self-check plus validation-matrix-meta) -> missing = 0
+        assert summary["mcp_covered"] == 57
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]
@@ -293,3 +295,25 @@ class TestValidationCoverageAudit:
         assert summary["cli_phantom"] == 0
         assert payload["phantom_cli"] == []
         assert "validate" in payload["declared_cli"]
+
+
+# ===================================================================
+# validation_matrix
+# ===================================================================
+
+
+class TestValidationMatrix:
+    """Tool 5: the matrix reuses the coverage audit and is non-recursive."""
+
+    def test_matrix_tool_registered_and_returns_envelope(self, server: FastMCP) -> None:
+        payload = _call_tool(server, "validation_matrix", {})
+        assert payload["success"] is True
+        assert set(payload) >= {"surfaces", "scenarios", "rows", "flags", "summary"}
+        assert set(payload["surfaces"]) == {"mcp", "cli", "gates", "modes"}
+        assert payload["scenarios"]
+
+    def test_matrix_takes_no_scenario_name(self, server: FastMCP) -> None:
+        # unknown argument keys are rejected by pydantic, but the tool must
+        # accept an empty arguments dict (no required params).
+        payload = _call_tool(server, "validation_matrix", {})
+        assert payload["success"] is True

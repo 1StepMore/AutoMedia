@@ -1,0 +1,19 @@
+name: validate-matrix-meta
+description: "automedia validate matrix exposes the validation matrix (coverage x results) via a non-recursive meta command."
+intent: "Prove the matrix surface is callable via CLI: it exits 0 and prints the four surface names (mcp, cli, gates, modes). Non-recursive — takes no scenario name (like validate list), so it cannot trigger an unbounded validate run chain. Covers the validate matrix CLI command for the coverage audit (issue #86)."
+category: cli
+requires_env: []
+steps:
+  - name: validate matrix shows the four surfaces
+    kind: cli
+    check: "automedia validate matrix exits 0 and prints the surface names (mcp, cli, gates, modes)."
+    standard: founder-expectations.F02
+    command: automedia validate matrix
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "mcp"
+        - "cli"
+        - "gates"
+        - "modes"

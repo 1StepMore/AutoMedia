@@ -91,6 +91,17 @@ class TestAcceptsValid:
         assert s.error_boundary is True
         assert s.cleanup_steps[0].name == "cleanup"
 
+    def test_hard_defaults_false(self) -> None:
+        s = Scenario.from_dict(scenario())
+        assert s.hard is False
+
+    def test_hard_true_parses(self) -> None:
+        s = Scenario.from_dict(scenario(hard=True))
+        assert s.hard is True
+
+    def test_hard_in_closed_fields(self) -> None:
+        assert "hard" in validation.SCENARIO_FIELDS
+
     def test_step_all_fields(self) -> None:
         data = scenario(
             steps=[
@@ -240,6 +251,7 @@ class TestTypeErrors:
             ({"regression": 1}, "scenario.regression"),
             ({"regression_issue": 7}, "scenario.regression_issue"),
             ({"error_boundary": "x"}, "scenario.error_boundary"),
+            ({"hard": "yes"}, "scenario.hard"),
             ({"steps": {"name": "x"}}, "scenario.steps"),
         ],
     )

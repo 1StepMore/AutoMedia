@@ -87,6 +87,7 @@ inside names the most recent run.
 | `regression: true` | Marks the scenario as pinned to a specific fix | The regression flywheel: it must stay green forever |
 | `regression_issue` | Bug or issue reference for the pinned fix | Required whenever `regression: true`; lets a reader jump from name to fix |
 | `error_boundary: true` | The scenario's probes EXPECT an error to occur | The coverage audit reads it as an allowlisted probe: excluded from `covered`, listed loudly, never phantom or missing coverage |
+| `hard: true` | Marks the scenario as hard-safety-critical | A `hard` scenario whose run status is not `passed` (failed/unconfigured/partial-pass/recovered) is a hard-safety violation: `validate run` exits 1, the suite is blocked, and the report shows a `## Hard Safety` section |
 | `proves_gates` | List of gate names the scenario proves (for example `G0`, `CW`, `pre-gate`) | Declarative coverage metadata; the coverage audit reads it to compute which declared gates the suite exercises |
 | `proves_modes` | List of pipeline mode names the scenario proves (for example `text_only`) | Declarative coverage metadata; the coverage audit reads it to compute which declared modes the suite exercises |
 | `steps` | Ordered list of primary steps | The body of the proof; execution order is top to bottom |
@@ -308,11 +309,14 @@ The `automedia validate` command family drives this layer from the CLI:
   `declared`/`used`/`covered`/`missing`/`phantom`/`boundary_only` per surface
   for four surfaces (CLI, MCP, gates, pipeline modes); it exits 1 when
   `missing` is non-empty on any surface
+- `automedia validate matrix` — render the validation matrix: per-surface
+  coverage summary plus one row per scenario (surface cells, hard flag,
+  last-run status); non-recursive, takes no scenario name
 
-The same surface is exposed as four MCP tools: `list_validation_scenarios`,
-`run_validation_scenario`, `get_validation_report`, and
-`validation_coverage_audit`. Drive the engine directly as shown above when you
-need to run the whole suite in-process.
+The same surface is exposed as five MCP tools: `list_validation_scenarios`,
+`run_validation_scenario`, `get_validation_report`,
+`validation_coverage_audit`, and `validation_matrix`. Drive the engine
+directly as shown above when you need to run the whole suite in-process.
 
 ## Regression flywheel
 

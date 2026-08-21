@@ -235,6 +235,7 @@ class TestHeaderAndSummary:
         assert heads == [
             "## Exec summary",
             "## Verdicts",
+            "## Hard Safety",
             "## Blockers",
             "## Regression failures",
             "## Per-step traces",
@@ -575,6 +576,7 @@ class TestJsonRender:
             "trace_id",
             "generated_at",
             "summary",
+            "hard_safety",
             "verdicts",
             "blockers",
             "regression_failures",
@@ -613,6 +615,115 @@ class TestJsonRender:
     def test_unconfigured_trace_is_empty(self, no_library: None) -> None:
         data = render_report_json(mixed_suite())
         assert data["traces"]["scenario-unconf"] == []
+
+
+class TestHardSafety:
+    def test_hard_safety_section_blocked_banner(self, no_library: None) -> None:
+        record = suite_record(
+            [
+                scenario_record(
+                    "volatile",
+                    "failed",
+                    [step_trace(status="failed", passed=False)],
+                    hard_safety_violation=True,
+                )
+            ]
+        )
+        record["blocked"] = True
+        text = render_report(record)
+        assert "## Hard Safety" in text
+        assert "BLOCKED — hard-safety violation(s) present" in text
+        assert "- volatile" in text
+
+    def test_hard_safety_section_none_when_no_violations(self, no_library: None) -> None:
+        text = render_report(mixed_suite())
+        assert "## Hard Safety\nnone" in text
+
+    def test_verdicts_show_hard_flag(self, no_library: None) -> None:
+        record = suite_record(
+            [scenario_record("volatile", "passed", [step_trace()], hard_safety_violation=True)]
+        )
+        text = render_report(record)
+        assert "volatile | PASS   | 1/1 steps passed; HARD" in text
+
+    def test_report_json_carries_hard_safety(self, no_library: None) -> None:
+        record = suite_record(
+            [
+                scenario_record(
+                    "volatile",
+                    "failed",
+                    [step_trace(status="failed", passed=False)],
+                    hard_safety_violation=True,
+                ),
+                scenario_record("clean", "passed", [step_trace()]),
+            ]
+        )
+        record["blocked"] = True
+        data = render_report_json(record)
+        assert data["hard_safety"] == {"violations": ["volatile"], "blocked": True}
+
+    def test_report_json_hard_safety_not_blocked_without_blocked_key(
+        self, no_library: None
+    ) -> None:
+        """The suite record lacks the ``blocked`` key — the renderer must still derive
+        blocked from the violation list."""
+        record = suite_record(
+            [
+                scenario_record(
+                    "volatile",
+                    "failed",
+                    [step_trace(status="failed", passed=False)],
+                    hard_safety_violation=True,
+                )
+            ]
+        )
+        data = render_report_json(record)
+        assert data["hard_safety"] == {"violations": ["volatile"], "blocked": True}
+
+    def test_hard_safety_independent_of_partial_pass(self, no_library: None) -> None:
+        """A partial-pass scenario with the engine's hard flag set is still a
+        violation — the report reads the flag, not the status."""
+        record = suite_record(
+            [
+                scenario_record(
+                    "dangerous-partial",
+                    "partial-pass",
+                    [step_trace(status="passed")],
+                    hard_safety_violation=True,
+                )
+            ]
+        )
+        text = render_report(record)
+        hard_block = "## Hard Safety\nBLOCKED — hard-safety violation(s) present\n"
+        assert f"{hard_block}- dangerous-partial" in text
+        assert "dangerous-partial | PARTIAL | 1/1 steps passed; HARD" in text
+        data = render_report_json(record)
+        assert data["hard_safety"] == {"violations": ["dangerous-partial"], "blocked": True}
+
+    def test_unconfigured_hard_is_violation(self, no_library: None) -> None:
+        record = suite_record(
+            [
+                scenario_record(
+                    "u", "unconfigured", [], reason="missing env: X", hard_safety_violation=True
+                )
+            ]
+        )
+        text = render_report(record)
+        assert "## Hard Safety\nBLOCKED — hard-safety violation(s) present\n- u" in text
+        data = render_report_json(record)
+        assert data["hard_safety"] == {"violations": ["u"], "blocked": True}
+
+    def test_violations_sorted_by_name(self, no_library: None) -> None:
+        record = suite_record(
+            [
+                scenario_record("zeta", "passed", [step_trace()], hard_safety_violation=True),
+                scenario_record("alpha", "passed", [step_trace()], hard_safety_violation=True),
+            ]
+        )
+        text = render_report(record)
+        assert text.index("- alpha") < text.index("- zeta")
+        data = render_report_json(record)
+        assert data["hard_safety"]["violations"] == ["alpha", "zeta"]
 
 
 class TestPublicSurface:

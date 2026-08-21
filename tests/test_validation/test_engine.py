@@ -223,6 +223,7 @@ class TestUnconfigured:
               "trace_id": record["trace_id"],
               "reason": f"missing env: {_MISSING_ENV}",
               "error_boundary": False,
+              "hard_safety_violation": False,
         }
 
     def test_empty_value_is_unconfigured(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -479,6 +480,80 @@ class TestRedaction:
         assert engine._redact("plain string") == "plain string"
 
 
+class TestHardSafety:
+    """Hard-safety semantics (issue #86): ``scenario.hard and status != "passed"``.
+
+    The formula is pure and independent of aggregate_status, partial-pass,
+    and recovery — only "passed" clears a hard scenario.  Unconfigured is
+    never "passed", so a hard scenario that cannot configure BLOCKS.
+    """
+
+    def test_hard_scenario_passed_no_violation(self) -> None:
+        record = run_scenario(make_scenario([tool_step()], hard=True), ok_server())
+        assert record["status"] == "passed"
+        assert record["hard_safety_violation"] is False
+
+    def test_hard_scenario_failed_violation_true(self) -> None:
+        server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
+        record = run_scenario(make_scenario([tool_step()], hard=True), server)
+        assert record["status"] == "failed"
+        assert record["hard_safety_violation"] is True
+
+    def test_hard_unconfigured_violation_true(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """KEY hard-safety behavior: unconfigured is never passed — it blocks."""
+        monkeypatch.delenv(_MISSING_ENV, raising=False)
+        scenario = make_scenario(
+            [tool_step()], hard=True, requires_env=[_MISSING_ENV]
+        )
+        record = run_scenario(scenario, ok_server())
+        assert record["status"] == "unconfigured"
+        assert record["hard_safety_violation"] is True
+
+    def test_non_hard_failed_not_violation(self) -> None:
+        server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
+        record = run_scenario(make_scenario([tool_step()]), server)
+        assert record["status"] == "failed"
+        assert record["hard_safety_violation"] is False
+
+    def test_hard_recovered_violation_true(self) -> None:
+        """Recovery never masks hard safety: recovered != passed."""
+        server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
+        step = tool_step(
+            recovery_steps=[
+                {
+                    "name": "recover",
+                    "kind": "cli",
+                    "check": "recovery command runs",
+                    "standard": "founder-expectations.F01",
+                    "command": "python3 -c 'print(\"fixed\")'",
+                    "expect": {"success": True},
+                }
+            ]
+        )
+        record = run_scenario(make_scenario([step], hard=True), server)
+        assert record["status"] == "recovered"
+        assert record["hard_safety_violation"] is True
+
+    def test_hard_partial_pass_violation_true(self) -> None:
+        """Partial-pass never masks hard safety either."""
+        scenario = make_scenario(
+            [tool_step(), tool_step(tool="failing", name="fails")],
+            hard=True,
+            min_passing=1,
+        )
+        server = FakeServer(
+            results={
+                "health_check": {"success": True},
+                "failing": {"success": False, "error": "no"},
+            }
+        )
+        record = run_scenario(scenario, server)
+        assert record["status"] == "partial-pass"
+        assert record["hard_safety_violation"] is True
+
+
 GREEN_YAML = """\
 name: green-suite
 description: suite green path
@@ -530,6 +605,39 @@ steps:
     check: never dispatched
     standard: builtin.unconfigured
     command: python3 -c "raise SystemExit(1)"
+    expect:
+      success: true
+"""
+
+
+HARD_FAIL_YAML = """\
+name: hard-fail-suite
+description: hard-safety scenario that fails
+intent: prove a failing hard scenario records a violation and blocks the suite
+hard: true
+steps:
+  - name: failing
+    kind: tool
+    check: tool succeeds
+    standard: founder-expectations.F01
+    tool: failing_tool
+    arguments: {}
+    expect:
+      success: true
+"""
+
+HARD_PASS_YAML = """\
+name: hard-pass-suite
+description: hard-safety scenario that passes
+intent: prove a passing hard scenario clears hard safety
+hard: true
+steps:
+  - name: health
+    kind: tool
+    check: server responds
+    standard: founder-expectations.F01
+    tool: health_check
+    arguments: {}
     expect:
       success: true
 """
@@ -591,6 +699,34 @@ class TestSuite:
         assert stored["trace_id"] == record["trace_id"]
         assert stored["generated_at"] == record["generated_at"]
         assert len(stored["scenarios"]) == 3
+
+    def test_suite_aggregates_violations_and_blocked(
+        self, suite_scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """A hard-failed scenario plus a hard-passed one: only the failed blocks."""
+        (suite_scenarios_dir / "hard-fail.yaml").write_text(HARD_FAIL_YAML, encoding="utf-8")
+        (suite_scenarios_dir / "hard-pass.yaml").write_text(HARD_PASS_YAML, encoding="utf-8")
+        runs_root = tmp_path / "runs"
+        record = asyncio.run(
+            run_validation_suite_async(suite_server(), suite_scenarios_dir, runs_root=runs_root)
+        )
+        statuses = {r["scenario"]: r["status"] for r in record["scenarios"]}
+        assert statuses["hard-fail-suite"] == "failed"
+        assert statuses["hard-pass-suite"] == "passed"
+        assert record["hard_safety_violations"] == ["hard-fail-suite"]
+        assert record["blocked"] is True
+
+    def test_suite_no_violations_not_blocked(
+        self, suite_scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """All hard scenarios pass -> no violations, nothing blocked."""
+        (suite_scenarios_dir / "hard-pass.yaml").write_text(HARD_PASS_YAML, encoding="utf-8")
+        runs_root = tmp_path / "runs"
+        record = asyncio.run(
+            run_validation_suite_async(suite_server(), suite_scenarios_dir, runs_root=runs_root)
+        )
+        assert record["hard_safety_violations"] == []
+        assert record["blocked"] is False
 
     def test_suite_save_requires_runs_root(self, suite_scenarios_dir: Path) -> None:
         with pytest.raises(ValueError, match="runs_root"):

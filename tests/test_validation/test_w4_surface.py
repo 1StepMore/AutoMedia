@@ -164,17 +164,19 @@ class TestValidateCliRealLibrary:
         assert "missing = 0 (excluding boundary-only, listed above)" in result.output
 
     def test_validate_coverage_json_regenerated_numbers(self, library_root: Path) -> None:
-        """W4-T7 regeneration pins: mcp 63 declared / 56 covered / 0 missing;
+        """W4-T7 regeneration pins: mcp 64 declared / 57 covered / 0 missing;
         cli 18 / 18 / 0; both phantom = 0; boundary_only 7 (waiver).
         Issue #78 final contract (A3 landed): the pipeline surfaces are fully
         covered by the committed journeys — gates 33 declared / 33 covered /
-        0 missing, modes 9 / 9 / 0 — so the audit exits 0."""
+        0 missing, modes 9 / 9 / 0 — so the audit exits 0.
+        Issue #86: the 5th validation MCP tool ``validation_matrix`` is now
+        declared and covered by ``validation-matrix-meta`` (mcp 64 / 57)."""
         result = runner.invoke(app, ["--json", "validate", "coverage"])
         assert result.exit_code == 0
         summary: dict[str, Any] = json.loads(result.output)["summary"]
-        assert summary["mcp_declared"] == 63
-        assert summary["mcp_used"] == 63
-        assert summary["mcp_covered"] == 56
+        assert summary["mcp_declared"] == 64
+        assert summary["mcp_used"] == 64
+        assert summary["mcp_covered"] == 57
         assert summary["mcp_missing"] == 0
         assert summary["mcp_phantom"] == 0
         assert summary["mcp_boundary_only"] == 7
@@ -217,7 +219,7 @@ class TestValidationToolsRealDispatcher:
         assert payload["success"] is True
         summary: dict[str, Any] = payload["summary"]
         assert summary["mcp_missing"] == 0
-        assert summary["mcp_covered"] == 56
+        assert summary["mcp_covered"] == 57
         assert summary["mcp_phantom"] == 0
         assert summary["cli_missing"] == 0
         assert payload["missing_mcp"] == []

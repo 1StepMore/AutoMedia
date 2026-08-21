@@ -19,7 +19,8 @@ Committed library as of 2026-08-14: 90 scenario files = 52 surface + 18 cli
 + 13 baseline (10 root + 3 depconfig) + 3 publish + 2 journeys + 2 quality;
 28 known standard keys (``STANDARDS.md``); 5 keys actually cited across the
 library (tool.contract 81, founder-expectations.F01 40, founder-expectations
-.F02 24, cli.doctor 6, founder-expectations.true-test 3); 2 meta scenarios;
+.F02 24, cli.doctor 6, founder-expectations.true-test 3); 4 meta scenarios
+(issue #86 added validation-matrix-meta + validate-matrix-meta);
 7 boundary-only control scenarios.  These counts are asserted with
 floor/threshold bounds (>= 80 scenarios) so deliberate library growth or
 shrink does not re-pin the test; the actual counts are reported.
@@ -39,10 +40,18 @@ from automedia.validation.loader import default_scenarios_dir, load_scenarios
 from automedia.validation.schema import Scenario, SchemaError
 from automedia.validation.standards import StandardsRegistry
 
-# The two meta scenarios that reference the validation surface itself.  They
+# The four meta scenarios that reference the validation surface itself.  They
 # are EXPECTED-RED in the engine until W4 registers the surface, but they must
-# LOAD fine — this module never runs them, only loads and inspects.
-META_SCENARIOS: tuple[str, ...] = ("list-validation-scenarios-meta", "validate-list-meta")
+# LOAD fine — this module never runs them, only loads and inspects.  The
+# issue #86 pair (validation-matrix-meta / validate-matrix-meta) covers the
+# new validation_matrix tool and the validate matrix CLI command — both
+# non-recursive (no scenario name), so the recursion guard stays intact.
+META_SCENARIOS: tuple[str, ...] = (
+    "list-validation-scenarios-meta",
+    "validate-list-meta",
+    "validation-matrix-meta",
+    "validate-matrix-meta",
+)
 
 # The 7 boundary-only control scenarios (scenarios/surface/control/*.yaml):
 # every control surface is covered by a scenario-level error_boundary probe,
@@ -193,7 +202,10 @@ def test_meta_self_validation(
             tool = step.get("tool")
             if isinstance(tool, str) and "list_validation_scenarios" in tool:
                 tool_offenders.add(path)
-    assert cmd_offenders == {library_root / "cli" / "validate-list-meta.yaml"}, (
+    assert cmd_offenders == {
+        library_root / "cli" / "validate-list-meta.yaml",
+        library_root / "cli" / "validate-matrix-meta.yaml",
+    }, (
         f"recursion guard violated: scenarios invoking `automedia validate`: "
         f"{sorted(p.relative_to(library_root) for p in cmd_offenders)}"
     )

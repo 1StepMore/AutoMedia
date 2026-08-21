@@ -1,0 +1,15 @@
+name: validation-matrix-meta
+description: "validation_matrix returns the validation matrix envelope (surfaces, scenarios, rows, flags, summary) via a non-recursive call."
+intent: "Cover the 5th validation MCP tool (validation_matrix, issue #86) so the coverage audit reaches missing = 0. The call takes no scenario name — the recursion bound is preserved (no unbounded validation run chain). The envelope is flat (success_response), so the honest check is success: true."
+category: meta
+requires_env: []
+steps:
+  - name: validation_matrix returns the matrix envelope
+    kind: tool
+    check: "validation_matrix returns a success envelope carrying the matrix keys."
+    standard: tool.contract
+    tool: validation_matrix
+    arguments: {}
+    timeout_seconds: 60
+    expect:
+      success: true

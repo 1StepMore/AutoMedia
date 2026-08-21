@@ -36,6 +36,7 @@ from automedia.validation.report_text import (
     artifacts_section,
     blockers_section,
     exec_summary_section,
+    hard_safety_section,
     header_section,
     marker,
     regression_section,
@@ -62,6 +63,17 @@ def _steps(record: dict) -> list[dict]:
 def _name(record: dict) -> str:
     """Stable sort key: the scenario name (determinism across section ordering)."""
     return str(record.get("scenario") or "")
+
+
+def _hard_violations(records: list[dict]) -> list[str]:
+    """Names of scenarios whose engine flag set ``hard_safety_violation``; sorted."""
+    return sorted(_name(r) for r in records if r.get("hard_safety_violation"))
+
+
+def _suite_blocked(run_record: dict, records: list[dict]) -> bool:
+    """Suite-level hard-safety block: the record's own ``blocked`` flag wins, and
+    any violation blocks the suite even when the record omits the flag."""
+    return bool(run_record.get("blocked")) or bool(_hard_violations(records))
 
 
 def _counts(records: list[dict], flags: dict[str, tuple[bool, str | None]]) -> dict[str, int]:
@@ -187,6 +199,7 @@ def render_report_text(run_record: dict, *, runs_root: Path | None = None) -> st
         header_section(run_record),
         exec_summary_section(_counts(records, flags)),
         verdicts_section(records, flags),
+        hard_safety_section(_hard_violations(records), _suite_blocked(run_record, records)),
         blockers_section(_blockers(records)),
         regression_section(records, flags),
         traces_section(records),
@@ -245,6 +258,10 @@ def render_report_json(run_record: dict) -> dict:
         "trace_id": run_record.get("trace_id"),
         "generated_at": run_record.get("generated_at"),
         "summary": _counts(records, flags),
+        "hard_safety": {
+            "violations": _hard_violations(records),
+            "blocked": _suite_blocked(run_record, records),
+        },
         "verdicts": verdicts,
         "blockers": _blockers(records),
         "regression_failures": regression_failures,
