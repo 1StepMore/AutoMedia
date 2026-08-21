@@ -64,10 +64,13 @@ def exec_summary_section(counts: dict[str, int]) -> list[str]:
 
 
 def verdicts_section(records: list[dict], flags: dict[str, tuple[bool, str | None]]) -> list[str]:
-    """Aligned SCENARIO | STATUS | SUMMARY table; regression rows carry their issue."""
+    """Aligned SCENARIO | STATUS | SUMMARY table; regression rows carry their issue,
+    hard-safety violations a HARD tag."""
     rows = []
     for record in sorted(records, key=_name):
         summary = verdict_summary(record)
+        if record.get("hard_safety_violation"):
+            summary = f"{summary}; HARD"
         regression, issue = flags.get(_name(record), (False, None))
         if regression:
             summary = f"{summary}; regression: {issue or 'flagged'}"
@@ -83,6 +86,16 @@ def verdicts_section(records: list[dict], flags: dict[str, tuple[bool, str | Non
         f"{row[0].ljust(name_width)} | {row[1].ljust(status_width)} | {row[2]}" for row in rows
     )
     return lines
+
+
+def hard_safety_section(violations: list[str], blocked: bool) -> list[str]:
+    """Hard-safety block: the violated scenario names and a BLOCKED banner when the
+    suite is blocked; ``none`` when there are no violations."""
+    if blocked:
+        return ["## Hard Safety", "BLOCKED — hard-safety violation(s) present"] + [
+            f"- {name}" for name in violations
+        ]
+    return ["## Hard Safety", "none"]
 
 
 def blockers_section(blockers: list[dict]) -> list[str]:

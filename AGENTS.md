@@ -31,7 +31,7 @@ pip install -e ".[mcp]"
 
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 63 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 64 tools |
 | CLI | `automedia <subcommand>` | 18 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -119,7 +119,7 @@ AutoMedia/
 │       │       └── __init__.py
 │       │
 │       ├── mcp/                    # MCP server
-│   │       ├── server.py           # FastMCP server — 63 tools
+│   │       ├── server.py           # FastMCP server — 64 tools
 │       │   ├── accounts.py         # Account management tools (connect/list/health/disconnect)
 │       │   ├── tools.py            # Core pipeline tools
 │       │   ├── resources.py        # MCP resource handlers
@@ -408,9 +408,9 @@ docker run -it --rm --entrypoint pytest kevinzhow/automedia-pipeline:latest -- -
 
 ---
 
-## 9. MCP Tools Quick Reference (63 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference (64 tools, incl. 4 deprecated aliases)
 
-The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`). The four validation tools below are the agent-tester validation surface; see the Validation Layer section for how to drive them.
+The MCP server runs on stdio transport. Start with `python -m automedia.mcp.server`. All file operations are gated by a path allowlist (`mcp_allowlist.yaml`). The five validation tools below are the agent-tester validation surface; see the Validation Layer section for how to drive them.
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
@@ -472,6 +472,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `run_validation_scenario` | scenario_name, runs_root, save | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
 | `get_validation_report` | run_dir | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
 | `validation_coverage_audit` | — | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
+| `validation_matrix` | — | Render the validation matrix: per-scenario surface coverage (mcp/cli/gates/modes) + last-run status + hard-safety flags; non-recursive |
 
 ---
 
@@ -496,7 +497,7 @@ The MCP server runs on stdio transport. Start with `python -m automedia.mcp.serv
 | `automedia mcp` | MCP server management |
 | `automedia history` | Show pipeline execution history for a project |
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
-| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage) |
+| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
 
 ---
 
@@ -509,10 +510,11 @@ AutoMedia is an agent-oriented product, and its validation framework makes the a
 CLI (run from the repo root so relative artifact paths resolve):
 
 - `automedia validate list`: load the scenario library and list every scenario (load only, no engine run)
-- `automedia validate run --scenario <name>`: run ONE named scenario against the real MCP server; `--scenario` is required (the recursion bound); exits 1 when the status is failed
+- `automedia validate run --scenario <name>`: run ONE named scenario against the real MCP server; `--scenario` is required (the recursion bound); exits 1 when the status is failed or the scenario is a hard-safety violation (`hard: true` and not `passed`)
 - `automedia validate report [--run <name|latest>]`: render the run record for a run, defaulting to the latest
 - `automedia validate diff [--baseline <path>]`: diff the latest two runs against each other or a baseline record
 - `automedia validate coverage`: run the static coverage audit over CLI, MCP, gates, and pipeline modes surfaces; exits 1 when declared-but-missing is non-empty on any surface
+- `automedia validate matrix`: render the validation matrix — per-surface coverage summary plus one row per scenario (surface cells, hard flag, last-run status); non-recursive, takes no scenario name
 
 MCP tools:
 
@@ -520,6 +522,7 @@ MCP tools:
 - `run_validation_scenario`: run ONE named scenario in-process against the server; scenario_name is required, save=True persists an immutable record
 - `get_validation_report`: read a persisted run record from validation-runs/ (defaults to the latest run)
 - `validation_coverage_audit`: compute the static coverage audit (declared/used/covered/missing/phantom/boundary-only per surface: CLI, MCP, gates, pipeline modes)
+- `validation_matrix`: render the validation matrix — per-scenario surface coverage, last-run status, hard-safety flags
 
 ### The evidence contract
 

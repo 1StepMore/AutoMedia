@@ -1,6 +1,6 @@
 """``automedia validate`` — run the agent-tester validation suite (plan W4-T1).
 
-CLI surface for the validation framework: five sub-commands.
+CLI surface for the validation framework: six sub-commands.
 
 * ``list`` — load the scenario library and list scenarios (load only, no
   engine run).  This is the NON-recursive meta command that covers the whole
@@ -132,9 +132,11 @@ def validate_run(
 ) -> None:
     """Run ONE named scenario via the engine against the real MCP server.
 
-    Exit codes: 1 when the scenario status is ``failed``; 0 otherwise
-    (passed / unconfigured / partial-pass / recovered) with a clear status
-    line.  Run from the repo root so relative artifact paths resolve.
+    Exit codes: 1 when the scenario status is ``failed`` OR the scenario is
+    a hard-safety violation (``hard: true`` and not ``passed`` — e.g. a hard
+    scenario left unconfigured); 0 otherwise (passed / non-hard unconfigured
+    / partial-pass / recovered) with a clear status line.  Run from the repo
+    root so relative artifact paths resolve.
     """
     if env_gate not in _ENV_GATE_CHOICES:
         raise typer.BadParameter(f"must be one of {', '.join(_ENV_GATE_CHOICES)}") from None
@@ -171,6 +173,7 @@ def validate_run(
         return
 
     status = str(record.get("status", "?"))
+    hard_violation = bool(record.get("hard_safety_violation"))
     summary = record.get("summary")
     if isinstance(summary, dict):
         total = summary.get("total", "?")
@@ -198,6 +201,7 @@ def validate_run(
             {
                 "scenario": scenario,
                 "status": status,
+                "hard_safety_violation": hard_violation,
                 "summary": summary if isinstance(summary, dict) else {},
                 "reason": record.get("reason"),
                 "run_dir": record_path.parent.name,
@@ -206,6 +210,8 @@ def validate_run(
         )
     else:
         line = f"Scenario: {scenario}\nStatus: {status}"
+        if hard_violation and status != "failed":
+            line += " (HARD SAFETY VIOLATION)"
         if status == "unconfigured":
             line += f" ({record.get('reason')})"
         elif isinstance(summary, dict):
@@ -222,7 +228,7 @@ def validate_run(
                     )
         typer.echo(f"Run recorded: {record_path}")
 
-    if status == "failed":
+    if status == "failed" or hard_violation:
         raise typer.Exit(code=1)
 
 
@@ -355,6 +361,8 @@ def validate_diff(
 ) -> None:
     """Diff the latest two runs (W4-T4 module when present, minimal fallback)."""
     root = Path(runs_root)
+    if baseline is None:
+        baseline = _default_baseline_path(root)
     runs = list_runs(root)
     if not runs:
         output_error(f"No runs recorded under {root}.")
@@ -375,7 +383,7 @@ def validate_diff(
         typer.echo(f"Baseline: {baseline}")
     if diff_result is not None:
         typer.echo("Diff summary:")
-        typer.echo(json.dumps(diff_result, indent=2, default=str))
+        typer.echo(_render_diff_text(diff_result))
     elif diff_error is not None:
         typer.echo(f"Diff unavailable: {diff_error}")
 
@@ -402,6 +410,49 @@ def _compute_diff(
     if isinstance(result, dict):
         return result, None
     return None, None
+
+
+def _default_baseline_path(runs_root: Path) -> str | None:
+    """Best-effort resolve of the committed baseline record.
+
+    The default ``--runs-root validation-runs`` sits at the repo root, so the
+    parent of the runs root IS the repo root — where the committed W2-T4
+    baseline (``scenarios/baseline/2026-08-14-preflight.json``) lives.
+    ``None`` when the file is absent, letting the two-latest-runs behavior
+    take over.
+    """
+    candidate = runs_root.resolve().parent / "scenarios" / "baseline" / "2026-08-14-preflight.json"
+    if candidate.is_file():
+        return str(candidate)
+    return None
+
+
+def _render_diff_text(diff_result: dict[str, Any]) -> str:
+    """Render a diff result as a sectioned plain-text report (no ANSI)."""
+    lines = ["## Diff"]
+    for bucket in ("new_passes", "new_failures", "regressed", "improved"):
+        names = diff_result.get(bucket) or []
+        lines.append(f"## {bucket}")
+        if names:
+            lines.append(", ".join(str(name) for name in names))
+        else:
+            lines.append("(none)")
+    trend = diff_result.get("quality_trend") or {}
+    lines.append("## quality_trend")
+    lines.append(
+        f"dropped: {len(trend.get('dropped', []) or [])}, "
+        f"raised: {len(trend.get('raised', []) or [])}, "
+        f"unchanged: {trend.get('unchanged', 0)}"
+    )
+    stable = diff_result.get("stable") or {}
+    lines.append("## stable")
+    for status in sorted(stable):
+        lines.append(f"  {status}: {stable[status]}")
+    summary = diff_result.get("summary") or {}
+    lines.append("## summary")
+    for key in sorted(summary):
+        lines.append(f"  {key}: {summary[key]}")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -483,3 +534,47 @@ def validate_coverage() -> None:
 
     if missing_mcp or missing_cli or missing_gates or missing_modes:
         raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# validate matrix
+# ---------------------------------------------------------------------------
+
+
+@app.command("matrix")
+def validate_matrix() -> None:
+    """Render the validation matrix: per-scenario surface coverage + last-run
+    status (issue #86).  Non-recursive like ``list`` — no scenario argument."""
+    from automedia.validation.matrix import build_matrix
+
+    matrix = build_matrix()
+    if get_output_mode() == OutputMode.JSON:
+        output_json(matrix)
+        return
+    _render_matrix_text(matrix)
+
+
+def _render_matrix_text(matrix: dict[str, Any]) -> None:
+    """Plain deterministic text rendering (no ANSI) of the matrix."""
+    typer.echo("Validation matrix")
+    for surface in ("mcp", "cli", "gates", "modes"):
+        s = matrix["surfaces"].get(surface, {})
+        typer.echo(
+            f"  {surface}: "
+            f"declared={len(s.get('declared', []))} "
+            f"covered={len(s.get('covered', []))} "
+            f"missing={len(s.get('missing', []))} "
+            f"phantom={len(s.get('phantom', []))} "
+            f"boundary_only={len(s.get('boundary_only', []))}"
+        )
+    typer.echo("Scenarios:")
+    for row in matrix.get("rows", []):
+        surface_cells = " ".join(
+            f"{name}:{'✓' if row.get(name) else '✗'}" for name in ("mcp", "cli", "gates", "modes")
+        )
+        hard = "yes" if row.get("hard") else "no"
+        last = str(row.get("last_status") or "-")
+        typer.echo(f"  {row.get('scenario', '?')} [{surface_cells}] hard={hard} last={last}")
+    hard_names = matrix.get("flags", {}).get("hard", []) or []
+    hard_line = ", ".join(str(name) for name in hard_names) if hard_names else "(none)"
+    typer.echo(f"Hard-safety scenarios: {hard_line}")

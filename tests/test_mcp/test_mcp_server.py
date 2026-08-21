@@ -373,6 +373,7 @@ class TestServerCreation:
                 "test_cron_schedule",
                 "update_engine_config",
                 "validation_coverage_audit",
+                "validation_matrix",
             ]
         )
         assert tool_names == expected

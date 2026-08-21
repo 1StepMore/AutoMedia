@@ -99,6 +99,59 @@ steps:
     expect:
       success: true
 """,
+    "synth-hard-failing.yaml": """\
+name: synth-hard-failing
+description: A hard synthetic scenario that fails.
+intent: Unit-test that hard-safety violations exit 1 on validate run.
+category: baseline
+requires_env: []
+hard: true
+steps:
+  - name: false should succeed
+    kind: cli
+    check: false exits 0
+    standard: founder-expectations.F02
+    command: "false"
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+""",
+    "synth-hard-passing.yaml": """\
+name: synth-hard-passing
+description: A hard synthetic scenario that passes.
+intent: Unit-test that a hard scenario which passes still exits 0.
+category: baseline
+requires_env: []
+hard: true
+steps:
+  - name: echo prints ok
+    kind: cli
+    check: echo prints the word ok
+    standard: founder-expectations.F02
+    command: echo ok
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+      stdout_has: ["ok"]
+""",
+    "synth-hard-env-gated.yaml": """\
+name: synth-hard-env-gated
+description: A hard env-gated synthetic scenario (unconfigured is a violation).
+intent: Unit-test that a hard unconfigured scenario exits 1 with the marker.
+category: baseline
+requires_env: ["SYNTH_REQUIRED_ENV"]
+hard: true
+steps:
+  - name: echo prints ok
+    kind: cli
+    check: echo prints the word ok
+    standard: founder-expectations.F02
+    command: echo ok
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+      stdout_has: ["ok"]
+""",
 }
 
 
@@ -156,7 +209,7 @@ class TestValidateRegistration:
     def test_validate_help_lists_the_family(self) -> None:
         result = runner.invoke(app, ["validate", "--help"])
         assert result.exit_code == 0
-        for name in ("list", "run", "report", "diff", "coverage"):
+        for name in ("list", "run", "report", "diff", "coverage", "matrix"):
             assert name in result.output
 
 
@@ -188,9 +241,17 @@ class TestValidateList:
         result = runner.invoke(app, ["--json", "validate", "list"])
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["total"] == 4
+        assert data["total"] == 7
         names = {entry["name"] for entry in data["scenarios"]}
-        assert names == {"synth-passing", "synth-failing", "synth-env-gated", "synth-tool-health"}
+        assert names == {
+            "synth-passing",
+            "synth-failing",
+            "synth-env-gated",
+            "synth-tool-health",
+            "synth-hard-failing",
+            "synth-hard-passing",
+            "synth-hard-env-gated",
+        }
 
     def test_list_empty_library_exits_0(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -369,6 +430,117 @@ class TestValidateRun:
         assert data["scenario"] == "synth-passing"
         assert data["status"] == "passed"
 
+    def test_run_hard_failed_exits_1(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """A hard scenario that fails is a hard-safety violation → exit 1."""
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-hard-failing",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "Status: failed" in result.output
+
+    def test_run_hard_unconfigured_exits_1(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """A hard env-gated scenario that is unconfigured is a violation →
+        exit 1 (NEW: plain unconfigured alone exits 0, hard does not)."""
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-hard-env-gated",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "unconfigured" in result.output
+
+    def test_run_hard_passed_exits_0(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """A hard scenario that passes is NOT a violation → exit 0."""
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-hard-passing",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Status: passed" in result.output
+
+    def test_run_failed_non_hard_exits_1(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """Non-hard failures keep the existing exit-1 contract."""
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-failing",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "Status: failed" in result.output
+
+    def test_run_hard_text_marks_violation(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """Hard violations on a non-failed status carry the text marker."""
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-hard-env-gated",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "HARD SAFETY VIOLATION" in result.output
+
+    def test_run_hard_json_flags_violation(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """The JSON projection exposes the hard-safety flag."""
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "validate",
+                "run",
+                "--scenario",
+                "synth-hard-env-gated",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert data["hard_safety_violation"] is True
+
 
 # =========================================================================
 # validate report
@@ -463,6 +635,67 @@ class TestValidateDiff:
         assert result.exit_code == 0
         assert "Baseline:" in result.output
 
+    def test_diff_text_renders_sections(self, tmp_path: Path) -> None:
+        """Text output renders the diff as sectioned headings, not raw JSON."""
+        runs = tmp_path / "runs"
+        persist_run(runs, _make_run_record("failed"), stamp="20260101-000000-000001")
+        persist_run(runs, _make_run_record("passed"), stamp="20260102-000000-000002")
+        result = runner.invoke(app, ["validate", "diff", "--runs-root", str(runs)])
+        assert result.exit_code == 0
+        assert "## Diff" in result.output
+        # At least one non-empty bucket renders its section heading
+        assert any(
+            f"## {bucket}" in result.output
+            for bucket in ("new_passes", "new_failures", "regressed", "improved")
+        )
+
+    def test_diff_json_payload_unchanged(self, tmp_path: Path) -> None:
+        """--json keeps the machine-readable payload with the full diff keys."""
+        runs = tmp_path / "runs"
+        persist_run(runs, _make_run_record("failed"), stamp="20260101-000000-000001")
+        persist_run(runs, _make_run_record("passed"), stamp="20260102-000000-000002")
+        result = runner.invoke(
+            app, ["--json", "validate", "diff", "--runs-root", str(runs)]
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        for key in (
+            "new_passes",
+            "new_failures",
+            "regressed",
+            "improved",
+            "stable",
+            "quality_trend",
+            "summary",
+        ):
+            assert key in data["diff"]
+
+    def test_diff_default_baseline_used(self, tmp_path: Path) -> None:
+        """A committed baseline under <root>/scenarios/baseline/ is auto-resolved."""
+        baseline_dir = tmp_path / "scenarios" / "baseline"
+        baseline_dir.mkdir(parents=True)
+        baseline = _make_run_record("failed")
+        baseline["baseline"] = True
+        (baseline_dir / "2026-08-14-preflight.json").write_text(
+            json.dumps(baseline), encoding="utf-8"
+        )
+        runs = tmp_path / "runs"
+        persist_run(runs, _make_run_record("passed"), stamp="20260102-000000-000002")
+        result = runner.invoke(app, ["validate", "diff", "--runs-root", str(runs)])
+        assert result.exit_code == 0
+        assert any(token in result.output for token in ("baseline", "Baseline", "2026-08-14"))
+
+    def test_diff_no_baseline_file_falls_back(self, tmp_path: Path) -> None:
+        """No committed baseline → falls back to the two-latest-runs behavior."""
+        runs = tmp_path / "runs"
+        persist_run(runs, _make_run_record("failed"), stamp="20260101-000000-000001")
+        persist_run(runs, _make_run_record("passed"), stamp="20260102-000000-000002")
+        result = runner.invoke(app, ["validate", "diff", "--runs-root", str(runs)])
+        assert result.exit_code == 0
+        # Two-latest-runs behavior: the two run names are printed
+        assert "20260102-000000-000002" in result.output
+        assert "20260101-000000-000001" in result.output
+
 
 # =========================================================================
 # validate coverage
@@ -488,6 +721,42 @@ class TestValidateCoverage:
         summary: dict[str, Any] = data["summary"]
         # The live app.py now registers 18 commands (validate is the 18th).
         assert summary["cli_declared"] == 18
-        # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel).
-        assert summary["mcp_declared"] == 63
+        # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel)
+        # + the W4-T3 validation_matrix tool.
+        assert summary["mcp_declared"] == 64
         assert summary["cli_missing"] == 18  # synthetic library covers none
+
+
+# =========================================================================
+# validate matrix
+# =========================================================================
+
+
+class TestValidateMatrix:
+    """``validate matrix`` — per-scenario surface coverage + last-run status."""
+
+    def test_matrix_text_output(self, scenarios_dir: Path) -> None:
+        result = runner.invoke(app, ["validate", "matrix"])
+        assert result.exit_code == 0
+        for surface in ("mcp", "cli", "gates", "modes"):
+            assert surface in result.output
+        assert "Validation matrix" in result.output
+        assert "Hard-safety scenarios:" in result.output
+
+    def test_matrix_json(self, scenarios_dir: Path) -> None:
+        result = runner.invoke(app, ["--json", "validate", "matrix"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        for key in ("surfaces", "scenarios", "rows", "flags", "summary"):
+            assert key in data
+        assert "mcp" in data["surfaces"]
+        assert "cli" in data["surfaces"]
+
+    def test_matrix_text_lists_scenarios_and_hard_flags(
+        self, scenarios_dir: Path
+    ) -> None:
+        result = runner.invoke(app, ["validate", "matrix"])
+        assert result.exit_code == 0
+        assert "synth-hard-failing" in result.output
+        assert "synth-passing" in result.output
+        assert "hard=yes" in result.output

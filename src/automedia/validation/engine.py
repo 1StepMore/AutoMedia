@@ -15,13 +15,14 @@ pipelines), so mutating scenarios should prefer the CLI surface
 loudly, never fabricate.
 
 Records: scenario ``{scenario, status, summary, steps, cleanup, trace_id,
-error_boundary}``; unconfigured ``{..., status: "unconfigured", steps: [],
-cleanup: [], reason: "missing env: [...]"}``; suite ``{trace_id,
-generated_at, scenarios}`` — ONE UUID per run threaded into every step
-(§3.1 phase 5).  Step trace: ``step_index`` (1-based; 0 = cleanup),
-target, surface, name, arguments (REDACTED), passed, status, failures,
-duration (``time.monotonic``, 3 decimals), trace_id, check, standard,
-output (redacted).
+error_boundary, hard_safety_violation}``; unconfigured ``{..., status:
+"unconfigured", steps: [], cleanup: [], reason: "missing env: [...]",
+hard_safety_violation: scenario.hard}``; suite ``{trace_id, generated_at,
+scenarios, hard_safety_violations, blocked}`` — ONE UUID per run threaded
+into every step (§3.1 phase 5).  Step trace: ``step_index`` (1-based; 0 =
+cleanup), target, surface, name, arguments (REDACTED), passed, status,
+failures, duration (``time.monotonic``, 3 decimals), trace_id, check,
+standard, output (redacted).
 
 Timeouts (§2.2/§2.4): tool steps run under ``asyncio.wait_for`` with
 ``step.timeout_seconds or DEFAULT_TIMEOUT_SECONDS``; timeout -> failed
@@ -316,6 +317,7 @@ async def run_validation_scenario_async(
             "trace_id": trace_id,
             "reason": f"missing env: {', '.join(gate.missing)}",
             "error_boundary": scenario.error_boundary,
+            "hard_safety_violation": scenario.hard,
         }
     steps = [
         await _run_primary_step(step, adapters, trace_id, index, cwd=base, run_root=run_root)
@@ -337,6 +339,7 @@ async def run_validation_scenario_async(
         "cleanup": cleanup,
         "trace_id": trace_id,
         "error_boundary": scenario.error_boundary,
+        "hard_safety_violation": scenario.hard and status != "passed",
     }
 
 
@@ -389,16 +392,17 @@ async def run_validation_suite_async(
         )
         for scenario in scenarios
     ]
+    violations = sorted(str(r["scenario"]) for r in records if r.get("hard_safety_violation"))
     record: dict[str, object] = {
         "trace_id": trace_id,
         "generated_at": datetime.now(UTC).isoformat(),
         "scenarios": records,
+        "hard_safety_violations": violations,
+        "blocked": bool(violations),
     }
     if save:
         if runs_root is None:
-            raise ValueError(
-                "save=True requires runs_root (directory for immutable run records)"
-            )
+            raise ValueError("save=True requires runs_root (directory for immutable run records)")
         record_path = persist_run(runs_root, record)
         write_latest_pointer(runs_root, record_path.parent.name)
     return record
@@ -418,7 +422,5 @@ def run_validation_suite(
     (in-process isolation, see module docstring).
     """
     return asyncio.run(
-        run_validation_suite_async(
-            server, scenarios_dir, runs_root=runs_root, save=save, cwd=cwd
-        )
+        run_validation_suite_async(server, scenarios_dir, runs_root=runs_root, save=save, cwd=cwd)
     )

@@ -236,6 +236,7 @@ class Scenario:
     regression: bool = False
     regression_issue: str | None = None
     error_boundary: bool = False
+    hard: bool = False
     cleanup_steps: list[Step] = field(default_factory=list)
     # Declarative coverage metadata (issue #78): which gates and pipeline
     # modes the scenario proves.  Purely declarative — the coverage audit
@@ -288,6 +289,7 @@ class Scenario:
             error_boundary=_expect_bool(
                 data.get("error_boundary", False), prefix + "error_boundary"
             ),
+            hard=_expect_bool(data.get("hard", False), prefix + "hard"),
             steps=steps,
             cleanup_steps=_parse_items(
                 data.get("cleanup_steps", []), prefix + "cleanup_steps", Step.from_dict
