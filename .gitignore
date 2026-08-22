@@ -41,6 +41,7 @@ deploy/systemd/*.env
 oscreds.yaml
 api_key
 *secret*
+!scripts/check-secrets.py
 *.token
 
 # ===== Python Bytecode & Build =====
