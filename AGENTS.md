@@ -633,6 +633,8 @@ to `.claude/skills/` and `.codex/skills/`.
 Currently available skills:
 - `project-validation` — Post-change validation against founder expectations
 - `doc-sync` — Documentation awareness & impact mapping. Use when code changes affect documentation — CLI/MCP tools, gates, config, API, pipelines, adapters, or any feature area. Maps code changes to docs that must be updated and provides verification steps.
+- `validation-runner` — Dev-side validation workflow: run scenario waves, author regression scenarios (mandatory on every bug fix), capture RED→GREEN evidence, produce acceptance evidence. Use when fixing a bug, adding/authoring validation scenarios, or running an acceptance wave.
+- `deep-modules` — Deep-module refactoring practice (Ousterhout, methodology §3.1): find shallow module clusters, merge into deep modules, lock behavior with module-boundary integration tests. Use when refactoring `src/automedia/` or adding a feature that crosses multiple modules.
 
 ---
 

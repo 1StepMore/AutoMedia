@@ -11,6 +11,10 @@
 
 * **cli:** automedia doctor reports advisory LLM configuration warnings (missing/incomplete fallback chain, model/base_url mismatch) in human and --json output
 
+### Documentation
+
+* **skills:** add `validation-runner` skill (scenario waves, regression flywheel, RED→GREEN evidence) and `deep-modules` skill (Ousterhout deep-module refactoring, RFC-001 exemplar); extend `doc-sync` with an ADR pre-flight gate, glossary ownership, and the doc-consistency gate; sync all three to `.claude/skills/` and `.codex/skills/`
+
 ## [1.4.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.0...automedia-v1.4.1) (2026-08-15)
 
 

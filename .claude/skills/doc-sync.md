@@ -30,9 +30,27 @@ Load this skill automatically whenever any change touches:
 
 ---
 
-## Step 0 — Read the Existing Docs
+## Step 0 — Architecture-Change Pre-Flight (ADR Gate)
 
-Before editing any doc, **read the current version** of the affected files to know what to preserve and what to update. Do not overwrite content you haven't read.
+Before identifying affected docs, decide **whether this change needs an ADR**:
+
+- **Write one** (per `docs/adr/ADR-005-issue-driven-commits.md` conventions and
+  the ADR section below) when the change: alters an architecture rule (gate
+  engine, pipeline modes, config layering, credential handling, publish
+  adapters), introduces a non-obvious trade-off, chooses between ≥2 viable
+  alternatives, or has a wide blast radius (MCP surface, CLI surface, storage
+  schema, LLM call paths, allowlist policy). The ADR comes **first** — it is
+  the decision, the doc edits follow.
+- **Add glossary terms** to `docs/glossary.md` when the change introduces or
+  redefines a term used across ≥2 docs.
+- **No ADR needed** for: typos, comment-only edits, small reversible choices
+  (a code comment suffices), dependency bumps with no behavior delta.
+
+## Step 0.1 — Read the Existing Docs
+
+Before editing any doc, **read the current version** of the affected files to
+know what to preserve and what to update. Do not overwrite content you haven't
+read.
 
 ---
 
@@ -44,7 +62,7 @@ Every doc file in the project, what it covers, and who it's for.
 
 | File | Coverage | Triggers |
 |------|----------|----------|
-| `AGENTS.md` | Agent-role context, directory layout, 3 entry points, gate list + ordering, MCP tool table (52 tools), CLI command table (16 commands), config key ref, doc index, skills list, 10 red lines, architecture decisions | Gate count/tools/commands change, config keys, new skills, architecture changes |
+| `AGENTS.md` | Agent-role context, directory layout, 3 entry points, gate list + ordering, MCP tool table (64 tools), CLI command table (18 commands), config key ref, doc index, skills list, 10 red lines, architecture decisions | Gate count/tools/commands change, config keys, new skills, architecture changes |
 | `README.md` | Project overview, install instructions, three-layer API, agent quickstart, gate system summary, architecture diagram, config hierarchy, tech stack, security, deployment options, doc index | CLI/MCP tool counts, gate counts, install deps, feature additions, deployment changes |
 | `CHANGELOG.md` | Version history with Added/Fixed/Changed/Docs sections | Every user-visible change (features, fixes, breaking changes, doc updates) |
 
@@ -54,8 +72,8 @@ Every doc file in the project, what it covers, and who it's for.
 |------|----------|----------|
 | `docs/index.md` | Mkdocs home — feature summary, quick start, doc index links, agent info | Feature additions, gate count changes, doc structure changes |
 | `docs/user/api-reference.md` | `run_full_pipeline()` params, `PipelineResult`, `GateEngine`, `GateRegistry`, `GateHook`, `AccountRegistry`, `AccountStore`, `AuthFlowEngine`, `SessionManager`, `Doctor`, `Project`, `Evaluator`, path safety | API signature changes, new public classes, account subsys changes |
-| `docs/user/cli-reference.md` | 16 CLI commands with full param docs, MCP-CLI equivalence table | CLI command add/remove/rename, param changes |
-| `docs/user/mcp-setup.md` | MCP server start, tool list (52), client config (Claude, OpenCode, Codex, Cline, Cursor), env var table, systemd deploy, error codes | MCP tool add/remove/rename, client config changes, systemd changes, env vars |
+| `docs/user/cli-reference.md` | 18 CLI commands with full param docs, MCP-CLI equivalence table | CLI command add/remove/rename, param changes |
+| `docs/user/mcp-setup.md` | MCP server start, tool list (64), client config (Claude, OpenCode, Codex, Cline, Cursor), env var table, systemd deploy, error codes | MCP tool add/remove/rename, client config changes, systemd changes, env vars |
 | `docs/user/deployment.md` | 4 deployment method comparison table (Docker, native, systemd, Windows), Docker Compose profiles | Dockerfile changes, compose changes, systemd changes, new deployment method |
 | `docs/user/production-workflow.md` | Daily schedule, pre-production checks, topic ops, distribution ops, archive ops, cron config, gate progress | Cron jobs, publishing flow, archive behavior, pipeline resume behavior |
 | `docs/user/hitl-framework.md` | HITL concept, 3 presets (automated, semi-automated, director), CLI/MCP usage, override config | Director mode, HITL presets, gate approval flow changes |
@@ -104,6 +122,36 @@ Every doc file in the project, what it covers, and who it's for.
 | `Dockerfile` / `docker-compose.yml` | Container build and services | Docker changes |
 | `deploy/systemd/` | Service units, timer | Systemd changes |
 | `.github/workflows/` | CI/CD pipeline | CI workflow changes |
+
+### Glossary Ownership (never redefine a shared term)
+
+`docs/glossary.md` is the project's shared vocabulary (G0-G6, V0-V7, L1-L4,
+D1-D7, P1-P4, H0, pre-gate, CW, the 6-layer config, GateHook, director mode).
+When a change introduces or redefines a term used across ≥2 docs, add the
+definition to `docs/glossary.md` — do **not** redefine it ad-hoc in the edited
+doc. Every doc references the glossary for the canonical definition.
+
+### Auto-Generated Doc Inventory (drift detection)
+
+`scripts/check-doc-consistency.py` is the enforcement heart of this skill:
+it introspects the *real* MCP tool count and CLI command count from the code
+itself (never hardcoded), then fails (exit != 0) whenever any scanned doc
+(README.md, AGENTS.md, docs/index.md, mcp module docstrings) carries a numeric
+claim that disagrees with the derived counts. It also runs the W3-T8 doc↔reality
+audit (table membership + gate/adapter counts), failing on findings with
+severity high or medium.
+
+**Run it after every doc change — it must exit 0:**
+```bash
+python3 scripts/check-doc-consistency.py
+# Optionally include the user docs (cli-reference, mcp-setup, api-reference):
+python3 scripts/check-doc-consistency.py --check-user-docs
+```
+
+Known limitation: `docs/user/cli-reference.md`, `docs/user/mcp-setup.md`, and
+`docs/user/api-reference.md` are NOT scanned by default — they are reconciled
+manually in this workflow. When you touch those files, verify the tool/command
+tables against the code by hand.
 
 ---
 
@@ -431,3 +479,24 @@ If you updated docs, add a `### Docs` entry listing which docs were updated and 
 □ Verify doc renders correctly (no markdown syntax errors)
 □ Run `lsp_diagnostics` on any code examples in the doc
 ```
+
+---
+
+## APPENDIX: Architecture Decision Records (ADR)
+
+`docs/adr/` answers the *why* questions that code + commit history cannot:
+"why did we do it this way?" and "what alternatives were rejected?" Write an
+ADR for any decision that changes an architecture rule, chooses between viable
+alternatives, or has a wide blast radius (MCP surface, CLI surface, storage
+schema, LLM call paths). Workflow:
+
+1. Create `docs/adr/ADR-NNN-kebab-slug.md` (next free number; existing:
+   ADR-001 through ADR-005).
+2. Fill Context / Decision / Alternatives considered (each with why it lost) /
+   Consequences; set Status (`Proposed` / `Accepted` / `Superseded by NNNN`).
+3. Link the ADR from the doc that encodes the rule (`AGENTS.md` Architecture
+   Decisions, specs) where helpful.
+4. Add a CHANGELOG entry and re-run `scripts/check-doc-consistency.py`.
+
+**ADR numbers are never reused** — if a decision changes, write a new ADR and
+mark the old one `Superseded by NNNN`; never rewrite an accepted ADR in place.

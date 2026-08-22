@@ -4,6 +4,13 @@ This is the **canonical location** for **maintainer skills** in this
 project — instructions for coding agents working *on* the AutoMedia
 codebase. These are auto-discovered by OpenCode as commands and skills.
 
+Available skills:
+
+- `project-validation.md` — Post-change validation against founder expectations
+- `doc-sync.md` — Documentation awareness & impact mapping
+- `validation-runner.md` — Validation workflow, regression flywheel, RED→GREEN evidence
+- `deep-modules.md` — Deep-module refactoring practice
+
 **User-facing skills** (instructions for agents who *use* AutoMedia via
 MCP tools) live in `docs/skills/` instead. They are **not** auto-
 discovered — they are documentation for a different audience.
