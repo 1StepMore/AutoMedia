@@ -80,7 +80,14 @@ class PoolDB:
     # -- Connection management ------------------------------------------------
 
     def _open(self) -> sqlite3.Connection:
-        """Open (or create) the SQLite database and ensure the schema exists."""
+        """Open (or create) the SQLite database and ensure the schema exists.
+
+        The parent directory is created on demand so a missing directory
+        cannot crash ``sqlite3.connect`` with ``OperationalError: unable to
+        open database file`` (renanzai40/AutoMedia_BackUp#1).  Purely
+        additive — never changes behaviour when the directory exists.
+        """
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
         exists = self._db_path.exists()
         conn = sqlite3.connect(str(self._db_path))
         conn.row_factory = sqlite3.Row
