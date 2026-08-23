@@ -7,9 +7,9 @@ fails (exit != 0) whenever any scanned doc file or code docstring carries
 a numeric claim (``N tools`` / ``N commands`` / ``N command modules``)
 that disagrees with the derived counts.
 
-Scanned by default: README.md, AGENTS.md, docs/index.md and the mcp module
-docstrings in ``src/automedia/mcp/__init__.py`` and
-``src/automedia/mcp/server.py``.
+Scanned by default: README.md, AGENTS.md, docs/index.md,
+docs/doc-inventory.md and the mcp module docstrings in
+``src/automedia/mcp/__init__.py`` and ``src/automedia/mcp/server.py``.
 
 W5-T3 RECONCILIATION DECISION (plan agent-tester-validation W5-T3, pinned):
 the W3-T8 doc↔reality audit (``automedia.validation.doc_reality``) runs
@@ -36,20 +36,40 @@ scanned by default — they are reconciled manually in the doc-sync workflow
 (Wave A4) and future drift there is un-enforced by this gate. Pass
 ``--check-user-docs`` to include them explicitly.
 
-TESTABILITY SEAM (doc-hardening-pass2 Step 1): the pure ``scan_*``
-functions below — ``scan_links``, ``scan_identifiers``, ``scan_marker`` —
-are the testability seam this refactor introduces. They are importable,
-pure, and unit-testable, but are NOT yet wired into ``main()``; Step 3 of
-the same plan will wire them in. ``scan_links`` already carries the trivial
-core (root-relative ``docs/`` link existence); ``scan_identifiers`` and
-``scan_marker`` are stubs returning ``[]`` until Step 3.
+WIRED-IN CHECKS (doc-hardening-pass2 Step 3): the pure ``scan_*`` functions
+below are wired into ``main()`` and gate the build:
+* ``scan_links`` (AGENTS.md only): root-relative ``docs/`` link targets must
+  exist under the repo root.  A broken link is gate-failing.
+* ``scan_identifiers`` (AGENTS.md, README.md, docs/index.md): backticked
+  identifier candidates that survive the bounded-scope exclusion set are
+  resolved against the ``automedia`` package (module import first, then
+  attribute walk).  A resolver-rejected survivor is gate-failing — it is a
+  stale symbol reference.  The exclusion set lives INSIDE
+  ``scan_identifiers`` (before the resolver) so non-Python tokens
+  (``deepseek``/``expect``/``failure_mode``, MCP tool names, CLI commands,
+  env vars, YAML keys, workflow modes, scenario vocabulary, pytest markers,
+  private names, SCREAMING_CASE constants, and module-level definitions that
+  exist in the codebase) never reach the resolver and never gate-fail.
+  Everything in the exclusion set is code-derived — never hand-maintained.
+* ``scan_marker`` (docs/doc-inventory.md): the first line must be byte-equal
+  to the AUTO-GENERATED marker of ``scripts/doc_inventory.py``; a missing or
+  wrong marker is gate-failing.
+
+SIZE_OK: this module deliberately exceeds the 250-line guideline — plan
+W5-T3 pins the WHOLE doc gate in one step (extend the existing check, never
+add a second doc step to CI), so every scan type (numeric claims, links,
+identifiers, marker, doc↔reality audit) lives here; same precedent as
+``automedia/validation/doc_reality.py``.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
+import importlib
 import inspect
+import keyword
 import re
 import sys
 from collections.abc import Callable, Sequence
@@ -66,10 +86,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Files scanned by default. See module docstring for the KNOWN LIMITATION
 # (user docs are reconciled manually and intentionally NOT in this list).
+# docs/doc-inventory.md is scanned so its numeric table claims AND its
+# AUTO-GENERATED marker are checked by default (marker check below).
 _DEFAULT_DOC_FILES: tuple[str, ...] = (
     "README.md",
     "AGENTS.md",
     "docs/index.md",
+    "docs/doc-inventory.md",
     "src/automedia/mcp/__init__.py",
     "src/automedia/mcp/server.py",
 )
@@ -93,6 +116,34 @@ _CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # form is matched; an anchor (anything after ``#``) or the closing paren
 # terminates the match, so the captured target is the bare destination path.
 _LINK_TARGET_RE: re.Pattern[str] = re.compile(r"\]\(docs/[^)#]+\)")
+
+# Backticked identifier candidates in markdown. Allows the mixed-case
+# ``GateEngine`` / ``PipelineResult`` style used by the public API surface
+# as well as ``run_full_pipeline``. The ``{2,}`` length floor mirrors the
+# ``[a-z_][a-z0-9_]{2,}`` contract in the doc-hardening-pass2 plan.
+_IDENTIFIER_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
+
+# Single-line backticked spans only — triple-backtick code fences enclose
+# whole file trees and must never yield candidates.
+_BACKTICKED_RE: re.Pattern[str] = re.compile(r"`([^`\n]+)`")
+
+# Env var names (``AUTOMEDIA_*``) appearing in docs / .env.example.
+_ENV_VAR_RE: re.Pattern[str] = re.compile(r"\bAUTOMEDIA_[A-Z0-9_]+\b")
+
+# Committed allowlist for residual false positives. One name per line; ``#``
+# starts a comment. A name here suppresses a finding WITHOUT consulting the
+# resolver (exclusion-set filter runs first, allowlist included). The goal
+# is ZERO entries for the current corpus — the code-derived exclusion set
+# must cover every non-Python token.
+_ALLOWLIST_FILE = REPO_ROOT / "scripts" / "doc-identifier-allowlist.txt"
+
+# The exact first line required on generated inventory files.  Must be
+# byte-identical to the MARKER constant in tests/test_doc_consistency.py
+# (which mirrors scripts/doc_inventory.py's emitted first line).
+_INVENTORY_MARKER = (
+    "<!-- AUTO-GENERATED: docs/doc-inventory.md — do not edit manually. "
+    "Regenerate: python scripts/doc_inventory.py -->"
+)
 
 
 def _count_mcp_tools() -> int:
@@ -177,9 +228,7 @@ def scan_links(text: str, base: Path) -> list[Finding]:
     against which root-relative destinations resolve (the repo root). Only
     links whose destination starts with ``docs/`` are considered — absolute
     URLs, anchors (``#...``), and non-``docs`` relative links are ignored.
-
-    This is the testability seam for the doc-link check; it is NOT yet wired
-    into ``main()`` (Step 3 of doc-hardening-pass2 does that).
+    ``Finding.found`` is the clean target string (e.g. ``docs/x.md``).
     """
     findings: list[Finding] = []
     if not base.is_dir():
@@ -192,7 +241,7 @@ def scan_links(text: str, base: Path) -> list[Finding]:
                     Finding(
                         file="",  # file name is unknown here (pure); caller fills it in
                         line=lineno,
-                        found=f"{match.group(0)})",
+                        found=target,  # clean target string, e.g. docs/nonexistent-file.md
                         expected=f"existing target under {base}",
                     )
                 )
@@ -200,26 +249,276 @@ def scan_links(text: str, base: Path) -> list[Finding]:
 
 
 def scan_identifiers(text: str, resolver: Callable[[str], bool]) -> list[Finding]:
-    """Scan ``text`` for candidate symbol references, keeping those the resolver rejects.
+    """Scan ``text`` for backticked identifiers the resolver rejects.
 
-    Pure stub (doc-hardening-pass2 Step 1): the real identifier-marker
-    extraction and resolution rules land in Step 3. ``resolver(name)``
-    decides whether a candidate symbol exists — return True when it does.
-    Currently always returns ``[]``; must remain importable with this exact
-    signature so Step 3 can fill it in and Step 2 tests can drive it.
+    Pure function: ``resolver(name) -> bool`` returns True when the symbol
+    resolves (exists). The caller decides severity; this function only
+    reports candidates that survive the exclusion filter AND are rejected
+    by the resolver.
+
+    The exclusion-set filter is applied INSIDE this function, BEFORE the
+    resolver is consulted (contract pinned in tests/test_doc_consistency.py
+    docstrings). Non-Python tokens — MCP tool names, CLI command names, env
+    var names, ``AUTOMEDIA_*``, YAML keys from ``manifests/defaults.yaml``,
+    workflow modes, validation scenario vocabulary, pytest markers, private
+    names, SCREAMING_CASE constants, Python keywords, committed allowlist
+    entries — never reach the resolver and never produce a finding. Only a
+    candidate that survives the filter AND is rejected by the resolver
+    yields one Finding per occurrence, ``line`` = 1-based source line.
+
+    ``Finding.file`` stays ``""`` (pure function); the caller fills in the
+    real path.
     """
-    return []
+    excluded = _build_exclusion_set()
+    findings: list[Finding] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        for match in _BACKTICKED_RE.finditer(line):
+            candidate = match.group(1)
+            if not _IDENTIFIER_RE.fullmatch(candidate):
+                continue
+            if candidate in excluded:
+                continue
+            if resolver(candidate):
+                continue
+            findings.append(
+                Finding(
+                    file="",
+                    line=lineno,
+                    found=candidate,
+                    expected="a symbol resolvable against the automedia package "
+                    "or an entry in scripts/doc-identifier-allowlist.txt",
+                )
+            )
+    return findings
 
 
 def scan_marker(text: str, marker: str) -> list[Finding]:
-    """Scan ``text`` for an expected first-line marker.
+    """Scan ``text`` for an expected first-line marker (byte equality).
 
-    Pure stub (doc-hardening-pass2 Step 1): the real marker check lands in
-    Step 3. ``text`` is the file content, ``marker`` is the expected first
-    line. Currently always returns ``[]``; must remain importable with this
-    exact signature so Step 3 can fill it in and Step 2 tests can drive it.
+    Pure function: ``marker`` must equal the exact first line of ``text``.
+    A mismatch — including a missing marker — yields exactly one Finding at
+    ``line == 1``. ``Finding.file`` stays ``""``; the caller fills it in.
     """
-    return []
+    first_line = text.splitlines()[0] if text else ""
+    if first_line == marker:
+        return []
+    return [
+        Finding(
+            file="",
+            line=1,
+            found=first_line,
+            expected=f"first line == {marker!r}",
+        )
+    ]
+
+
+def _read_allowlist() -> set[str]:
+    """Read the committed allowlist file (one name per line, ``#`` comments).
+
+    Missing or unreadable file = empty set (the exclusion set must be
+    complete on its own; the allowlist is only for residual false positives).
+    """
+    try:
+        lines = _ALLOWLIST_FILE.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+    return {
+        line.strip()
+        for line in lines
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+
+
+def _add_yaml_keys(excluded: set[str]) -> None:
+    """Add every key from ``manifests/defaults.yaml`` to ``excluded``.
+
+    Config keys are vocabulary, not Python symbols.  YAML is an optional
+    dependency of the script's runtime (the audit already imports it
+    transitively), so a missing import degrades to no-op rather than crash.
+    """
+    try:
+        import yaml
+    except ImportError:
+        return
+    path = REPO_ROOT / "src" / "automedia" / "manifests" / "defaults.yaml"
+    if not path.is_file():
+        return
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+    def _walk(mapping: dict) -> None:
+        for key, value in mapping.items():
+            excluded.add(key)
+            if isinstance(value, dict):
+                _walk(value)
+
+    if isinstance(data, dict):
+        _walk(data)
+
+
+def _add_validation_vocabulary(excluded: set[str]) -> None:
+    """Add the agent-tester validation scenario vocabulary to ``excluded``.
+
+    AGENTS.md §11 documents the validation framework's schema keywords
+    (scenario/step/expect fields) and run-record statuses.  These are
+    declarative metadata keys, not Python symbols — they must never reach
+    the resolver.  Derived from the schema dataclasses + status constants so
+    the set tracks the code, not the docs.
+    """
+    try:
+        from automedia.validation import diff as _diff
+        from automedia.validation import schema as _schema
+    except ImportError:
+        return
+    for model in (_schema.Scenario, _schema.Step, _schema.Expect):
+        excluded.update(field for field in model.__dataclass_fields__)
+    excluded.update(getattr(_diff, "STATUSES", ()))
+    excluded.update(getattr(_schema, "STEP_KINDS", ()))  # tool/cli/file — step kinds
+
+
+@functools.lru_cache(maxsize=1)
+def _build_exclusion_set() -> frozenset[str]:
+    """The bounded-scope exclusion set for ``scan_identifiers``.
+
+    Everything here is code-derived — never hand-maintained drift. Sources:
+
+    * MCP tool names + CLI command names from ``doc_reality_audit()``
+      (declared-tools / declared-commands — the audit's authoritative lists).
+    * Workflow / pipeline mode names from ``automedia.pipelines.runner``.
+    * YAML keys from ``automedia/manifests/defaults.yaml`` (top-level and
+      nested keys are configuration vocabulary, not Python symbols).
+    * Env var names: ``AUTOMEDIA_*`` occurrences in the scanned docs, the
+      ``.env.example`` file, and the bare ``AUTOMEDIA_`` prefix itself.
+    * Validation scenario vocabulary from ``automedia.validation.schema``
+      (Scenario/Step/Expect dataclass fields) and ``...diff.STATUSES``
+      (passed/failed/unconfigured/recovered/partial-pass) — AGENTS.md §11
+      documents these keywords, they are not Python symbols.
+    * pytest markers (registered in tests/conftest.py) + ``pytest`` itself.
+    * Python keywords (``None``, ``in``, …) — never resolvable as symbols.
+    * Private names (``_leading`` / ``__dunder__``) — documented as
+      implementation detail, intentionally not part of the public surface.
+    * SCREAMING_CASE names (``LICENSE``, ``AUTOMEDIA_*``) — constants or
+      file names, not Python symbols.
+    * The pinned non-Python tokens ``deepseek``, ``expect``, ``failure_mode``
+      (canonical provider / scenario keyword / gate attribute — contract
+      pinned in tests/test_doc_consistency.py).
+    * Committed allowlist entries.
+    """
+    audit = doc_reality_audit()
+    excluded: set[str] = set(audit["mcp_tools"]["declared"])
+    excluded.update(audit["cli_commands"]["declared"])
+
+    from automedia.pipelines.runner import VALID_MODES
+
+    excluded.update(VALID_MODES)
+
+    _add_yaml_keys(excluded)
+
+    env_names: set[str] = set()
+    for rel in (*_DEFAULT_DOC_FILES, "docs/user/cli-reference.md",
+                "docs/user/mcp-setup.md", "docs/user/api-reference.md"):
+        path = REPO_ROOT / rel
+        if path.is_file():
+            env_names.update(_ENV_VAR_RE.findall(path.read_text(encoding="utf-8")))
+    env_file = REPO_ROOT / ".env.example"
+    if env_file.is_file():
+        env_names.update(_ENV_VAR_RE.findall(env_file.read_text(encoding="utf-8")))
+    excluded.update(env_names)
+    excluded.add("AUTOMEDIA_")  # the bare prefix is vocabulary, not a symbol
+
+    excluded.update(keyword.kwlist)
+
+    _add_validation_vocabulary(excluded)
+
+    excluded.update(("pytest", "e2e", "redline", "slow", "smoke", "cruel", "tmp_path"))
+
+    # The plan's canonical non-Python tokens, pinned by
+    # tests/test_doc_consistency.py: scenario keyword / gate attribute /
+    # provider name.  Not in defaults.yaml (grep confirmed), so explicit.
+    excluded.update(("deepseek", "expect", "failure_mode"))
+
+    # Everything else can be re-derived cheaply and is covered by the
+    # resolver; private/dunder and SCREAMING_CASE names are always excluded.
+    for name in _BACKTICKED_RE.findall(
+        " ".join(
+            p.read_text(encoding="utf-8")
+            for p in (REPO_ROOT / "AGENTS.md", REPO_ROOT / "README.md",
+                      REPO_ROOT / "docs" / "index.md")
+            if p.is_file()
+        )
+    ):
+        if _IDENTIFIER_RE.fullmatch(name) and (
+            name.startswith("_") or name == name.upper()
+        ):
+            excluded.add(name)
+
+    excluded.update(_read_allowlist())
+    return frozenset(excluded)
+
+
+@functools.lru_cache(maxsize=1)
+def _package_symbols() -> frozenset[str]:
+    """Every module-level symbol defined in the ``automedia`` package.
+
+    AST-based: walks ``src/automedia/**/*.py`` and collects function/class
+    definitions plus assignments at module level.  A backticked identifier
+    that names one of these symbols is a REAL reference (the class/function
+    exists), even when it is not re-exported at the package top level
+    (``BaseGate``, ``app``, …).  Cached; resolution errors are swallowed
+    only here, at the boundary, never converted into findings.
+    """
+    import ast
+
+    symbols: set[str] = set()
+    src = REPO_ROOT / "src" / "automedia"
+    if not src.is_dir():
+        return frozenset()
+    for path in src.rglob("*.py"):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                symbols.add(node.name)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets:
+                    if isinstance(target, ast.Name):
+                        symbols.add(target.id)
+    return frozenset(symbols)
+
+
+def _resolver(name: str) -> bool:
+    """Resolve ``name`` against the ``automedia`` package.
+
+    Tries ``automedia.<name>`` as a module import, then an attribute walk on
+    the ``automedia`` package, then the AST symbol table of the whole
+    ``src/automedia/`` tree.  A candidate that fails all three is a resolver
+    False — a genuine stale reference.  Import errors are never swallowed
+    into findings.
+    """
+    try:
+        importlib.import_module(f"automedia.{name}")
+        return True
+    except ImportError:
+        pass
+    try:
+        import automedia
+
+        if hasattr(automedia, name):
+            return True
+    except Exception:  # noqa: S110, BLE001 — resolver boundary; never a finding
+        pass
+    return name in _package_symbols()
+
+
+def _print_findings(findings: list[Finding], file_label: str) -> None:
+    """Print findings as ``file:line: ...``; return nothing (mutates only stdout)."""
+    for finding in findings:
+        print(
+            f"{file_label}:{finding.line}: '{finding.found}' "
+            f"expected {finding.expected}"
+        )
 
 
 def _run_doc_reality_audit() -> tuple[list[str], list[str]]:
@@ -273,6 +572,48 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
+    # Link check: AGENTS.md only (its table-driven docs/ references are the
+    # contract; README links are overwhelmingly external/anchored and the
+    # README is regenerated manually — AGENTS.md is the agent-facing source).
+    agents_path = REPO_ROOT / "AGENTS.md"
+    if agents_path.is_file():
+        for finding in scan_links(
+            agents_path.read_text(encoding="utf-8"), REPO_ROOT
+        ):
+            print(
+                f"AGENTS.md:{finding.line}: link '{finding.found}' "
+                f"expected {finding.expected}"
+            )
+            all_findings.append(finding)
+
+    # Identifier check: AGENTS.md + README.md + docs/index.md. Resolver
+    # rejections are gate-failing (a stale symbol reference in agent-facing
+    # docs). Non-Python tokens never reach the resolver (exclusion set).
+    for rel in ("AGENTS.md", "README.md", "docs/index.md"):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for finding in scan_identifiers(text, _resolver):
+            print(
+                f"{rel}:{finding.line}: '{finding.found}' "
+                f"expected {finding.expected}"
+            )
+            all_findings.append(finding)
+
+    # Marker check: the committed docs/doc-inventory.md must carry the exact
+    # AUTO-GENERATED marker on its first line (plan item 1c/3).
+    inventory_path = REPO_ROOT / "docs" / "doc-inventory.md"
+    if inventory_path.is_file():
+        for finding in scan_marker(
+            inventory_path.read_text(encoding="utf-8"), _INVENTORY_MARKER
+        ):
+            print(
+                f"docs/doc-inventory.md:{finding.line}: '{finding.found}' "
+                f"expected {finding.expected}"
+            )
+            all_findings.append(finding)
+
     blocking, informational = _run_doc_reality_audit()
     for line in informational:
         print(f"{line}  [informational]")
@@ -280,7 +621,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(line)
     if all_findings or blocking:
         total = len(all_findings) + len(blocking)
-        print(f"\nFAIL: {len(all_findings)} stale numeric claim(s) + "
+        print(f"\nFAIL: {len(all_findings)} stale doc finding(s) + "
               f"{len(blocking)} blocking doc↔reality finding(s) = {total}")
         return 1
     print("\nOK: all doc numeric claims match derived counts; doc↔reality audit clean")

@@ -1,0 +1,13 @@
+# Doc-identifier allowlist for scripts/check-doc-consistency.py.
+#
+# One name per line; lines starting with "#" are comments.  A name listed
+# here is added to the scan_identifiers exclusion set BEFORE the resolver is
+# consulted, so an allowlisted name never produces a finding.
+#
+# GOAL: keep this file EMPTY.  The exclusion set in the checker is entirely
+# code-derived (MCP tool names, CLI commands, env vars, defaults.yaml keys,
+# workflow modes, validation scenario vocabulary, pytest markers, private
+# names, SCREAMING_CASE constants, Python keywords).  If a genuine stale
+# identifier shows up in AGENTS.md/README, FIX the doc reference — do NOT
+# allowlist it here.  Only add an entry for a residual false positive that
+# the code-derived set cannot express.
