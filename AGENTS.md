@@ -52,7 +52,6 @@ AutoMedia/
 - **External Scheduling:** no built-in scheduler; external crond calls `automedia cron run`. See `automedia/cron/`.
 - **Three-Entry-Point Design:** CLI, MCP, and SDK all delegate to `run_full_pipeline()` (see §2); MCP also exposes Omni triad tools (extract, translate, convert).
 - **Gate Auto-Registration:** `BaseGate` subclasses auto-register in the global `GateRegistry` singleton via `__init_subclass__`.
-
 ## 5. Agent Constraints (Red Lines) — MUST OBEY
 
 These constraints are enforced by the test suite and must never be violated:
@@ -81,9 +80,6 @@ ruff check .                 # lint
 mypy src/automedia/ --ignore-missing-imports   # type check
 pre-commit run --all-files   # pre-commit
 ```
-
-Docker usage and deployment: see README.
-
 ## 7. Test Conventions
 - **Markers:** `e2e`, `redline`, `slow`, registered in `tests/conftest.py`
 - **Fixtures:** Shared fixtures in `tests/conftest.py` use `tmp_path` for isolation; synthetic data only
@@ -293,6 +289,7 @@ These env vars map to `llm.text_generation.*` config keys in `automedia/core/con
 | `docs/user/omni-integration.md` | Omni Triad integration docs |
 | `docs/user/asset-library.md` | Asset library documentation |
 | `docs/glossary.md` | Plain-language AutoMedia term glossary for agents |
+| `docs/adr/README.md` | ADR index + template (`docs/adr/TEMPLATE.md`), immutable decision records |
 | `docs/dev/gate-failure-modes.md` | Gate failure troubleshooting |
 | `docs/user/production-workflow.md` | Production operations guide |
 | `docs/dev/cron-troubleshooting.md` | Cron job debugging |
@@ -301,6 +298,8 @@ These env vars map to `llm.text_generation.*` config keys in `automedia/core/con
 | `CHANGELOG.md` | Version history |
 | `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for pipeline, config, MCP, and gate issues |
 | `docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md` | 7-phase AI development methodology note (own your process, AFK implementation) |
+| `docs/archived/` | One-off historical reports (migration guides, per-run acceptance, superseded master plans) — not authoritative |
+| `docs/doc-inventory.md` | AUTO-GENERATED doc inventory — regenerate with `python3 scripts/doc_inventory.py`; never hand-edit |
 
 For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/agent-troubleshooting.md).
 
