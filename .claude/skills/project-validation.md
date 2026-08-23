@@ -1,5 +1,7 @@
 # Project Validation
 
+version: 1.0.0
+
 Maintain founder expectations alignment after code changes.
 Load this skill as part of completion criteria when modifying `src/automedia/` files.
 

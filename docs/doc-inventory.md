@@ -31,10 +31,10 @@
 | docs/glossary.md | 6365 | file |
 | docs/index.md | 4662 | file |
 | docs/skills | — | dir |
-| docs/skills/batch-workflow.md | 5027 | file |
-| docs/skills/brand-strategy.md | 3213 | file |
-| docs/skills/distribution-workflow.md | 6233 | file |
-| docs/skills/pipeline-workflow.md | 7745 | file |
+| docs/skills/batch-workflow.md | 5042 | file |
+| docs/skills/brand-strategy.md | 3228 | file |
+| docs/skills/distribution-workflow.md | 6248 | file |
+| docs/skills/pipeline-workflow.md | 7760 | file |
 | docs/user | — | dir |
 | docs/user/api-reference.md | 11902 | file |
 | docs/user/asset-library.md | 11894 | file |

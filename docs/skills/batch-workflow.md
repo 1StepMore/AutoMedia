@@ -1,5 +1,6 @@
 ---
 name: batch-workflow
+version: 1.0.0
 description: "Produce several AutoMedia projects in one call with run_batch: pass a list of topics and a brand, get per-topic results with a pass/fail summary, then track each project and cancel or resume individual runs. Triggers: 'run these topics', 'batch of topics', 'produce several articles', 'run multiple pipelines', 'batch production'."
 ---
 

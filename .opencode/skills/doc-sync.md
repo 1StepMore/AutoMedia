@@ -1,5 +1,7 @@
 # Doc-Sync — Documentation Awareness & Impact Mapping
 
+version: 1.0.0
+
 **Purpose:** When code changes happen in this project, agents use this skill to identify **exactly which documentation files need updating** and **what sections to change**.
 
 ---
@@ -152,6 +154,14 @@ Known limitation: `docs/user/cli-reference.md`, `docs/user/mcp-setup.md`, and
 `docs/user/api-reference.md` are NOT scanned by default — they are reconciled
 manually in this workflow. When you touch those files, verify the tool/command
 tables against the code by hand.
+
+**Verification + archive convention:** after every doc edit, run
+`python3 scripts/check-doc-consistency.py` (must exit 0) and
+`python3 scripts/doc_inventory.py --check` (regenerate with
+`python3 scripts/doc_inventory.py` first if files changed). One-off reports
+go to `docs/archived/<name>-<YYYYMMDD>.md` with first-line marker
+`> **Status: archived <date> — historical, not authoritative.**`;
+`docs/index.md` keeps a directory pointer to `archived/`.
 
 ---
 

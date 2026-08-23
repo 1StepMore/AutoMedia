@@ -1,5 +1,6 @@
 ---
 name: brand-strategy
+version: 1.0.0
 description: "Use the `run_brand_strategy` MCP tool to generate LLM-driven brand positioning, audience analysis, competitive landscape, differentiators, and messaging suggestions. Triggers: 'brand strategy', 'brand positioning', 'brand analysis', 'competitive analysis', 'positioning statement', 'target audience analysis'."
 ---
 

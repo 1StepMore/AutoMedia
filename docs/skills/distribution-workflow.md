@@ -1,5 +1,6 @@
 ---
 name: distribution-workflow
+version: 1.0.0
 description: "Distribute or publish a finished AutoMedia project to one or more platforms via MCP: connect and verify platform accounts first, then call distribute_content (or publish_content) with platforms, all, and dry_run options. Triggers: 'distribute content', 'publish to platforms', 'post to wechat', 'push to twitter', 'publish this project', 'share on xiaohongshu'."
 ---
 

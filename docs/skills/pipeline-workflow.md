@@ -1,5 +1,6 @@
 ---
 name: pipeline-workflow
+version: 1.0.0
 description: "Run a single AutoMedia production pipeline end to end via MCP: prepare a brand strategy, select or supply a topic, call run_pipeline with the right mode, poll get_pipeline_progress, inspect status and assets, then archive. Triggers: 'run a pipeline', 'produce content', 'create a video', 'write an article', 'make a draft', 'produce a carousel', 'create a thread'."
 ---
 

@@ -1,5 +1,7 @@
 # Skills — Canonical Location
 
+version: 1.0.0
+
 This is the **canonical location** for **maintainer skills** in this
 project — instructions for coding agents working *on* the AutoMedia
 codebase. These are auto-discovered by OpenCode as commands and skills.
