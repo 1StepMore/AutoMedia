@@ -35,6 +35,14 @@ KNOWN LIMITATION (enforcement gap): ``docs/user/cli-reference.md``,
 scanned by default — they are reconciled manually in the doc-sync workflow
 (Wave A4) and future drift there is un-enforced by this gate. Pass
 ``--check-user-docs`` to include them explicitly.
+
+TESTABILITY SEAM (doc-hardening-pass2 Step 1): the pure ``scan_*``
+functions below — ``scan_links``, ``scan_identifiers``, ``scan_marker`` —
+are the testability seam this refactor introduces. They are importable,
+pure, and unit-testable, but are NOT yet wired into ``main()``; Step 3 of
+the same plan will wire them in. ``scan_links`` already carries the trivial
+core (root-relative ``docs/`` link existence); ``scan_identifiers`` and
+``scan_marker`` are stubs returning ``[]`` until Step 3.
 """
 
 from __future__ import annotations
@@ -44,7 +52,7 @@ import asyncio
 import inspect
 import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -79,6 +87,12 @@ _CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("tools", re.compile(r"(\d+)\s+tools?\b", re.IGNORECASE)),
     ("commands", re.compile(r"(\d+)\s+commands?(?:\s+modules?)?\b", re.IGNORECASE)),
 )
+
+# Markdown link destinations that are root-relative docs paths, e.g.
+# ``](docs/user/cli-reference.md#foo)``. Only the root-relative ``docs/``
+# form is matched; an anchor (anything after ``#``) or the closing paren
+# terminates the match, so the captured target is the bare destination path.
+_LINK_TARGET_RE: re.Pattern[str] = re.compile(r"\]\(docs/[^)#]+\)")
 
 
 def _count_mcp_tools() -> int:
@@ -154,6 +168,58 @@ def _scan_file(path: Path, tool_count: int, command_count: int) -> list[Finding]
                         )
                     )
     return findings
+
+
+def scan_links(text: str, base: Path) -> list[Finding]:
+    """Scan markdown for root-relative ``docs/`` link targets missing under ``base``.
+
+    Pure function: ``text`` is the file content, ``base`` is the directory
+    against which root-relative destinations resolve (the repo root). Only
+    links whose destination starts with ``docs/`` are considered — absolute
+    URLs, anchors (``#...``), and non-``docs`` relative links are ignored.
+
+    This is the testability seam for the doc-link check; it is NOT yet wired
+    into ``main()`` (Step 3 of doc-hardening-pass2 does that).
+    """
+    findings: list[Finding] = []
+    if not base.is_dir():
+        return findings
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        for match in _LINK_TARGET_RE.finditer(line):
+            target = match.group(0)[2:-1]  # strip leading "](" and trailing ")"
+            if not (base / target).exists():
+                findings.append(
+                    Finding(
+                        file="",  # file name is unknown here (pure); caller fills it in
+                        line=lineno,
+                        found=f"{match.group(0)})",
+                        expected=f"existing target under {base}",
+                    )
+                )
+    return findings
+
+
+def scan_identifiers(text: str, resolver: Callable[[str], bool]) -> list[Finding]:
+    """Scan ``text`` for candidate symbol references, keeping those the resolver rejects.
+
+    Pure stub (doc-hardening-pass2 Step 1): the real identifier-marker
+    extraction and resolution rules land in Step 3. ``resolver(name)``
+    decides whether a candidate symbol exists — return True when it does.
+    Currently always returns ``[]``; must remain importable with this exact
+    signature so Step 3 can fill it in and Step 2 tests can drive it.
+    """
+    return []
+
+
+def scan_marker(text: str, marker: str) -> list[Finding]:
+    """Scan ``text`` for an expected first-line marker.
+
+    Pure stub (doc-hardening-pass2 Step 1): the real marker check lands in
+    Step 3. ``text`` is the file content, ``marker`` is the expected first
+    line. Currently always returns ``[]``; must remain importable with this
+    exact signature so Step 3 can fill it in and Step 2 tests can drive it.
+    """
+    return []
 
 
 def _run_doc_reality_audit() -> tuple[list[str], list[str]]:
