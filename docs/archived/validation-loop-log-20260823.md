@@ -1,3 +1,5 @@
+> **Status: archived 2026-08-23 — historical, not authoritative.**
+
 # LOOP-LOG — AutoMedia validation 循环记录
 
 > 机制（对齐 AutoInfo 2026-08-15 规范）：每次迭代循环的关键事件、根因、修复、验证结果必须记录在此；

@@ -62,7 +62,6 @@ nav:
     - Forward Compatibility: dev/forward-compat.md
     - Deep Module RFC-001: dev/deep-module-rfc-001.md
     - Override Reference: dev/override-reference.md
-    - Validation Master Plan: automedia-validation-master-plan.md
     - AI Development Methodology: dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md
   - Skills:
     - Brand Strategy: skills/brand-strategy.md

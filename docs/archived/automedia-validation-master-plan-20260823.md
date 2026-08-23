@@ -1,3 +1,5 @@
+> **Status: archived 2026-08-23 — historical, not authoritative.**
+
 # AutoMedia Master Validation Plan
 
 ## Result-Oriented · User-Centric · All Scenarios & Boundaries
