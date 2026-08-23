@@ -98,6 +98,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = list(argv) if argv is not None else sys.argv[1:]
     scenarios_dir = default_scenarios_dir()
 
+    # Test isolation (renanzai40/AutoMedia_BackUp#1): redirect all
+    # user-config writes (e.g. the account registry's AccountStore under
+    # get_user_config_dir()/accounts) to a test-scoped dir so scenario
+    # cleanup can remove them instead of leaking into the real ~/.automedia
+    # (which made connect-account-masterkey fail on repeat runs with
+    # "Label already exists"). setdefault — an operator override wins.
+    os.environ.setdefault(
+        "AUTOMEDIA_CONFIG_DIR", "/tmp/automedia/am-validation-config"
+    )
+
     if "AUTOMEDIA_LLM_API_KEY" in os.environ:
         print("WARNING: AUTOMEDIA_LLM_API_KEY is set — LLM-gated scenarios will "
               "execute for real. CI must run credential-free (unset it).",

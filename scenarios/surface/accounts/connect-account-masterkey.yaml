@@ -22,8 +22,8 @@ steps:
 cleanup_steps:
   - name: remove the isolated account store
     kind: cli
-    check: rm -rf removes the isolated accounts store directory written by connect_account (config-dir-scoped, never the real user config).
+    check: rm -rf removes the isolated accounts store directory written by connect_account (config-dir-scoped to the runner's AUTOMEDIA_CONFIG_DIR=/tmp/automedia/am-validation-config, never the real user config).
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/w3t1-config/accounts
+    command: rm -rf /tmp/automedia/am-validation-config/accounts
     expect:
       exit_code: 0
