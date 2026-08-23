@@ -14,4 +14,4 @@ steps:
       exit_code: 0
       stdout_has:
         - "archive"
-        - "PROJECT_ID"
+        - "project_id"
