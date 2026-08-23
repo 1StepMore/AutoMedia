@@ -71,7 +71,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any
+from types import ModuleType
 
 import pytest
 
@@ -92,7 +92,7 @@ MARKER = (
 
 
 @pytest.fixture(scope="session")
-def checker() -> Any:
+def checker() -> ModuleType:
     """Load the real ``scripts/check-doc-consistency.py`` module (once)."""
     if "check_doc_consistency" in sys.modules:
         return sys.modules["check_doc_consistency"]
@@ -115,7 +115,7 @@ def _read(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_scan_links_ok(checker: Any) -> None:
+def test_scan_links_ok(checker: ModuleType) -> None:
     """Valid root-relative links, external URLs and anchors produce no findings.
 
     Contract: ``scan_links`` probes only ``docs/``-prefixed root-relative
@@ -126,7 +126,7 @@ def test_scan_links_ok(checker: Any) -> None:
     assert findings == []
 
 
-def test_scan_links_broken(checker: Any) -> None:
+def test_scan_links_broken(checker: ModuleType) -> None:
     """A missing root-relative target yields exactly one Finding at its line.
 
     ``links-broken.md``: ``docs/index.md`` resolves; ``docs/nonexistent-file.md``
@@ -147,7 +147,7 @@ def test_scan_links_broken(checker: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_scan_identifiers_stale(checker: Any) -> None:
+def test_scan_identifiers_stale(checker: ModuleType) -> None:
     """A resolver-rejected symbol produces exactly one Finding at its line.
 
     Contract: ``scan_identifiers(text, resolver)`` returns one Finding per
@@ -168,7 +168,7 @@ def test_scan_identifiers_stale(checker: Any) -> None:
     assert finding.expected  # non-empty description of what was expected
 
 
-def test_scan_identifiers_non_python_tokens_are_not_gate_failing(checker: Any) -> None:
+def test_scan_identifiers_non_python_tokens_are_not_gate_failing(checker: ModuleType) -> None:
     """Non-Python tokens never produce findings and never reach the resolver.
 
     This is the plan's bounded-scope pin (plan item 1b): the exclusion-set
@@ -210,13 +210,13 @@ def test_scan_identifiers_non_python_tokens_are_not_gate_failing(checker: Any) -
 # ---------------------------------------------------------------------------
 
 
-def test_scan_marker_ok(checker: Any) -> None:
+def test_scan_marker_ok(checker: ModuleType) -> None:
     """A file whose first line is exactly the marker yields no findings."""
     findings = checker.scan_marker(_read("marker-ok.md"), MARKER)
     assert findings == []
 
 
-def test_scan_marker_missing(checker: Any) -> None:
+def test_scan_marker_missing(checker: ModuleType) -> None:
     """A file missing the first-line marker yields exactly one Finding at line 1.
 
     Contract: the marker must be the exact first line of ``text`` (byte
@@ -237,7 +237,7 @@ def test_scan_marker_missing(checker: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_scan_file_regression_mis_set_tool_count(checker: Any, tmp_path: Path) -> None:
+def test_scan_file_regression_mis_set_tool_count(checker: ModuleType, tmp_path: Path) -> None:
     """The numeric-claim check still catches a mis-set tool count.
 
     ``_scan_file(path, tool_count, command_count)`` must flag a doc claiming
