@@ -90,6 +90,7 @@ from automedia.mcp.tools import (
     get_cron_health,
     get_pending_approvals,
     get_pipeline_progress,
+    get_pipeline_state,
     get_pipeline_status,
     get_project_assets,
     get_redlines,
@@ -152,6 +153,7 @@ __all__ = [
     "select_topic",
     "run_pipeline",
     "get_pipeline_progress",
+    "get_pipeline_state",
     "get_pipeline_status",
     "init_config",
     "list_active_pipelines",
@@ -463,6 +465,16 @@ def create_server() -> FastMCP:
     mcp.tool(
         description=("Return the current status / progress of a pipeline run by project ID."),
     )(get_pipeline_status)
+
+    mcp.tool(
+        description=(
+            "Return per-gate pipeline state (passed/failed/pending + md5) "
+            "for a project. Read-only aggregation of the project's history "
+            "and md5 records; a project without history yields all-pending "
+            "rows. Takes project_id, optional base_dir, and optional mode "
+            "(default 'auto')."
+        ),
+    )(get_pipeline_state)
 
     mcp.tool(
         description=(

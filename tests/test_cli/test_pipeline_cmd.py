@@ -1,19 +1,19 @@
-"""Tests for ``automedia pipeline export-dag`` CLI command.
+"""Tests for ``automedia pipeline export-dag`` and ``pipeline state`` CLI
+commands.
 
-RED-phase spec (graph-engineering-rollout Wave 1 Todo 4). The ``pipeline``
-subcommand does NOT exist yet — the implementation is Todo 5. These tests
-encode the exact export-dag contract so they become the GREEN acceptance
-for that implementation:
+Wave 1 Todo 4 (RED-phase spec): the export-dag contract —
+``export-dag --mode <m> --out <dir>`` writes ``<m>.md`` and ``<m>.dot``;
+the Markdown lists the mode's gates in EXACT ``_MODE_MAP`` order with a
+``∥`` async-parallel marker near V0; the DOT declares the canonical edges
+(``G0 -> G1``, ``V0 -> V1``, ``CW -> V0``, ``G6 -> H0``) and a per-track
+cluster/label; ``--mode bogus`` exits non-zero; ``--all`` renders all 9
+modes; ``--project <dir>`` overlays history gates with a marker.
 
-- ``export-dag --mode <m> --out <dir>`` writes ``<m>.md`` and ``<m>.dot``.
-- The Markdown lists the mode's gates in EXACT ``_MODE_MAP`` order with a
-  ``∥`` async-parallel marker near V0.
-- The DOT declares the canonical edges (``G0 -> G1``, ``V0 -> V1``,
-  ``CW -> V0``, ``G6 -> H0``) and a per-track cluster/label.
-- ``--mode bogus`` exits non-zero and mentions the invalid mode.
-- ``--all`` renders all 9 modes (18 files), qa_only without CW (Metis G14),
-  and the identical-list text_only/text_with_cover both render.
-- ``--project <dir>`` overlays gates present in ``history.db`` with a marker.
+Wave 3 Todo 11 (RED-phase spec): the ``state`` subcommand contract —
+``pipeline state <project_id> --base-dir <tmp>`` renders a per-gate
+status table grouped by track; ``--json`` emits machine-readable rows;
+a project with no history exits 0 with a "no history" note; an unknown
+project_id exits 1 with an error message.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from typing import Any
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
+from automedia.hooks.md5_tracker import record_md5
 from automedia.hooks.pipeline_history import _db_path, _ensure_schema
 from automedia.pipelines.runner import _MODE_MAP
 
@@ -370,3 +371,181 @@ class TestExportDagProjectOverlay:
         assert result.exit_code == 0
         md = (out_dir / "auto.md").read_text(encoding="utf-8")
         assert "G1" in md
+
+
+# =========================================================================
+# Tests: state — fixtures
+# =========================================================================
+
+
+def _create_project_with_state_history(
+    tmp_path: Path,
+    project_id: str = "test-proj-001",
+) -> dict[str, Any]:
+    """Create a project whose history/md5 seed a mixed per-gate state.
+
+    Seeds (matching the canonical ``<gate>:<status>`` history shape and the
+    ``metadata_json.passed`` contract of ``PipelineHistoryHook.after_gate``):
+    - ``G0:completed`` with ``passed: true``  → passed
+    - ``G1:completed`` with ``passed: false`` → failed (completed-but-failed)
+    - ``V1:started``                          → pending (started ≠ completed)
+    - everything else in ``_MODE_MAP["auto"]`` → pending (no rows)
+    Also records an md5 asset for G0 via the real ``record_md5`` hook.
+    """
+    slug = "test-topic"
+    project_dir = tmp_path / f"20260707_{slug}"
+    project_dir.mkdir(parents=True)
+
+    info = {
+        "project_id": project_id,
+        "topic": "Test Topic",
+        "brand": "TestBrand",
+        "tenant_id": "default",
+        "created_at": "2026-07-07T00:00:00+00:00",
+    }
+    (project_dir / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
+
+    db_file = Path(_db_path(str(project_dir)))
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_file))
+    try:
+        _ensure_schema(conn)
+        base_ts = time.time()
+        rows: list[tuple[str, dict[str, Any]]] = [
+            ("G0:completed", {"gate": "G0", "project_id": project_id, "passed": True}),
+            ("G1:completed", {"gate": "G1", "project_id": project_id, "passed": False}),
+            ("V1:started", {"gate": "V1", "project_id": project_id}),
+        ]
+        for i, (action, meta) in enumerate(rows):
+            conn.execute(
+                "INSERT INTO pipeline_history (project_id, action, timestamp, metadata_json) "
+                "VALUES (?, ?, ?, ?)",
+                (project_id, action, base_ts + i, json.dumps(meta)),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Real md5 record for G0 (record_md5 reads the asset file).
+    asset = project_dir / "g0_asset.txt"
+    asset.write_text("synthetic g0 asset", encoding="utf-8")
+    record_md5(str(project_dir), "G0", str(asset))
+
+    return {
+        "base_dir": str(tmp_path),
+        "project_dir": str(project_dir),
+        "project_id": project_id,
+    }
+
+
+# =========================================================================
+# Tests: pipeline state (Wave 3 Todo 11)
+# =========================================================================
+
+
+class TestPipelineStateTable:
+    """``pipeline state <id> --base-dir <dir>`` renders a per-gate table."""
+
+    def test_state_renders_gate_table(self, tmp_path: Path) -> None:
+        """Exit 0; output contains gate names and their statuses."""
+        proj = _create_project_with_state_history(tmp_path)
+        result = runner.invoke(
+            app,
+            ["pipeline", "state", proj["project_id"], "--base-dir", proj["base_dir"]],
+        )
+        assert result.exit_code == 0, result.output
+        # Every gate of the auto mode appears somewhere in the table.
+        for gate in _MODE_MAP["auto"]:
+            assert gate in result.output, f"gate {gate!r} missing from state output"
+        # Statuses: G0 passed, G1 failed, V1/untouched gates pending.
+        assert "passed" in result.output
+        assert "failed" in result.output
+        assert "pending" in result.output
+        # Gated md5 echo: the G0 row carries its recorded digest (or the
+        # no-asset placeholder) — assert the vocabulary exists.
+        assert "md5" in result.output.lower()
+
+    def test_state_groups_by_track(self, tmp_path: Path) -> None:
+        """The table is grouped by the four canonical tracks."""
+        proj = _create_project_with_state_history(tmp_path)
+        result = runner.invoke(
+            app,
+            ["pipeline", "state", proj["project_id"], "--base-dir", proj["base_dir"]],
+        )
+        assert result.exit_code == 0
+        for track in ("copy", "video", "qa", "lifecycle"):
+            assert track in result.output, f"track {track!r} missing from state output"
+
+
+class TestPipelineStateJson:
+    """``pipeline state <id> --json`` emits machine-readable rows."""
+
+    def test_state_json_output(self, tmp_path: Path) -> None:
+        """--json parses as a JSON object with per-gate rows."""
+        proj = _create_project_with_state_history(tmp_path)
+        result = runner.invoke(
+            app,
+            [
+                "pipeline",
+                "state",
+                proj["project_id"],
+                "--base-dir",
+                proj["base_dir"],
+                "--json",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        gates = payload["gates"] if isinstance(payload, dict) else payload
+        assert isinstance(gates, list) and gates, "JSON output has no gate rows"
+
+        by_gate = {row["gate"]: row for row in gates}
+        assert by_gate["G0"]["status"] == "passed"
+        assert by_gate["G1"]["status"] == "failed"
+        assert by_gate["V1"]["status"] == "pending"
+        # Untouched gates are pending too.
+        assert by_gate["H0"]["status"] == "pending"
+        # Row shape: gate/status/track keys present; md5 recorded for G0.
+        for row in gates:
+            assert {"gate", "status", "track"} <= set(row)
+        assert by_gate["G0"]["track"] == "copy"
+        assert by_gate["V1"]["track"] == "video"
+        assert by_gate["G0"]["md5"]
+
+
+class TestPipelineStateEdgeCases:
+    """No-history and unknown-project behavior."""
+
+    def test_state_no_history_project(self, tmp_path: Path) -> None:
+        """A project dir without history.db → exit 0, all-pending (with note)."""
+        project_dir = tmp_path / "20260707_bare-topic"
+        project_dir.mkdir(parents=True)
+        info = {
+            "project_id": "bare-proj-001",
+            "topic": "Bare",
+            "brand": "TestBrand",
+            "tenant_id": "default",
+            "created_at": "2026-07-07T00:00:00+00:00",
+        }
+        (project_dir / "00_project_info.json").write_text(
+            json.dumps(info), encoding="utf-8"
+        )
+        result = runner.invoke(
+            app,
+            ["pipeline", "state", "bare-proj-001", "--base-dir", str(tmp_path)],
+        )
+        assert result.exit_code == 0, result.output
+        # Either an explicit "no history" note or the all-pending table.
+        no_history_note = "no history" in result.output.lower()
+        all_pending = "pending" in result.output.lower()
+        assert no_history_note or all_pending, result.output
+
+    def test_state_unknown_project(self, tmp_path: Path) -> None:
+        """Nonexistent project_id → exit 1 with an error message."""
+        result = runner.invoke(
+            app,
+            ["pipeline", "state", "no-such-proj", "--base-dir", str(tmp_path)],
+        )
+        assert result.exit_code == 1
+        message = (result.output or "") + (result.stderr or "")
+        assert message.strip(), "expected an error message on stderr/stdout"

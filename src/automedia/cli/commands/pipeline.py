@@ -4,18 +4,26 @@ Wave 1 of the graph-engineering-rollout: ``export-dag`` renders the canonical
 gate DAG (``automedia.pipelines.dag.AUTO_GATE_DAG``) per pipeline mode as a
 Markdown gate table plus a Graphviz DOT graph. With ``--project``, gates that
 appear in the project's ``history.db`` are overlaid with a run marker.
+
+Wave 3 adds ``state``: a read-only per-gate status view (passed/failed/pending
++ asset md5) for one project, aggregated by
+``automedia.pipelines.state_view.aggregate_pipeline_state``.
 """
 
 from __future__ import annotations
 
+import json
 import os
+from dataclasses import asdict
 from typing import Any
 
 import typer
 
+from automedia.cli.commands.projects import _discover_projects
 from automedia.hooks.pipeline_history import _read_history
 from automedia.pipelines.dag import AUTO_GATE_DAG, GateNode, topological_order
 from automedia.pipelines.runner import _MODE_MAP, _compose_gate_list
+from automedia.pipelines.state_view import aggregate_pipeline_state
 
 app = typer.Typer(
     name="pipeline",
@@ -252,3 +260,66 @@ def export_dag(
         with open(os.path.join(out, f"{mode_name}.dot"), "w", encoding="utf-8") as fh:
             fh.write(_render_dot(mode_name, ordered, ran_gates))
         typer.echo(f"Wrote {mode_name}.md and {mode_name}.dot to {out}")
+
+
+# ---------------------------------------------------------------------------
+# state command
+# ---------------------------------------------------------------------------
+
+
+def _resolve_project_dir(project_id: str, base_dir: str) -> str:
+    """Find the project directory for *project_id* under *base_dir*.
+
+    Mirrors ``history_cmd``: scan with ``_discover_projects`` and match on
+    ``project_id``.  Exits 1 with an error message when not found.
+    """
+    try:
+        projects = _discover_projects(base_dir)
+    except Exception:
+        projects = []
+    match = [p for p in projects if p.get("project_id") == project_id]
+    if not match:
+        typer.echo(f"Project {project_id!r} not found under {base_dir!r}.", err=True)
+        raise typer.Exit(code=1)
+    return str(match[0]["_dir"])
+
+
+def _render_state_table(rows: list[dict[str, Any]]) -> str:
+    """Render per-gate state rows as a track-grouped plain-text table."""
+    tracks: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        tracks.setdefault(str(row["track"]), []).append(row)
+
+    lines: list[str] = []
+    for track in _TRACK_ORDER:
+        track_rows = tracks.get(track)
+        if not track_rows:
+            continue
+        lines.append(f"[{track}]")
+        for row in track_rows:
+            md5 = row["md5"] or "—"
+            lines.append(f"  {row['gate']:<10} {row['status']:<8} md5={md5}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+@app.command("state")
+def pipeline_state(
+    project_id: str = typer.Argument(..., help="Project ID (12-char hex)."),
+    base_dir: str = typer.Option(
+        ".", "--base-dir", "-d", help="Base directory to scan for projects."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+) -> None:
+    """Show the per-gate state (passed/failed/pending + md5) for a project."""
+    project_dir = _resolve_project_dir(project_id, base_dir)
+    rows = [asdict(r) for r in aggregate_pipeline_state(project_dir, "auto")]
+
+    if json_output:
+        typer.echo(json.dumps({"project_id": project_id, "gates": rows}, indent=2))
+        return
+
+    has_history = any(row["status"] != "pending" for row in rows)
+    if not has_history:
+        typer.echo("No history recorded for this project; all gates pending.")
+    typer.echo(_render_state_table(rows))

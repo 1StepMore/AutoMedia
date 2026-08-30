@@ -4,6 +4,7 @@ from __future__ import annotations
 import threading
 import uuid
 import warnings
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from automedia.mcp.tools._shared import (
     error_response,
     success_response,
 )
+from automedia.pipelines.state_view import aggregate_pipeline_state
 
 log = get_logger(__name__)
 
@@ -37,6 +39,7 @@ __all__ = [
     "batch_run",
     "cancel_pipeline",
     "get_pipeline_progress",
+    "get_pipeline_state",
     "get_pipeline_status",
     "list_active_pipelines",
     "pause_pipeline",
@@ -502,6 +505,55 @@ def get_pipeline_status(
                 str(p.relative_to(proj_dir)) for p in Path(proj_dir).iterdir() if p.is_dir()
             )
         return success_response({"project": proj, "subdirs": subdirs})
+
+    except PermissionError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
+
+
+def get_pipeline_state(
+    project_id: NonEmptyStr,
+    base_dir: str = ".",
+    mode: str = "auto",
+) -> dict[str, Any]:
+    """Return per-gate pipeline state (passed/failed/pending + md5) for a project.
+
+    Aggregates the project's history.db and pipeline_md5.json via
+    :func:`automedia.pipelines.state_view.aggregate_pipeline_state` — a
+    read-only view; no state is written.  A project without history yields
+    all-pending rows rather than an error.
+
+    Parameters
+    ----------
+    project_id:
+        The project identifier to look up.
+    base_dir:
+        Base directory to scan for projects.
+    mode:
+        Pipeline mode selecting the gate list (default ``"auto"``).
+
+    Returns
+    -------
+    dict
+        ``{"project_id": ..., "mode": ..., "gates": [GateState dicts]}``
+        or a structured error.
+    """
+    try:
+        _require_allowed(base_dir, tool_name="get_pipeline_state")
+        projects = _discover_projects(base_dir)
+        match = [p for p in projects if p.get("project_id") == project_id]
+        if not match:
+            return error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"Project {project_id!r} not found",
+                "Verify project_id",
+            )
+        proj_dir = str(match[0].get("_dir", ""))
+        rows = [asdict(row) for row in aggregate_pipeline_state(proj_dir, mode)]
+        return success_response(
+            {"project_id": project_id, "mode": mode, "gates": rows}
+        )
 
     except PermissionError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
