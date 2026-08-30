@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 21824 | file |
-| README.md | 27369 | file |
+| AGENTS.md | 22018 | file |
+| README.md | 27563 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -39,12 +39,12 @@
 | docs/skills/distribution-workflow.md | 6248 | file |
 | docs/skills/pipeline-workflow.md | 7760 | file |
 | docs/user | — | dir |
-| docs/user/api-reference.md | 11902 | file |
+| docs/user/api-reference.md | 13638 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 14421 | file |
+| docs/user/cli-reference.md | 16390 | file |
 | docs/user/deployment.md | 8222 | file |
 | docs/user/hitl-framework.md | 6223 | file |
-| docs/user/mcp-setup.md | 21131 | file |
+| docs/user/mcp-setup.md | 21269 | file |
 | docs/user/omni-integration.md | 12998 | file |
 | docs/user/production-workflow.md | 8921 | file |
 | docs/user/user-introduction.md | 8446 | file |
