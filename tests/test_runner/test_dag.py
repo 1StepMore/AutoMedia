@@ -65,7 +65,7 @@ class TestDownstreamReverseTopologicalClosure:
         result = downstream(AUTO_GATE_DAG, "H0")
         assert result == ["L1", "L2", "L3", "L4", "P1", "P2", "P3", "P4"]
         # No copy/video gates may be downstream of H0.
-        for gate in _MODE_MAP["auto"]:
+        for gate in _COPY_TRACK | _VIDEO_TRACK:
             assert gate not in result, f"{gate!r} must not be downstream of H0"
 
     def test_downstream_v3_covers_video_then_h0(self) -> None:

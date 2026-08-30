@@ -146,6 +146,11 @@ def run_cmd(
         "--resume-from",
         help="Gate name to resume from (skip preceding gates).",
     ),
+    auto_resume: bool = typer.Option(
+        False,
+        "--auto-resume",
+        help="Resume from the last passed gate (reads history.db).",
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -212,6 +217,7 @@ def run_cmd(
                     mode=mode,
                     decision_mode=decision_mode,
                     resume_from=resume_from,
+                    auto_resume=auto_resume,
                     progress=cli_progress,
                     source_path=source_path,
                     source_url=source_url,
@@ -303,6 +309,7 @@ def run_cmd(
             mode=mode,
             decision_mode=decision_mode,
             resume_from=resume_from,
+            auto_resume=auto_resume,
             progress=cli_progress,
             source_path=source_path,
             source_url=source_url,

@@ -6,6 +6,7 @@ execution, and MD5 recording.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
@@ -361,6 +362,81 @@ def _verify_resume_integrity(
                 hint="The file has been modified or is missing since the original pipeline run. "
                 "The resumed pipeline will regenerate this output.",
             )
+
+
+def _find_auto_resume_point(
+    project_dir: str,
+    mode: str,
+    gate_names: list[str],
+) -> str | None:
+    """Compute the auto-resume point from pipeline history for a project.
+
+    Reads ``{project_dir}/.automedia/history.db`` and returns the gate
+    AFTER the last passed gate, so a failed gate following the anchor IS
+    re-run.  The anchor is the latest history row (by ``id``) with action
+    ``"{gate}:completed"`` and ``metadata_json.passed == true``; the lookup
+    computes against the EFFECTIVE *gate_names* list passed in.
+
+    Never raises: missing history, no anchor, an anchor outside
+    *gate_names*, or an anchor at the end of *gate_names* all return
+    ``None`` (full run).  Contrast with explicit ``resume_from``, which
+    raises ``ValueError``.
+
+    Parameters
+    ----------
+    project_dir:
+        Project directory containing ``00_project_info.json`` and
+        (optionally) ``.automedia/history.db``.
+    mode:
+        Pipeline mode string.  Unused — *gate_names* already encodes the
+        mode.  Kept for contract stability.
+    gate_names:
+        The EFFECTIVE gate list (post mode/brand/workflow modifiers).
+
+    Returns
+    -------
+    str | None
+        The gate name to resume from, or ``None`` to run from the beginning.
+    """
+    _ = mode
+
+    from automedia.hooks.pipeline_history import _read_history
+
+    info_path = Path(project_dir) / "00_project_info.json"
+    if not info_path.is_file():
+        return None
+    try:
+        info = json.loads(info_path.read_text(encoding="utf-8"))
+        project_id = str(info.get("project_id", ""))
+    except (OSError, ValueError):
+        return None
+    if not project_id:
+        return None
+
+    rows = _read_history(project_dir)
+
+    anchor: str | None = None
+    for row in rows:  # rows are ordered by id ASC — the last match wins
+        if row.get("project_id") != project_id:
+            continue
+        action = str(row.get("action", ""))
+        if not action.endswith(":completed"):
+            continue
+        try:
+            meta = json.loads(row.get("metadata_json") or "{}")
+        except ValueError:
+            continue
+        if meta.get("passed") is not True:
+            continue
+        anchor = str(meta.get("gate") or action.split(":", 1)[0])
+
+    if anchor is None or anchor not in gate_names:
+        return None
+
+    idx = gate_names.index(anchor)
+    if idx + 1 >= len(gate_names):
+        return None
+    return gate_names[idx + 1]
 
 
 def _record_gate_md5s(
@@ -743,6 +819,7 @@ def run_full_pipeline(
     workflow: str | None = None,
     decision_mode: str = "build",
     resume_from: str | None = None,
+    auto_resume: bool = False,
     config_dir: str | None = None,
     tenant_id: str = "default",
     default_lang: str | None = None,
@@ -780,6 +857,11 @@ def run_full_pipeline(
     resume_from:
         Gate name to resume from (skip preceding gates).  ``None`` runs
         from the beginning.
+    auto_resume:
+        When ``True`` and *resume_from* is ``None``, compute a resume
+        point from the project's pipeline history (the gate after the
+        last passed gate).  Explicit *resume_from* takes precedence.
+        Default: ``False``.
     config_dir:
         Explicit path to the project-level ``.automedia/`` config
         directory.
@@ -830,6 +912,7 @@ def run_full_pipeline(
         workflow=workflow,
         decision_mode=decision_mode,
         resume_from=resume_from,
+        auto_resume=auto_resume,
         config_dir=config_dir,
         tenant_id=tenant_id,
         default_lang=default_lang,
@@ -851,6 +934,7 @@ def _run_pipeline(
     workflow: str | None = None,
     decision_mode: str = "build",
     resume_from: str | None = None,
+    auto_resume: bool = False,
     config_dir: str | None = None,
     tenant_id: str = "default",
     default_lang: str | None = None,
@@ -892,6 +976,7 @@ def _run_pipeline(
         gate_names, gates = _select_gates(
             mode, brand_profile, resume_from, project.project_dir, progress,
             workflow_obj=workflow_obj, brand=brand, platforms=platforms,
+            auto_resume=auto_resume,
         )
 
         gate_context = _build_pipeline_context(
@@ -1000,6 +1085,7 @@ def _select_gates(
     workflow_obj: Workflow | None = None,
     brand: str | None = None,
     platforms: list[str] | None = None,
+    auto_resume: bool = False,
 ) -> tuple[list[str], list[BaseGate]]:
     import automedia.gates  # noqa: F401
 
@@ -1053,6 +1139,14 @@ def _select_gates(
         brand=brand,
         base_overrides=override_fm,
     )
+
+    if auto_resume and resume_from is None:
+        auto_point = _find_auto_resume_point(project_dir, mode, gate_names)
+        if auto_point is not None:
+            resume_from = auto_point
+            log.info("pipeline.auto_resume", gate=auto_point)
+        else:
+            log.info("pipeline.auto_resume.none", hint="no prior passed gate; full run")
 
     if resume_from is not None:
         try:

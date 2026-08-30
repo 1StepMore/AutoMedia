@@ -56,6 +56,7 @@ def run_pipeline(
     decision_mode: str = "build",
     tenant_id: str = "default",
     resume_from: str = "",
+    auto_resume: bool = False,
     source_path: str = "",
     source_url: str = "",
     workflow: str = "",
@@ -84,6 +85,11 @@ def run_pipeline(
     resume_from:
         Gate name to resume from (skip preceding gates).  Empty
         runs from the beginning.
+    auto_resume:
+        When ``True`` and *resume_from* is empty, compute a resume point
+        from the project's pipeline history (the gate after the last
+        passed gate).  Explicit *resume_from* takes precedence.
+        Default: ``False``.
     source_path:
         Path to a source document (``.md``, ``.txt``, or ``.pdf``).
         Content is loaded and injected into the pipeline gate context
@@ -201,6 +207,7 @@ def run_pipeline(
                 decision_mode=decision_mode,
                 tenant_id=tenant_id,
                 resume_from=resume_from or None,
+                auto_resume=auto_resume,
                 source_path=source_path,
                 source_url=source_url,
                 workflow=workflow or None,
