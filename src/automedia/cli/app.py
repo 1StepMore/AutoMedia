@@ -199,6 +199,11 @@ LazyTyperGroup.register_sub_app(
     "automedia.cli.commands.projects",
     help_text="List and manage production projects.",
 )
+LazyTyperGroup.register_sub_app(
+    "pipeline",
+    "automedia.cli.commands.pipeline",
+    help_text="Pipeline DAG export and state inspection.",
+)
 
 LazyTyperGroup.register_fn(
     "archive",
