@@ -358,6 +358,12 @@ def run_cmd(
             icon = "✓" if entry.status == "passed" else "✗"
             typer.echo(f"    {icon} {entry.gate_name} ({entry.duration_s:.2f}s)")
 
+    if result.affected_downstream:
+        typer.secho(
+            f"⚠ Downstream affected: {', '.join(result.affected_downstream)}",
+            fg=typer.colors.YELLOW,
+        )
+
     if result.assets:
         typer.echo(f"\n  Assets produced: {len(result.assets)}")
         for asset in result.assets:

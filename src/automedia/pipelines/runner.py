@@ -292,6 +292,25 @@ def _check_hyperframes(mode: str) -> bool:
     return available
 
 
+def _compute_affected_downstream(
+    gate_names: list[str], failed_gate: str | None
+) -> list[str]:
+    """Gates downstream of the first failed gate, restricted to the mode's list.
+
+    Failure localization: when a gate fails, every gate that transitively
+    depends on it (per the canonical ``AUTO_GATE_DAG``) will not run. This
+    returns that set — the DAG's reverse-topological closure of *failed_gate*
+    intersected with *gate_names* (the mode's effective gate list) — so the
+    result can name what the failure blocked. Empty when nothing failed or
+    the failed gate is unknown to the DAG.
+    """
+    if failed_gate is None:
+        return []
+    from automedia.pipelines.dag import AUTO_GATE_DAG, downstream
+
+    return [g for g in downstream(AUTO_GATE_DAG, failed_gate) if g in gate_names]
+
+
 def _collect_assets(gate_context: GateContext | dict[str, Any]) -> list[AssetInfo]:
     """Extract ``AssetInfo`` items from the gate context after execution."""
     from automedia.pipelines.gate_engine import AssetInfo
@@ -1433,6 +1452,13 @@ def _finalize_pipeline(
 
     usage_summary = get_usage_summary()
 
+    mode_gates = _MODE_MAP.get(mode, [])
+    failed_gate = next(
+        (e.gate_name for e in gates_log if e.status in ("failed", "error")),
+        None,
+    )
+    affected_downstream = _compute_affected_downstream(mode_gates, failed_gate)
+
     return PipelineResult(
         status=cast(Literal["success", "failed", "partial"], status),
         project_id=project.project_id,
@@ -1444,6 +1470,7 @@ def _finalize_pipeline(
         start_time=start,
         end_time=end,
         total_duration_s=end - start,
+        affected_downstream=affected_downstream,
         usage=usage_summary,
         workflow=workflow or "",
     )

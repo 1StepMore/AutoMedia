@@ -94,7 +94,14 @@ class GateLogEntry:
 
 @dataclass
 class PipelineResult:
-    """Result of a full pipeline execution."""
+    """Result of a full pipeline execution.
+
+    ``affected_downstream`` is failure-localization metadata: when a gate
+    fails, the runner fills it with the gates downstream of the first
+    failed gate (restricted to the mode's gate list) — the gates that did
+    not run because of the failure. Empty on success. ``error`` is only
+    set for pipeline-level (unexpected) errors, never for gate failures.
+    """
 
     status: Literal["success", "failed", "partial"] = "success"
     project_id: str = ""
@@ -107,6 +114,7 @@ class PipelineResult:
     end_time: float = 0.0
     total_duration_s: float = 0.0
     error: str | None = None
+    affected_downstream: list[str] = field(default_factory=list)
     usage: dict[str, Any] = field(default_factory=dict)
     workflow: str = ""
     """Name of the workflow used for this pipeline run, if any."""
