@@ -17,9 +17,10 @@ non-existent directory, the library is intentionally unavailable and this
 module skips.  NOT e2e-marked: every test is fast (no network, no LLM, no
 CLI subprocess) and runs in the default pytest gate.
 
-Committed-library expectations (as of 2026-08-14): 91 scenarios (90 +
-W4-T7's ``validation-self-check`` meta scenario), 64 MCP tools after
-W4-T2 + issue #86 (59 + 5), ``health-check-baseline`` is the
+Committed-library expectations (as of 2026-08-30): 105 scenarios, 65 MCP
+tools after W4-T2 + issue #86 + the graph-engineering ``get_pipeline_state``
+tool (59 + 5 + get_pipeline_state),
+``health-check-baseline`` is the
 deterministic GREEN-able scenario (its only step calls ``health_check``,
 expect ``success: true`` — it passed the W2-T3/W3 empirical suites).
 """

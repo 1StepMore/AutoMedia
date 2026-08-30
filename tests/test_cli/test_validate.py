@@ -707,7 +707,7 @@ class TestValidateCoverage:
 
     def test_coverage_exits_1_when_missing_nonempty(self, scenarios_dir: Path) -> None:
         """The synthetic library covers no automedia commands, so the audit
-        against the real app.py (18 declared) reports missing CLI commands."""
+        against the real app.py (19 declared) reports missing CLI commands."""
         result = runner.invoke(app, ["validate", "coverage"])
         assert result.exit_code == 1
         assert "Coverage audit" in result.output

@@ -15,8 +15,9 @@ to a directory that does not exist, the library is intentionally unavailable
 and this module skips.  Any other value — including the unset default
 (repo-root ``scenarios/``) — runs the real gate.
 
-Committed library as of 2026-08-14: 90 scenario files = 52 surface + 18 cli
-+ 13 baseline (10 root + 3 depconfig) + 3 publish + 2 journeys + 2 quality;
+Committed library as of 2026-08-30: 105 scenario files
+(20 cli + 53 surface + 11 journeys + 3 depconfig + 3 publish + 2 meta
++ 2 quality + 1 regression + 10 root);
 28 known standard keys (``STANDARDS.md``); 5 keys actually cited across the
 library (tool.contract 81, founder-expectations.F01 40, founder-expectations
 .F02 24, cli.doctor 6, founder-expectations.true-test 3); 4 meta scenarios

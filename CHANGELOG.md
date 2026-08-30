@@ -10,10 +10,16 @@
 ### Features
 
 * **cli:** automedia doctor reports advisory LLM configuration warnings (missing/incomplete fallback chain, model/base_url mismatch) in human and --json output
+* **pipelines:** add explicit per-mode gate DAG (`automedia.pipelines.dag` — 26 nodes, topological-order + downstream helpers) as an additive, order-equivalent layer over `_MODE_MAP`
+* **cli:** add `automedia pipeline export-dag` (Markdown + DOT per mode, per-run overlay from history) and `automedia pipeline state` (per-gate passed/failed/pending + md5 audit view)
+* **mcp:** add `get_pipeline_state` tool — read-only per-gate state aggregation (history.db + pipeline_md5.json)
+* **pipelines:** add opt-in `--auto-resume` (CLI/MCP/SDK) — resumes from the last passed gate via history; explicit `--resume-from` still wins
+* **pipelines:** add `PipelineResult.affected_downstream` — names the gates a failure blocked (DAG downstream ∩ mode list); CLI renders "⚠ Downstream affected"
 
 ### Documentation
 
 * **skills:** add `validation-runner` skill (scenario waves, regression flywheel, RED→GREEN evidence) and `deep-modules` skill (Ousterhout deep-module refactoring, RFC-001 exemplar); extend `doc-sync` with an ADR pre-flight gate, glossary ownership, and the doc-consistency gate; sync all three to `.claude/skills/` and `.codex/skills/`
+* **adr:** add ADR-006 — explicit per-mode gate DAG (additive, order-equivalent) with opt-in `--auto-resume`, failure localization, and a read-only state view
 
 ## [1.4.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.0...automedia-v1.4.1) (2026-08-15)
 
