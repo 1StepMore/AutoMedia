@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 64 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 65 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -379,7 +379,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 64 tools and 6 resources registered.
+        A fully configured server with all 65 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -1086,7 +1086,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 64 tools and 6 resources.",
+        description="AutoMedia MCP Server — stdio transport with 65 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",

@@ -331,6 +331,7 @@ class TestServerCreation:
                 "get_cron_health",
                 "get_pending_approvals",
                 "get_pipeline_progress",
+                "get_pipeline_state",
                 "get_pipeline_status",
                 "get_project_assets",
                 "get_redlines",

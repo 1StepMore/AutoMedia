@@ -12,10 +12,13 @@
 | docs/adr/ADR-003-platform-rename-stdlib-conflict.md | 3443 | file |
 | docs/adr/ADR-004-mcp-server-decomposition.md | 5808 | file |
 | docs/adr/ADR-005-issue-driven-commits.md | 4012 | file |
-| docs/adr/README.md | 1761 | file |
+| docs/adr/ADR-006-graph-engineering-dag.md | 8823 | file |
+| docs/adr/README.md | 1966 | file |
 | docs/adr/TEMPLATE.md | 2267 | file |
 | docs/agent-tester-validation-guide.md | 109578 | file |
 | docs/dev | — | dir |
+| docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
+| docs/dev/2026-08-30-graph-engineering-调研与三项目落地-修正版.md | 15409 | file |
 | docs/dev/agent-troubleshooting.md | 25431 | file |
 | docs/dev/api-gotchas.md | 8626 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |

@@ -1,0 +1,46 @@
+name: pipeline-export-dag-surface
+description: automedia pipeline export-dag --mode auto writes auto.md and auto.dot into an output directory, proving the DAG export command renders the canonical gate DAG.
+intent: Prove the pipeline DAG-export CLI surface executes a real render (not just --help), materializing the canonical gate order and dependency edges as readable artifacts a director can inspect.
+category: cli
+requires_env: []
+steps:
+  - name: export-dag renders the auto-mode DAG
+    kind: cli
+    check: "automedia pipeline export-dag --mode auto --out /tmp/automedia/w4t12-dag exits 0 and reports the written auto.md/auto.dot pair."
+    standard: founder-expectations.F02
+    command: automedia pipeline export-dag --mode auto --out /tmp/automedia/w4t12-dag
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "auto.md"
+  - name: markdown artifact exists and is non-empty
+    kind: file
+    check: The rendered Markdown gate table exists on disk and is non-empty.
+    standard: founder-expectations.F01
+    command: /tmp/automedia/w4t12-dag/auto.md
+    expect:
+      artifact_exists: /tmp/automedia/w4t12-dag/auto.md
+      artifact_nonempty: /tmp/automedia/w4t12-dag/auto.md
+    collect_artifacts:
+      - path: /tmp/automedia/w4t12-dag/auto.md
+        required: true
+  - name: dot artifact exists and is non-empty
+    kind: file
+    check: The rendered Graphviz DOT graph exists on disk and is non-empty.
+    standard: founder-expectations.F01
+    command: /tmp/automedia/w4t12-dag/auto.dot
+    expect:
+      artifact_exists: /tmp/automedia/w4t12-dag/auto.dot
+      artifact_nonempty: /tmp/automedia/w4t12-dag/auto.dot
+    collect_artifacts:
+      - path: /tmp/automedia/w4t12-dag/auto.dot
+        required: true
+cleanup_steps:
+  - name: remove the rendered DAG artifacts
+    kind: cli
+    check: rm -rf removes the temp output directory created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w4t12-dag
+    expect:
+      exit_code: 0

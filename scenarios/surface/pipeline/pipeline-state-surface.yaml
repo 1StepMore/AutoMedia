@@ -1,0 +1,44 @@
+name: pipeline-state-surface
+description: automedia pipeline state resolves a synthetic project under a temp base dir and prints the per-gate state table, and get_pipeline_state returns the same state as a structured envelope.
+intent: Prove the read-only pipeline-state surface (CLI and MCP) aggregates history + md5 into passed/failed/pending rows without writing anything, so agents can inspect progress on a clean env.
+category: surface
+requires_env: []
+steps:
+  - name: create a synthetic project info file
+    kind: cli
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w4t12-state/projects/validation-synthetic/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w4t12-state/projects/validation-synthetic/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "a4c8e2f61b90", "topic": "validation-synthetic", "brand": "w4t12-validation-brand", "tenant_id": "", "created_at": "2026-08-30T00:00:00+00:00", "status": "draft"}))'
+    expect:
+      exit_code: 0
+  - name: pipeline state prints the per-gate table
+    kind: cli
+    check: "automedia pipeline state a4c8e2f61b90 --base-dir /tmp/automedia/w4t12-state/projects exits 0 and prints the all-pending note plus the auto-mode gate rows (copy track starts with pre-gate/CW)."
+    standard: founder-expectations.F02
+    command: automedia pipeline state a4c8e2f61b90 --base-dir /tmp/automedia/w4t12-state/projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "No history recorded for this project; all gates pending."
+        - "[copy]"
+        - "CW"
+  - name: get_pipeline_state returns the structured envelope
+    kind: tool
+    check: "get_pipeline_state returns success: true carrying project_id, mode, and one pending state row per auto-mode gate (verified empirically against /tmp/automedia/w4t12-state/projects)."
+    standard: tool.contract
+    tool: get_pipeline_state
+    arguments:
+      project_id: "a4c8e2f61b90"
+      base_dir: /tmp/automedia/w4t12-state/projects
+    expect:
+      success: true
+cleanup_steps:
+  - name: remove the synthetic project tree
+    kind: cli
+    check: rm -rf removes the temp project tree created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w4t12-state
+    expect:
+      exit_code: 0

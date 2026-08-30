@@ -719,12 +719,12 @@ class TestValidateCoverage:
         assert result.exit_code == 1
         data = json.loads(result.output)
         summary: dict[str, Any] = data["summary"]
-        # The live app.py now registers 18 commands (validate is the 18th).
-        assert summary["cli_declared"] == 18
+        # The live app.py now registers 19 commands (pipeline is the 19th).
+        assert summary["cli_declared"] == 19
         # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel)
-        # + the W4-T3 validation_matrix tool.
-        assert summary["mcp_declared"] == 64
-        assert summary["cli_missing"] == 18  # synthetic library covers none
+        # + the W4-T3 validation_matrix tool + the get_pipeline_state tool.
+        assert summary["mcp_declared"] == 65
+        assert summary["cli_missing"] == 19  # synthetic library covers none
 
 
 # =========================================================================

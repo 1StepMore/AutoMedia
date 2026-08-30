@@ -15,6 +15,7 @@ the change is recorded in a new ADR that marks the old one with
 | [ADR-003](ADR-003-platform-rename-stdlib-conflict.md) | Rename `automedia/platform/` to `platform_drafts/` to avoid shadowing the Python stdlib `platform` module |
 | [ADR-004](ADR-004-mcp-server-decomposition.md) | Split the monolithic `mcp/server.py` into `allowlist.py`, `tools.py`, `resources.py`, and a thin `server.py` with backward-compatible re-exports |
 | [ADR-005](ADR-005-issue-driven-commits.md) | Codify the repository's issue-driven commit discipline: one atomic, verifiable commit per issue or unit of work |
+| [ADR-006](ADR-006-graph-engineering-dag.md) | Make the gate pipeline an explicit per-mode DAG (additive, order-equivalent) with opt-in `--auto-resume`, failure localization, and a read-only state view |
 
 ## How to Add a New ADR
 

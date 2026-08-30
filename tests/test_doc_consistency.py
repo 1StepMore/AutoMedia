@@ -241,14 +241,14 @@ def test_scan_file_regression_mis_set_tool_count(checker: ModuleType, tmp_path: 
     """The numeric-claim check still catches a mis-set tool count.
 
     ``_scan_file(path, tool_count, command_count)`` must flag a doc claiming
-    ``99 tools`` when the derived tool count is 64 (the current real count),
+    ``99 tools`` when the derived tool count is 65 (the current real count),
     returning exactly one Finding on the claiming line.
     """
     claims = tmp_path / "claims.md"
     claims.write_text("The MCP server exposes 99 tools.\n", encoding="utf-8")
-    findings = checker._scan_file(claims, tool_count=64, command_count=18)
+    findings = checker._scan_file(claims, tool_count=65, command_count=19)
     assert len(findings) == 1
     finding = findings[0]
     assert finding.line == 1
     assert finding.found == "99 tools"
-    assert finding.expected == "64 tools"
+    assert finding.expected == "65 tools"

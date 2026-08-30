@@ -94,17 +94,17 @@ class TestRegistration:
     """The 5 tools are registered and surface in help_mcp automatically."""
 
     def test_five_validation_tools_registered(self, server: FastMCP) -> None:
-        """59 pre-existing tools + 5 validation tools = 64 (AGENTS.md update is W5-T1)."""
+        """59 pre-existing tools + 5 validation tools + get_pipeline_state = 65."""
         names = set(server._tool_manager._tools.keys())
         assert names >= EXPECTED_VALIDATION_TOOLS, (
             f"missing validation tools: {sorted(EXPECTED_VALIDATION_TOOLS - names)}"
         )
-        assert len(names) == 64
+        assert len(names) == 65
 
     def test_tools_appear_in_help_mcp(self, server: FastMCP) -> None:
         """The registry population in create_server picks up the new tools."""
         payload = _call_tool(server, "help_mcp", {})
-        assert payload["tool_count"] == 64
+        assert payload["tool_count"] == 65
         listed = {
             entry["name"]
             for category in payload["categories"].values()
@@ -261,22 +261,23 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 64 declared / 57 covered / 0 missing (the W4-T7 meta scenario
+    mcp 65 declared / 58 covered / 0 missing (the W4-T7 meta scenario
     ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
-    covers ``validation_matrix``) and cli 18 / 18 / 0.  This test pins the
-    post-W4-T7 reality with the 5th validation tool (issue #86).
+    covers ``validation_matrix``) and cli 19 / 19 / 0.  This test pins the
+    post-W4-T7 reality with the 5th validation tool (issue #86) plus the
+    graph-engineering-rollout ``get_pipeline_state`` tool.
     """
 
     def test_audit_reflects_the_five_new_registrations(self, server: FastMCP) -> None:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # 59 pre-existing + the 5 new tools
-        assert summary["mcp_declared"] == 64
-        assert summary["mcp_used"] == 64
+        # 59 pre-existing + the 5 new tools + get_pipeline_state
+        assert summary["mcp_declared"] == 65
+        assert summary["mcp_used"] == 65
         # the meta scenarios cover all 5 validation tools (W4-T7's
         # validation-self-check plus validation-matrix-meta) -> missing = 0
-        assert summary["mcp_covered"] == 57
+        assert summary["mcp_covered"] == 58
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]
@@ -285,12 +286,12 @@ class TestValidationCoverageAudit:
         assert summary["mcp_boundary_only"] == 7
 
     def test_cli_side_reflects_w4t1_validate_command(self, server: FastMCP) -> None:
-        """W4-T1's validate command: declared 18, phantom ∅ (covered via list)."""
+        """W4-T1's validate command: declared 19, phantom ∅ (covered via list)."""
         payload = _call_tool(server, "validation_coverage_audit", {})
         summary = payload["summary"]
-        assert summary["cli_declared"] == 18
-        assert summary["cli_used"] == 18
-        assert summary["cli_covered"] == 18
+        assert summary["cli_declared"] == 19
+        assert summary["cli_used"] == 19
+        assert summary["cli_covered"] == 19
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
         assert payload["phantom_cli"] == []

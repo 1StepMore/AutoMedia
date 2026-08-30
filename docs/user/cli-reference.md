@@ -36,6 +36,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies |
 | `automedia omni` | Omni Triad operations (extract, translate, convert) |
+| `automedia pipeline` | Pipeline DAG export and state inspection (export-dag, state) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia mcp` | Generate MCP client configuration for various IDEs |
 | `automedia onboard` | Onboarding wizard |
@@ -479,6 +480,59 @@ automedia omni localize --content "Hello world" --source-lang en --target-lang z
 # Format conversion
 automedia omni format-output --content "# Title" --target-format html
 ```
+
+## `automedia pipeline`
+
+Pipeline DAG export and per-gate state inspection (read-only views over the
+canonical gate DAG in `automedia.pipelines.dag` and the project's
+`history.db` / `pipeline_md5.json`).
+
+### pipeline export-dag
+
+Export pipeline-mode gate DAGs as Markdown gate tables and Graphviz DOT graphs.
+
+```bash
+# Render one mode (writes <mode>.md and <mode>.dot to the output directory)
+automedia pipeline export-dag --mode auto --out ./dag
+
+# Render every pipeline mode (one .md/.dot pair per mode)
+automedia pipeline export-dag --all --out ./dag
+
+# Overlay gates recorded in a project's history.db with a run marker
+automedia pipeline export-dag --mode auto --project ./projects/<id> --out ./dag
+```
+
+#### pipeline export-dag Flags
+
+| Flag | Description |
+|------|-------------|
+| `--mode, -m` | Pipeline mode to render (see `--all` for the full list) |
+| `--all` | Render all pipeline modes |
+| `--project, -p` | Project directory; overlays gates recorded in its history.db |
+| `--out, -o` | Output directory for the rendered files (default: `.`) |
+
+### pipeline state
+
+Show the per-gate state (passed/failed/pending + asset md5) for a project,
+aggregated from its `history.db` and `pipeline_md5.json`. Rows are grouped by
+track (copy, video, qa, lifecycle). A project without history prints an
+all-pending note instead of an error.
+
+```bash
+# Plain-text track-grouped table
+automedia pipeline state <project_id> --base-dir ./projects
+
+# JSON payload: {"project_id": ..., "gates": [gate, status, track, md5, recorded_at]}
+automedia pipeline state <project_id> --base-dir ./projects --json
+```
+
+#### pipeline state Arguments and Flags
+
+| Argument / Flag | Description |
+|------|-------------|
+| `project_id` | Project ID (12-char hex) |
+| `--base-dir, -d` | Base directory to scan for projects (default: `.`) |
+| `--json` | Output JSON instead of the plain-text table |
 
 ## `automedia hitl`
 

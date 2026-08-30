@@ -47,6 +47,7 @@ Registered MCP tools:
   - get_config
   - get_cron_health
   - get_pipeline_progress
+  - get_pipeline_state
   - get_pipeline_status
   - get_project_assets
   - health_check
@@ -93,6 +94,7 @@ Registered MCP tools:
 | `retry_gate` | Mark a specific gate for retry in a running pipeline |
 | `skip_gate` | Mark a specific gate for skipping in a running pipeline |
 | `get_pipeline_progress` | Poll gate-by-gate progress of a running pipeline |
+| `get_pipeline_state` | Per-gate state view for a project (passed/failed/pending + md5) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects, optionally filtered by status |
 | `get_project_assets` | List asset files in a project directory |
@@ -250,6 +252,7 @@ from automedia.mcp import (
     select_topic,
     run_pipeline,
     get_pipeline_progress,
+    get_pipeline_state,
     get_pipeline_status,
     list_projects,
     get_project_assets,

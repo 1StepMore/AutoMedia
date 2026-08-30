@@ -22,6 +22,7 @@ result = run_full_pipeline(
     tenant_id="default",
     workflow=None,             # Workflow name from workflows.yaml
     director=False,            # Enable director mode (HITL gate approval)
+    auto_resume=False,         # Auto-resume from latest passed gate in history.db
     platforms=None,            # Target platform(s) for media spec resolution
 )
 ```
@@ -39,6 +40,7 @@ result = run_full_pipeline(
 | `tenant_id` | `str` | `"default"` | Tenant/namespace identifier |
 | `workflow` | `str \| None` | `None` | Workflow name from `workflows.yaml` — merges workflow config into pipeline |
 | `director` | `bool` | `False` | Enable director mode — pauses at H0 gate for human approval via MCP approve/reject tools |
+| `auto_resume` | `bool` | `False` | Auto-resume from the latest completed+passed gate in the project's `history.db` (ignored when `resume_from` is set explicitly) |
 | `platforms` | `list[str] \| None` | `None` | Target platform(s) for media spec resolution and prompt scoping |
 
 ### mode Options
@@ -75,6 +77,7 @@ class PipelineResult:
     end_time: float              # time.monotonic() end value
     total_duration_s: float      # Total duration (seconds)
     error: str | None = None
+    affected_downstream: list[str] = field(default_factory=list)
 ```
 
 ### Field Descriptions
@@ -87,6 +90,7 @@ class PipelineResult:
 | `assets` | `list[AssetInfo]` | List of output assets |
 | `gates_log` | `list[GateLogEntry]` | Execution log for each Gate |
 | `error` | `str \| None` | Error info (only populated when status="failed") |
+| `affected_downstream` | `list[str]` | Gates downstream of the first failed gate (DAG closure ∩ mode gates, in canonical order); empty when no gate failed or the pipeline aborted before any gate ran |
 
 ## AssetInfo
 
@@ -384,6 +388,39 @@ creds = load_credential_with_account_fallback(
     env_var="WECHAT_COOKIE",
 )
 ```
+
+## MCP Tool: `get_pipeline_state`
+
+Read-only per-gate state view over one project (the MCP counterpart of
+`automedia pipeline state`).
+
+```python
+from automedia.mcp.tools.pipeline import get_pipeline_state
+
+result = get_pipeline_state(
+    project_id="a4c8e2f61b90",
+    base_dir="./projects",
+    mode="auto",
+)
+```
+
+| Parameter | Type | Default | Description |
+|------|------|--------|------|
+| `project_id` | `str` | (required) | 12-character hex project ID |
+| `base_dir` | `str` | `"."` | Base directory to scan for projects |
+| `mode` | `str` | `"auto"` | Pipeline mode selecting the gate list |
+
+### Return Value
+
+`{"project_id": ..., "mode": ..., "gates": [...]}` on success, or a
+structured `{"error": ...}` dict when the project is not found. Each entry in
+`gates` is a `GateState` dict with exactly the fields `gate`, `status`
+(`"passed"` / `"failed"` / `"pending"`), `track` (`copy` / `video` / `qa` /
+`lifecycle`), `md5` (asset checksum from `pipeline_md5.json`, or `None`), and
+`recorded_at`. Aggregates `history.db` and `pipeline_md5.json` via
+`automedia.pipelines.state_view.aggregate_pipeline_state` — nothing is
+written, and a project without history yields all-pending rows rather than an
+error.
 
 ## `sanitize_path()`
 
