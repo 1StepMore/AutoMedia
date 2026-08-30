@@ -654,6 +654,7 @@ MIT License. See `LICENSE` for details.
 | `docs/user/asset-library.md` | English | Asset library |
 | `docs/glossary.md` | English | AutoMedia term glossary for agents |
 | `docs/adr/ADR-005-issue-driven-commits.md` | English | ADR-005: Issue-Driven Atomic Commit Discipline |
+| `docs/adr/ADR-006-graph-engineering-dag.md` | English | ADR-006: Graph Engineering DAG |
 | `docs/dev/gate-failure-modes.md` | English | Gate failure troubleshooting |
 | `docs/user/windows-deployment.md` | English | Windows deployment (WSL2, Docker, native) |
 | `docs/user/production-workflow.md` | English | Production operations |

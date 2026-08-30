@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  52 tools
+   │   select_topic, run_pipeline, ...    │  65 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -301,12 +301,12 @@ The pipeline supports nine modes, each running a different subset of gates. The 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|
 | `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
-| `text_only` | CW → G0-G6 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
-| `text_with_cover` | CW → G0-G6 → V0 → L1-L4 | Text output plus a single cover image |
+| `text_only` | CW → G0-G6 → H0 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | CW → G0-G6 → H0 → L1-L4 | Text output plus a single cover image |
 | `video_only` | V0-V7 → H0 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
-| `image-carousel` | CW → G0-G6 → V0 → V6 → L1-L4 | Carousel-image output for social platforms |
+| `image-carousel` | CW → G0-G6 → L1-L4 | Carousel-image output for social platforms |
 | `social-thread` | CW → G0-G6 → L1-L4 | Thread-style posts for social platforms |
-| `short-video` | CW → G0-G6 → V0-V6 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
+| `short-video` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
 | `qa_only` | G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
 | `repurpose` | CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4 | Full pipeline followed by platform-specific deep repurpose gates |
 
@@ -442,17 +442,17 @@ Sub-pipeline gates that run at the end of `repurpose` mode, performing deep cont
 
 ### Pipeline Modes
 
-Eight modes select different gate subsets, defined in `automedia/pipelines/runner.py`:
+Nine modes select different gate subsets, defined in `automedia/pipelines/runner.py`:
 
 | Mode | Gates | Use Case |
 |------|-------|----------|
 | `auto` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
-| `text_only` | CW `→` G0-G6 `→` L1-L4 | Draft-only output |
-| `text_with_cover` | CW `→` G0-G6 `→` V0 `→` L1-L4 | Text + cover image |
+| `text_only` | CW `→` G0-G6 `→` H0 `→` L1-L4 | Draft-only output |
+| `text_with_cover` | CW `→` G0-G6 `→` H0 `→` L1-L4 | Text + cover image |
 | `video_only` | V0-V7 `→` H0 `→` L1-L4 | Video-only, reuse existing draft |
-| `image-carousel` | CW `→` G0-G6 `→` V0 `→` V6 `→` L1-L4 | Carousel-image output |
+| `image-carousel` | CW `→` G0-G6 `→` L1-L4 | Carousel-image output |
 | `social-thread` | CW `→` G0-G6 `→` L1-L4 | Thread-style posts |
-| `short-video` | CW `→` G0-G6 `→` V0-V6 `→` H0 `→` L1-L4 | Short-form video |
+| `short-video` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Short-form video |
 | `qa_only` | G0 `→` G2 `→` G3 `→` V1 `→` V6 | Selective QA pass |
 | `repurpose` | CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 `→` P1-P4 | Full pipeline + deep repurpose for platform distribution |
 
@@ -524,3 +524,4 @@ Four account management tools added to the MCP surface:
 | ADR-003 | docs/adr/ADR-003-platform-rename-stdlib-conflict.md | Rename `platform/` to Avoid stdlib Conflict |
 | ADR-004 | docs/adr/ADR-004-mcp-server-decomposition.md | Decompose `mcp/server.py` Monolith |
 | ADR-005 | docs/adr/ADR-005-issue-driven-commits.md | Issue-Driven Atomic Commit Discipline |
+| ADR-006 | docs/adr/ADR-006-graph-engineering-dag.md | Explicit Per-Mode Gate DAG: additive order-equivalent graph over `_MODE_MAP` (26 nodes), with opt-in `--auto-resume`, failure localization, and a read-only state view |

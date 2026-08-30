@@ -11,7 +11,9 @@ Omni Triad is a set of three companion tools that work alongside the
 AutoMedia production pipeline as a **side-channel adapter**.  Omni is
 **not embedded** in the main pipeline — it runs before (OPP document
 extraction) and after (OL translation + ORF format re-flow) the core
-gate chain, leaving the 19-gate production sequence unchanged.
+gate chain, leaving the production gate sequence unchanged. In `auto`
+mode the full pipeline runs 22 gates: pre-gate, CW, G0-G6, V0-V7, H0,
+L1-L4.
 
 | Tool | Package | Role |
 |------|---------|------|

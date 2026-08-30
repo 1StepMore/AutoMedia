@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: AutoMedia CLI command reference — usage and parameter descriptions for 16 subcommands.
+description: AutoMedia CLI command reference — usage and parameter descriptions for 19 subcommands.
 ---
 
 # CLI Reference
@@ -40,6 +40,9 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia mcp` | Generate MCP client configuration for various IDEs |
 | `automedia onboard` | Onboarding wizard |
+| `automedia history` | Show pipeline execution history for a project |
+| `automedia rollback` | Roll back a project: archive it and revert status to draft |
+| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
 
 
 ## Global
@@ -156,9 +159,15 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 | Flag | Short | Type | Default | Description |
 |------|------|------|--------|------|
 | `--topic` | `-t` | `str` | required | Content topic |
+| `--topics` | | `str` | `None` | Comma-separated topics for batch mode (overrides `--topic`) |
 | `--brand` | `-b` | `str` | required | Brand identifier |
 | `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose |
-| `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate |
+| `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate (skip preceding gates) |
+| `--auto-resume` | | `bool` | `False` | Resume from the last passed gate (reads history.db) |
+| `--decision-mode` | | `str` | `build` | (DEPRECATED) Decision mode for pipeline execution — no longer functional |
+| `--verbose` | `-v` | `bool` | `False` | Show full error traceback for debugging |
+| `--source-path` | | `str \| None` | `None` | Path to a source document (`.md`, `.txt`, `.pdf`). Content is loaded into the pipeline |
+| `--source-url` | | `str \| None` | `None` | URL to fetch source content from. Content is loaded into the pipeline |
 
 ## `automedia pool`
 
@@ -559,3 +568,94 @@ automedia onboard list
 ```
 
 The LLM step preserves an existing fallback chain in `model_config.yaml` and offers fallback guidance during the flow.
+
+## `automedia history`
+
+Show pipeline execution history for a project.
+
+Displays a table of Timestamp, Action, and Details columns from the per-project
+history database recorded by `PipelineHistoryHook`.
+
+```bash
+# Show the history for a project
+automedia history <project_id> --base-dir ./projects
+
+# Machine-readable JSON output
+automedia history <project_id> --base-dir ./projects --json
+```
+
+### Arguments and Flags
+
+| Argument / Flag | Description |
+|------|-------------|
+| `project_id` | Project ID to query history for |
+| `--base-dir, -d` | Base directory to scan for projects (default: `.`) |
+| `--json` | Output JSON instead of the plain-text table |
+
+## `automedia rollback`
+
+Roll back a project: archive it and revert its status to draft.
+
+The project directory is renamed to `{name}_archived`, its status is set to
+`"draft"`, and a `rolled_back` entry is appended to the project's pipeline
+history database.
+
+```bash
+# Roll back a project (requires confirmation)
+automedia rollback <project_id> --base-dir ./projects
+```
+
+Refuses to roll back a project that has no pipeline history or is already
+archived.
+
+### Arguments and Flags
+
+| Argument / Flag | Description |
+|------|-------------|
+| `project_id` | Project ID to roll back |
+| `--base-dir, -d` | Base directory to scan for projects (default: `.`) |
+
+## `automedia validate`
+
+Run the agent-tester validation suite: an agent runs real calls against the
+live surface, grades each response against a declared expect block, and writes
+an immutable run record for director sign-off.
+
+```bash
+# List the scenario library (load only, no engine run)
+automedia validate list
+
+# Run ONE named scenario (recursion bound: scenario_name is required)
+automedia validate run --scenario <name>
+
+# Render a run record (defaults to the latest run)
+automedia validate report
+
+# Diff the latest two runs, or against an explicit baseline
+automedia validate diff [--baseline <path>]
+
+# Static coverage audit (declared/used/covered/missing/phantom per surface)
+automedia validate coverage
+
+# Per-scenario surface coverage + status matrix
+automedia validate matrix
+```
+
+### Subcommands
+
+| Subcommand | Description |
+|--------|------|
+| `list` | Load and list the scenario library (load only, no engine run) |
+| `run` | Run ONE named scenario via the engine; `--scenario` is required (the recursion bound); exits 1 on failed or hard-safety violations |
+| `report` | Render a run record (verdicts table + per-scenario status lines) |
+| `diff` | Diff the latest two runs, or against an explicit baseline |
+| `coverage` | Run the coverage audit over the scenario library; exits 1 when `missing` is non-empty on any surface |
+| `matrix` | Render the validation matrix: coverage grid + run-record assertion cards + diff classification |
+
+### validate run Flags
+
+| Flag | Type | Default | Description |
+|------|------|--------|------|
+| `--scenario` | `str` | required | Scenario name to run (required — the recursion bound) |
+| `--env-gate` | `str` | `report` | `report` (default) shows unconfigured when required env vars are missing; `skip` runs the scenario even when env vars are missing |
+| `--runs-root` | `str` | `validation-runs` | Directory for immutable run records (gitignored) |

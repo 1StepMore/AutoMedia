@@ -22,7 +22,7 @@ AutoMedia/
 ├── src/
 │   └── automedia/              # Core Python package (33,619 LOC)
 │       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow
-│       ├── pipelines/          # runner.py (shared entry point), gate_engine, audio/image pipelines, language_config
+│       ├── pipelines/          # runner.py (shared entry point), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
 │       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
@@ -52,6 +52,7 @@ AutoMedia/
 - **External Scheduling:** no built-in scheduler; external crond calls `automedia cron run`. See `automedia/cron/`.
 - **Three-Entry-Point Design:** CLI, MCP, and SDK all delegate to `run_full_pipeline()` (see §2); MCP also exposes Omni triad tools (extract, translate, convert).
 - **Gate Auto-Registration:** `BaseGate` subclasses auto-register in the global `GateRegistry` singleton via `__init_subclass__`.
+- **Canonical Gate DAG:** `pipelines/dag.py` (`AUTO_GATE_DAG`, 26 nodes) + `pipelines/state_view.py` are an additive, order-equivalent representation of `_MODE_MAP` — mode gate lists stay authoritative, and the DAG layer adds topological/downstream/state queries on top.
 ## 5. Agent Constraints (Red Lines) — MUST OBEY
 
 These constraints are enforced by the test suite and must never be violated:

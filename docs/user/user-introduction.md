@@ -117,7 +117,7 @@ OPP 提取源文件 → OL 翻译管线（含术语库、风格指南、质量�
 
 > **你使用 Claude Code、OpenCode 或 Codex CLI 等 AI 编程助手，希望它们能直接操作你的内容生产流水线。**
 
-AutoMedia 提供 MCP 服务器（52 个工具），AI Agent 可以直接调用：
+AutoMedia 提供 MCP 服务器（65 个工具），AI Agent 可以直接调用：
 - `run_pipeline` → 启动生产流水线
 - `get_pipeline_progress` → 实时查看进度
 - `publish_content` → 发布到平台

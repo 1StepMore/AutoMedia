@@ -30,6 +30,7 @@ The `run_full_pipeline()` function returns a `PipelineResult` dataclass:
 | `gates_log` | `list[GateLogEntry]` | Per-gate pass/fail with duration and error |
 | `error` | `str \| None` | Top-level error message (only for unexpected exceptions) |
 | `assets` | `list[AssetInfo]` | Produced asset metadata (type, path, md5) |
+| `affected_downstream` | `list[str]` | Gates blocked by the first gate failure (DAG downstream ∩ mode gates, in canonical order); empty when all gates passed or the pipeline aborted before any gate ran |
 
 A `status="partial"` means some gates passed but a `failure_mode="stop"` gate failed or a `failure_mode="retry"` gate failed and the pipeline continued.
 
@@ -54,7 +55,7 @@ Check the `error` field of each failed entry. If the error message is generic (e
 
 **Step 5: Retry a failed pipeline**
 
-Use the `resume_from` parameter to skip gates that already passed:
+Use the `resume_from` parameter to skip gates that already passed, or `auto_resume` to resume from the last passed gate automatically:
 
 ```python
 result = run_full_pipeline(
@@ -64,7 +65,17 @@ result = run_full_pipeline(
 )
 ```
 
-The `resume_from` value must match a gate name in the current mode's gate list (`_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, etc. in `automedia/pipelines/runner.py`). If the name is not found, a `ValueError` is raised.
+Or from the CLI:
+
+```bash
+# Resume from the last passed gate (reads history.db)
+automedia run --topic "AI tools" --brand my-brand --auto-resume
+
+# Inspect per-gate passed/failed/pending + md5 before resuming
+automedia pipeline state <project_id> --base-dir ./projects
+```
+
+The `resume_from` value must match a gate name in the current mode's gate list (`_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, etc. in `automedia/pipelines/runner.py`). If the name is not found, a `ValueError` is raised. `--auto-resume` ignores the requested gate and instead reads the latest completed+passed gate from `history.db`; explicit `--resume-from` always takes precedence.
 
 ### Pipeline status values
 
@@ -190,7 +201,7 @@ To work around allowlist restrictions:
 If an MCP tool call returns "tool not found":
 
 1. Verify the server is running: check that `python -m automedia.mcp.server` is still running
-2. Check the tool name against the 52 tools listed in AGENTS.md section 9
+2. Check the tool name against the 65 tools listed in AGENTS.md section 9
 3. Restart the server: kill the process and start it again
 
 ### Testing MCP tools directly
@@ -412,7 +423,7 @@ A session is a single invocation of `run_full_pipeline()`. Each session creates 
 
 ### Can I resume a failed session?
 
-Yes. Use the `resume_from` parameter to skip already-passed gates:
+Yes. Use the `resume_from` parameter to skip already-passed gates, or `--auto-resume` to resume from the last passed gate automatically:
 
 ```python
 result = run_full_pipeline(
@@ -420,6 +431,16 @@ result = run_full_pipeline(
     brand="my-brand",
     resume_from="G0",  # skip pre-gate, CW
 )
+```
+
+From the CLI:
+
+```bash
+# Resume from the last passed gate (reads history.db)
+automedia run --topic "AI tools" --brand my-brand --auto-resume
+
+# Audit per-gate state (passed/failed/pending + md5) first
+automedia pipeline state <project_id> --base-dir ./projects
 ```
 
 The pipeline reads `pipeline_md5.json` from the project directory to verify previous gate outputs before resuming.

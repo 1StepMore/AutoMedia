@@ -62,6 +62,30 @@ The sequential executor that runs the ordered gate list for a pipeline. It suppo
 
 **See:** `automedia/pipelines/gate_engine.py`
 
+## AUTO_GATE_DAG / dag.py
+
+The canonical gate dependency graph defined in `automedia/pipelines/dag.py`: 26 nodes (the 22 auto-mode gates plus P1-P4) with `depends_on` edges. It is an additive, order-equivalent representation of `_MODE_MAP` — `topological_order(AUTO_GATE_DAG, mode_gates)` reproduces every mode list byte-for-byte. It also answers structural questions `_MODE_MAP` cannot, like "which gates are downstream of G0?".
+
+**See:** `automedia/pipelines/dag.py`
+
+## automedia pipeline state
+
+A read-only per-gate audit view for a project. It aggregates `history.db` and `pipeline_md5.json` into a passed/failed/pending status per gate (with asset md5 and recorded timestamp), grouped by track (copy, video, qa, lifecycle). Also exposed as the MCP `get_pipeline_state` tool.
+
+**See:** `automedia/cli/commands/pipeline.py`, `automedia/pipelines/state_view.py`
+
+## --auto-resume
+
+A CLI/MCP/SDK flag that resumes a pipeline from the last passed gate. It reads the project's `history.db`, finds the latest gate recorded as `completed` with `passed: true`, and resumes from the gate after it. An explicit `--resume-from` always takes precedence.
+
+**See:** `automedia/pipelines/runner.py` (`_find_auto_resume_point`), `automedia/hooks/pipeline_history.py`
+
+## affected_downstream
+
+A `PipelineResult` field listing the gates that a pipeline failure blocked. It is computed as the DAG downstream closure of the first failed gate, intersected with the mode's gate list, in canonical order. Empty when all gates passed or the pipeline aborted before any gate ran. The CLI renders it as a "⚠ Downstream affected" line.
+
+**See:** `automedia/pipelines/runner.py` (`_compute_affected_downstream`), `automedia/pipelines/dag.py`
+
 ## GateRegistry
 
 A global singleton that maps gate name strings to gate classes. Concrete `BaseGate` subclasses register themselves automatically via `__init_subclass__`, so new gates need no manual registration.

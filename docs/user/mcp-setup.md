@@ -31,11 +31,15 @@ Output:
 
 ```
 Registered MCP tools:
+  - add_brand
   - add_cron_schedule
   - add_pool_topic
   - analyze_content
+  - approve_gate
   - archive_project
   - batch_run
+  - cancel_pipeline
+  - configure_llm
   - connect_account
   - disconnect_account
   - distribute_content
@@ -46,37 +50,55 @@ Registered MCP tools:
   - get_account_health
   - get_config
   - get_cron_health
+  - get_pending_approvals
   - get_pipeline_progress
   - get_pipeline_state
   - get_pipeline_status
   - get_project_assets
+  - get_redlines
+  - get_validation_report
   - health_check
   - health_engine
   - help_mcp
+  - init_config
   - list_accounts
+  - list_active_pipelines
   - list_brands
   - list_cron_schedules
+  - list_overridable_templates
+  - list_platforms
   - list_projects
   - list_topic_pool
+  - list_validation_scenarios
+  - list_workflows
   - localize_content
   - localize_output
   - mcp_help
+  - onboard
+  - pause_pipeline
   - pool_add_topic
   - publish_content
   - register_platform_adapter
+  - reject_gate
   - remove_cron_schedule
   - research_topics
+  - resume_pipeline
+  - retry_gate
   - run_batch
   - run_brand_strategy
   - run_pipeline
   - run_pipeline_from_strategy
+  - run_validation_scenario
   - search_assets
   - select_topic
+  - skip_gate
   - test_cron_schedule
   - update_engine_config
+  - validation_coverage_audit
+  - validation_matrix
 ```
 
-## Available Tools (52)
+## Available Tools (65)
 
 | Tool | Description |
 |------|------|
@@ -127,8 +149,24 @@ Registered MCP tools:
 | `test_cron_schedule` | Validate cron expression and compute next trigger times |
 | `search_assets` | Search produced content via keyword + semantic search |
 | `list_brands` | Return all configured brands with profile metadata |
+| `add_brand` | Create a new brand profile (name required; industry and target audience optional) |
 | `get_config` | Return merged configuration (secrets redacted) |
 | `configure_llm` | Configure the LLM provider in `~/.automedia/model_config.yaml` (preserves an existing LLM fallback chain) |
+| `init_config` | Initialize AutoMedia configuration: create `.automedia/` and a default `config.yaml` |
+| `onboard` | One-step onboarding: configure the LLM and create a brand profile without interactive prompts |
+| `get_redlines` | Return the list of agent red-line constraints |
+| `list_active_pipelines` | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |
+| `list_platforms` | List all registered publishing platforms |
+| `list_overridable_templates` | List all overridable prompt templates with override status |
+| `list_workflows` | List all configured workflows from `workflows.yaml` |
+| `approve_gate` | Approve a paused gate in director mode (HITL approval) |
+| `reject_gate` | Reject a paused gate in director mode (triggers failure handling) |
+| `get_pending_approvals` | List all gates awaiting human approval in director mode |
+| `list_validation_scenarios` | List the agent-tester validation scenario library (name, description, category, status hint) |
+| `run_validation_scenario` | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
+| `get_validation_report` | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
+| `validation_coverage_audit` | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
+| `validation_matrix` | Render the validation matrix: per-scenario surface coverage + last-run status + hard-safety flags |
 
 ## MCP Client Configuration
 

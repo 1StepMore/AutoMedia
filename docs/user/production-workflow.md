@@ -214,11 +214,24 @@ If the Pipeline shows `status="partial"` or `status="failed"`:
 
 1. Check the error message to identify the failing Gate
 2. Refer to `docs/dev/gate-failure-modes.md` for remediation steps
-3. After fixing the issue, resume from the failed Gate using `--resume-from`:
+3. Inspect which gates a failure blocked — the CLI prints a
+   `⚠ Downstream affected: ...` line naming the gates the failure kept from
+   running (the DAG downstream of the first failed gate, intersected with the
+   mode's gate list)
+4. After fixing the issue, resume from the last passed gate using
+   `--auto-resume`, or from an explicit gate with `--resume-from`:
 
 ```bash
+# Resume from the last passed gate (reads history.db)
+automedia run --topic "..." --brand my-brand --auto-resume
+
+# Resume from a specific Gate
 automedia run --topic "..." --brand my-brand --resume-from G3
 ```
+
+To audit per-gate state before resuming, use `automedia pipeline state` (CLI)
+or the `get_pipeline_state` MCP tool — both show a passed/failed/pending view
+with asset md5 per gate.
 
 ## Post-Production Operations
 
