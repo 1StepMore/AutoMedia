@@ -3,6 +3,7 @@ description: The get_config MCP tool returns the merged configuration with secre
 intent: Prove the configuration surface answers without credentials, so a clean env can read non-secret config through the MCP surface.
 category: baseline
 requires_env: []
+hard: true
 steps:
   - name: get_config returns the merged config
     kind: tool

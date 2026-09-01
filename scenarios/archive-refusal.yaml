@@ -3,6 +3,7 @@ description: "archive_project refuses to archive an unpublished project unless f
 intent: Prove the archive surface enforces Red Line 8, so agents cannot archive unpublished projects through the MCP tool.
 category: baseline
 requires_env: []
+hard: true
 steps:
   - name: create a synthetic unpublished project
     kind: cli

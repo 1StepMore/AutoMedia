@@ -3,6 +3,7 @@ description: "BOUNDARY-ONLY probe (director-waiver required — never GREEN-asse
 intent: "Prove the director-mode approve surface's boundary contract. The success path requires a live paused gate in a running engine with a runtime project_id (owned by the lifecycle journeys); on a clean env the honest contract is the structured NOT_FOUND error. The probe passes on error and fails only on full success."
 category: surface
 error_boundary: true
+hard: true
 steps:
   - name: approve_gate errors on an unknown project
     kind: tool
