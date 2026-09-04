@@ -33,11 +33,40 @@ If you are an AI coding agent entering this codebase:
 - **Workflow system**: Reusable `workflows.yaml` definitions with cascading config merge
 - **Director mode**: Human-in-the-loop approval via GateEngine pause/resume with MCP approve/reject tools
 - **Topic pool**: SQLite-backed with scoring, dedup, scheduling
-- **Platform adapter system**: Extensible publish targets — 20 registered adapters (12 real API + 8 stubs)
+- **Platform adapter system**: Extensible publish targets — 20 adapter modules = 19 publish platforms + 1 feishu notifier; 11 publish platforms with real API automation + 1 notifier + 8 intentional manual-only stubs (documented divergences F32/F34)
 - **Account & credential management**: AES-256-GCM encrypted store, OAuth2/Cookie/API Key auth flows, session management
 - **Omni Triad**: OPP (extraction), OL (localization), ORF (format conversion)
 - **Human-in-the-loop**: Review gates for content and video quality approval
 - **MCP-native**: Works with Claude Desktop/Code, OpenCode, Codex CLI, Cline, OpenClaw, Hermes Agent
+
+### Adapter Status
+
+All 20 adapter modules under `src/automedia/adapters/platforms/`, with per-platform automation status derived from each module's class attribute (is_stub flag) and docstring:
+
+| Platform | Status | Detail |
+|----------|--------|--------|
+| WeChat (微信公众号) | real-automation | Official Account API — token / draft / publish (3-step flow) |
+| Zhihu (知乎) | real-automation | Draft creation via Zhihu API (cookie auth) |
+| YouTube | real-automation | Video upload via YouTube Data API v3 (OAuth2) |
+| Twitter/X | real-automation | Posts via Twitter API v2 (OAuth 2.0 Bearer) |
+| Reddit | real-automation | Post submission via Reddit OAuth2 script-app flow |
+| TikTok | real-automation | Video upload via Content Posting API v2 (OAuth2) |
+| Facebook | real-automation | Page posts via Graph API v22.0 |
+| Instagram | real-automation | Container-based publishing via Instagram Graph API |
+| LinkedIn | real-automation | Posts via LinkedIn Posts API v2 (OAuth 2.0) |
+| Medium | real-automation | Draft-only post creation via Medium API |
+| WordPress | real-automation | Post creation via WordPress REST API (wp/v2) |
+| Feishu (飞书) | notifier | Webhook notifier (interactive card messages) — not a publish target |
+| Douyin (抖音) | manual-stub | No public API — manual-only, F34 |
+| Kuaishou (快手) | manual-stub | No public API — manual-only, F34 |
+| Baijiahao (百家号) | manual-stub | No public API — manual-only, F34 |
+| Bilibili (哔哩哔哩) | manual-stub | Open Platform requires enterprise registration — no automated publish, manual-only, F34 |
+| Weibo (微博) | manual-stub | No server-side video publish endpoint — manual-only, F34 |
+| Toutiao (头条) | manual-stub | No public API — manual-only, F34 |
+| Juejin (掘金) | manual-stub | No public API — manual-only, F34 |
+| Xiaohongshu (小红书) | manual-stub | No public API — manual-only, F32 |
+
+The 8 manual-stub rows are **intentional divergences** documented in `docs/dev/founder-expectations.md` (F32/F34) and each module's docstring.
 
 ## Table of Contents
 
