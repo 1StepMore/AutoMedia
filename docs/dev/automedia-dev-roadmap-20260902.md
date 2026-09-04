@@ -50,13 +50,13 @@
 > **依据**：README 自称 20 适配器（12 real API + 8 stubs），实测 20 modules = 19 publish platforms + feishu notifier；11 real publish API + feishu notifier（`is_stub=False`）+ 8 intentional manual stubs（douyin/kuaishou/baijiahao/bilibili/weibo/toutiao/juejin/xiaohongshu）——这是"能发抖音吗"的销售答案。
 
 **任务**：
-1. **审计**：跑 `automedia adapter list --real` 输出真实可用列表，核对 README 自称的真实适配器数 vs 实际（注：该命令规划于 P1-1，当前 `cli/commands/adapter.py` 尚无筛选参数）
+1. **审计**：跑 `automedia adapter list --real` 输出真实可用列表，核对 README 自称的真实适配器数 vs 实际（注：`--real`/`--stub`/`--json` 筛选参数已实现于 `cli/commands/adapter.py`）
 2. **状态盘点**：微信/知乎已完成真实 API；B站/小红书/抖音等维持 intentional manual stubs（F32/F34, founder-expectations.md）。本任务仅为审计 + 状态表更新，不新增适配器开发
 3. **标记统一**：每个 stub 适配器加 `is_stub=True` + README 里"真实/手动"状态列清楚
 
 **验收标准**：
-- [ ] `automedia adapter list --real` 输出与实际实现一致（消除 README 自称的适配器计数与实际的不一致）
-- [ ] README 适配器状态表每行标明：真实自动化 / 手动发布 / 桩
+- [x] `automedia adapter list --real` 输出与实际实现一致（12 real：11 publish + feishu notifier；`--stub` 输出 8 个 manual stub——消除 README 自称的适配器计数与实际的不一致）
+- [x] README 适配器状态表每行标明：真实自动化 / 通知器 / 手动发布桩（11 real-automation + 1 notifier + 8 manual-stub，20/20 行全覆盖）
 
 ### P1-2：GitHub 主号恢复 / repo 迁移
 > **依据**：商业结论——开源项目第一资产是 GitHub 可见性；主号 suspend 阻断社区。
@@ -117,7 +117,7 @@
 | 不做 | 原因 | 依据 |
 |:-----|:-----|:-----|
 | 新写作功能 | AI 写作 = commodity，不投入 | 商业结论 |
-| 全部 20 适配器真实化 | 抖音/快手无公开 API（结构性限制），投入不值 | douyin_publisher 文档化 rationale |
+| 全部 20 适配器真实化 | 抖音/快手等 8 平台无公开发布 API（结构性限制），投入不值——维持 11 real publish API + feishu notifier + 8 intentional manual stubs（F32/F34），仅做审计 + 状态表标注 | douyin_publisher 文档化 rationale；`automedia adapter list --json` 实测分区 |
 | 独立托管平台 | 先验证付费意愿，再投基础设施 | 商业结论 |
 | 多语言 UI | 非启动阶段核心 | — |
 

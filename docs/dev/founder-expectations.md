@@ -529,7 +529,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | UX Detail | Specification |
 |-----------|---------------|
 | **Xiaohongshu (intentional divergence)** | `xiaohongshu_publisher.py` returns `"not_implemented"` — the platform has no public API. Publishing is **manual-only** via the RED mobile app or web creator portal. Credentials are validated (cookie check) but no automated publish is attempted. Adding automated XHS publishing would require reverse-engineering private APIs, which is out of scope. |
-| **IM notifications** | Not in AutoMedia scope. Agent-to-human IM conversation (e.g., agent asking "shall I publish?") is handled by the agent framework (OpenCode, Claude Code, etc.), not by AutoMedia. AutoMedia provides the tools; the agent communicates results to the human via the agent framework's own notification layer. Feishu/Discord webhook adapters are out of scope — they duplicate agent framework responsibility. |
+| **IM notifications** | Not in AutoMedia scope. Agent-to-human IM conversation (e.g., agent asking "shall I publish?") is handled by the agent framework (OpenCode, Claude Code, etc.), not by AutoMedia. AutoMedia provides the tools; the agent communicates results to the human via the agent framework's own notification layer. Discord webhook adapters are out of scope — they duplicate agent framework responsibility. Feishu is the exception: a feishu webhook notifier adapter exists (notification channel only — not a publish target; see the adapter status table in README). |
 
 #### F33 — Platform-Specific Formatting ✅
 
@@ -550,18 +550,18 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Binding** | Brand config declares which platforms it publishes to: `brands.my-brand.platforms: [wechat, zhihu, douyin, xiaohongshu]`. |
 | **Mode determines production** | Pipeline mode (`auto`, `text_only`, `video_only`) determines what content is produced. The mode is the source of truth — platforms must adapt to what the mode produces, not the other way around. |
 | **Platform capability matching** | ❌ Not implemented. The publish engine does not filter platforms by content-type compatibility with pipeline mode — only automation level (auto/review/manual) is checked. |
-| | **Platform capability matrix** (reference — all registered adapters): |
+| | **Platform capability matrix** (reference — the 19 publish platforms; the 20th registered module is the feishu notifier, not a publish target): |
 | | | Platform | Content Type | Accepts From Mode | Actual Status | Priority |
 | | |----------|-------------|-------------------|---------------|----------|
 | | | WeChat Official Account | Long-form text + images | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
 | | | Zhihu | Long-form text | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
 | | | Xiaohongshu | Images + text, video | `auto` only (needs images) | ⚠️ Manual-only (no public API, intentional) | P1 (stub) |
-| | | Douyin | Short video (9:16) | `auto`, `video_only` | ❌ Not implemented | P2 |
-| | | Bilibili | Long video, text (column) | `auto`, `video_only` | ❌ Not implemented | P2 |
-| | | Weibo | Short text + images, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P2 |
-| | | Toutiao | Long-form text, images | `auto`, `text_only` | ❌ Not implemented | P3 |
-| | | Baijiahao | Long-form text, video | `auto`, `text_only`, `video_only` | ❌ Not implemented | P3 |
-| | | Kuaishou | Short video | `auto`, `video_only` | ❌ Not implemented | P3 |
+| | | Douyin | Short video (9:16) | `auto`, `video_only` | ⚠️ Manual-only stub (no public API, intentional) | P2 |
+| | | Bilibili | Long video, text (column) | `auto`, `video_only` | ⚠️ Manual-only stub (Open Platform requires enterprise registration, intentional) | P2 |
+| | | Weibo | Short text + images, video | `auto`, `text_only`, `video_only` | ⚠️ Manual-only stub (no server-side video publish endpoint, intentional) | P2 |
+| | | Toutiao | Long-form text, images | `auto`, `text_only` | ⚠️ Manual-only stub (no public API, intentional) | P3 |
+| | | Baijiahao | Long-form text, video | `auto`, `text_only`, `video_only` | ⚠️ Manual-only stub (no public API, intentional) | P3 |
+| | | Kuaishou | Short video | `auto`, `video_only` | ⚠️ Manual-only stub (no public API, intentional) | P3 |
 | | | YouTube | Long video (16:9) | `auto`, `video_only` | ✅ Full implementation | P0 (done) |
 | | | Twitter/X | Short text + media | `auto`, `text_only`, `video_only` | ✅ Full implementation | P0 (done) |
 | | | Reddit | Text, link, images | `auto`, `text_only` | ✅ Full implementation | P0 (done) |
@@ -574,7 +574,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | | | Juejin | Tech articles (Markdown) | `text_only` | ⚠️ Manual-only stub (no public API) | P1 (stub) |
 | **Publish execution** | After pipeline completes: for each platform, respect its automation level. Auto → publish now. Review → create draft. Manual → skip. |
 | **Per-platform adaptation** | Same core content, adapted per platform (title tweaks, format changes, CTA adjustment). Brand config can specify per-platform overrides. |
-| **Implementation status** | ✅ Complete — all 19 platform adapters exist. WeChat ✅ full, Zhihu ✅ full, YouTube ✅ full, Twitter/X ✅ full, Reddit ✅ full, TikTok ✅ full, Facebook ✅ full, Instagram ✅ full, LinkedIn ✅ full, Medium ✅ full, WordPress ✅ full, Xiaohongshu ⚠️ manual-only stub, Douyin ⚠️ manual-only stub, Bilibili ⚠️ manual-only stub, Weibo ⚠️ manual-only stub, Toutiao ⚠️ manual-only stub, Baijiahao ⚠️ manual-only stub, Kuaishou ⚠️ manual-only stub, Juejin ⚠️ manual-only stub. 11 real API integrations + 8 intentional manual-only stubs (documented divergences, no API available). |
+| **Implementation status** | ✅ Complete — all 20 adapter modules exist: 19 publish platforms + 1 feishu notifier (notification channel only, not a publish target). WeChat ✅ full, Zhihu ✅ full, YouTube ✅ full, Twitter/X ✅ full, Reddit ✅ full, TikTok ✅ full, Facebook ✅ full, Instagram ✅ full, LinkedIn ✅ full, Medium ✅ full, WordPress ✅ full, Xiaohongshu ⚠️ manual-only stub, Douyin ⚠️ manual-only stub, Bilibili ⚠️ manual-only stub, Weibo ⚠️ manual-only stub, Toutiao ⚠️ manual-only stub, Baijiahao ⚠️ manual-only stub, Kuaishou ⚠️ manual-only stub, Juejin ⚠️ manual-only stub. 11 publish platforms with real API automation + 8 intentional manual-only stubs (documented divergences, no API available). Per-platform status table: see the Adapter Status section in README. |
 | **Partial failure** | One platform failure doesn't block others. Skipped/failed platforms reported in summary. |
 
 #### F35 — Publish Error Handling ✅
@@ -958,7 +958,7 @@ Reality:  MCP server exists with 59 tools (55 unique + 4 deprecated aliases), bu
 | **Brand discovery** | ✅ **Resolved** | `list_brands` MCP tool gives agent visibility into configured brands with full profile metadata. |
 | **Config introspection** | ✅ **Resolved** | `get_config(key="")` MCP tool returns merged config (secrets redacted). Dot-notation lookup for any key (`llm.text_generation.temperature`, `default_mode`, etc.). |
 | **Asset search** | ✅ **Resolved** | `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. Agent can query produced content programmatically. |
-| **IM notifications** | ✅ **Out of scope** | Agent-to-human IM conversation is agent framework's responsibility, not AutoMedia's. Feishu notifier removed in July 2026. |
+| **IM notifications** | ✅ **Out of scope** | Agent-to-human IM conversation is agent framework's responsibility, not AutoMedia's. Feishu remains available only as a webhook notifier adapter (notification channel, not a publish target); Discord not implemented. |
 | Error messages are agent-friendly | ✅ **Structured** | All MCP tools return consistent `{"error": "..."}` dicts. CLI shows gate-level errors with check name and suggestion; raw tracebacks only with `--verbose`. |
 | Agent can self-correct on failure | ❓ Unknown | Not tested |
 
@@ -993,7 +993,7 @@ Not all expectations are equal. This matrix ranks all 55 expectations by **impor
 |----------|-----------|-----|--------------|
 | **🔴 Immediate fix** | HIGH | HIGH | **F27** (video/subtitle degraded without HyperFrames) |
 | **🟡 Important gap** | HIGH | MODERATE | **F01** (system deps vary per platform), **F08** (streaming works but not all errors structured), **F11** (topic→article works in text_only, auto varies with video deps), **F18** (no webhook push for progress), **F20** (auto-recovery exists but retry thresholds untuned), **F29** (3-level automation works for API platforms, manual-only for others) |
-| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (9 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 platforms have adapters — 11 real API + 8 manual-only stubs), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (~3,379 tests) |
+| **🟢 Working well** | HIGH | LOW | **F02** (MCP/CLI both work), **F03** (init creates skeleton), **F04** (single env var), **F05** (brands with list_brands), **F06** (doctor + health_check), **F07** (9 modes, fully implemented), **F09** (structured errors throughout; tracebacks only on --verbose), **F10** (standard project layout), **F12** (source_path/url), **F16** (brand selection), **F17** (one-command run), **F19** (mostly structured errors), **F21** (resume works), **F24** (G1 hybrid LLM-first + regex fallback), **F25** (G0 LLM plausibility check without sources), **F26** (brand CTA pattern matching), **F28** (HITL integrated), **F30** (WeChat), **F31** (Zhihu), **F34** (all 19 publish platforms have adapters — 11 real API + 8 manual-only stubs, plus the feishu notifier as a 20th non-publish module), **F35** (PublishEngine retry), **F37** (cron MCP tools all implemented), **F42** (config introspection + asset search implemented), **F47** (~3,379 tests) |
 | **⏸ Monitor** | MEDIUM | HIGH | None — medium-importance gaps are moderate at worst |
 | **👀 Watch** | MEDIUM | MODERATE | **F37** (external crond dependency) |
 | **✅ Acceptable** | MEDIUM | LOW | **F13** (Omni Triad), **F14** (topic pool), **F15** (trending), **F21** (resume), **F23** (output summary), **F32** (divergences documented), **F33** (formatting), **F36** (batch via orchestration), **F37** (cron MCP tools: add/list/remove/test/health), **F39** (isolation), **F40** (project overview), **F41** (asset inspection), **F42** (config introspection + asset search: get_config, list_brands, search_assets), **F43** (MD5 integrity), **F44** (gate isolation), **F45** (brand isolation) |
@@ -1120,7 +1120,7 @@ This flow works. It's the project's strongest path.
 | Config introspection | ✅ Implemented | `get_config` and `list_brands` MCP tools |
 | **Asset search** | ✅ **Implemented** | `search_assets(query, brand, limit, filters)` MCP tool — keyword + semantic search via SQLite + Chroma. Exposes existing asset library capability. |
 | F09 doc correction | ✅ Documented | F09 status corrected from "some errors still Python traces" to "structured errors throughout; tracebacks only on --verbose". Confirmed via `cli/output_format.py` implementation and MCP tools' consistent structured error dicts. |
-| F34 doc correction | ✅ Resolved | Platform capability matrix updated to reflect actual status: 11 real API adapters (WeChat, Zhihu, YouTube, Twitter/X, Reddit, TikTok, Facebook, Instagram, LinkedIn, Medium, WordPress) + 8 manual-only stubs. Platform capability matching (mode-based filtering) documented as ❌ not implemented — actually does not exist in publish engine. |
+| F34 doc correction | ✅ Resolved | Platform capability matrix updated to reflect actual status: 11 real API adapters (WeChat, Zhihu, YouTube, Twitter/X, Reddit, TikTok, Facebook, Instagram, LinkedIn, Medium, WordPress) + 8 manual-only stubs — all 8 stub rows now carry the ⚠️ Manual-only status with their per-platform reason (matrix previously marked 6 of them ❌ Not implemented). Of the 12 modules with is_stub=False, the 12th is the feishu notifier, not a publish target. Platform capability matching (mode-based filtering) documented as ❌ not implemented — actually does not exist in publish engine. |
 
 ---
 
