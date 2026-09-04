@@ -52,7 +52,7 @@ class _AlwaysFailGate(BaseGate):
 class _GateWithChecksGate(BaseGate):
     """Gate whose result carries per-check detail — proves LIVE report render."""
 
-    _gate_name = "G62"
+    _gate_name = "V62"
     _failure_mode = "stop"
 
     def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
@@ -436,7 +436,7 @@ class TestRunFullPipeline:
         data = json.loads(json_files[0].read_text(encoding="utf-8"))
         assert data["summary"]["total"] >= 1
         # LIVE render (gate_results passed): per-check detail present in the JSON.
-        row = next(g for g in data["gates"] if g["gate"] == "G62")
+        row = next(g for g in data["gates"] if g["gate"] == "V62")
         assert row["checks"] is not None and row["checks"][0]["name"] == "always_ok"
 
     @patch("automedia.core.config_loader.load_config", return_value={})
