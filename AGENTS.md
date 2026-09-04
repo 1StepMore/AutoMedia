@@ -7,7 +7,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 - **Size:** 33,619 LOC across 150 Python files (automedia/ core) · ~90,000 LOC across 442+ files (repo)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
-- **Install:** `pip install -e ".[dev]"` (full capability) or `-e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
+- **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
 
 ## 2. Three Entry Points
 | Layer | Command | Description |
