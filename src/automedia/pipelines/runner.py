@@ -292,9 +292,7 @@ def _check_hyperframes(mode: str) -> bool:
     return available
 
 
-def _compute_affected_downstream(
-    gate_names: list[str], failed_gate: str | None
-) -> list[str]:
+def _compute_affected_downstream(gate_names: list[str], failed_gate: str | None) -> list[str]:
     """Gates downstream of the first failed gate, restricted to the mode's list.
 
     Failure localization: when a gate fails, every gate that transitively
@@ -987,30 +985,63 @@ def _run_pipeline(
         project = Project.init(topic, brand, base_dir=projects_dir, tenant_id=tenant_id)
 
         brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
-            mode, brand, project, workflow,
+            mode,
+            brand,
+            project,
+            workflow,
         )
 
         log.info("pipeline.start", topic=topic, brand=brand, mode=mode, tenant_id=tenant_id)
 
         gate_names, gates = _select_gates(
-            mode, brand_profile, resume_from, project.project_dir, progress,
-            workflow_obj=workflow_obj, brand=brand, platforms=platforms,
+            mode,
+            brand_profile,
+            resume_from,
+            project.project_dir,
+            progress,
+            workflow_obj=workflow_obj,
+            brand=brand,
+            platforms=platforms,
             auto_resume=auto_resume,
         )
 
         gate_context = _build_pipeline_context(
-            topic, brand, mode, project, config, tenant_id, brand_profile,
-            director, force_provenance, default_lang,
-            source_path, source_url, correlation_id, gate_names,
+            topic,
+            brand,
+            mode,
+            project,
+            config,
+            tenant_id,
+            brand_profile,
+            director,
+            force_provenance,
+            default_lang,
+            source_path,
+            source_url,
+            correlation_id,
+            gate_names,
         )
 
         success, results = _setup_and_run_engine(
-            gates, hooks, director, project, gate_context, progress,
+            gates,
+            hooks,
+            director,
+            project,
+            gate_context,
+            progress,
         )
 
         return _finalize_pipeline(
-            success, results, mode, gate_context, project, config,
-            brand, topic, start, workflow,
+            success,
+            results,
+            mode,
+            gate_context,
+            project,
+            config,
+            brand,
+            topic,
+            start,
+            workflow,
         )
 
     except Exception as exc:
@@ -1116,9 +1147,7 @@ def _select_gates(
             active_platforms = [p for p in active_platforms if p in platforms]
         if active_platforms:
             brand_dict = asdict(brand_profile)
-            combined_gate_config = _collect_platform_gate_modifiers(
-                brand_dict, active_platforms
-            )
+            combined_gate_config = _collect_platform_gate_modifiers(brand_dict, active_platforms)
             if combined_gate_config:
                 gate_names, platform_ofm = _compose_gate_list(mode, {"gates": combined_gate_config})
                 override_fm = platform_ofm
@@ -1440,6 +1469,7 @@ def _finalize_pipeline(
     assets = _collect_assets(gate_context)
     _record_gate_md5s(project.project_dir, results)
     gates_log = _build_gates_log(results)
+    _write_run_gate_report(project.project_dir, gates_log, results)
 
     end = time.monotonic()
     status = "success" if success else "partial"
@@ -1659,7 +1689,11 @@ def _collect_gate_failure_overrides(
         )
 
     # Source: Workflow gate modifiers
-    if workflow_obj is not None and hasattr(workflow_obj, "gates") and workflow_obj.gates is not None:
+    if (
+        workflow_obj is not None
+        and hasattr(workflow_obj, "gates")
+        and workflow_obj.gates is not None
+    ):
         ofm = workflow_obj.gates.get("override_failure_mode", {})
         if isinstance(ofm, dict):
             result.update(ofm)
@@ -1715,6 +1749,31 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
             )
         )
     return entries
+
+
+def _write_run_gate_report(
+    project_dir: str,
+    gates_log: list[GateLogEntry],
+    gate_results: list[dict[str, Any]],
+) -> None:
+    """Write the per-run gate report under ``05_review/gate-report/``.
+
+    Rendered LIVE (``gate_results`` passed) so rows carry per-check detail
+    and H0 ``_hitl_approved`` semantics.  Write errors are logged and
+    silently skipped — a report-write failure must never fail the pipeline
+    (same discipline as the MetricsHook write).
+    """
+    from automedia.pipelines.gate_report import render_gate_report, write_gate_report
+
+    try:
+        rendered = render_gate_report(project_dir, gates_log, gate_results)
+        write_gate_report(project_dir, cast(dict[str, Any], cast(object, rendered)))
+    except Exception as exc:  # noqa: BLE001 — report is derived output, never critical
+        log.warning(
+            "pipeline.gate_report_write_failed",
+            project_dir=project_dir,
+            error=str(exc),
+        )
 
 
 def _collect_video_assets(

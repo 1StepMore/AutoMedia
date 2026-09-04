@@ -49,6 +49,20 @@ class _AlwaysFailGate(BaseGate):
         return {"passed": False, "gate": self.gate_name, "error": "nope"}
 
 
+class _GateWithChecksGate(BaseGate):
+    """Gate whose result carries per-check detail — proves LIVE report render."""
+
+    _gate_name = "G62"
+    _failure_mode = "stop"
+
+    def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "passed": True,
+            "gate": self.gate_name,
+            "checks": [{"name": "always_ok", "passed": True, "detail": "synthetic ok"}],
+        }
+
+
 # =========================================================================
 # _MODE_MAP tests
 # =========================================================================
@@ -130,7 +144,7 @@ class TestModeMap:
         for i in range(8):
             assert f"V{i}" not in names
 
-    def test_text_with_cover_has_CW_and_G0_G5(self) -> None:
+    def test_text_with_cover_has_cw_and_g0_g5(self) -> None:
         """text_with_cover has CW, G0-G5, lifecycle gates."""
         names = _MODE_MAP["text_with_cover"]
         assert "CW" in names
@@ -262,7 +276,7 @@ class TestCollectAssets:
     def test_empty_context(self) -> None:
         assert _collect_assets({}) == []
 
-    def test_output_files_key(self, tmp_path: Any) -> None:
+    def test_output_files_key(self, tmp_path: Path) -> None:
         ctx = {
             "output_files": [
                 {"type": "video", "path": str(tmp_path / "v.mp4"), "platform": "bilibili"}
@@ -272,7 +286,7 @@ class TestCollectAssets:
         assert len(assets) == 1
         assert assets[0].type == "video"
 
-    def test_assets_key(self, tmp_path: Any) -> None:
+    def test_assets_key(self, tmp_path: Path) -> None:
         ctx = {
             "assets": [
                 {
@@ -287,7 +301,7 @@ class TestCollectAssets:
         assert len(assets) == 1
         assert assets[0].md5 == "abc"
 
-    def test_both_keys(self, tmp_path: Any) -> None:
+    def test_both_keys(self, tmp_path: Path) -> None:
         ctx = {
             "output_files": [{"type": "a", "path": str(tmp_path / "a")}],
             "assets": [{"type": "b", "path": str(tmp_path / "b")}],
@@ -343,7 +357,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "test123"
@@ -370,7 +384,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "p1"
@@ -392,13 +406,115 @@ class TestRunFullPipeline:
     @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
     @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_gate_report_written_on_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Every production run writes a gate report under 05_review/gate-report/."""
+        import json
+
+        mock_proj = MagicMock()
+        mock_proj.project_id = "gr1"
+        mock_proj.project_dir = str(tmp_path / "gr1")
+        mock_project.init.return_value = mock_proj
+
+        mock_build.return_value = [_GateWithChecksGate()]
+
+        result = run_full_pipeline("t", "b", mode="auto")
+        assert result.status == "success"
+
+        report_dir = tmp_path / "gr1" / "05_review" / "gate-report"
+        json_files = list(report_dir.glob("gate-report-*.json"))
+        assert json_files, "gate report JSON must exist after a successful run"
+        md_files = list(report_dir.glob("gate-report-*.md"))
+        assert md_files, "gate report Markdown must exist after a successful run"
+
+        data = json.loads(json_files[0].read_text(encoding="utf-8"))
+        assert data["summary"]["total"] >= 1
+        # LIVE render (gate_results passed): per-check detail present in the JSON.
+        row = next(g for g in data["gates"] if g["gate"] == "G62")
+        assert row["checks"] is not None and row["checks"][0]["name"] == "always_ok"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_gate_report_written_on_gate_failure(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A failing-gate run still produces the report AND still returns
+        failed/partial — the report write never masks the failure."""
+        import json
+
+        mock_proj = MagicMock()
+        mock_proj.project_id = "gr2"
+        mock_proj.project_dir = str(tmp_path / "gr2")
+        mock_project.init.return_value = mock_proj
+
+        mock_build.return_value = [_AlwaysFailGate()]
+
+        result = run_full_pipeline("t", "b", mode="auto")
+        assert result.status == "partial"
+
+        report_dir = tmp_path / "gr2" / "05_review" / "gate-report"
+        json_files = list(report_dir.glob("gate-report-*.json"))
+        assert json_files, "gate report JSON must exist even when a gate fails"
+
+        data = json.loads(json_files[0].read_text(encoding="utf-8"))
+        assert data["blocked_by_gate"] == "G61"
+        assert data["gates"][0]["verdict"] == "fail"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_gate_report_write_failure_never_fails_pipeline(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A report-write error is swallowed (logged + skipped), mirroring the
+        MetricsHook write-error discipline."""
+        from unittest.mock import patch as _patch
+
+        mock_proj = MagicMock()
+        mock_proj.project_id = "gr3"
+        mock_proj.project_dir = str(tmp_path / "gr3")
+        mock_project.init.return_value = mock_proj
+
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        with _patch(
+            "automedia.pipelines.gate_report.write_gate_report",
+            side_effect=OSError("disk full"),
+        ):
+            result = run_full_pipeline("t", "b", mode="auto")
+
+        assert result.status == "success"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
     def test_unknown_mode_raises(
         self,
         mock_record: MagicMock,
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "p"
@@ -419,7 +535,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "r1"
@@ -429,7 +545,7 @@ class TestRunFullPipeline:
         # Capture the names passed to _build_gates_from_names
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -450,7 +566,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "r2"
@@ -471,7 +587,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "c1"
@@ -493,7 +609,7 @@ class TestRunFullPipeline:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "t1"
@@ -517,7 +633,7 @@ class TestRunFullPipeline:
         mock_project: MagicMock,
         mock_config: MagicMock,
         mock_hitl: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """run_full_pipeline injects hitl_config dict into gate_context."""
         mock_proj = MagicMock()
@@ -574,7 +690,7 @@ class TestRunFullPipeline:
         mock_project: MagicMock,
         mock_config: MagicMock,
         mock_image_pipeline: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """text_with_cover mode calls ImagePipeline.generate_single_cover."""
         mock_proj = MagicMock()
@@ -620,7 +736,7 @@ class TestFallbackContentGuard:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """video_only mode provides fallback text for empty content."""
         mock_proj = MagicMock()
@@ -660,7 +776,7 @@ class TestFallbackContentGuard:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """qa_only mode provides fallback text for empty content."""
         mock_proj = MagicMock()
@@ -700,7 +816,7 @@ class TestFallbackContentGuard:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """auto mode still starts with empty content (CW fills it later)."""
         mock_proj = MagicMock()
@@ -736,7 +852,7 @@ class TestFallbackContentGuard:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """text_only mode still starts with empty content (CW fills it later)."""
         mock_proj = MagicMock()
@@ -867,7 +983,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Brand with wechat+zhihu derives text_only mode."""
         mock_proj = MagicMock()
@@ -882,7 +998,7 @@ class TestRunFullPipelineModeDerivation:
         # Capture gate names built
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -909,7 +1025,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Brand with xiaohongshu derives auto mode."""
         mock_proj = MagicMock()
@@ -923,7 +1039,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -949,7 +1065,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Explicit --mode=text_only stays text_only even with mixed-social platforms."""
         mock_proj = MagicMock()
@@ -964,7 +1080,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -991,7 +1107,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Brand with no platforms keeps default auto mode."""
         mock_proj = MagicMock()
@@ -1005,7 +1121,7 @@ class TestRunFullPipelineModeDerivation:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -1029,7 +1145,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """gate_context has brand_platforms key listing the platforms."""
         mock_proj = MagicMock()
@@ -1069,7 +1185,7 @@ class TestRunFullPipelineModeDerivation:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """gate_context has empty brand_platforms when brand has no platforms."""
         mock_proj = MagicMock()
@@ -1099,7 +1215,6 @@ class TestRunFullPipelineModeDerivation:
 
 
 class TestPreLockBehavior:
-
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")
@@ -1110,9 +1225,10 @@ class TestPreLockBehavior:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         from automedia.pipelines.gate_engine import PipelineResult
+
         mock_proj = MagicMock()
         mock_proj.project_id = "pre1"
         mock_proj.project_dir = str(tmp_path / "pre1")
@@ -1131,7 +1247,7 @@ class TestPreLockBehavior:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "pre2"
@@ -1152,7 +1268,7 @@ class TestPreLockBehavior:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "pre3"
@@ -1172,7 +1288,7 @@ class TestPreLockBehavior:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         mock_proj = MagicMock()
         mock_proj.project_id = "pre4"
@@ -1180,7 +1296,7 @@ class TestPreLockBehavior:
         mock_project.init.return_value = mock_proj
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -1196,6 +1312,7 @@ class TestPreLockBehavior:
         mock_config: MagicMock,
     ) -> None:
         from automedia.pipelines.gate_engine import PipelineResult
+
         result = run_full_pipeline("t", "b")
         assert isinstance(result, PipelineResult)
         assert result.status == "failed"
@@ -1207,12 +1324,9 @@ class TestPreLockBehavior:
 # =========================================================================
 
 
-def _setup_override_rules(tmp_path: Path, home: str | None = None) -> Path:
+def _setup_override_rules(tmp_path: Path, home: str | Path | None = None) -> Path:
     """Create ``~/.automedia/overrides/rules/`` layout and return the home dir."""
-    if home is None:
-        home = tmp_path / "home"
-    else:
-        home = Path(home)
+    home = Path(tmp_path / "home") if home is None else Path(home)
     rules_dir = home / ".automedia" / "overrides" / "rules"
     rules_dir.mkdir(parents=True)
     return home
@@ -1229,11 +1343,14 @@ class TestOverrideGateRules:
     def brand_profile_none(self) -> None:
         return None
 
-    def _patch_home(self, monkeypatch, home: Path) -> None:
+    def _patch_home(self, monkeypatch: pytest.MonkeyPatch, home: Path) -> None:
         monkeypatch.setattr("os.path.expanduser", lambda p: str(home) if p == "~" else p)
 
     def test_override_adds_gate(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """YAML override rule adding V0 to text_only mode appears in final gate list."""
         home = _setup_override_rules(tmp_path)
@@ -1254,7 +1371,10 @@ class TestOverrideGateRules:
         assert "V0" in gate_names, "V0 should be included by override rule"
 
     def test_override_excludes_gate(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """YAML override rule excluding V0 from auto mode removes it."""
         home = _setup_override_rules(tmp_path)
@@ -1275,13 +1395,15 @@ class TestOverrideGateRules:
         assert "V0" not in gate_names, "V0 should be excluded by override rule"
 
     def test_brand_scoped_override_ignores_other_brand(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """Brand-scoped override only affects the matching brand."""
         home = _setup_override_rules(tmp_path)
         (home / ".automedia" / "overrides" / "rules" / "acme_only.yaml").write_text(
-            "brand: Acme\n"
-            "gates:\n  include:\n    - V0\n"
+            "brand: Acme\ngates:\n  include:\n    - V0\n"
         )
         self._patch_home(monkeypatch, home)
 
@@ -1298,13 +1420,15 @@ class TestOverrideGateRules:
         assert "V0" not in gate_names, "V0 should not appear for non-matching brand"
 
     def test_brand_scoped_override_affects_matching_brand(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """Brand-scoped override includes gate for the matching brand."""
         home = _setup_override_rules(tmp_path)
         (home / ".automedia" / "overrides" / "rules" / "acme_only.yaml").write_text(
-            "brand: Acme\n"
-            "gates:\n  include:\n    - V0\n"
+            "brand: Acme\ngates:\n  include:\n    - V0\n"
         )
         self._patch_home(monkeypatch, home)
 
@@ -1320,7 +1444,10 @@ class TestOverrideGateRules:
         assert "V0" in gate_names, "V0 should appear for matching brand Acme"
 
     def test_multiple_override_rules_merge(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """Multiple YAML rule files have their gate modifiers merged (union)."""
         home = _setup_override_rules(tmp_path)
@@ -1345,7 +1472,10 @@ class TestOverrideGateRules:
         assert "V7" in gate_names, "V7 should be included from second rule"
 
     def test_override_rules_merge_with_brand_profile_modifiers(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """Override rules stack on top of brand profile platform modifiers."""
         import automedia.gates  # noqa: F401
@@ -1370,7 +1500,10 @@ class TestOverrideGateRules:
         assert "V0" in gate_names, "V0 should be included by override rule on top of brand profile"
 
     def test_override_validates_unknown_gate_raises(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """Override rule referencing unknown gate raises ValueError via validate_gate_modifiers."""
         import automedia.gates  # noqa: F401
@@ -1393,7 +1526,10 @@ class TestOverrideGateRules:
             )
 
     def test_no_overrides_dir_no_change(
-        self, tmp_path: Path, monkeypatch, mock_progress: MagicMock,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_progress: MagicMock,
     ) -> None:
         """When no overrides dir exists, gate list is unchanged."""
         empty_home = tmp_path / "empty_home"
