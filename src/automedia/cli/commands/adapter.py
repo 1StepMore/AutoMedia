@@ -12,9 +12,29 @@ from pathlib import Path
 import typer
 
 from automedia.adapters.registry import AdapterRegistry
-from automedia.cli.output import output_error, output_text
+from automedia.cli.output import (
+    output_error,
+    output_text,
+)
+
+try:
+    # mirrors automedia.cli.output's context import — mode detection must agree
+    from typer._click.globals import get_current_context
+except ImportError:
+    from click import get_current_context  # type: ignore[no-redef]
 
 app = typer.Typer(name="adapter", help="List and create platform adapters.")
+
+
+def _force_json_output_mode() -> None:
+    """Flip the click context to JSON mode so shared output helpers serialize."""
+    ctx = get_current_context(silent=True)
+    if ctx is None:
+        output_error("Unable to enable JSON output mode: no active command context.")
+        return
+    obj = ctx.obj if isinstance(ctx.obj, dict) else {}
+    obj["json"] = True
+    ctx.obj = obj
 
 
 # ---------------------------------------------------------------------------
@@ -23,29 +43,71 @@ app = typer.Typer(name="adapter", help="List and create platform adapters.")
 
 
 @app.command("list")
-def adapter_list() -> None:
-    """List all registered platform adapters."""
-    try:  # noqa: SIM105 — suppress is not clearer here
-        import automedia.adapters.platforms  # noqa: F401 — trigger registration
+def adapter_list(
+    real: bool = typer.Option(
+        False,
+        "--real",
+        help="Only platforms with real API automation (is_stub=False).",
+    ),
+    stub: bool = typer.Option(
+        False,
+        "--stub",
+        help="Only manual-publish stub platforms (is_stub=True).",
+    ),
+    json_flag: bool = typer.Option(
+        False,
+        "--json",
+        help="Output in JSON format (machine-readable).",
+    ),
+) -> None:
+    """List registered platform adapters with real/stub audit status.
+
+    Platform-audit view for ``automedia adapter list``: every row carries its
+    automation status derived from the adapter's ``is_stub`` attribute.
+    ``--real`` / ``--stub`` filter the list; ``--json`` (also accepted at the
+    app level as ``automedia --json adapter list``) switches to
+    machine-readable output.
+    """
+    if real and stub:
+        output_error("--real and --stub cannot be combined. Choose one filter.")
+
+    if json_flag:
+        _force_json_output_mode()
+
+    try:
+        from automedia.adapters import ensure_registered
+
+        ensure_registered()
     except ImportError:
         from automedia.core._import_helpers import warn_missing_optional
 
-        warn_missing_optional("adapters.platforms", feature="platform adapter registration")
+        warn_missing_optional("adapters", feature="platform adapter registration")
 
-    names = AdapterRegistry.list()
+    platforms = AdapterRegistry().list_publishable_platforms()
+    if real:
+        platforms = [p for p in platforms if not p["is_stub"]]
+    if stub:
+        platforms = [p for p in platforms if p["is_stub"]]
+
     if output_text(
         None,
-        data={"status": "ok", "adapters": names, "count": len(names)},
+        data={
+            "status": "ok",
+            "adapters": platforms,
+            "count": len(platforms),
+            "filters": {"real": real, "stub": stub},
+        },
     ):
         return
 
-    if not names:
+    if not platforms:
         typer.echo("No adapters registered.")
         return
 
     typer.echo("Registered adapters:")
-    for name in names:
-        typer.echo(f"  - {name}")
+    for platform in platforms:
+        status = "stub" if platform["is_stub"] else "real"
+        typer.echo(f"  - {platform['name']}: {status}")
 
 
 # ---------------------------------------------------------------------------
