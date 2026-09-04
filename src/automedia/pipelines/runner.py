@@ -599,9 +599,39 @@ def _compose_gate_list(
         raise ValueError(f"Unknown pipeline mode {mode!r}. Choose from: {list(_MODE_MAP)}")
 
     if platform_config and "gates" in platform_config:
-        return validate_gate_modifiers(platform_config["gates"], list(base))
+        names, ofm = validate_gate_modifiers(platform_config["gates"], list(base))
+        return _filter_gates_by_tier(names), ofm
 
-    return list(base), {}
+    return _filter_gates_by_tier(list(base)), {}
+
+
+def _filter_gates_by_tier(names: list[str]) -> list[str]:
+    """Drop gates whose feature tier is unavailable under the current override.
+
+    Declarative open-core enforcement (plan todo 17): with no override every
+    gate is available and the list passes through unchanged. Names unknown to
+    the tier table (test probes, plugin gates) are never dropped. Each dropped
+    gate logs a ``gate.<NAME>.skipped_tier_gate`` warning so a restricted
+    deployment visibly loses gates instead of silently running them.
+    """
+    from automedia.features import check_tier
+
+    kept: list[str] = []
+    for name in names:
+        tier_info = check_tier(name)
+        if "tier" not in tier_info:
+            # Unknown to the tier table — pass through untouched.
+            kept.append(name)
+            continue
+        if tier_info["available"]:
+            kept.append(name)
+        else:
+            log.warning(
+                "gate." + name + ".skipped_tier_gate",
+                feature=tier_info.get("feature", name),
+                tier=tier_info.get("tier"),
+            )
+    return kept
 
 
 def _collect_platform_gate_modifiers(
@@ -1208,6 +1238,7 @@ def _select_gates(
     if resume_from is not None:
         _verify_resume_integrity(project_dir, resume_from, _MODE_MAP.get(mode, []))
 
+    gate_names = _filter_gates_by_tier(gate_names)
     gates = _build_gates_from_names(gate_names, override_failure_mode=override_fm)
     if progress is not None:
         progress.set_gate_names([g.gate_name for g in gates])
@@ -1721,8 +1752,9 @@ def _build_gates_from_names(
     """
     from automedia.gates.base import _registry
 
+    kept_names = _filter_gates_by_tier(names)
     reg = registry if registry is not None else _registry
-    gates = [reg.get(n)() for n in names]
+    gates = [reg.get(n)() for n in kept_names]
 
     if override_failure_mode:
         for gate in gates:

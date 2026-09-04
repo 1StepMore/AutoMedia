@@ -11,6 +11,7 @@ import pytest
 from automedia.gates.base import BaseGate
 from automedia.manifests.brand_profile_schema import BrandProfile
 from automedia.pipelines.runner import (
+    _AUTO_GATE_NAMES,
     _IMAGE_CAROUSEL_GATE_NAMES,
     _MODE_MAP,
     _PLATFORM_CATEGORIES,
@@ -19,6 +20,7 @@ from automedia.pipelines.runner import (
     _build_gates_from_names,
     _build_gates_log,
     _collect_assets,
+    _compose_gate_list,
     _derive_mode_from_platforms,
     _select_gates,
     run_full_pipeline,
@@ -962,6 +964,11 @@ class TestDeriveModeFromPlatforms:
 class TestRunFullPipelineModeDerivation:
     """run_full_pipeline auto-derives mode from brand platforms."""
 
+    @pytest.fixture(autouse=True)
+    def _no_tier_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """These tests assert full mode gate lists — tier override must be off."""
+        monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
+
     def _make_mock_profile(
         self,
         platforms: list[str] | None = None,
@@ -1532,6 +1539,7 @@ class TestOverrideGateRules:
         mock_progress: MagicMock,
     ) -> None:
         """When no overrides dir exists, gate list is unchanged."""
+        monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
         empty_home = tmp_path / "empty_home"
         empty_home.mkdir()
         self._patch_home(monkeypatch, empty_home)
@@ -1546,3 +1554,207 @@ class TestOverrideGateRules:
             brand="my-brand",
         )
         assert gate_names == list(_TEXT_ONLY_GATE_NAMES)
+
+
+# =========================================================================
+# Tier enforcement at gate-list composition points (plan todo 17)
+# =========================================================================
+
+
+class TestTierEnforcementComposeGateList:
+    """_compose_gate_list drops tier-restricted gates when an override is set."""
+
+    def test_no_override_gate_list_byte_identical(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """With no tier override, every mode's gate list is unchanged."""
+        monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
+        for mode, expected in _MODE_MAP.items():
+            gate_names, override_fm = _compose_gate_list(mode)
+            assert gate_names == list(expected), f"mode {mode} changed with no override"
+            assert override_fm == {}
+
+    def test_core_override_drops_pro_gates(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """AUTOMEDIA_FEATURE_TIER=core drops pro/enterprise gates from the list."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        gate_names, _ = _compose_gate_list("auto")
+        assert "V7" not in gate_names
+        assert "G1" not in gate_names
+        # Core gates stay
+        assert "CW" in gate_names
+        assert "G0" in gate_names
+
+    def test_pro_override_drops_enterprise_gates(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """AUTOMEDIA_FEATURE_TIER=pro drops enterprise gates (L3), keeps pro."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "pro")
+        gate_names, _ = _compose_gate_list("auto")
+        assert "L3" not in gate_names
+        assert "V7" in gate_names  # pro gates still available
+
+    def test_invalid_override_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A typo'd override value is ignored — full list preserved."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "enterprize")
+        gate_names, _ = _compose_gate_list("auto")
+        assert gate_names == list(_AUTO_GATE_NAMES)
+
+
+class TestTierEnforcementSelectGates:
+    """_select_gates applies tier filtering to the final composed list."""
+
+    def test_no_override_select_gates_unchanged(self) -> None:
+        """No override: _select_gates returns the mode's full list."""
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
+            gate_names, gates = _select_gates(
+                mode="text_only",
+                brand_profile=None,
+                resume_from=None,
+                project_dir=".",
+                progress=None,
+            )
+            assert gate_names == list(_TEXT_ONLY_GATE_NAMES)
+            assert [g.gate_name for g in gates] == list(_TEXT_ONLY_GATE_NAMES)
+        finally:
+            monkeypatch.undo()
+
+    def test_core_override_select_gates_drops_v7(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With AUTOMEDIA_FEATURE_TIER=core, _select_gates excludes V7 + warns."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        gate_names, gates = _select_gates(
+            mode="short-video",
+            brand_profile=None,
+            resume_from=None,
+            project_dir=str(tmp_path / "proj"),
+            progress=None,
+        )
+        assert "V7" not in gate_names
+        assert "V7" not in [g.gate_name for g in gates]
+
+    def test_tier_filter_applies_after_modifiers(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A modifier-included pro gate is still dropped under a core override."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        gate_names, _ = _compose_gate_list("text_only", {"gates": {"include": ["V7"]}})
+        assert "V7" not in gate_names
+
+
+class TestTierEnforcementBuildGates:
+    """_build_gates_from_names drops unavailable gates near the head."""
+
+    def test_no_override_builds_all(self) -> None:
+        """No override: every requested name instantiates (KeyError semantics kept)."""
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
+            gates = _build_gates_from_names(["G0", "V7", "H0"])
+            assert [g.gate_name for g in gates] == ["G0", "V7", "H0"]
+        finally:
+            monkeypatch.undo()
+
+    def test_core_override_drops_pro_gates_with_warning(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """V7 (pro) dropped under core override, warning logged, core gates kept.
+
+        The warning is asserted via a MagicMock patched over the module-level
+        ``runner.log`` — not ``capture_logs()``, which cannot intercept the
+        logger once ``cache_logger_on_first_use`` has bound it and a later
+        ``structlog.configure`` swapped the processor list (ordering pollution
+        under the full suite).
+        """
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        mock_log = MagicMock()
+        monkeypatch.setattr("automedia.pipelines.runner.log", mock_log)
+        gates = _build_gates_from_names(["G0", "V7", "CW"])
+        assert [g.gate_name for g in gates] == ["G0", "CW"]
+        warning_events = [
+            c
+            for c in mock_log.warning.call_args_list
+            if c.args and c.args[0] == "gate.V7.skipped_tier_gate"
+        ]
+        assert warning_events, "no skipped_tier_gate warning for V7"
+        assert warning_events[0].kwargs.get("tier") == "pro"
+
+    def test_unknown_names_pass_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Names not in the tier table are untouched — KeyError semantics preserved."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        with pytest.raises(KeyError, match="NONEXISTENT_XYZ"):
+            _build_gates_from_names(["NONEXISTENT_XYZ"])
+
+    def test_override_failure_mode_skips_dropped_gates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """override_failure_mode for a dropped gate must not KeyError on it."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        gates = _build_gates_from_names(["G0", "V7"], override_failure_mode={"V7": "stop"})
+        assert [g.gate_name for g in gates] == ["G0"]
+
+
+class TestTierEnforcementRunFullPipeline:
+    """End-to-end: run_full_pipeline composes a tier-filtered gate list."""
+
+    def _capture_composed_names(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        tmp_path: Path,
+        project_id: str,
+    ) -> list[list[str]]:
+        mock_proj = MagicMock()
+        mock_proj.project_id = project_id
+        mock_proj.project_dir = str(tmp_path / project_id)
+        mock_project.init.return_value = mock_proj
+
+        captured: list[list[str]] = []
+
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
+            captured.append(list(names))
+            return [_AlwaysPassGate()]
+
+        mock_build.side_effect = capture
+        return captured
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_no_override_v7_in_composed_list(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """With no override the composed list passed to the engine includes V7."""
+        monkeypatch.delenv("AUTOMEDIA_FEATURE_TIER", raising=False)
+        captured = self._capture_composed_names(
+            mock_record, mock_build, mock_project, tmp_path, "tier0"
+        )
+        result = run_full_pipeline("topic", "brand", mode="auto")
+        assert result.status == "success"
+        assert captured and "V7" in captured[0]
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_core_override_v7_dropped_from_run(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """With AUTOMEDIA_FEATURE_TIER=core, run composes its list without V7."""
+        monkeypatch.setenv("AUTOMEDIA_FEATURE_TIER", "core")
+        captured = self._capture_composed_names(
+            mock_record, mock_build, mock_project, tmp_path, "tierc"
+        )
+        result = run_full_pipeline("topic", "brand", mode="auto")
+        assert result.status == "success"
+        assert captured and "V7" not in captured[0]
