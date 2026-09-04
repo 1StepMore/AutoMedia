@@ -36,6 +36,15 @@ log = get_logger(__name__)
 _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError, GateError)
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
+# Content gates whose failing results may apply ``modified_content`` into the
+# main content flow (quality-retry branch).  G1 (humanizer) and G2 (copy
+# review) are ``failure_mode="retry"`` gates that emit ``modified_content``
+# only when their checks fail.  The explicit allowlist guards the master
+# draft in ``01_content/drafts/`` against D-gate/P-gate style platform
+# rewrites, which also produce ``modified_content`` but must never clobber
+# the main flow.
+_CONTENT_GATES_WITH_REWRITE: frozenset[str] = frozenset({"G1", "G2"})
+
 # ``_hitl_lock`` and ``_hitl_waiters`` live in ``gate_types.py`` and are
 # re-exported above for backward compatibility.
 
@@ -241,9 +250,180 @@ class GateEngine:
         if not self._pause_on_approval:
             return False
         ra = gate_context.get("requires_approval", False)
-        if isinstance(ra, (list, tuple, set)):
+        if isinstance(ra, list | tuple | set):
             return gate_name in ra
         return bool(ra)
+
+    def _apply_modified_content(
+        self,
+        gate_name: str,
+        gate_context: GateContext | dict[str, Any],
+        result: dict[str, Any],
+        apply_state: dict[str, Any],
+    ) -> None:
+        """Apply a failing attempt's ``modified_content`` into the main flow.
+
+        Content gates (G1 humanizer, G2 copy review) emit ``modified_content``
+        ONLY when their checks fail (``passed=False``), so the apply point is
+        the quality-retry loop — the retry must evaluate the improved text
+        instead of the original.  The applied change is also persisted to the
+        current draft file registered by CW in ``gate_context["output_files"]``
+        (type ``"article"``), so the on-disk draft in ``01_content/drafts/``
+        matches what downstream gates consume.
+
+        *apply_state* snapshots the pre-apply content and draft text on the
+        first apply so :meth:`_rollback_applied_content` can restore them when
+        the gate ultimately fails through all retries — a failed chain must
+        never leave a rewrite behind as final content (no partial write).
+
+        md5 consequence: rewriting the draft post-CW invalidates the CW md5
+        recorded by the md5 hook (runner ``_record_gate_md5s``).  After
+        applying a rewrite we refresh that record so downstream gate md5
+        comparisons do not go stale.  We only refresh when a CW record already
+        exists — a standalone engine run without md5 state must not gain one
+        as a side effect.  Rolling back restores the original draft bytes,
+        which restores the original md5 too (re-recorded for symmetry).
+
+        Note: ``after_gate`` hook observers dispatched for the *failing*
+        attempt see the pre-apply content — acceptable, hooks observe gate
+        events, not the retry-apply handoff.
+
+        An explicit allowlist scopes this to the main content flow so a
+        D-gate/P-gate style platform rewrite (which also emits
+        ``modified_content``) can never clobber the master draft.
+        """
+        rewrite = result.get("modified_content")
+        if not rewrite or gate_name not in _CONTENT_GATES_WITH_REWRITE:
+            return
+
+        if not apply_state:
+            apply_state["original_content"] = gate_context.get("content", "")
+            draft_path = self._resolve_current_draft(gate_context)
+            if draft_path is not None:
+                try:
+                    with open(draft_path, encoding="utf-8") as fh:
+                        apply_state["original_draft"] = fh.read()
+                    apply_state["draft_path"] = draft_path
+                except OSError as exc:
+                    # Cannot snapshot → cannot restore → do not touch the
+                    # draft at all; apply into context only.
+                    log.warning(
+                        "gate.modified_content_draft_unreadable",
+                        gate_name=gate_name,
+                        draft_path=draft_path,
+                        error=str(exc),
+                    )
+
+        gate_context["content"] = rewrite
+        apply_state["applied"] = True
+        log.info(
+            "gate.modified_content_applied",
+            gate_name=gate_name,
+            content_length=len(rewrite),
+        )
+
+        draft_path = apply_state.get("draft_path")
+        if draft_path is None:
+            log.warning(
+                "gate.modified_content_draft_missing",
+                gate_name=gate_name,
+                hint="no article output_file registered; context updated only",
+            )
+            return
+        try:
+            with open(draft_path, "w", encoding="utf-8") as fh:
+                fh.write(rewrite)
+        except OSError as exc:
+            # Context carries the improved text either way; the pipeline must
+            # not fail because the draft rewrite could not be persisted.
+            log.error(
+                "gate.modified_content_draft_write_failed",
+                gate_name=gate_name,
+                draft_path=str(draft_path),
+                error=str(exc),
+            )
+            return
+
+        self._refresh_cw_md5(gate_name, gate_context, draft_path)
+
+    def _rollback_applied_content(
+        self,
+        gate_context: GateContext | dict[str, Any],
+        apply_state: dict[str, Any],
+    ) -> None:
+        """Restore context and draft to their pre-apply state.
+
+        Called when a content gate fails through all quality retries (or an
+        exception aborts the retry chain): the failed chain's rewrites must
+        not survive as final content — the pipeline failure state must match
+        the pre-change behavior exactly.
+        """
+        if not apply_state.get("applied"):
+            return
+        gate_context["content"] = apply_state.get("original_content", "")
+        draft_path = apply_state.get("draft_path")
+        original_draft = apply_state.get("original_draft")
+        if draft_path is None or original_draft is None:
+            return
+        try:
+            with open(draft_path, "w", encoding="utf-8") as fh:
+                fh.write(original_draft)
+        except OSError as exc:
+            log.error(
+                "gate.modified_content_rollback_failed",
+                draft_path=str(draft_path),
+                error=str(exc),
+            )
+            return
+        # The restored bytes match the original CW md5 again; re-record in
+        # case the apply step refreshed the record with the rewrite's md5.
+        self._refresh_cw_md5("CW", gate_context, draft_path)
+        apply_state.clear()
+
+    @staticmethod
+    def _refresh_cw_md5(
+        gate_name: str,
+        gate_context: GateContext | dict[str, Any],
+        draft_path: str,
+    ) -> None:
+        """Re-record the CW md5 entry for *draft_path* when one already exists.
+
+        Rewriting the draft post-CW invalidates the CW md5 recorded by the
+        md5 hook; refreshing keeps downstream comparisons from going stale.
+        Guarded: never creates md5 state as a side effect.
+        """
+        try:
+            from automedia.hooks.md5_tracker import get_pipeline_md5, record_md5
+
+            project_dir = gate_context.get("project_dir", "")
+            if project_dir and get_pipeline_md5(project_dir).get("gates", {}).get("CW"):
+                record_md5(project_dir, "CW", draft_path)
+        except (OSError, FileNotFoundError, ValueError) as exc:
+            log.warning(
+                "gate.modified_content_md5_refresh_failed",
+                gate_name=gate_name,
+                error=str(exc),
+            )
+
+    @staticmethod
+    def _resolve_current_draft(
+        gate_context: GateContext | dict[str, Any],
+    ) -> str | None:
+        """Return the current article draft path from ``output_files``.
+
+        CW is the only writer of ``01_content/drafts/`` and registers its
+        output as ``{"type": "article", "path": ...}``.  Returns ``None``
+        when no article entry exists (e.g. engine runs without CW).
+        """
+        output_files = gate_context.get("output_files") or []
+        if not isinstance(output_files, list):
+            return None
+        for entry in reversed(output_files):
+            if isinstance(entry, dict) and entry.get("type") == "article":
+                path = entry.get("path")
+                if path:
+                    return str(path)
+        return None
 
     # ------------------------------------------------------------------
     # Retry helper
@@ -441,6 +621,9 @@ class GateEngine:
             gate_name = gate.gate_name
             gate_context["_gate_name"] = gate_name
             gate_context["_quality_retry_count"] = 0  # Reset per gate for quality retry tracking
+            # Snapshot/rollback state for modified_content applies in the
+            # quality-retry branch (no partial writes on exhausted retries).
+            _rewrite_apply_state: dict[str, Any] = {}
 
             # NEW: Check cancellation
             if progress and progress.is_cancelled():
@@ -539,6 +722,13 @@ class GateEngine:
                         gate_context["_quality_retry_count"] = _quality_attempt
                         _remaining = _local_max_quality - _quality_attempt
 
+                        # Apply the previous failing attempt's rewrite BEFORE
+                        # the re-execution so the retry evaluates the improved
+                        # text (G1/G2 emit modified_content only on failure).
+                        self._apply_modified_content(
+                            gate_name, gate_context, result, _rewrite_apply_state
+                        )
+
                         log.info(
                             "gate.quality_retry",
                             gate_name=gate_name,
@@ -633,6 +823,7 @@ class GateEngine:
                                 "quality_retry_count": _quality_attempt,
                             }
                             results[-1] = error_result
+                            self._rollback_applied_content(gate_context, _rewrite_apply_state)
                             if progress:
                                 progress.on_gate_end(
                                     gate_name,
@@ -701,6 +892,7 @@ class GateEngine:
                                 "quality_retry_count": _quality_attempt,
                             }
                             results[-1] = error_result
+                            self._rollback_applied_content(gate_context, _rewrite_apply_state)
                             if progress:
                                 progress.on_gate_end(
                                     gate_name,
@@ -715,6 +907,9 @@ class GateEngine:
 
                     if not passed:
                         all_ok = False
+                        # Retries exhausted — undo any applied rewrite so the
+                        # failed chain leaves no partial write behind.
+                        self._rollback_applied_content(gate_context, _rewrite_apply_state)
                         level2 = gate_context.get("_level2_handler")
                         if level2:
                             log.info(
@@ -1013,8 +1208,7 @@ class GateEngine:
         missing = [n for n in gate_names if n not in gate_map]
         if missing:
             raise ValueError(
-                f"Gates not found in engine gate list: {missing}. "
-                f"Available: {list(gate_map)}"
+                f"Gates not found in engine gate list: {missing}. Available: {list(gate_map)}"
             )
 
         gate_results: list[dict[str, Any]] = []

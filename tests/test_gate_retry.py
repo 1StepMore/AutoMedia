@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -21,7 +23,7 @@ class _FakeGate:
         self,
         name: str,
         mode: str,
-        execute_fn: Any,
+        execute_fn: Callable[[dict[str, Any]], dict[str, Any]],
     ) -> None:
         self._name = name
         self._mode = mode
@@ -346,7 +348,8 @@ def test_quality_retry_emits_progress_events() -> None:
     failed_events = [e for e in events if e["status"] == "failed"]
     passed_events = [e for e in events if e["status"] == "passed"]
 
-    # Events: start → end(False) → end(False,0) → start → end(False) → end(False,0) → start → end(True)
+    # Events: start → end(False) → end(False,0) → start → end(False) →
+    # end(False,0) → start → end(True)
     assert len(running_events) == 3
     assert len(failed_events) == 4
     assert len(passed_events) == 1
@@ -428,7 +431,7 @@ def test_quality_retry_delegates_to_level2_handler() -> None:
         return {"passed": False, "gate": "G0", "error": "always fails"}
 
     def _level2_handler(
-        **kwargs: Any,
+        **kwargs: object,
     ) -> tuple[bool, list[dict[str, Any]]]:
         level2_called["called"] = True
         return False, []
@@ -758,3 +761,175 @@ def test_level2_escalation_flows_to_h0_gate() -> None:
 
     # Verify the regen count matches max
     assert entry["regeneration_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# (f) modified_content application before each quality retry (todo 7)
+# ---------------------------------------------------------------------------
+
+_CONTENT_GATES_WITH_REWRITE = frozenset({"G1", "G2"})
+"""Content gates allowed to apply ``modified_content`` into the main flow.
+
+Mirrors the Oracle scope correction: G1 (humanizer) and G2 (copy review) are
+the only ``failure_mode="retry"`` gates that emit ``modified_content`` on
+failing attempts.  An explicit allowlist guards the main content flow against
+clobbering from D-gate/P-gate style rewrites that should never touch the
+master draft.
+"""
+
+
+def _read_draft(draft_dir: Path) -> str:
+    """Read the single draft file from a ``01_content/drafts`` directory."""
+    paths = sorted(draft_dir.glob("*.md"))
+    assert len(paths) == 1, f"expected exactly one draft, found {paths}"
+    return paths[0].read_text(encoding="utf-8")
+
+
+def test_quality_retry_applies_modified_content_and_persists_draft(tmp_path: Path) -> None:
+    """REAL G1-like retry flow: first execute returns passed=False +
+    modified_content, retry returns passed=True.  The retry must evaluate the
+    IMPROVED text, the applied rewrite must land on the draft file on disk,
+    and gate_context["content"] must carry it forward to downstream gates.
+    """
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    seen_content: list[str] = []
+
+    def _g1_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "G1",
+                "error": "AI patterns detected",
+                "modified_content": "MODIFIED",
+            }
+        return {"passed": True, "gate": "G1"}
+
+    gate = _FakeGate("G1", "retry", _g1_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, results = engine.run(gate_context)
+
+    assert ok is True
+    assert results[0]["passed"] is True
+    # The retry consumed the improved text, not the original.
+    assert seen_content == ["ORIGINAL", "MODIFIED"]
+    # Context carries the applied rewrite forward to downstream gates.
+    assert gate_context["content"] == "MODIFIED"
+    # The applied change is persisted to the current draft file on disk.
+    assert _read_draft(draft_dir) == "MODIFIED"
+
+
+def test_retry_pass_without_modified_content_leaves_content_untouched(tmp_path: Path) -> None:
+    """A gate returning passed=True WITHOUT modified_content must leave the
+    content and draft exactly as they were (no spurious rewrite)."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    def _gate(ctx: dict[str, Any]) -> dict[str, Any]:
+        ctx["content"] = "ORIGINAL"
+        return {"passed": True, "gate": "G1"}
+
+    gate = _FakeGate("G1", "retry", _gate)
+    engine = GateEngine([gate])
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, _ = engine.run(gate_context)
+
+    assert ok is True
+    assert gate_context["content"] == "ORIGINAL"
+    assert _read_draft(draft_dir) == "ORIGINAL"
+
+
+def test_quality_retry_non_content_gate_rewrite_not_applied(tmp_path: Path) -> None:
+    """Clobber guard: a non-content gate (e.g. a D-gate style rewrite) whose
+    failing result carries modified_content must NOT have it applied into the
+    main content flow — standalone platform rewrites must not touch the
+    master draft."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    seen_content: list[str] = []
+
+    def _d_gate_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "D1",
+                "error": "platform format mismatch",
+                "modified_content": "PLATFORM REWRITE",
+            }
+        return {"passed": True, "gate": "D1"}
+
+    gate = _FakeGate("D1", "retry", _d_gate_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, _ = engine.run(gate_context)
+
+    assert ok is True
+    # The rewrite was never applied: the retry still sees the original text
+    # and the draft on disk is untouched.
+    assert seen_content == ["ORIGINAL", "ORIGINAL"]
+    assert gate_context["content"] == "ORIGINAL"
+    assert _read_draft(draft_dir) == "ORIGINAL"
+
+
+def test_retries_exhausted_failed_attempt_not_applied(tmp_path: Path) -> None:
+    """A gate that keeps failing through all retries must NOT get its failed
+    attempt's modified_content applied as final content — retries exhausted →
+    pipeline fails exactly as before, no partial write to context or draft."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    def _g1_always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "passed": False,
+            "gate": "G1",
+            "error": "AI patterns detected",
+            "modified_content": "FAILED REWRITE",
+        }
+
+    gate = _FakeGate("G1", "retry", _g1_always_fail)
+    engine = GateEngine([gate], max_quality_retries=2)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, results = engine.run(gate_context)
+
+    assert ok is False
+    assert results[0]["passed"] is False
+    # No partial write: the failed attempt's rewrite never lands.
+    assert gate_context["content"] == "ORIGINAL"
+    assert _read_draft(draft_dir) == "ORIGINAL"
