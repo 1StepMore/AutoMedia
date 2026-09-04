@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (65 tools)
+- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (66 tools)
 - **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -328,7 +328,7 @@ result = run_full_pipeline(
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
 | `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
 
-### MCP Server (65 tools)
+### MCP Server (66 tools)
 
 Start:
 
@@ -349,6 +349,7 @@ python -m automedia.mcp.server
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress (returns gates_done, gates_remaining, total_gates) |
 | `get_pipeline_state` | Per-gate pipeline state view for a project (passed/failed/pending + asset md5) |
+| `get_gate_report` | Return the latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_active_pipelines` | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |
 | `list_projects` | List all projects under a base directory |
@@ -520,7 +521,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  65 tools      |     |  19 commands       |
+  |  66 tools      |     |  19 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+

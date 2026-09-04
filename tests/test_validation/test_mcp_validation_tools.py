@@ -17,9 +17,10 @@ non-existent directory, the library is intentionally unavailable and this
 module skips.  NOT e2e-marked: every test is fast (no network, no LLM, no
 CLI subprocess) and runs in the default pytest gate.
 
-Committed-library expectations (as of 2026-08-30): 105 scenarios, 65 MCP
+Committed-library expectations (as of 2026-09-05): 106 scenarios, 66 MCP
 tools after W4-T2 + issue #86 + the graph-engineering ``get_pipeline_state``
-tool (59 + 5 + get_pipeline_state),
+tool + the productization-roadmap ``get_gate_report`` tool
+(59 + 5 + get_pipeline_state + get_gate_report),
 ``health-check-baseline`` is the
 deterministic GREEN-able scenario (its only step calls ``health_check``,
 expect ``success: true`` — it passed the W2-T3/W3 empirical suites).
@@ -95,21 +96,19 @@ class TestRegistration:
     """The 5 tools are registered and surface in help_mcp automatically."""
 
     def test_five_validation_tools_registered(self, server: FastMCP) -> None:
-        """59 pre-existing tools + 5 validation tools + get_pipeline_state = 65."""
+        """59 pre-existing + 5 validation + get_pipeline_state + get_gate_report = 66."""
         names = set(server._tool_manager._tools.keys())
         assert names >= EXPECTED_VALIDATION_TOOLS, (
             f"missing validation tools: {sorted(EXPECTED_VALIDATION_TOOLS - names)}"
         )
-        assert len(names) == 65
+        assert len(names) == 66
 
     def test_tools_appear_in_help_mcp(self, server: FastMCP) -> None:
         """The registry population in create_server picks up the new tools."""
         payload = _call_tool(server, "help_mcp", {})
-        assert payload["tool_count"] == 65
+        assert payload["tool_count"] == 66
         listed = {
-            entry["name"]
-            for category in payload["categories"].values()
-            for entry in category
+            entry["name"] for category in payload["categories"].values() for entry in category
         }
         assert listed >= EXPECTED_VALIDATION_TOOLS
 
@@ -168,9 +167,7 @@ class TestRunValidationScenario:
     def test_rejects_empty_name(self, server: FastMCP) -> None:
         """The REQUIRED name filter rejects empty/blank names (recursion bound M5)."""
         for bad_name in ("", "   "):
-            payload = _call_tool(
-                server, "run_validation_scenario", {"scenario_name": bad_name}
-            )
+            payload = _call_tool(server, "run_validation_scenario", {"scenario_name": bad_name})
             assert payload["success"] is False
             assert payload["error"]["code"] == "INVALID_PARAM"
             assert "scenario_name" in payload["error"]["message"]
@@ -243,9 +240,9 @@ class TestGetValidationReport:
         assert payload["success"] is False
         assert payload["error"]["code"] == "NOT_FOUND"
         # the real stamp is readable by name
-        stamp = Path(tmp_path / "validation-runs" / "latest.txt").read_text(
-            encoding="utf-8"
-        ).strip()
+        stamp = (
+            Path(tmp_path / "validation-runs" / "latest.txt").read_text(encoding="utf-8").strip()
+        )
         payload = _call_tool(server, "get_validation_report", {"run_dir": stamp})
         assert payload["success"] is True
         assert payload["run_dir"] == stamp
@@ -262,23 +259,24 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 65 declared / 58 covered / 0 missing (the W4-T7 meta scenario
+    mcp 66 declared / 59 covered / 0 missing (the W4-T7 meta scenario
     ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
-    covers ``validation_matrix``) and cli 19 / 19 / 0.  This test pins the
-    post-W4-T7 reality with the 5th validation tool (issue #86) plus the
-    graph-engineering-rollout ``get_pipeline_state`` tool.
+    covers ``validation_matrix``; the productization-roadmap todo-6
+    ``get_gate_report`` tool is covered by ``gate-report-surface``) and
+    cli 19 / 19 / 0.  This test pins the current reality.
     """
 
     def test_audit_reflects_the_five_new_registrations(self, server: FastMCP) -> None:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # 59 pre-existing + the 5 new tools + get_pipeline_state
-        assert summary["mcp_declared"] == 65
-        assert summary["mcp_used"] == 65
+        # 59 pre-existing + 5 validation tools + get_pipeline_state
+        # + get_gate_report (productization-roadmap todo 6)
+        assert summary["mcp_declared"] == 66
+        assert summary["mcp_used"] == 66
         # the meta scenarios cover all 5 validation tools (W4-T7's
         # validation-self-check plus validation-matrix-meta) -> missing = 0
-        assert summary["mcp_covered"] == 58
+        assert summary["mcp_covered"] == 59
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]

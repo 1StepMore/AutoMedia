@@ -275,9 +275,7 @@ class TestValidateList:
 class TestValidateRun:
     """``validate run`` — one named scenario, exit 1 only on status failed."""
 
-    def test_run_passing_scenario_exits_0(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_passing_scenario_exits_0(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
             [
@@ -311,9 +309,7 @@ class TestValidateRun:
         assert result.exit_code == 0
         assert "Status: passed" in result.output
 
-    def test_run_unconfigured_exits_0(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_unconfigured_exits_0(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
             [
@@ -348,9 +344,7 @@ class TestValidateRun:
         assert result.exit_code == 0
         assert "Status: passed" in result.output
 
-    def test_run_failed_scenario_exits_1(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_failed_scenario_exits_1(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
             [
@@ -368,9 +362,7 @@ class TestValidateRun:
     def test_run_missing_scenario_option_is_usage_error(
         self, scenarios_dir: Path, tmp_path: Path
     ) -> None:
-        result = runner.invoke(
-            app, ["validate", "run", "--runs-root", str(tmp_path / "runs")]
-        )
+        result = runner.invoke(app, ["validate", "run", "--runs-root", str(tmp_path / "runs")])
         assert result.exit_code == 2
         assert "Missing option" in result.output
 
@@ -392,9 +384,7 @@ class TestValidateRun:
         assert "Unknown scenario" in result.output
         assert "synth-passing" in result.output  # lists available names
 
-    def test_run_invalid_env_gate_value_exits_2(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_invalid_env_gate_value_exits_2(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
             [
@@ -410,9 +400,7 @@ class TestValidateRun:
         )
         assert result.exit_code == 2
 
-    def test_run_json_is_machine_readable(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_json_is_machine_readable(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
             [
@@ -430,9 +418,7 @@ class TestValidateRun:
         assert data["scenario"] == "synth-passing"
         assert data["status"] == "passed"
 
-    def test_run_hard_failed_exits_1(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_hard_failed_exits_1(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """A hard scenario that fails is a hard-safety violation → exit 1."""
         result = runner.invoke(
             app,
@@ -448,9 +434,7 @@ class TestValidateRun:
         assert result.exit_code == 1
         assert "Status: failed" in result.output
 
-    def test_run_hard_unconfigured_exits_1(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_hard_unconfigured_exits_1(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """A hard env-gated scenario that is unconfigured is a violation →
         exit 1 (NEW: plain unconfigured alone exits 0, hard does not)."""
         result = runner.invoke(
@@ -467,9 +451,7 @@ class TestValidateRun:
         assert result.exit_code == 1
         assert "unconfigured" in result.output
 
-    def test_run_hard_passed_exits_0(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_hard_passed_exits_0(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """A hard scenario that passes is NOT a violation → exit 0."""
         result = runner.invoke(
             app,
@@ -485,9 +467,7 @@ class TestValidateRun:
         assert result.exit_code == 0
         assert "Status: passed" in result.output
 
-    def test_run_failed_non_hard_exits_1(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_failed_non_hard_exits_1(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """Non-hard failures keep the existing exit-1 contract."""
         result = runner.invoke(
             app,
@@ -503,9 +483,7 @@ class TestValidateRun:
         assert result.exit_code == 1
         assert "Status: failed" in result.output
 
-    def test_run_hard_text_marks_violation(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_hard_text_marks_violation(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """Hard violations on a non-failed status carry the text marker."""
         result = runner.invoke(
             app,
@@ -521,9 +499,7 @@ class TestValidateRun:
         assert result.exit_code == 1
         assert "HARD SAFETY VIOLATION" in result.output
 
-    def test_run_hard_json_flags_violation(
-        self, scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_run_hard_json_flags_violation(self, scenarios_dir: Path, tmp_path: Path) -> None:
         """The JSON projection exposes the hard-safety flag."""
         result = runner.invoke(
             app,
@@ -552,9 +528,7 @@ class TestValidateReport:
     W4-T3's renderer lands)."""
 
     def test_report_no_runs_exits_1(self, tmp_path: Path) -> None:
-        result = runner.invoke(
-            app, ["validate", "report", "--runs-root", str(tmp_path / "runs")]
-        )
+        result = runner.invoke(app, ["validate", "report", "--runs-root", str(tmp_path / "runs")])
         assert result.exit_code == 1
         assert "No runs recorded" in result.output
 
@@ -601,9 +575,7 @@ class TestValidateDiff:
     until W4-T4's diff module lands."""
 
     def test_diff_no_runs_exits_1(self, tmp_path: Path) -> None:
-        result = runner.invoke(
-            app, ["validate", "diff", "--runs-root", str(tmp_path / "runs")]
-        )
+        result = runner.invoke(app, ["validate", "diff", "--runs-root", str(tmp_path / "runs")])
         assert result.exit_code == 1
         assert "No runs recorded" in result.output
 
@@ -611,9 +583,7 @@ class TestValidateDiff:
         runs = tmp_path / "runs"
         persist_run(runs, _make_run_record(), stamp="20260101-000000-000001")
         persist_run(runs, _make_run_record(), stamp="20260102-000000-000002")
-        result = runner.invoke(
-            app, ["validate", "diff", "--runs-root", str(runs)]
-        )
+        result = runner.invoke(app, ["validate", "diff", "--runs-root", str(runs)])
         assert result.exit_code == 0
         assert "20260102-000000-000002" in result.output
         assert "20260101-000000-000001" in result.output
@@ -654,9 +624,7 @@ class TestValidateDiff:
         runs = tmp_path / "runs"
         persist_run(runs, _make_run_record("failed"), stamp="20260101-000000-000001")
         persist_run(runs, _make_run_record("passed"), stamp="20260102-000000-000002")
-        result = runner.invoke(
-            app, ["--json", "validate", "diff", "--runs-root", str(runs)]
-        )
+        result = runner.invoke(app, ["--json", "validate", "diff", "--runs-root", str(runs)])
         assert result.exit_code == 0
         data = json.loads(result.output)
         for key in (
@@ -722,8 +690,8 @@ class TestValidateCoverage:
         # The live app.py now registers 19 commands (pipeline is the 19th).
         assert summary["cli_declared"] == 19
         # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel)
-        # + the W4-T3 validation_matrix tool + the get_pipeline_state tool.
-        assert summary["mcp_declared"] == 65
+        # + the W4-T3 validation_matrix tool + get_pipeline_state + get_gate_report.
+        assert summary["mcp_declared"] == 66
         assert summary["cli_missing"] == 19  # synthetic library covers none
 
 
@@ -752,9 +720,7 @@ class TestValidateMatrix:
         assert "mcp" in data["surfaces"]
         assert "cli" in data["surfaces"]
 
-    def test_matrix_text_lists_scenarios_and_hard_flags(
-        self, scenarios_dir: Path
-    ) -> None:
+    def test_matrix_text_lists_scenarios_and_hard_flags(self, scenarios_dir: Path) -> None:
         result = runner.invoke(app, ["validate", "matrix"])
         assert result.exit_code == 0
         assert "synth-hard-failing" in result.output

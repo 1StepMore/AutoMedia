@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 65 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 66 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -43,8 +43,8 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
-from automedia.effects.mcp import analyze_content as effects_analyze_content
-from automedia.mcp.accounts import (
+from automedia.effects.mcp import analyze_content as effects_analyze_content  # noqa: E402
+from automedia.mcp.accounts import (  # noqa: E402
     connect_account,
     disconnect_account,
     get_account_health,
@@ -54,7 +54,7 @@ from automedia.mcp.accounts import (
 # ---------------------------------------------------------------------------
 # Allowlist imports (from allowlist.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.allowlist import (
+from automedia.mcp.allowlist import (  # noqa: E402
     _require_allowed,
     check_path_allowed,
 )
@@ -62,7 +62,7 @@ from automedia.mcp.allowlist import (
 # ---------------------------------------------------------------------------
 # Resource imports (from resources.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.resources import (
+from automedia.mcp.resources import (  # noqa: E402
     gate_info_resource,
     getting_started_resource,
     list_projects_resource,
@@ -74,7 +74,7 @@ from automedia.mcp.resources import (
 # ---------------------------------------------------------------------------
 # Helper / utility imports (from tools.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.tools import (
+from automedia.mcp.tools import (  # noqa: E402
     add_brand,
     add_cron_schedule,
     approve_gate,
@@ -88,6 +88,7 @@ from automedia.mcp.tools import (
     format_output,
     get_config,
     get_cron_health,
+    get_gate_report,
     get_pending_approvals,
     get_pipeline_progress,
     get_pipeline_state,
@@ -125,8 +126,8 @@ from automedia.mcp.tools import (
     test_cron_schedule,
     update_engine_config,
 )
-from automedia.mcp.tools_distribution import distribute_content
-from automedia.validation.mcp_tools import (
+from automedia.mcp.tools_distribution import distribute_content  # noqa: E402
+from automedia.validation.mcp_tools import (  # noqa: E402
     get_validation_report,
     list_validation_scenarios,
     run_validation_scenario,
@@ -153,6 +154,7 @@ __all__ = [
     "select_topic",
     "run_pipeline",
     "get_pipeline_progress",
+    "get_gate_report",
     "get_pipeline_state",
     "get_pipeline_status",
     "init_config",
@@ -379,7 +381,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 65 tools and 6 resources registered.
+        A fully configured server with all 66 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -475,6 +477,18 @@ def create_server() -> FastMCP:
             "(default 'auto')."
         ),
     )(get_pipeline_state)
+
+    mcp.tool(
+        description=(
+            "Return the latest gate-report JSON for a project (written to "
+            "05_review/gate-report/ at the end of every production run). "
+            "Read-only. Takes project_id and optional base_dir (must be "
+            "within a directory allowed by mcp_allowlist.yaml — requests "
+            "outside the allowlist are denied, fail-closed). Returns a "
+            "structured NOT_FOUND error when the project or any report "
+            "does not exist."
+        ),
+    )(get_gate_report)
 
     mcp.tool(
         description=(
@@ -1086,7 +1100,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 65 tools and 6 resources.",
+        description="AutoMedia MCP Server — stdio transport with 66 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",

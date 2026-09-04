@@ -10,11 +10,12 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
 import yaml
+from mcp.server.fastmcp import FastMCP
 
 from automedia._version import __version__
 from automedia.mcp.allowlist import (
@@ -32,6 +33,7 @@ from automedia.mcp.tools import (
     _project_assets,
     _resolve_projects_dir,
 )
+from automedia.pipelines.gate_engine import PipelineResult
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -329,6 +331,7 @@ class TestServerCreation:
                 "get_account_health",
                 "get_config",
                 "get_cron_health",
+                "get_gate_report",
                 "get_pending_approvals",
                 "get_pipeline_progress",
                 "get_pipeline_state",
@@ -714,8 +717,6 @@ class TestHelpers:
 
     def test_pipeline_result_to_dict(self) -> None:
         """_pipeline_result_to_dict converts dataclass to dict."""
-        from automedia.pipelines.gate_engine import PipelineResult
-
         result = PipelineResult(
             status="success",
             project_id="test123",
@@ -780,10 +781,10 @@ class TestResources:
     """Tests for MCP resource endpoints."""
 
     @pytest.fixture()
-    def server(self) -> Any:
+    def server(self) -> FastMCP:
         return create_server()
 
-    def test_resources_listed(self, server: Any) -> None:
+    def test_resources_listed(self, server: FastMCP) -> None:
         """create_server() registers automedia:// resources."""
         resource_uris = list(server._resource_manager._resources.keys())
         template_uris = list(server._resource_manager._templates.keys())
@@ -792,7 +793,7 @@ class TestResources:
         assert "automedia://pool" in resource_uris
 
     def test_projects_resource_empty(
-        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns valid JSON array when no projects exist."""
         monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(tmp_path / "no_projects"))
@@ -803,7 +804,7 @@ class TestResources:
         assert data == []
 
     def test_projects_resource_with_data(
-        self, server: Any, sample_project: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, sample_project: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns project summaries for discovered projects."""
         monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(sample_project))
@@ -817,7 +818,7 @@ class TestResources:
         assert "_dir" not in data[0]
 
     def test_pipeline_resource_not_found(
-        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns error JSON for nonexistent project_id."""
         monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(tmp_path / "empty"))
@@ -827,7 +828,7 @@ class TestResources:
         assert "not found" in data["error"]
 
     def test_pipeline_resource_found(
-        self, server: Any, sample_project: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, sample_project: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns full project info including project_dir for valid project_id."""
         monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(sample_project))
@@ -839,7 +840,7 @@ class TestResources:
         assert "_dir" not in data
 
     def test_pool_resource_no_db(
-        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns error JSON when pool DB missing."""
         monkeypatch.setenv("AUTOMEDIA_POOL_DB", str(tmp_path / "missing.db"))
@@ -849,7 +850,7 @@ class TestResources:
         assert "Pool database not found" in data["error"]
 
     def test_pool_resource_with_data(
-        self, server: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, server: FastMCP, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Returns topic summaries from an existing pool DB."""
         from automedia.pool.db import PoolDB
@@ -885,16 +886,13 @@ class TestBatchRun:
 
     @staticmethod
     def _make_result(
-        status: str = "success",
+        status: Literal["success", "failed", "partial"] = "success",
         project_id: str = "proj_001",
         error: str | None = None,
-    ) -> Any:
-        from automedia.pipelines.gate_engine import PipelineResult
-
+    ) -> PipelineResult:
         return PipelineResult(
             status=status,  # pyright: ignore[reportArgumentType]
             project_id=project_id,
-            project_dir=f"/tmp/{project_id}",
             topic="test",
             brand="TestBrand",
         )

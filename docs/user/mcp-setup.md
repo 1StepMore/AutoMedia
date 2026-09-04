@@ -53,6 +53,7 @@ Registered MCP tools:
   - get_pending_approvals
   - get_pipeline_progress
   - get_pipeline_state
+  - get_gate_report
   - get_pipeline_status
   - get_project_assets
   - get_redlines
@@ -98,7 +99,7 @@ Registered MCP tools:
   - validation_matrix
 ```
 
-## Available Tools (65)
+## Available Tools (66)
 
 | Tool | Description |
 |------|------|
@@ -117,6 +118,7 @@ Registered MCP tools:
 | `skip_gate` | Mark a specific gate for skipping in a running pipeline |
 | `get_pipeline_progress` | Poll gate-by-gate progress of a running pipeline |
 | `get_pipeline_state` | Per-gate state view for a project (passed/failed/pending + md5) |
+| `get_gate_report` | Latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects, optionally filtered by status |
 | `get_project_assets` | List asset files in a project directory |
@@ -291,6 +293,7 @@ from automedia.mcp import (
     run_pipeline,
     get_pipeline_progress,
     get_pipeline_state,
+    get_gate_report,
     get_pipeline_status,
     list_projects,
     get_project_assets,

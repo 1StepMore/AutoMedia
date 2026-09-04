@@ -1,6 +1,8 @@
 """Pipeline execution and lifecycle MCP tools."""
+
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 import warnings
@@ -31,6 +33,7 @@ from automedia.mcp.tools._shared import (
     error_response,
     success_response,
 )
+from automedia.pipelines.gate_report import REPORT_STEM, REPORT_SUBDIR
 from automedia.pipelines.state_view import aggregate_pipeline_state
 
 log = get_logger(__name__)
@@ -38,6 +41,7 @@ log = get_logger(__name__)
 __all__ = [
     "batch_run",
     "cancel_pipeline",
+    "get_gate_report",
     "get_pipeline_progress",
     "get_pipeline_state",
     "get_pipeline_status",
@@ -171,8 +175,7 @@ def run_pipeline(
             "status": "failed",
             **error_response(
                 MCPErrorCode.INVALID_PARAM,
-                f"At max concurrent pipelines ({max_n}). "
-                "Wait for one to finish or cancel one.",
+                f"At max concurrent pipelines ({max_n}). Wait for one to finish or cancel one.",
             ),
         }
 
@@ -461,7 +464,11 @@ def list_active_pipelines() -> dict[str, Any]:
         pipelines.sort(key=lambda p: p.get("elapsed_s", 0.0), reverse=True)
         return success_response({"pipelines": pipelines, "count": len(pipelines)})
     except OSError as exc:
-        return {"pipelines": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")}
+        return {
+            "pipelines": [],
+            "count": 0,
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}"),
+        }
     except Exception as exc:
         return {"pipelines": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
@@ -551,12 +558,101 @@ def get_pipeline_state(
             )
         proj_dir = str(match[0].get("_dir", ""))
         rows = [asdict(row) for row in aggregate_pipeline_state(proj_dir, mode)]
-        return success_response(
-            {"project_id": project_id, "mode": mode, "gates": rows}
-        )
+        return success_response({"project_id": project_id, "mode": mode, "gates": rows})
 
     except PermissionError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
+    except OSError as exc:
+        return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
+
+
+def get_gate_report(
+    project_id: NonEmptyStr,
+    base_dir: str = ".",
+    latest: bool = True,
+) -> dict[str, Any]:
+    """Return the latest (or a named) gate-report JSON for a project.
+
+    Reads the per-run gate report produced at the end of every production
+    run (``05_review/gate-report/gate-report-*.json``, written by
+    :func:`automedia.pipelines.gate_report.write_gate_report`).  Read-only:
+    nothing is written to the project.
+
+    Parameters
+    ----------
+    project_id:
+        The project identifier to look up.
+    base_dir:
+        Base directory to scan for projects.  MUST be within a directory
+        permitted by ``mcp_allowlist.yaml`` — requests outside the
+        allowlist are denied (fail-closed) with a structured error.
+    latest:
+        When *True* (default) return the newest report by filename
+        timestamp.  When *False* the report *must* contain a
+        ``report_file`` field naming a specific ``gate-report-*.json``
+        file to read; that named file is returned instead.
+
+    Returns
+    -------
+    dict
+        ``{"project_id": ..., "report_file": ..., "report": {...}}`` on
+        success, or a structured error (``NOT_FOUND`` when the project or
+        any report is missing).
+    """
+    try:
+        _require_allowed(base_dir, tool_name="get_gate_report")
+        projects = _discover_projects(base_dir)
+        match = [p for p in projects if p.get("project_id") == project_id]
+        if not match:
+            return error_response(
+                MCPErrorCode.NOT_FOUND,
+                f"Project {project_id!r} not found",
+                "Verify project_id",
+            )
+        proj_dir = str(match[0].get("_dir", ""))
+        report_dir = Path(proj_dir) / REPORT_SUBDIR
+
+        if latest:
+            candidates = sorted(report_dir.glob(f"{REPORT_STEM}-*.json"))
+            if not candidates:
+                return error_response(
+                    MCPErrorCode.NOT_FOUND,
+                    f"No gate report found for project {project_id!r} under {REPORT_SUBDIR}",
+                    "Run the pipeline first (reports are generated at run "
+                    "completion) or verify base_dir",
+                )
+            report_path = candidates[-1]
+        else:
+            # Named report selection is only wired through a report_file
+            # pointer, which the writer does not persist yet.
+            return error_response(
+                MCPErrorCode.INVALID_PARAM,
+                "Named report selection (latest=False) requires a "
+                "'report_file' pointer which is not persisted yet; "
+                "use latest=True",
+                "Call with latest=True to get the newest report",
+            )
+
+        try:
+            with open(report_path, encoding="utf-8") as fh:
+                report: dict[str, Any] = json.load(fh)
+        except json.JSONDecodeError as exc:
+            return error_response(
+                MCPErrorCode.VALIDATION_ERROR,
+                f"Gate report {report_path.name!r} is not valid JSON: {exc}",
+                "Re-run the pipeline to regenerate the report",
+            )
+
+        return success_response(
+            {
+                "project_id": project_id,
+                "report_file": report_path.name,
+                "report": report,
+            }
+        )
+
+    except PermissionError as exc:
+        return error_response(MCPErrorCode.ALLOWLIST_DENIED, f"Permission denied: {exc}")
     except OSError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
 

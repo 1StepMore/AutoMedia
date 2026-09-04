@@ -12,7 +12,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 ## 2. Three Entry Points
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 65 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 66 tools |
 | CLI | `automedia <subcommand>` | 19 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -27,7 +27,7 @@ AutoMedia/
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
 │       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
 │       ├── cli/                # Typer CLI: app.py + 19 command modules
-│       ├── mcp/                # FastMCP server, 65 tools; mcp_allowlist.yaml path allowlist
+│       ├── mcp/                # FastMCP server, 66 tools; mcp_allowlist.yaml path allowlist
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
 │       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
@@ -118,7 +118,7 @@ pre-commit run --all-files   # pre-commit
 2. Add mapping in `_LLM_KEY_MAP` in `automedia/core/config_loader.py` if it maps under `llm.text_generation.*`
 3. Add to the Config Key Reference section
 
-## 9. MCP Tools Quick Reference (65 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference (66 tools, incl. 4 deprecated aliases)
 
 stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by the `mcp_allowlist.yaml` path allowlist.
 
@@ -132,6 +132,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | Strategy via LLM, then pipeline |
 | `get_pipeline_progress` | project_id | Poll gate-by-gate progress |
 | `get_pipeline_state` | project_id, base_dir, mode | Per-gate state view (passed/failed/pending + md5) |
+| `get_gate_report` | project_id, base_dir, latest | Latest gate-report JSON from 05_review/gate-report/ (base_dir must be allowlisted) |
 | `get_pipeline_status` | project_id, base_dir | Query project status |
 | `list_active_pipelines` | — | List active / recent pipelines |
 | `list_projects` | base_dir, status | List projects under a directory |
