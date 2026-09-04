@@ -331,6 +331,39 @@ Six layers stack from lowest to highest priority, with higher priority overridin
 - **Archive red line**: Only user `--force` can archive, agent must not archive (Red Line 8)
 - **External scheduling**: External crond calls `automedia cron run`, no built-in scheduler
 
+## Repository Ownership & Publishing (canonical = renanzai40/AutoMedia_BackUp)
+
+The original owner account (1StepMore) was suspended; per the 2026-09 productization
+decision, the backup repository **`renanzai40/AutoMedia_BackUp`** is the canonical
+distribution point. This section records what moved automatically and what remains
+bound to the old account and needs a one-time user-manual action.
+
+- **Git remotes (local environment state, not tracked):** local `origin` now points at
+  `git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git` (the SSH host alias for
+  the renanzai40 account); the original 1StepMore remote is preserved unchanged as
+  `upstream-1stepmore` (`git@github.com:1StepMore/AutoMedia.git`) so history and
+  branch-tracking references stay intact. The 1StepMore remote is NOT deleted.
+- **CI badge / CI runs:** the README CI badge points at the canonical repo
+  (`renanzai40/AutoMedia_BackUp`). GitHub Actions run per-repo — CI must be enabled on
+  that repository for the badge to go green.
+- **PyPI publishing (OIDC) is bound to the OLD account — user-manual:** `publish.yml`
+  uses PyPI Trusted Publishing (OIDC). The publisher is registered on the PyPI project
+  `automedia-pipeline` (https://pypi.org/manage/project/automedia-pipeline/settings/)
+  with Owner `1StepMore` / Repository `AutoMedia` / Workflow `publish.yml` /
+  Environment `pypi`. A pending release pushed from `renanzai40/AutoMedia_BackUp` will
+  be **rejected by PyPI** until the user re-adds the trusted publisher under the
+  renanzai40 namespace (PyPI project settings → Publishing → add publisher with Owner
+  `renanzai40`), plus the matching GitHub environment `pypi` in the new repo's
+  Settings → Environments. This **cannot be done from code alone** — it requires the
+  PyPI project owner and GitHub repo admin, both human actions.
+- **Docker image namespace `kevinzhow/automedia-pipeline` is separate from the repo
+  owner:** it lives in a personal Docker Hub namespace unrelated to either GitHub
+  account. Its continued publication is unverified (network-restricted environment at
+  documentation time). Until re-verified, treat CI-based Docker publish as
+  not-yet-established for the canonical repo: either confirm the image is still
+  pulled/published under `kevinzhow/`, or rebuild the publish path (new Docker Hub
+  namespace + registry credentials secret in the canonical repo) as a user-manual step.
+
 ## Enforcement Mechanisms
 
 <!-- Condensed from: docs/archived/enforcement-mechanisms.md (full historical version archived) -->

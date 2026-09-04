@@ -7,6 +7,14 @@
 #   - Repository:   AutoMedia
 #   - Workflow:     publish.yml
 #   - Environment:  pypi
+#
+# OWNERSHIP NOTE (2026-09): the canonical repo is now renanzai40/AutoMedia_BackUp
+# (1StepMore suspended). This OIDC binding still names the OLD owner — PyPI will
+# reject publishes from the new repo until a human re-creates the trusted publisher
+# under the renanzai40 account (PyPI project settings → Publishing → Owner
+# renanzai40) AND the `pypi` GitHub Environment in the new repo's settings.
+# This cannot be done from code alone — user-manual (see
+# docs/dev/developer-guide.md → Repository Ownership & Publishing).
 
 name: Publish to PyPI
 
