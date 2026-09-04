@@ -19,6 +19,7 @@ from automedia._version import __version__
 # Lazy-loading Click group — defers module imports until command dispatch
 # ---------------------------------------------------------------------------
 
+
 class LazyTyperGroup(TyperGroup):
     """Click Group that defers module imports until command dispatch.
 
@@ -99,7 +100,9 @@ class LazyTyperGroup(TyperGroup):
     # ------------------------------------------------------------------
 
     def get_command(
-        self, ctx: click.Context, cmd_name: str,
+        self,
+        ctx: click.Context,
+        cmd_name: str,
     ) -> click.Command | None:
         # Already-resolved commands take priority.
         cmd = super().get_command(ctx, cmd_name)
@@ -120,7 +123,9 @@ class LazyTyperGroup(TyperGroup):
         return lazy_apps + lazy_fns + super().list_commands(ctx)
 
     def format_commands(
-        self, ctx: click.Context, formatter: click.HelpFormatter,
+        self,
+        ctx: click.Context,
+        formatter: click.HelpFormatter,
     ) -> None:
         """Format commands without importing lazy modules."""
         rows: list[tuple[str, str]] = []
@@ -265,7 +270,7 @@ app = typer.Typer(
     no_args_is_help=True,
     epilog=(
         f"AutoMedia v{__version__} — automated media production pipeline. "
-        "Documentation: https://github.com/1stepmore/automedia"
+        "Documentation: https://github.com/renanzai40/AutoMedia_BackUp"
     ),
 )
 

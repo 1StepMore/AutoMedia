@@ -113,4 +113,4 @@ See [MCP Setup](user/mcp-setup.md) for client configuration examples (Claude Des
 
 ## License
 
-MIT License. See [LICENSE](https://github.com/1stepmore/automedia/blob/main/LICENSE) for details.
+MIT License. See [LICENSE](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/LICENSE) for details.

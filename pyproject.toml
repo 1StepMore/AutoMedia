@@ -40,9 +40,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/1stepmore/automedia"
-Repository = "https://github.com/1stepmore/automedia"
-Documentation = "https://github.com/1stepmore/automedia/tree/main/docs"
+Homepage = "https://github.com/renanzai40/AutoMedia_BackUp"
+Repository = "https://github.com/renanzai40/AutoMedia_BackUp"
+Documentation = "https://github.com/renanzai40/AutoMedia_BackUp/tree/main/docs"
 
 [project.optional-dependencies]
 openai = ["openai>=2.45.0"]

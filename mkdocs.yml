@@ -1,7 +1,7 @@
 site_name: AutoMedia
 site_description: Automated media production pipeline documentation
-site_url: https://1stepmore.github.io/automedia
-repo_url: https://github.com/1stepmore/automedia
+site_url: https://renanzai40.github.io/AutoMedia_BackUp
+repo_url: https://github.com/renanzai40/AutoMedia_BackUp
 edit_uri: edit/main/docs/
 
 exclude_docs: archived/
@@ -23,7 +23,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/1stepmore/automedia
+      link: https://github.com/renanzai40/AutoMedia_BackUp
 
 markdown_extensions:
   - pymdownx.highlight

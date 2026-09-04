@@ -18,7 +18,7 @@
 
 [Unit]
 Description=AutoMedia Production Pipeline
-Documentation=https://github.com/1stepmore/automedia
+Documentation=https://github.com/renanzai40/AutoMedia_BackUp
 After=network-online.target automedia-mcp.service
 Wants=network-online.target
 Requires=automedia-mcp.service

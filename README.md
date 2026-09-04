@@ -2,12 +2,12 @@
 
 Automated Media Production Pipeline — for content teams and AI coding agents.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/1stepmore/automedia/ci.yml?branch=main&label=CI)](https://github.com/1stepmore/automedia/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/renanzai40/AutoMedia_BackUp/ci.yml?branch=main&label=CI)](https://github.com/renanzai40/AutoMedia_BackUp/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](https://github.com/1stepmore/automedia/blob/main/LICENSE)
-[![Agent Ready](https://img.shields.io/badge/agent-ready-purple)](https://github.com/1stepmore/automedia/blob/main/AGENTS.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/LICENSE)
+[![Agent Ready](https://img.shields.io/badge/agent-ready-purple)](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/AGENTS.md)
 
-This README serves **both human developers and AI coding agents** (OpenCode, Claude Code, Codex CLI, OpenClaw, Hermes Agent) as the primary entry point. For detailed agent-role context, constraints, and codebase map, read [AGENTS.md](https://github.com/1stepmore/automedia/blob/main/AGENTS.md).
+This README serves **both human developers and AI coding agents** (OpenCode, Claude Code, Codex CLI, OpenClaw, Hermes Agent) as the primary entry point. For detailed agent-role context, constraints, and codebase map, read [AGENTS.md](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/AGENTS.md).
 
 ## Quick Overview
 
@@ -19,7 +19,7 @@ AutoMedia automates content production from topic selection through draft writin
 
 If you are an AI coding agent entering this codebase:
 
-1. **Read [AGENTS.md](https://github.com/1stepmore/automedia/blob/main/AGENTS.md)** — agent-role context, constraints, directory layout, MCP/CLI references, red lines
+1. **Read [AGENTS.md](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/AGENTS.md)** — agent-role context, constraints, directory layout, MCP/CLI references, red lines
 2. **Connect MCP** — Start the MCP server (`python -m automedia.mcp.server`) or configure your tool's MCP client (see [Three-Layer API](#three-layer-api))
 3. **Explore config files** — `.opencode/`, `.claude/`, `.env.example` for tool-specific setup
 4. **Find tests** — `tests/` directory, run with `make test` or `pytest`
