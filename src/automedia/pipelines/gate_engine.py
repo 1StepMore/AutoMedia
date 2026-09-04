@@ -7,11 +7,14 @@ STOP the pipeline or continue on failure.
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 import traceback
 import warnings
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal
 
 import tenacity
@@ -44,6 +47,11 @@ _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutEr
 # rewrites, which also produce ``modified_content`` but must never clobber
 # the main flow.
 _CONTENT_GATES_WITH_REWRITE: frozenset[str] = frozenset({"G1", "G2"})
+
+# Per-diff size cap (characters) for gate diff records under
+# ``.automedia/gate_diffs/``.  A rewrite larger than this is stored
+# truncated with ``"truncated": true`` instead of failing the pipeline.
+_GATE_DIFF_MAX_CHARS = 200_000
 
 # ``_hitl_lock`` and ``_hitl_waiters`` live in ``gate_types.py`` and are
 # re-exported above for backward compatibility.
@@ -204,6 +212,9 @@ class GateEngine:
         self._approval_events: dict[str, threading.Event] = {}
         self._approval_results: dict[str, dict[str, Any]] = {}
         self._approval_lock = threading.Lock()
+        # Per-run gate-diff sequence counters, keyed by gate name
+        # (todo 8: <gate>_<seq>.json under .automedia/gate_diffs/).
+        self._gate_diff_seq: dict[str, int] = {}
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -288,16 +299,26 @@ class GateEngine:
         attempt see the pre-apply content — acceptable, hooks observe gate
         events, not the retry-apply handoff.
 
+        Before the rewrite is applied, a per-gate diff record is persisted to
+        ``<project_dir>/.automedia/gate_diffs/<gate>_<seq>.json`` (texts only —
+        before/after content plus the failing result's per-check reasons; the
+        unified diff is computed at render time).  A write failure never fails
+        the pipeline.
+
         An explicit allowlist scopes this to the main content flow so a
         D-gate/P-gate style platform rewrite (which also emits
-        ``modified_content``) can never clobber the master draft.
+        ``modified_content``) can never clobber the master draft — and, by the
+        same guard, produces no diff record either.
         """
         rewrite = result.get("modified_content")
         if not rewrite or gate_name not in _CONTENT_GATES_WITH_REWRITE:
             return
 
+        before = gate_context.get("content", "")
+
         if not apply_state:
             apply_state["original_content"] = gate_context.get("content", "")
+            apply_state["gate_name"] = gate_name
             draft_path = self._resolve_current_draft(gate_context)
             if draft_path is not None:
                 try:
@@ -316,6 +337,17 @@ class GateEngine:
 
         gate_context["content"] = rewrite
         apply_state["applied"] = True
+        try:
+            self._write_gate_diff_record(
+                gate_name=gate_name,
+                gate_context=gate_context,
+                before=str(before),
+                after=str(rewrite),
+                result=result,
+                applied=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+            log.warning("gate.diff_record.write_failed", gate_name=gate_name, error=str(exc))
         log.info(
             "gate.modified_content_applied",
             gate_name=gate_name,
@@ -350,6 +382,7 @@ class GateEngine:
         self,
         gate_context: GateContext | dict[str, Any],
         apply_state: dict[str, Any],
+        result: dict[str, Any] | None = None,
     ) -> None:
         """Restore context and draft to their pre-apply state.
 
@@ -357,7 +390,45 @@ class GateEngine:
         exception aborts the retry chain): the failed chain's rewrites must
         not survive as final content — the pipeline failure state must match
         the pre-change behavior exactly.
+
+        When *result* carries the final failing attempt's ``modified_content``
+        and no diff record was written during the retry chain (i.e. the chain
+        aborted before any apply), that would-be rewrite is still recorded
+        with ``applied=False`` so the director can see what the gate wanted to
+        change — a failed chain never promotes the rewrite, but the record
+        preserves it.  When rewrites WERE applied during the chain, the last
+        failing attempt's unapplied rewrite is recorded with ``applied=False``
+        BEFORE the restore, so the director also sees the final attempt that
+        exhausted the budget (and still sees every applied rewrite, whose
+        records were written at apply time with ``applied=True``).
         """
+        rewrite = (result or {}).get("modified_content")
+        if (
+            rewrite
+            and apply_state.get("gate_name") in _CONTENT_GATES_WITH_REWRITE
+            and not apply_state.get("final_attempt_recorded")
+        ):
+            applied = bool(apply_state.get("applied"))
+            try:
+                self._write_gate_diff_record(
+                    gate_name=str(apply_state.get("gate_name", "")),
+                    gate_context=gate_context,
+                    before=str(
+                        apply_state.get("original_content", "")
+                        if not applied
+                        else gate_context.get("content", "")
+                    ),
+                    after=str(rewrite),
+                    result=result or {},
+                    applied=False,
+                )
+            except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+                log.warning(
+                    "gate.diff_record.write_failed",
+                    gate_name=str(apply_state.get("gate_name", "")),
+                    error=str(exc),
+                )
+            apply_state["final_attempt_recorded"] = True
         if not apply_state.get("applied"):
             return
         gate_context["content"] = apply_state.get("original_content", "")
@@ -379,6 +450,76 @@ class GateEngine:
         # case the apply step refreshed the record with the rewrite's md5.
         self._refresh_cw_md5("CW", gate_context, draft_path)
         apply_state.clear()
+
+    def _next_gate_diff_seq(self, gate_name: str) -> int:
+        """Next per-run sequence number for *gate_name*'s diff records."""
+        seq = self._gate_diff_seq.get(gate_name, 0) + 1
+        self._gate_diff_seq[gate_name] = seq
+        return seq
+
+    def _write_gate_diff_record(
+        self,
+        *,
+        gate_name: str,
+        gate_context: GateContext | dict[str, Any],
+        before: str,
+        after: str,
+        result: dict[str, Any],
+        applied: bool,
+    ) -> None:
+        """Persist one original-vs-modified diff record for *gate_name*.
+
+        Writes ``<project_dir>/.automedia/gate_diffs/<gate>_<seq>.json`` with
+        the pre-change content, the rewrite, the failing result's per-check
+        reasons, and the applied flag.          TEXTS ONLY — the unified diff is
+        computed at render time, never stored.
+        """
+        try:
+            project_dir = str(gate_context.get("project_dir", "") or "")
+            if not project_dir:
+                return
+
+            max_chars = _GATE_DIFF_MAX_CHARS
+            truncated = len(before) > max_chars or len(after) > max_chars
+            if truncated:
+                log.warning(
+                    "gate.diff_record.truncated",
+                    gate_name=gate_name,
+                    before_len=len(before),
+                    after_len=len(after),
+                    max_chars=max_chars,
+                )
+                before = before[:max_chars]
+                after = after[:max_chars]
+
+            record = {
+                "gate": gate_name,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "before": before,
+                "after": after,
+                "reasons": result.get("checks", []),
+                "error": result.get("error"),
+                "applied": applied,
+                "truncated": truncated,
+            }
+
+            diffs_dir = Path(project_dir) / ".automedia" / "gate_diffs"
+            diffs_dir.mkdir(parents=True, exist_ok=True)
+            seq = self._next_gate_diff_seq(gate_name)
+            path = diffs_dir / f"{gate_name}_{seq}.json"
+            path.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+            log.info(
+                "gate.diff_record.written",
+                gate_name=gate_name,
+                path=str(path),
+                applied=applied,
+            )
+        except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+            log.warning(
+                "gate.diff_record.write_failed",
+                gate_name=gate_name,
+                error=str(exc),
+            )
 
     @staticmethod
     def _refresh_cw_md5(
@@ -823,7 +964,9 @@ class GateEngine:
                                 "quality_retry_count": _quality_attempt,
                             }
                             results[-1] = error_result
-                            self._rollback_applied_content(gate_context, _rewrite_apply_state)
+                            self._rollback_applied_content(
+                                gate_context, _rewrite_apply_state, result
+                            )
                             if progress:
                                 progress.on_gate_end(
                                     gate_name,
@@ -892,7 +1035,9 @@ class GateEngine:
                                 "quality_retry_count": _quality_attempt,
                             }
                             results[-1] = error_result
-                            self._rollback_applied_content(gate_context, _rewrite_apply_state)
+                            self._rollback_applied_content(
+                                gate_context, _rewrite_apply_state, result
+                            )
                             if progress:
                                 progress.on_gate_end(
                                     gate_name,
@@ -909,7 +1054,7 @@ class GateEngine:
                         all_ok = False
                         # Retries exhausted — undo any applied rewrite so the
                         # failed chain leaves no partial write behind.
-                        self._rollback_applied_content(gate_context, _rewrite_apply_state)
+                        self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
                         level2 = gate_context.get("_level2_handler")
                         if level2:
                             log.info(

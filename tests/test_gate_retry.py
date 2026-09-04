@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -933,3 +934,256 @@ def test_retries_exhausted_failed_attempt_not_applied(tmp_path: Path) -> None:
     # No partial write: the failed attempt's rewrite never lands.
     assert gate_context["content"] == "ORIGINAL"
     assert _read_draft(draft_dir) == "ORIGINAL"
+
+
+# =========================================================================
+# Gate diff records under .automedia/gate_diffs/ (todo 8)
+# =========================================================================
+
+
+def _read_diff_records(diffs_dir: Path) -> list[dict[str, Any]]:
+    """Load every JSON diff record from a ``.automedia/gate_diffs`` dir."""
+    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(diffs_dir.glob("*.json"))]
+
+
+def test_diff_record_written_on_apply(tmp_path: Path) -> None:
+    """Todo-7 real flow + diff capture: the failing attempt's rewrite is
+    recorded to ``<project_dir>/.automedia/gate_diffs/`` BEFORE the retry
+    consumes it — before=ORIGINAL, after=MODIFIED, applied=True, and the
+    per-check reasons from the failing result."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    seen_content: list[str] = []
+
+    def _g1_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "G1",
+                "error": "AI patterns detected",
+                "checks": [
+                    {"name": "passive_voice", "passed": False, "detail": "3 passive verbs"},
+                    {"name": "jargon_density", "passed": True, "detail": "ok"},
+                ],
+                "modified_content": "MODIFIED",
+            }
+        return {"passed": True, "gate": "G1"}
+
+    gate = _FakeGate("G1", "retry", _g1_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, _ = engine.run(gate_context)
+
+    assert ok is True
+    assert seen_content == ["ORIGINAL", "MODIFIED"]
+
+    diffs_dir = tmp_path / ".automedia" / "gate_diffs"
+    records = _read_diff_records(diffs_dir)
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["gate"] == "G1"
+    assert rec["before"] == "ORIGINAL"
+    assert rec["after"] == "MODIFIED"
+    assert rec["applied"] is True
+    assert rec["reasons"] == [
+        {"name": "passive_voice", "passed": False, "detail": "3 passive verbs"},
+        {"name": "jargon_density", "passed": True, "detail": "ok"},
+    ]
+    assert rec["error"] == "AI patterns detected"
+    assert rec["truncated"] is False
+    # A run timestamp must be present; texts only, no unified diff stored.
+    assert rec.get("timestamp")
+    assert "diff" not in rec and "unified_diff" not in rec
+    # File name pattern: <gate>_<seq>.json
+    assert diffs_dir.glob("G1_1.json")
+
+
+def test_diff_record_applied_false_when_retries_exhausted(tmp_path: Path) -> None:
+    """A gate that keeps failing through all retries still records its LAST
+    failing attempt's rewrite with applied=False (after rollback), so the
+    director sees what would have changed — while the content flow keeps the
+    original text (no partial write)."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    def _g1_always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "passed": False,
+            "gate": "G1",
+            "error": "AI patterns detected",
+            "checks": [{"name": "ai_taste", "passed": False, "detail": "still robotic"}],
+            "modified_content": "FAILED REWRITE",
+        }
+
+    gate = _FakeGate("G1", "retry", _g1_always_fail)
+    engine = GateEngine([gate], max_quality_retries=2)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, _ = engine.run(gate_context)
+
+    assert ok is False
+    # Content flow unchanged (todo-7 semantics preserved).
+    assert gate_context["content"] == "ORIGINAL"
+    assert _read_draft(draft_dir) == "ORIGINAL"
+
+    diffs_dir = tmp_path / ".automedia" / "gate_diffs"
+    records = _read_diff_records(diffs_dir)
+    # In-loop applies (attempt 1, 2) each recorded applied=True; the final
+    # failing attempt — never applied — is recorded once with applied=False.
+    assert len(records) == 3
+    assert [r["applied"] for r in records] == [True, True, False]
+    last = records[-1]
+    assert last["gate"] == "G1"
+    assert last["after"] == "FAILED REWRITE"
+    assert last["applied"] is False
+    assert last["reasons"] == [{"name": "ai_taste", "passed": False, "detail": "still robotic"}]
+
+
+def test_diff_record_not_written_for_non_content_gate(tmp_path: Path) -> None:
+    """Clobber guard: a non-content gate (D1-style) with modified_content on a
+    failing attempt produces NO diff record — diff capture follows the same
+    allowlist as the todo-7 apply logic."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    seen_content: list[str] = []
+
+    def _d_gate_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "D1",
+                "error": "platform format mismatch",
+                "modified_content": "PLATFORM REWRITE",
+            }
+        return {"passed": True, "gate": "D1"}
+
+    gate = _FakeGate("D1", "retry", _d_gate_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    ok, _ = engine.run(gate_context)
+
+    assert ok is True
+    assert seen_content == ["ORIGINAL", "ORIGINAL"]
+    diffs_dir = tmp_path / ".automedia" / "gate_diffs"
+    assert not diffs_dir.exists(), "non-content gate must not produce diff records"
+
+
+def test_diff_write_failure_does_not_break_pipeline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exception during diff-record writing must never fail the pipeline —
+    the apply/rollback flow proceeds exactly as without diff capture."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    seen_content: list[str] = []
+
+    def _g1_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "G1",
+                "error": "AI patterns detected",
+                "modified_content": "MODIFIED",
+            }
+        return {"passed": True, "gate": "G1"}
+
+    gate = _FakeGate("G1", "retry", _g1_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    def _explode(*args: object, **kwargs: object) -> None:
+        raise OSError("disk on fire")
+
+    monkeypatch.setattr(engine, "_write_gate_diff_record", _explode)
+
+    ok, results = engine.run(gate_context)
+
+    # The pipeline completed the apply + retry flow despite the diff failure.
+    assert ok is True
+    assert results[0]["passed"] is True
+    assert seen_content == ["ORIGINAL", "MODIFIED"]
+    assert gate_context["content"] == "MODIFIED"
+    assert _read_draft(draft_dir) == "MODIFIED"
+
+
+def test_diff_record_truncated_when_enormous(tmp_path: Path) -> None:
+    """A rewrite larger than the per-diff cap is stored truncated with
+    ``truncated: true`` and a warning — never fails the pipeline."""
+    draft_dir = tmp_path / "01_content" / "drafts"
+    draft_dir.mkdir(parents=True)
+    draft_file = draft_dir / "20260101_000000_draft.md"
+    draft_file.write_text("ORIGINAL", encoding="utf-8")
+
+    big_rewrite = "X" * 400_000
+    seen_content: list[str] = []
+
+    def _g1_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        seen_content.append(ctx["content"])
+        if len(seen_content) == 1:
+            return {
+                "passed": False,
+                "gate": "G1",
+                "error": "AI patterns detected",
+                "modified_content": big_rewrite,
+            }
+        return {"passed": True, "gate": "G1"}
+
+    gate = _FakeGate("G1", "retry", _g1_like)
+    engine = GateEngine([gate], max_quality_retries=3)
+    gate_context: dict[str, Any] = {
+        "topic": "test",
+        "content": "ORIGINAL",
+        "project_dir": str(tmp_path),
+        "output_files": [{"type": "article", "path": str(draft_file), "md5": ""}],
+    }
+
+    with capture_logs() as cap:
+        ok, _ = engine.run(gate_context)
+
+    assert ok is True
+    diffs_dir = tmp_path / ".automedia" / "gate_diffs"
+    records = _read_diff_records(diffs_dir)
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["truncated"] is True
+    assert len(rec["after"]) < len(big_rewrite)
+    # before content is small, must not be truncated away
+    assert rec["before"] == "ORIGINAL"
+    truncated_logs = [e for e in cap if e.get("event") == "gate.diff_record.truncated"]
+    assert len(truncated_logs) == 1
