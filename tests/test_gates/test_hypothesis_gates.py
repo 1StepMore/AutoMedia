@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from automedia.core.config_loader import deep_merge
@@ -61,6 +61,7 @@ _gate_name = st.from_regex(r"[A-Za-z0-9_-]+", fullmatch=True)
 
 
 @given(checks=_gate_checks(min_size=1), gate=_gate_name)
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def test_build_result_always_has_required_keys(checks: list[dict[str, Any]], gate: str) -> None:
     """build_gate_result always returns a dict with the four required keys."""
     result = build_gate_result(checks, gate=gate)
@@ -71,6 +72,7 @@ def test_build_result_always_has_required_keys(checks: list[dict[str, Any]], gat
 
 
 @given(checks=_gate_checks(min_size=1), gate=_gate_name)
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def test_all_passed_iff_all_checks_pass(checks: list[dict[str, Any]], gate: str) -> None:
     """result["passed"] is True exactly when every individual check passed."""
     result = build_gate_result(checks, gate=gate)
@@ -79,6 +81,7 @@ def test_all_passed_iff_all_checks_pass(checks: list[dict[str, Any]], gate: str)
 
 
 @given(checks=_gate_checks(min_size=1), gate=_gate_name)
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def test_first_fail_appears_in_expected_vs_actual(checks: list[dict[str, Any]], gate: str) -> None:
     """When any check fails, expected_vs_actual references the first failing check."""
     result = build_gate_result(checks, gate=gate)
@@ -92,6 +95,7 @@ def test_first_fail_appears_in_expected_vs_actual(checks: list[dict[str, Any]], 
 
 
 @given(gate=_gate_name, checks=st.just([]))
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def test_empty_checks_do_not_crash(checks: list[dict[str, Any]], gate: str) -> None:
     """An empty checks list produces a valid result without raising."""
     result = build_gate_result(checks, gate=gate)
@@ -102,6 +106,7 @@ def test_empty_checks_do_not_crash(checks: list[dict[str, Any]], gate: str) -> N
 
 
 @given(checks=_gate_checks(min_size=1), gate=_gate_name, error=st.text(max_size=100))
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def test_error_and_extra_passthrough(checks: list[dict[str, Any]], gate: str, error: str) -> None:
     """The error field and **extra kwargs are passed through verbatim."""
     result = build_gate_result(checks, gate=gate, error=error, confidence=0.42)
@@ -115,7 +120,7 @@ def test_error_and_extra_passthrough(checks: list[dict[str, Any]], gate: str, er
 
 
 @given(base=_nested_dict, override=_nested_dict)
-@settings(max_examples=200)
+@settings(max_examples=200, suppress_health_check=[HealthCheck.too_slow])
 def test_deep_merge_neither_mutates(base: dict[str, Any], override: dict[str, Any]) -> None:
     """deep_merge must not mutate either input dict."""
     base_orig = {k: _deep_copy_shallow(v) for k, v in base.items()}
@@ -128,7 +133,7 @@ def test_deep_merge_neither_mutates(base: dict[str, Any], override: dict[str, An
 
 
 @given(base=_nested_dict, override=_nested_dict)
-@settings(max_examples=200)
+@settings(max_examples=200, suppress_health_check=[HealthCheck.too_slow])
 def test_deep_merge_override_keys_take_priority(
     base: dict[str, Any], override: dict[str, Any]
 ) -> None:
