@@ -173,7 +173,7 @@ External Call Layer
         v              v              v
   ┌──────────────────────────────────────┐
   │         MCP Server Layer             │  mcp official Python SDK
-   │   select_topic, run_pipeline, ...    │  66 tools
+   │   select_topic, run_pipeline, ...    │  67 tools
   └────────────────┬─────────────────────┘
                    │
   ┌────────────────┴─────────────────────┐
@@ -398,7 +398,7 @@ Defined in `automedia/gates/failure_modes.py`. See `docs/dev/gate-failure-modes.
 `H0HumanReviewGate` pauses the pipeline before publishing, waiting for human approval. Skips automatically when `auto_publish=True` is configured.
 
 - **Location:** `automedia/gates/h0_human_review.py`
-- **CLI:** `automedia hitl approve &lt;project_id&gt; H0`
+- **Approve/reject (MCP):** `review_decision(project_id, gate_name, action="approve"|"reject")` — the LIVE H0 path, wired to the in-process `_hitl_waiters` registry; same-process only (MCP-started pipelines; CLI-started ones return a structured error)
 - **Bypass:** `--skip-review` flag or `auto_publish=True` config
 
 ### Red Lines (Discipline Constraints, Not Automated)

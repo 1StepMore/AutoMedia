@@ -215,6 +215,9 @@ class GateEngine:
         # Per-run gate-diff sequence counters, keyed by gate name
         # (todo 8: <gate>_<seq>.json under .automedia/gate_diffs/).
         self._gate_diff_seq: dict[str, int] = {}
+        # Sub-engines created by level-2 regeneration inherit this flag so
+        # the outer engine can tell reject-halts from mere retry exhaustion.
+        self._hitl_rejected_halt = False
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -735,6 +738,10 @@ class GateEngine:
             early_stop=True,
             progress=progress,
         )
+        # Propagate a human rejection out of the sub-run: a rejected HITL
+        # gate is a director decision, not a recoverable quality failure.
+        if sub_engine._hitl_rejected_halt:
+            self._hitl_rejected_halt = True
 
         return sub_ok, sub_results  # type: ignore[return-value]  # sub_engine._run() returns union; cannot narrow on early_stop param
 
@@ -829,6 +836,15 @@ class GateEngine:
                         timeout=timeout_s,
                     )
                     result["_hitl_approved"] = hitl_ok
+                    if not hitl_ok:
+                        # Human rejected: convert to a stop-failure outcome so
+                        # the pipeline halts exactly like a failed "stop" gate
+                        # (h0_human_review docstring contract).
+                        result["passed"] = False
+                        result["error"] = (
+                            result.get("error") or f"gate {gate_name} rejected by human review"
+                        )
+                        self._hitl_rejected_halt = True
 
                 passed = result.get("passed", True)
                 if progress:
@@ -915,6 +931,13 @@ class GateEngine:
                                     timeout=timeout_s,
                                 )
                                 result["_hitl_approved"] = hitl_ok
+                                if not hitl_ok:
+                                    result["passed"] = False
+                                    result["error"] = (
+                                        result.get("error")
+                                        or f"gate {gate_name} rejected by human review"
+                                    )
+                                    self._hitl_rejected_halt = True
 
                             passed = result.get("passed", True)
                             if progress:
@@ -1055,6 +1078,12 @@ class GateEngine:
                         # Retries exhausted — undo any applied rewrite so the
                         # failed chain leaves no partial write behind.
                         self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
+                        if self._hitl_rejected_halt:
+                            # A human rejection is terminal — it must not be
+                            # consumed by level-2 regeneration retries.
+                            if early_stop:
+                                return False, results
+                            return results
                         level2 = gate_context.get("_level2_handler")
                         if level2:
                             log.info(

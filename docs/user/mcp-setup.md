@@ -54,6 +54,7 @@ Registered MCP tools:
   - get_pipeline_progress
   - get_pipeline_state
   - get_gate_report
+  - review_decision
   - get_pipeline_status
   - get_project_assets
   - get_redlines
@@ -99,7 +100,7 @@ Registered MCP tools:
   - validation_matrix
 ```
 
-## Available Tools (66)
+## Available Tools (67)
 
 | Tool | Description |
 |------|------|
@@ -116,6 +117,7 @@ Registered MCP tools:
 | `resume_pipeline` | Resume a paused pipeline |
 | `retry_gate` | Mark a specific gate for retry in a running pipeline |
 | `skip_gate` | Mark a specific gate for skipping in a running pipeline |
+| `review_decision` | Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only — MCP-started pipelines; CLI-started ones return a structured error) |
 | `get_pipeline_progress` | Poll gate-by-gate progress of a running pipeline |
 | `get_pipeline_state` | Per-gate state view for a project (passed/failed/pending + md5) |
 | `get_gate_report` | Latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted) |

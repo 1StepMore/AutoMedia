@@ -4,11 +4,16 @@
 
 ### Bug Fixes
 
+* **pipelines:** H0 reject now actually halts the pipeline — `_hitl_approved=False` converts the gate result to a stop-failure at both HITL wait sites (incl. the quality-retry path, where a rejection is never consumed by level-2 regeneration); regression tests assert the run FAILS and no downstream gate executes
+* **docs:** correct stale HITL instructions (`automedia hitl approve/reject` CLI does not exist and cannot reach the in-process waiters) — the LIVE H0 approval path is the `review_decision` MCP tool, same-process only
 * **llm:** configure_llm and onboard now merge into model_config.yaml instead of overwriting — existing LLM fallback chains are preserved
 * **llm:** add save_model_config writer for merge-preserving model_config.yaml updates
 
 ### Features
 
+* **mcp:** add `review_decision` tool (67 tools) on the live H0 HITL path — wired to the in-process `_hitl_waiters` registry (NOT the dormant approve_gate/reject_gate engine-registry path); approve resumes the paused pipeline, reject halts it; `show_diff=True` renders a unified diff from the latest `.automedia/gate_diffs/` record (`diff_unavailable` when none); not-paused or CLI-started projects get a fast structured NOT_FOUND error (same-process constraint, no deadlock); every decision is appended to the user-level audit log
+* **decision:** add `record_review_decision` append-only audit log at `~/.automedia/audit/review_decisions.log` (JSON lines: timestamp, project_id, gate_name, decision, reason, diff_record_path, actor; write failures never fail the review call)
+* **validation:** add `review-decision-surface` scenario + regenerate `scenarios/baseline/coverage-audit.json` (mcp 67 declared / 60 covered / 0 missing)
 * **cli:** automedia doctor reports advisory LLM configuration warnings (missing/incomplete fallback chain, model/base_url mismatch) in human and --json output
 * **pipelines:** add explicit per-mode gate DAG (`automedia.pipelines.dag` — 26 nodes, topological-order + downstream helpers) as an additive, order-equivalent layer over `_MODE_MAP`
 * **cli:** add `automedia pipeline export-dag` (Markdown + DOT per mode, per-run overlay from history) and `automedia pipeline state` (per-gate passed/failed/pending + md5 audit view)

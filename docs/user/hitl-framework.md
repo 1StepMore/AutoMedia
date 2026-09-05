@@ -62,8 +62,9 @@ review points. A human operator inspects the output and **approves** or
 
 | MCP Tool | Description |
 |----------|-------------|
-| `approve_gate` | Approve a paused gate — pipeline resumes automatically |
-| `reject_gate` | Reject a paused gate — triggers failure handling (retry or stop) |
+| `approve_gate` | Approve a paused gate — pipeline resumes automatically (dormant `pause_on_approval` mechanism; never fires in a default run) |
+| `reject_gate` | Reject a paused gate — triggers failure handling (dormant mechanism, as above) |
+| `review_decision` | **The LIVE approval path for H0 pauses**: approve or reject a pipeline paused at a HITL review gate. Approve resumes; reject converts the H0 result to a stop-failure and the pipeline halts. `show_diff=True` attaches a unified diff from the latest `.automedia/gate_diffs/` record. Same-process only: pipelines started via MCP (`run_pipeline` daemon threads); CLI-started pipelines run in a separate process and cannot be resumed here (fast structured error, no deadlock) |
 | `get_pending_approvals` | List all gates currently awaiting human approval |
 
 The director preset defines 8 review nodes for gate-level oversight:
@@ -102,7 +103,9 @@ result = run_full_pipeline(
     director=True,
 )
 # Pipeline runs until H0, then pauses.
-# Use MCP approve_gate/reject_gate to continue.
+# Use the review_decision MCP tool to continue (approve) or halt (reject).
+# approve_gate/reject_gate target the dormant pause_on_approval mechanism,
+# NOT the live H0 pause.
 ```
 
 Suitable for teams that want full pipeline automation but require a

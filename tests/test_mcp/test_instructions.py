@@ -114,7 +114,10 @@ class TestGenerateInstructions:
         """Output includes the HITL / director mode documentation."""
         result = generate_instructions(MOCK_TOOL_REGISTRY)
         assert "HITL" in result
-        assert "automedia hitl approve" in result
+        # The stale `automedia hitl approve/reject` CLI claim was corrected:
+        # the LIVE path is the review_decision MCP tool (same-process only).
+        assert "review_decision" in result
+        assert "Same-process constraint" in result
         assert "approve_gate" in result
         assert "reject_gate" in result
 

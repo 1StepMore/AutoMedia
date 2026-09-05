@@ -36,6 +36,7 @@ from automedia.mcp.tools.prompts_meta import *  # noqa: F401, F403
 from automedia.mcp.tools.publishing import *  # noqa: F401, F403
 from automedia.mcp.tools.quality import *  # noqa: F401, F403
 from automedia.mcp.tools.redlines import *  # noqa: F401, F403
+from automedia.mcp.tools.review import *  # noqa: F401, F403
 from automedia.mcp.tools.setup import *  # noqa: F401, F403
 from automedia.mcp.tools.strategy import *  # noqa: F401, F403
 from automedia.mcp.tools.topics import *  # noqa: F401, F403

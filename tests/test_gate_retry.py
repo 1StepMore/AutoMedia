@@ -1187,3 +1187,130 @@ def test_diff_record_truncated_when_enormous(tmp_path: Path) -> None:
     assert rec["before"] == "ORIGINAL"
     truncated_logs = [e for e in cap if e.get("event") == "gate.diff_record.truncated"]
     assert len(truncated_logs) == 1
+
+
+# =========================================================================
+# H0 reject-halt semantics (productization-roadmap todo 9, Part A)
+# =========================================================================
+
+
+def _downstream_probe() -> _FakeGate:
+    """A stop gate that fails the run if it ever executes."""
+
+    def _must_not_run(ctx: dict[str, Any]) -> dict[str, Any]:
+        raise AssertionError("downstream gate must not execute after H0 reject")
+
+    return _FakeGate("L1", "stop", _must_not_run)
+
+
+def test_h0_reject_halts_pipeline_and_skips_downstream() -> None:
+    """Oracle BLOCKING #2 regression: after reject_hitl() the H0 gate must
+    NOT pass — the engine converts ``_hitl_approved=False`` into a stop
+    failure so the run returns FAILED and no downstream gate executes."""
+    import threading
+
+    h0 = H0HumanReviewGate()
+    downstream = _downstream_probe()
+    engine = GateEngine([h0, downstream])
+    progress = PipelineProgress(project_id="h0-reject-test")
+
+    def _reject_later() -> None:
+        import time
+
+        time.sleep(0.05)
+        progress.reject_hitl()
+
+    timer = threading.Timer(0.01, _reject_later)
+    timer.start()
+    try:
+        ok, results = engine.run({"topic": "test", "skip_review": False}, progress=progress)
+    finally:
+        timer.cancel()
+
+    # Engine-observable outcome: the run FAILS (not a rejected:true echo).
+    assert ok is False
+    # H0 is the last recorded gate; the downstream gate never executed.
+    assert [r.get("gate") for r in results] == ["H0"]
+    # The H0 result is a genuine stop-failure outcome.
+    h0_result = results[0]
+    assert h0_result["passed"] is False
+    assert h0_result.get("_hitl_approved") is False
+    assert "rejected by human review" in h0_result.get("error", "")
+    # Progress reflects the failed gate.
+    data = progress.get_progress()
+    assert any(e["status"] == "failed" and e["gate_name"] == "H0" for e in data["events"])
+
+
+def test_h0_reject_in_quality_retry_path_halts() -> None:
+    """The same reject-halt semantics apply at the quality-retry HITL wait
+    site (the second ``_hitl_approved`` write): a gate that re-enters
+    awaiting_hitl during a retry and gets rejected halts the pipeline —
+    level-2 regeneration must NOT consume the rejection."""
+    import threading
+
+    calls: dict[str, int] = {"n": 0}
+
+    def _h0_like(ctx: dict[str, Any]) -> dict[str, Any]:
+        calls["n"] += 1
+        # First attempt fails plain (drives the quality-retry branch); the
+        # retry re-enters awaiting_hitl and is rejected.
+        if calls["n"] == 1:
+            return {"passed": False, "gate": "H0", "error": "needs human review"}
+        return {
+            "passed": True,
+            "gate": "H0",
+            "status": "awaiting_hitl",
+            "timeout_s": 10,
+        }
+
+    h0 = _FakeGate("H0", "retry", _h0_like)
+    downstream = _downstream_probe()
+    engine = GateEngine([h0, downstream], max_quality_retries=3, max_regenerations=2)
+    progress = PipelineProgress(project_id="h0-reject-retry-test")
+
+    def _reject_later() -> None:
+        import time
+
+        time.sleep(0.05)
+        progress.reject_hitl()
+
+    timer = threading.Timer(0.01, _reject_later)
+    timer.start()
+    try:
+        ok, results = engine.run({"topic": "test"}, progress=progress)
+    finally:
+        timer.cancel()
+
+    assert ok is False
+    assert [r.get("gate") for r in results] == ["H0"]
+    assert results[-1]["passed"] is False
+    assert results[-1].get("_hitl_approved") is False
+    assert "rejected by human review" in results[-1].get("error", "")
+
+
+def test_h0_timeout_auto_approve_still_passes() -> None:
+    """Timeout auto-approve is untouched: ``_hitl_approved=True`` keeps the
+    gate passing (guards the fix against over-broad rejection)."""
+    import threading
+
+    h0 = H0HumanReviewGate()
+    downstream = _FakeGate("L1", "stop", lambda ctx: {"passed": True, "gate": "L1"})
+    engine = GateEngine([h0, downstream])
+    progress = PipelineProgress(project_id="h0-approve-test")
+
+    def _approve_later() -> None:
+        import time
+
+        time.sleep(0.05)
+        progress.approve_hitl()
+
+    timer = threading.Timer(0.01, _approve_later)
+    timer.start()
+    try:
+        ok, results = engine.run({"topic": "test", "skip_review": False}, progress=progress)
+    finally:
+        timer.cancel()
+
+    assert ok is True
+    assert [r.get("gate") for r in results] == ["H0", "L1"]
+    assert results[0].get("_hitl_approved") is True

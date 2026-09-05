@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (66 tools)
+- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (67 tools)
 - **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -328,7 +328,7 @@ result = run_full_pipeline(
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
 | `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
 
-### MCP Server (66 tools)
+### MCP Server (67 tools)
 
 Start:
 
@@ -375,6 +375,7 @@ python -m automedia.mcp.server
 | `resume_pipeline` | Resume a paused pipeline |
 | `retry_gate` | Mark a specific gate for retry in a running pipeline |
 | `skip_gate` | Mark a specific gate for skipping in a running pipeline |
+| `review_decision` | Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only) |
 | `add_cron_schedule` | Add a cron schedule entry |
 | `list_cron_schedules` | List all cron schedules |
 | `remove_cron_schedule` | Remove a cron schedule entry |
@@ -537,7 +538,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  66 tools      |     |  19 commands       |
+  |  67 tools      |     |  19 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+

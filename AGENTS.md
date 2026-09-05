@@ -12,7 +12,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 ## 2. Three Entry Points
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 66 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 67 tools |
 | CLI | `automedia <subcommand>` | 19 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -27,7 +27,7 @@ AutoMedia/
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
 │       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
 │       ├── cli/                # Typer CLI: app.py + 19 command modules
-│       ├── mcp/                # FastMCP server, 66 tools; mcp_allowlist.yaml path allowlist
+│       ├── mcp/                # FastMCP server, 67 tools; mcp_allowlist.yaml path allowlist
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
 │       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
@@ -118,7 +118,7 @@ pre-commit run --all-files   # pre-commit
 2. Add mapping in `_LLM_KEY_MAP` in `automedia/core/config_loader.py` if it maps under `llm.text_generation.*`
 3. Add to the Config Key Reference section
 
-## 9. MCP Tools Quick Reference (66 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference (67 tools, incl. 4 deprecated aliases)
 
 stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by the `mcp_allowlist.yaml` path allowlist.
 
@@ -175,6 +175,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `resume_pipeline` | project_id | Resume a paused pipeline |
 | `retry_gate` | project_id, gate_name | Mark a gate for retry |
 | `skip_gate` | project_id, gate_name | Mark a gate for skipping |
+| `review_decision` | project_id, gate_name, action, reason, show_diff | Approve/reject a pipeline paused at H0 (live HITL; same-process only) |
 | `health_engine` | — | Engine dependency health |
 | `engine_health` | — | Deprecated: use health_engine |
 | `update_engine_config` | modality, setting, value | Update engine config |

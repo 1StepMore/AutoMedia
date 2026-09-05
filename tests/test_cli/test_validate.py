@@ -690,8 +690,9 @@ class TestValidateCoverage:
         # The live app.py now registers 19 commands (pipeline is the 19th).
         assert summary["cli_declared"] == 19
         # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel)
-        # + the W4-T3 validation_matrix tool + get_pipeline_state + get_gate_report.
-        assert summary["mcp_declared"] == 66
+        # + the W4-T3 validation_matrix tool + get_pipeline_state
+        # + get_gate_report + review_decision (productization-roadmap todo 9).
+        assert summary["mcp_declared"] == 67
         assert summary["cli_missing"] == 19  # synthetic library covers none
 
 

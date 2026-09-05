@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 66 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 67 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -117,6 +117,7 @@ from automedia.mcp.tools import (  # noqa: E402
     research_topics,
     resume_pipeline,
     retry_gate,
+    review_decision,
     run_brand_strategy,
     run_pipeline,
     run_pipeline_from_strategy,
@@ -202,6 +203,8 @@ __all__ = [
     # Approval / rejection tools (director mode)
     "approve_gate",
     "reject_gate",
+    # Live HITL review tool (H0 path)
+    "review_decision",
     "get_pending_approvals",
     # Allowlist helpers
     "_require_allowed",
@@ -381,7 +384,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 66 tools and 6 resources registered.
+        A fully configured server with all 67 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -915,6 +918,21 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
+            "Approve or reject a pipeline paused at a HITL review gate on the "
+            "LIVE H0 path (H0HumanReviewGate → PipelineProgress.wait_for_hitl). "
+            "Takes project_id (uuid[:12] from run_pipeline), gate_name, action "
+            "('approve' or 'reject'), an optional reason, and show_diff. "
+            "Approve resumes the pipeline; reject halts it (stop-failure). "
+            "show_diff=True renders a unified diff from the latest "
+            ".automedia/gate_diffs/ record (diff_unavailable when none). "
+            "Same-process constraint: only pipelines started by THIS MCP "
+            "server process are reachable; CLI-started pipelines return a "
+            "structured NOT_FOUND error immediately (never a deadlock)."
+        ),
+    )(review_decision)
+
+    mcp.tool(
+        description=(
             "Check all engine-related dependencies (ComfyUI, hyperframes, "
             "edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return "
             "their installation and health status."
@@ -1100,7 +1118,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 66 tools and 6 resources.",
+        description="AutoMedia MCP Server — stdio transport with 67 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",

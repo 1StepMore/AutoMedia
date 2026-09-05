@@ -366,6 +366,7 @@ class TestServerCreation:
                 "research_topics",
                 "resume_pipeline",
                 "retry_gate",
+                "review_decision",
                 "run_batch",
                 "run_brand_strategy",
                 "run_pipeline",

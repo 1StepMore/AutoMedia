@@ -626,15 +626,15 @@ Pre-publish human-in-the-loop review gate. Pauses the pipeline and waits for hum
 **Common failure causes:**
 
 - Human has not reviewed the content yet (pipeline paused, awaiting HITL approval)
-- Content quality deemed insufficient by human reviewer (intentional rejection)
-- `automedia hitl approve` not called within the expected timeframe
+- Content quality deemed insufficient by human reviewer (intentional rejection — since the todo-9 fix, a rejection converts the H0 result to a stop-failure and the pipeline halts; downstream gates do not run)
+- No review decision issued within the configured HITL timeout (default 24h; timeout auto-approves)
 
 **Remediation:**
 
-- Check pending HITL reviews: `automedia hitl list`
-- Approve the review: `automedia hitl approve --project <project-id>`
-- Reject and request rewrite: `automedia hitl reject --project <project-id> --reason "..."`
-- To skip HITL entirely, pass `auto_publish=True` to `run_full_pipeline()`
+- Check whether the pipeline is paused: `get_pipeline_progress(project_id)` (status `awaiting_hitl`) or `automedia hitl list`
+- Approve (MCP, live H0 path): `review_decision(project_id, "H0", action="approve")`
+- Reject and halt (MCP): `review_decision(project_id, "H0", action="reject", reason="...")` — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided in its own terminal (the call fails fast with a structured error, never a deadlock)
+- To skip HITL entirely, pass `auto_publish=True` (or `skip_review`) to the run
 
 **Quick diagnosis:**
 
