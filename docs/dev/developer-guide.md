@@ -338,11 +338,16 @@ decision, the backup repository **`renanzai40/AutoMedia_BackUp`** is the canonic
 distribution point. This section records what moved automatically and what remains
 bound to the old account and needs a one-time user-manual action.
 
-- **Git remotes (local environment state, not tracked):** local `origin` now points at
+- **Git remotes (local environment state, not tracked):** local `origin` points at
   `git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git` (the SSH host alias for
   the renanzai40 account); the original 1StepMore remote is preserved unchanged as
   `upstream-1stepmore` (`git@github.com:1StepMore/AutoMedia.git`) so history and
   branch-tracking references stay intact. The 1StepMore remote is NOT deleted.
+- **Canonical integration status:** `renanzai40/AutoMedia_BackUp` `main` is fully
+  integrated with all productization work through `eab6dfe` (21 commits, fast-forward,
+  zero divergence). Local branches track `origin/*`; `upstream-1stepmore/*` is kept only
+  as an immutable history reference (the suspended account's repo is unreachable for
+  fetch/push).
 - **CI badge / CI runs:** the README CI badge points at the canonical repo
   (`renanzai40/AutoMedia_BackUp`). GitHub Actions run per-repo — CI must be enabled on
   that repository for the badge to go green.
