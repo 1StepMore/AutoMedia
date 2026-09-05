@@ -255,7 +255,7 @@ MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `get_validati
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (100 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (107 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: handbook of standard keys (14 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.
@@ -277,6 +277,7 @@ Key `AUTOMEDIA_*` environment variables:
 | `AUTOMEDIA_LLM_TIMEOUT` | LLM request timeout (seconds) | `60` |
 | `AUTOMEDIA_FAKE_LLM` | Set to `1` for deterministic mock LLM responses | (unset) |
 | `AUTOMEDIA_DEFAULT_BRAND` | Default brand for pipelines | `my-brand` |
+| `AUTOMEDIA_FEATURE_TIER` | Open-core tier override: core\|pro\|enterprise; gates above the override tier are excluded at gate-list composition (declarative; unset = all tiers available) | (unset) |
 | `AUTOMEDIA_DATA_DIR` | Data directory | `./data` |
 | `AUTOMEDIA_OUTPUT_DIR` | Output directory | `./output` |
 | `AUTOMEDIA_PROJECTS_DIR` | Projects root override | (auto) |

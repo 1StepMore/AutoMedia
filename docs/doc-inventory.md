@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 22628 | file |
+| AGENTS.md | 22828 | file |
 | README.md | 30731 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
@@ -25,7 +25,7 @@
 | docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
 | docs/dev/deep-module-rfc-001.md | 12981 | file |
-| docs/dev/developer-guide.md | 25383 | file |
+| docs/dev/developer-guide.md | 25737 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |
 | docs/dev/founder-expectations.md | 111669 | file |
@@ -33,7 +33,7 @@
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/project-validation-framework.md | 12560 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
-| docs/glossary.md | 8097 | file |
+| docs/glossary.md | 12648 | file |
 | docs/index.md | 4670 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5042 | file |
@@ -43,7 +43,7 @@
 | docs/user | — | dir |
 | docs/user/api-reference.md | 13644 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 20562 | file |
+| docs/user/cli-reference.md | 22226 | file |
 | docs/user/deployment.md | 8222 | file |
 | docs/user/hitl-framework.md | 6928 | file |
 | docs/user/mcp-setup.md | 23694 | file |

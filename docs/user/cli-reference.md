@@ -29,7 +29,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia projects` | List and manage production projects |
 | `automedia distribute` | Distribute pipeline content to platforms (D-gates with `--platforms`, `--all`, `--dry-run`) |
 | `automedia effects` | Compute content analytics stats (word count, sentiment, readability, brand mentions, SEO) |
-| `automedia adapter` | Platform adapter management |
+| `automedia adapter` | Platform adapter audit + templates (`list` with `--real`/`--stub`/`--json`, `create`) |
 | `automedia cron` | Execute scheduled cron jobs and pipeline runs |
 | `automedia account` | Platform account management |
 | `automedia archive` | Archive a project |
@@ -341,20 +341,51 @@ Analytics computed: word count, sentiment score, readability score, brand mentio
 
 Manage platform adapters.
 
+The `adapter` command family is **deprecated** for account and publish flows.
+Those moved to `automedia account`. `adapter list` remains the sanctioned
+platform-audit surface: every row carries its automation status derived from
+the adapter's `is_stub` attribute.
+
 ```bash
-# List registered adapters
+# List all registered platform adapters with a real/stub status column
 automedia adapter list
+
+# Platform-audit filters (plan P1-1): only real-API automation, only manual stubs
+automedia adapter list --real
+automedia adapter list --stub
+
+# Machine-readable audit output
+automedia adapter list --json
+automedia adapter list --json --real
 
 # Create new adapter template
 automedia adapter create --name youtube
 ```
 
+Plain `automedia adapter list` prints one line per platform with its status:
+20 registered adapters, 12 `real` (is_stub=False; 11 publish APIs plus the
+feishu notifier) and 8 `stub` (is_stub=True; intentional manual-publish
+stubs). `--real` filters to the 12 real-automation adapters, `--stub` to the 8
+manual-publish stubs. `--json` emits the machine-readable payload instead:
+`{"status", "adapters": [{name, is_stub}], "count", "filters"}`.
+
 ### Subcommands
 
 | Subcommand | Description |
 |--------|------|
-| `list` | List all registered platform adapters |
+| `list` | List registered platform adapters with a real/stub audit status column |
 | `create` | Generate a new adapter template file |
+
+### adapter list Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--real` | `bool` | `False` | Only platforms with real API automation (is_stub=False — 11 publish APIs + feishu notifier) |
+| `--stub` | `bool` | `False` | Only intentional manual-publish stub platforms (is_stub=True — 8) |
+| `--json` | `bool` | `False` | Machine-readable JSON output (also accepted app-level as `automedia --json adapter list`) |
+
+`--real` and `--stub` are mutually exclusive: passing both together is an
+error and the command exits with status 1.
 
 ### adapter create Flags
 

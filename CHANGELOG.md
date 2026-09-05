@@ -5,16 +5,26 @@
 ### Bug Fixes
 
 * **pipelines:** H0 reject now actually halts the pipeline — `_hitl_approved=False` converts the gate result to a stop-failure at both HITL wait sites (incl. the quality-retry path, where a rejection is never consumed by level-2 regeneration); regression tests assert the run FAILS and no downstream gate executes
+* **pipelines:** content gates' (G1/G2) `modified_content` rewrites now actually apply into the draft and reach downstream gates before each quality retry (latent bug: they were written to the result dict but never consumed) — an exhausted retry chain never leaves a partial write
 * **docs:** correct stale HITL instructions (`automedia hitl approve/reject` CLI does not exist and cannot reach the in-process waiters) — the LIVE H0 approval path is the `review_decision` MCP tool, same-process only
+* **tests:** suppress the Hypothesis `too_slow` health check on load-sensitive strategies — removes a systemic full-suite flake that only fired under ambient load (pinned green once suppressed)
+* **tests:** rename the gate-report probe gate off the G62 band — its `_gate_name` collided with a tracked retry_sites gate under single-process full-suite auto-registration
 * **llm:** configure_llm and onboard now merge into model_config.yaml instead of overwriting — existing LLM fallback chains are preserved
 * **llm:** add save_model_config writer for merge-preserving model_config.yaml updates
 
 ### Features
 
 * **mcp:** add `review_decision` tool (67 tools) on the live H0 HITL path — wired to the in-process `_hitl_waiters` registry (NOT the dormant approve_gate/reject_gate engine-registry path); approve resumes the paused pipeline, reject halts it; `show_diff=True` renders a unified diff from the latest `.automedia/gate_diffs/` record (`diff_unavailable` when none); not-paused or CLI-started projects get a fast structured NOT_FOUND error (same-process constraint, no deadlock); every decision is appended to the user-level audit log
+* **mcp:** add `get_gate_report` tool (67 tools) — reads the latest per-run gate-report JSON from `05_review/gate-report/` for a project (base_dir must be allowlisted)
 * **decision:** add `record_review_decision` append-only audit log at `~/.automedia/audit/review_decisions.log` (JSON lines: timestamp, project_id, gate_name, decision, reason, diff_record_path, actor; write failures never fail the review call)
 * **validation:** add `review-decision-surface` scenario + regenerate `scenarios/baseline/coverage-audit.json` (mcp 67 declared / 60 covered / 0 missing)
 * **cli:** automedia doctor reports advisory LLM configuration warnings (missing/incomplete fallback chain, model/base_url mismatch) in human and --json output
+* **scripts:** add `setup_agent_mcp.sh` — one-command, idempotent AutoMedia MCP setup for agent clients (OpenCode/Claude Code/Codex/Cursor config detect+write, `--uninstall`, MCP probe)
+* **pipelines:** add per-gate diff capture under `.automedia/gate_diffs/` — original-vs-`modified_content` records for content-modifying gates (applied flag, per-check reasons, truncation cap) feeding the `review_decision` `show_diff` view
+* **pipelines:** auto-generate a gate report at the end of every production run — `05_review/gate-report/gate-report-<ts>.{md,json}` with per-gate pass/fail/review verdict, blocking gate + reason, and duration; written on success AND failure, and a report-write error never fails the pipeline
+* **features:** filter gates by declared open-core feature tier at gate-list composition (`_compose_gate_list`/`_select_gates`/`_build_gates_from_names`) — no-op by default, active only under an `AUTOMEDIA_FEATURE_TIER` override; D-gate standalone runs stay ungated
+* **features:** add declarative `FEATURE_TIERS` (core/pro/enterprise over all 33 gates) with alias-table resolution and a pure `check_tier` marker honoring an optional `AUTOMEDIA_FEATURE_TIER` env / `features.yaml` override
+* **cli:** `automedia adapter list` gains `--real`/`--stub`/`--json` filters for platform audit — default prints all adapters with a real/stub status column; no new adapter code
 * **pipelines:** add explicit per-mode gate DAG (`automedia.pipelines.dag` — 26 nodes, topological-order + downstream helpers) as an additive, order-equivalent layer over `_MODE_MAP`
 * **cli:** add `automedia pipeline export-dag` (Markdown + DOT per mode, per-run overlay from history) and `automedia pipeline state` (per-gate passed/failed/pending + md5 audit view)
 * **mcp:** add `get_pipeline_state` tool — read-only per-gate state aggregation (history.db + pipeline_md5.json)
@@ -23,6 +33,13 @@
 
 ### Documentation
 
+* **repo:** record canonical-repo integration status — backup remote `renanzai40/AutoMedia_BackUp` live and reachable; Docker Hub publication of `kevinzhow/automedia-pipeline` left unverified on this host
+* **readme:** add concrete OpenClaw MCP configuration snippet — `mcp.servers` entry under `~/.openclaw/openclaw.json` (explicit declaration, no auto-discovery) with `openclaw mcp doctor --probe` verification
+* **repo:** switch canonical remote to the backup repo and document ownership consequences — original `1StepMore/AutoMedia` preserved as `upstream-1stepmore`; PyPI OIDC (bound to `1StepMore/AutoMedia`) and Docker namespace recorded as user-manual re-creation
+* **adapters:** annotate real/notifier/manual-stub status across the roadmap and founder-expectations — 11 real publish APIs + feishu notifier + 8 intentional manual stubs (F32/F34)
+* **repo:** re-point README badges and repo URLs (systemd units, `pyproject.toml`, CLI epilog, docs cross-links) to the canonical backup repo
+* **agents:** expand the `[mcp]` install literal to `pip install -e ".[mcp]"` so AGENTS.md satisfies red-line enforcement
+* **docs:** correct verified factual errors in the 2026-09-02 roadmap + business-validation reports and README against the codebase (phantom `produce` command/`04_Deliverables` path, CLI/MCP/adapter counts, WeChat/Zhihu already real, 95-blog corpus deferred as unverified)
 * **skills:** add `validation-runner` skill (scenario waves, regression flywheel, RED→GREEN evidence) and `deep-modules` skill (Ousterhout deep-module refactoring, RFC-001 exemplar); extend `doc-sync` with an ADR pre-flight gate, glossary ownership, and the doc-consistency gate; sync all three to `.claude/skills/` and `.codex/skills/`
 * **adr:** add ADR-006 — explicit per-mode gate DAG (additive, order-equivalent) with opt-in `--auto-resume`, failure localization, and a read-only state view
 

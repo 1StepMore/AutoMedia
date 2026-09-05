@@ -86,6 +86,36 @@ A `PipelineResult` field listing the gates that a pipeline failure blocked. It i
 
 **See:** `automedia/pipelines/runner.py` (`_compute_affected_downstream`), `automedia/pipelines/dag.py`
 
+## gate report / gate-report
+
+The per-run gate report written to `<project_dir>/05_review/gate-report/gate-report-<timestamp>.{md,json}` at the end of every production run, whether it passed or failed. It renders one row per gate: the verdict (pass/fail/review), the blocking reason when one exists, per-check detail where present, and the gate duration. The Markdown file is human-readable; the JSON side-by-side is what the MCP `get_gate_report` tool reads. "review" is the report vocabulary for a crashed gate or an H0 the run's hitl mode covered.
+
+**See:** `automedia/pipelines/gate_report.py`
+
+## get_gate_report
+
+MCP tool (one of 67) that returns the latest gate-report JSON for a project by reading `<project_dir>/05_review/gate-report/gate-report-*.json`. The project's base_dir must be allowlisted in `mcp_allowlist.yaml`, otherwise the request is denied fail-closed. Read-only: it never writes to the project.
+
+**See:** `automedia/mcp/tools/pipeline.py` (registered in `automedia/mcp/server.py`)
+
+## gate_diffs (.automedia/gate_diffs/)
+
+Per-gate before/after content records captured when a content gate rewrites the draft on a failing quality retry. G1 (humanizer) and G2 (copy review) writes land in `<project_dir>/.automedia/gate_diffs/<gate>_<seq>.json`, with the record's texts and an `applied: true|false` flag saying whether the rewrite was promoted into the content flow. Only the texts are stored; a unified diff is rendered on demand (the Director review view), never persisted.
+
+**See:** `automedia/pipelines/gate_engine.py` (`_write_gate_diff_record`)
+
+## review_decision
+
+MCP tool that approves or rejects a pipeline paused at a HITL review gate on the live H0 path. It signals the paused `PipelineProgress` directly: approve resumes the pipeline, reject halts it (the rejection becomes a stop-failure, so downstream gates never run). Same-process only: it reaches pipelines started by this MCP server process, not CLI-started ones. `show_diff=True` renders a unified diff from the latest `.automedia/gate_diffs/` record so the director sees exactly what the gate changed.
+
+**See:** `automedia/mcp/tools/review.py`
+
+## review-decision audit log
+
+An append-only JSON-lines log at `~/.automedia/audit/review_decisions.log` recording every approve/reject from `review_decision`: timestamp, project_id, gate_name, decision, reason, diff_record_path, and actor. Full before/after texts stay in the gate_diffs records; only the record's path is logged. A write failure is logged and swallowed so it never fails the review call.
+
+**See:** `automedia/decision/review_audit.py`
+
 ## GateRegistry
 
 A global singleton that maps gate name strings to gate classes. Concrete `BaseGate` subclasses register themselves automatically via `__init_subclass__`, so new gates need no manual registration.
@@ -122,6 +152,12 @@ User-level overrides that adjust behavior without touching the package: YAML rul
 
 **See:** `automedia/core/overrides.py`, `docs/dev/override-reference.md`
 
+## feature tiers (FEATURE_TIERS / check_tier)
+
+Declarative open-core tier markers: every gate (33 total) is assigned to core, pro, or enterprise in `FEATURE_TIERS`. `check_tier(name)` reports a feature's tier and availability. With no override everything is available, so the free local install runs all 33 gates; setting `AUTOMEDIA_FEATURE_TIER=core|pro|enterprise` (or a user-level `~/.automedia/features.yaml`) excludes gates above that tier when gate lists are composed. Marker only: it never blocks execution itself and contains no license logic. The tier union is checked against the gate registry at import.
+
+**See:** `automedia/features/__init__.py`, `automedia/pipelines/runner.py` (`_filter_gates_by_tier`)
+
 ## Platform-scoped prompt templates
 
 Jinja2 prompt templates resolved per platform with a 3-layer lookup (brand > platform > global). Templates live under `automedia/prompts/platforms/` for 10 platforms.
@@ -146,6 +182,12 @@ Platform publish adapters registered in a global `AdapterRegistry`. The publish 
 
 **See:** `automedia/adapters/registry.py`, `automedia/adapters/publish_engine.py`
 
+## adapter audit (real / stub / notifier)
+
+`automedia adapter list --real/--stub/--json` surfaces the platform-automation partition. Of the 20 adapter modules, 11 are real publish APIs plus 1 feishu notifier (`is_stub=False`), and 8 are intentional manual-only stubs: douyin, kuaishou, baijiahao, bilibili, weibo, toutiao, juejin, and xiaohongshu. Those platforms have no public API for automated publishing, so manual-only is the documented divergence (F32/F34), not a gap. Every row carries its automation status derived from the adapter's `is_stub` attribute.
+
+**See:** `automedia/cli/commands/adapter.py`, `automedia/adapters/platforms/`
+
 ## Credential store (AES-256-GCM)
 
 Platform credentials are encrypted at rest with AES-256-GCM in `accounts/store.py`. The master key derives from `AUTOMEDIA_MASTER_KEY` via SHA-256, and credentials never appear in logs or MCP responses.
@@ -157,6 +199,12 @@ Platform credentials are encrypted at rest with AES-256-GCM in `accounts/store.p
 `automedia/mcp/mcp_allowlist.yaml` restricts which file paths the MCP server may touch. An empty list denies all paths. Do not modify it without an explicit user request.
 
 **See:** `automedia/mcp/mcp_allowlist.yaml`
+
+## setup_agent_mcp.sh
+
+A one-command script that detects the active agent client (OpenCode, Claude Code, Codex, Cursor, Hermes, OpenClaw) and writes or updates that client's MCP server config so it can call AutoMedia's tools. Idempotent: re-running converges to the canonical entry without touching other keys. `--uninstall` removes only the automedia entry, `--list` shows detected clients and config state, and `--client-dir DIR` operates on a given config directory. Config files get the literal `${AUTOMEDIA_LLM_API_KEY}` placeholder, never a real key.
+
+**See:** `scripts/setup_agent_mcp.sh`
 
 ## Red Lines
 
