@@ -482,7 +482,23 @@ result = run_full_pipeline(
 }
 ```
 
-**OpenClaw** — supports MCP via its plugin system; configure in `~/.openclaw/` or use the Gateway dashboard.
+**OpenClaw** (in `~/.openclaw/openclaw.json`, under `mcp.servers`):
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "automedia": {
+        "command": "python",
+        "args": ["-m", "automedia.mcp.server"],
+        "env": {"AUTOMEDIA_LLM_API_KEY": "${AUTOMEDIA_LLM_API_KEY}"}
+      }
+    }
+  }
+}
+```
+
+OpenClaw does not auto-discover MCP servers — each one must be declared (or added via `openclaw mcp add automedia --command python --arg -m --arg automedia.mcp.server`). Verify with `openclaw mcp doctor automedia --probe` (confirms the server spawns and lists its tools), or `openclaw mcp list` for a config-only summary. See the [OpenClaw MCP docs](https://docs.openclaw.ai/tools/mcp).
 
 **Hermes Agent** (in `~/.hermes/config.yaml`):
 
