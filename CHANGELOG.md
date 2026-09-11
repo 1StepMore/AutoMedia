@@ -43,6 +43,10 @@
 * **skills:** add `validation-runner` skill (scenario waves, regression flywheel, RED→GREEN evidence) and `deep-modules` skill (Ousterhout deep-module refactoring, RFC-001 exemplar); extend `doc-sync` with an ADR pre-flight gate, glossary ownership, and the doc-consistency gate; sync all three to `.claude/skills/` and `.codex/skills/`
 * **adr:** add ADR-006 — explicit per-mode gate DAG (additive, order-equivalent) with opt-in `--auto-resume`, failure localization, and a read-only state view
 
+### Miscellaneous Chores
+
+* **lint:** tighten static analysis — enable ruff `C4`/`PERF`/`RUF` (all findings cleared; `RUF001`-`RUF003` ignored as CJK ambiguous-unicode noise; pre-commit ruff hook pinned) and enforce strict mypy on the 7 hardened modules via a blocking scoped `mypy --strict` CI step (the advisory repo-wide mypy step is retained)
+
 ## [1.4.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.4.0...automedia-v1.4.1) (2026-08-15)
 
 

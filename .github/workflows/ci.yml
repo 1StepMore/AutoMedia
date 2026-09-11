@@ -46,6 +46,11 @@ jobs:
       - name: Mypy
         continue-on-error: true
         run: mypy src/automedia/ --ignore-missing-imports
+      - name: Mypy (strict — hardened modules)
+        # Blocking: the 7 modules hardened by the pareto-hardening plan are
+        # strict-clean; this locks that gain. The advisory repo-wide Mypy step
+        # above stays. Do NOT add continue-on-error here.
+        run: mypy --strict src/automedia/asset_library/vector_store.py src/automedia/asset_library/migrate.py src/automedia/manifests/brand_profile_schema.py src/automedia/pool/collector.py src/automedia/cli/commands/history_cmd.py src/automedia/cli/commands/pipeline.py src/automedia/core/config_loader.py --ignore-missing-imports
       - name: Actionlint (workflow validation)
         uses: reviewdog/action-actionlint@v1
         with:
