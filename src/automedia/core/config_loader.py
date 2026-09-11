@@ -13,9 +13,13 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import yaml
+
+from automedia.exceptions import ConfigError
 
 _DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "manifests" / "defaults.yaml"
 _ENV_PREFIX = "AUTOMEDIA_"
@@ -185,6 +189,125 @@ def _env_to_config() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Merged-config validation (C2)
+# ---------------------------------------------------------------------------
+#
+# Curated known keys are type-checked, but ONLY when present: a missing
+# optional key is never rejected. Malformed shapes (a present scalar where a
+# mapping is required) fail fast with :class:`ConfigError`.
+
+
+def _is_str(value: object) -> bool:
+    return isinstance(value, str)
+
+
+def _is_number(value: object) -> bool:
+    """Return ``True`` for ``int``/``float``, excluding ``bool`` (an int subclass)."""
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _is_int(value: object) -> bool:
+    """Return ``True`` for ``int``, excluding ``bool`` (an int subclass)."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_bool(value: object) -> bool:
+    return isinstance(value, bool)
+
+
+# (key path, expected-type label, predicate)
+_SCALAR_RULES: tuple[tuple[tuple[str, ...], str, Callable[[object], bool]], ...] = (
+    (("llm", "text_generation", "provider"), "str", _is_str),
+    (("llm", "text_generation", "model"), "str", _is_str),
+    (("llm", "text_generation", "api_key"), "str", _is_str),
+    (("llm", "text_generation", "temperature"), "int or float", _is_number),
+    (("llm", "text_generation", "timeout"), "int or float", _is_number),
+    (("llm", "text_generation", "max_tokens"), "int", _is_int),
+    (("content", "min_title_length"), "int", _is_int),
+    (("content", "max_title_length"), "int", _is_int),
+    (("project", "name"), "str", _is_str),
+)
+
+
+def _resolve(config: dict[str, Any], path: tuple[str, ...]) -> tuple[bool, object]:
+    """Resolve *path* inside *config* and report whether it is present.
+
+    Returns ``(False, None)`` when any segment is absent. A :class:`ConfigError`
+    is raised when a present intermediate segment is not a mapping — that is a
+    malformed config shape, not a missing optional key.
+    """
+    node: object = config
+    for depth, part in enumerate(path):
+        if not isinstance(node, dict):
+            offending = ".".join(path[:depth])
+            raise ConfigError(
+                f"Invalid config shape at '{offending}': expected dict, got {type(node).__name__}"
+            )
+        if part not in node:
+            return False, None
+        node = node[part]
+    return True, node
+
+
+def _validate_str_map(config: dict[str, Any], key: str) -> None:
+    present, section = _resolve(config, (key,))
+    if not present:
+        return
+    if not isinstance(section, dict):
+        raise ConfigError(
+            f"Invalid config shape at '{key}': expected dict, got {type(section).__name__}"
+        )
+    for child_key, child_value in section.items():
+        if not isinstance(child_value, str):
+            raise ConfigError(
+                f"Invalid config value at '{key}.{child_key}': "
+                f"expected str, got {type(child_value).__name__} ({child_value!r})"
+            )
+
+
+def _validate_platforms(config: dict[str, Any]) -> None:
+    present, platforms = _resolve(config, ("platforms",))
+    if not present:
+        return
+    if not isinstance(platforms, dict):
+        raise ConfigError(
+            f"Invalid config shape at 'platforms': expected dict, got {type(platforms).__name__}"
+        )
+    for name, entry in platforms.items():
+        if not isinstance(entry, dict):
+            raise ConfigError(
+                f"Invalid config shape at 'platforms.{name}': "
+                f"expected dict, got {type(entry).__name__}"
+            )
+        if "enabled" in entry and not _is_bool(entry["enabled"]):
+            raise ConfigError(
+                f"Invalid config value at 'platforms.{name}.enabled': "
+                f"expected bool, got {type(entry['enabled']).__name__} ({entry['enabled']!r})"
+            )
+
+
+def validate_config(config: dict[str, Any]) -> None:
+    """Fail-fast validation of the fully-merged configuration.
+
+    Only curated known keys are checked, and only when they are present in
+    *config* — a missing optional key is never rejected. A type or shape
+    violation raises :class:`~automedia.exceptions.ConfigError` naming the
+    offending key path and the expected-vs-actual type.
+
+    Pure function: no I/O and no mutation of *config*.
+    """
+    for path, expected, predicate in _SCALAR_RULES:
+        present, value = _resolve(config, path)
+        if present and not predicate(value):
+            raise ConfigError(
+                f"Invalid config value at '{'.'.join(path)}': "
+                f"expected {expected}, got {type(value).__name__} ({value!r})"
+            )
+    _validate_str_map(config, "paths")
+    _validate_platforms(config)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -263,4 +386,5 @@ def load_config(
             )
             config["engines"]["image"]["comfyui"] = dict(old_comfyui)
 
+    validate_config(config)
     return config
