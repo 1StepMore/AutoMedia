@@ -36,7 +36,7 @@ class HotCollector:
 
     def __init__(
         self,
-        seed_topics: list[dict] | None = None,
+        seed_topics: list[dict[str, Any]] | None = None,
         tavily_api_key: str | None = None,
     ) -> None:
         """Initialize the hot topic collector.
@@ -53,7 +53,7 @@ class HotCollector:
     # Public API
     # ------------------------------------------------------------------
 
-    def collect_all(self) -> list[dict]:
+    def collect_all(self) -> list[dict[str, Any]]:
         """Run the collection funnel and return deduplicated topics.
 
         Returns
@@ -74,7 +74,7 @@ class HotCollector:
 
         # Simple title-based dedup (preserve order, keep first occurrence)
         seen_titles: set[str] = set()
-        unique: list[dict] = []
+        unique: list[dict[str, Any]] = []
         for t in all_topics:
             normalized = t["title"].strip().lower()
             if normalized not in seen_titles:
@@ -138,7 +138,7 @@ class HotCollector:
     # Layer 2 — Tavily AI search
     # ------------------------------------------------------------------
 
-    def _search_tavily(self, keywords: list[str]) -> list[dict]:
+    def _search_tavily(self, keywords: list[str]) -> list[dict[str, Any]]:
         """Search trending topics via Tavily Search API.
 
         Requires ``AUTOMEDIA_TAVILY_API_KEY`` or *tavily_api_key* to be set.
@@ -184,7 +184,7 @@ class HotCollector:
         except (httpx.HTTPError, ValueError, KeyError):
             return []
 
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
         for item in data.get("results", []):
             title = (item.get("title") or "").strip()
             url = (item.get("url") or "").strip()
@@ -207,7 +207,7 @@ class HotCollector:
     # Layer 3 — AIHOT / LLM-based trending generator
     # ------------------------------------------------------------------
 
-    def _fetch_aihot(self) -> list[dict]:
+    def _fetch_aihot(self) -> list[dict[str, Any]]:
         """Fetch trending AI / creator-economy topics via LLM.
 
         Uses the AutoMedia LLM client to generate a list of currently
@@ -258,7 +258,7 @@ class HotCollector:
         if not isinstance(items, list):
             return []
 
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -281,7 +281,7 @@ class HotCollector:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _extract_keywords(topics: list[dict]) -> list[str]:
+    def _extract_keywords(topics: list[dict[str, Any]]) -> list[str]:
         """Extract simple keywords from topic titles for Layer 2 search.
 
         Splits on common delimiters and filters stop-words.

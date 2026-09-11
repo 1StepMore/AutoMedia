@@ -30,7 +30,7 @@ _ENV_PREFIX = "AUTOMEDIA_"
 # ---------------------------------------------------------------------------
 
 
-def deep_merge(base: dict, override: dict) -> dict:
+def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge *override* into *base*.
 
     * Dict values are merged recursively.
@@ -51,7 +51,7 @@ def deep_merge(base: dict, override: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _load_yaml_file(path: Path) -> dict:
+def _load_yaml_file(path: Path) -> dict[str, Any]:
     """Load a single YAML file and return its contents as a dict.
 
     Returns an empty dict when the file does not exist or is empty.
@@ -63,7 +63,7 @@ def _load_yaml_file(path: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def _load_yaml_dir(dir_path: str) -> dict:
+def _load_yaml_dir(dir_path: str) -> dict[str, Any]:
     """Load every ``*.yaml`` / ``*.yml`` file in *dir_path* and merge them.
 
     Files are processed in sorted order so the result is deterministic.
@@ -71,7 +71,7 @@ def _load_yaml_dir(dir_path: str) -> dict:
     """
     if not os.path.isdir(dir_path):
         return {}
-    merged: dict = {}
+    merged: dict[str, Any] = {}
     for entry in sorted(os.listdir(dir_path)):
         if entry.endswith((".yaml", ".yml")):
             file_path = Path(dir_path) / entry
@@ -80,7 +80,7 @@ def _load_yaml_dir(dir_path: str) -> dict:
     return merged
 
 
-def _load_j2_dir(dir_path: str) -> dict:
+def _load_j2_dir(dir_path: str) -> dict[str, Any]:
     """Load all ``*.j2`` template files as prompt strings.
 
     Each file's content is stored under ``prompts[<stem>]`` where *stem* is
@@ -106,7 +106,7 @@ def _load_j2_dir(dir_path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _env_to_config() -> dict:
+def _env_to_config() -> dict[str, Any]:
     """Convert ``AUTOMEDIA_*`` environment variables into a nested config dict.
 
     Convention:
@@ -127,7 +127,7 @@ def _env_to_config() -> dict:
     Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
     remain the fallback.
     """
-    result: dict = {}
+    result: dict[str, Any] = {}
 
     # Special LLM key remapping
     _llm_key_map: dict[str, list[str]] = {
@@ -315,8 +315,8 @@ def validate_config(config: dict[str, Any]) -> None:
 def load_config(
     *,
     config_dir: str | None = None,
-    overrides: dict | None = None,
-) -> dict:
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Load and merge configuration from six layers (lowest → highest priority).
 
     Parameters

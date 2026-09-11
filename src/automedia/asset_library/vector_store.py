@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import contextlib
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import chromadb
+    from chromadb.api import ClientAPI
 
 from structlog import get_logger
 
@@ -73,7 +75,7 @@ class VectorStore:
     def __init__(self, brand: str) -> None:
         self._brand = brand
         self._collection_name = f"automedia_{brand}"
-        self._client: chromadb.PersistentClient | None = None
+        self._client: ClientAPI | None = None
         self._collection: chromadb.Collection | None = None
         self._chroma_dir = (
             Path(os.path.expanduser("~/.automedia/asset-library/")) / brand / "chroma"
@@ -113,18 +115,19 @@ class VectorStore:
         import chromadb
 
         self._chroma_dir.mkdir(parents=True, exist_ok=True)
-        self._client = chromadb.PersistentClient(path=str(self._chroma_dir))
+        client = chromadb.PersistentClient(path=str(self._chroma_dir))
+        self._client = client
 
         # Get or create the collection
         try:
-            self._collection = self._client.get_or_create_collection(
+            self._collection = client.get_or_create_collection(
                 name=self._collection_name,
             )
         except (ValueError, RuntimeError):
             # Fallback: try creating it fresh
             with contextlib.suppress(Exception):
-                self._client.delete_collection(self._collection_name)
-            self._collection = self._client.create_collection(
+                client.delete_collection(self._collection_name)
+            self._collection = client.create_collection(
                 name=self._collection_name,
             )
 
@@ -154,7 +157,8 @@ class VectorStore:
             The Chroma internal ID (``vector_id``).  When Chroma is not
             available returns an empty string.
         """
-        if not self.available:
+        collection = self._collection
+        if collection is None:
             log.debug("Chroma unavailable — skipping embedding for %s", doc_id)
             return ""
 
@@ -162,7 +166,7 @@ class VectorStore:
         meta = dict(metadata) if metadata else {}
 
         try:
-            self._collection.add(
+            collection.add(
                 ids=[vec_id],
                 documents=[text],
                 metadatas=[meta],
@@ -194,12 +198,13 @@ class VectorStore:
             and ``distance`` keys.  Returns an empty list when Chroma is
             not available or the search fails.
         """
-        if not self.available:
+        collection = self._collection
+        if collection is None:
             log.debug("Chroma unavailable — returning empty search results")
             return []
 
         try:
-            results = self._collection.query(
+            results = collection.query(
                 query_texts=[query],
                 n_results=n_results,
             )
@@ -210,7 +215,7 @@ class VectorStore:
         return self._format_results(results)
 
     @staticmethod
-    def _format_results(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    def _format_results(raw: Mapping[str, Any]) -> list[dict[str, Any]]:
         """Convert Chroma query output to a list of result dicts."""
         formatted: list[dict[str, Any]] = []
         ids = raw.get("ids", [[]])[0]
@@ -238,11 +243,12 @@ class VectorStore:
         vector_id : str
             The Chroma internal ID (returned by ``add_embedding``).
         """
-        if not self.available:
+        collection = self._collection
+        if collection is None:
             return
 
         try:
-            self._collection.delete(ids=[vector_id])
+            collection.delete(ids=[vector_id])
         except _CHROMA_ERRORS as exc:
             log.error("Failed to delete embedding %s: %s", vector_id, exc)
 
@@ -258,20 +264,21 @@ class VectorStore:
         This is used primarily by the migration script to read source
         data from Chroma before migrating to pgvector.
         """
-        if not self.available:
+        collection = self._collection
+        if collection is None:
             log.debug("Chroma unavailable — returning empty embedding list")
             return []
 
         try:
-            raw = self._collection.get(limit=None)  # type: ignore[arg-type]  # chromadb.Collection.get() expects int for limit, None is valid at runtime but typing doesn't allow it
+            raw = collection.get(limit=None)
         except _CHROMA_ERRORS as exc:
             log.error("Failed to get all embeddings: %s", exc)
             return []
 
         formatted: list[dict[str, Any]] = []
-        ids = raw.get("ids", [])
-        documents = raw.get("documents", [])
-        metadatas = raw.get("metadatas", [])
+        ids = raw["ids"]
+        documents = raw.get("documents") or []
+        metadatas = raw.get("metadatas") or []
 
         for i, doc_id in enumerate(ids):
             formatted.append(
@@ -286,22 +293,24 @@ class VectorStore:
 
     def count(self) -> int:
         """Return the number of embeddings in the collection."""
-        if not self.available:
+        collection = self._collection
+        if collection is None:
             return 0
         try:
-            return self._collection.count()
+            return collection.count()
         except (ValueError, RuntimeError):
             log.debug("VectorStore.count() failed, returning 0")
             return 0
 
     def reset(self) -> None:
         """Delete the entire collection and recreate it."""
-        if not self.available:
+        client = self._client
+        if client is None or self._collection is None:
             return
         with contextlib.suppress(Exception):
-            self._client.delete_collection(self._collection_name)
+            client.delete_collection(self._collection_name)
         try:
-            self._collection = self._client.create_collection(
+            self._collection = client.create_collection(
                 name=self._collection_name,
             )
         except _CHROMA_ERRORS as exc:

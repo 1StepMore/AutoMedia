@@ -208,7 +208,7 @@ def _insert_into_pg(
 
     Creates the schema and table if they do not exist.
     """
-    import psycopg2  # type: ignore[import-untyped]  # psycopg2 has no type stubs
+    import psycopg2  # psycopg2 has no type stubs
 
     conn = psycopg2.connect(uri)
     try:

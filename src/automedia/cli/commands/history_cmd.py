@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 
 import typer
 
@@ -49,7 +50,7 @@ def history_cmd(
 
     match = [p for p in projects if p.get("project_id") == project_id]
 
-    history_rows: list[dict] = []
+    history_rows: list[dict[str, Any]] = []
     if match:
         project_dir = match[0]["_dir"]
         all_rows = _read_history(project_dir)

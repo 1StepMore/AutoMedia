@@ -110,6 +110,37 @@ python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_configs = true
 
+# Frozen hardened modules: enforced strict from the same commit that fixed
+# their errors, so the pre-commit mypy hook never sees an unfixed override.
+# NOTE: per-module `strict = true` is NOT used. mypy (1.13.0 and 2.1.0) has a
+# bug where a per-module `strict` key leaks the strict options to the whole
+# program (config_parser.py passes the global set_strict_flags closure into
+# per-module section parsing). The explicit flag list below is exactly the
+# strict set, restricted to these modules (warn_redundant_casts excluded: not
+# a per-module option).
+[[tool.mypy.overrides]]
+module = [
+    "automedia.asset_library.vector_store",
+    "automedia.asset_library.migrate",
+    "automedia.manifests.brand_profile_schema",
+    "automedia.pool.collector",
+    "automedia.cli.commands.history_cmd",
+    "automedia.cli.commands.pipeline",
+    "automedia.core.config_loader",
+]
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
+
 [tool.vulture]
 paths = ["src/automedia/"]
 min_confidence = 80
