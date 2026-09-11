@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from automedia.core import config_loader
 from automedia.core.config_loader import (
     _env_to_config,
     _load_j2_dir,
@@ -15,10 +16,11 @@ from automedia.core.config_loader import (
     deep_merge,
     load_config,
 )
+from automedia.exceptions import ConfigError
 
 
 @pytest.fixture(autouse=True)
-def _clear_automedia_env_vars(monkeypatch):
+def _clear_automedia_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove AUTOMEDIA_* env vars loaded from .env so config tests are isolated."""
     original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
     for k in original:
@@ -34,35 +36,35 @@ def _clear_automedia_env_vars(monkeypatch):
 class TestDeepMerge:
     """Unit tests for the recursive dict merge helper."""
 
-    def test_flat_overwrite(self):
+    def test_flat_overwrite(self) -> None:
         assert deep_merge({"a": 1}, {"a": 2}) == {"a": 2}
 
-    def test_nested_merge(self):
+    def test_nested_merge(self) -> None:
         base = {"a": {"x": 1, "y": 2}}
         over = {"a": {"y": 99, "z": 3}}
         expected = {"a": {"x": 1, "y": 99, "z": 3}}
         assert deep_merge(base, over) == expected
 
-    def test_scalar_overwritten_by_dict(self):
+    def test_scalar_overwritten_by_dict(self) -> None:
         assert deep_merge({"a": 1}, {"a": {"x": 1}}) == {"a": {"x": 1}}
 
-    def test_dict_overwritten_by_scalar(self):
+    def test_dict_overwritten_by_scalar(self) -> None:
         assert deep_merge({"a": {"x": 1}}, {"a": 1}) == {"a": 1}
 
-    def test_empty_override_is_noop(self):
+    def test_empty_override_is_noop(self) -> None:
         assert deep_merge({"a": 1}, {}) == {"a": 1}
 
-    def test_empty_base(self):
+    def test_empty_base(self) -> None:
         assert deep_merge({}, {"a": 1}) == {"a": 1}
 
-    def test_inputs_not_mutated(self):
+    def test_inputs_not_mutated(self) -> None:
         base = {"a": {"x": 1}}
         over = {"a": {"y": 2}}
         deep_merge(base, over)
         assert base == {"a": {"x": 1}}
         assert over == {"a": {"y": 2}}
 
-    def test_deep_nesting(self):
+    def test_deep_nesting(self) -> None:
         base = {"a": {"b": {"c": {"d": 1}}}}
         over = {"a": {"b": {"c": {"d": 2, "e": 3}}}}
         result = deep_merge(base, over)
@@ -75,20 +77,20 @@ class TestDeepMerge:
 
 
 class TestLoadYamlFile:
-    def test_missing_file_returns_empty(self, tmp_path):
+    def test_missing_file_returns_empty(self, tmp_path: Path) -> None:
         assert _load_yaml_file(tmp_path / "nope.yaml") == {}
 
-    def test_loads_valid_yaml(self, tmp_path):
+    def test_loads_valid_yaml(self, tmp_path: Path) -> None:
         p = tmp_path / "c.yaml"
         p.write_text("x: 1\ny: hello\n")
         assert _load_yaml_file(p) == {"x": 1, "y": "hello"}
 
-    def test_empty_yaml_returns_empty(self, tmp_path):
+    def test_empty_yaml_returns_empty(self, tmp_path: Path) -> None:
         p = tmp_path / "empty.yaml"
         p.write_text("")
         assert _load_yaml_file(p) == {}
 
-    def test_non_dict_yaml_returns_empty(self, tmp_path):
+    def test_non_dict_yaml_returns_empty(self, tmp_path: Path) -> None:
         p = tmp_path / "list.yaml"
         p.write_text("- a\n- b\n")
         assert _load_yaml_file(p) == {}
@@ -100,28 +102,28 @@ class TestLoadYamlFile:
 
 
 class TestLoadYamlDir:
-    def test_missing_dir_returns_empty(self):
+    def test_missing_dir_returns_empty(self) -> None:
         assert _load_yaml_dir("/nonexistent/path/xyz") == {}
 
-    def test_loads_yaml_and_yml(self, tmp_path):
+    def test_loads_yaml_and_yml(self, tmp_path: Path) -> None:
         (tmp_path / "a.yaml").write_text("x: 1")
         (tmp_path / "b.yml").write_text("y: 2")
         result = _load_yaml_dir(str(tmp_path))
         assert result == {"x": 1, "y": 2}
 
-    def test_skips_non_yaml_files(self, tmp_path):
+    def test_skips_non_yaml_files(self, tmp_path: Path) -> None:
         (tmp_path / "readme.txt").write_text("ignore me")
         (tmp_path / "a.yaml").write_text("x: 1")
         result = _load_yaml_dir(str(tmp_path))
         assert result == {"x": 1}
 
-    def test_sorted_order_later_wins(self, tmp_path):
+    def test_sorted_order_later_wins(self, tmp_path: Path) -> None:
         (tmp_path / "b.yaml").write_text("x: 2")
         (tmp_path / "a.yaml").write_text("x: 1")
         result = _load_yaml_dir(str(tmp_path))
         assert result["x"] == 2  # b.yaml processed after a.yaml
 
-    def test_nested_merge_across_files(self, tmp_path):
+    def test_nested_merge_across_files(self, tmp_path: Path) -> None:
         (tmp_path / "a.yaml").write_text("llm:\n  model: gpt-4")
         (tmp_path / "b.yaml").write_text("llm:\n  api_key: sk-123")
         result = _load_yaml_dir(str(tmp_path))
@@ -134,10 +136,10 @@ class TestLoadYamlDir:
 
 
 class TestLoadJ2Dir:
-    def test_missing_dir_returns_empty(self):
+    def test_missing_dir_returns_empty(self) -> None:
         assert _load_j2_dir("/nonexistent/path/xyz") == {}
 
-    def test_loads_j2_files(self, tmp_path):
+    def test_loads_j2_files(self, tmp_path: Path) -> None:
         (tmp_path / "greeting.j2").write_text("Hello {{ name }}")
         (tmp_path / "farewell.j2").write_text("Goodbye {{ name }}")
         result = _load_j2_dir(str(tmp_path))
@@ -148,13 +150,13 @@ class TestLoadJ2Dir:
             }
         }
 
-    def test_skips_non_j2_files(self, tmp_path):
+    def test_skips_non_j2_files(self, tmp_path: Path) -> None:
         (tmp_path / "notes.txt").write_text("ignore")
         (tmp_path / "p.j2").write_text("content")
         result = _load_j2_dir(str(tmp_path))
         assert result == {"prompts": {"p": "content"}}
 
-    def test_sorted_order(self, tmp_path):
+    def test_sorted_order(self, tmp_path: Path) -> None:
         (tmp_path / "z.j2").write_text("last")
         (tmp_path / "a.j2").write_text("first")
         result = _load_j2_dir(str(tmp_path))
@@ -168,42 +170,42 @@ class TestLoadJ2Dir:
 
 class TestEnvToConfig:
     @pytest.fixture(autouse=True)
-    def _clear_automedia_env(self, monkeypatch):
+    def _clear_automedia_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Clear existing AUTOMEDIA_* env vars so tests run in a clean environment."""
         original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
         for k in original:
             monkeypatch.delenv(k, raising=False)
         yield
 
-    def test_basic_mapping(self, monkeypatch):
+    def test_basic_mapping(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_FOO", "bar")
         result = _env_to_config()
         assert result == {"foo": "bar"}
 
-    def test_nested_mapping(self, monkeypatch):
+    def test_nested_mapping(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "sk-test")
         result = _env_to_config()
         assert result == {"llm": {"text_generation": {"api_key": "sk-test"}}}
 
-    def test_ignores_non_prefix_vars(self, monkeypatch):
-        monkeypatch.setenv("HOME", "/tmp")
+    def test_ignores_non_prefix_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("HOME", "/tmp")  # noqa: S108
         monkeypatch.setenv("AUTOMEDIA_X", "1")
         result = _env_to_config()
         assert result == {"x": "1"}
         assert "home" not in result
 
-    def test_empty_prefix_only_is_skipped(self, monkeypatch):
+    def test_empty_prefix_only_is_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_", "val")
         result = _env_to_config()
         assert result == {}
 
-    def test_multiple_vars(self, monkeypatch):
+    def test_multiple_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_A", "1")
         monkeypatch.setenv("AUTOMEDIA_B_C", "2")
         result = _env_to_config()
         assert result == {"a": "1", "b": {"c": "2"}}
 
-    def test_values_are_strings(self, monkeypatch):
+    def test_values_are_strings(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_NUM", "42")
         result = _env_to_config()
         assert result["num"] == "42"  # env vars are always strings
@@ -218,7 +220,7 @@ class TestLoadConfig:
     """Integration tests for the full 6-layer config merge."""
 
     @staticmethod
-    def _setup_dirs(tmp_path: Path):
+    def _setup_dirs(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
         """Create the standard directory layout under *tmp_path*.
 
         Returns ``(project_dir, home_dir, user_dir, rules_dir, prompts_dir)``.
@@ -236,7 +238,7 @@ class TestLoadConfig:
 
     # -- Layer priority -------------------------------------------------------
 
-    def test_defaults_loaded(self, tmp_path, monkeypatch):
+    def test_defaults_loaded(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 1: built-in defaults.yaml is the base config."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
@@ -245,7 +247,9 @@ class TestLoadConfig:
         assert "text_generation" in config["llm"]
         assert config["llm"]["text_generation"]["temperature"] == 0.7
 
-    def test_project_overrides_defaults(self, tmp_path, monkeypatch):
+    def test_project_overrides_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Layer 2 > Layer 1."""
         project, home, *_ = self._setup_dirs(tmp_path)
         (project / "override.yaml").write_text("llm:\n  text_generation:\n    model: gpt-4\n")
@@ -255,7 +259,7 @@ class TestLoadConfig:
         # defaults still present
         assert config["llm"]["text_generation"]["temperature"] == 0.7
 
-    def test_user_overrides_project(self, tmp_path, monkeypatch):
+    def test_user_overrides_project(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 3 > Layer 2."""
         project, home, user, *_ = self._setup_dirs(tmp_path)
         (project / "c.yaml").write_text("k: project")
@@ -264,7 +268,7 @@ class TestLoadConfig:
         config = load_config(config_dir=str(project))
         assert config["k"] == "user"
 
-    def test_rules_overrides_user(self, tmp_path, monkeypatch):
+    def test_rules_overrides_user(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 4 > Layer 3."""
         project, home, user, rules, *_ = self._setup_dirs(tmp_path)
         (user / "c.yaml").write_text("k: user")
@@ -273,7 +277,7 @@ class TestLoadConfig:
         config = load_config(config_dir=str(project))
         assert config["k"] == "rules"
 
-    def test_env_overrides_rules(self, tmp_path, monkeypatch):
+    def test_env_overrides_rules(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 6a (env) > Layer 4 (rules)."""
         project, home, user, rules, *_ = self._setup_dirs(tmp_path)
         (rules / "c.yaml").write_text("k: rules")
@@ -282,7 +286,7 @@ class TestLoadConfig:
         config = load_config(config_dir=str(project))
         assert config["k"] == "env"
 
-    def test_overrides_overrides_env(self, tmp_path, monkeypatch):
+    def test_overrides_overrides_env(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 6b (overrides param) > Layer 6a (env)."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
@@ -292,7 +296,9 @@ class TestLoadConfig:
 
     # -- Missing directories silently skip ------------------------------------
 
-    def test_missing_project_dir_silent(self, tmp_path, monkeypatch):
+    def test_missing_project_dir_silent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Non-existent project config dir is silently skipped (no exception)."""
         home = tmp_path / "home"
         home.mkdir()
@@ -300,7 +306,7 @@ class TestLoadConfig:
         config = load_config(config_dir="/nonexistent/project/.automedia")
         assert "llm" in config  # defaults still loaded
 
-    def test_missing_user_dir_silent(self, tmp_path, monkeypatch):
+    def test_missing_user_dir_silent(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Non-existent user config dir is silently skipped."""
         project = tmp_path / "project" / ".automedia"
         project.mkdir(parents=True)
@@ -312,7 +318,7 @@ class TestLoadConfig:
         config = load_config(config_dir=str(project))
         assert "llm" in config
 
-    def test_missing_all_dirs_silent(self, monkeypatch):
+    def test_missing_all_dirs_silent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """All config dirs missing — only env vars and overrides apply."""
         monkeypatch.setattr(
             os.path,
@@ -327,7 +333,7 @@ class TestLoadConfig:
 
     # -- Env var mapping tests ------------------------------------------------
 
-    def test_env_var_nested_mapping(self, tmp_path, monkeypatch):
+    def test_env_var_nested_mapping(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """AUTOMEDIA_LLM_API_KEY maps to config["llm"]["text_generation"]["api_key"]."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
@@ -335,7 +341,7 @@ class TestLoadConfig:
         config = load_config(config_dir=str(project))
         assert config["llm"]["text_generation"]["api_key"] == "sk-secret"
 
-    def test_env_var_adds_nested_key(self, tmp_path, monkeypatch):
+    def test_env_var_adds_nested_key(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Env var creates new nested keys that coexist with defaults."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
@@ -346,7 +352,7 @@ class TestLoadConfig:
 
     # -- Full 6-layer merge ---------------------------------------------------
 
-    def test_full_six_layer_merge(self, tmp_path, monkeypatch):
+    def test_full_six_layer_merge(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """All 6 layers contribute; highest priority wins for overlaps."""
         project, home, user, rules, prompts = self._setup_dirs(tmp_path)
 
@@ -390,7 +396,7 @@ class TestLoadConfig:
         assert "llm" in config
         assert config["llm"]["text_generation"]["temperature"] == 0.7
 
-    def test_no_config_dir_uses_cwd(self, tmp_path, monkeypatch):
+    def test_no_config_dir_uses_cwd(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """When config_dir is None, $CWD/.automedia/ is used."""
         project = tmp_path / "cwd" / ".automedia"
         project.mkdir(parents=True)
@@ -402,9 +408,109 @@ class TestLoadConfig:
         config = load_config()
         assert config["k"] == "from_cwd"
 
-    def test_none_overrides_is_noop(self, tmp_path, monkeypatch):
+    def test_none_overrides_is_noop(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Passing overrides=None does not crash."""
         project, home, *_ = self._setup_dirs(tmp_path)
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         config = load_config(config_dir=str(project), overrides=None)
         assert "llm" in config
+
+
+# ---------------------------------------------------------------------------
+# load_config – merged-config validation (C2)
+# ---------------------------------------------------------------------------
+
+
+class TestMergedConfigValidation:
+    """The merged config is validated for known-key types/shapes.
+
+    These exercise the public ``load_config`` seam so they stay valid before
+    the validation implementation exists (RED) and after it lands (GREEN).
+    """
+
+    @staticmethod
+    def _load(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        overrides: dict | None,
+    ) -> dict:
+        project, home, *_ = TestLoadConfig._setup_dirs(tmp_path)
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        return load_config(config_dir=str(project), overrides=overrides)
+
+    # -- (a) wrong TYPE at a known critical key -------------------------------
+
+    def test_non_int_max_tokens_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        with pytest.raises(ConfigError):
+            self._load(tmp_path, monkeypatch, {"llm": {"text_generation": {"max_tokens": "lots"}}})
+
+    def test_non_numeric_temperature_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        with pytest.raises(ConfigError):
+            self._load(tmp_path, monkeypatch, {"llm": {"text_generation": {"temperature": "hot"}}})
+
+    def test_non_int_min_title_length_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        with pytest.raises(ConfigError):
+            self._load(tmp_path, monkeypatch, {"content": {"min_title_length": "ten"}})
+
+    # -- (b) malformed nested shape -------------------------------------------
+
+    def test_llm_not_a_dict_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        with pytest.raises(ConfigError):
+            self._load(tmp_path, monkeypatch, {"llm": "not-a-dict"})
+
+    def test_text_generation_not_a_dict_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        with pytest.raises(ConfigError):
+            self._load(
+                tmp_path,
+                monkeypatch,
+                {"llm": {"text_generation": ["not", "a", "dict"]}},
+            )
+
+    # -- (c) valid / missing optional keys never raise ------------------------
+
+    def test_valid_overrides_do_not_raise(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config = self._load(
+            tmp_path,
+            monkeypatch,
+            {
+                "llm": {"text_generation": {"max_tokens": 4096, "temperature": 0.5}},
+                "content": {"min_title_length": 5},
+                "platforms": {"wechat": {"enabled": True}},
+            },
+        )
+        assert config["llm"]["text_generation"]["max_tokens"] == 4096
+        assert config["platforms"]["wechat"]["enabled"] is True
+
+    def test_valid_defaults_do_not_raise(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config = self._load(tmp_path, monkeypatch, None)
+        assert config["llm"]["text_generation"]["max_tokens"] == 2048
+
+    def test_config_missing_optional_keys_does_not_raise(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A merged config without any curated key is accepted (validated only when present)."""
+        project, home, *_ = TestLoadConfig._setup_dirs(tmp_path)
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        monkeypatch.setattr(config_loader, "_DEFAULTS_PATH", tmp_path / "missing-defaults.yaml")
+        config = load_config(config_dir=str(project), overrides={"custom": 1})
+        assert config == {"custom": 1}
+
+    # -- (d) platform enabled flag must be bool -------------------------------
+
+    def test_non_bool_platform_enabled_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        with pytest.raises(ConfigError):
+            self._load(tmp_path, monkeypatch, {"platforms": {"wechat": {"enabled": "yes"}}})
