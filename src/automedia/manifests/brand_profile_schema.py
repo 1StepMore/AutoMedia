@@ -96,21 +96,21 @@ def _extract_automation(raw: object) -> dict[str, str]:
     Returns a dict with only valid automation values (``"auto"``, ``"review"``,
     or ``"manual"``).  Invalid values are logged and discarded.
     """
-    VALID_LEVELS = {"auto", "review", "manual"}
+    valid_levels = {"auto", "review", "manual"}
     if not isinstance(raw, dict):
         return {}
     result: dict[str, str] = {}
     for key, value in raw.items():
         if not isinstance(key, str) or not isinstance(value, str):
             continue
-        if value in VALID_LEVELS:
+        if value in valid_levels:
             result[key] = value
         else:
             logger.warning(
                 "Invalid automation level %r for platform %r; expected one of %s",
                 value,
                 key,
-                sorted(VALID_LEVELS),
+                sorted(valid_levels),
             )
     return result
 
@@ -125,7 +125,7 @@ def _get_registered_platform_names() -> set[str]:
         from automedia.adapters.registry import AdapterRegistry  # noqa: PLC0415
 
         return set(AdapterRegistry.list())
-    except Exception:
+    except (ImportError, AttributeError, OSError, ValueError, KeyError):
         return {
             "wechat",
             "zhihu",
@@ -264,7 +264,7 @@ def load_brand_profiles() -> dict[str, BrandProfile]:
     try:
         with open(path, encoding="utf-8") as fh:
             raw = yaml.safe_load(fh)
-    except Exception:
+    except (OSError, yaml.YAMLError, ValueError, KeyError):
         return {}
 
     if not isinstance(raw, dict):
@@ -325,7 +325,7 @@ def save_brand_profile(brand_name: str, data: dict[str, Any]) -> None:
                 loaded = yaml.safe_load(fh)
             if isinstance(loaded, dict):
                 existing = loaded
-        except Exception:
+        except (OSError, yaml.YAMLError, ValueError, KeyError):
             existing = {}
 
     existing[brand_name] = data
