@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from typing import Any
 
 from structlog import get_logger
@@ -20,6 +21,15 @@ from automedia.asset_library.db import AssetDatabase
 from automedia.asset_library.vector_store import VectorStore
 
 log = get_logger(__name__)
+
+# psycopg2 is optional; guard its Error type so importing this module never fails.
+try:
+    import psycopg2
+
+    _PG_ERRORS: tuple[type[Exception], ...] = (psycopg2.Error,)
+except ImportError:
+    _PG_ERRORS = ()
+_INSERT_ERRORS: tuple[type[Exception], ...] = _PG_ERRORS + (OSError, RuntimeError, ValueError)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -80,7 +90,7 @@ def migrate_assets(
         db = AssetDatabase(brand=brand)
         assets = db.list_all()
         db.close()
-    except Exception as exc:
+    except (sqlite3.Error, OSError, ValueError) as exc:
         report["fail_count"] += 1
         report["errors"].append(f"Failed to open AssetDatabase for '{brand}': {exc}")
         _print_report(report)
@@ -96,7 +106,7 @@ def migrate_assets(
     try:
         vs = VectorStore(brand=brand)
         embeddings = vs.get_all_embeddings()
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         log.warning("Could not read Chroma embeddings for '%s': %s", brand, exc)
         # Non-fatal — we proceed with zero embeddings
     report["embedding_count"] = len(embeddings)
@@ -120,7 +130,7 @@ def migrate_assets(
 
         try:
             _insert_into_pg(pg_uri, pg_rows, brand)
-        except Exception as exc:
+        except _INSERT_ERRORS as exc:
             report["success_count"] = 0
             report["fail_count"] = report["asset_count"]
             report["errors"].append(f"PostgreSQL insert failed: {exc}")

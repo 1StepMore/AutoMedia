@@ -8,6 +8,7 @@ No real PostgreSQL connection is needed.
 from __future__ import annotations
 
 import json
+import sqlite3
 from unittest.mock import MagicMock, patch
 
 from automedia.asset_library.migrate import _format_for_pgvector, migrate_assets
@@ -297,7 +298,7 @@ class TestMigrateAssetsDryRun:
     def test_dry_run_db_failure(self, mock_db_cls: MagicMock, mock_vs_cls: MagicMock) -> None:
         mock_db = MagicMock()
         mock_db_cls.return_value = mock_db
-        mock_db.list_all.side_effect = RuntimeError("DB connection failed")
+        mock_db.list_all.side_effect = sqlite3.Error("DB connection failed")
 
         mock_vs = MagicMock()
         mock_vs_cls.return_value = mock_vs
@@ -306,3 +307,55 @@ class TestMigrateAssetsDryRun:
         assert report["fail_count"] == 1
         assert len(report["errors"]) == 1
         assert "DB connection failed" in report["errors"][0]
+
+    @patch("automedia.asset_library.migrate._insert_into_pg")
+    @patch("automedia.asset_library.migrate.VectorStore")
+    @patch("automedia.asset_library.migrate.AssetDatabase")
+    def test_insert_failure_records_error(
+        self,
+        mock_db_cls: MagicMock,
+        mock_vs_cls: MagicMock,
+        mock_insert: MagicMock,
+    ) -> None:
+        """A PG insert failure is recorded in the report, not propagated."""
+        try:
+            import psycopg2
+
+            insert_error: type[Exception] = psycopg2.Error
+        except ImportError:
+            insert_error = OSError
+
+        mock_db = MagicMock()
+        mock_db_cls.return_value = mock_db
+        mock_db.list_all.return_value = [
+            {
+                "doc_id": "doc1",
+                "brand_id": "brand-a",
+                "type": "strategy",
+                "title": "Report",
+                "tags": ["marketing"],
+                "lang": "zh",
+                "file_path": "/f",
+                "source_phase": "1b",
+                "vector_id": "",
+                "source_project_id": "p1",
+                "created_at": "2025-01-01",
+                "updated_at": "2025-01-01",
+                "checksum": "abc",
+            },
+        ]
+
+        mock_vs = MagicMock()
+        mock_vs_cls.return_value = mock_vs
+        mock_vs.get_all_embeddings.return_value = []
+
+        mock_insert.side_effect = insert_error("PG insert failed")
+
+        report = migrate_assets(brand="brand-a", pg_uri="postgresql://localhost/db", dry_run=False)
+
+        assert report["asset_count"] == 1
+        assert report["success_count"] == 0
+        assert report["fail_count"] == report["asset_count"]
+        assert len(report["errors"]) == 1
+        assert "PostgreSQL insert failed" in report["errors"][0]
+        mock_insert.assert_called_once()
