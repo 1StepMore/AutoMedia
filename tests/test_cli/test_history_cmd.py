@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
@@ -63,7 +64,9 @@ def _create_project_with_history(
                     project_id,
                     actions[i] if i < len(actions) else f"gate_{i}:completed",
                     base_ts + i,
-                    json.dumps({"gate": actions[i].split(":")[0] if i < len(actions) else f"gate_{i}"}),
+                    json.dumps(
+                        {"gate": actions[i].split(":")[0] if i < len(actions) else f"gate_{i}"}
+                    ),
                 ),
             )
         conn.commit()
@@ -113,9 +116,7 @@ class TestHistoryWithData:
     def test_history_shows_rows(self, tmp_path: Path) -> None:
         """History rows are printed in a table."""
         proj = _create_project_with_history(tmp_path)
-        result = runner.invoke(
-            app, ["history", proj["project_id"], "--base-dir", proj["base_dir"]]
-        )
+        result = runner.invoke(app, ["history", proj["project_id"], "--base-dir", proj["base_dir"]])
         assert result.exit_code == 0
         assert "Timestamp" in result.output
         assert "Action" in result.output
@@ -151,17 +152,13 @@ class TestHistoryNonexistent:
         """Nonexistent project_id prints 'No history found'."""
         # Create a project so base_dir is valid but project_id doesn't match
         _create_project_with_history(tmp_path, project_id="other-proj")
-        result = runner.invoke(
-            app, ["history", "nonexistent", "--base-dir", str(tmp_path)]
-        )
+        result = runner.invoke(app, ["history", "nonexistent", "--base-dir", str(tmp_path)])
         assert result.exit_code == 0
         assert "No history found" in result.output
 
     def test_history_nonexistent_base_dir(self, tmp_path: Path) -> None:
         """Non-existent base_dir prints 'No history found'."""
-        result = runner.invoke(
-            app, ["history", "any-id", "--base-dir", str(tmp_path / "nope")]
-        )
+        result = runner.invoke(app, ["history", "any-id", "--base-dir", str(tmp_path / "nope")])
         assert result.exit_code == 0
         assert "No history found" in result.output
 
@@ -188,9 +185,7 @@ class TestHistoryEmpty:
     def test_history_no_rows(self, tmp_path: Path) -> None:
         """Project with no history DB shows 'No history found'."""
         proj = _create_project_no_history(tmp_path)
-        result = runner.invoke(
-            app, ["history", proj["project_id"], "--base-dir", proj["base_dir"]]
-        )
+        result = runner.invoke(app, ["history", proj["project_id"], "--base-dir", proj["base_dir"]])
         assert result.exit_code == 0
         assert "No history found" in result.output
 
@@ -227,3 +222,30 @@ class TestHistoryRegistration:
         assert result.exit_code == 0
         # Help should reference the project_id argument (typer prints it as [PROJECT_ID])
         assert "PROJECT_ID" in result.output or "project" in result.output.lower()
+
+
+# =========================================================================
+# Tests: project scan failure is surfaced (not swallowed as "no history")
+# =========================================================================
+
+
+class TestHistoryScanError:
+    """A ``_discover_projects`` failure must surface, not become no-history."""
+
+    def test_scan_error_reports_real_cause_and_exits_nonzero(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """OSError from the scan → exit 1, real error text, no false message."""
+
+        def _boom(base_dir: str) -> list[dict[str, str]]:
+            raise OSError("disk exploded while scanning")
+
+        monkeypatch.setattr("automedia.cli.commands.history_cmd._discover_projects", _boom)
+
+        result = runner.invoke(app, ["history", "any-id", "--base-dir", str(tmp_path)])
+
+        message = (result.output or "") + (result.stderr or "")
+        assert result.exit_code == 1, message
+        assert "Error scanning projects" in message
+        assert "disk exploded while scanning" in message
+        assert "No history found" not in message

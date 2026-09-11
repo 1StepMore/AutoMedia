@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 import typer
 
 from automedia.cli.commands.projects import _discover_projects
-from automedia.cli.output import OutputMode, get_output_mode, output_json
+from automedia.cli.output import OutputMode, get_output_mode, output_error, output_json
 from automedia.hooks.pipeline_history import _read_history
 
 
@@ -43,8 +43,9 @@ def history_cmd(
     # Discover all projects to find the matching project dir
     try:
         projects = _discover_projects(base_dir)
-    except Exception:
-        projects = []
+    except (OSError, ValueError) as exc:
+        output_error(f"Error scanning projects: {exc}", code=0)
+        raise typer.Exit(code=1) from exc
 
     match = [p for p in projects if p.get("project_id") == project_id]
 
@@ -68,9 +69,7 @@ def history_cmd(
                     "timestamp": row.get("timestamp"),
                     "timestamp_iso": _format_ts(row["timestamp"]) if row.get("timestamp") else "",
                     "metadata": (
-                        json.loads(row["metadata_json"])
-                        if row.get("metadata_json")
-                        else {}
+                        json.loads(row["metadata_json"]) if row.get("metadata_json") else {}
                     ),
                 }
             )

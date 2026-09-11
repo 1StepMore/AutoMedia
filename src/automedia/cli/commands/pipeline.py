@@ -20,6 +20,7 @@ from typing import Any
 import typer
 
 from automedia.cli.commands.projects import _discover_projects
+from automedia.cli.output import output_error
 from automedia.hooks.pipeline_history import _read_history
 from automedia.pipelines.dag import AUTO_GATE_DAG, GateNode, topological_order
 from automedia.pipelines.runner import _MODE_MAP, _compose_gate_list
@@ -58,10 +59,7 @@ def _render_markdown(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
     """
     mode_set = set(ordered)
     lines: list[str] = [f"# Pipeline DAG — mode `{mode}`", ""]
-    lines.append(
-        "Gate execution order (canonical, from `AUTO_GATE_DAG` "
-        "via `topological_order`)."
-    )
+    lines.append("Gate execution order (canonical, from `AUTO_GATE_DAG` via `topological_order`).")
     lines.append("")
     lines.append("| gate | track | depends_on | failure_mode |")
     lines.append("|------|-------|------------|--------------|")
@@ -74,8 +72,7 @@ def _render_markdown(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
             name = f"{_RAN_MARK} {name}"
         parents = _visible_parents(node, mode_set)
         lines.append(
-            f"| {name} | {node.track} | {', '.join(parents) or '—'} "
-            f"| {node.failure_mode} |"
+            f"| {name} | {node.track} | {', '.join(parents) or '—'} | {node.failure_mode} |"
         )
     lines.append("")
 
@@ -160,7 +157,7 @@ def _render_dot(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
                 attrs.append("style=filled")
                 attrs.append("fillcolor=lightgreen")
                 attrs.append(f"comment=ran {gate}")
-            out.append(f'        {_dot_id(gate)} [{", ".join(attrs)}];')
+            out.append(f"        {_dot_id(gate)} [{', '.join(attrs)}];")
         out.append("    }")
     out.append("")
 
@@ -231,18 +228,14 @@ def export_dag(
         "-m",
         help="Pipeline mode to render (see --all for the full list).",
     ),
-    render_all: bool = typer.Option(
-        False, "--all", help="Render all pipeline modes."
-    ),
+    render_all: bool = typer.Option(False, "--all", help="Render all pipeline modes."),
     project: str | None = typer.Option(
         None,
         "--project",
         "-p",
         help="Project directory; overlays gates recorded in its history.db.",
     ),
-    out: str = typer.Option(
-        ".", "--out", "-o", help="Output directory for the rendered files."
-    ),
+    out: str = typer.Option(".", "--out", "-o", help="Output directory for the rendered files."),
 ) -> None:
     """Export pipeline-mode gate DAGs as Markdown tables and DOT graphs."""
     if mode is not None and render_all:
@@ -275,8 +268,9 @@ def _resolve_project_dir(project_id: str, base_dir: str) -> str:
     """
     try:
         projects = _discover_projects(base_dir)
-    except Exception:
-        projects = []
+    except (OSError, ValueError) as exc:
+        output_error(f"Error scanning projects: {exc}", code=0)
+        raise typer.Exit(code=1) from exc
     match = [p for p in projects if p.get("project_id") == project_id]
     if not match:
         typer.echo(f"Project {project_id!r} not found under {base_dir!r}.", err=True)

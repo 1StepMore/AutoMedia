@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
@@ -79,13 +80,7 @@ def _create_project_with_history(
                     actions[i] if i < len(actions) else f"gate_{i}:completed",
                     base_ts + i,
                     json.dumps(
-                        {
-                            "gate": (
-                                actions[i].split(":")[0]
-                                if i < len(actions)
-                                else f"gate_{i}"
-                            )
-                        }
+                        {"gate": (actions[i].split(":")[0] if i < len(actions) else f"gate_{i}")}
                     ),
                 ),
             )
@@ -185,9 +180,7 @@ class TestExportDagEmitsFiles:
         # Relative order matches the mode list: index("CW") < index("G0") < ...
         # and the video track sorts between the copy track and H0.
         positions = [md.index(g) for g in mode_gates]
-        assert positions == sorted(positions), (
-            f"auto.md gate order != {mode_gates}: {positions}"
-        )
+        assert positions == sorted(positions), f"auto.md gate order != {mode_gates}: {positions}"
         assert md.index("CW") < md.index("G0")
         assert md.index("G0") < md.index("V0")
         assert md.index("V7") < md.index("H0")
@@ -262,9 +255,7 @@ class TestExportDagAll:
 
     def test_all_writes_18_files(self, tmp_path: Path) -> None:
         """``--all`` writes ``{mode}.md`` + ``{mode}.dot`` for all 9 modes."""
-        result = runner.invoke(
-            app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)]
-        )
+        result = runner.invoke(app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)])
         assert result.exit_code == 0
         for mode in _MODE_MAP:
             assert (tmp_path / f"{mode}.md").exists(), f"missing {mode}.md"
@@ -272,9 +263,7 @@ class TestExportDagAll:
 
     def test_qa_only_renders_without_cw(self, tmp_path: Path) -> None:
         """Sparse qa_only mode renders and does NOT contain CW (Metis G14)."""
-        result = runner.invoke(
-            app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)]
-        )
+        result = runner.invoke(app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)])
         assert result.exit_code == 0
         assert (tmp_path / "qa_only.md").exists()
         assert (tmp_path / "qa_only.dot").exists()
@@ -288,9 +277,7 @@ class TestExportDagAll:
 
     def test_text_only_and_text_with_cover_both_render(self, tmp_path: Path) -> None:
         """The identical-list text_only / text_with_cover modes both render."""
-        result = runner.invoke(
-            app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)]
-        )
+        result = runner.invoke(app, ["pipeline", "export-dag", "--all", "--out", str(tmp_path)])
         assert result.exit_code == 0
         assert (tmp_path / "text_only.md").exists()
         assert (tmp_path / "text_with_cover.md").exists()
@@ -527,9 +514,7 @@ class TestPipelineStateEdgeCases:
             "tenant_id": "default",
             "created_at": "2026-07-07T00:00:00+00:00",
         }
-        (project_dir / "00_project_info.json").write_text(
-            json.dumps(info), encoding="utf-8"
-        )
+        (project_dir / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
         result = runner.invoke(
             app,
             ["pipeline", "state", "bare-proj-001", "--base-dir", str(tmp_path)],
@@ -549,3 +534,33 @@ class TestPipelineStateEdgeCases:
         assert result.exit_code == 1
         message = (result.output or "") + (result.stderr or "")
         assert message.strip(), "expected an error message on stderr/stdout"
+
+
+# =========================================================================
+# Tests: project scan failure is surfaced (not reported as not-found)
+# =========================================================================
+
+
+class TestPipelineStateScanError:
+    """A ``_discover_projects`` failure must surface, not become not-found."""
+
+    def test_scan_error_reports_real_cause_and_exits_nonzero(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """OSError from the scan → exit 1, real error text, no false message."""
+
+        def _boom(base_dir: str) -> list[dict[str, str]]:
+            raise OSError("disk exploded while scanning")
+
+        monkeypatch.setattr("automedia.cli.commands.pipeline._discover_projects", _boom)
+
+        result = runner.invoke(
+            app,
+            ["pipeline", "state", "any-id", "--base-dir", str(tmp_path)],
+        )
+
+        message = (result.output or "") + (result.stderr or "")
+        assert result.exit_code == 1, message
+        assert "Error scanning projects" in message
+        assert "disk exploded while scanning" in message
+        assert "not found" not in message
