@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
+from automedia.core.llm_client import LLMError
 from automedia.pool.collector import HotCollector
 
 # ===================================================================
@@ -49,21 +51,21 @@ def collector_with_seed() -> HotCollector:
 class TestCollectAll:
     """collect_all() returns a merged, deduplicated list from all layers."""
 
-    def test_returns_list(self, collector: HotCollector):
+    def test_returns_list(self, collector: HotCollector) -> None:
         result = collector.collect_all()
         assert isinstance(result, list)
 
-    def test_returns_empty_when_no_keys(self, collector: HotCollector):
+    def test_returns_empty_when_no_keys(self, collector: HotCollector) -> None:
         """Without API keys, all collectors return [] so the result is []."""
         result = collector.collect_all()
         assert result == []
 
-    def test_returns_non_empty_with_seed(self, collector_with_seed: HotCollector):
+    def test_returns_non_empty_with_seed(self, collector_with_seed: HotCollector) -> None:
         """Seed topics should appear even without API keys."""
         result = collector_with_seed.collect_all()
         assert len(result) > 0
 
-    def test_each_item_has_required_keys(self, collector_with_seed: HotCollector):
+    def test_each_item_has_required_keys(self, collector_with_seed: HotCollector) -> None:
         result = collector_with_seed.collect_all()
         for item in result:
             assert "source" in item
@@ -72,12 +74,12 @@ class TestCollectAll:
             assert "heat_score" in item
             assert "collected_at" in item
 
-    def test_heat_score_is_float(self, collector_with_seed: HotCollector):
+    def test_heat_score_is_float(self, collector_with_seed: HotCollector) -> None:
         result = collector_with_seed.collect_all()
         for item in result:
-            assert isinstance(item["heat_score"], (int, float))
+            assert isinstance(item["heat_score"], int | float)
 
-    def test_no_duplicate_titles(self, collector_with_seed: HotCollector):
+    def test_no_duplicate_titles(self, collector_with_seed: HotCollector) -> None:
         """Titles that appear in multiple layers should be deduplicated."""
         result = collector_with_seed.collect_all()
         titles = [t["title"].strip().lower() for t in result]
@@ -89,7 +91,7 @@ class TestCollectAll:
         self,
         mock_llm: MagicMock,
         mock_client_cls: MagicMock,
-    ):
+    ) -> None:
         """With mocked APIs, results contain items from tavily and aihot."""
         # Mock Tavily API response (context manager pattern)
         mock_client_instance = MagicMock()
@@ -137,13 +139,13 @@ class TestCollectAll:
         assert "tavily" in sources
         assert "aihot" in sources
 
-    def test_seed_topics_included(self, collector_with_seed: HotCollector):
+    def test_seed_topics_included(self, collector_with_seed: HotCollector) -> None:
         """Pre-seeded topics should appear in the output."""
         result = collector_with_seed.collect_all()
         titles = [t["title"] for t in result]
         assert "自媒体创作工具评测" in titles
 
-    def test_collected_at_is_iso_format(self, collector_with_seed: HotCollector):
+    def test_collected_at_is_iso_format(self, collector_with_seed: HotCollector) -> None:
         """All collected_at values should be valid ISO-8601."""
         result = collector_with_seed.collect_all()
         for item in result:
@@ -160,21 +162,21 @@ class TestCollectAll:
 class TestSearchTavily:
     """_search_tavily() calls the real Tavily API or returns empty."""
 
-    def test_no_key_returns_empty(self):
+    def test_no_key_returns_empty(self) -> None:
         c = HotCollector(tavily_api_key="")
         items = c._search_tavily(["ai"])
         assert items == []
 
-    def test_empty_keywords_returns_empty(self, collector_with_key: HotCollector):
+    def test_empty_keywords_returns_empty(self, collector_with_key: HotCollector) -> None:
         items = collector_with_key._search_tavily([])
         assert items == []
 
-    def test_blank_keywords_returns_empty(self, collector_with_key: HotCollector):
+    def test_blank_keywords_returns_empty(self, collector_with_key: HotCollector) -> None:
         items = collector_with_key._search_tavily(["  "])
         assert items == []
 
     @patch("httpx.Client")
-    def test_parses_tavily_response(self, mock_client_cls: MagicMock):
+    def test_parses_tavily_response(self, mock_client_cls: MagicMock) -> None:
         """Verify correct parsing of Tavily API response."""
         mock_client_instance = MagicMock()
         mock_client_cls.return_value = mock_client_instance
@@ -219,7 +221,7 @@ class TestSearchTavily:
         assert call_kwargs["json"]["max_results"] == 5
 
     @patch("httpx.Client")
-    def test_skips_items_without_title_or_url(self, mock_client_cls: MagicMock):
+    def test_skips_items_without_title_or_url(self, mock_client_cls: MagicMock) -> None:
         """Items missing title or url should be filtered out."""
         mock_client_instance = MagicMock()
         mock_client_cls.return_value = mock_client_instance
@@ -243,12 +245,12 @@ class TestSearchTavily:
         assert items[0]["title"] == "Valid Title"
 
     @patch("httpx.Client")
-    def test_api_failure_returns_empty(self, mock_client_cls: MagicMock):
+    def test_api_failure_returns_empty(self, mock_client_cls: MagicMock) -> None:
         """Transient API failures should return empty list, not crash."""
         mock_client_instance = MagicMock()
         mock_client_cls.return_value = mock_client_instance
         mock_client_instance.__enter__.return_value = mock_client_instance
-        mock_client_instance.post.side_effect = Exception("API timeout")
+        mock_client_instance.post.side_effect = httpx.ConnectError("API timeout")
 
         c = HotCollector(tavily_api_key="tvly-test")
         items = c._search_tavily(["AI"])
@@ -263,14 +265,14 @@ class TestSearchTavily:
 class TestFetchAIHOT:
     """_fetch_aihot() uses LLM-based trending generation."""
 
-    def test_no_key_returns_empty(self):
+    def test_no_key_returns_empty(self) -> None:
         """Even without LLM key, should return empty gracefully."""
         c = HotCollector()
         items = c._fetch_aihot()
         # Without LLM configured, llm_complete will raise, so returns []
         assert items == []
 
-    def test_parses_llm_trending_response(self):
+    def test_parses_llm_trending_response(self) -> None:
         """Verify correct parsing of LLM-generated trending topics."""
         mock_data = json.dumps(
             [
@@ -300,11 +302,14 @@ class TestFetchAIHOT:
         assert items[0]["heat_score"] == 9.2
         assert items[0]["url"] == "https://example.com/ai-agent"
 
-    def test_handles_markdown_code_fence(self):
+    def test_handles_markdown_code_fence(self) -> None:
         """LLM responses wrapped in ```json fences should still parse."""
         with patch(
             "automedia.core.llm_client.llm_complete",
-            return_value='```json\n[{"title": "AI Trend", "url": "https://example.com", "heat_score": 7.5}]\n```',
+            return_value=(
+                '```json\n[{"title": "AI Trend", "url": "https://example.com", '
+                '"heat_score": 7.5}]\n```'
+            ),
         ):
             c = HotCollector()
             items = c._fetch_aihot()
@@ -312,18 +317,28 @@ class TestFetchAIHOT:
         assert len(items) == 1
         assert items[0]["title"] == "AI Trend"
 
-    def test_llm_failure_returns_empty(self):
+    def test_llm_failure_returns_empty(self) -> None:
         """LLM errors should return empty list gracefully."""
         with patch(
             "automedia.core.llm_client.llm_complete",
-            side_effect=Exception("LLM unavailable"),
+            side_effect=LLMError("LLM unavailable"),
         ):
             c = HotCollector()
             items = c._fetch_aihot()
 
         assert items == []
 
-    def test_invalid_json_returns_empty(self):
+    def test_unlisted_exception_propagates(self) -> None:
+        """An exception outside the narrowed tuple must propagate, not be swallowed."""
+        with patch(
+            "automedia.core.llm_client.llm_complete",
+            side_effect=RuntimeError("unexpected failure"),
+        ):
+            c = HotCollector()
+            with pytest.raises(RuntimeError):
+                c._fetch_aihot()
+
+    def test_invalid_json_returns_empty(self) -> None:
         """Non-JSON LLM responses should return empty list."""
         with patch(
             "automedia.core.llm_client.llm_complete",
@@ -343,7 +358,7 @@ class TestFetchAIHOT:
 class TestExtractKeywords:
     """Keyword extraction from topic titles."""
 
-    def test_extract_keywords(self):
+    def test_extract_keywords(self) -> None:
         c = HotCollector()
         topics = [
             {"title": "AI视频生成技术突破"},

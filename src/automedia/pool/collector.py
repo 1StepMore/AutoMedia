@@ -122,6 +122,9 @@ class HotCollector:
         try:
             adapter = OPPAdapter()
             return adapter.extract(file_path)
+        # OPPAdapter is a third-party extraction surface whose exception set is
+        # not ours to enumerate; any failure becomes an ExtractionResult with an
+        # error manifest below, so this catch is intentionally kept broad.
         except Exception as exc:
             from automedia.omni.opp_adapter import ExtractionResult
 
@@ -178,7 +181,7 @@ class HotCollector:
                 )
                 resp.raise_for_status()
                 data: dict[str, Any] = resp.json()
-        except Exception:
+        except (httpx.HTTPError, ValueError, KeyError):
             return []
 
         results: list[dict] = []
@@ -212,7 +215,7 @@ class HotCollector:
         configured or on any failure.
         """
         try:
-            from automedia.core.llm_client import llm_complete
+            from automedia.core.llm_client import LLMError, llm_complete
         except ImportError:
             return []
 
@@ -236,7 +239,7 @@ class HotCollector:
                 temperature=0.7,
                 max_tokens=1024,
             )
-        except Exception:
+        except (LLMError, OSError, ValueError, KeyError):
             return []
 
         text = response.strip()
