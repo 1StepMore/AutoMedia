@@ -37,6 +37,16 @@ except ImportError:
 
     warn_missing_optional("chromadb", feature="vector search disabled")
 
+
+# Exception types the narrowed handlers below may safely swallow.  chromadb is
+# an optional dependency, so ``chromadb.errors.ChromaError`` can only be
+# referenced when the guarded import above succeeded; otherwise the
+# ``except _CHROMA_ERRORS`` clauses would raise ``NameError`` at runtime in
+# environments without the extra installed.
+_CHROMA_ERRORS: tuple[type[Exception], ...] = (OSError, ValueError, RuntimeError)
+if _chromadb_installed:
+    _CHROMA_ERRORS = (chromadb.errors.ChromaError, *_CHROMA_ERRORS)
+
 # ---------------------------------------------------------------------------
 # Default embedding function name
 # ---------------------------------------------------------------------------
@@ -72,7 +82,7 @@ class VectorStore:
         if _chromadb_installed:
             try:
                 self._init_client()
-            except Exception as exc:
+            except _CHROMA_ERRORS as exc:
                 log.warning(
                     "Failed to initialise Chroma client for brand '%s': %s",
                     brand,
@@ -157,7 +167,7 @@ class VectorStore:
                 documents=[text],
                 metadatas=[meta],
             )
-        except Exception as exc:
+        except _CHROMA_ERRORS as exc:
             log.error("Failed to add embedding for %s: %s", doc_id, exc)
             return ""
 
@@ -193,7 +203,7 @@ class VectorStore:
                 query_texts=[query],
                 n_results=n_results,
             )
-        except Exception as exc:
+        except _CHROMA_ERRORS as exc:
             log.error("Vector search failed: %s", exc)
             return []
 
@@ -233,7 +243,7 @@ class VectorStore:
 
         try:
             self._collection.delete(ids=[vector_id])
-        except Exception as exc:
+        except _CHROMA_ERRORS as exc:
             log.error("Failed to delete embedding %s: %s", vector_id, exc)
 
     # -- Bulk operations ------------------------------------------------------
@@ -254,7 +264,7 @@ class VectorStore:
 
         try:
             raw = self._collection.get(limit=None)  # noqa: E501  # type: ignore[arg-type]  # chromadb.Collection.get() expects int for limit, None is valid at runtime but typing doesn't allow it
-        except Exception as exc:
+        except _CHROMA_ERRORS as exc:
             log.error("Failed to get all embeddings: %s", exc)
             return []
 
@@ -294,7 +304,7 @@ class VectorStore:
             self._collection = self._client.create_collection(
                 name=self._collection_name,
             )
-        except Exception as exc:
+        except _CHROMA_ERRORS as exc:
             log.error("Failed to reset collection: %s", exc)
             self._collection = None
 

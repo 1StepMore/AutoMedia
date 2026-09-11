@@ -7,8 +7,13 @@ Chroma is unavailable. No real Chroma instance is needed.
 
 from __future__ import annotations
 
+import builtins
+import importlib.util
+import sys
 from typing import Any
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from automedia.asset_library.vector_store import VectorStore
 
@@ -284,3 +289,132 @@ class TestVectorStoreWithMockedCollection:
 
         results = vs.search("query")
         assert results == []
+
+
+# ---------------------------------------------------------------------------
+# Narrowed exception handling (_CHROMA_ERRORS)
+# ---------------------------------------------------------------------------
+
+
+def _make_available_store() -> tuple[VectorStore, MagicMock]:
+    """Build a VectorStore with a mocked, available client and collection."""
+    with (
+        patch("automedia.asset_library.vector_store._chromadb_installed", True),
+        patch.object(VectorStore, "_init_client"),
+    ):
+        vs = VectorStore(brand="test")
+    vs._client = MagicMock()
+    vs._collection = MagicMock()
+    return vs, vs._collection
+
+
+class TestNarrowedExceptionHandling:
+    """Listed exceptions yield the existing fallback; unlisted ones propagate."""
+
+    def test_init_listed_exception_is_swallowed(self) -> None:
+        with (
+            patch("automedia.asset_library.vector_store._chromadb_installed", True),
+            patch.object(VectorStore, "_init_client", side_effect=ValueError("bad init")),
+        ):
+            vs = VectorStore(brand="test")
+        assert vs.available is False
+
+    def test_init_unlisted_exception_propagates(self) -> None:
+        with (
+            patch("automedia.asset_library.vector_store._chromadb_installed", True),
+            patch.object(VectorStore, "_init_client", side_effect=KeyError("boom")),
+            pytest.raises(KeyError),
+        ):
+            VectorStore(brand="test")
+
+    def test_search_listed_exception_returns_empty(self) -> None:
+        vs, collection = _make_available_store()
+        collection.query.side_effect = ValueError("query failed")
+        assert vs.search("query") == []
+
+    def test_search_unlisted_exception_propagates(self) -> None:
+        vs, collection = _make_available_store()
+        collection.query.side_effect = KeyError("boom")
+        with pytest.raises(KeyError):
+            vs.search("query")
+
+    def test_add_embedding_listed_exception_returns_empty(self) -> None:
+        vs, collection = _make_available_store()
+        collection.add.side_effect = OSError("add failed")
+        assert vs.add_embedding(doc_id="doc1", text="text") == ""
+
+    def test_add_embedding_unlisted_exception_propagates(self) -> None:
+        vs, collection = _make_available_store()
+        collection.add.side_effect = KeyError("boom")
+        with pytest.raises(KeyError):
+            vs.add_embedding(doc_id="doc1", text="text")
+
+    def test_delete_embedding_listed_exception_is_noop(self) -> None:
+        vs, collection = _make_available_store()
+        collection.delete.side_effect = RuntimeError("delete failed")
+        vs.delete_embedding("doc1")
+
+    def test_delete_embedding_unlisted_exception_propagates(self) -> None:
+        vs, collection = _make_available_store()
+        collection.delete.side_effect = KeyError("boom")
+        with pytest.raises(KeyError):
+            vs.delete_embedding("doc1")
+
+    def test_get_all_embeddings_listed_exception_returns_empty(self) -> None:
+        vs, collection = _make_available_store()
+        collection.get.side_effect = RuntimeError("get failed")
+        assert vs.get_all_embeddings() == []
+
+    def test_get_all_embeddings_unlisted_exception_propagates(self) -> None:
+        vs, collection = _make_available_store()
+        collection.get.side_effect = KeyError("boom")
+        with pytest.raises(KeyError):
+            vs.get_all_embeddings()
+
+    def test_reset_listed_exception_clears_collection(self) -> None:
+        vs, _ = _make_available_store()
+        vs._client.create_collection.side_effect = RuntimeError("reset failed")
+        vs.reset()
+        assert vs._collection is None
+
+    def test_reset_unlisted_exception_propagates(self) -> None:
+        vs, _ = _make_available_store()
+        vs._client.create_collection.side_effect = KeyError("boom")
+        with pytest.raises(KeyError):
+            vs.reset()
+
+
+class TestChromaErrorsTupleShape:
+    """_CHROMA_ERRORS references chromadb only when it is installed."""
+
+    def test_installed_shape_prepends_chroma_error(self) -> None:
+        import automedia.asset_library.vector_store as vs_module
+
+        if vs_module._chromadb_installed:
+            assert vs_module._CHROMA_ERRORS[0] is vs_module.chromadb.errors.ChromaError
+        assert vs_module._CHROMA_ERRORS[-3:] == (OSError, ValueError, RuntimeError)
+
+    def test_absent_shape_is_chromadb_free(self) -> None:
+        import automedia.asset_library.vector_store as vs_module
+
+        real_import = builtins.__import__
+
+        def _block_chromadb(name: str, *args: object, **kwargs: object) -> object:
+            if name == "chromadb" or name.startswith("chromadb."):
+                raise ImportError("chromadb blocked for test")
+            return real_import(name, *args, **kwargs)
+
+        spec = importlib.util.spec_from_file_location(
+            "automedia._vector_store_absent_probe", vs_module.__file__
+        )
+        assert spec is not None and spec.loader is not None
+        probe = importlib.util.module_from_spec(spec)
+        with patch.object(builtins, "__import__", side_effect=_block_chromadb):
+            spec.loader.exec_module(probe)
+
+        try:
+            assert probe._chromadb_installed is False
+            expected = (OSError, ValueError, RuntimeError)
+            assert expected == probe._CHROMA_ERRORS
+        finally:
+            sys.modules.pop("automedia._vector_store_absent_probe", None)
