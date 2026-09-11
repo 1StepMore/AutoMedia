@@ -18,7 +18,7 @@ _registry: AccountRegistry | None = None
 
 def _get_registry() -> AccountRegistry:
     """Lazily initialised AccountRegistry singleton."""
-    global _registry  # noqa: PLW0603 — intentional module-level lazy init
+    global _registry  # intentional module-level lazy init
     if _registry is None:
         _registry = AccountRegistry()
     return _registry

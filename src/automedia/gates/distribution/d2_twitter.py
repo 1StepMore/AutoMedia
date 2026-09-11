@@ -32,9 +32,7 @@ _MAX_TWEET_LENGTH: int = 280
 _EXPECTED_MAP: dict[str, str] = {
     "content_present": "Content is provided in gate_context",
     "llm_success": "LLM call completes without error",
-    "tweet_quality": (
-        f"At least {_MIN_TWEET_COUNT} tweets, each ≤ {_MAX_TWEET_LENGTH} chars"
-    ),
+    "tweet_quality": (f"At least {_MIN_TWEET_COUNT} tweets, each ≤ {_MAX_TWEET_LENGTH} chars"),
     "file_write_success": "Twitter thread file is written to disk",
 }
 
@@ -59,10 +57,10 @@ def _split_into_tweets(raw: str) -> list[str]:
     # Try numbered-tweet format first: "1/", "1.", "Tweet 1:", "#1", etc.
     numbered_pattern = re.compile(
         r"(?:^|\n)\s*(?:"
-        r"(?:\d+\s*[./:)])|"           # 1/, 1., 1:, 1)
-        r"(?:Tweet\s*\d+\s*[:.])|"      # Tweet 1:, Tweet 1.
-        r"(?:Thread\s*\d+\s*[:.])|"     # Thread 1:, Thread 1.
-        r"(?:#\d+)"                     # #1
+        r"(?:\d+\s*[./:)])|"  # 1/, 1., 1:, 1)
+        r"(?:Tweet\s*\d+\s*[:.])|"  # Tweet 1:, Tweet 1.
+        r"(?:Thread\s*\d+\s*[:.])|"  # Thread 1:, Thread 1.
+        r"(?:#\d+)"  # #1
         r")\s*\n?"
     )
     parts = numbered_pattern.split(raw)
@@ -96,12 +94,12 @@ def _render_twitter_prompt(content: str, brand: str, title: str) -> str:
     str
         The rendered prompt string.
     """
-    title_hint = f" (adapted from: \"{title}\")" if title else ""
+    title_hint = f' (adapted from: "{title}")' if title else ""
 
     return (
         f"You are a Twitter/X content strategist who creates viral threads.\n"
         f"Rewrite the following content into a compelling Twitter/X thread{title_hint} "
-        f"for brand \"{brand}\".\n\n"
+        f'for brand "{brand}".\n\n'
         f"## Twitter/X Thread Requirements\n\n"
         f"- Write in the language of the source content\n"
         f"- Create 5-10 connected tweets that tell a complete story\n"
@@ -273,10 +271,7 @@ class D2Gate(BaseGate):
         # ------------------------------------------------------------------
         # Build structured thread output
         # ------------------------------------------------------------------
-        thread = [
-            {"index": i + 1, "text": t}
-            for i, t in enumerate(tweets)
-        ]
+        thread = [{"index": i + 1, "text": t} for i, t in enumerate(tweets)]
 
         # Store in gate_context for downstream gates
         context_extra = gate_context.setdefault("extra", {})
@@ -296,9 +291,9 @@ class D2Gate(BaseGate):
         output_path = os.path.join(twitter_dir, filename)
 
         # Write thread as markdown with tweet separator lines
-        thread_lines: list[str] = []
-        for tweet in thread:
-            thread_lines.append(f"## Tweet {tweet['index']}\n\n{tweet['text']}\n")
+        thread_lines: list[str] = [
+            f"## Tweet {tweet['index']}\n\n{tweet['text']}\n" for tweet in thread
+        ]
         thread_content = "\n---\n".join(thread_lines)
 
         try:
@@ -321,9 +316,7 @@ class D2Gate(BaseGate):
                     {
                         "name": "tweet_quality",
                         "passed": True,
-                        "detail": (
-                            f"{tweet_count} tweets, all ≤ {_MAX_TWEET_LENGTH} chars"
-                        ),
+                        "detail": (f"{tweet_count} tweets, all ≤ {_MAX_TWEET_LENGTH} chars"),
                     },
                     {
                         "name": "file_write_success",
@@ -369,9 +362,7 @@ class D2Gate(BaseGate):
                 {
                     "name": "tweet_quality",
                     "passed": True,
-                    "detail": (
-                        f"{tweet_count} tweets, all ≤ {_MAX_TWEET_LENGTH} chars"
-                    ),
+                    "detail": (f"{tweet_count} tweets, all ≤ {_MAX_TWEET_LENGTH} chars"),
                 },
                 {
                     "name": "file_write_success",

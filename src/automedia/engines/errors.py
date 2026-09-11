@@ -10,8 +10,8 @@ Provides a custom exception hierarchy for engine lifecycle errors:
 from __future__ import annotations
 
 __all__ = [
-    "EngineNotFoundError",
     "EngineExecutionError",
+    "EngineNotFoundError",
     "EngineUnavailableError",
 ]
 

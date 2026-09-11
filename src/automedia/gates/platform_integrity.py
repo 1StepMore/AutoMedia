@@ -99,10 +99,7 @@ def _check_material_integrity(context: GateContext | dict[str, Any]) -> CheckRes
 
     file_paths: list[str] = context.get("file_paths", [])
 
-    missing: list[str] = []
-    for f in media_files:
-        if f not in file_paths:
-            missing.append(f)
+    missing: list[str] = [f for f in media_files if f not in file_paths]
 
     if missing:
         return {

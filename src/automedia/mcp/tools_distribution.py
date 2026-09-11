@@ -83,7 +83,7 @@ def distribute_content(
     # Validate base_dir against allowlist if provided
     if base_dir:
         try:
-            from automedia.mcp.allowlist import _require_allowed  # noqa: PLC0415
+            from automedia.mcp.allowlist import _require_allowed
 
             _require_allowed(base_dir, tool_name="distribute_content")
         except Exception:
@@ -95,7 +95,7 @@ def distribute_content(
             base_dir = None
 
     try:
-        from automedia.adapters.distribution import distribute_to_platforms  # noqa: PLC0415
+        from automedia.adapters.distribution import distribute_to_platforms
 
         result = distribute_to_platforms(
             project_id=project_id.strip(),
@@ -114,7 +114,9 @@ def distribute_content(
                 "dry_run": dry_run,
                 **error_response(
                     MCPErrorCode.PIPELINE_ERROR,
-                    str(err) if not isinstance(err, dict) else str(err.get("unknown_platforms", err)),
+                    str(err)
+                    if not isinstance(err, dict)
+                    else str(err.get("unknown_platforms", err)),
                     "Check project_id and platform names",
                 ),
             }

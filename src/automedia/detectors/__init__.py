@@ -36,12 +36,12 @@ from automedia.detectors.registry import DetectorRegistry
 
 __all__ = [
     "BaseDetector",
-    "DetectorResult",
     "DetectorRegistry",
+    "DetectorResult",
     "DeterministicTasteDetector",
     "GPTZeroStyleApiDetector",
-    "list_detectors",
     "detect_text",
+    "list_detectors",
 ]
 
 

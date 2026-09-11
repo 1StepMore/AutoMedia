@@ -43,8 +43,8 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
-from automedia.effects.mcp import analyze_content as effects_analyze_content  # noqa: E402
-from automedia.mcp.accounts import (  # noqa: E402
+from automedia.effects.mcp import analyze_content as effects_analyze_content
+from automedia.mcp.accounts import (
     connect_account,
     disconnect_account,
     get_account_health,
@@ -54,7 +54,7 @@ from automedia.mcp.accounts import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Allowlist imports (from allowlist.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.allowlist import (  # noqa: E402
+from automedia.mcp.allowlist import (
     _require_allowed,
     check_path_allowed,
 )
@@ -62,7 +62,7 @@ from automedia.mcp.allowlist import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Resource imports (from resources.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.resources import (  # noqa: E402
+from automedia.mcp.resources import (
     gate_info_resource,
     getting_started_resource,
     list_projects_resource,
@@ -74,7 +74,7 @@ from automedia.mcp.resources import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Helper / utility imports (from tools.py)
 # ---------------------------------------------------------------------------
-from automedia.mcp.tools import (  # noqa: E402
+from automedia.mcp.tools import (
     add_brand,
     add_cron_schedule,
     approve_gate,
@@ -127,8 +127,8 @@ from automedia.mcp.tools import (  # noqa: E402
     test_cron_schedule,
     update_engine_config,
 )
-from automedia.mcp.tools_distribution import distribute_content  # noqa: E402
-from automedia.validation.mcp_tools import (  # noqa: E402
+from automedia.mcp.tools_distribution import distribute_content
+from automedia.validation.mcp_tools import (
     get_validation_report,
     list_validation_scenarios,
     run_validation_scenario,
@@ -139,7 +139,7 @@ from automedia.validation.mcp_tools import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Public API — backward-compatible re-exports
 # ---------------------------------------------------------------------------
-__all__ = [
+__all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Server factory
     "create_server",
     "main",
@@ -1096,7 +1096,7 @@ def create_server() -> FastMCP:
 # ---------------------------------------------------------------------------
 
 
-def _shutdown_handler(signum: int, frame: object) -> None:  # noqa: ANN401 — signal handler frame is untyped
+def _shutdown_handler(signum: int, frame: object) -> None:  # signal handler frame is untyped
     """Clean shutdown on SIGTERM/SIGINT."""
     import signal
 

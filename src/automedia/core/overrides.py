@@ -49,15 +49,13 @@ def _load_yaml_files(directory: Path) -> list[dict]:
             try:
                 with open(entry, encoding="utf-8") as fh:
                     data = yaml.safe_load(fh)
-            except Exception:  # noqa: S112, BLE001 — skip malformed files
+            except Exception:  # noqa: S112 — skip malformed files
                 continue
 
             if isinstance(data, dict):
                 rules.append(data)
             elif isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict):
-                        rules.append(item)
+                rules.extend(item for item in data if isinstance(item, dict))
     return rules
 
 
@@ -75,7 +73,7 @@ def _load_j2_files(directory: Path) -> dict[str, str]:
             try:
                 with open(entry, encoding="utf-8") as fh:
                     prompts[entry.stem] = fh.read()
-            except Exception:  # noqa: S112, BLE001 — skip malformed files
+            except Exception:  # noqa: S112 — skip malformed files
                 continue
     return prompts
 

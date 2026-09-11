@@ -134,13 +134,13 @@ def _check_clarity(content: str) -> CheckResult:
     # 1b. Jargon
     jargon_matches = _JARGON_RE.findall(content)
     if jargon_matches:
-        found = sorted(set(m.lower() for m in jargon_matches))
+        found = sorted({m.lower() for m in jargon_matches})
         issues.append(f"{len(jargon_matches)} jargon term(s): {', '.join(found[:5])}")
 
     # 1c. Vague words
     vague_matches = _VAGUE_RE.findall(content)
     if vague_matches:
-        found = sorted(set(m.lower() for m in vague_matches))
+        found = sorted({m.lower() for m in vague_matches})
         issues.append(f"{len(vague_matches)} vague word(s): {', '.join(found[:5])}")
 
     if not issues:
@@ -397,7 +397,7 @@ def _check_specificity(content: str) -> CheckResult:
             ),
         }
 
-    found = sorted(set(m.lower() for m in abstract_matches))
+    found = sorted({m.lower() for m in abstract_matches})
     return {
         "name": name,
         "passed": False,

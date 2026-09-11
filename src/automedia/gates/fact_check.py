@@ -456,10 +456,9 @@ def _check_quotes(content: str, source_data: dict[str, Any]) -> CheckResult:
         return {"name": name, "passed": True, "detail": "no source quotes to verify"}
 
     content_lower = content.lower()
-    missing: list[str] = []
-    for quote in source_quotes:
-        if quote.lower() not in content_lower:
-            missing.append(quote[:60])
+    missing: list[str] = [
+        quote[:60] for quote in source_quotes if quote.lower() not in content_lower
+    ]
 
     if missing:
         return {
@@ -479,10 +478,9 @@ def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
         return {"name": name, "passed": True, "detail": "no source entities to verify"}
 
     content_lower = content.lower()
-    missing: list[str] = []
-    for entity in source_entities:
-        if entity.lower() not in content_lower:
-            missing.append(entity)
+    missing: list[str] = [
+        entity for entity in source_entities if entity.lower() not in content_lower
+    ]
 
     if missing:
         return {"name": name, "passed": False, "detail": f"entities not found: {missing}"}

@@ -166,7 +166,7 @@ class Doctor:
         Gracefully degrades when *httpx* is not installed.
         """
         try:
-            import httpx  # noqa: F811
+            import httpx
         except ImportError:
             from automedia.core._import_helpers import warn_missing_optional
 

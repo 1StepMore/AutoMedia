@@ -595,7 +595,7 @@ def _structured_completion_with_fallback(
     LLMError
         On provider errors or unexpected failures.
     """
-    global _provider_no_beta_api  # noqa: PLW0603 — module-level cache mutated deliberately
+    global _provider_no_beta_api  # module-level cache mutated deliberately
 
     if config is None:
         from automedia.core.config_loader import load_config
@@ -628,7 +628,9 @@ def _structured_completion_with_fallback(
             resolved_temp: float = (
                 temperature if temperature is not None else spec.get("temperature", 0.7)
             )
-            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+            resolved_max: int = (
+                max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+            )
 
             # Skip beta API entirely if the provider already proved it doesn't support it
             response: ChatCompletion | ParsedChatCompletion | None = None
@@ -675,7 +677,9 @@ def _structured_completion_with_fallback(
                     )
                     _provider_no_beta_api[provider_key] = True
             else:
-                logger.info("Skipping beta API (cached — provider does not support structured output)")
+                logger.info(
+                    "Skipping beta API (cached — provider does not support structured output)"
+                )
 
             if response is None:
                 try:
@@ -704,9 +708,13 @@ def _structured_completion_with_fallback(
                             max_tokens=resolved_max,
                         )
                     except Exception as exc:
-                        raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+                        raise LLMError(
+                            f"LLM completion failed during structured fallback: {exc}"
+                        ) from exc
                 except Exception as exc:
-                    raise LLMError(f"LLM completion failed during structured fallback: {exc}") from exc
+                    raise LLMError(
+                        f"LLM completion failed during structured fallback: {exc}"
+                    ) from exc
 
             raw_text: str = response.choices[0].message.content or ""
 
@@ -729,8 +737,7 @@ def _structured_completion_with_fallback(
             continue
 
     raise LLMError(
-        f"LLM structured completion failed for all {len(specs)} provider(s): "
-        + "; ".join(errors)
+        f"LLM structured completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
     )
 
 
@@ -887,7 +894,9 @@ def llm_complete(
             resolved_temp: float = (
                 temperature if temperature is not None else spec.get("temperature", 0.7)
             )
-            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 2048)
+            resolved_max: int = (
+                max_tokens if max_tokens is not None else spec.get("max_tokens", 2048)
+            )
 
             response = _llm_chat_completion_with_retry(
                 client,
@@ -911,9 +920,7 @@ def llm_complete(
                 raise LLMError(f"LLM completion failed: {exc}") from exc
             continue
 
-    raise LLMError(
-        f"LLM completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
-    )
+    raise LLMError(f"LLM completion failed for all {len(specs)} provider(s): " + "; ".join(errors))
 
 
 def llm_complete_structured(
@@ -999,7 +1006,9 @@ def llm_complete_structured(
             resolved_temp: float = (
                 temperature if temperature is not None else spec.get("temperature", 0.7)
             )
-            resolved_max: int = max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+            resolved_max: int = (
+                max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
+            )
 
             try:
                 response = _llm_structured_completion_with_retry(
@@ -1038,6 +1047,5 @@ def llm_complete_structured(
             continue
 
     raise LLMError(
-        f"LLM structured completion failed for all {len(specs)} provider(s): "
-        + "; ".join(errors)
+        f"LLM structured completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
     )

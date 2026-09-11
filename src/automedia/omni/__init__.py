@@ -42,7 +42,7 @@ def _register_builtins() -> None:
 
 _register_builtins()
 
-__all__ = [
+__all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Base
     "BaseOmniAdapter",
     # Config

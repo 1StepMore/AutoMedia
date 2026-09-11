@@ -150,7 +150,7 @@ def _check_sensitive_words(content: str) -> CheckResult:
 
     matches = _SENSITIVE_RE.findall(content)
     if matches:
-        found = sorted(set(m.lower() for m in matches))
+        found = sorted({m.lower() for m in matches})
         return {
             "name": name,
             "passed": False,

@@ -29,7 +29,7 @@ from automedia.engines.errors import (
     EngineNotFoundError,
     EngineUnavailableError,
 )
-from automedia.engines.registry import (  # noqa: PLC2701  # intentional package-internal constant
+from automedia.engines.registry import (  # intentional package-internal constant
     _DEFAULT_ENGINES,
     EngineRegistry,
 )

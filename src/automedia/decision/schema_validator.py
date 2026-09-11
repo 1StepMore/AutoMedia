@@ -35,9 +35,7 @@ def validate_artifact(
 
     # Check required top-level fields
     required = schema.get("required", [])
-    for field in required:
-        if field not in data:
-            errors.append(f"Missing required field: {field}")
+    errors.extend(f"Missing required field: {field}" for field in required if field not in data)
 
     # Check field types
     properties = schema.get("properties", {})

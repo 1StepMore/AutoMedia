@@ -108,8 +108,7 @@ def _render_markdown(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
         lines.append(f'    {gate}["{label}"]')
     for gate in ordered:
         node = AUTO_GATE_DAG[gate]
-        for parent in _visible_parents(node, mode_set):
-            lines.append(f"    {parent} --> {gate}")
+        lines.extend(f"    {parent} --> {gate}" for parent in _visible_parents(node, mode_set))
     lines.append("```")
     lines.append("")
     return "\n".join(lines)

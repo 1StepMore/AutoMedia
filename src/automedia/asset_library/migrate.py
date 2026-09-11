@@ -29,7 +29,7 @@ try:
     _PG_ERRORS: tuple[type[Exception], ...] = (psycopg2.Error,)
 except ImportError:
     _PG_ERRORS = ()
-_INSERT_ERRORS: tuple[type[Exception], ...] = _PG_ERRORS + (OSError, RuntimeError, ValueError)
+_INSERT_ERRORS: tuple[type[Exception], ...] = (*_PG_ERRORS, OSError, RuntimeError, ValueError)
 
 # ---------------------------------------------------------------------------
 # Public API

@@ -229,11 +229,11 @@ def _render_markdown(report: GateReport) -> str:
             lines.append("")
             lines.append("| Check | Passed | Detail |")
             lines.append("|-------|--------|--------|")
-            for c in checks:
-                lines.append(
-                    f"| {c.get('name', '')} | {'yes' if c.get('passed') else 'no'} "
-                    f"| {c.get('detail', '')} |"
-                )
+            lines.extend(
+                f"| {c.get('name', '')} | {'yes' if c.get('passed') else 'no'} "
+                f"| {c.get('detail', '')} |"
+                for c in checks
+            )
         lines.append("")
 
     return "\n".join(lines)

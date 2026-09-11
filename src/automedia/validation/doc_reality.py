@@ -127,12 +127,14 @@ def doc_reality_audit(
 
     declared_tools = _declared_mcp_tools(package_root)
     declared_cmds = _declared_cli_commands(package_root)
-    for extra in (
-        package_root / "mcp" / _SERVER_FILENAME,
-        package_root / "cli" / _CLI_FILENAME,
-    ):
-        if extra.is_file():
-            checked_files.append(str(extra))
+    checked_files.extend(
+        str(extra)
+        for extra in (
+            package_root / "mcp" / _SERVER_FILENAME,
+            package_root / "cli" / _CLI_FILENAME,
+        )
+        if extra.is_file()
+    )
 
     gate_count, gate_files = _code_gate_count(package_root)
     adapter_real, adapter_stubs, adapter_files = _code_adapter_counts(package_root)
@@ -275,7 +277,7 @@ def _declared_mcp_tools(src_root: Path) -> set[str]:
         extract = getattr(_coverage, "declared_mcp_tools", None)
         if callable(extract):
             return set(extract(src_root))
-    except Exception:  # noqa: S110, BLE001 — parallel seam; fall back to the local regex
+    except Exception:  # noqa: S110 — parallel seam; fall back to the local regex
         pass
     return _regex_declared_mcp_tools(src_root / "mcp" / _SERVER_FILENAME)
 
@@ -293,10 +295,11 @@ def _regex_declared_mcp_tools(server_path: Path) -> set[str]:
 
 def _import_aliases(source: str) -> dict[str, str]:
     """Map alias → original name for ``... import name as alias`` clauses."""
-    aliases: dict[str, str] = {}
-    for line in _IMPORT_LINE_RE.findall(source):
-        for original, alias in _AS_CLAUSE_RE.findall(line):
-            aliases[alias] = original
+    aliases: dict[str, str] = {
+        alias: original
+        for line in _IMPORT_LINE_RE.findall(source)
+        for original, alias in _AS_CLAUSE_RE.findall(line)
+    }
     return aliases
 
 

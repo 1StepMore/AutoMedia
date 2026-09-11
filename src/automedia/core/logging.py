@@ -34,7 +34,7 @@ def configure_structlog() -> None:
     * ``"json"`` → :class:`structlog.processors.JSONRenderer`
     * anything else (default) → :class:`structlog.dev.ConsoleRenderer`
     """
-    global _CONFIGURED  # noqa: PLW0603
+    global _CONFIGURED
     if _CONFIGURED:
         return
     _CONFIGURED = True

@@ -140,8 +140,7 @@ def _handle_fix_install(results: list[dict[str, Any]]) -> bool:
         typer.echo(f"    {instruction}")
         if _is_piped_script(instruction):
             typer.secho(
-                "    ⚠  Uses a piped shell script (curl | bash)."
-                " Review before running with --fix.",
+                "    ⚠  Uses a piped shell script (curl | bash). Review before running with --fix.",
                 fg=typer.colors.YELLOW,
             )
 
@@ -152,7 +151,7 @@ def _handle_fix_install(results: list[dict[str, Any]]) -> bool:
     for name, instruction in missing_installable:
         typer.secho(f"Installing {name}...", fg=typer.colors.CYAN)
         try:
-            subprocess.run(instruction, shell=True, check=False, timeout=120)  # noqa: S603,S602 — instructions are hardcoded constants
+            subprocess.run(instruction, shell=True, check=False, timeout=120)  # noqa: S602 — instructions are hardcoded constants
         except Exception as exc:
             typer.secho(f"  ✗ Failed to install {name}: {exc}", fg=typer.colors.RED)
 
@@ -176,9 +175,7 @@ def _handle_fix_install(results: list[dict[str, Any]]) -> bool:
     if new_all_ok:
         typer.secho("All dependencies satisfied.", fg=typer.colors.GREEN)
     else:
-        typer.secho(
-            "Some dependencies are still missing.", fg=typer.colors.YELLOW, err=True
-        )
+        typer.secho("Some dependencies are still missing.", fg=typer.colors.YELLOW, err=True)
 
     return new_all_ok
 

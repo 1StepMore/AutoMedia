@@ -123,7 +123,7 @@ def disconnect_account(account_id: NonEmptyStr) -> dict[str, Any]:
 
 __all__ = [
     "connect_account",
-    "list_accounts",
-    "get_account_health",
     "disconnect_account",
+    "get_account_health",
+    "list_accounts",
 ]

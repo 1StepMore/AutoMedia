@@ -37,9 +37,9 @@ __all__ = [
     "PipelineProgress",
     "PipelineResult",
     "PlatformMediaSpec",
+    "__version__",
     "get_platform_media_spec",
     "run_full_pipeline",
-    "__version__",
 ]
 
 
@@ -60,7 +60,8 @@ def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attri
         "run_full_pipeline": ("automedia.pipelines.runner", "run_full_pipeline"),
     }
     if name in _lazy:
-        import importlib  # noqa: PLC0415
+        import importlib
+
         mod_path, attr = _lazy[name]
         mod = importlib.import_module(mod_path)
         return getattr(mod, attr)

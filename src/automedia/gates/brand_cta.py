@@ -124,9 +124,7 @@ def _check_brand_name_present(
 
     content_lower = content.lower()
     found: list[str] = []
-    for n in all_names:
-        if n.lower() in content_lower:
-            found.append(n)
+    found.extend(n for n in all_names if n.lower() in content_lower)
 
     if found:
         return {
@@ -146,7 +144,7 @@ def _check_cta_present(content: str) -> CheckResult:
     name = "cta_present"
     matches = _CTA_RE.findall(content)
     if matches:
-        found = sorted(set(m.strip() for m in matches))
+        found = sorted({m.strip() for m in matches})
         return {
             "name": name,
             "passed": True,
@@ -233,9 +231,7 @@ def _check_blocked_words(
 
     content_lower = content.lower()
     found: list[str] = []
-    for word in blocked_words:
-        if word.lower() in content_lower:
-            found.append(word)
+    found.extend(word for word in blocked_words if word.lower() in content_lower)
 
     if found:
         return {

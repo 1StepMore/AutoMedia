@@ -1,4 +1,5 @@
 """Director mode approval/rejection MCP tools."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -141,8 +142,9 @@ def get_pending_approvals(
         pending = [{"project_id": project_id, **entry} for entry in engine.list_pending_approvals()]
         return success_response({"pending_approvals": pending, "count": len(pending)})
 
-    all_pending: list[dict[str, Any]] = []
-    for pid, engine in list_registered_engines().items():
-        for entry in engine.list_pending_approvals():
-            all_pending.append({"project_id": pid, **entry})
+    all_pending: list[dict[str, Any]] = [
+        {"project_id": pid, **entry}
+        for pid, engine in list_registered_engines().items()
+        for entry in engine.list_pending_approvals()
+    ]
     return success_response({"pending_approvals": all_pending, "count": len(all_pending)})

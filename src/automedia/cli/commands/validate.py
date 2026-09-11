@@ -185,18 +185,18 @@ def validate_run(
         raw_steps = record.get("steps")
         step_rows: list[dict[str, object]] = []
         if isinstance(raw_steps, list):
-            for step in raw_steps:
-                if isinstance(step, dict):
-                    step_rows.append(
-                        {
-                            "step_index": step.get("step_index"),
-                            "name": step.get("name"),
-                            "status": step.get("status"),
-                            "passed": step.get("passed"),
-                            "duration": step.get("duration"),
-                            "failures": step.get("failures", []),
-                        }
-                    )
+            step_rows.extend(
+                {
+                    "step_index": step.get("step_index"),
+                    "name": step.get("name"),
+                    "status": step.get("status"),
+                    "passed": step.get("passed"),
+                    "duration": step.get("duration"),
+                    "failures": step.get("failures", []),
+                }
+                for step in raw_steps
+                if isinstance(step, dict)
+            )
         output_json(
             {
                 "scenario": scenario,
@@ -322,8 +322,7 @@ def _fallback_report(record: dict[str, Any], *, run_name: str) -> str:
         verdicts[status] = verdicts.get(status, 0) + 1
     lines.append("")
     lines.append("Verdicts:")
-    for status in sorted(verdicts):
-        lines.append(f"  {status:<13} {verdicts[status]}")
+    lines.extend(f"  {status:<13} {verdicts[status]}" for status in sorted(verdicts))
     lines.append("")
     lines.append("Scenarios:")
     for entry in scenarios:
@@ -446,12 +445,10 @@ def _render_diff_text(diff_result: dict[str, Any]) -> str:
     )
     stable = diff_result.get("stable") or {}
     lines.append("## stable")
-    for status in sorted(stable):
-        lines.append(f"  {status}: {stable[status]}")
+    lines.extend(f"  {status}: {stable[status]}" for status in sorted(stable))
     summary = diff_result.get("summary") or {}
     lines.append("## summary")
-    for key in sorted(summary):
-        lines.append(f"  {key}: {summary[key]}")
+    lines.extend(f"  {key}: {summary[key]}" for key in sorted(summary))
     return "\n".join(lines)
 
 

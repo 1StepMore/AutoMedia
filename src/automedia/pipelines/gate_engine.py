@@ -349,7 +349,7 @@ class GateEngine:
                 result=result,
                 applied=True,
             )
-        except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+        except Exception as exc:  # diff capture must never fail the pipeline
             log.warning("gate.diff_record.write_failed", gate_name=gate_name, error=str(exc))
         log.info(
             "gate.modified_content_applied",
@@ -425,7 +425,7 @@ class GateEngine:
                     result=result or {},
                     applied=False,
                 )
-            except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+            except Exception as exc:  # diff capture must never fail the pipeline
                 log.warning(
                     "gate.diff_record.write_failed",
                     gate_name=str(apply_state.get("gate_name", "")),
@@ -517,7 +517,7 @@ class GateEngine:
                 path=str(path),
                 applied=applied,
             )
-        except Exception as exc:  # noqa: BLE001 — diff capture must never fail the pipeline
+        except Exception as exc:  # diff capture must never fail the pipeline
             log.warning(
                 "gate.diff_record.write_failed",
                 gate_name=gate_name,
@@ -1092,7 +1092,7 @@ class GateEngine:
                                 quality_retry_count=_quality_attempt,
                                 handler=str(level2),
                             )
-                            regen_ok, regen_results = level2(
+                            _regen_ok, regen_results = level2(
                                 gate_context=gate_context,
                                 failed_gate_name=gate_name,
                                 failure_result=result,

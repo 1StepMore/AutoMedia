@@ -29,7 +29,7 @@ log = get_logger(__name__)
 
 _chromadb_installed = False
 try:
-    import chromadb  # noqa: F401
+    import chromadb
 
     _chromadb_installed = True
 except ImportError:
@@ -263,7 +263,7 @@ class VectorStore:
             return []
 
         try:
-            raw = self._collection.get(limit=None)  # noqa: E501  # type: ignore[arg-type]  # chromadb.Collection.get() expects int for limit, None is valid at runtime but typing doesn't allow it
+            raw = self._collection.get(limit=None)  # type: ignore[arg-type]  # chromadb.Collection.get() expects int for limit, None is valid at runtime but typing doesn't allow it
         except _CHROMA_ERRORS as exc:
             log.error("Failed to get all embeddings: %s", exc)
             return []

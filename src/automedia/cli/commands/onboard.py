@@ -106,9 +106,7 @@ def _step_llm() -> None:
     typer.echo("  Tip: You can also set AUTOMEDIA_LLM_API_KEY env var instead.")
 
     written = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
-    existing_fallback = (
-        written.get("llm", {}).get("text_generation", {}).get("fallback") or []
-    )
+    existing_fallback = written.get("llm", {}).get("text_generation", {}).get("fallback") or []
     if not existing_fallback:
         typer.secho(
             "\n  Warning: No LLM fallback chain configured. If the primary provider fails, "
@@ -119,9 +117,7 @@ def _step_llm() -> None:
         if add_fallback.strip().lower() in ("y", "yes"):
             fb_provider = typer.prompt("  Fallback provider")
             fb_model = typer.prompt("  Fallback model")
-            fb_api_key = typer.prompt(
-                "  Fallback API key (optional)", default="", hide_input=True
-            )
+            fb_api_key = typer.prompt("  Fallback API key (optional)", default="", hide_input=True)
             fb_base_url = typer.prompt("  Fallback API base URL (optional)", default="")
             fb_entry: dict[str, str] = {
                 "provider": fb_provider,
@@ -138,8 +134,7 @@ def _step_llm() -> None:
             typer.secho("  Fallback provider added.", fg=typer.colors.GREEN)
         else:
             typer.echo(
-                "  You can add a fallback provider later via "
-                "'automedia onboard --step llm'."
+                "  You can add a fallback provider later via 'automedia onboard --step llm'."
             )
 
 
@@ -603,7 +598,7 @@ def cmd_list() -> None:
             "default_mode": config.get("mode", "auto"),
             "default_language": config.get("content", {}).get("default_language", "zh"),
             "brand_name": brand.get("brand_name", "not set"),
-            "languages": [k for k in brand.get("languages", {})] or ["not configured"],
+            "languages": list(brand.get("languages", {})) or ["not configured"],
             "enabled_platforms": enabled or ["none"],
             "hitl_preset": hitl.get("preset", "not set"),
         },
@@ -626,7 +621,7 @@ def cmd_list() -> None:
     # Brand
     if brand_path.exists():
         typer.echo(f"Brand: {brand.get('brand_name', 'not set')}")
-        typer.echo(f"Languages: {[k for k in brand.get('languages', {})] or ['not configured']}")
+        typer.echo(f"Languages: {list(brand.get('languages', {})) or ['not configured']}")
 
     # Platform
     typer.echo(f"Enabled platforms: {enabled or ['none']}")

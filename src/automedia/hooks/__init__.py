@@ -14,9 +14,9 @@ from automedia.hooks.protocol import GateHook
 __all__ = [
     "CostTracker",
     "GateHook",
-    "get_pipeline_md5",
     "MetricsHook",
     "PipelineHistoryHook",
+    "get_pipeline_md5",
     "record_md5",
     "verify_md5",
 ]
@@ -35,7 +35,8 @@ _LAZY_MAP: dict[str, tuple[str, str]] = {
 def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attribute loading
     """Lazy-import hook names on first attribute access."""
     if name in _LAZY_MAP:
-        import importlib  # noqa: PLC0415
+        import importlib
+
         mod_path, attr = _LAZY_MAP[name]
         mod = importlib.import_module(mod_path)
         return getattr(mod, attr)

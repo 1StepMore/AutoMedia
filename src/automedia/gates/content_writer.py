@@ -58,7 +58,7 @@ _SEO_KEYS: list[str] = [
     "content_freshness",
 ]
 
-_SEO_DEFAULT_SCORES: dict[str, int] = {k: 70 for k in _SEO_KEYS}
+_SEO_DEFAULT_SCORES: dict[str, int] = dict.fromkeys(_SEO_KEYS, 70)
 _SEO_THRESHOLD: int = 40
 _MAX_SEO_RETRIES: int = 2
 

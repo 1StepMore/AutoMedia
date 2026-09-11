@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import click
 import typer
 from typer.core import TyperGroup
@@ -29,8 +31,8 @@ class LazyTyperGroup(TyperGroup):
     invoked.
     """
 
-    _lazy_sub_apps: dict[str, tuple[str, str, str]] = {}
-    _lazy_fns: dict[str, tuple[str, str, str]] = {}
+    _lazy_sub_apps: ClassVar[dict[str, tuple[str, str, str]]] = {}
+    _lazy_fns: ClassVar[dict[str, tuple[str, str, str]]] = {}
 
     # ------------------------------------------------------------------
     # Registration helpers (class-level, called at import time)

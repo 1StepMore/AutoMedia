@@ -296,7 +296,7 @@ def validation_matrix() -> dict[str, Any]:
         )
     try:
         matrix = build_matrix()
-    except Exception as exc:  # noqa: BLE001 - envelope, never crash the server
+    except Exception as exc:  # envelope, never crash the server
         return error_response(
             MCPErrorCode.VALIDATION_ERROR,
             f"validation matrix failed: {exc}",

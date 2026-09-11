@@ -102,7 +102,7 @@ def _terminate_all_children() -> None:
     _children.clear()
 
 
-def _signal_handler(signum: int, frame: object) -> None:  # noqa: ANN401 — signal handler frame is untyped
+def _signal_handler(signum: int, frame: object) -> None:  # signal handler frame is untyped
     """Signal handler that terminates all children and exits."""
     log.info("Received signal %d — shutting down all servers", signum)
     _terminate_all_children()

@@ -44,8 +44,8 @@ def _resolve_projects_dir(override: str | None = None) -> str:
 
 def _discover_projects(base_dir: str) -> list[dict[str, Any]]:
     """Scan *base_dir* for project info JSON files and return their contents."""
-    import json  # noqa: PLC0415
-    from pathlib import Path  # noqa: PLC0415
+    import json
+    from pathlib import Path
 
     projects: list[dict[str, Any]] = []
     base = Path(base_dir)
@@ -111,7 +111,7 @@ def distribute_to_platforms(
     artifact_dir = proj.get("_dir", "")
 
     # --- Resolve target platforms -----------------------------------------
-    from automedia.adapters.registry import AdapterRegistry  # noqa: PLC0415
+    from automedia.adapters.registry import AdapterRegistry
 
     registered = AdapterRegistry.list()
 
@@ -166,9 +166,7 @@ def distribute_to_platforms(
                 )
                 results[platform_name] = "would_fail"
 
-        success_count = sum(
-            1 for v in results.values() if v == "would_succeed"
-        )
+        success_count = sum(1 for v in results.values() if v == "would_succeed")
         total = len(results)
         return {
             "platforms": results,
@@ -187,7 +185,7 @@ def distribute_to_platforms(
     except Exception as exc:
         log.error("distribution.publish_all.error", error=str(exc))
         return {
-            "platforms": {p: "failed" for p in target_platforms},
+            "platforms": dict.fromkeys(target_platforms, "failed"),
             "summary": f"0/{len(target_platforms)} platforms succeeded — engine error: {exc}",
             "dry_run": False,
             "error": str(exc),

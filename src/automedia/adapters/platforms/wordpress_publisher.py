@@ -178,7 +178,9 @@ class WordPressPublisher(BasePlatformAdapter):
 
         # 4. Optional: resolve categories
         category_ids: list[int] = []
-        raw_categories: Any = project.get("wordpress_categories") or project.get(  # noqa: ANN401 — JSON-deserialized, type varies
+        raw_categories: Any = project.get(
+            "wordpress_categories"
+        ) or project.get(  # JSON-deserialized, type varies
             "categories"
         )
         if raw_categories:

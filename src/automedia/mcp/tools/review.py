@@ -181,7 +181,7 @@ def review_decision(
             progress.approve_hitl()
         else:
             progress.reject_hitl()
-    except Exception as exc:  # noqa: BLE001 — signalling must never crash the tool
+    except Exception as exc:  # signalling must never crash the tool
         return error_response(MCPErrorCode.ENGINE_ERROR, f"Failed to signal decision: {exc}")
 
     try:
@@ -193,7 +193,7 @@ def review_decision(
             diff_record_path=diff_record_path,
             actor="mcp",
         )
-    except Exception as exc:  # noqa: BLE001 — audit failure must not fail the review
+    except Exception as exc:  # audit failure must not fail the review
         log.warning("review_decision.audit_error", error=str(exc))
 
     payload: dict[str, Any] = {

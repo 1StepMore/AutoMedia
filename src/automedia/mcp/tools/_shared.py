@@ -309,7 +309,7 @@ def _mark_lost_entries() -> None:
         data = _read_active_pipelines()
         now = datetime.now(UTC)
         changed = False
-        for _pid, entry in data.items():
+        for entry in data.values():
             status = entry.get("status", "")
             if status != "running":
                 continue
@@ -416,7 +416,7 @@ def _write_pipeline_schedules(schedules: list[CronScheduleEntry]) -> None:
             loaded = yaml.safe_load(raw)
             if isinstance(loaded, dict):
                 existing = loaded
-        except Exception as exc:  # noqa: BLE001 — best-effort preserve
+        except Exception as exc:  # best-effort preserve
             log.debug("Failed to read existing pipeline schedules; starting fresh", error=str(exc))
 
     existing["pipeline_schedules"] = [dict(s) for s in schedules]

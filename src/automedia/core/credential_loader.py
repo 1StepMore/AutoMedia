@@ -85,7 +85,7 @@ def _load_yaml_cred(filename: str, key_name: str) -> str | None:
                 value = data.get(key_name)
                 if isinstance(value, str):
                     return value
-    except Exception:  # noqa: BLE001 — silent fallback is intentional
+    except Exception:  # silent fallback is intentional
         logger.debug("Could not load credential from %s", filename)
         pass
     return None
@@ -145,7 +145,7 @@ def load_credential(key_name: str, *, provider: str | None = None) -> str | None
             value = _keyring.get_password(service, key_name)
             if value is not None:
                 return value
-        except Exception:  # noqa: BLE001 — silent fallback is intentional
+        except Exception:  # silent fallback is intentional
             logger.debug("Keyring lookup failed for %s", key_name)
             pass
 
@@ -235,7 +235,7 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
                         api_key = prov_cfg.get("api_key")
                         if isinstance(api_key, str):
                             return api_key
-    except Exception:  # noqa: BLE001 — silent fallback is intentional
+    except Exception:  # silent fallback is intentional
         logger.debug("Could not read model_config.yaml for %s", provider_name)
         pass
 

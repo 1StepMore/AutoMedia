@@ -340,7 +340,7 @@ def _check_overused_adverbs(content: str) -> CheckResult:
     matches = _ADVERB_RE.findall(content)
     if not matches:
         return {"name": "overused_adverbs", "passed": True, "detail": "no overused adverbs found"}
-    found = list(set(m.lower() for m in matches))
+    found = list({m.lower() for m in matches})
     return {
         "name": "overused_adverbs",
         "passed": False,
@@ -462,7 +462,7 @@ def _check_overacademic_vocabulary(content: str) -> CheckResult:
             "passed": True,
             "detail": "no over-academic words found",
         }
-    found = list(set(m.lower() for m in matches))
+    found = list({m.lower() for m in matches})
     return {
         "name": "overacademic_vocabulary",
         "passed": False,
@@ -479,7 +479,7 @@ def _check_absolute_assertions(content: str) -> CheckResult:
             "passed": True,
             "detail": "no absolute assertions found",
         }
-    found = list(set(m.strip() for m in matches))
+    found = list({m.strip() for m in matches})
     return {
         "name": "absolute_assertions",
         "passed": False,

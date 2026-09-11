@@ -1800,7 +1800,7 @@ def _write_run_gate_report(
     try:
         rendered = render_gate_report(project_dir, gates_log, gate_results)
         write_gate_report(project_dir, cast(dict[str, Any], cast(object, rendered)))
-    except Exception as exc:  # noqa: BLE001 — report is derived output, never critical
+    except Exception as exc:  # report is derived output, never critical
         log.warning(
             "pipeline.gate_report_write_failed",
             project_dir=project_dir,

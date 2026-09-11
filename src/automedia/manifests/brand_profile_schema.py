@@ -122,7 +122,7 @@ def _get_registered_platform_names() -> set[str]:
     (e.g. during early imports or in test isolation).
     """
     try:
-        from automedia.adapters.registry import AdapterRegistry  # noqa: PLC0415
+        from automedia.adapters.registry import AdapterRegistry
 
         return set(AdapterRegistry.list())
     except (ImportError, AttributeError, OSError, ValueError, KeyError):

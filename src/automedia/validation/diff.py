@@ -174,7 +174,7 @@ def diff_runs(before: dict, after: dict) -> dict:
     regressed: list[str] = []
     improved: list[str] = []
     other: list[str] = []
-    stable: dict[str, int] = {status: 0 for status in STATUSES}
+    stable: dict[str, int] = dict.fromkeys(STATUSES, 0)
     unpaired = 0
     for name in sorted(before_idx.keys() | after_idx.keys()):
         before_row = before_idx.get(name)

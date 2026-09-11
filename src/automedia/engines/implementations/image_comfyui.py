@@ -156,7 +156,7 @@ class ComfyUIImageEngine(BaseImageEngine):
         base_url = f"{protocol}://{host}:{port}"
 
         try:
-            import httpx  # noqa: F811
+            import httpx
         except ImportError as exc:
             return False, f"httpx not installed: {exc}"
 
@@ -198,7 +198,7 @@ class ComfyUIImageEngine(BaseImageEngine):
 
         # ---- Lazy import httpx ----
         try:
-            import httpx  # noqa: F811
+            import httpx
         except ImportError as exc:
             raise EngineExecutionError(
                 self.engine_name,
@@ -328,7 +328,7 @@ class ComfyUIImageEngine(BaseImageEngine):
 
     @staticmethod
     def _poll_comfyui(
-        client: httpx.Client,  # noqa: F821  — guarded by TYPE_CHECKING
+        client: httpx.Client,  # guarded by TYPE_CHECKING
         base_url: str,
         prompt_id: str,
         timeout: int,
@@ -358,7 +358,7 @@ class ComfyUIImageEngine(BaseImageEngine):
     def _extract_output_filename(history: dict[str, Any], prompt_id: str) -> str:
         """Extract the first output image filename from a ComfyUI history response."""
         outputs = history.get(prompt_id, {}).get("outputs", {})
-        for _node_id, node_output in outputs.items():
+        for node_output in outputs.values():
             images = node_output.get("images", [])
             if images:
                 filename = images[0].get("filename")

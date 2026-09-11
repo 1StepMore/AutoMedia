@@ -59,20 +59,17 @@ def history_cmd(
 
     # --- JSON output ---
     if get_output_mode() == OutputMode.JSON:
-        items = []
-        for row in history_rows:
-            items.append(
-                {
-                    "id": row.get("id"),
-                    "project_id": row.get("project_id"),
-                    "action": row.get("action"),
-                    "timestamp": row.get("timestamp"),
-                    "timestamp_iso": _format_ts(row["timestamp"]) if row.get("timestamp") else "",
-                    "metadata": (
-                        json.loads(row["metadata_json"]) if row.get("metadata_json") else {}
-                    ),
-                }
-            )
+        items = [
+            {
+                "id": row.get("id"),
+                "project_id": row.get("project_id"),
+                "action": row.get("action"),
+                "timestamp": row.get("timestamp"),
+                "timestamp_iso": _format_ts(row["timestamp"]) if row.get("timestamp") else "",
+                "metadata": (json.loads(row["metadata_json"]) if row.get("metadata_json") else {}),
+            }
+            for row in history_rows
+        ]
         output_json(
             {
                 "status": "ok",

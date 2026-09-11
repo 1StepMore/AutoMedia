@@ -121,18 +121,17 @@ def pipeline_metrics_resource(project_id: str) -> str:
     progress_data = progress.get_progress()
     events = progress_data.get("events", [])
 
-    gate_metrics: list[dict[str, Any]] = []
-    for event in events:
-        gate_metrics.append(
-            {
-                "gate_name": event.get("gate", ""),
-                "status": event.get("status", ""),
-                "started_at": event.get("started_at"),
-                "finished_at": event.get("finished_at"),
-                "duration_s": event.get("duration_s"),
-                "error": event.get("error"),
-            }
-        )
+    gate_metrics: list[dict[str, Any]] = [
+        {
+            "gate_name": event.get("gate", ""),
+            "status": event.get("status", ""),
+            "started_at": event.get("started_at"),
+            "finished_at": event.get("finished_at"),
+            "duration_s": event.get("duration_s"),
+            "error": event.get("error"),
+        }
+        for event in events
+    ]
 
     return json.dumps(
         {
@@ -168,16 +167,12 @@ def getting_started_resource() -> str:
     # Step 1: LLM configured?
     model_cfg = user_cfg_dir / "model_config.yaml"
     llm_configured = bool(os.environ.get("AUTOMEDIA_LLM_API_KEY")) or (
-        model_cfg.exists()
-        and model_cfg.stat().st_size > 0
+        model_cfg.exists() and model_cfg.stat().st_size > 0
     )
 
     # Step 2: Brand profile?
     brand_file = user_cfg_dir / "brand_profiles.yaml"
-    brand_configured = bool(
-        brand_file.exists()
-        and brand_file.stat().st_size > 0
-    )
+    brand_configured = bool(brand_file.exists() and brand_file.stat().st_size > 0)
 
     # Step 3: User config directory exists?
     # Step 4: Project initialized?

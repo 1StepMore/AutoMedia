@@ -128,15 +128,15 @@ def _blockers(records: list[dict]) -> list[dict]:
         for step in _steps(record):
             if step.get("status") != "failed":
                 continue
-            for failure in step_failure_lines(step):
-                blockers.append(
-                    {
-                        "scenario": _name(record),
-                        "step_index": step.get("step_index"),
-                        "step": step.get("name"),
-                        "failure": failure,
-                    }
-                )
+            blockers.extend(
+                {
+                    "scenario": _name(record),
+                    "step_index": step.get("step_index"),
+                    "step": step.get("name"),
+                    "failure": failure,
+                }
+                for failure in step_failure_lines(step)
+            )
     return blockers
 
 

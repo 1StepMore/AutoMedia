@@ -498,7 +498,7 @@ class PublishEngine:
             not found, the auth type is unsupported, or the refresh
             request itself failed.
         """
-        from automedia.accounts.registry import AccountRegistry  # noqa: PLC0415
+        from automedia.accounts.registry import AccountRegistry
 
         registry = AccountRegistry()
         info = registry.get(account_id)
@@ -541,7 +541,7 @@ class PublishEngine:
                 return False
 
             try:
-                from automedia.accounts.auth.oauth2 import (  # noqa: PLC0415
+                from automedia.accounts.auth.oauth2 import (
                     OAuth2ClientCredentialsFlow,
                 )
 
@@ -552,7 +552,7 @@ class PublishEngine:
                     client_secret=client_secret,
                 )
 
-                from automedia.accounts.session import SessionManager  # noqa: PLC0415
+                from automedia.accounts.session import SessionManager
 
                 sm = SessionManager()
                 sm.set_token(account_id, token)
@@ -641,7 +641,7 @@ class PublishEngine:
 
         if account_ids:
             # PRD-4 path: publish per-account
-            from automedia.accounts.registry import AccountRegistry  # noqa: PLC0415
+            from automedia.accounts.registry import AccountRegistry
 
             registry = AccountRegistry()
 

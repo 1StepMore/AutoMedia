@@ -1,4 +1,5 @@
 """Cron schedule management MCP tools."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -146,7 +147,10 @@ def list_cron_schedules(
         schedules.sort(key=lambda s: s.get("name", ""))
         return success_response({"schedules": schedules, "count": len(schedules)})
     except OSError as exc:
-        return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, f"File I/O error reading schedules: {exc}")}
+        return {
+            "schedules": [],
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error reading schedules: {exc}"),
+        }
     except yaml.YAMLError as exc:
         return {"schedules": [], **error_response(MCPErrorCode.UNKNOWN, f"YAML parse error: {exc}")}
 
@@ -198,7 +202,10 @@ def list_workflows() -> dict[str, Any]:
         return success_response({"workflows": result, "count": len(result)})
 
     except FileNotFoundError as exc:
-        return {"workflows": [], **error_response(MCPErrorCode.CONFIG_MISSING, f"Workflow file not found: {exc}")}
+        return {
+            "workflows": [],
+            **error_response(MCPErrorCode.CONFIG_MISSING, f"Workflow file not found: {exc}"),
+        }
     except ConfigError as exc:
         return {"workflows": [], **error_response(MCPErrorCode.CONFIG_MISSING, str(exc))}
     except Exception as exc:
@@ -359,15 +366,14 @@ def get_cron_health() -> dict[str, Any]:
 
         schedules.append(entry)
 
-    job_details: list[dict[str, Any]] = []
-    for job in static_jobs:
-        job_details.append(
-            {
-                "name": job.get("name", ""),
-                "schedule": job.get("schedule", ""),
-                "description": job.get("description", ""),
-            }
-        )
+    job_details: list[dict[str, Any]] = [
+        {
+            "name": job.get("name", ""),
+            "schedule": job.get("schedule", ""),
+            "description": job.get("description", ""),
+        }
+        for job in static_jobs
+    ]
 
     notes: list[str] = [
         "Health tracking infrastructure not available — "

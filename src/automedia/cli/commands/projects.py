@@ -118,16 +118,16 @@ def _collect_assets(project_dir: Path) -> list[dict[str, str]]:
         subdir = project_dir / subdir_name
         if not subdir.is_dir():
             continue
-        for fpath in sorted(subdir.rglob("*")):
-            if fpath.is_file():
-                assets.append(
-                    {
-                        "path": str(fpath),
-                        "name": fpath.name,
-                        "subdir": subdir_name,
-                        "size": str(fpath.stat().st_size),
-                    }
-                )
+        assets.extend(
+            {
+                "path": str(fpath),
+                "name": fpath.name,
+                "subdir": subdir_name,
+                "size": str(fpath.stat().st_size),
+            }
+            for fpath in sorted(subdir.rglob("*"))
+            if fpath.is_file()
+        )
     return assets
 
 

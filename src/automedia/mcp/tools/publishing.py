@@ -1,4 +1,5 @@
 """Publishing and platform registration MCP tools."""
+
 from __future__ import annotations
 
 import importlib
@@ -80,7 +81,7 @@ def publish_content(
         artifact_dir = proj["_dir"]
 
         # Resolve per-platform automation levels from brand profile
-        from automedia.manifests.brand_profile_schema import load_brand_profiles  # noqa: PLC0415
+        from automedia.manifests.brand_profile_schema import load_brand_profiles
 
         automation: dict[str, str] | None = None
         brand_name = proj.get("brand", "")
@@ -151,7 +152,10 @@ def publish_content(
     except ImportError as exc:
         return {"published": False, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
     except OSError as exc:
-        return {"published": False, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")}
+        return {
+            "published": False,
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}"),
+        }
     except AutoMediaError as exc:
         return {"published": False, **error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))}
     except Exception as exc:

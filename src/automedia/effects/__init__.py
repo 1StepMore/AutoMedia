@@ -42,7 +42,7 @@ def __getattr__(name: str) -> Any:  # noqa: ANN401 — PEP 562 lazy module attri
         "analyze_content": ("automedia.effects.mcp", "analyze_content"),
     }
     if name in _lazy:
-        import importlib  # noqa: PLC0415
+        import importlib
 
         mod_path, attr = _lazy[name]
         mod = importlib.import_module(mod_path)

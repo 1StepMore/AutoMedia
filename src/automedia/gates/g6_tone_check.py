@@ -41,63 +41,127 @@ _EXPECTED_MAP: dict[str, str] = {
 _TONE_KEYWORDS: dict[str, dict[str, list[str]]] = {
     "professional": {
         "positive": [
-            "therefore", "consequently", "established", "proven",
-            "research", "analysis", "data", "evidence",
-            "recommend", "suggest",
+            "therefore",
+            "consequently",
+            "established",
+            "proven",
+            "research",
+            "analysis",
+            "data",
+            "evidence",
+            "recommend",
+            "suggest",
         ],
         "negative": [
-            "hey", "awesome", "cool", "gonna", "wanna",
-            "super", "literally", "insane",
+            "hey",
+            "awesome",
+            "cool",
+            "gonna",
+            "wanna",
+            "super",
+            "literally",
+            "insane",
         ],
     },
     "casual": {
         "positive": [
-            "hey", "awesome", "cool", "gonna", "wanna",
-            "super", "fun", "love", "check it out",
+            "hey",
+            "awesome",
+            "cool",
+            "gonna",
+            "wanna",
+            "super",
+            "fun",
+            "love",
+            "check it out",
         ],
         "negative": [
-            "therefore", "consequently", "heretofore",
-            "utilize", "commence",
+            "therefore",
+            "consequently",
+            "heretofore",
+            "utilize",
+            "commence",
         ],
     },
     "authoritative": {
         "positive": [
-            "must", "shall", "mandate", "require", "decree",
-            "essential", "critical", "imperative",
+            "must",
+            "shall",
+            "mandate",
+            "require",
+            "decree",
+            "essential",
+            "critical",
+            "imperative",
         ],
         "negative": [
-            "maybe", "perhaps", "might", "could possibly",
-            "sort of", "kind of",
+            "maybe",
+            "perhaps",
+            "might",
+            "could possibly",
+            "sort of",
+            "kind of",
         ],
     },
     "enthusiastic": {
         "positive": [
-            "amazing", "incredible", "fantastic", "love",
-            "excited", "thrilled", "delighted",
-            "wonderful", "tremendous", "outstanding",
+            "amazing",
+            "incredible",
+            "fantastic",
+            "love",
+            "excited",
+            "thrilled",
+            "delighted",
+            "wonderful",
+            "tremendous",
+            "outstanding",
         ],
         "negative": [
-            "boring", "dull", "uninteresting", "mediocre",
+            "boring",
+            "dull",
+            "uninteresting",
+            "mediocre",
         ],
     },
     "friendly": {
         "positive": [
-            "help", "support", "guide", "together",
-            "we", "us", "our", "let's", "team",
-            "welcome", "happy", "glad",
+            "help",
+            "support",
+            "guide",
+            "together",
+            "we",
+            "us",
+            "our",
+            "let's",
+            "team",
+            "welcome",
+            "happy",
+            "glad",
         ],
         "negative": [
-            "you must", "you have to", "failure", "wrong",
+            "you must",
+            "you have to",
+            "failure",
+            "wrong",
         ],
     },
     "minimalist": {
         "positive": [
-            "simple", "clean", "clear", "streamlined",
-            "focus", "essential", "core",
+            "simple",
+            "clean",
+            "clear",
+            "streamlined",
+            "focus",
+            "essential",
+            "core",
         ],
         "negative": [
-            "comprehensive", "extensive", "complex", "sophisticated",
-            "robust", "full-featured",
+            "comprehensive",
+            "extensive",
+            "complex",
+            "sophisticated",
+            "robust",
+            "full-featured",
         ],
     },
 }
@@ -135,10 +199,9 @@ def _deterministic_tone_check(
     issues: list[str] = []
 
     # Detect target tone from guidelines text
-    target_tones: list[str] = []
-    for tone_name, _keywords in _TONE_KEYWORDS.items():
-        if tone_name in guidelines_lower:
-            target_tones.append(tone_name)
+    target_tones: list[str] = [
+        tone_name for tone_name in _TONE_KEYWORDS if tone_name in guidelines_lower
+    ]
 
     if not target_tones:
         # No known tone identified — check for at least some positive indicators
@@ -152,7 +215,11 @@ def _deterministic_tone_check(
                 "passed": True,
                 "detail": "no discernible tone violations detected",
             }
-        return {"name": name, "passed": True, "detail": f"positive tone indicators found: {len(found_positive)}"}
+        return {
+            "name": name,
+            "passed": True,
+            "detail": f"positive tone indicators found: {len(found_positive)}",
+        }
 
     # Check for conflicting tone markers
     conflicting_tones: set[str] = set()
@@ -163,10 +230,7 @@ def _deterministic_tone_check(
         conflict_keywords = _TONE_KEYWORDS.get(conflict, {}).get("positive", [])
         found = [kw for kw in conflict_keywords if kw in content_lower]
         if found:
-            issues.append(
-                f"conflicting '{conflict}' tone markers found: "
-                f"{', '.join(found[:3])}"
-            )
+            issues.append(f"conflicting '{conflict}' tone markers found: {', '.join(found[:3])}")
 
     # Check target tone keywords are present
     for tone in target_tones:
@@ -174,9 +238,7 @@ def _deterministic_tone_check(
         if positive_kw:
             present = [kw for kw in positive_kw if kw in content_lower]
             if not present:
-                issues.append(
-                    f"expected '{tone}' tone but no matching indicators found"
-                )
+                issues.append(f"expected '{tone}' tone but no matching indicators found")
 
     # Check for negative keywords
     for tone in target_tones:
@@ -358,7 +420,9 @@ class G6ToneCheckGate(BaseGate):
         passed: bool = llm_result["passed"]
         issues: list[str] = llm_result.get("issues", [])
         detail = (
-            "; ".join(issues) if issues else ("all tone checks passed" if passed else "tone issues found")
+            "; ".join(issues)
+            if issues
+            else ("all tone checks passed" if passed else "tone issues found")
         )
         return [{"name": "tone_consistency", "passed": passed, "detail": detail}]
 

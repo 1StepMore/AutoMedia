@@ -291,9 +291,11 @@ class HotCollector:
         for t in topics:
             title: str = t.get("title", "")
             # Simple character-level keyword extraction for CJK
-            for segment in _split_cjk(title):
-                if segment not in stop_words and len(segment) >= 2:
-                    keywords.append(segment)
+            keywords.extend(
+                segment
+                for segment in _split_cjk(title)
+                if segment not in stop_words and len(segment) >= 2
+            )
         # Deduplicate while preserving order
         seen: set[str] = set()
         unique: list[str] = []
@@ -340,6 +342,5 @@ def _split_cjk(text: str) -> list[str]:
     two_char: list[str] = []
     for seg in segments:
         if len(seg) >= 2:
-            for i in range(len(seg) - 1):
-                two_char.append(seg[i : i + 2])
+            two_char.extend(seg[i : i + 2] for i in range(len(seg) - 1))
     return segments + two_char

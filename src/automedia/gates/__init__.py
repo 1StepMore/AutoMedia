@@ -59,7 +59,7 @@ from automedia.gates.tts_brand_asset import V4TTSBrandAsset
 from automedia.gates.vision_qa import V1VisionQA
 from automedia.gates.wechat_checklist import G4WechatChecklist
 
-__all__ = [
+__all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Sub-pipeline repurpose gates
     "P1WechatGate",
     "P2TwitterGate",
@@ -101,7 +101,6 @@ __all__ = [
     "TopicSelectionGate",
     # HITL gate
     "H0HumanReviewGate",
-
     # Context
     "GateContext",
 ]
