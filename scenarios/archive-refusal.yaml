@@ -24,6 +24,7 @@ steps:
       force: false
     expect:
       success: false
+      error_expected: true
 cleanup_steps:
   - name: remove the synthetic project tree
     kind: cli

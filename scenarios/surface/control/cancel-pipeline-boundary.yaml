@@ -12,5 +12,6 @@ steps:
     tool: cancel_pipeline
     arguments:
       project_id: "000000000000"
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

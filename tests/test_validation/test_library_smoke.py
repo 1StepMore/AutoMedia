@@ -235,6 +235,9 @@ def test_error_boundary_scenarios_present(library: list[Scenario], library_root:
         assert scenario.error_boundary is True, (
             f"control scenario {name!r} must be scenario-level error_boundary: true"
         )
+        assert scenario.steps and all(
+            step.expect.error_expected is True for step in scenario.steps
+        ), f"control scenario {name!r} steps must opt in with expect.error_expected: true"
 
 
 def test_schema_conformance(library_root: Path) -> None:

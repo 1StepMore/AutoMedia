@@ -88,7 +88,8 @@ class TestSuccess:
     def test_fails_naming_key_and_observed_value(self) -> None:
         r = evaluate_expect(expect(success=True), {"success": False})
         assert r.passed is False
-        assert r.failures == ["expect.success: expected True, observed False"]
+        assert r.failures[0] == "expect.success: expected True, observed False"
+        assert any("expect.error_expected" in f for f in r.failures)
 
     def test_not_evaluated_when_absent(self) -> None:
         # output carries no "success" key; block asserts only exit_code
@@ -133,7 +134,8 @@ class TestExitCode:
     def test_fails_naming_key_and_observed_value(self) -> None:
         r = evaluate_expect(expect(exit_code=0), {"exit_code": 2})
         assert r.passed is False
-        assert r.failures == ["expect.exit_code: expected 0, observed 2"]
+        assert r.failures[0] == "expect.exit_code: expected 0, observed 2"
+        assert any("expect.error_expected" in f for f in r.failures)
 
     def test_fails_when_missing_from_output(self) -> None:
         r = evaluate_expect(expect(exit_code=0), {})
@@ -413,9 +415,9 @@ class TestConjoined:
             {"success": True, "exit_code": 1, "stdout": "ok"},
         )
         assert r.passed is False
-        # only the failing assertion is reported
-        assert len(r.failures) == 1
-        assert "expect.exit_code" in r.failures[0]
+        # the mismatching assertion and the error-envelope default are reported
+        assert r.failures[0] == "expect.exit_code: expected 0, observed 1"
+        assert any("expect.error_expected" in f for f in r.failures)
 
     def test_all_failures_are_collected(self) -> None:
         r = evaluate_expect(
@@ -423,10 +425,11 @@ class TestConjoined:
             {"success": False, "exit_code": 3, "stdout": "y"},
         )
         assert r.passed is False
-        assert len(r.failures) == 3
+        assert len(r.failures) == 4
+        assert sum(1 for f in r.failures if "expect.error_expected" in f) == 1
 
-    def test_empty_block_passes_trivially(self) -> None:
-        r = evaluate_expect(expect(), {"success": False})
+    def test_empty_block_passes_trivially_on_success(self) -> None:
+        r = evaluate_expect(expect(), {"success": True})
         assert r.passed is True
         assert r.failures == []
 
@@ -610,3 +613,36 @@ class TestQualitySpotCheck:
         r = evaluate_expect(expect(score_state=["pass"]), {"quality_score": 0.9})
         assert r.passed is False
         assert "expect.score_state" in r.failures[0]
+
+
+# --- T-04: error envelopes fail steps unless opted out ------------------------
+
+
+class TestErrorExpectedOptOut:
+    def test_unasserted_error_envelope_fails(self) -> None:
+        r = evaluate_expect(Expect(), {"success": False})
+        assert r.passed is False
+        assert "expect.error_expected" in r.failures[0]
+
+    def test_error_envelope_with_assertion_still_fails_without_opt_out(self) -> None:
+        r = evaluate_expect(expect(data_has=["x"]), {"success": False, "data": {"x": 1}})
+        assert r.passed is False
+        assert any("expect.error_expected" in f for f in r.failures)
+
+    def test_error_envelope_passes_with_opt_out(self) -> None:
+        r = evaluate_expect(expect(success=False, error_expected=True), {"success": False})
+        assert r.passed is True
+
+    def test_cli_nonzero_exit_fails_without_opt_out(self) -> None:
+        r = evaluate_expect(expect(exit_code=1), {"exit_code": 1})
+        assert r.passed is False
+        assert any("expect.error_expected" in f for f in r.failures)
+
+    def test_cli_nonzero_exit_passes_with_opt_out(self) -> None:
+        r = evaluate_expect(expect(exit_code=1, error_expected=True), {"exit_code": 1})
+        assert r.passed is True
+
+    def test_success_output_not_flagged(self) -> None:
+        r = evaluate_expect(expect(success=True), {"success": True, "exit_code": 0})
+        assert r.passed is True
+        assert r.failures == []

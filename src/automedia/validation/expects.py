@@ -296,6 +296,14 @@ def evaluate_expect(
                 f"{_fmt(expect.score_state)}"
             )
 
+    if expect.error_expected is not True:
+        signal = _error_signal(output)
+        if signal is not None:
+            failures.append(
+                f"expect.error_expected: call reported an error ({signal}); declare "
+                "error_expected: true to opt in to an error-exercising step"
+            )
+
     return ExpectResult(passed=not failures, failures=failures)
 
 
@@ -483,4 +491,20 @@ def _observed_state(output: object) -> str | None:
             value = data.get(key)
             if isinstance(value, str):
                 return value
+    return None
+
+
+def _error_signal(output: object) -> str | None:
+    """The error signal in an adapter envelope, or None when it reports success.
+
+    A tool ``success: false`` envelope and a CLI nonzero ``exit_code`` are
+    errors by default (T-04); ``expect.error_expected: true`` opts out.
+    """
+    if not isinstance(output, dict):
+        return None
+    if output.get("success") is False:
+        return "success=false"
+    exit_code = output.get("exit_code")
+    if isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code != 0:
+        return f"exit_code={exit_code}"
     return None

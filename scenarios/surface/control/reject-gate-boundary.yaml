@@ -13,5 +13,6 @@ steps:
     arguments:
       project_id: "000000000000"
       gate_name: G0
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

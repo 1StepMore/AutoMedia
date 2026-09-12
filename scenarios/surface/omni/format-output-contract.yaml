@@ -16,3 +16,4 @@ steps:
       options: {}
     expect:
       success: false
+      error_expected: true

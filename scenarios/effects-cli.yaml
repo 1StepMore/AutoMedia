@@ -22,5 +22,6 @@ steps:
     timeout_seconds: 60
     expect:
       exit_code: 2
+      error_expected: true
       stderr_has:
         - "Missing argument"

@@ -33,3 +33,4 @@ cleanup_steps:
       name: w3t1-remove-me
     expect:
       success: false
+      error_expected: true

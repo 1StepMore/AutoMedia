@@ -15,5 +15,6 @@ steps:
       modality: tts
       setting: voice
       value: zh-CN-XiaoxiaoNeural
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

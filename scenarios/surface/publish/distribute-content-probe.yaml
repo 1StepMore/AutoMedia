@@ -12,5 +12,6 @@ steps:
     arguments:
       project_id: "000000000000"
       dry_run: true
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

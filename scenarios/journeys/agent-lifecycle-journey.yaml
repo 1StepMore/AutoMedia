@@ -119,6 +119,7 @@ steps:
     timeout_seconds: 60
     expect:
       success: false
+      error_expected: true
   - name: fresh topic pool db
     kind: cli
     check: "rm -f guarantees the pool db is fresh (idempotent): a stale db from a previous run could hold already-selected topics and make select_topic fail. The db is recreated by add_pool_topic below."
@@ -190,6 +191,7 @@ steps:
     timeout_seconds: 60
     expect:
       success: false
+      error_expected: true
   - name: create the synthetic project for the lifecycle tail
     kind: cli
     check: "a python3 one-liner writes a synthetic project under the controlled projects dir: 00_project_info.json (same shape project.py:177-187 writes: project_id, topic, brand, tenant_id, created_at, plus status: draft) and a non-trivial draft in 01_content/drafts/ so effects computes real analytics. The real run's project has a random id, so the fixed-id synthetic is the static-YAML-compatible stand-in."
@@ -246,6 +248,7 @@ steps:
     timeout_seconds: 60
     expect:
       success: false
+      error_expected: true
 cleanup_steps:
   - name: remove the journey scratch dir
     kind: cli

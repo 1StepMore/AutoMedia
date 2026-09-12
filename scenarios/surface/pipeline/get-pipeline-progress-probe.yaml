@@ -11,5 +11,6 @@ steps:
     tool: get_pipeline_progress
     arguments:
       project_id: "000000000000"
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

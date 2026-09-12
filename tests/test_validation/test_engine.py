@@ -65,11 +65,11 @@ class FakeServer:
         self.calls.append((name, arguments))
         delay = self._delays.get(name, 0.0)
         if delay:
-              await asyncio.sleep(delay)
+            await asyncio.sleep(delay)
         if name in self._errors:
-              raise self._errors[name]
+            raise self._errors[name]
         if name in self._results:
-              return self._results[name]
+            return self._results[name]
         return {"success": True, "data": {"tool": name}}
 
 
@@ -146,11 +146,11 @@ class TestGreenRun:
         assert record["error_boundary"] is False
         summary = record["summary"]
         assert summary == {
-              "total": 1,
-              "passed": 1,
-              "failed": 0,
-              "recovered": 0,
-              "artifacts_missing": [],
+            "total": 1,
+            "passed": 1,
+            "failed": 0,
+            "recovered": 0,
+            "artifacts_missing": [],
         }
         (trace,) = record["steps"]
         assert trace["step_index"] == 1
@@ -194,9 +194,7 @@ class TestGreenRun:
             results={"health_check": {"success": True, "data": {"token": "sk-abc"}}}
         )
         record = run_scenario(
-            make_scenario(
-                [tool_step(arguments={"api_key": "sk-super-secret-123", "topic": "x"})]
-            ),
+            make_scenario([tool_step(arguments={"api_key": "sk-super-secret-123", "topic": "x"})]),
             server,
         )
         (trace,) = record["steps"]
@@ -216,14 +214,14 @@ class TestUnconfigured:
         scenario = make_scenario([tool_step()], requires_env=[_MISSING_ENV])
         record = run_scenario(scenario, ok_server())
         assert record == {
-              "scenario": "probe-scenario",
-              "status": "unconfigured",
-              "steps": [],
-              "cleanup": [],
-              "trace_id": record["trace_id"],
-              "reason": f"missing env: {_MISSING_ENV}",
-              "error_boundary": False,
-              "hard_safety_violation": False,
+            "scenario": "probe-scenario",
+            "status": "unconfigured",
+            "steps": [],
+            "cleanup": [],
+            "trace_id": record["trace_id"],
+            "reason": f"missing env: {_MISSING_ENV}",
+            "error_boundary": False,
+            "hard_safety_violation": False,
         }
 
     def test_empty_value_is_unconfigured(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -255,16 +253,16 @@ class TestFailureAndRecovery:
         """Primary fails, recovery passes -> 'recovered'; RED stays in failures."""
         server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
         step = tool_step(
-              recovery_steps=[
-                  {
-                      "name": "recover",
-                      "kind": "cli",
-                      "check": "recovery command runs",
-                      "standard": "founder-expectations.F01",
-                      "command": "python3 -c 'print(\"fixed\")'",
-                      "expect": {"success": True},
-                  }
-              ]
+            recovery_steps=[
+                {
+                    "name": "recover",
+                    "kind": "cli",
+                    "check": "recovery command runs",
+                    "standard": "founder-expectations.F01",
+                    "command": "python3 -c 'print(\"fixed\")'",
+                    "expect": {"success": True},
+                }
+            ]
         )
         record = run_scenario(make_scenario([step]), server)
         assert record["status"] == "recovered"
@@ -279,16 +277,16 @@ class TestFailureAndRecovery:
     def test_recovery_failing_keeps_failed(self) -> None:
         server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
         step = tool_step(
-              recovery_steps=[
-                  {
-                      "name": "recover",
-                      "kind": "cli",
-                      "check": "recovery command runs",
-                      "standard": "founder-expectations.F01",
-                      "command": "python3 -c 'import sys; sys.exit(2)'",
-                      "expect": {"success": True},
-                  }
-              ]
+            recovery_steps=[
+                {
+                    "name": "recover",
+                    "kind": "cli",
+                    "check": "recovery command runs",
+                    "standard": "founder-expectations.F01",
+                    "command": "python3 -c 'import sys; sys.exit(2)'",
+                    "expect": {"success": True},
+                }
+            ]
         )
         record = run_scenario(make_scenario([step]), server)
         assert record["status"] == "failed"
@@ -338,9 +336,7 @@ class TestErrorBoundary:
         assert "note" not in trace
 
     def test_scenario_flag_copied_into_record(self) -> None:
-        record = run_scenario(
-              make_scenario([tool_step()], error_boundary=True), ok_server()
-        )
+        record = run_scenario(make_scenario([tool_step()], error_boundary=True), ok_server())
         assert record["error_boundary"] is True
 
 
@@ -395,16 +391,14 @@ class TestArtifacts:
     def test_green_step_artifacts_copied_and_missing_loud(self, tmp_path: Path) -> None:
         (tmp_path / "out.json").write_text("{}", encoding="utf-8")
         step = tool_step(
-              name="collect outputs",
-              collect_artifacts=[
-                  {"path": "out.json", "required": True},
-                  {"path": "missing.json", "required": True},
-              ],
+            name="collect outputs",
+            collect_artifacts=[
+                {"path": "out.json", "required": True},
+                {"path": "missing.json", "required": True},
+            ],
         )
         runs_root = tmp_path / "runs"
-        record = run_scenario(
-              make_scenario([step]), ok_server(), run_root=runs_root, cwd=tmp_path
-        )
+        record = run_scenario(make_scenario([step]), ok_server(), run_root=runs_root, cwd=tmp_path)
         (trace,) = record["steps"]
         (copied, missing) = trace["artifacts"]
         assert copied["ok"] is True
@@ -413,7 +407,7 @@ class TestArtifacts:
         assert missing["ok"] is False
         assert missing["reason"] == "missing"
         assert record["summary"]["artifacts_missing"] == [
-              "step 1 (collect outputs): required artifact 'missing.json' missing"
+            "step 1 (collect outputs): required artifact 'missing.json' missing"
         ]
 
     def test_no_run_root_skips_collection(self, tmp_path: Path) -> None:
@@ -426,7 +420,7 @@ class TestArtifacts:
         server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
         step = tool_step(collect_artifacts=[{"path": "out.json"}])
         record = run_scenario(
-              make_scenario([step]), server, run_root=tmp_path / "runs", cwd=tmp_path
+            make_scenario([step]), server, run_root=tmp_path / "runs", cwd=tmp_path
         )
         assert "artifacts" not in record["steps"][0]
 
@@ -434,7 +428,7 @@ class TestArtifacts:
 class TestDispatch:
     def test_tool_step_without_server_fails_loudly(self) -> None:
         record = run_scenario(
-              make_scenario([tool_step()]), Adapters({"cli": CLIAdapter(), "file": FileAdapter()})
+            make_scenario([tool_step()]), Adapters({"cli": CLIAdapter(), "file": FileAdapter()})
         )
         (trace,) = record["steps"]
         assert trace["status"] == "failed"
@@ -442,17 +436,17 @@ class TestDispatch:
 
     def test_unknown_kind_fails_with_reason(self) -> None:
         step = Step(
-              name="probe",
-              kind="http",
-              check="probe",
-              standard="founder-expectations.F01",
-              command="http://example.test",
-              expect=Expect(),
+            name="probe",
+            kind="http",
+            check="probe",
+            standard="founder-expectations.F01",
+            command="http://example.test",
+            expect=Expect(),
         )
         record = run_scenario(make_scenario([step]), make_adapters(ok_server()))
         assert record["steps"][0]["status"] == "failed"
         assert "no adapter registered for step kind 'http'" in str(
-              record["steps"][0]["output"]["error"]
+            record["steps"][0]["output"]["error"]
         )
 
     def test_make_adapters_always_registers_cli_and_file(self) -> None:
@@ -465,8 +459,8 @@ class TestDispatch:
 class TestRedaction:
     def test_uses_shared_util(self) -> None:
         assert engine._redact({"api_key": "sk-1", "topic": "x"}) == {
-              "api_key": "***REDACTED***",
-              "topic": "x",
+            "api_key": "***REDACTED***",
+            "topic": "x",
         }
 
     def test_local_fallback_when_import_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -474,8 +468,8 @@ class TestRedaction:
         stub = types.ModuleType("automedia.mcp.tools._shared")
         monkeypatch.setitem(sys.modules, "automedia.mcp.tools._shared", stub)
         assert engine._redact({"token": "sk-123", "topic": "x"}) == {
-              "token": "***REDACTED***",
-              "topic": "x",
+            "token": "***REDACTED***",
+            "topic": "x",
         }
         assert engine._redact("plain string") == "plain string"
 
@@ -499,14 +493,10 @@ class TestHardSafety:
         assert record["status"] == "failed"
         assert record["hard_safety_violation"] is True
 
-    def test_hard_unconfigured_violation_true(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_hard_unconfigured_violation_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """KEY hard-safety behavior: unconfigured is never passed — it blocks."""
         monkeypatch.delenv(_MISSING_ENV, raising=False)
-        scenario = make_scenario(
-            [tool_step()], hard=True, requires_env=[_MISSING_ENV]
-        )
+        scenario = make_scenario([tool_step()], hard=True, requires_env=[_MISSING_ENV])
         record = run_scenario(scenario, ok_server())
         assert record["status"] == "unconfigured"
         assert record["hard_safety_violation"] is True
@@ -660,28 +650,26 @@ def suite_scenarios_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
 def suite_server() -> FakeServer:
     return FakeServer(
         results={
-              "health_check": {"success": True, "data": {"status": "ok"}},
-              "failing_tool": {"success": False, "error": "boom"},
+            "health_check": {"success": True, "data": {"status": "ok"}},
+            "failing_tool": {"success": False, "error": "boom"},
         }
     )
 
 
 class TestSuite:
-    def test_suite_run_persists(
-        self, suite_scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_suite_run_persists(self, suite_scenarios_dir: Path, tmp_path: Path) -> None:
         runs_root = tmp_path / "runs"
         record = asyncio.run(
-              run_validation_suite_async(suite_server(), suite_scenarios_dir, runs_root=runs_root)
+            run_validation_suite_async(suite_server(), suite_scenarios_dir, runs_root=runs_root)
         )
         assert record["trace_id"]
         assert record["generated_at"]
         assert len(record["scenarios"]) == 3
         statuses = {r["scenario"]: r["status"] for r in record["scenarios"]}
         assert statuses == {
-              "green-suite": "passed",
-              "red-suite": "failed",
-              "unconfigured-suite": "unconfigured",
+            "green-suite": "passed",
+            "red-suite": "failed",
+            "unconfigured-suite": "unconfigured",
         }
         # ONE UUID per run, threaded into every scenario (guide §3.1 phase 5).
         assert all(r["trace_id"] == record["trace_id"] for r in record["scenarios"])
@@ -730,16 +718,16 @@ class TestSuite:
 
     def test_suite_save_requires_runs_root(self, suite_scenarios_dir: Path) -> None:
         with pytest.raises(ValueError, match="runs_root"):
-              asyncio.run(run_validation_suite_async(suite_server(), suite_scenarios_dir))
+            asyncio.run(run_validation_suite_async(suite_server(), suite_scenarios_dir))
 
     def test_suite_save_false_leaves_no_evidence(
         self, suite_scenarios_dir: Path, tmp_path: Path
     ) -> None:
         runs_root = tmp_path / "runs"
         record = asyncio.run(
-              run_validation_suite_async(
-                  suite_server(), suite_scenarios_dir, runs_root=runs_root, save=False
-              )
+            run_validation_suite_async(
+                suite_server(), suite_scenarios_dir, runs_root=runs_root, save=False
+            )
         )
         assert len(record["scenarios"]) == 3
         assert not runs_root.exists()
@@ -748,7 +736,7 @@ class TestSuite:
         self, suite_scenarios_dir: Path, tmp_path: Path
     ) -> None:
         record = asyncio.run(
-              run_validation_suite_async(None, suite_scenarios_dir, runs_root=tmp_path / "runs")
+            run_validation_suite_async(None, suite_scenarios_dir, runs_root=tmp_path / "runs")
         )
         green = next(r for r in record["scenarios"] if r["scenario"] == "green-suite")
         assert green["status"] == "failed"
@@ -756,19 +744,15 @@ class TestSuite:
         # The cli step of the same scenario still ran (per-step dispatch).
         assert green["steps"][1]["status"] == "passed"
 
-    def test_suite_sync_wrapper(
-        self, suite_scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_suite_sync_wrapper(self, suite_scenarios_dir: Path, tmp_path: Path) -> None:
         record = run_validation_suite(
             suite_server(), suite_scenarios_dir, runs_root=tmp_path / "runs"
         )
         assert len(record["scenarios"]) == 3
 
-    def test_load_error_propagates_loudly(
-        self, suite_scenarios_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_load_error_propagates_loudly(self, suite_scenarios_dir: Path, tmp_path: Path) -> None:
         (suite_scenarios_dir / "bad.yaml").write_text("name: [broken", encoding="utf-8")
-        with pytest.raises(LoadError, match="bad.yaml"):
+        with pytest.raises(LoadError, match=r"bad\.yaml"):
             asyncio.run(
                 run_validation_suite_async(
                     suite_server(), suite_scenarios_dir, runs_root=tmp_path / "runs"
@@ -781,6 +765,41 @@ class TestSuite:
         shutil.copy2(_STANDARDS_FIXTURE, empty / "STANDARDS.md")
         monkeypatch.setenv("AUTOMEDIA_VALIDATION_SCENARIOS_DIR", str(empty))
         record = asyncio.run(
-              run_validation_suite_async(suite_server(), empty, runs_root=tmp_path / "runs")
+            run_validation_suite_async(suite_server(), empty, runs_root=tmp_path / "runs")
         )
         assert record["scenarios"] == []
+
+
+class TestErrorEnvelopeDefault:
+    """T-04: an error envelope fails a step unless ``error_expected`` opts in."""
+
+    def test_tool_error_step_fails_without_opt_out(self) -> None:
+        server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
+        step = tool_step(expect={"data_has": ["x"]})
+        record = run_scenario(make_scenario([step]), server)
+
+        assert record["status"] == "failed"
+        assert any("expect.error_expected" in f for f in record["steps"][0]["failures"])
+
+    def test_tool_error_step_passes_with_opt_out(self) -> None:
+        server = FakeServer(results={"health_check": {"success": False, "error": "boom"}})
+        step = tool_step(expect={"success": False, "error_expected": True})
+        record = run_scenario(make_scenario([step]), server)
+
+        assert record["status"] == "passed"
+
+    def test_cli_nonzero_step_fails_without_opt_out(self) -> None:
+        step = cli_step("python3 -c 'import sys; sys.exit(3)'", expect={"exit_code": 3})
+        record = run_scenario(make_scenario([step]), make_adapters(ok_server()))
+
+        assert record["status"] == "failed"
+        assert any("expect.error_expected" in f for f in record["steps"][0]["failures"])
+
+    def test_cli_nonzero_step_passes_with_opt_out(self) -> None:
+        step = cli_step(
+            "python3 -c 'import sys; sys.exit(3)'",
+            expect={"exit_code": 3, "error_expected": True},
+        )
+        record = run_scenario(make_scenario([step]), make_adapters(ok_server()))
+
+        assert record["status"] == "passed"

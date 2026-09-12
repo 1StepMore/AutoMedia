@@ -12,5 +12,6 @@ steps:
     tool: get_account_health
     arguments:
       account_id: acc_wechat_deadbeef
-    expect: {}
+    expect:
+      error_expected: true
     error_boundary: true

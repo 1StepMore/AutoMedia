@@ -13,6 +13,7 @@ steps:
     timeout_seconds: 180
     expect:
       exit_code: 1
+      error_expected: true
       stdout_has:
         - ffmpeg
       stderr_has:

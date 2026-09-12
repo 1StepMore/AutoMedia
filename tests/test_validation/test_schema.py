@@ -163,6 +163,7 @@ class TestAcceptsValid:
             "output_has",
             "min_score",
             "score_state",
+            "error_expected",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS
