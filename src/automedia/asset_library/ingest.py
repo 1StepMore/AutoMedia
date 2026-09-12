@@ -301,7 +301,7 @@ def _build_asset_doc(
     filename), compute the MD5 checksum, and gather tags.
     """
     content_bytes = file_path.read_bytes()
-    checksum = hashlib.md5(content_bytes).hexdigest()  # noqa: S324 — integrity checksum
+    checksum = hashlib.md5(content_bytes, usedforsecurity=False).hexdigest()
 
     # Try to extract title from front-matter or first heading.
     title = _extract_title(file_path, content_bytes) or file_path.stem

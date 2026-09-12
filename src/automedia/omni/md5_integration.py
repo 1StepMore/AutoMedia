@@ -32,7 +32,7 @@ def _default_state_dir() -> Path:
 
 def compute_md5(file_path: str | Path) -> str:
     """Compute MD5 hex digest of a file."""
-    h = hashlib.md5()  # noqa: S324 — integrity checksum
+    h = hashlib.md5(usedforsecurity=False)
     with open(file_path, "rb") as f:
         while True:
             chunk = f.read(8192)

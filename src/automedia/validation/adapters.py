@@ -225,7 +225,12 @@ class CLIAdapter:
     ) -> subprocess.CompletedProcess[str]:
         """The single subprocess choke point (trusted scenario commands)."""
         return subprocess.run(  # noqa: S603 — trusted committed scenario config
-            parts, capture_output=True, text=True, timeout=timeout, shell=shell, check=False
+            parts,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            shell=shell,  # nosec B602 — trusted committed scenario config
+            check=False,
         )
 
 

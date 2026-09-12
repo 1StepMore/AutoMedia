@@ -285,7 +285,7 @@ class AssetDatabase:
         columns = ", ".join(row.keys())
         placeholders = ", ".join(f":{k}" for k in row)
 
-        stmt = f"INSERT INTO assets ({columns}) VALUES ({placeholders})"  # noqa: S608 — parameterized
+        stmt = f"INSERT INTO assets ({columns}) VALUES ({placeholders})"  # noqa: S608  # nosec B608 — parameterized
         try:
             self.conn.execute(stmt, row)
             self.conn.commit()
@@ -301,7 +301,7 @@ class AssetDatabase:
         row = doc.to_db_row()
         row["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sets = ", ".join(f"{k} = :{k}" for k in row if k != "doc_id")
-        stmt = f"UPDATE assets SET {sets} WHERE doc_id = :doc_id"  # noqa: S608 — parameterized
+        stmt = f"UPDATE assets SET {sets} WHERE doc_id = :doc_id"  # noqa: S608  # nosec B608 — parameterized
         self.conn.execute(stmt, {**row, "doc_id": doc.doc_id})
         self.conn.commit()
 
@@ -349,12 +349,12 @@ class AssetDatabase:
         # Build a query that finds assets whose tags JSON array
         # contains at least one of the provided tags.
         placeholders = ", ".join("?" for _ in tags)
-        query = f"""
-            SELECT DISTINCT a.*
-            FROM assets a, json_each(a.tags) AS j
-            WHERE j.value IN ({placeholders})
-            ORDER BY a.created_at DESC
-        """  # noqa: S608 — parameterized
+        query = (
+            "SELECT DISTINCT a.* "  # noqa: S608  # nosec B608 — parameterized
+            "FROM assets a, json_each(a.tags) AS j "
+            f"WHERE j.value IN ({placeholders}) "  # nosec B608 — generated placeholders, tags bound
+            "ORDER BY a.created_at DESC"
+        )
         cur = self.conn.execute(query, tags)
         return [self._row_to_dict(r) for r in cur.fetchall()]
 
@@ -446,7 +446,7 @@ class AssetDatabase:
         row = log.to_db_row()
         columns = ", ".join(row.keys())
         placeholders = ", ".join(f":{k}" for k in row)
-        stmt = f"INSERT INTO distribution_log ({columns}) VALUES ({placeholders})"  # noqa: S608 — parameterized
+        stmt = f"INSERT INTO distribution_log ({columns}) VALUES ({placeholders})"  # noqa: S608  # nosec B608 — parameterized
         self.conn.execute(stmt, row)
         self.conn.commit()
         return log.log_id

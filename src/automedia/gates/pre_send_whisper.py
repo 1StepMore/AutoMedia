@@ -73,7 +73,7 @@ def _check_md5_integrity(audio_path: str, expected_md5: str) -> CheckResult:
     if not expected_md5:
         return {"name": name, "passed": True, "detail": "no expected_md5 provided, skip"}
     try:
-        h = hashlib.md5()  # noqa: S324 — integrity checksum
+        h = hashlib.md5(usedforsecurity=False)
         with open(audio_path, "rb") as f:
             while True:
                 chunk = f.read(8192)

@@ -207,7 +207,7 @@ class PoolDB:
             return 0
         placeholders = ",".join("?" for _ in topic_ids)
         cur = self.conn.execute(
-            f"DELETE FROM topics WHERE id IN ({placeholders})",  # noqa: S608
+            f"DELETE FROM topics WHERE id IN ({placeholders})",  # noqa: S608  # nosec B608
             topic_ids,
         )
         self.conn.commit()

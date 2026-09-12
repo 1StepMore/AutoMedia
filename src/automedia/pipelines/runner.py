@@ -1641,8 +1641,14 @@ def _resolve_source_material(
     if source_url:
         try:
             import urllib.request
+            from urllib.parse import urlparse
 
-            with urllib.request.urlopen(source_url, timeout=30) as resp:  # noqa: S310  # source_url is user-provided config value
+            scheme = urlparse(source_url).scheme.lower()
+            if scheme not in ("http", "https"):
+                raise ValueError(f"unsupported URL scheme: {scheme or '(none)'}")
+            with urllib.request.urlopen(  # noqa: S310  # nosec B310 — scheme restricted to http(s) above
+                source_url, timeout=30
+            ) as resp:
                 content = resp.read().decode("utf-8")
             contents.append(content)
             if not result_type:

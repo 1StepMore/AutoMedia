@@ -268,15 +268,17 @@ def _job_run_pipeline() -> None:
                 f"  [run-pipeline] {name!r} EXCEPTION: {exc}",
                 fg=typer.colors.RED,
             )
-            results.append({
-                "status": "failed",
-                "error": {
-                    "code": "CLI_ERROR",
-                    "message": str(exc),
-                    "resolution": "Check the error message and fix the issue before retrying",
-                },
-                "name": name,
-            })
+            results.append(
+                {
+                    "status": "failed",
+                    "error": {
+                        "code": "CLI_ERROR",
+                        "message": str(exc),
+                        "resolution": "Check the error message and fix the issue before retrying",
+                    },
+                    "name": name,
+                }
+            )
 
     passed = sum(1 for r in results if r.get("status") in ("success", "partial"))
     failed = len(results) - passed
@@ -303,8 +305,7 @@ def _job_run_distribute() -> None:
 
     schedules = _read_pipeline_schedules()
     distribute_entries = [
-        s for s in schedules
-        if s.get("command", "").startswith("automedia distribute")
+        s for s in schedules if s.get("command", "").startswith("automedia distribute")
     ]
 
     if not distribute_entries:
@@ -320,7 +321,7 @@ def _job_run_distribute() -> None:
         try:
             proc = subprocess.run(  # noqa: S602 — command strings come from trusted pipeline schedule config
                 command,
-                shell=True,
+                shell=True,  # nosec B602 — command from trusted pipeline schedule config
                 capture_output=True,
                 text=True,
                 timeout=600,
@@ -395,10 +396,7 @@ def cron_run_pipeline(
         matched = [s for s in schedules if s.get("name") == name]
         if not matched:
             available = [s.get("name", "?") for s in schedules]
-            output_error(
-                f"Schedule {name!r} not found. "
-                f"Available schedules: {available}"
-            )
+            output_error(f"Schedule {name!r} not found. Available schedules: {available}")
         entries = matched
     else:
         entries = schedules
