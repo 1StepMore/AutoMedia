@@ -313,7 +313,7 @@ async def run_validation_scenario_async(
     """
     base = Path.cwd() if cwd is None else Path(cwd)
     trace_id = trace_id or str(uuid.uuid4())
-    gate = check_env(scenario.requires_env)
+    gate = check_env(scenario.requires_env, requires_real_llm=scenario.requires_real_llm)
     if not gate.configured:
         return {
             "scenario": scenario.name,
