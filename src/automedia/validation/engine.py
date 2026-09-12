@@ -15,11 +15,14 @@ pipelines), so mutating scenarios should prefer the CLI surface
 loudly, never fabricate.
 
 Records: scenario ``{scenario, status, summary, steps, cleanup, trace_id,
-error_boundary, hard_safety_violation}``; unconfigured ``{..., status:
-"unconfigured", steps: [], cleanup: [], reason: "missing env: [...]",
-hard_safety_violation: scenario.hard}``; suite ``{trace_id, generated_at,
-scenarios, hard_safety_violations, blocked}`` — ONE UUID per run threaded
-into every step (§3.1 phase 5).  Step trace: ``step_index`` (1-based; 0 =
+error_boundary, hard_safety_violation, confidence}``; unconfigured ``{...,
+status: "unconfigured", steps: [], cleanup: [], reason: "missing env: [...]",
+hard_safety_violation: scenario.hard, confidence}``; suite ``{trace_id,
+generated_at, scenarios, hard_safety_violations, blocked, confidence}`` — ONE
+UUID per run threaded into every step (§3.1 phase 5).  ``confidence`` is
+``"real"`` for a shipped-provider run and ``"mock"`` when ``AUTOMEDIA_FAKE_LLM``
+selects the deterministic mock LLM (gap T-22): a mock pass proves plumbing
+only and never satisfies real-surface coverage.  Step trace: ``step_index`` (1-based; 0 =
 cleanup), target, surface, name, arguments (REDACTED), passed, status,
 failures, duration (``time.monotonic``, 3 decimals), trace_id, check,
 standard, output (redacted).
@@ -74,7 +77,7 @@ from automedia.validation.adapters import (
     ToolAdapter,
     ToolCallable,
 )
-from automedia.validation.env_gate import check_env
+from automedia.validation.env_gate import check_env, fake_mode_active
 from automedia.validation.expects import (
     SimpleRecord,
     aggregate_status,
@@ -125,6 +128,11 @@ def make_adapters(server: ToolCallable | None = None) -> Adapters:
     if server is not None:
         table["tool"] = ToolAdapter(server)
     return Adapters(table)
+
+
+def _confidence() -> str:
+    """Run-record confidence (gap T-22): ``"mock"`` under fake mode, else ``"real"``."""
+    return "mock" if fake_mode_active() else "real"
 
 
 def _redact(value: object) -> object:
@@ -324,6 +332,7 @@ async def run_validation_scenario_async(
             "reason": f"missing env: {', '.join(gate.missing)}",
             "error_boundary": scenario.error_boundary,
             "hard_safety_violation": scenario.hard,
+            "confidence": _confidence(),
         }
     steps = [
         await _run_primary_step(step, adapters, trace_id, index, cwd=base, run_root=run_root)
@@ -346,6 +355,7 @@ async def run_validation_scenario_async(
         "trace_id": trace_id,
         "error_boundary": scenario.error_boundary,
         "hard_safety_violation": scenario.hard and status != "passed",
+        "confidence": _confidence(),
     }
 
 
@@ -414,6 +424,7 @@ async def run_validation_suite_async(
         "scenarios": records,
         "hard_safety_violations": violations,
         "blocked": bool(violations),
+        "confidence": _confidence(),
     }
     if save and root is not None:
         record_path = persist_run(root, record, run_dir=run_root)

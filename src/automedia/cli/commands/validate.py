@@ -198,6 +198,7 @@ def validate_run(
         "trace_id": record["trace_id"],
         "generated_at": datetime.now(UTC).isoformat(),
         "scenarios": [record],
+        "confidence": record.get("confidence", "real"),
     }
     try:
         record_path = persist_run(root, run_record)

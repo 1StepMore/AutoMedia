@@ -184,6 +184,7 @@ async def run_validation_scenario(
             "trace_id": record["trace_id"],
             "generated_at": datetime.now(UTC).isoformat(),
             "scenarios": [record],
+            "confidence": record.get("confidence", "real"),
         }
         try:
             record_path = persist_run(run_root, suite)

@@ -82,6 +82,7 @@ inside names the most recent run.
 | `category` | Grouping label for reporting and the coverage audit | Lets reports and audits slice the library |
 | `requires_env` | List of env var names the scenario needs | The gate: a missing var marks the whole scenario `unconfigured`, never a pass |
 | `requires_http` | Flag that the scenario needs a live HTTP service | Inert in AutoMedia (no HTTP adapter ships); kept for guide portability |
+| `requires_real_llm` | Flag that the scenario must use the real LLM provider | Opt-out from the fake-LLM-aware gate: with `AUTOMEDIA_FAKE_LLM=1` a scenario without this flag runs against the deterministic mock instead of short-circuiting to `unconfigured`; with it, a missing provider key still gates |
 | `min_passing` | Integer count of primary steps that must succeed | Partial-pass policy, checked before `pass_ratio` |
 | `pass_ratio` | Fraction of primary steps that must succeed | Partial-pass policy for scenarios whose step count grows |
 | `regression: true` | Marks the scenario as pinned to a specific fix | The regression flywheel: it must stay green forever |
@@ -260,13 +261,37 @@ scenario is not pinned to a bug fix.
 - **RED first.** Record the honest negative state before fixing anything. A
   result that jumps straight to GREEN with no recorded RED is suspect and is
   re-run from the pre-flight baseline.
-- **No mocks.** Every step dispatches a real call through the shipped
-  surface. Evidence comes only from real calls; seeded fixtures and simulated
-  layers never count.
+- **Mocks prove plumbing, never capability.** Every step dispatches a real
+  call through the shipped surface. The ONE sanctioned exception is the
+  deterministic fake LLM (`AUTOMEDIA_FAKE_LLM=1`) and the validation stub
+  seam: a run executed against a simulated layer is recorded with
+  `confidence: mock` and its passes are labelled **`Proved (mock)`**. A
+  `Proved (mock)` pass proves the plumbing (the call routed, the record
+  persisted), NOT the capability; it never satisfies real-surface coverage
+  (`validate coverage` keeps the surface `unproven`). A run against the
+  shipped provider is `confidence: real` and its passes are `Proved`.
+  Seeded fixtures and simulated layers still never count as real evidence.
 - **Cleanup never influences status.** Cleanup runs best-effort after the main
   steps, is reported separately, and never touches the scenario verdict.
 - **Artifacts must be shown.** GREEN means the call succeeded, the artifact
   exists, and that artifact was carried to the director.
+
+### Mock-aware evidence (`confidence`)
+
+Every run record — the suite record at the top level and each scenario record
+inside it — carries a `confidence` field:
+
+- `confidence: real` — the run reached the shipped provider (the default for
+  records written before this field existed).
+- `confidence: mock` — the run executed against the deterministic fake LLM
+  (`AUTOMEDIA_FAKE_LLM=1`). A step that passes here is `Proved (mock)`:
+  plumbing only, never capability proof. Coverage excludes its surfaces from
+  `covered`; they stay `unproven` until a real `Proved` step reaches them.
+
+A surface therefore becomes `covered` only when a `real`-confidence run
+records a passed step that reaches it. This is what keeps the fake-LLM
+dev path (T-15) and the stub seam (T-21) honest rather than silently
+inflating the coverage claim.
 
 ## How to run
 

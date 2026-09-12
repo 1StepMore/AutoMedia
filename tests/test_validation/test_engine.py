@@ -222,6 +222,7 @@ class TestUnconfigured:
             "reason": f"missing env: {_MISSING_ENV}",
             "error_boundary": False,
             "hard_safety_violation": False,
+            "confidence": "real",
         }
 
     def test_empty_value_is_unconfigured(self, monkeypatch: pytest.MonkeyPatch) -> None:
