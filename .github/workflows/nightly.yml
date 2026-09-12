@@ -64,8 +64,14 @@ jobs:
       - name: Ruff
         run: uv run ruff check src/automedia/ --ignore E501,E402,N806,E741
 
-      - name: Mypy
+      - name: Mypy (advisory — parity with PR CI)
+        continue-on-error: true
         run: uv run mypy src/automedia/ --ignore-missing-imports
+
+      - name: Mypy (strict — hardened modules)
+        # Blocking, matching the PR CI strict gate. The 7 hardened modules are
+        # strict-clean; do NOT add continue-on-error here.
+        run: uv run mypy --strict src/automedia/asset_library/vector_store.py src/automedia/asset_library/migrate.py src/automedia/manifests/brand_profile_schema.py src/automedia/pool/collector.py src/automedia/cli/commands/history_cmd.py src/automedia/cli/commands/pipeline.py src/automedia/core/config_loader.py --ignore-missing-imports
 
       # ── Full test suite ──
 
