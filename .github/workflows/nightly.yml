@@ -26,7 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
 
       # ── Security scans (blocking — unlike PR CI where these are advisory) ──
 
@@ -117,7 +117,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
       - name: Full validation suite (credential-free)
         run: |
           env -u AUTOMEDIA_LLM_API_KEY uv run python3 scripts/validation_run_affected.py --all
@@ -167,7 +167,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
       - name: Draft-only publish scenario (credentialed host)
         env:
           AUTOMEDIA_WECHAT_APPID: ${{ secrets.AUTOMEDIA_WECHAT_APPID }}
