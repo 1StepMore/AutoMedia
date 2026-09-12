@@ -94,6 +94,33 @@ def persist_run(
     return record_path
 
 
+def persist_baseline(path: Path, run_record: dict[str, object]) -> Path:
+    """Persist a baseline run record with exclusive create; return its path.
+
+    Gap R-10: the committed baseline (``scenarios/baseline/
+    2026-08-14-preflight.json``) is a model artifact and must be immutable —
+    a regeneration must NEVER overwrite it in place (the previous
+    ``json.dump(..., open(..., "w"))`` one-liner destroyed the prior RED
+    baseline).  This applies the same ``O_CREAT|O_EXCL`` primitive as
+    :func:`persist_run` to the single-file baseline: a pre-existing baseline
+    raises :class:`PersistError` instead of being truncated.  To record a new
+    baseline, choose a new path (or delete the old one deliberately, outside
+    this function).
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    try:
+        fd = os.open(path, flags, 0o644)
+    except FileExistsError:
+        raise PersistError(
+            f"baseline record already exists, refusing to overwrite: {path}"
+        ) from None
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(run_record, fh, indent=2)
+    return path
+
+
 def write_metrics(run_dir: Path, metrics: dict[str, object]) -> Path:
     """Write ``metrics.json`` into an already-created run dir; return its path.
 

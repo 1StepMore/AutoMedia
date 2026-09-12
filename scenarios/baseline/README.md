@@ -10,12 +10,33 @@ and the 7 fail-closed control boundary probes). A hard scenario whose run
 status is not `passed` blocks the suite, so this record's
 `hard_safety_violations: []` / `blocked: false` is the green guarantee. The
 `validate diff` / `validate matrix` tooling resolves THIS file as the default
-baseline. Regenerate it with:
+baseline.
+
+## Lost RED baseline (recorded — not recoverable)
+
+The original RED pre-flight baseline no longer exists. The 2026-09-01
+regeneration overwrote it in place with
+`json.dump(r, open('scenarios/baseline/2026-08-14-preflight.json', 'w'))` — a
+non-exclusive write that truncated the prior RED record. There is no copy to
+restore: the loss is permanent (gap R-10). Under the honesty rule "RED first —
+a GREEN with no recorded RED is suspect", the current all-GREEN baseline must
+not be read as if that earlier RED had been preserved. Every regeneration now
+goes through `automedia.validation.persist.persist_baseline`, whose
+`O_CREAT|O_EXCL` write refuses to overwrite, so this cannot recur.
+
+## Regeneration (refuses to overwrite)
+
+Regeneration runs the whole library and writes a NEW baseline file with
+exclusive create. Point `baseline_path` at a new name each time; an existing
+path raises `PersistError` ("refusing to overwrite") and is left untouched:
 
 ```
 env -u AUTOMEDIA_LLM_API_KEY AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/baseline-projects \
-  python3 -c "import asyncio, json; from automedia.mcp.server import create_server; from automedia.validation.engine import run_validation_suite_async; r = asyncio.run(run_validation_suite_async(create_server(), runs_root='/tmp/automedia/baseline-runs', save=False)); r['baseline'] = True; r['note'] = 'full-suite baseline'; json.dump(r, open('scenarios/baseline/2026-08-14-preflight.json', 'w', encoding='utf-8'), indent=2)"
+  python3 -c "from automedia.mcp.server import create_server; from automedia.validation.baseline import regenerate_baseline; regenerate_baseline(create_server(), baseline_path='scenarios/baseline/<new-name>.json')"
 ```
 
-(`save=False`, run from the repo root so the relative output path resolves; only
-this tracked copy is committed — `validation-runs/` stays gitignored.)
+`regenerate_baseline` runs with `save=False` and writes only the single
+committed copy — `validation-runs/` stays gitignored. The committed
+`2026-08-14-preflight.json` is therefore immutable: it can only be replaced by
+a deliberate, human-visible action outside this tool (e.g. `git rm` + a new
+committed file), never by a regeneration over the top of it.
