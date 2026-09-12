@@ -1,0 +1,41 @@
+name: init-config-recovery
+description: "Failure injection + repair for the init_config mutating surface: init_config fails when project_dir is a regular file, the recovery step repairs by initializing a valid temp project, and the scenario records `recovered` with the original failure retained."
+intent: "Make the engine's `recovered` verdict reachable on a real mutating surface (gap R-01): a failed mutation is repaired, the verdict is `recovered` (never `passed`), and RED stays in the run record. Deterministic and credential-free so the full-suite run exercises it on every host."
+category: recovery
+requires_env: []
+steps:
+  - name: create the file that blocks init_config
+    kind: cli
+    check: "a python3 one-liner writes a regular file at /tmp/automedia/recovery-initcfg-blocked so init_config cannot create .automedia underneath it."
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c "import pathlib; p = pathlib.Path('/tmp/automedia/recovery-initcfg-blocked'); p.parent.mkdir(parents=True, exist_ok=True); p.write_text('blocker')"
+    expect:
+      exit_code: 0
+  - name: injected failure when project_dir is a file
+    kind: tool
+    check: "init_config returns success: false (File I/O error) because project_dir is a regular file, not a directory; the step deliberately asserts success so the failed mutation is RED."
+    standard: tool.contract
+    tool: init_config
+    arguments:
+      project_dir: /tmp/automedia/recovery-initcfg-blocked
+    expect:
+      success: true
+    recovery_steps:
+      - name: repair init_config into a valid temp project
+        kind: tool
+        check: "init_config returns success: true for the valid /tmp/automedia/recovery-initcfg-repaired project, repairing the failed mutation."
+        standard: tool.contract
+        tool: init_config
+        arguments:
+          project_dir: /tmp/automedia/recovery-initcfg-repaired
+        expect:
+          success: true
+cleanup_steps:
+  - name: remove the blocker and the repaired project
+    kind: cli
+    check: "rm -rf removes both temp trees created by this scenario."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/recovery-initcfg-blocked /tmp/automedia/recovery-initcfg-repaired
+    expect:
+      exit_code: 0
