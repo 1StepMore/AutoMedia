@@ -85,6 +85,20 @@ def _expect_str_list(value: object, where: str) -> list[str]:
     return value
 
 
+def _expect_str_or_bool(value: object, where: str) -> str | bool:
+    """Return ``value`` as a str or bool (ints rejected), else ``SchemaError``.
+
+    Used by expect keys that accept a literal string or a boolean toggle
+    (``expect.trace_id``: ``true`` = a trace id must be present, a string =
+    that literal must be found).
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value
+    raise SchemaError(f"{where}: expected str or bool, got {type(value).__name__}")
+
+
 def _expect_any_dict(value: object, where: str) -> dict[str, Any]:
     """Return ``value`` as a str-keyed dict or raise ``SchemaError``."""
     if not isinstance(value, dict):

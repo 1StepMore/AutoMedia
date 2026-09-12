@@ -39,6 +39,7 @@ from automedia.validation.schema_parse import (
     _expect_number,
     _expect_str,
     _expect_str_list,
+    _expect_str_or_bool,
     _parse_items,
     _reject_unknown,
 )
@@ -95,6 +96,7 @@ _EXPECT_PARSE: tuple[tuple[str, Callable[[object, str], Any]], ...] = (
     ("error_expected", _expect_bool),
     ("error_code_has", _expect_str_list),
     ("recovery_has", _expect_str_list),
+    ("trace_id", _expect_str_or_bool),
 )
 """Field-name → type-parser map for the simple (non-cross-validated) expect keys."""
 
@@ -119,6 +121,7 @@ class Expect:
     error_expected: bool | None = None
     error_code_has: list[str] | None = None
     recovery_has: list[str] | None = None
+    trace_id: str | bool | None = None
 
     @classmethod
     def from_dict(cls, data: object, where: str = "expect") -> Expect:

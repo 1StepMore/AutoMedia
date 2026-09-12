@@ -167,6 +167,7 @@ class TestAcceptsValid:
             "error_expected",
             "error_code_has",
             "recovery_has",
+            "trace_id",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS

@@ -98,6 +98,9 @@ _RECOVERY_KEYS: tuple[str, ...] = (
 )
 """Error-dict keys carrying the recovery instruction string (R-08)."""
 
+_TRACE_ID_KEYS: tuple[str, ...] = ("trace_id", "traceId", "correlation_id", "correlationId")
+"""Keys carrying a trace/correlation identifier (Tr-01)."""
+
 
 @dataclass(frozen=True, slots=True)
 class CheckTypeEvaluator:
@@ -345,6 +348,9 @@ def evaluate_expect(
                     "expect.recovery_has: recovery "
                     f"{recovery!r} missing substring(s) {_fmt(missing)}"
                 )
+
+    if expect.trace_id is not None:
+        failures.extend(_trace_id_failures(expect.trace_id, output))
 
     return ExpectResult(passed=not failures, failures=failures)
 
@@ -608,3 +614,48 @@ def _recovery_text(output: object) -> str | None:
             if isinstance(value, str) and value.strip():
                 return value
     return None
+
+
+def _trace_ids(value: object) -> list[str]:
+    """Every non-empty trace/correlation identifier nested in ``value`` (Tr-01)."""
+    found: list[str] = []
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            for key, item in node.items():
+                if key in _TRACE_ID_KEYS and isinstance(item, str) and item.strip():
+                    found.append(item)
+                walk(item)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(value)
+    return found
+
+
+def _string_values(value: object) -> list[str]:
+    """Every string nested in ``value`` (stdout JSON included)."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _string_values(item)]
+    if isinstance(value, list):
+        return [text for item in value for text in _string_values(item)]
+    return []
+
+
+def _trace_id_failures(expected: str | bool, output: object) -> list[str]:
+    """Grade ``expect.trace_id`` against an output envelope (Tr-01)."""
+    ids = _trace_ids(output)
+    if expected is True:
+        if ids:
+            return []
+        return ["expect.trace_id: no non-empty trace_id/correlation_id field in output"]
+    if expected is False:
+        if not ids:
+            return []
+        return [f"expect.trace_id: expected no trace id, observed {_fmt(ids)}"]
+    if expected in ids or any(expected in text for text in _string_values(output)):
+        return []
+    return [f"expect.trace_id: literal {expected!r} not found in output trace ids/strings"]
