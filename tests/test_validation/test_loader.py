@@ -66,6 +66,7 @@ def scenario_dict(**overrides: object) -> dict[str, object]:
         "name": "health-smoke",
         "description": "The MCP server reports health",
         "intent": "Prove the server health contract",
+        "user_level": "L0",
         "steps": [tool_step()],
     }
     base.update(overrides)

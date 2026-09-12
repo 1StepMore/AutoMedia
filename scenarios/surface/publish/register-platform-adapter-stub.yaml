@@ -2,6 +2,7 @@ name: register-platform-adapter-stub
 description: register_platform_adapter without an adapter_class acknowledges the platform as a pure stub and returns a success envelope carrying registered false and stub true.
 intent: "Prove the adapter-registration surface's documented stub contract (PRD-1 NG6): the placeholder path answers deterministically without mutating the registry."
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: register_platform_adapter acknowledges the stub

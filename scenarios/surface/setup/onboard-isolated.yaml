@@ -2,6 +2,7 @@ name: onboard-isolated
 description: "onboard runs the one-step onboarding against the isolated config dir: it creates a brand profile when brand_name is given and skips LLM configuration when no provider is given, returning a success envelope."
 intent: Prove the onboarding surface answers a real call without credentials (LLM step skipped), so agents can bootstrap from the MCP surface on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: onboard creates the brand without LLM config

@@ -2,6 +2,7 @@ name: help-mcp-manifest
 description: help_mcp returns the runtime tool manifest, a categorized listing with a tool count, as the MCP first-call discovery surface.
 intent: Prove an agent can discover the shipped tool set at runtime via the tool manifest before relying on any single tool.
 category: baseline
+user_level: L0
 requires_env: []
 steps:
   - name: help_mcp returns the tool manifest

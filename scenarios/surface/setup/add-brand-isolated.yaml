@@ -2,6 +2,7 @@ name: add-brand-isolated
 description: add_brand creates a brand profile in the isolated brand_profiles.yaml and returns a success envelope (industry and target_audience optional).
 intent: Prove the brand-creation surface answers a real call against the isolated config dir, so agents can bootstrap brands without touching the real user config.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: add_brand creates the isolated profile

@@ -60,6 +60,7 @@ def scenario(**overrides: object) -> Scenario:
         "name": "s",
         "description": "d",
         "intent": "i",
+        "user_level": "L0",
         "steps": [step_dict()],
     }
     base.update(overrides)

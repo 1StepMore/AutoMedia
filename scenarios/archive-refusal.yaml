@@ -2,6 +2,7 @@ name: archive-refusal-redline8
 description: "archive_project refuses to archive an unpublished project unless force is set, honoring Red Line 8 (verified: refuses when the project status is draft)."
 intent: Prove the archive surface enforces Red Line 8, so agents cannot archive unpublished projects through the MCP tool.
 category: baseline
+user_level: L0
 requires_env: []
 hard: true
 steps:

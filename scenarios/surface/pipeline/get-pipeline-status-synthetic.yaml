@@ -2,6 +2,7 @@ name: get-pipeline-status-synthetic
 description: get_pipeline_status resolves a synthetic project info file under an allowlisted temp base dir and returns the project metadata plus subdirs in a success envelope.
 intent: Prove the project-status surface reads real project info files from disk (no LLM), so agents can query status on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create a synthetic project info file

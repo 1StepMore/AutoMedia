@@ -64,6 +64,7 @@ TOOL_SCENARIO = """\
 name: {name}
 description: Synthetic fixture scenario.
 intent: Prove the fixture surface contract.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -81,6 +82,7 @@ BOUNDARY_SCENARIO = """\
 name: {name}
 description: Synthetic boundary probe (never GREEN-asserted).
 intent: Prove the dispatcher rejects on the boundary path.
+user_level: L0
 category: surface
 error_boundary: true
 steps:
@@ -97,6 +99,7 @@ PROVES_SCENARIO = """\
 name: {name}
 description: Synthetic fixture proving gates and a pipeline mode.
 intent: Prove the coverage audit consumes proves_gates/proves_modes.
+user_level: L0
 category: pipeline
 error_boundary: {boundary}
 proves_gates: [{gates}]
@@ -116,6 +119,7 @@ CLI_SCENARIO = """\
 name: cli-mixed-steps
 description: Synthetic cli-kind fixture.
 intent: Prove cli subcommand extraction from mixed commands.
+user_level: L0
 category: baseline
 steps:
   - name: subcommand with flags

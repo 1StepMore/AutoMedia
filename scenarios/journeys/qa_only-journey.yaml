@@ -56,6 +56,7 @@ name: qa-only-journey
 description: A real qa_only pipeline run from the CLI (G0, G2, G3, V1, V6) completes and leaves the gate-lifecycle artifact of the real run in the project, and the real-LLM quality-evaluation surface answers.
 intent: "Prove the shipped qa_only production path end-to-end with a real LLM: the G0/G2/G3/V1/V6 gate list runs to completion in one CLI call, the produced project visible through the shipped projects surface, the run's gate-lifecycle artifact inspectable by the director, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the qa_only mode gates (issue #78)."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

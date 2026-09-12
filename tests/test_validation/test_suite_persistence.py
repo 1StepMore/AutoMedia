@@ -29,6 +29,7 @@ _GREEN_SCENARIO = """\
 name: persistence-green
 description: A passing synthetic scenario for suite persistence.
 intent: Prove the suite record is exclusive-create and immutable.
+user_level: L0
 category: baseline
 requires_env: []
 steps:

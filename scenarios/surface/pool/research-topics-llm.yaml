@@ -2,6 +2,7 @@ name: research-topics-llm
 description: research_topics returns a structured topic list by calling the LLM; it cannot run without a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
 intent: Prove the research surface's real contract (LLM-gated structured output) and the honest unconfigured state when the credential is absent.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

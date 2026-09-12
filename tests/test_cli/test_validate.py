@@ -36,6 +36,7 @@ _SCENARIOS: dict[str, str] = {
 name: synth-passing
 description: A passing synthetic scenario.
 intent: Unit-test the validate run command happy path.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -53,6 +54,7 @@ steps:
 name: synth-failing
 description: A failing synthetic scenario.
 intent: Unit-test the validate run command failure exit code.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -69,6 +71,7 @@ steps:
 name: synth-env-gated
 description: An env-gated synthetic scenario.
 intent: Unit-test the unconfigured path and --env-gate skip.
+user_level: L0
 category: baseline
 requires_env: ["SYNTH_REQUIRED_ENV"]
 steps:
@@ -86,6 +89,7 @@ steps:
 name: synth-tool-health
 description: A tool-kind synthetic scenario against the real server.
 intent: Unit-test that validate run wires the real MCP server (create_server).
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -103,6 +107,7 @@ steps:
 name: synth-hard-failing
 description: A hard synthetic scenario that fails.
 intent: Unit-test that hard-safety violations exit 1 on validate run.
+user_level: L0
 category: baseline
 requires_env: []
 hard: true
@@ -120,6 +125,7 @@ steps:
 name: synth-hard-passing
 description: A hard synthetic scenario that passes.
 intent: Unit-test that a hard scenario which passes still exits 0.
+user_level: L0
 category: baseline
 requires_env: []
 hard: true
@@ -138,6 +144,7 @@ steps:
 name: synth-hard-env-gated
 description: A hard env-gated synthetic scenario (unconfigured is a violation).
 intent: Unit-test that a hard unconfigured scenario exits 1 with the marker.
+user_level: L0
 category: baseline
 requires_env: ["SYNTH_REQUIRED_ENV"]
 hard: true
@@ -765,9 +772,7 @@ class TestValidateCoverage:
             stamp="20260101-000000-000000",
         )
         write_latest_pointer(runs, "20260101-000000-000000")
-        result = runner.invoke(
-            app, ["validate", "coverage", "--runs-root", str(runs)]
-        )
+        result = runner.invoke(app, ["validate", "coverage", "--runs-root", str(runs)])
         assert result.exit_code == 1
         assert "Evidence run: 20260101-000000-000000" in result.output
         assert "Buckets:" in result.output

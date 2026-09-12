@@ -30,6 +30,7 @@ _GREEN_SCENARIO = """\
 name: runner-green
 description: A passing synthetic scenario for the runner persistence test.
 intent: Prove the --all path persists one suite record.
+user_level: L0
 category: baseline
 requires_env: []
 steps:

@@ -2,6 +2,7 @@ name: format-output-contract
 description: "When AUTOMEDIA_VALIDATION_EXPECT_ORF is set, format_output answers with a structured error envelope (success: false) — the options kwarg is misrouted into ConverterOptions (orf_adapter.py:58); without the flag the scenario stays unconfigured, so orf-less machines never trip it."
 intent: "Record the honest current contract of the format-conversion surface: on the orf-installed canonical env (declared by the scenario-owner flag AUTOMEDIA_VALIDATION_EXPECT_ORF) the tool deterministically returns the structured error envelope (success: false) — the surface answers honestly, never raises. The flag must only be set on runners with the orf package installed: with orf the defect manifests (success: false); without orf the adapter's ImportError path masks it (success: true with warnings), so setting the flag there fails honestly. The step asserts the envelope; once the options-kwarg misrouting is fixed, the assertion flips and the scenario is updated to success: true."
 category: surface
+user_level: L0
 requires_env:
   - AUTOMEDIA_VALIDATION_EXPECT_ORF
 steps:

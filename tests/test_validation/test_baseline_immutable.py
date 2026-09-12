@@ -24,6 +24,7 @@ _GREEN_SCENARIO = f"""\
 name: baseline-green
 description: A deterministic passing scenario for baseline regeneration.
 intent: Prove regeneration writes through the exclusive-create path.
+user_level: L0
 category: baseline
 requires_env: []
 steps:

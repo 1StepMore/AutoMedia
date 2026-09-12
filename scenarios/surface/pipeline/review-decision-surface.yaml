@@ -2,6 +2,7 @@ name: review-decision-surface
 description: "review_decision is reachable on the MCP surface and answers a real call; with no pipeline paused in the server process it returns the structured same-process NOT_FOUND error (success: false, never a hang), which is the deterministic GREEN-able contract on a clean env."
 intent: "Prove the live-HITL review surface is registered and its same-process boundary fails fast and honestly. The success path (approve/reject resuming a paused H0 pipeline) requires a live paused daemon-thread pipeline and is owned by the lifecycle journeys; a clean env proves the fast structured error. Same-process constraint: CLI-started pipelines are unreachable by design."
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: review_decision fails fast on an unpaused project

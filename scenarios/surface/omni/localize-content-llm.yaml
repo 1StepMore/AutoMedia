@@ -2,6 +2,7 @@ name: localize-content-llm
 description: localize_content translates markdown through the OL shield pipeline (LLM-gated); it cannot complete without a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
 intent: Prove the localization surface's real contract (LLM-gated translation envelope) and the honest unconfigured state when the credential is absent.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

@@ -29,6 +29,7 @@ _GREEN_SCENARIO = """\
 name: confidence-green
 description: A passing synthetic scenario for confidence recording.
 intent: Prove the run record carries real|mock confidence.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -73,16 +74,12 @@ def _scenario() -> Scenario:
 class TestScenarioConfidence:
     def test_real_run_is_real(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(_FAKE, raising=False)
-        record = asyncio.run(
-            run_validation_scenario_async(_scenario(), make_adapters(None))
-        )
+        record = asyncio.run(run_validation_scenario_async(_scenario(), make_adapters(None)))
         assert record["confidence"] == "real"
 
     def test_fake_run_is_mock(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(_FAKE, "1")
-        record = asyncio.run(
-            run_validation_scenario_async(_scenario(), make_adapters(None))
-        )
+        record = asyncio.run(run_validation_scenario_async(_scenario(), make_adapters(None)))
         assert record["status"] == "passed"
         assert record["confidence"] == "mock"
 

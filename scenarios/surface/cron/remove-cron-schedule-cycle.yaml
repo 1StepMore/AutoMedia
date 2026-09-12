@@ -2,6 +2,7 @@ name: remove-cron-schedule-cycle
 description: "remove_cron_schedule removes a schedule entry it can deterministically re-add first: the scenario adds w3t1-remove-me, removes it, and proves both steps return success envelopes."
 intent: Prove the cron-schedule removal surface's full mutation cycle (add then remove, both green) so agents can manage schedules on the isolated config.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: add_cron_schedule creates the entry to remove

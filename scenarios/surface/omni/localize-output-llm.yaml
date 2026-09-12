@@ -2,6 +2,7 @@ name: localize-output-llm
 description: localize_output translates every project draft through OLAdapter (LLM-gated); a missing AUTOMEDIA_LLM_API_KEY gates the scenario to unconfigured. When configured, the tool returns a success envelope even for a project without drafts (warnings note the missing drafts directory).
 intent: Prove the project-wide localization surface's envelope contract and the honest unconfigured state without the LLM credential.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

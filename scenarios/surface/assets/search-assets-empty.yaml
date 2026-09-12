@@ -2,6 +2,7 @@ name: search-assets-empty
 description: search_assets answers with a success envelope on an empty asset library (no keywords, no Chroma vectors means an empty result list, not an error).
 intent: Prove the asset-search surface answers without credentials or an LLM, so agents can query brand assets on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: search_assets returns the empty result list

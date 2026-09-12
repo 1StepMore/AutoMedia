@@ -54,6 +54,7 @@ name: repurpose-journey
 description: A real repurpose pipeline run from the CLI (the full gate list plus sub-pipeline P1-P4) produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
 intent: "Prove the shipped repurpose production path end-to-end with a real LLM: topic to draft artifact in one CLI call through the full repurpose gate list including the P1-P4 sub-pipelines, the produced project visible through the shipped projects surface, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the repurpose mode gates (issue #78)."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

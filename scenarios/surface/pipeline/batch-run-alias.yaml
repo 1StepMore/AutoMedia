@@ -2,6 +2,7 @@ name: batch-run-alias
 description: "batch_run (deprecated alias) returns the same success envelope shape as run_batch for an empty topic list (verified empirically: both success: true with results/total/passed/failed)."
 intent: Prove the deprecated batch alias keeps the canonical contract so agents calling the old name get identical surface behavior.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: batch_run alias summarizes the empty batch

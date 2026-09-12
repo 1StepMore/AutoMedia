@@ -55,6 +55,7 @@ name: distribute-dgates-journey
 description: "The distribution surface proves its D1-D7 wiring: a fixed-id synthetic project resolves through automedia distribute, the dry-run plan names all 7 D-gate platforms, and the platform set is closed (unknown platforms rejected)."
 intent: "Prove the standalone D-gate distribution surface (issue #78 A3): the shipped `automedia distribute` CLI accepts exactly the 7 platforms the D1-D7 gates serve, resolves a real project and its content through the shipped surface, and prints a dry-run plan without executing gates, posting nothing, and needing no accounts — the declarative coverage claim behind proves_gates [D1-D7]."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

@@ -2,6 +2,7 @@ name: get-config-baseline
 description: The get_config MCP tool returns the merged configuration with secrets redacted.
 intent: Prove the configuration surface answers without credentials, so a clean env can read non-secret config through the MCP surface.
 category: baseline
+user_level: L0
 requires_env: []
 hard: true
 steps:

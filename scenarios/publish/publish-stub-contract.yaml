@@ -21,6 +21,7 @@ name: publish-stub-contract
 description: "The 8 stub adapters return status not_implemented with a reason and never post; the MCP publish envelope on a stub platform is honestly published: false."
 intent: "Prove the F34 stub contract: every stub platform reports not_implemented with a reason through the shipped adapter surface, and no stub call can publish content."
 category: publish
+user_level: L0
 requires_env: []
 steps:
   - name: create the synthetic project

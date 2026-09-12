@@ -44,6 +44,7 @@ name: quality-draft-eval
 description: A committed synthetic draft is inspected as a produced artifact and scored by a real LLM against the evaluation-matrix dimension criteria, with partial-pass semantics pinned to the director-review guardrail.
 intent: "Prove the human-quality leg of the validation framework: a produced draft is both PRODUCED-AND-INSPECTED (artifact steps, F01) and evaluated by a real LLM against the evaluation-matrix dimensions (clarity, accuracy, brand voice, structure mirror the 8 dims' content-facing checks, P0-P5 severity semantics), the quality scores persist in the run record for W4-T4 trend diffing, and a partial-pass verdict (min_passing 1 / pass_ratio 0.5) REQUIRES director review per guide §2.7."
 category: quality
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 min_passing: 1

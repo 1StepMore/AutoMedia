@@ -2,6 +2,7 @@ name: list-platforms-baseline
 description: The list_platforms MCP tool answers with the registered platform adapter list.
 intent: Prove the publishing surface enumerates its registered adapters without credentials.
 category: baseline
+user_level: L0
 requires_env: []
 steps:
   - name: list_platforms returns the platform list

@@ -2,6 +2,7 @@ name: connect-account-masterkey
 description: "connect_account registers a platform account with synthetic credentials and returns a success envelope; the account store requires AUTOMEDIA_MASTER_KEY (verified empirically: without it the tool errors), so a missing key gates the scenario to unconfigured."
 intent: Prove the account-registration surface's real contract with an isolated config dir (synthetic credentials only), with a paired cleanup step per guide §4.6.
 category: surface
+user_level: L2
 requires_env:
   - AUTOMEDIA_MASTER_KEY
 steps:

@@ -563,6 +563,14 @@ def validate_coverage(
             "surfaces are covered only by a passed step in the newest run here."
         ),
     ),
+    by_level: bool = typer.Option(
+        False,
+        "--by-level",
+        help=(
+            "Render the stage×user matrix derived from every scenario's "
+            "declared user_level (L0-L5) instead of the surface buckets."
+        ),
+    ),
 ) -> None:
     """Run the evidence-backed coverage audit over the scenario library.
 
@@ -571,13 +579,21 @@ def validate_coverage(
     boundary/meta never count).  Reports ``covered``/``unproven``/``missing``
     per surface and exits 1 while any non-allowlisted surface is ``unproven``
     or ``missing`` (a versioned boundary-only allowlist excludes its entries).
-    """
+    With ``--by-level`` it renders the data-driven stage×user matrix instead
+    (a report; exits 0)."""
     from automedia.validation.coverage import coverage_audit
 
     try:
         audit = coverage_audit(runs_root=runs_root)
     except (LoadError, OSError) as exc:
         output_error(f"Coverage audit failed: {exc}")
+        return
+    if by_level:
+        by_level_report = audit.get("by_level", {})
+        if get_output_mode() == OutputMode.JSON:
+            output_json(by_level_report if isinstance(by_level_report, dict) else {})
+        else:
+            _render_by_level(by_level_report if isinstance(by_level_report, dict) else {})
         return
     summary = audit.get("summary", {})
     missing_mcp = list(audit.get("missing_mcp", []))
@@ -654,6 +670,33 @@ def validate_coverage(
 
     if unproven_count or missing_count:
         raise typer.Exit(code=1)
+
+
+def _render_by_level(by_level: dict[str, Any]) -> None:
+    """Plain deterministic stage×user matrix rendering (gap T-10).
+
+    Rows are the scenario library's ``category`` groupings (the data-derived
+    stage key); columns are the closed L0-L5 user levels.  Cells are scenario
+    counts; a zero column stays visible so an empty level is honest.
+    """
+    levels = list(by_level.get("levels", []))
+    distribution = by_level.get("distribution", {})
+    matrix = by_level.get("matrix", {})
+    total = by_level.get("total", 0)
+    typer.echo("Coverage by user level")
+    header = "  " + f"{'stage (category)':<16}" + "  ".join(f"{level:>4}" for level in levels)
+    typer.echo(f"{header}  {'total':>6}")
+    for row_name in sorted(matrix):
+        row = matrix[row_name]
+        cells = "  ".join(f"{int(row.get(level, 0)):>4}" for level in levels)
+        row_total = sum(int(row.get(level, 0)) for level in levels)
+        typer.echo(f"  {row_name:<16}{cells}  {row_total:>6}")
+    dist_cells = "  ".join(f"{int(distribution.get(level, 0)):>4}" for level in levels)
+    typer.echo(f"  {'TOTAL':<16}{dist_cells}  {int(total):>6}")
+    typer.echo(
+        "  Levels: L0 Unconfigured · L1 LLM-configured · L2 Publisher · "
+        "L3 Director · L4 Enterprise · L5 Localized"
+    )
 
 
 # ---------------------------------------------------------------------------

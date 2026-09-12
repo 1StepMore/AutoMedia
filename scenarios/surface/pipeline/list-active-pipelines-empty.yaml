@@ -2,6 +2,7 @@ name: list-active-pipelines-empty
 description: list_active_pipelines answers with a success envelope on a clean isolated config dir (no persistent session tracker file means an empty pipeline list).
 intent: Prove the session-tracker listing surface answers without credentials, so agents can inspect running pipelines on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: list_active_pipelines returns the empty session list

@@ -2,6 +2,7 @@ name: run-pipeline-async-start
 description: run_pipeline returns immediately with the async start protocol (project_id + status started) instead of synchronously completing; the pipeline itself needs a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
 intent: Prove the async surface contract of run_pipeline (immediate run_id, per the W3-T3 pinned async protocol) and the honest unconfigured state without the LLM credential.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

@@ -2,6 +2,7 @@ name: select-topic-pending
 description: select_topic picks the highest-scored pending topic from a seeded temp pool and returns it in a success envelope.
 intent: Prove the topic-selection surface works against an allowlisted temp pool without an LLM, so agents can consume the pool on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: seed a pending topic into the temp pool

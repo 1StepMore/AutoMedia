@@ -56,6 +56,7 @@ def _scenario(**overrides: object) -> dict[str, object]:
         "name": "unnamed",
         "description": "A synthetic scenario",
         "intent": "Exercise the regression flywheel helpers",
+        "user_level": "L0",
         "steps": [_step()],
     }
     base.update(overrides)
@@ -84,9 +85,7 @@ def library(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     _write(
         root,
         "regression/upload-timeout.yaml",
-        _scenario(
-            name="regression-upload-timeout", regression=True, regression_issue="#105"
-        ),
+        _scenario(name="regression-upload-timeout", regression=True, regression_issue="#105"),
     )
     _write(
         root,
@@ -183,12 +182,8 @@ class TestRegressionIssues:
             assert set(issue) == {"name", "regression_issue", "file"}
             assert isinstance(issue["file"], str)
         by_name = {i["name"]: i for i in issues}
-        assert by_name["regression-glm-fence"]["file"].endswith(
-            "regression/glm-fence.yaml"
-        )
-        assert by_name["quality-draft-pin"]["file"].endswith(
-            "quality/quality-draft.yaml"
-        )
+        assert by_name["regression-glm-fence"]["file"].endswith("regression/glm-fence.yaml")
+        assert by_name["quality-draft-pin"]["file"].endswith("quality/quality-draft.yaml")
 
     def test_empty_library(self, empty_library: Path) -> None:
         # Given / When / Then: no pins, no issue references
@@ -229,9 +224,7 @@ class TestVerifyDiscipline:
 
     def test_deterministic(self, library: Path) -> None:
         # Given / When / Then: repeated checks are byte-identical
-        assert verify_regression_discipline(library) == verify_regression_discipline(
-            library
-        )
+        assert verify_regression_discipline(library) == verify_regression_discipline(library)
 
 
 class TestSchemaBeltAndBraces:
@@ -248,7 +241,5 @@ class TestSchemaBeltAndBraces:
         # When: the library loads through the flywheel helper
         # Then: the schema rejects the pin loudly — the reason
         # missing_issue can only ever be empty
-        with pytest.raises(
-            LoadError, match="regression=True requires 'regression_issue'"
-        ):
+        with pytest.raises(LoadError, match="regression=True requires 'regression_issue'"):
             regression_scenarios(root)

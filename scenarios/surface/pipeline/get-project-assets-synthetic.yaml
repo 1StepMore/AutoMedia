@@ -2,6 +2,7 @@ name: get-project-assets-synthetic
 description: get_project_assets lists the asset files inside a synthetic project directory and returns them in a success envelope.
 intent: Prove the asset-listing surface reads a real project directory from disk (no LLM), so agents can inspect produced assets on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create a synthetic project with one asset

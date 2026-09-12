@@ -2,6 +2,7 @@ name: publish-content-probe
 description: "publish_content reports NOT_FOUND for a project_id that has no project on disk (success: false, structured error) — the probe expects that error. Depth scenarios for the publish trio belong to W3-T5."
 intent: "Prove the publish surface's minimal contract on a clean env: an unknown project yields the structured NOT_FOUND error, never a silent success."
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: publish_content errors on an unknown project

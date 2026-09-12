@@ -549,6 +549,7 @@ GREEN_YAML = """\
 name: green-suite
 description: suite green path
 intent: prove tool and cli steps pass
+user_level: L0
 steps:
   - name: health
     kind: tool
@@ -573,6 +574,7 @@ RED_YAML = """\
 name: red-suite
 description: suite red path
 intent: prove a failing step is recorded loudly
+user_level: L0
 steps:
   - name: failing
     kind: tool
@@ -588,6 +590,7 @@ UNCONFIGURED_YAML = f"""\
 name: unconfigured-suite
 description: env-gated suite scenario
 intent: prove unconfigured honesty
+user_level: L0
 requires_env:
   - {_MISSING_ENV}
 steps:
@@ -605,6 +608,7 @@ HARD_FAIL_YAML = """\
 name: hard-fail-suite
 description: hard-safety scenario that fails
 intent: prove a failing hard scenario records a violation and blocks the suite
+user_level: L0
 hard: true
 steps:
   - name: failing
@@ -621,6 +625,7 @@ HARD_PASS_YAML = """\
 name: hard-pass-suite
 description: hard-safety scenario that passes
 intent: prove a passing hard scenario clears hard safety
+user_level: L0
 hard: true
 steps:
   - name: health

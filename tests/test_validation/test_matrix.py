@@ -23,6 +23,7 @@ TOOL_SCENARIO = """\
 name: {name}
 description: Synthetic fixture scenario.
 intent: Prove the fixture surface contract.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -40,6 +41,7 @@ CLI_SCENARIO = """\
 name: {name}
 description: Synthetic cli fixture.
 intent: Prove the cli surface contract.
+user_level: L0
 category: baseline
 steps:
   - name: run doctor
@@ -55,6 +57,7 @@ PROVES_SCENARIO = """\
 name: {name}
 description: Synthetic fixture proving a gate and a mode.
 intent: Prove matrix gates/modes cells come from the declarative headers.
+user_level: L0
 category: pipeline
 proves_gates: [G6]
 proves_modes: [text_only]
@@ -73,6 +76,7 @@ HARD_SCENARIO = """\
 name: {name}
 description: Synthetic hard-safety scenario.
 intent: Prove matrix hard flagging reads the header.
+user_level: L0
 category: safety
 hard: true
 steps:

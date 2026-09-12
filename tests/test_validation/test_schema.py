@@ -46,6 +46,7 @@ def scenario(**overrides: object) -> dict[str, Any]:
         "name": "health-smoke",
         "description": "The MCP server reports health",
         "intent": "Prove the server health contract",
+        "user_level": "L0",
         "steps": [tool_step()],
     }
     base.update(overrides)
@@ -415,6 +416,7 @@ class TestProvesMetadata:
 name: mode-run-fixture
 description: A synthetic pipeline-mode fixture scenario.
 intent: Prove the coverage audit reads proves_gates and proves_modes.
+user_level: L0
 proves_gates: [G0, V1, L2]
 proves_modes: [text_only, auto]
 steps:

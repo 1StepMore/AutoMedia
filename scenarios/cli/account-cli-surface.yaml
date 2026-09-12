@@ -2,6 +2,7 @@ name: account-cli-surface
 description: automedia account --help exits 0 and prints the account sub-commands (connect, list, health, disconnect), proving the account command is registered.
 intent: Prove the account CLI surface is callable and exposes its real contract (connect/list/health/disconnect sub-commands) without mutating any credentials.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: account --help shows sub-commands

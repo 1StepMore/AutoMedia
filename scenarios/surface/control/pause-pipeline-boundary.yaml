@@ -2,6 +2,7 @@ name: pause-pipeline-boundary
 description: "BOUNDARY-ONLY probe (director-waiver required — never GREEN-asserted): pause_pipeline reports NOT_FOUND for a project_id with no active pipeline in this process (success: false, structured error)."
 intent: "Prove the pause control surface's boundary contract. The success path requires a live running pipeline with a runtime project_id (owned by the lifecycle journeys); on a clean env the honest contract is the structured NOT_FOUND error. The probe passes on error and fails only on full success."
 category: surface
+user_level: L0
 error_boundary: true
 hard: true
 steps:

@@ -2,6 +2,7 @@ name: dep-doctor-missing-ffmpeg
 description: "When AUTOMEDIA_VALIDATION_EXPECT_MISSING_FFMPEG is set, text-mode doctor exits 1 and prints an actionable message naming ffmpeg; without the flag the scenario stays unconfigured."
 intent: "Prove the loud-failure contract of doctor: on a machine where FFmpeg is genuinely missing, doctor exits 1 and names ffmpeg in its output with an install instruction. The scenario is gated on the scenario-only flag AUTOMEDIA_VALIDATION_EXPECT_MISSING_FFMPEG: the flag is the env contract that this machine has no ffmpeg, so the assertions only hold where the flag is set. On machines where ffmpeg exists the flag is simply never set and the scenario reports unconfigured, which is honest."
 category: baseline
+user_level: L0
 requires_env:
   - AUTOMEDIA_VALIDATION_EXPECT_MISSING_FFMPEG
 steps:

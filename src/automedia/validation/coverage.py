@@ -105,7 +105,7 @@ import yaml
 
 from automedia.validation.loader import LoadError, default_scenarios_dir, load_scenarios
 from automedia.validation.persist import latest_run
-from automedia.validation.schema import Scenario, Step
+from automedia.validation.schema import USER_LEVELS, Scenario, Step
 
 _MCP_TOOL_RE = re.compile(r"mcp\.tool\((.*?)\)\((\w+)\)", re.DOTALL)
 _NAME_KW_RE = re.compile(r'name\s*=\s*["\'](\w+)["\']')
@@ -286,7 +286,33 @@ def coverage_audit(
             today=date.today() if today is None else today,
         )
     )
+    result["by_level"] = _by_user_level(scenarios)
     return result
+
+
+def _by_user_level(scenarios: list[Scenario]) -> dict[str, Any]:
+    """Data-driven stage×user matrix from the scenarios' declared levels (T-10).
+
+    The stage dimension is the scenario's committed ``category`` grouping (the
+    library's own declarative row key); the user dimension is the closed
+    ``USER_LEVELS`` enum.  Cells are scenario counts, so the matrix is derived
+    entirely from the loaded library — never from auditor judgment.  Every
+    level column is always present (a zero column is honest), and the cell
+    total equals the library size.
+    """
+    distribution: dict[str, int] = dict.fromkeys(USER_LEVELS, 0)
+    matrix: dict[str, dict[str, int]] = {}
+    for scenario in scenarios:
+        level = scenario.user_level if scenario.user_level in USER_LEVELS else "L0"
+        distribution[level] += 1
+        row = matrix.setdefault(scenario.category, dict.fromkeys(USER_LEVELS, 0))
+        row[level] += 1
+    return {
+        "levels": list(USER_LEVELS),
+        "distribution": distribution,
+        "matrix": {row: matrix[row] for row in sorted(matrix)},
+        "total": len(scenarios),
+    }
 
 
 def _read_declared_source(explicit: str | Path | None, rel: str) -> str:
@@ -346,9 +372,7 @@ def _collect_reached(
             continue
         name = str(rec.get("scenario") or "")
         scenario = library.get(name)
-        if rec.get("error_boundary") is True or (
-            scenario is not None and scenario.error_boundary
-        ):
+        if rec.get("error_boundary") is True or (scenario is not None and scenario.error_boundary):
             continue
         if _is_meta(scenario, file_map.get(name, "")):
             continue
@@ -372,9 +396,7 @@ def _collect_reached(
             reached["modes"] |= set(scenario.proves_modes)
 
 
-def _load_allowlist(
-    path: Path, today: date
-) -> tuple[dict[str, set[str]], dict[str, Any]]:
+def _load_allowlist(path: Path, today: date) -> tuple[dict[str, set[str]], dict[str, Any]]:
     """Load the versioned boundary-only allowlist (gap T-01).
 
     Every entry must name a known surface, a ``name``, an ``owner``, and a
@@ -415,9 +437,7 @@ def _load_allowlist(
         owner = entry.get("owner")
         reason = entry.get("reason")
         if surface not in SURFACES:
-            raise LoadError(
-                f"{path}: entries[{index}].surface {surface!r} not in {list(SURFACES)}"
-            )
+            raise LoadError(f"{path}: entries[{index}].surface {surface!r} not in {list(SURFACES)}")
         for field, value in (("name", name), ("owner", owner), ("reason", reason)):
             if not isinstance(value, str) or not value.strip():
                 raise LoadError(f"{path}: entries[{index}].{field} is required")

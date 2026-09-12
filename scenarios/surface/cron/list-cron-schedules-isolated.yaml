@@ -2,6 +2,7 @@ name: list-cron-schedules-isolated
 description: list_cron_schedules returns the schedule entries from the isolated pipeline_schedules.yaml in a success envelope.
 intent: Prove the cron-schedule listing surface answers on a clean env, so agents can inspect scheduled runs.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: list_cron_schedules returns the entries

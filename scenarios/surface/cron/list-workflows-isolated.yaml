@@ -2,6 +2,7 @@ name: list-workflows-isolated
 description: list_workflows returns the discovered workflow configurations in a success envelope (an isolated config with no workflow files yields an empty list, not an error).
 intent: Prove the workflow-listing surface answers on a clean env, so agents can discover reusable workflow definitions.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: list_workflows returns the workflow list

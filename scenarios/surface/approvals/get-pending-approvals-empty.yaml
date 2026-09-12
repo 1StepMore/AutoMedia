@@ -2,6 +2,7 @@ name: get-pending-approvals-empty
 description: get_pending_approvals returns the director-mode approval queue in a success envelope; with no active engines the queue is empty (count 0), which is the GREEN-able contract on a clean env.
 intent: Prove the approval-queue surface answers a real call (empty-queue assert), so agents can poll for pending director approvals on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: get_pending_approvals returns the empty queue

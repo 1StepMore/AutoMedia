@@ -43,6 +43,7 @@ ARTIFACT_YAML = """\
 name: artifact-producer
 description: collects a file as an artifact
 intent: prove artifacts land inside the per-run directory
+user_level: L0
 steps:
   - name: write artifact
     kind: cli

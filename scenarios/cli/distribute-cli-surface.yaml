@@ -2,6 +2,7 @@ name: distribute-cli-surface
 description: automedia distribute --help exits 0 and prints the distribution contract (platforms, dry-run options), proving the distribute command is registered.
 intent: Prove the distribute CLI surface is callable and exposes its real contract (platforms, dry-run, all options) without triggering any D-gates.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: distribute --help shows the usage contract

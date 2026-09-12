@@ -32,6 +32,7 @@ name: publish-draft-only-real-adapters
 description: "Without the 12 real adapters' credentials this scenario reports unconfigured; with them, its steps assert the never-auto-publish gate and the real-adapter registry contract."
 intent: "Prove the draft-only publish contract honestly: real adapters require credentials (unconfigured without them), and the publish surface refuses to auto-publish manual-level platforms even when invoked."
 category: publish
+user_level: L2
 requires_env:
   - AUTOMEDIA_WECHAT_APPID
   - AUTOMEDIA_WECHAT_APPSECRET

@@ -56,6 +56,18 @@ def _expect_int(value: object, where: str) -> int:
     return _expect_type(value, int, where)
 
 
+def _expect_enum(value: object, allowed: tuple[str, ...], where: str) -> str:
+    """Return ``value`` narrowed to one of ``allowed`` or raise ``SchemaError``.
+
+    Used for closed string enums such as the scenario ``user_level`` (L0-L5).
+    The message names the offending field and lists the supported values.
+    """
+    text = _expect_str(value, where)
+    if text not in allowed:
+        raise SchemaError(f"{where}: unknown value {text!r}; supported: {list(allowed)}")
+    return text
+
+
 def _expect_number(value: object, where: str) -> int | float:
     """Return ``value`` as int-or-float (bool rejected) or raise ``SchemaError``."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):

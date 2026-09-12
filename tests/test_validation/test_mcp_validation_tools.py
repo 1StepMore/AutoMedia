@@ -52,6 +52,7 @@ _GREEN_SCENARIO = """\
 name: suite-green
 description: A passing synthetic scenario for the suite tool.
 intent: Prove run_validation_suite runs a real library and returns its record.
+user_level: L0
 category: baseline
 requires_env: []
 steps:

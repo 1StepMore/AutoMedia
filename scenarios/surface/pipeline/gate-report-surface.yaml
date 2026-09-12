@@ -2,6 +2,7 @@ name: gate-report-surface
 description: get_gate_report resolves a synthetic project seeded with a real written gate report under an allowlisted temp base dir and returns the report JSON in a success envelope.
 intent: Prove the gate-report read surface returns the per-run 05_review/gate-report/gate-report-*.json payload produced at pipeline completion (no LLM, no write), so agents can inspect per-gate verdicts on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: seed a synthetic project with a written gate report

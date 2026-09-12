@@ -2,6 +2,7 @@ name: get-redlines-contract
 description: get_redlines returns the agent red-line constraint list in a success envelope.
 intent: Prove the red-line introspection surface answers a real call, so agents can discover the MUST/MUST NOT constraints at runtime.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: get_redlines returns the constraint list

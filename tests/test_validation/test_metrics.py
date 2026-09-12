@@ -143,6 +143,7 @@ class TestSuiteWritesMetrics:
             "name: metrics-gated\n"
             "description: Gated synthetic scenario.\n"
             "intent: Prove the metrics writer on an unconfigured run.\n"
+            "user_level: L0\n"
             "category: baseline\n"
             "requires_env: [AUTOMEDIA_LLM_API_KEY]\n"
             "steps:\n"
@@ -164,9 +165,7 @@ class TestSuiteWritesMetrics:
         self, scenarios_dir: Path, tmp_path: Path
     ) -> None:
         runs = tmp_path / "runs"
-        record = asyncio.run(
-            run_validation_suite_async(None, scenarios_dir, runs_root=runs)
-        )
+        record = asyncio.run(run_validation_suite_async(None, scenarios_dir, runs_root=runs))
         assert record["metrics"]["unproven"] is True
         assert record["metrics"]["task_completion_rate"] is None
         run_name = next(p.name for p in runs.iterdir() if p.is_dir())

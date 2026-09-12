@@ -2,6 +2,7 @@ name: analyze-content-contract
 description: "analyze_content (registered name of the effects analyzer; the README/AGENTS.md call it effects_analyze_content — known doc drift) computes stats for a synthetic project and returns a status envelope without a success key."
 intent: "Prove the analytics surface answers a real call on a synthetic project. The tool does not wrap its return via success_response (returns {status: ok, project_id, stats}, verified empirically), so the honest check is the call completing with the ok status — mirroring the help_mcp precedent."
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create a synthetic project with a draft

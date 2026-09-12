@@ -2,6 +2,7 @@ name: get-account-health-masterkey
 description: "get_account_health reports NOT_FOUND for an unknown account_id (success: false, structured error) — the probe expects that error. The store requires AUTOMEDIA_MASTER_KEY, so a missing key gates the scenario to unconfigured. Account ids are random (acc_<platform>_<8-hex>), so the success path needs a live registered account (owned by the connect-account scenario)."
 intent: "Prove the account-health surface's boundary contract on an isolated registry: an unknown id yields the structured NOT_FOUND error, never a silent success."
 category: surface
+user_level: L2
 requires_env:
   - AUTOMEDIA_MASTER_KEY
 steps:

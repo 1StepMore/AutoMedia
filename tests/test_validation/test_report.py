@@ -43,6 +43,7 @@ REGRESSION_YAML = """\
 name: regression-probe
 description: pinned fix probe
 intent: prove the report resolves regression flags from the committed library
+user_level: L0
 regression: true
 regression_issue: "#1234"
 steps:

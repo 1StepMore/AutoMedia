@@ -2,6 +2,7 @@ name: init-config-recovery
 description: "Failure injection + repair for the init_config mutating surface: init_config fails when project_dir is a regular file, the recovery step repairs by initializing a valid temp project, and the scenario records `recovered` with the original failure retained."
 intent: "Make the engine's `recovered` verdict reachable on a real mutating surface (gap R-01): a failed mutation is repaired, the verdict is `recovered` (never `passed`), and RED stays in the run record. Deterministic and credential-free so the full-suite run exercises it on every host."
 category: recovery
+user_level: L0
 requires_env: []
 steps:
   - name: create the file that blocks init_config

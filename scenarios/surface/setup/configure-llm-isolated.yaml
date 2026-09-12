@@ -2,6 +2,7 @@ name: configure-llm-isolated
 description: configure_llm writes the provider and model to the isolated model_config.yaml and returns a success envelope (no api_key is passed, so no secret is written).
 intent: Prove the LLM-configuration surface answers a real call against the isolated config dir, without ever storing a credential.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: configure_llm writes the provider config

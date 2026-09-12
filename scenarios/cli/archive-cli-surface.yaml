@@ -2,6 +2,7 @@ name: archive-cli-surface
 description: automedia archive --help exits 0 and prints usage naming the required project_id argument and the --force option, proving the archive command is registered.
 intent: Prove the archive CLI surface is callable and exposes its real contract (project_id argument, --force option, Red Line 8 hint) without archiving any project.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: archive --help shows the usage contract

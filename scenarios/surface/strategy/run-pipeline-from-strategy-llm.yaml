@@ -2,6 +2,7 @@ name: run-pipeline-from-strategy-llm
 description: run_pipeline_from_strategy generates a content strategy via the LLM and then executes the pipeline; it cannot run without a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
 intent: Prove the strategy-driven pipeline surface's real contract (LLM-gated) and the honest unconfigured state when the credential is absent.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

@@ -2,6 +2,7 @@ name: omni-cli-surface
 description: automedia omni --help exits 0 and prints the omni sub-commands (start, localize, format-output, ingest), proving the omni command is registered.
 intent: Prove the omni CLI surface is callable and exposes its real contract (start, localize, format-output, ingest sub-commands) without launching any servers.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: omni --help shows sub-commands

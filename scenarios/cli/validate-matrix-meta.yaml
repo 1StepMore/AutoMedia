@@ -2,6 +2,7 @@ name: validate-matrix-meta
 description: "automedia validate matrix exposes the AutoInfo-style validation matrix (coverage grid + report cards + assertions + diff) via a non-recursive meta command."
 intent: "Prove the matrix surface is callable via CLI: it exits 0 and prints the four surface names (mcp, cli, gates, modes) plus the run-record assertion section (## Report cards, ## Assertions, ## Diff). Non-recursive — takes no scenario name (like validate list), so it cannot trigger an unbounded validate run chain. Covers the validate matrix CLI command for the coverage audit (issue #86)."
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: validate matrix shows the four surfaces

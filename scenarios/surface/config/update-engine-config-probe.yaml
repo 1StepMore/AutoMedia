@@ -2,6 +2,7 @@ name: update-engine-config-probe
 description: "update_engine_config errors on this runtime instead of writing the override: the tool raises AttributeError (datetime.datetime has no attribute UTC, config.py:129 datetime.now(datetime.UTC)) on Python 3.14.4 — probe expects the error."
 intent: "Record the current honest contract of the engine-config surface: on this runtime it cannot complete; the probe documents the defect until the product fix lands (regression flywheel turns it GREEN)."
 category: surface
+user_level: L0
 requires_env: []
 regression: true
 regression_issue: "update_engine_config crashes on Python 3.14 (datetime.UTC AttributeError at src/automedia/mcp/tools/config.py:129)"

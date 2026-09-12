@@ -70,6 +70,7 @@ name: agent-user-lifecycle-journey
 description: "An agent's full lifecycle against the shipped surfaces: onboard (init help + doctor + connect_account honest error), pool select, async run_pipeline, progress polling, distribute dry-run, effects analytics, and the Red Line 8 archive refusal."
 intent: "Prove the agent-facing lifecycle contract end to end: every step an agent takes from first contact to archival answers honestly — the async run_pipeline protocol returns immediately and stays pollable, the distribute dry-run posts nothing, effects computes real analytics, and archive refuses unpublished projects (Red Line 8)."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

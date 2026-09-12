@@ -2,6 +2,7 @@ name: list-projects-tmpdir
 description: list_projects scans an allowlisted temp directory under /tmp/automedia/ and answers success on an empty project root.
 intent: Prove the project-listing surface works against an allowlist-safe temporary directory without touching repo state.
 category: baseline
+user_level: L0
 requires_env: []
 steps:
   - name: create the temp project root

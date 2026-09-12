@@ -2,6 +2,7 @@ name: pipeline-state-surface
 description: automedia pipeline state resolves a synthetic project under a temp base dir and prints the per-gate state table, and get_pipeline_state returns the same state as a structured envelope.
 intent: Prove the read-only pipeline-state surface (CLI and MCP) aggregates history + md5 into passed/failed/pending rows without writing anything, so agents can inspect progress on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create a synthetic project info file

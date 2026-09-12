@@ -54,6 +54,7 @@ name: text-with-cover-journey
 description: A real text_with_cover pipeline run from the CLI (CW → G0-G6 → H0 → L1-L4 with cover generation) produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
 intent: "Prove the shipped text_with_cover production path end-to-end with a real LLM: topic to draft artifact in one CLI call through the cover-mode gate list, the produced project visible through the shipped projects surface, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the text_with_cover mode gates (issue #78)."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

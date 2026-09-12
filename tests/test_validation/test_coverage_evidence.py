@@ -26,6 +26,7 @@ TOOL_SCENARIO = """\
 name: {name}
 description: Synthetic fixture scenario.
 intent: Prove the fixture surface contract.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -43,6 +44,7 @@ PROVES_SCENARIO = """\
 name: {name}
 description: Synthetic fixture proving a gate and a mode.
 intent: Prove the evidence half consumes proves_gates/proves_modes.
+user_level: L0
 category: pipeline
 proves_gates: [{gates}]
 proves_modes: [{modes}]
@@ -61,6 +63,7 @@ BOUNDARY_SCENARIO = """\
 name: {name}
 description: Synthetic boundary probe.
 intent: Prove boundary probes are never evidence.
+user_level: L0
 category: surface
 error_boundary: true
 steps:
@@ -244,11 +247,7 @@ class TestMockAndBoundaryAndMetaNeverCount:
     def test_boundary_step_never_covered(self, tmp_path: Path) -> None:
         lib = _write_lib(
             tmp_path,
-            {
-                "boundary.yaml": BOUNDARY_SCENARIO.format(
-                    name="cancel-boundary", standard=_STANDARD
-                )
-            },
+            {"boundary.yaml": BOUNDARY_SCENARIO.format(name="cancel-boundary", standard=_STANDARD)},
         )
         runs = _persist(
             tmp_path,
@@ -294,11 +293,7 @@ class TestAllowlist:
     def test_active_entry_excluded_from_unproven(self, tmp_path: Path) -> None:
         lib = _write_lib(
             tmp_path,
-            {
-                "boundary.yaml": BOUNDARY_SCENARIO.format(
-                    name="cancel-boundary", standard=_STANDARD
-                )
-            },
+            {"boundary.yaml": BOUNDARY_SCENARIO.format(name="cancel-boundary", standard=_STANDARD)},
         )
         runs = _persist(tmp_path, [], stamp="20260101-000001-000000")
         allow = _allowlist(
@@ -320,11 +315,7 @@ class TestAllowlist:
     def test_expired_entry_is_unproven_again(self, tmp_path: Path) -> None:
         lib = _write_lib(
             tmp_path,
-            {
-                "boundary.yaml": BOUNDARY_SCENARIO.format(
-                    name="cancel-boundary", standard=_STANDARD
-                )
-            },
+            {"boundary.yaml": BOUNDARY_SCENARIO.format(name="cancel-boundary", standard=_STANDARD)},
         )
         runs = _persist(tmp_path, [], stamp="20260101-000001-000000")
         allow = _allowlist(

@@ -2,6 +2,7 @@ name: onboard-cli-surface
 description: automedia onboard --help exits 0 and prints the onboarding sub-commands (start, status, list), proving the onboard command is registered.
 intent: Prove the onboard CLI surface is callable and exposes its real contract (start/status/list sub-commands) without running the wizard.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: onboard --help shows sub-commands

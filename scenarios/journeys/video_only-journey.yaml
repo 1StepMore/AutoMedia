@@ -56,6 +56,7 @@ name: video-only-journey
 description: A real video_only pipeline run from the CLI (V0-V7 → L1-L4) completes and leaves the gate-lifecycle artifact of the real run in the project, and the real-LLM quality-evaluation surface answers.
 intent: "Prove the shipped video_only production path end-to-end with a real LLM: the V0-V7 → L1-L4 gate list runs to completion in one CLI call, the produced project visible through the shipped projects surface, the run's gate-lifecycle artifact inspectable by the director, and the quality-evaluation tool answering a real-LLM assessment — the per-mode journey that proves the video_only mode gates (issue #78)."
 category: journey
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 proves_gates:

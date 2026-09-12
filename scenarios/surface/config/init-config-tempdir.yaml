@@ -2,6 +2,7 @@ name: init-config-tempdir
 description: init_config creates the .automedia directory structure and a default config.yaml in a given project directory, returning a success envelope.
 intent: Prove the setup surface answers a real call without touching the repo root (temp dir only), so agents can bootstrap a project from the MCP surface.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: init_config writes config into the temp dir

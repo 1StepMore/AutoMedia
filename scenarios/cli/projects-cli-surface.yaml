@@ -2,6 +2,7 @@ name: projects-cli-surface
 description: automedia projects --help exits 0 and prints the project management sub-commands (list, get, get-assets), proving the projects command is registered.
 intent: Prove the projects CLI surface is callable and exposes its real contract (list/get/get-assets sub-commands) without scanning any directory.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: projects --help shows sub-commands

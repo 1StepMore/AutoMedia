@@ -2,6 +2,7 @@ name: mcp-help-alias
 description: "mcp_help (deprecated alias) returns the same categorized tool manifest as help_mcp (both return categories/tool_count/hint and, as a known product gap, neither wraps via success_response)."
 intent: Prove the deprecated manifest alias matches the canonical surface so discovery works under either name.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: mcp_help alias returns the tool manifest

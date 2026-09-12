@@ -23,6 +23,7 @@ name: publish-dry-run-all-platforms
 description: "distribute_content with dry_run=true over all 20 registered platforms validates pre-conditions without publishing anything."
 intent: "Prove the publish distribution surface's dry-run contract: a dry_run call across every registered platform posts zero content and reports per-platform would_succeed/would_fail statuses."
 category: publish
+user_level: L0
 requires_env: []
 steps:
   - name: create the synthetic project

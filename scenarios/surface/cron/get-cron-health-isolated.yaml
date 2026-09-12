@@ -2,6 +2,7 @@ name: get-cron-health-isolated
 description: get_cron_health validates the isolated pipeline_schedules.yaml and reports schedule counts in a success envelope.
 intent: Prove the cron-health surface answers on a clean env, so agents can check schedule validity before relying on the external crond.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: get_cron_health returns the health report

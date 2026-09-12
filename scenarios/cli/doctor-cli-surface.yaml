@@ -2,6 +2,7 @@ name: doctor-cli-surface
 description: "automedia --json doctor lists every dependency by name in machine-readable JSON; the listing contract holds on any machine."
 intent: "Prove the doctor surface honors its dependency-listing contract. exit_code is deliberately NOT asserted: doctor exits 1 when a dependency is missing, which is machine-dependent."
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: doctor lists every dependency

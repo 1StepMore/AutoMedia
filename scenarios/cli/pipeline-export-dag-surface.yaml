@@ -2,6 +2,7 @@ name: pipeline-export-dag-surface
 description: automedia pipeline export-dag --mode auto writes auto.md and auto.dot into an output directory, proving the DAG export command renders the canonical gate DAG.
 intent: Prove the pipeline DAG-export CLI surface executes a real render (not just --help), materializing the canonical gate order and dependency edges as readable artifacts a director can inspect.
 category: cli
+user_level: L0
 requires_env: []
 steps:
   - name: export-dag renders the auto-mode DAG

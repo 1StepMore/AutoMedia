@@ -2,6 +2,7 @@ name: pool-add-topic-alias
 description: "pool_add_topic (deprecated alias) returns the same success envelope shape as add_pool_topic (verified empirically: both success: true with id/title/category/status)."
 intent: Prove the deprecated pool alias keeps the canonical contract so agents calling the old name get identical surface behavior.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create the temp pool directory

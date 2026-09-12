@@ -2,6 +2,7 @@ name: evaluate-content-quality-llm
 description: evaluate_content_quality scores content via the LLM with structured output; it cannot complete without a configured AUTOMEDIA_LLM_API_KEY, so a missing key gates the scenario to unconfigured.
 intent: Prove the quality-evaluation surface's real contract (LLM-gated structured scoring) and the honest unconfigured state when the credential is absent.
 category: surface
+user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
 steps:

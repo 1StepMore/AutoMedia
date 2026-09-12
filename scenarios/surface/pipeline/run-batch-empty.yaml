@@ -2,6 +2,7 @@ name: run-batch-empty
 description: run_batch with an empty topic list returns immediately with a zeroed per-topic summary in a success envelope (no LLM call happens for an empty batch).
 intent: Prove the batch surface's deterministic empty-batch contract without credentials, so agents can rely on the summary shape before running real batches.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: run_batch summarizes the empty batch

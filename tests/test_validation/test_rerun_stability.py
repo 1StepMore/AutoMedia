@@ -35,6 +35,7 @@ _STABLE_SCENARIO = f"""\
 name: {{name}}
 description: Deterministic scenario for the rerun-stability gate.
 intent: Prove identical libraries yield identical statuses across runs.
+user_level: L0
 category: baseline
 requires_env: []
 steps:
@@ -85,6 +86,7 @@ def _order_dependent_library(tmp_path: Path) -> Path:
 name: order-dependent
 description: A fixture whose verdict flips on the second run (leftover state).
 intent: Prove the rerun-stability gate detects an order-dependent fixture.
+user_level: L0
 category: baseline
 requires_env: []
 steps:

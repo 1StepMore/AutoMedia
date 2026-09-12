@@ -2,6 +2,7 @@ name: dep-doctor-structural
 description: "automedia --json doctor emits a JSON payload on stdout that names every known dependency with an installed flag, and that payload parses as JSON on any machine."
 intent: "Prove the structural contract of the doctor JSON payload. The dependency list is static (python, bun, ffmpeg, whisper, edge-tts, hyperframes, comfyui, chrome, llm_api), so every name appears with an installed flag regardless of machine state, and the payload always parses as JSON. exit_code and success are deliberately NOT asserted: doctor exits 1 whenever any dependency is missing, which is machine-dependent. JSON parseability is proven by a python3 one-liner that re-invokes doctor itself and json.loads its stdout, so no shell pipe is needed."
 category: baseline
+user_level: L0
 requires_env: []
 steps:
   - name: doctor lists every dependency

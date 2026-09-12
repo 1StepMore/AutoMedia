@@ -2,6 +2,7 @@ name: list-topic-pool-empty
 description: list_topic_pool answers on an empty in-memory pool with a success envelope (an empty pool is an empty list, not an error).
 intent: Prove the pool-listing surface answers without credentials or an LLM, so agents can query the pool on a clean env.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: list_topic_pool returns the empty pool

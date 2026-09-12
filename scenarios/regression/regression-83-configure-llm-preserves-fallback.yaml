@@ -2,6 +2,7 @@ name: regression-83-configure-llm-preserves-fallback
 description: The save_model_config writer preserves an existing fallback chain when updating provider and model, proving the fix for issue #83 where configure_llm did a destructive full-file overwrite.
 intent: Pin the issue #83 regression: configure_llm (and onboard) must use the merge-preserving save_model_config writer instead of a destructive overwrite, so that an existing LLM fallback chain is never silently destroyed.
 category: regression
+user_level: L0
 regression: true
 regression_issue: "#83"
 requires_env: []

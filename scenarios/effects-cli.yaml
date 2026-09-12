@@ -2,6 +2,7 @@ name: effects-cli-contract
 description: "automedia effects exposes its real contract, verified against the shipped effects_cmd signature: --help exits 0 with usage text naming the required PROJECT_ID argument, and running without it exits 2 with a missing-argument error."
 intent: Prove the effects CLI surface is callable and enforces its required argument without touching any project state.
 category: baseline
+user_level: L0
 requires_env: []
 steps:
   - name: effects --help shows the usage contract

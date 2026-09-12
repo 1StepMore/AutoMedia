@@ -34,6 +34,7 @@ from automedia.validation.schema_parse import (
     SchemaError,
     _expect_any_dict,
     _expect_bool,
+    _expect_enum,
     _expect_int,
     _expect_number,
     _expect_str,
@@ -48,6 +49,13 @@ DEFAULT_TIMEOUT_SECONDS: float = 180.0
 
 STEP_KINDS: tuple[str, ...] = ("tool", "cli", "file")
 """Closed set of step surfaces. HTTP is deliberately absent (no HTTP adapter)."""
+
+USER_LEVELS: tuple[str, ...] = ("L0", "L1", "L2", "L3", "L4", "L5")
+"""Closed user-level enum (gap T-10): L0 Unconfigured agent · L1 LLM-configured
+agent · L2 Platform-credentialed publisher · L3 Director/human reviewer ·
+L4 Multi-tenant/enterprise operator · L5 Localized/non-English user.  A
+scenario declares exactly one level so ``validate coverage --by-level`` can
+render the stage×user matrix from data instead of auditor judgment."""
 
 ARTIFACT_CHECK_FIELDS: tuple[str, ...] = ("path", "required")
 """Closed field set of one ``collect_artifacts`` entry (guide §2.2/§4)."""
@@ -240,6 +248,7 @@ class Scenario:
     description: str
     intent: str
     steps: list[Step]
+    user_level: str = "L0"
     category: str = "general"
     requires_env: list[str] = field(default_factory=list)
     requires_http: bool = False
@@ -261,7 +270,7 @@ class Scenario:
     def from_dict(cls, data: object) -> Scenario:
         """Parse a scenario dict; unknown keys and wrong types raise :class:`SchemaError`."""
         data = _reject_unknown(data, SCENARIO_FIELDS, "scenario")
-        for key in ("name", "description", "intent", "steps"):
+        for key in ("name", "description", "intent", "steps", "user_level"):
             if key not in data:
                 raise SchemaError(f"scenario: missing required field {key!r}")
         prefix = "scenario."
@@ -292,6 +301,7 @@ class Scenario:
             name=_expect_str(data["name"], prefix + "name"),
             description=_expect_str(data["description"], prefix + "description"),
             intent=_expect_str(data["intent"], prefix + "intent"),
+            user_level=_expect_enum(data["user_level"], USER_LEVELS, prefix + "user_level"),
             category=_expect_str(data.get("category", "general"), prefix + "category"),
             requires_env=_expect_str_list(data.get("requires_env", []), prefix + "requires_env"),
             requires_http=_expect_bool(data.get("requires_http", False), prefix + "requires_http"),

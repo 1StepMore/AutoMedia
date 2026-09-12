@@ -2,6 +2,7 @@ name: add-pool-topic-tempdb
 description: add_pool_topic inserts a topic into a temp pool database and returns the new topic id, title, category and status in a success envelope.
 intent: Prove the pool-mutation surface works against an allowlisted temp database (no LLM, no repo state), with a paired cleanup step per guide §4.6.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: create the temp pool directory

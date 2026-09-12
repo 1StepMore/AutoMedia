@@ -2,6 +2,7 @@ name: test-cron-schedule-valid
 description: test_cron_schedule validates a syntactically correct 5-field cron expression and returns a success envelope (next_triggers may be None when croniter is not installed — the validation contract still holds).
 intent: Prove the cron-expression validation surface answers deterministically without credentials.
 category: surface
+user_level: L0
 requires_env: []
 steps:
   - name: test_cron_schedule validates the expression
