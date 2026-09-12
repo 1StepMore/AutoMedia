@@ -10,4 +10,8 @@ steps:
     standard: founder-expectations.F02
     tool: help_mcp
     arguments: {}
-    expect: {}
+    expect:
+      output_has:
+        - categories
+        - tool_count
+        - hint

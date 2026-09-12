@@ -300,7 +300,8 @@ class TestCellSemantics:
             "        standard: tool.contract\n"
             "        tool: cancel_pipeline\n"
             "        arguments: {}\n"
-            "        expect: {}\n"
+            "        expect:\n"
+            "          success: true\n"
             "cleanup_steps:\n"
             "  - name: clean up\n"
             "    kind: tool\n"
@@ -308,7 +309,8 @@ class TestCellSemantics:
             "    standard: tool.contract\n"
             "    tool: cancel_pipeline\n"
             "    arguments: {}\n"
-            "    expect: {}",
+            "    expect:\n"
+            "      success: true",
         )
         lib = _write_lib(tmp_path, {"recovery.yaml": scenario})
         matrix = build_matrix(lib)
@@ -338,9 +340,7 @@ class TestStatusHint:
         matrix = build_matrix(lib)
         by_name = {s["name"]: s for s in matrix["scenarios"]}
         assert by_name["health-fixture"]["status_hint"] == "ready"
-        assert by_name["env-fixture"]["status_hint"] == (
-            "requires-env: AUTOMEDIA_LLM_API_KEY"
-        )
+        assert by_name["env-fixture"]["status_hint"] == ("requires-env: AUTOMEDIA_LLM_API_KEY")
         assert by_name["boundary-fixture"]["status_hint"] == "error-boundary probe"
         assert by_name["hard-fixture"]["status_hint"] == "hard"
 

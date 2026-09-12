@@ -10,11 +10,19 @@ steps:
     standard: founder-expectations.F02
     tool: mcp_help
     arguments: {}
-    expect: {}
+    expect:
+      output_has:
+        - categories
+        - tool_count
+        - hint
   - name: help_mcp canonical returns the same shape
     kind: tool
     check: "help_mcp completes and returns the same manifest shape (categories, tool_count, hint) as the alias."
     standard: founder-expectations.F02
     tool: help_mcp
     arguments: {}
-    expect: {}
+    expect:
+      output_has:
+        - categories
+        - tool_count
+        - hint

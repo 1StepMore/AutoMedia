@@ -93,8 +93,7 @@ def load_scenarios(
         first = seen.get(scenario.name)
         if first is not None:
             raise LoadError(
-                f"{path}: duplicate scenario name {scenario.name!r} "
-                f"(already loaded from {first})"
+                f"{path}: duplicate scenario name {scenario.name!r} (already loaded from {first})"
             )
         seen[scenario.name] = path
         loaded.append(scenario)
@@ -104,14 +103,16 @@ def load_scenarios(
 def _resolve_standards(
     standards: StandardsRegistryProtocol | None,
 ) -> StandardsRegistryProtocol:
-    """Return the injected registry or lazily load the project one (W1-T3)."""
+    """Return the injected registry or lazily load the project one (W1-T3),
+    then reject any check type the framework cannot grade (T-02)."""
     if standards is not None:
+        _reject_unimplemented_check_types(standards, "injected standards registry")
         return standards
     handbook = default_scenarios_dir() / "STANDARDS.md"
     try:
         from automedia.validation.standards import StandardsRegistry
 
-        return StandardsRegistry.from_default()
+        registry = StandardsRegistry.from_default()
     except ImportError as exc:
         # Transient seam: W1-T3 is built in parallel; tests inject a registry.
         raise LoadError(
@@ -129,6 +130,23 @@ def _resolve_standards(
             f"AUTOMEDIA_VALIDATION_SCENARIOS_DIR, or pass a registry explicitly; "
             f"detail: {exc}"
         ) from exc
+    _reject_unimplemented_check_types(registry, str(handbook))
+    return registry
+
+
+def _reject_unimplemented_check_types(registry: StandardsRegistryProtocol, label: str) -> None:
+    """Reject at load any standard whose check type has no registered
+    evaluator (T-02).  Registries without the method are left alone."""
+    checker = getattr(registry, "unimplemented_check_types", None)
+    if not callable(checker):
+        return
+    unimplemented = sorted(checker())
+    if unimplemented:
+        raise LoadError(
+            f"{label}: unimplemented standard check-type(s) {unimplemented}; "
+            "every check type in the handbook must be bound to a registered "
+            "evaluator (see automedia.validation.expects.CHECK_TYPE_EVALUATORS)"
+        )
 
 
 def _load_file(path: Path, registry: StandardsRegistryProtocol) -> Scenario:
@@ -152,6 +170,7 @@ def _load_file(path: Path, registry: StandardsRegistryProtocol) -> Scenario:
     except SchemaError as exc:
         raise LoadError(f"{path}: {exc}") from exc
     _validate_standards(path, scenario, registry)
+    _validate_expects(path, scenario)
     return scenario
 
 
@@ -177,6 +196,36 @@ def _validate_standards(
                 f"{path}: scenario {scenario.name!r} {where} (step {step.name!r}): "
                 f"unknown standard key {step.standard!r}; "
                 f"known: {sorted(registry.known_keys())}"
+            )
+        for index, recovery in enumerate(step.recovery_steps):
+            check(recovery, f"{where}.recovery_steps[{index}]")
+
+    for index, step in enumerate(scenario.steps):
+        check(step, f"steps[{index}]")
+    for index, step in enumerate(scenario.cleanup_steps):
+        check(step, f"cleanup_steps[{index}]")
+
+
+def _validate_expects(path: Path, scenario: Scenario) -> None:
+    """Reject any non-boundary step with an empty ``expect`` block (T-02).
+
+    Boundary probes are exempt: their contract is "assert an error occurs",
+    which an empty expect expresses (the engine's boundary grader owns the
+    verdict).  The scenario-level ``error_boundary`` flag exempts every step
+    of a boundary-only scenario; the step-level flag exempts that step.
+    Recovery and cleanup steps are held to the same rule unless the scenario
+    is boundary-only.
+    """
+
+    def check(step: Step, where: str) -> None:
+        if step.error_boundary or scenario.error_boundary:
+            return
+        if step.expect.is_empty():
+            raise LoadError(
+                f"{path}: scenario {scenario.name!r} {where} (step {step.name!r}): "
+                "non-boundary step must declare at least one expectation; an "
+                "empty expect block is not evidence (add an assertion or mark "
+                "the step error_boundary: true)"
             )
         for index, recovery in enumerate(step.recovery_steps):
             check(recovery, f"{where}.recovery_steps[{index}]")

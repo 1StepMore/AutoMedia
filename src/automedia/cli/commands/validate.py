@@ -83,6 +83,9 @@ def validate_list() -> None:
     except LoadError as exc:
         output_error(f"Failed to load scenarios: {exc}")
         return
+    from automedia.validation.standards import StandardsRegistry
+
+    unimplemented = sorted(StandardsRegistry.from_default().unimplemented_check_types())
     rows: list[tuple[str, str, str]] = []
     for scenario in scenarios:
         hint_parts: list[str] = []
@@ -98,6 +101,7 @@ def validate_list() -> None:
         output_json(
             {
                 "total": len(rows),
+                "unimplemented_check_types": unimplemented,
                 "scenarios": [
                     {"name": name, "category": category, "hints": hints}
                     for name, category, hints in rows
@@ -110,6 +114,7 @@ def validate_list() -> None:
     for name, category, hints in rows:
         typer.echo(f"  {name:<45} {category:<12} {hints}")
     typer.echo("")
+    typer.echo(f"Unimplemented check-types: {len(unimplemented)}")
     typer.echo("Run one: automedia validate run --scenario <name>")
 
 

@@ -144,7 +144,8 @@ steps:
     check: rm is not surface coverage.
     standard: founder-expectations.F02
     command: rm -rf /tmp/synthetic
-    expect: {}
+    expect:
+      exit_code: 0
   - name: file-kind step ignored
     kind: file
     check: The manifest exists.
@@ -164,7 +165,8 @@ steps:
     check: Bare binary names no subcommand.
     standard: founder-expectations.F02
     command: automedia --help
-    expect: {}
+    expect:
+      exit_code: 0
 """
 
 
@@ -307,7 +309,8 @@ class TestUsedExtraction:
                 "        standard: tool.contract\n"
                 "        tool: pool_add_topic\n"
                 "        arguments: {}\n"
-                "        expect: {}\n"
+                "        expect:\n"
+                "          success: true\n"
                 "    collect_artifacts: []\n"
                 "cleanup_steps:\n"
                 "  - name: clean up\n"
@@ -316,7 +319,8 @@ class TestUsedExtraction:
                 "    standard: tool.contract\n"
                 "    tool: pool_add_topic\n"
                 "    arguments: {}\n"
-                "    expect: {}",
+                "    expect:\n"
+                "      success: true",
             ),
             encoding="utf-8",
         )

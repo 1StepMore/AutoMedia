@@ -81,6 +81,9 @@ _EXPECT_PARSE: tuple[tuple[str, Callable[[object, str], Any]], ...] = (
     ("artifact_exists", _expect_str),
     ("artifact_nonempty", _expect_str),
     ("gate_records_pass", _expect_bool),
+    ("output_has", _expect_str_list),
+    ("min_score", _expect_number),
+    ("score_state", _expect_str_list),
 )
 """Field-name → type-parser map for the simple (non-cross-validated) expect keys."""
 
@@ -99,6 +102,9 @@ class Expect:
     artifact_size_min: int | None = None
     artifact_nonempty: str | None = None
     gate_records_pass: bool | None = None
+    output_has: list[str] | None = None
+    min_score: float | None = None
+    score_state: list[str] | None = None
 
     @classmethod
     def from_dict(cls, data: object, where: str = "expect") -> Expect:
@@ -119,6 +125,10 @@ class Expect:
                 raise SchemaError(prefix + "artifact_size_min must be >= 0")
             kwargs["artifact_size_min"] = size
         return cls(**kwargs)
+
+    def is_empty(self) -> bool:
+        """True when the block declares no assertion at all (T-02)."""
+        return all(getattr(self, name) is None for name in EXPECT_KEYS)
 
 
 @dataclass(frozen=True)

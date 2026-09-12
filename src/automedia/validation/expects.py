@@ -12,9 +12,18 @@ Output envelope contract (produced by the adapters, W1-T4)::
 
 Conjoined semantics (guide §2.3): every assertion present in the block must
 hold; absent fields are not evaluated.  An expect block with no present
-assertions passes trivially.  All failures are collected — never
+assertions passes trivially at the evaluator level, but the loader rejects an
+empty block on any non-boundary step (T-02) — a zero-assertion step can never
+reach execution as evidence.  All failures are collected — never
 short-circuited — and every failure names the failing expect key plus the
 actual value observed (guide §4.7).
+
+Check-type binding (T-02): :data:`CHECK_TYPE_EVALUATORS` binds every standard
+check type in ``scenarios/STANDARDS.md`` to the expect-key evaluators that
+grade it.  :data:`IMPLEMENTED_CHECK_TYPES` is the resulting closed set; the
+standards registry rejects at load any handbook row whose check type is not in
+it (``standards.py`` + ``loader.py``).  ``quality_spot_check`` is graded by the
+explicit ``min_score`` / ``score_state`` assertions, never free text.
 
 ``gate_records_pass`` exact semantics (declared ``true`` in scenarios):
 
@@ -58,10 +67,43 @@ from automedia.validation.schema import Expect, Scenario, Step
 _GATE_RECORD_KEYS: tuple[str, ...] = ("gates", "gate_results", "passed_gates")
 """Accepted key names for non-empty gate/pass record lists in a project-info JSON."""
 
-_MINIMAL_PASS_STATUSES: frozenset[str] = frozenset(
-    {"passed", "complete", "completed", "success"}
-)
+_MINIMAL_PASS_STATUSES: frozenset[str] = frozenset({"passed", "complete", "completed", "success"})
 """Accepted ``status`` values for the minimal-pass fallback of gate_records_pass."""
+
+_SCORE_KEYS: tuple[str, ...] = ("quality_score", "overall_score", "score")
+"""Output keys carrying a numeric quality score (T-02 quality_spot_check)."""
+
+_STATE_KEYS: tuple[str, ...] = ("quality_state", "state")
+"""Output keys carrying an explicit machine state (T-02 quality_spot_check)."""
+
+
+@dataclass(frozen=True, slots=True)
+class CheckTypeEvaluator:
+    """Binding of one standard check type to the expect-key evaluators that
+    grade it (T-02).  ``expect_keys`` is the canonical set of expect keys a
+    step can use to exercise this check type; an empty tuple marks a
+    status-scoped evaluator (for example the env gate behind ``unconfigured``).
+    """
+
+    check_type: str
+    expect_keys: tuple[str, ...]
+
+
+CHECK_TYPE_EVALUATORS: dict[str, CheckTypeEvaluator] = {
+    "artifact_exists": CheckTypeEvaluator("artifact_exists", ("artifact_exists",)),
+    "non_empty": CheckTypeEvaluator("non_empty", ("artifact_nonempty", "output_has", "stdout_has")),
+    "gate_records_pass": CheckTypeEvaluator("gate_records_pass", ("gate_records_pass",)),
+    "quality_spot_check": CheckTypeEvaluator("quality_spot_check", ("min_score", "score_state")),
+    "data_has": CheckTypeEvaluator("data_has", ("data_has",)),
+    "exit_code": CheckTypeEvaluator("exit_code", ("exit_code",)),
+    "stdout": CheckTypeEvaluator("stdout", ("stdout_has",)),
+    "stderr": CheckTypeEvaluator("stderr", ("stderr_has",)),
+    "unconfigured": CheckTypeEvaluator("unconfigured", ()),
+}
+"""Every standard check type the framework can grade, bound to its evaluator keys."""
+
+IMPLEMENTED_CHECK_TYPES: frozenset[str] = frozenset(CHECK_TYPE_EVALUATORS)
+"""The closed set of check types with a registered evaluator (T-02)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,16 +165,13 @@ def evaluate_expect(
     if expect.success is not None:
         observed = output.get("success")
         if observed != expect.success:
-            failures.append(
-                f"expect.success: expected {expect.success}, observed {observed!r}"
-            )
+            failures.append(f"expect.success: expected {expect.success}, observed {observed!r}")
 
     if expect.data_has is not None:
         data = output.get("data")
         if not isinstance(data, dict):
             failures.append(
-                "expect.data_has: output.data is not a dict "
-                f"(observed {type(data).__name__})"
+                f"expect.data_has: output.data is not a dict (observed {type(data).__name__})"
             )
         else:
             missing = [key for key in expect.data_has if key not in data]
@@ -145,9 +184,7 @@ def evaluate_expect(
     if expect.exit_code is not None:
         observed = output.get("exit_code")
         if observed != expect.exit_code:
-            failures.append(
-                f"expect.exit_code: expected {expect.exit_code}, observed {observed!r}"
-            )
+            failures.append(f"expect.exit_code: expected {expect.exit_code}, observed {observed!r}")
 
     if expect.stdout_has is not None:
         stdout = output.get("stdout")
@@ -183,9 +220,7 @@ def evaluate_expect(
         target = expect.artifact_exists
         if target is None:
             # schema forbids this; guard Expect built programmatically
-            failures.append(
-                "expect.artifact_size_min: no artifact_exists path in block to measure"
-            )
+            failures.append("expect.artifact_size_min: no artifact_exists path in block to measure")
         else:
             resolved = _resolve_path(target, base)
             if os.path.isfile(resolved):
@@ -197,8 +232,7 @@ def evaluate_expect(
                     )
             else:
                 failures.append(
-                    "expect.artifact_size_min: path "
-                    f"{target!r} is not a file (resolved {resolved})"
+                    f"expect.artifact_size_min: path {target!r} is not a file (resolved {resolved})"
                 )
 
     if expect.artifact_nonempty is not None:
@@ -221,12 +255,42 @@ def evaluate_expect(
                 f"{expect.gate_records_pass}, observed {observation}"
             )
 
+    if expect.output_has is not None:
+        observed_keys = sorted(output) if isinstance(output, dict) else []
+        missing = [key for key in expect.output_has if key not in observed_keys]
+        if missing:
+            failures.append(
+                "expect.output_has: missing key(s) "
+                f"{_fmt(missing)}; observed keys: {_fmt(observed_keys)}"
+            )
+
+    if expect.min_score is not None:
+        score = _observed_score(output)
+        if score is None:
+            failures.append(
+                "expect.min_score: no numeric quality score in output; observed "
+                f"keys: {_fmt(sorted(output) if isinstance(output, dict) else [])}"
+            )
+        elif score < expect.min_score:
+            failures.append(f"expect.min_score: observed score {score} < min {expect.min_score}")
+
+    if expect.score_state is not None:
+        state = _observed_state(output)
+        if state is None:
+            failures.append(
+                "expect.score_state: no machine state in output; observed keys: "
+                f"{_fmt(sorted(output) if isinstance(output, dict) else [])}"
+            )
+        elif state not in expect.score_state:
+            failures.append(
+                f"expect.score_state: observed state {state!r} not in allowed "
+                f"{_fmt(expect.score_state)}"
+            )
+
     return ExpectResult(passed=not failures, failures=failures)
 
 
-def aggregate_status(
-    scenario: Scenario, step_results: Sequence[bool | StepRecord]
-) -> str:
+def aggregate_status(scenario: Scenario, step_results: Sequence[bool | StepRecord]) -> str:
     """Derive the scenario verdict from per-step results (guide §2.7/§3.3).
 
     Returns ``"passed"`` | ``"failed"`` | ``"partial-pass"`` | ``"recovered"``.
@@ -245,9 +309,7 @@ def aggregate_status(
     ``False`` = failed) or any object satisfying :class:`StepRecord`.
     """
     records = [
-        SimpleRecord(passed=r, status="passed" if r else "failed")
-        if isinstance(r, bool)
-        else r
+        SimpleRecord(passed=r, status="passed" if r else "failed") if isinstance(r, bool) else r
         for r in step_results
     ]
     failed = [r for r in records if not r.passed]
@@ -288,6 +350,7 @@ def apply_recovery(primary_passed: bool, recovery_results: Sequence[bool]) -> st
 
 # --- helpers ---------------------------------------------------------------
 
+
 def _resolve_path(path: str, cwd: Path) -> Path:
     """Resolve ``path`` against ``cwd``; absolute paths are used as-is."""
     candidate = Path(path)
@@ -305,9 +368,7 @@ def _gate_records_path(expect: Expect, step: Step | None) -> str | None:
     return None
 
 
-def _gate_records_observation(
-    expect: Expect, step: Step | None, cwd: Path
-) -> tuple[bool, str]:
+def _gate_records_observation(expect: Expect, step: Step | None, cwd: Path) -> tuple[bool, str]:
     """Inspect the gate-records artifact; return ``(observed, observation)``."""
     path = _gate_records_path(expect, step)
     if path is None:
@@ -339,11 +400,43 @@ def _gate_records_observation(
         return True, f"status: {status!r}"
     return (
         False,
-        "no gate records and no passing status "
-        f"(keys: {sorted(parsed)}, status: {status!r})",
+        f"no gate records and no passing status (keys: {sorted(parsed)}, status: {status!r})",
     )
 
 
 def _fmt(items: Sequence[object]) -> str:
     """Join items as comma-separated reprs (failure messages name observed values)."""
     return ", ".join(repr(item) for item in items)
+
+
+def _observed_score(output: object) -> float | None:
+    """The first numeric quality score in the envelope (top level or ``data``)."""
+    if not isinstance(output, dict):
+        return None
+    candidates = [output.get(key) for key in _SCORE_KEYS]
+    data = output.get("data")
+    if isinstance(data, dict):
+        candidates.extend(data.get(key) for key in _SCORE_KEYS)
+    for candidate in candidates:
+        if isinstance(candidate, bool):
+            continue
+        if isinstance(candidate, (int, float)):
+            return float(candidate)
+    return None
+
+
+def _observed_state(output: object) -> str | None:
+    """The explicit machine state in the envelope (top level or ``data``)."""
+    if not isinstance(output, dict):
+        return None
+    for key in _STATE_KEYS:
+        value = output.get(key)
+        if isinstance(value, str):
+            return value
+    data = output.get("data")
+    if isinstance(data, dict):
+        for key in _STATE_KEYS:
+            value = data.get(key)
+            if isinstance(value, str):
+                return value
+    return None

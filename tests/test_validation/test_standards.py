@@ -274,3 +274,84 @@ def test_malformed_handbook_without_heading_raises(tmp_path: Path) -> None:
 def test_init_without_path_raises() -> None:
     with pytest.raises(StandardsError):
         StandardsRegistry()
+
+
+# --- T-02: check-type binding -----------------------------------------------
+
+
+def test_check_type_column_is_parsed_from_fixture() -> None:
+    """The Check type column is no longer discarded (T-02).
+
+    Every standard binds to its declared check type exactly as authored.
+    """
+    registry = StandardsRegistry(FIXTURE_HANDBOOK)
+
+    assert registry.check_type("evaluation-matrix.dim1") == ("quality_spot_check",)
+    assert registry.check_type("builtin.non_empty") == ("non_empty",)
+    assert registry.check_type("builtin.exit_code") == ("exit_code",)
+    assert registry.check_type("builtin.unconfigured") == ("unconfigured",)
+    assert registry.check_type("no.such.key") is None
+
+
+def test_fixture_handbook_has_zero_unimplemented_check_types() -> None:
+    """Every check type in the synthetic handbook has a registered evaluator."""
+    registry = StandardsRegistry(FIXTURE_HANDBOOK)
+
+    assert registry.unimplemented_check_types() == set()
+
+
+def test_unimplemented_check_type_is_reported(tmp_path: Path) -> None:
+    """A standard whose check type has no evaluator is reported, not silently
+    dropped (T-02)."""
+    handbook = tmp_path / "STANDARDS.md"
+    handbook.write_text(
+        "\n".join(
+            [
+                "## Standards",
+                "",
+                "| Key | Check type | Standard | Source doc | Clause |",
+                "| --- | --- | --- | --- | --- |",
+                "| x.y | bogus_check | an unimplemented check | docs/x.md | §1 |",
+                "| builtin.artifact_exists | artifact_exists | expect contract | docs/g.md | §2 |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    registry = StandardsRegistry(handbook)
+
+    assert registry.unimplemented_check_types() == {"bogus_check"}
+
+
+def test_comma_separated_check_types_split(tmp_path: Path) -> None:
+    """A compound check type like ``exit_code, stdout`` binds to both
+    evaluators (the real ``cli.doctor`` standard)."""
+    handbook = tmp_path / "STANDARDS.md"
+    handbook.write_text(
+        "\n".join(
+            [
+                "## Standards",
+                "",
+                "| Key | Check type | Standard | Source doc | Clause |",
+                "| --- | --- | --- | --- | --- |",
+                "| cli.doctor | exit_code, stdout | doctor contract | docs/c.md | §1 |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    registry = StandardsRegistry(handbook)
+
+    assert registry.check_type("cli.doctor") == ("exit_code", "stdout")
+    assert registry.unimplemented_check_types() == set()
+
+
+def test_real_handbook_has_zero_unimplemented_check_types(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The committed ``scenarios/STANDARDS.md`` binds every check type."""
+    monkeypatch.delenv("AUTOMEDIA_VALIDATION_SCENARIOS_DIR", raising=False)
+
+    registry = StandardsRegistry.from_default()
+
+    assert registry.unimplemented_check_types() == set()

@@ -23,4 +23,5 @@ cleanup_steps:
     tool: remove_cron_schedule
     arguments:
       name: w3t1-schedule
-    expect: {}
+    expect:
+      success: true

@@ -28,6 +28,8 @@ import os
 import re
 from pathlib import Path
 
+from automedia.validation.expects import IMPLEMENTED_CHECK_TYPES
+
 STANDARDS_HANDBOOK_NAME = "STANDARDS.md"
 """Handbook filename inside the scenarios directory."""
 
@@ -66,10 +68,17 @@ def _is_separator_row(cells: list[str]) -> bool:
     )
 
 
-def _parse_handbook(text: str, path: Path) -> set[str]:
-    """Extract the ``Key`` column of the first table under the standards
-    heading; keys are trimmed, deduped and non-empty.  Raises
-    ``StandardsError`` naming ``path`` when no heading or no table exists."""
+def _parse_check_types(cell: str) -> tuple[str, ...]:
+    """Split a Check-type cell on commas (``exit_code, stdout`` → two types)."""
+    return tuple(part.strip() for part in cell.split(",") if part.strip())
+
+
+def _parse_handbook(text: str, path: Path) -> dict[str, tuple[str, ...]]:
+    """Extract the ``Key`` + ``Check type`` columns of the first table under
+    the standards heading.  Keys are trimmed, deduped and non-empty; the Check
+    type column binds each key to its evaluator(s) (T-02).  Raises
+    ``StandardsError`` naming ``path`` when no heading, no table, or a data row
+    without a check type exists."""
     lines = text.splitlines()
     table_start: int | None = None
     for index, line in enumerate(lines):
@@ -82,8 +91,7 @@ def _parse_handbook(text: str, path: Path) -> set[str]:
             f"{path}: no '## Standards' heading found; the handbook must contain a "
             "'## Standards' (or '## Standard Keys') section with a Markdown table"
         )
-    keys: list[str] = []
-    seen: set[str] = set()
+    standards: dict[str, tuple[str, ...]] = {}
     rows = 0
     for line in lines[table_start:]:
         if not _TABLE_ROW_RE.match(line):
@@ -97,21 +105,30 @@ def _parse_handbook(text: str, path: Path) -> set[str]:
         if rows == 1:  # header row: Key | Check type | Standard | Source doc | Clause
             continue
         key = cells[0]
-        if key and key not in seen:
-            seen.add(key)
-            keys.append(key)
-    if not keys:
+        if not key or key in standards:
+            continue
+        check_types = _parse_check_types(cells[1]) if len(cells) > 1 else ()
+        if not check_types:
+            raise StandardsError(
+                f"{path}: standard {key!r} has no check type; every standards table "
+                "row must declare at least one check type in the 'Check type' column"
+            )
+        standards[key] = check_types
+    if not standards:
         raise StandardsError(
             f"{path}: no standards table found under the '## Standards' heading "
             "(expected a Markdown table with columns 'Key | Check type | Standard | "
             "Source doc | Clause')"
         )
-    return set(keys)
+    return standards
 
 
 class StandardsRegistry:
     """The known-standard keys of the agent-tester validation framework,
-    loaded from the handbook's ``Key`` column (guide §2.4 + plan W1-T3)."""
+    loaded from the handbook's ``Key`` + ``Check type`` columns (guide §2.4 +
+    plan W1-T3; check-type binding T-02).  Every check type is bound to a
+    registered evaluator; :meth:`unimplemented_check_types` exposes any
+    handbook row whose check type the framework cannot grade."""
 
     def __init__(self, handbook_path: Path | str | None = None) -> None:
         if handbook_path is None:
@@ -131,7 +148,7 @@ class StandardsRegistry:
             raise StandardsError(
                 f"standards handbook unreadable: {self._handbook_path} ({exc})"
             ) from exc
-        self._keys: set[str] = _parse_handbook(text, self._handbook_path)
+        self._standards: dict[str, tuple[str, ...]] = _parse_handbook(text, self._handbook_path)
 
     @classmethod
     def from_default(cls) -> StandardsRegistry:
@@ -142,8 +159,26 @@ class StandardsRegistry:
 
     def validate_standard(self, key: str) -> bool:
         """True when ``key`` is a known standard key from the handbook."""
-        return key in self._keys
+        return key in self._standards
 
     def known_keys(self) -> set[str]:
         """All known standard keys (a fresh copy, safe to mutate)."""
-        return set(self._keys)
+        return set(self._standards)
+
+    def check_type(self, key: str) -> tuple[str, ...] | None:
+        """The check type(s) bound to ``key``, or None when unknown."""
+        return self._standards.get(key)
+
+    def check_types(self) -> dict[str, tuple[str, ...]]:
+        """Every standard key → its check type(s) (a fresh copy)."""
+        return dict(self._standards)
+
+    def unimplemented_check_types(self) -> set[str]:
+        """The check types declared by the handbook with no registered
+        evaluator (the loader rejects these at load time)."""
+        return {
+            check_type
+            for check_types in self._standards.values()
+            for check_type in check_types
+            if check_type not in IMPLEMENTED_CHECK_TYPES
+        }

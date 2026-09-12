@@ -36,6 +36,14 @@ class FakeStandards:
     def known_keys(self) -> set[str]:
         return set(KNOWN_STANDARDS)
 
+    def check_type(self, key: str) -> tuple[str, ...] | None:
+        if key not in KNOWN_STANDARDS:
+            return None
+        return ("artifact_exists",)
+
+    def unimplemented_check_types(self) -> set[str]:
+        return set()
+
 
 def tool_step(**overrides: object) -> dict[str, object]:
     """A valid tool-kind step dict (health_check), overridable per test."""
@@ -160,9 +168,7 @@ class TestMalformedYaml:
 
 class TestSchemaRejection:
     @pytest.mark.parametrize("field", ["brand", "llm"])
-    def test_unknown_top_level_field_names_file_and_field(
-        self, tmp_path: Path, field: str
-    ) -> None:
+    def test_unknown_top_level_field_names_file_and_field(self, tmp_path: Path, field: str) -> None:
         path = write_yaml(tmp_path, "s.yaml", scenario_dict(**{field: "x"}))
 
         with pytest.raises(LoadError, match=field) as excinfo:
@@ -190,7 +196,7 @@ class TestSchemaRejection:
     def test_wrong_type_names_dotted_field(self, tmp_path: Path) -> None:
         write_yaml(tmp_path, "s.yaml", scenario_dict(intent=42))
 
-        with pytest.raises(LoadError, match="scenario.intent"):
+        with pytest.raises(LoadError, match=re.escape("scenario.intent")):
             load_scenarios(tmp_path, FakeStandards())
 
 
@@ -221,27 +227,21 @@ class TestStandardsCrossCheck:
             tmp_path,
             "s.yaml",
             scenario_dict(
-                steps=[
-                    tool_step(
-                        recovery_steps=[tool_step(name="recover", standard="nope.x")]
-                    )
-                ]
+                steps=[tool_step(recovery_steps=[tool_step(name="recover", standard="nope.x")])]
             ),
         )
 
-        with pytest.raises(LoadError, match="nope.x"):
+        with pytest.raises(LoadError, match=re.escape("nope.x")):
             load_scenarios(tmp_path, FakeStandards())
 
     def test_unknown_standard_in_cleanup_step_fails(self, tmp_path: Path) -> None:
         write_yaml(
             tmp_path,
             "s.yaml",
-            scenario_dict(
-                cleanup_steps=[tool_step(name="cleanup", standard="nope.y")]
-            ),
+            scenario_dict(cleanup_steps=[tool_step(name="cleanup", standard="nope.y")]),
         )
 
-        with pytest.raises(LoadError, match="nope.y"):
+        with pytest.raises(LoadError, match=re.escape("nope.y")):
             load_scenarios(tmp_path, FakeStandards())
 
     def test_registry_absent_fails_loudly(
@@ -296,3 +296,83 @@ class TestLoadErrorClass:
             load_scenarios(tmp_path, FakeStandards())
 
         assert str(path) in str(excinfo.value)
+
+
+# --- T-02: check-type binding + non-empty expects ---------------------------
+
+
+BOGUS_CHECK_TYPE_HANDBOOK = """
+## Standards
+
+| Key | Check type | Standard | Source doc | Clause |
+| --- | --- | --- | --- | --- |
+| x.y | bogus_check | an unimplemented check | docs/x.md | §1 |
+"""
+
+
+class TestCheckTypeBinding:
+    def test_unimplemented_check_type_fails_load(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A handbook standard whose check type has no evaluator is rejected
+        at load, naming the check type (T-02)."""
+        root = tmp_path / "scenarios"
+        root.mkdir()
+        (root / "STANDARDS.md").write_text(BOGUS_CHECK_TYPE_HANDBOOK, encoding="utf-8")
+        write_yaml(root, "s.yaml", scenario_dict(steps=[tool_step(standard="x.y")]))
+        monkeypatch.setenv("AUTOMEDIA_VALIDATION_SCENARIOS_DIR", str(root))
+
+        with pytest.raises(LoadError, match="bogus_check"):
+            load_scenarios()
+
+
+class TestNonEmptyExpect:
+    def test_non_boundary_empty_expect_rejected(self, tmp_path: Path) -> None:
+        write_yaml(tmp_path, "s.yaml", scenario_dict(steps=[tool_step(expect={})]))
+
+        with pytest.raises(SchemaError, match="expect"):
+            load_scenarios(tmp_path, FakeStandards())
+
+    def test_boundary_step_empty_expect_allowed(self, tmp_path: Path) -> None:
+        write_yaml(
+            tmp_path,
+            "s.yaml",
+            scenario_dict(steps=[tool_step(expect={}, error_boundary=True)]),
+        )
+
+        scenarios = load_scenarios(tmp_path, FakeStandards())
+
+        assert len(scenarios) == 1
+
+    def test_scenario_level_boundary_empty_expect_allowed(self, tmp_path: Path) -> None:
+        write_yaml(
+            tmp_path,
+            "s.yaml",
+            scenario_dict(error_boundary=True, steps=[tool_step(expect={})]),
+        )
+
+        scenarios = load_scenarios(tmp_path, FakeStandards())
+
+        assert len(scenarios) == 1
+
+    def test_cleanup_empty_expect_is_rejected(self, tmp_path: Path) -> None:
+        """Cleanup steps that can be graded are held to the same rule (T-02)."""
+        write_yaml(
+            tmp_path,
+            "s.yaml",
+            scenario_dict(cleanup_steps=[tool_step(name="cleanup", expect={})]),
+        )
+
+        with pytest.raises(SchemaError, match="expect"):
+            load_scenarios(tmp_path, FakeStandards())
+
+    def test_recovery_empty_expect_is_rejected(self, tmp_path: Path) -> None:
+        """Recovery steps that can be graded are held to the same rule (T-02)."""
+        write_yaml(
+            tmp_path,
+            "s.yaml",
+            scenario_dict(steps=[tool_step(recovery_steps=[tool_step(name="recover", expect={})])]),
+        )
+
+        with pytest.raises(SchemaError, match="expect"):
+            load_scenarios(tmp_path, FakeStandards())

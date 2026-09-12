@@ -20,7 +20,11 @@ steps:
     arguments:
       project_id: "5f3a9c2e8b1d"
       base_dir: /tmp/automedia/w3t1-analyze/projects
-    expect: {}
+    expect:
+      output_has:
+        - status
+        - project_id
+        - stats
 cleanup_steps:
   - name: remove the synthetic project tree
     kind: cli

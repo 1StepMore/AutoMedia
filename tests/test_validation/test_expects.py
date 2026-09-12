@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -24,6 +23,7 @@ from automedia.validation.expects import (
 from automedia.validation.schema import Expect, Scenario, Step
 
 # --- helpers ---------------------------------------------------------------
+
 
 def expect(**fields: object) -> Expect:
     """Build an Expect from field overrides (all fields optional)."""
@@ -66,7 +66,7 @@ def scenario(**overrides: object) -> Scenario:
     return Scenario.from_dict(base)
 
 
-def gate_json(data: dict[str, Any]) -> str:
+def gate_json(data: object) -> str:
     """Serialized synthetic project-info JSON (tests write it into tmp_path)."""
     return json.dumps(data)
 
@@ -77,6 +77,7 @@ def cwd(tmp_path: Path) -> Path:
 
 
 # --- success ---------------------------------------------------------------
+
 
 class TestSuccess:
     def test_passes_when_envelope_reports_success(self) -> None:
@@ -96,6 +97,7 @@ class TestSuccess:
 
 
 # --- data_has --------------------------------------------------------------
+
 
 class TestDataHas:
     def test_passes_when_all_keys_present(self) -> None:
@@ -122,6 +124,7 @@ class TestDataHas:
 
 # --- exit_code -------------------------------------------------------------
 
+
 class TestExitCode:
     def test_passes_on_exact_match(self) -> None:
         r = evaluate_expect(expect(exit_code=0), {"exit_code": 0})
@@ -139,6 +142,7 @@ class TestExitCode:
 
 
 # --- stdout_has / stderr_has ------------------------------------------------
+
 
 class TestStdoutHas:
     def test_passes_on_substring_containment(self) -> None:
@@ -176,6 +180,7 @@ class TestStderrHas:
 
 # --- artifact_exists ----------------------------------------------------------
 
+
 class TestArtifactExists:
     def test_passes_when_file_exists(self, cwd: Path) -> None:
         (cwd / "out.txt").write_text("data", encoding="utf-8")
@@ -195,6 +200,7 @@ class TestArtifactExists:
 
 
 # --- artifact_size_min ---------------------------------------------------------
+
 
 class TestArtifactSizeMin:
     def test_passes_when_size_equals_min(self, cwd: Path) -> None:
@@ -230,6 +236,7 @@ class TestArtifactSizeMin:
 
 # --- artifact_nonempty -----------------------------------------------------------
 
+
 class TestArtifactNonempty:
     def test_passes_when_file_has_content(self, cwd: Path) -> None:
         (cwd / "log.txt").write_text("x", encoding="utf-8")
@@ -249,6 +256,7 @@ class TestArtifactNonempty:
 
 
 # --- gate_records_pass -----------------------------------------------------------
+
 
 class TestGateRecordsPass:
     def _file_step(self) -> Step:
@@ -346,6 +354,7 @@ class TestGateRecordsPass:
 
 # --- conjoined semantics ---------------------------------------------------------
 
+
 class TestConjoined:
     def test_all_assertions_must_hold(self) -> None:
         r = evaluate_expect(
@@ -382,6 +391,7 @@ class TestConjoined:
 
 # --- cwd isolation ----------------------------------------------------------------
 
+
 class TestCwdIsolation:
     def test_relative_paths_resolve_against_cwd(self, cwd: Path) -> None:
         (cwd / "only-here.txt").write_text("x", encoding="utf-8")
@@ -402,6 +412,7 @@ class TestCwdIsolation:
 
 
 # --- recovery logic ----------------------------------------------------------------
+
 
 class TestRecovery:
     def test_should_run_recovery_only_when_primary_failed(self) -> None:
@@ -427,6 +438,7 @@ class TestRecovery:
 
 
 # --- aggregate_status ----------------------------------------------------------------
+
 
 class TestAggregate:
     def test_all_passed_is_passed(self) -> None:
@@ -477,3 +489,73 @@ class TestAggregate:
         s = scenario(min_passing=1, steps=[step_dict()])
         r = aggregate_status(s, [SimpleRecord(False, "failed"), SimpleRecord(True, "recovered")])
         assert r == "partial-pass"
+
+
+# --- T-02: output_has (top-level envelope keys) -------------------------------
+
+
+class TestOutputHas:
+    def test_passes_when_all_top_level_keys_present(self) -> None:
+        r = evaluate_expect(
+            expect(output_has=["categories", "tool_count"]),
+            {"categories": {"a": []}, "tool_count": 3},
+        )
+        assert r.passed is True
+
+    def test_fails_naming_missing_keys_and_observed_keys(self) -> None:
+        r = evaluate_expect(
+            expect(output_has=["categories", "hint"]),
+            {"categories": {}, "tool_count": 3},
+        )
+        assert r.passed is False
+        assert "expect.output_has" in r.failures[0]
+        assert "'hint'" in r.failures[0]
+
+    def test_fails_when_output_not_a_dict(self) -> None:
+        r = evaluate_expect(expect(output_has=["a"]), {"output": "not a dict"})  # type: ignore[arg-type]
+        assert r.passed is False
+        assert "expect.output_has" in r.failures[0]
+
+
+# --- T-02: quality_spot_check score/state assertions --------------------------
+
+
+class TestQualitySpotCheck:
+    def test_min_score_passes_at_threshold(self) -> None:
+        r = evaluate_expect(expect(min_score=0.7), {"quality_score": 0.7})
+        assert r.passed is True
+
+    def test_min_score_fails_below_threshold(self) -> None:
+        r = evaluate_expect(expect(min_score=0.7), {"quality_score": 0.4})
+        assert r.passed is False
+        assert "expect.min_score" in r.failures[0]
+        assert "0.4" in r.failures[0]
+
+    def test_min_score_reads_nested_data_score(self) -> None:
+        r = evaluate_expect(expect(min_score=0.5), {"data": {"quality_score": 0.9}})
+        assert r.passed is True
+
+    def test_min_score_fails_when_score_missing(self) -> None:
+        r = evaluate_expect(expect(min_score=0.5), {"success": True})
+        assert r.passed is False
+        assert "expect.min_score" in r.failures[0]
+
+    def test_score_state_passes_when_state_allowed(self) -> None:
+        r = evaluate_expect(
+            expect(score_state=["pass", "revise"]),
+            {"quality_state": "pass"},
+        )
+        assert r.passed is True
+
+    def test_score_state_fails_when_state_not_allowed(self) -> None:
+        r = evaluate_expect(
+            expect(score_state=["pass"]),
+            {"quality_state": "reject"},
+        )
+        assert r.passed is False
+        assert "expect.score_state" in r.failures[0]
+
+    def test_score_state_fails_when_state_missing(self) -> None:
+        r = evaluate_expect(expect(score_state=["pass"]), {"quality_score": 0.9})
+        assert r.passed is False
+        assert "expect.score_state" in r.failures[0]

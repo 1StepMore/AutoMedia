@@ -160,6 +160,9 @@ class TestAcceptsValid:
             "artifact_size_min",
             "artifact_nonempty",
             "gate_records_pass",
+            "output_has",
+            "min_score",
+            "score_state",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS
@@ -495,5 +498,5 @@ class TestSchemaErrorClass:
         assert issubclass(SchemaError, ValueError)
 
     def test_message_names_offending_field(self) -> None:
-        with pytest.raises(SchemaError, match="scenario.intent"):
+        with pytest.raises(SchemaError, match=r"scenario\.intent"):
             Scenario.from_dict(scenario(intent=1))
