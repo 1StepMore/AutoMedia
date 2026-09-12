@@ -209,7 +209,7 @@ class TestValidateRegistration:
     def test_validate_help_lists_the_family(self) -> None:
         result = runner.invoke(app, ["validate", "--help"])
         assert result.exit_code == 0
-        for name in ("list", "run", "report", "diff", "coverage", "matrix"):
+        for name in ("list", "run", "report", "diff", "coverage", "matrix", "sign"):
             assert name in result.output
 
 
@@ -775,3 +775,81 @@ class TestValidateMatrix:
         assert "synth-hard-failing" in result.output
         assert "synth-passing" in result.output
         assert "hard=yes" in result.output
+
+
+# =========================================================================
+# validate sign
+# =========================================================================
+
+
+class TestValidateSign:
+    """``validate sign`` — the director sign-off surface (gap Tr-07)."""
+
+    def _seed_run(self, runs: Path, name: str = "20260101-000000-000001") -> str:
+        record_path = persist_run(runs, _make_run_record(), stamp=name)
+        write_latest_pointer(runs, record_path.parent.name)
+        return name
+
+    def test_sign_creates_signed_txt(self, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        name = self._seed_run(runs)
+        result = runner.invoke(app, ["validate", "sign", name, "--runs-root", str(runs)])
+        assert result.exit_code == 0
+        assert "Signed" in result.output
+        signed = runs / name / "signed.txt"
+        assert signed.is_file()
+        assert "approved" in signed.read_text(encoding="utf-8")
+
+    def test_sign_records_custom_verdict_and_signer(self, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        name = self._seed_run(runs)
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "sign",
+                name,
+                "--verdict",
+                "rejected",
+                "--signer",
+                "qa-lead",
+                "--runs-root",
+                str(runs),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "qa-lead rejected" in (runs / name / "signed.txt").read_text(encoding="utf-8")
+
+    def test_sign_missing_run_name_exits_1(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["validate", "sign", "--runs-root", str(tmp_path / "runs")])
+        assert result.exit_code == 1
+        assert "run name is required" in result.output
+
+    def test_sign_empty_run_name_exits_1(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["validate", "sign", "", "--runs-root", str(tmp_path / "runs")])
+        assert result.exit_code == 1
+
+    def test_sign_unknown_run_exits_1(self, tmp_path: Path) -> None:
+        result = runner.invoke(
+            app, ["validate", "sign", "ghost-run", "--runs-root", str(tmp_path / "runs")]
+        )
+        assert result.exit_code == 1
+        assert "does not exist" in result.output
+
+    def test_sign_empty_verdict_exits_1(self, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        name = self._seed_run(runs)
+        result = runner.invoke(
+            app,
+            ["validate", "sign", name, "--verdict", "", "--runs-root", str(runs)],
+        )
+        assert result.exit_code == 1
+
+    def test_sign_json_is_machine_readable(self, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        name = self._seed_run(runs)
+        result = runner.invoke(app, ["--json", "validate", "sign", name, "--runs-root", str(runs)])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["run"] == name
+        assert data["verdict"] == "approved"

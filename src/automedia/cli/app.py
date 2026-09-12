@@ -257,7 +257,9 @@ LazyTyperGroup.register_fn(
 LazyTyperGroup.register_sub_app(
     "validate",
     "automedia.cli.commands.validate",
-    help_text="Run the agent-tester validation suite (list, run, report, diff, coverage).",
+    help_text=(
+        "Run the agent-tester validation suite (list, run, report, diff, coverage, matrix, sign)."
+    ),
 )
 
 

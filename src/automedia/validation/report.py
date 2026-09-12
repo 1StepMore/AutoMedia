@@ -46,6 +46,7 @@ from automedia.validation.report_text import (
     verdict_summary,
     verdicts_section,
 )
+from automedia.validation.signoff import is_signed
 
 
 def _scenario_records(run_record: dict) -> list[dict]:
@@ -183,12 +184,15 @@ def _artifact_entries(records: list[dict]) -> list[dict]:
 
 
 def _unsigned_runs(runs_root: Path | None) -> list[str] | None:
-    """Run dirs lacking ``signed.txt`` (W4-T5 sign-off); None = no root provided."""
+    """Run dirs without a recorded verdict (W4-T5 sign-off); None = no root.
+
+    Delegates to :func:`automedia.validation.signoff.is_signed` so the report
+    and the sign-off surface agree: an EMPTY ``signed.txt`` carries no verdict
+    and counts as unsigned in both paths (gap Tr-04).
+    """
     if runs_root is None:
         return None
-    return [
-        name for name in list_runs(runs_root) if not (runs_root / name / "signed.txt").is_file()
-    ]
+    return [name for name in list_runs(runs_root) if not is_signed(runs_root, name)]
 
 
 def render_report_text(run_record: dict, *, runs_root: Path | None = None) -> str:

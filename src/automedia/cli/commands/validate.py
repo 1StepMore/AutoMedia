@@ -1,6 +1,6 @@
 """``automedia validate`` — run the agent-tester validation suite (plan W4-T1).
 
-CLI surface for the validation framework: six sub-commands.
+CLI surface for the validation framework: seven sub-commands.
 
 * ``list`` — load the scenario library and list scenarios (load only, no
   engine run).  This is the NON-recursive meta command that covers the whole
@@ -22,6 +22,12 @@ CLI surface for the validation framework: six sub-commands.
 * ``coverage`` — run the deterministic coverage audit
   (``automedia.validation.coverage.coverage_audit``, W3-T7) and print the
   per-surface summary.
+* ``matrix`` — render the per-scenario surface-coverage + last-run-status
+  matrix (issue #86); non-recursive.
+* ``sign`` — record the director's sign-off on a run
+  (``automedia.validation.signoff.sign_run``): append a
+  ``<timestamp> <signer> <verdict>`` line to the run's ``signed.txt``.  A
+  missing or empty run name exits 1 (gap Tr-07).
 
 Exit-code contract (typer conventions per ``doctor.py``): ``run`` exits 1
 when the scenario status is ``failed``, 0 otherwise (passed / unconfigured /
@@ -57,6 +63,7 @@ from automedia.validation.persist import (
     persist_run,
     write_latest_pointer,
 )
+from automedia.validation.signoff import SignoffError, sign_run
 
 app = typer.Typer(name="validate", help="Run the agent-tester validation suite.")
 
@@ -722,3 +729,60 @@ def _render_assertion_section(matrix: dict[str, Any]) -> None:
         names = diff.get(bucket) or []
         label = ", ".join(str(n) for n in names) if names else "(none)"
         typer.echo(f"  {bucket}: {label}")
+
+
+# ---------------------------------------------------------------------------
+# validate sign
+# ---------------------------------------------------------------------------
+
+
+@app.command("sign")
+def validate_sign(
+    run: str = typer.Argument(
+        "",
+        help="Run directory name to sign (required — a missing/empty name exits 1).",
+    ),
+    verdict: str = typer.Option(
+        "approved",
+        "--verdict",
+        help="Free-form single-line sign-off verdict (e.g. approved, rejected).",
+    ),
+    signer: str = typer.Option(
+        "director",
+        "--signer",
+        help="Signer name recorded on the sign-off line.",
+    ),
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help="Directory of immutable run records (gitignored).",
+    ),
+) -> None:
+    """Record the director's sign-off on a run (appends to ``signed.txt``).
+
+    Delegates to :func:`automedia.validation.signoff.sign_run`: a missing run
+    directory, an empty run name, or an empty/multi-line verdict exits 1 with
+    a clear error.  Sign-offs append and are never overwritten.
+    """
+    name = run.strip()
+    if not name:
+        output_error("A run name is required: automedia validate sign <run-name>")
+        raise typer.Exit(code=1)
+    root = Path(runs_root)
+    try:
+        signed_path = sign_run(root, name, verdict, signer=signer)
+    except SignoffError as exc:
+        output_error(f"Sign-off failed: {exc}")
+        raise typer.Exit(code=1) from None
+    if get_output_mode() == OutputMode.JSON:
+        output_json(
+            {
+                "run": name,
+                "signed": str(signed_path),
+                "verdict": verdict,
+                "signer": signer,
+            }
+        )
+        return
+    typer.echo(f"Signed {name}: {verdict} ({signer})")
+    typer.echo(f"Sign-off recorded: {signed_path}")

@@ -552,6 +552,26 @@ class TestSignoff:
         assert "## Sign-off" in text
         assert "signed.txt" in text and "W4-T5" in text
 
+    def test_empty_signed_txt_is_unsigned(self, tmp_path: Path, no_library: None) -> None:
+        """Report and signoff.is_signed agree: an empty signed.txt is unsigned."""
+        from automedia.validation.signoff import is_signed
+
+        run_dir = tmp_path / "run-a"
+        run_dir.mkdir()
+        (run_dir / "scenarios.json").write_text("{}", encoding="utf-8")
+        (run_dir / "signed.txt").write_text("", encoding="utf-8")
+        text = render_report(suite_record([]), runs_root=tmp_path)
+        assert "Unsigned runs:\n- run-a" in text
+        assert is_signed(tmp_path, "run-a") is False
+
+    def test_whitespace_signed_txt_is_unsigned(self, tmp_path: Path, no_library: None) -> None:
+        run_dir = tmp_path / "run-a"
+        run_dir.mkdir()
+        (run_dir / "scenarios.json").write_text("{}", encoding="utf-8")
+        (run_dir / "signed.txt").write_text(" \n ", encoding="utf-8")
+        text = render_report(suite_record([]), runs_root=tmp_path)
+        assert "Unsigned runs:\n- run-a" in text
+
 
 class TestDeterminism:
     def test_byte_identical_under_scenario_reordering(self, no_library: None) -> None:
