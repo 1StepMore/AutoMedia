@@ -115,7 +115,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - name: Install dependencies
         run: uv sync --dev
       - name: Full validation suite (credential-free)
@@ -165,7 +165,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - name: Install dependencies
         run: uv sync --dev
       - name: Draft-only publish scenario (credentialed host)
