@@ -77,7 +77,7 @@ jobs:
 
       - name: Pytest (full suite)
         run: |
-          uv run pytest \
+          uv run python3 -m pytest \
             --cov=src/automedia \
             --cov-branch \
             --cov-report=xml:coverage.xml \
