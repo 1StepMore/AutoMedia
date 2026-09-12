@@ -1,4 +1,7 @@
-"""PRD-4: Account data models — platform account representation, credential wrapper, index, and session tokens."""
+"""PRD-4: Account data models.
+
+Platform account representation, credential wrapper, index, and session tokens.
+"""
 
 from __future__ import annotations
 
@@ -135,7 +138,6 @@ __all__ = [
     "AccountCredentials",
     "AccountIndex",
     "AuthType",
-    "HealthStatus",
     "HealthStatus",
     "SessionToken",
 ]

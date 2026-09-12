@@ -122,10 +122,31 @@ jobs:
         run: |
           env -u AUTOMEDIA_LLM_API_KEY uv run python3 scripts/validation_run_affected.py --all
 
-  # Scheduled draft-only publish proof (Momus improvement #2): runs ONLY
-  # the publish-draft-only scenario on a credentialed host. PROVISIONING:
-  # the job SKIPS until the operator adds the GitHub secrets — the canary
-  # is AUTOMEDIA_LLM_API_KEY, and the env mapping below lists the 21
+  # Credential gate (Momus improvement #2): `secrets` cannot be referenced in
+  # a job-level `if:` — GitHub rejects the whole workflow with "Unrecognized
+  # named-value: 'secrets'", which made Nightly un-runnable. Resolve the canary
+  # in a tiny job and expose it as an output the credentialed job gates on, so
+  # that job still SKIPS wholesale until the operator provisions the secrets.
+  check-publish-credentials:
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.canary.outputs.configured }}
+    steps:
+      - name: Check for publish credentials
+        id: canary
+        env:
+          CANARY: ${{ secrets.AUTOMEDIA_LLM_API_KEY }}
+        run: |
+          if [ -n "$CANARY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Scheduled draft-only publish proof: runs ONLY the publish-draft-only
+  # scenario on a credentialed host. PROVISIONING: the job SKIPS until the
+  # operator adds the GitHub secrets — the canary is AUTOMEDIA_LLM_API_KEY
+  # (checked by the gate job above), and the env mapping below lists the 21
   # canonical AUTOMEDIA_* credential vars (the scenario's requires_env).
   # SAFETY (pinned in the scenario header): a credentialed publish is
   # draft-only ONLY when the brand profile sets `automation: review` — the
@@ -136,7 +157,8 @@ jobs:
   # must reproduce that layout (W5-T6 candidate).
   validation-draft-publish:
     runs-on: ubuntu-latest
-    if: ${{ secrets.AUTOMEDIA_LLM_API_KEY != '' }}
+    needs: check-publish-credentials
+    if: needs.check-publish-credentials.outputs.configured == 'true'
     steps:
       - uses: actions/checkout@v7
       - name: Install uv

@@ -297,7 +297,7 @@ class VectorStore:
         if collection is None:
             return 0
         try:
-            return collection.count()
+            return int(collection.count())
         except (ValueError, RuntimeError):
             log.debug("VectorStore.count() failed, returning 0")
             return 0
