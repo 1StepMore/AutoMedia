@@ -111,8 +111,10 @@ jobs:
   # The `env -u` guard keeps the run credential-free even if the runner
   # host exports an LLM key, so every LLM-gated scenario short-circuits to
   # `unconfigured` (env gate, W1-T5) — never a paid call, never a rate
-  # budget burn. No persisted state (save=False); the meta scenario's own
-  # validation-runs/ is self-cleaned by its cleanup step.
+  # budget burn. Gap R-09: the `--all` path now PERSISTS one immutable suite
+  # record under validation-runs/ (scenarios.json + latest.txt) and uploads
+  # it as a build artifact; the meta scenario's own validation-runs/ scratch
+  # is still self-cleaned by its cleanup step.
   validation-full-suite:
     runs-on: ubuntu-latest
     steps:
@@ -124,9 +126,17 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: uv sync --extra dev
-      - name: Full validation suite (credential-free)
+      - name: Full validation suite (credential-free, persisted)
         run: |
-          env -u AUTOMEDIA_LLM_API_KEY uv run python3 scripts/validation_run_affected.py --all
+          env -u AUTOMEDIA_LLM_API_KEY uv run python3 scripts/validation_run_affected.py --all --runs-root validation-runs
+      - name: Upload suite record
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: validation-suite-record
+          path: validation-runs/
+          retention-days: 30
+          if-no-files-found: ignore
 
   # Credential gate (Momus improvement #2): `secrets` cannot be referenced in
   # a job-level `if:` — GitHub rejects the whole workflow with "Unrecognized

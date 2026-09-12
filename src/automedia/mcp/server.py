@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 67 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 68 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -132,6 +132,7 @@ from automedia.validation.mcp_tools import (
     get_validation_report,
     list_validation_scenarios,
     run_validation_scenario,
+    run_validation_suite,
     validation_coverage_audit,
     validation_matrix,
 )
@@ -220,6 +221,7 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Validation tools (agent-tester validation surface)
     "list_validation_scenarios",
     "run_validation_scenario",
+    "run_validation_suite",
     "get_validation_report",
     "validation_coverage_audit",
     "validation_matrix",
@@ -384,7 +386,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 67 tools and 6 resources registered.
+        A fully configured server with all 68 tools and 6 resources registered.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -981,11 +983,22 @@ def create_server() -> FastMCP:
             "save=True persists an immutable scenarios.json under runs_root "
             "(default validation-runs/, created on demand). In-process "
             "isolation: MCP runs share server state (GateRegistry), so "
-            "mutating scenarios prefer the CLI surface. Suite runs are "
-            "CLI-only (automedia validate run) — this tool never runs the "
-            "whole library."
+            "mutating scenarios prefer the CLI surface. For a whole-library "
+            "run use run_validation_suite."
         ),
     )(run_validation_scenario)
+
+    mcp.tool(
+        description=(
+            "Run the WHOLE validation scenario library in-process and persist "
+            "ONE immutable suite record. scenarios_dir defaults to the "
+            "committed library; a path that is not a directory is rejected "
+            "with INVALID_PARAM before any dispatch. save=True writes "
+            "scenarios.json + latest.txt under runs_root (default "
+            "validation-runs/, created on demand). Returns the suite record "
+            "plus run_dir."
+        ),
+    )(run_validation_suite)
 
     mcp.tool(
         description=(
@@ -1118,7 +1131,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 67 tools and 6 resources.",
+        description="AutoMedia MCP Server — stdio transport with 68 tools and 6 resources.",
     )
     parser.add_argument(
         "--show-tools",

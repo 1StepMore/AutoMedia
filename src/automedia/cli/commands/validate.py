@@ -7,10 +7,11 @@ CLI surface for the validation framework: six sub-commands.
   family for the coverage audit (Momus improvement #1: ``validate`` is the
   18th CLI command; the committed ``cli/validate-list-meta.yaml`` scenario
   asserts its output).
-* ``run`` — run ONE named scenario through the engine against the real MCP
-  server (``create_server()``).  ``--scenario`` is REQUIRED: the name filter
-  is the recursion bound (plan review fix M5 — a meta scenario must never be
-  able to trigger an unbounded ``validate run`` chain).
+* ``run`` — run ONE named scenario (``--scenario``) through the engine
+  against the real MCP server (``create_server()``), or the WHOLE library
+  (``--all``) persisting one immutable suite record.  ``--scenario`` is the
+  recursion bound (plan review fix M5): a single named scenario per
+  invocation, and ``--all`` is mutually exclusive with it.
 * ``report`` — render the run record for a run.  Delegates to W4-T3's
   renderer (``automedia.validation.report``) when present; a minimal text
   fallback (verdicts table + per-scenario status lines) ships until then.
@@ -43,7 +44,11 @@ from typing import Any
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_json
-from automedia.validation.engine import make_adapters, run_validation_scenario
+from automedia.validation.engine import (
+    make_adapters,
+    run_validation_scenario,
+    run_validation_suite,
+)
 from automedia.validation.loader import LoadError, load_scenarios
 from automedia.validation.persist import (
     PersistError,
@@ -108,12 +113,21 @@ def validate_list() -> None:
 
 @app.command("run")
 def validate_run(
-    scenario: str = typer.Option(
-        ...,
+    scenario: str | None = typer.Option(
+        None,
         "--scenario",
         help=(
-            "Scenario name to run (required — the recursion bound: only one "
-            "named scenario can be dispatched per invocation)."
+            "Scenario name to run (the recursion bound: only one named "
+            "scenario can be dispatched per invocation). Required unless "
+            "--all is given."
+        ),
+    ),
+    run_all: bool = typer.Option(
+        False,
+        "--all",
+        help=(
+            "Run the WHOLE scenario library and persist one immutable suite "
+            "record (mutually exclusive with --scenario)."
         ),
     ),
     env_gate: str = typer.Option(
@@ -130,16 +144,24 @@ def validate_run(
         help="Directory for immutable run records (gitignored).",
     ),
 ) -> None:
-    """Run ONE named scenario via the engine against the real MCP server.
+    """Run ONE named scenario, or the whole library with ``--all``.
 
-    Exit codes: 1 when the scenario status is ``failed`` OR the scenario is
-    a hard-safety violation (``hard: true`` and not ``passed`` — e.g. a hard
-    scenario left unconfigured); 0 otherwise (passed / non-hard unconfigured
-    / partial-pass / recovered) with a clear status line.  Run from the repo
-    root so relative artifact paths resolve.
+    Exit codes for a single run: 1 when the scenario status is ``failed`` OR
+    the scenario is a hard-safety violation (``hard: true`` and not
+    ``passed``); 0 otherwise.  ``--all`` exits 1 when any scenario ``failed``
+    or the suite is hard-safety blocked.  Run from the repo root so relative
+    artifact paths resolve.
     """
     if env_gate not in _ENV_GATE_CHOICES:
         raise typer.BadParameter(f"must be one of {', '.join(_ENV_GATE_CHOICES)}") from None
+    root = Path(runs_root)
+    if run_all:
+        if scenario is not None:
+            raise typer.BadParameter("--all and --scenario are mutually exclusive")
+        _run_suite(root)
+        return
+    if scenario is None:
+        raise typer.BadParameter("Missing option '--scenario' — pass --scenario <name> or --all")
     try:
         scenarios = load_scenarios()
     except LoadError as exc:
@@ -229,6 +251,67 @@ def validate_run(
         typer.echo(f"Run recorded: {record_path}")
 
     if status == "failed" or hard_violation:
+        raise typer.Exit(code=1)
+
+
+def _run_suite(root: Path) -> None:
+    """Run the whole library, persist one suite record, and report it.
+
+    Delegates to the engine's suite core (gap R-09): one exclusive-create run
+    directory holds ``scenarios.json`` plus any collected artifacts, and
+    ``latest.txt`` is refreshed.  Exit 1 when any scenario ``failed`` or the
+    suite carries a hard-safety violation.
+    """
+    from automedia.mcp.server import create_server
+
+    try:
+        record = run_validation_suite(create_server(), runs_root=root)
+    except LoadError as exc:
+        output_error(f"Failed to load scenarios: {exc}")
+        raise typer.Exit(code=1) from None
+    except PersistError as exc:
+        output_error(f"Could not persist suite record: {exc}")
+        raise typer.Exit(code=1) from None
+    run_name = latest_run(root)
+    raw_scenarios = record.get("scenarios")
+    scenario_rows = (
+        [
+            {"scenario": entry.get("scenario"), "status": entry.get("status")}
+            for entry in raw_scenarios
+            if isinstance(entry, dict)
+        ]
+        if isinstance(raw_scenarios, list)
+        else []
+    )
+    statuses: dict[str, int] = {}
+    for row in scenario_rows:
+        key = str(row["status"])
+        statuses[key] = statuses.get(key, 0) + 1
+    failed = statuses.get("failed", 0)
+    blocked = bool(record.get("blocked")) or bool(record.get("hard_safety_violations"))
+
+    if get_output_mode() == OutputMode.JSON:
+        output_json(
+            {
+                "trace_id": record.get("trace_id"),
+                "generated_at": record.get("generated_at"),
+                "run_dir": run_name,
+                "blocked": blocked,
+                "hard_safety_violations": record.get("hard_safety_violations", []),
+                "counts": statuses,
+                "scenarios": scenario_rows,
+            }
+        )
+    else:
+        typer.echo(f"Suite run: {run_name}")
+        for row in scenario_rows:
+            typer.echo(f"  {row['scenario']}: {row['status']}")
+        order = ("passed", "failed", "recovered", "partial-pass", "unconfigured")
+        summary = ", ".join(f"{name}: {statuses.get(name, 0)}" for name in order)
+        typer.echo(f"summary: {summary}")
+        typer.echo(f"Run recorded: {root / str(run_name) / 'scenarios.json'}")
+
+    if failed or blocked:
         raise typer.Exit(code=1)
 
 

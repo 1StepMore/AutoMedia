@@ -20,12 +20,15 @@ SAFETY (pinned in the plan): no LLM calls in CI — the job environments
 carry no credentials, so every env-gated scenario reports ``unconfigured``
 with its missing-var list; no real publish — the publish scenarios are
 dry-run/stub/draft-only by design (W3-T5), and the draft-only scenario
-targets a manual-level platform the engine always skips; no persisted state
-(save=False, no runs root) — the meta scenario's own ``validation-runs/``
-is self-cleaned by its cleanup step.
+targets a manual-level platform the engine always skips.  ``--all`` (the
+nightly/whole-library path) now PERSISTS one immutable suite record under
+``--runs-root`` (gap R-09: CI used to persist nothing); the affected-area
+subset stays evidence-free (``run_root=None``), and the meta scenario's own
+``validation-runs/`` remains self-cleaned by its cleanup step.
 
 Usage:
     python3 scripts/validation_run_affected.py --all
+    python3 scripts/validation_run_affected.py --all --runs-root /tmp/runs
     python3 scripts/validation_run_affected.py surface/health/engine-health-alias.yaml
 """
 
@@ -39,8 +42,13 @@ from pathlib import Path
 import yaml
 
 from automedia.mcp.server import create_server
-from automedia.validation.engine import make_adapters, run_validation_scenario
+from automedia.validation.engine import (
+    make_adapters,
+    run_validation_scenario,
+    run_validation_suite,
+)
 from automedia.validation.loader import default_scenarios_dir, load_scenarios
+from automedia.validation.persist import latest_run
 from automedia.validation.schema import Scenario
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -74,12 +82,18 @@ def _select(scenarios_dir: Path, paths: Sequence[str]) -> list[str]:
     by_path = _path_to_name(scenarios_dir)
     unknown = sorted(set(paths) - set(by_path))
     if unknown:
-        print(f"WARNING: {len(unknown)} requested path(s) not in the library "
-              f"(skipped): {', '.join(unknown)}", file=sys.stderr)
+        print(
+            f"WARNING: {len(unknown)} requested path(s) not in the library "
+            f"(skipped): {', '.join(unknown)}",
+            file=sys.stderr,
+        )
     selected = sorted(by_path[path] for path in paths if path in by_path)
     if not selected:
-        print("ERROR: nothing to run — pass `--all` or scenario file paths "
-              "(see the module docstring)", file=sys.stderr)
+        print(
+            "ERROR: nothing to run — pass `--all` or scenario file paths "
+            "(see the module docstring)",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return selected
 
@@ -88,7 +102,7 @@ def _load_library(scenarios_dir: Path) -> dict[str, Scenario]:
     """Load the library; a broken library is a loud gate failure (never a crash)."""
     try:
         return {s.name: s for s in load_scenarios(scenarios_dir)}
-    except Exception as exc:  # noqa: BLE001 — LoadError carries the file context
+    except Exception as exc:
         print(f"ERROR: library failed to load: {exc}", file=sys.stderr)
         sys.exit(1)
 
@@ -104,33 +118,63 @@ def main(argv: Sequence[str] | None = None) -> int:
     # cleanup can remove them instead of leaking into the real ~/.automedia
     # (which made connect-account-masterkey fail on repeat runs with
     # "Label already exists"). setdefault — an operator override wins.
-    os.environ.setdefault(
-        "AUTOMEDIA_CONFIG_DIR", "/tmp/automedia/am-validation-config"
-    )
+    os.environ.setdefault("AUTOMEDIA_CONFIG_DIR", "/tmp/automedia/am-validation-config")
 
     if "AUTOMEDIA_LLM_API_KEY" in os.environ:
-        print("WARNING: AUTOMEDIA_LLM_API_KEY is set — LLM-gated scenarios will "
-              "execute for real. CI must run credential-free (unset it).",
-              file=sys.stderr)
+        print(
+            "WARNING: AUTOMEDIA_LLM_API_KEY is set — LLM-gated scenarios will "
+            "execute for real. CI must run credential-free (unset it).",
+            file=sys.stderr,
+        )
 
-    if args and args[0] == "--all":
-        print("full suite")
-        selected = [s.name for s in _load_library(scenarios_dir).values()]
-    else:
-        selected = _select(scenarios_dir, args)
+    positional = list(args)
+    runs_root = REPO_ROOT / "validation-runs"
+    if "--runs-root" in positional:
+        index = positional.index("--runs-root")
+        if index + 1 >= len(positional):
+            print("ERROR: --runs-root requires a path", file=sys.stderr)
+            return 1
+        runs_root = Path(positional[index + 1])
+        del positional[index : index + 2]
 
+    if positional and positional[0] == "--all":
+        return _run_suite(scenarios_dir, runs_root)
+
+    selected = _select(scenarios_dir, positional)
     library = _load_library(scenarios_dir)
     adapters = make_adapters(create_server())
     records = [
         run_validation_scenario(
             library[name],
             adapters,
-            run_root=None,  # save=False: no persisted state
+            run_root=None,  # affected subset: evidence-free (no persisted state)
             cwd=REPO_ROOT,  # fixture paths + expect artifact checks align (W3-T4)
         )
         for name in selected
     ]
     return _report(records)
+
+
+def _run_suite(scenarios_dir: Path, runs_root: Path) -> int:
+    """Run the WHOLE library once and persist one immutable suite record.
+
+    Gap R-09: the whole-library path is the evidence loop's nightly home, so
+    it saves (unlike the affected-area subset).  The record lands under
+    ``runs_root`` with a ``latest.txt`` pointer; the pinned exit policy is
+    unchanged (any ``failed`` scenario -> exit 1).
+    """
+    print(f"full suite (persisting one immutable suite record under {runs_root})")
+    try:
+        record = run_validation_suite(create_server(), scenarios_dir, runs_root=runs_root)
+    except Exception as exc:
+        print(f"ERROR: suite run failed: {exc}", file=sys.stderr)
+        return 1
+    records = record.get("scenarios")
+    code = _report(records if isinstance(records, list) else [])
+    run_name = latest_run(runs_root)
+    if run_name is not None:
+        print(f"suite record: {runs_root / run_name / 'scenarios.json'}")
+    return code
 
 
 def _report(records: Sequence[dict[str, object]]) -> int:

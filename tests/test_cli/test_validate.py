@@ -518,6 +518,54 @@ class TestValidateRun:
         assert data["hard_safety_violation"] is True
 
 
+class TestValidateRunAll:
+    """``validate run --all`` — whole library, one immutable suite record (R-09)."""
+
+    def test_run_all_persists_one_suite_record(self, scenarios_dir: Path, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        result = runner.invoke(app, ["validate", "run", "--all", "--runs-root", str(runs)])
+        # The synthetic library carries failures, so the pinned exit policy
+        # is 1; the evidence is the persisted suite record, not the exit code.
+        assert result.exit_code == 1
+        assert "Suite run:" in result.output
+        assert "Run recorded:" in result.output
+        run_names = [p.name for p in runs.iterdir() if p.is_dir()]
+        assert len(run_names) == 1
+        record = json.loads((runs / run_names[0] / "scenarios.json").read_text(encoding="utf-8"))
+        assert len(record["scenarios"]) == 7
+        assert record["trace_id"]
+        assert (runs / "latest.txt").is_file()
+
+    def test_run_all_json_is_machine_readable(self, scenarios_dir: Path, tmp_path: Path) -> None:
+        runs = tmp_path / "runs"
+        result = runner.invoke(
+            app, ["--json", "validate", "run", "--all", "--runs-root", str(runs)]
+        )
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert data["run_dir"]
+        assert len(data["scenarios"]) == 7
+        assert data["counts"]["failed"] >= 1
+
+    def test_run_all_with_scenario_is_usage_error(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--all",
+                "--scenario",
+                "synth-passing",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 2
+        assert "mutually exclusive" in result.output
+
+
 # =========================================================================
 # validate report
 # =========================================================================
@@ -689,10 +737,10 @@ class TestValidateCoverage:
         summary: dict[str, Any] = data["summary"]
         # The live app.py now registers 19 commands (pipeline is the 19th).
         assert summary["cli_declared"] == 19
-        # server.py registers 59 + 4 W4-T2 validation tools (landed in parallel)
-        # + the W4-T3 validation_matrix tool + get_pipeline_state
+        # server.py registers 59 + 6 validation tools (W4-T2 + matrix + the
+        # gap R-09 run_validation_suite tool) + get_pipeline_state
         # + get_gate_report + review_decision (productization-roadmap todo 9).
-        assert summary["mcp_declared"] == 67
+        assert summary["mcp_declared"] == 68
         assert summary["cli_missing"] == 19  # synthetic library covers none
 
 

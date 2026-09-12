@@ -91,6 +91,7 @@ Registered MCP tools:
   - run_pipeline
   - run_pipeline_from_strategy
   - run_validation_scenario
+  - run_validation_suite
   - search_assets
   - select_topic
   - skip_gate
@@ -100,7 +101,7 @@ Registered MCP tools:
   - validation_matrix
 ```
 
-## Available Tools (67)
+## Available Tools (68)
 
 | Tool | Description |
 |------|------|
@@ -168,6 +169,7 @@ Registered MCP tools:
 | `get_pending_approvals` | List all gates awaiting human approval in director mode |
 | `list_validation_scenarios` | List the agent-tester validation scenario library (name, description, category, status hint) |
 | `run_validation_scenario` | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
+| `run_validation_suite` | Run the WHOLE validation scenario library in-process and persist one immutable suite record |
 | `get_validation_report` | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
 | `validation_coverage_audit` | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
 | `validation_matrix` | Render the validation matrix: per-scenario surface coverage + last-run status + hard-safety flags |

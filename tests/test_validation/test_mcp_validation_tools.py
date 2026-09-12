@@ -17,11 +17,11 @@ non-existent directory, the library is intentionally unavailable and this
 module skips.  NOT e2e-marked: every test is fast (no network, no LLM, no
 CLI subprocess) and runs in the default pytest gate.
 
-Committed-library expectations (as of 2026-09-05): 107 scenarios, 67 MCP
+Committed-library expectations (as of 2026-09-13): 108 scenarios, 68 MCP
 tools after W4-T2 + issue #86 + the graph-engineering ``get_pipeline_state``
 tool + the productization-roadmap ``get_gate_report`` and
-``review_decision`` tools
-(59 + 5 + get_pipeline_state + get_gate_report + review_decision),
+``review_decision`` tools + the gap R-09 ``run_validation_suite`` tool
+(59 + 6 + get_pipeline_state + get_gate_report + review_decision),
 ``health-check-baseline`` is the
 deterministic GREEN-able scenario (its only step calls ``health_check``,
 expect ``success: true`` — it passed the W2-T3/W3 empirical suites).
@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -39,10 +40,37 @@ from mcp.server.fastmcp import FastMCP
 
 from automedia.mcp.server import create_server
 
+STANDARDS_FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "synth"
+    / "standards"
+    / "standards_fixture.md"
+)
+
+_GREEN_SCENARIO = """\
+name: suite-green
+description: A passing synthetic scenario for the suite tool.
+intent: Prove run_validation_suite runs a real library and returns its record.
+category: baseline
+requires_env: []
+steps:
+  - name: echo prints ok
+    kind: cli
+    check: echo prints the word ok
+    standard: founder-expectations.F02
+    command: echo ok
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+      stdout_has: ["ok"]
+"""
+
 EXPECTED_VALIDATION_TOOLS: frozenset[str] = frozenset(
     {
         "list_validation_scenarios",
         "run_validation_scenario",
+        "run_validation_suite",
         "get_validation_report",
         "validation_coverage_audit",
         "validation_matrix",
@@ -96,19 +124,19 @@ def _call_tool(server: FastMCP, name: str, arguments: dict[str, Any]) -> dict[st
 class TestRegistration:
     """The 5 tools are registered and surface in help_mcp automatically."""
 
-    def test_five_validation_tools_registered(self, server: FastMCP) -> None:
-        """59 pre-existing + 5 validation + get_pipeline_state + get_gate_report
-        + review_decision = 67."""
+    def test_six_validation_tools_registered(self, server: FastMCP) -> None:
+        """59 pre-existing + 6 validation + get_pipeline_state + get_gate_report
+        + review_decision = 68 (the R-09 suite tool is the 6th)."""
         names = set(server._tool_manager._tools.keys())
         assert names >= EXPECTED_VALIDATION_TOOLS, (
             f"missing validation tools: {sorted(EXPECTED_VALIDATION_TOOLS - names)}"
         )
-        assert len(names) == 67
+        assert len(names) == 68
 
     def test_tools_appear_in_help_mcp(self, server: FastMCP) -> None:
         """The registry population in create_server picks up the new tools."""
         payload = _call_tool(server, "help_mcp", {})
-        assert payload["tool_count"] == 67
+        assert payload["tool_count"] == 68
         listed = {
             entry["name"] for category in payload["categories"].values() for entry in category
         }
@@ -182,6 +210,40 @@ class TestRunValidationScenario:
         assert payload["error"]["code"] == "NOT_FOUND"
         assert "no-such-scenario" in payload["error"]["message"]
         assert "health-check-baseline" in payload["error"]["resolution"]
+
+
+# ===================================================================
+# run_validation_suite
+# ===================================================================
+
+
+class TestRunValidationSuite:
+    """Tool 6: whole-library run with a loud argument boundary (gap R-09)."""
+
+    def test_rejects_non_directory_scenarios_dir(self, server: FastMCP) -> None:
+        payload = _call_tool(
+            server,
+            "run_validation_suite",
+            {"scenarios_dir": "scenarios/does-not-exist-mcp-suite-test"},
+        )
+        assert payload["success"] is False
+        assert payload["error"]["code"] == "INVALID_PARAM"
+        assert "scenarios_dir" in payload["error"]["message"]
+
+    def test_runs_synthetic_library_without_saving(self, server: FastMCP, tmp_path: Path) -> None:
+        library = tmp_path / "scenarios"
+        library.mkdir()
+        shutil.copy2(STANDARDS_FIXTURE, library / "STANDARDS.md")
+        (library / "green.yaml").write_text(_GREEN_SCENARIO, encoding="utf-8")
+        payload = _call_tool(
+            server,
+            "run_validation_suite",
+            {"scenarios_dir": str(library), "save": False},
+        )
+        assert payload["success"] is True
+        assert payload["run_dir"] is None
+        assert [scenario["status"] for scenario in payload["scenarios"]] == ["passed"]
+        assert payload["trace_id"]
 
 
 # ===================================================================
@@ -261,31 +323,35 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 67 declared / 60 covered / 0 missing (the W4-T7 meta scenario
+    mcp 68 declared / 60 covered / 0 missing (the W4-T7 meta scenario
     ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
     covers ``validation_matrix``; the productization-roadmap todo-6
     ``get_gate_report`` tool is covered by ``gate-report-surface`` and the
-    todo-9 ``review_decision`` tool by ``review-decision-surface``) and
-    cli 19 / 19 / 0.  This test pins the current reality.
+    todo-9 ``review_decision`` tool by ``review-decision-surface``; gap R-09
+    adds ``run_validation_suite``, covered boundary-only by
+    ``validation-suite-boundary``) and cli 19 / 19 / 0.  This test pins the
+    current reality.
     """
 
-    def test_audit_reflects_the_five_new_registrations(self, server: FastMCP) -> None:
+    def test_audit_reflects_the_six_new_registrations(self, server: FastMCP) -> None:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # 59 pre-existing + 5 validation tools + get_pipeline_state
+        # 59 pre-existing + 6 validation tools + get_pipeline_state
         # + get_gate_report (todo 6) + review_decision (todo 9)
-        assert summary["mcp_declared"] == 67
-        assert summary["mcp_used"] == 67
-        # the meta scenarios cover all 5 validation tools (W4-T7's
-        # validation-self-check plus validation-matrix-meta) -> missing = 0
+        assert summary["mcp_declared"] == 68
+        assert summary["mcp_used"] == 68
+        # the meta scenarios cover the validation tools (W4-T7's
+        # validation-self-check plus validation-matrix-meta) -> missing = 0;
+        # run_validation_suite is boundary-only (a success call would recurse).
         assert summary["mcp_covered"] == 60
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]
         assert summary["mcp_missing"] == 0
         assert payload["missing_mcp"] == []
-        assert summary["mcp_boundary_only"] == 7
+        assert "run_validation_suite" in payload["boundary_only_mcp"]
+        assert summary["mcp_boundary_only"] == 8
 
     def test_cli_side_reflects_w4t1_validate_command(self, server: FastMCP) -> None:
         """W4-T1's validate command: declared 19, phantom ∅ (covered via list)."""

@@ -12,7 +12,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 ## 2. Three Entry Points
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 67 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 68 tools |
 | CLI | `automedia <subcommand>` | 19 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -27,7 +27,7 @@ AutoMedia/
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
 │       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
 │       ├── cli/                # Typer CLI: app.py + 19 command modules
-│       ├── mcp/                # FastMCP server, 67 tools; mcp_allowlist.yaml path allowlist
+│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
 │       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
@@ -118,7 +118,7 @@ pre-commit run --all-files   # pre-commit
 2. Add mapping in `_LLM_KEY_MAP` in `automedia/core/config_loader.py` if it maps under `llm.text_generation.*`
 3. Add to the Config Key Reference section
 
-## 9. MCP Tools Quick Reference (67 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)
 
 stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by the `mcp_allowlist.yaml` path allowlist.
 
@@ -183,6 +183,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `mcp_help` | — | Deprecated: use help_mcp |
 | `list_validation_scenarios` | — | List validation scenario library |
 | `run_validation_scenario` | scenario_name, runs_root, save | Run one validation scenario |
+| `run_validation_suite` | scenarios_dir, runs_root, save | Run the whole validation library; persist one suite record |
 | `get_validation_report` | run_dir | Read a persisted run record |
 | `validation_coverage_audit` | — | Static coverage audit |
 | `validation_matrix` | — | Validation matrix render |
@@ -225,7 +226,7 @@ CLI (run from the repo root so relative artifact paths resolve):
 - `automedia validate coverage`: static coverage audit (CLI, MCP, gates, modes); exits 1 on declared-but-missing
 - `automedia validate matrix`: per-scenario surface coverage + status matrix; non-recursive
 
-MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`.
+MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`.
 
 ### The evidence contract
 **How to read a scenario (mirrors scenarios/README.md):**

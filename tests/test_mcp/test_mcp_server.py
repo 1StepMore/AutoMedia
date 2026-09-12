@@ -372,6 +372,7 @@ class TestServerCreation:
                 "run_pipeline",
                 "run_pipeline_from_strategy",
                 "run_validation_scenario",
+                "run_validation_suite",
                 "search_assets",
                 "select_topic",
                 "skip_gate",

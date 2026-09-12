@@ -80,7 +80,7 @@ def _pause_h0_pipeline(
                 {"topic": "review-decision-test", "skip_review": False},
                 progress=progress,
             )
-        except Exception as exc:  # noqa: BLE001 — thread boundary
+        except Exception as exc:
             results["error"] = exc
         finally:
             results["done"] = True
@@ -378,8 +378,8 @@ class TestReviewDecisionRegistration:
         server = create_server()
         assert "review_decision" in server._tool_manager._tools
 
-    def test_health_count_is_67(self) -> None:
+    def test_health_count_is_68(self) -> None:
         from automedia.mcp.tools import health_check
 
         result = health_check()
-        assert result["tools_count"] == 67
+        assert result["tools_count"] == 68

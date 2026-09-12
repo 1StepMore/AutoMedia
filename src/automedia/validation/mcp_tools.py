@@ -18,9 +18,15 @@ rejected before any dispatch, so a scenario step that invokes this tool must
 carry a static name (bounded: a finite library, no dynamic recursion).  The
 meta scenario ``list-validation-scenarios-meta`` calls
 :func:`list_validation_scenarios`, which takes no name and never recurses.
-There is deliberately no suite-run tool in the MCP surface: the engine's
-``run_validation_suite_async`` cannot be reached without going through the
-name-filtered single-scenario path.
+
+**Suite run (gap R-09):** :func:`run_validation_suite` reaches the engine's
+``run_validation_suite_async`` for a whole-library run.  It is deliberately
+NOT invoked by any success-asserting committed scenario — running the library
+from inside the library would recurse — so the committed surface probes it
+only at its boundary (``scenarios/meta/validation-suite-boundary.yaml``): a
+missing ``scenarios_dir`` is rejected with ``INVALID_PARAM`` before any
+dispatch, which keeps the coverage audit's ``missing = 0`` intact without an
+unbounded validation chain.
 
 No allowlist involvement: all four tools do plain file I/O only
 (``mcp_allowlist.yaml`` untouched — Red Line 3).
@@ -43,7 +49,11 @@ from automedia.mcp.mcp_error import (
     error_response,
     success_response,
 )
-from automedia.validation.engine import make_adapters, run_validation_scenario_async
+from automedia.validation.engine import (
+    make_adapters,
+    run_validation_scenario_async,
+    run_validation_suite_async,
+)
 from automedia.validation.loader import LoadError, load_scenarios
 from automedia.validation.persist import (
     PersistError,
@@ -187,6 +197,62 @@ async def run_validation_scenario(
     return success_response(record)
 
 
+async def run_validation_suite(
+    scenarios_dir: str | None = None,
+    runs_root: str = DEFAULT_RUNS_ROOT,
+    save: bool = True,
+    context: Context | None = None,
+) -> dict[str, Any]:
+    """Run the WHOLE scenario library in-process; persist one suite record.
+
+    Wraps the engine's async suite core (gap R-09) so MCP clients get the
+    same whole-library evidence the CLI's ``automedia validate run --all``
+    produces: every scenario in ``scenarios_dir`` (default: the committed
+    library) runs through this server instance, and with ``save=True`` the
+    record is persisted immutably under ``runs_root`` as one
+    ``scenarios.json`` (plus a ``latest.txt`` pointer).
+
+    ``scenarios_dir`` is validated before any dispatch — a path that is not
+    an existing directory is rejected with ``INVALID_PARAM`` rather than
+    silently running an empty library — which is also the safe boundary the
+    committed meta probe uses (a suite run must never recurse into itself).
+
+    Returns
+    -------
+    dict
+        The suite record flattened under ``success``:
+        ``{"trace_id", "generated_at", "scenarios", "hard_safety_violations",
+        "blocked", "run_dir"}``.
+    """
+    if scenarios_dir is not None and not Path(scenarios_dir).expanduser().is_dir():
+        return error_response(
+            MCPErrorCode.INVALID_PARAM,
+            f"scenarios_dir is not a directory: {scenarios_dir}",
+            (
+                "Pass an existing scenario library directory, or omit "
+                "scenarios_dir to run the default library"
+            ),
+        )
+    server = context.fastmcp if context is not None else None
+    root = Path(runs_root) if save else None
+    try:
+        record = await run_validation_suite_async(server, scenarios_dir, runs_root=root, save=save)
+    except LoadError as exc:
+        return error_response(
+            MCPErrorCode.VALIDATION_ERROR,
+            f"scenario library failed to load: {exc}",
+            "Fix the offending scenario file(s) or point scenarios_dir at a valid library",
+        )
+    except PersistError as exc:
+        return error_response(
+            MCPErrorCode.UNKNOWN,
+            f"could not persist suite record: {exc}",
+            "Choose a runs_root with no colliding run directory",
+        )
+    run_dir = latest_run(root) if root is not None else None
+    return success_response({**record, "run_dir": run_dir})
+
+
 def get_validation_report(run_dir: str | None = None) -> dict[str, Any]:
     """Read a persisted validation run record.
 
@@ -310,6 +376,7 @@ __all__ = [
     "get_validation_report",
     "list_validation_scenarios",
     "run_validation_scenario",
+    "run_validation_suite",
     "validation_coverage_audit",
     "validation_matrix",
 ]

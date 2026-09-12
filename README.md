@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (67 tools)
+- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (68 tools)
 - **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -328,7 +328,7 @@ result = run_full_pipeline(
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
 | `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
 
-### MCP Server (67 tools)
+### MCP Server (68 tools)
 
 Start:
 
@@ -402,6 +402,7 @@ python -m automedia.mcp.server
 | `mcp_help` | ⚠️ Deprecated: use help_mcp |
 | `list_validation_scenarios` | List the agent-tester validation scenario library (name, description, category, status hint) |
 | `run_validation_scenario` | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
+| `run_validation_suite` | Run the WHOLE validation scenario library in-process and persist one immutable suite record |
 | `get_validation_report` | Read a persisted validation run record from validation-runs/ (defaults to the latest run) |
 | `validation_coverage_audit` | Run the static coverage audit: declared/used/covered/missing/phantom per surface |
 | `validation_matrix` | Render the validation matrix: per-scenario surface coverage + last-run status + hard-safety flags |
@@ -538,7 +539,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  67 tools      |     |  19 commands       |
+  |  68 tools      |     |  19 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+

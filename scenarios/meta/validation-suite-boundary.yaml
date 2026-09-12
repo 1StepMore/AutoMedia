@@ -1,0 +1,17 @@
+name: validation-suite-boundary
+description: "BOUNDARY-ONLY probe (director-waiver required — never GREEN-asserted): run_validation_suite rejects a scenarios_dir that is not an existing directory with INVALID_PARAM before any dispatch."
+intent: "Cover the whole-library MCP suite tool (run_validation_suite, gap R-09) without ever running the library from inside a library run — a success-asserting call here would recurse. The safe contract is the argument boundary: a missing scenarios_dir errors loudly instead of silently running an empty library. The probe passes on error and fails only on full success."
+category: meta
+error_boundary: true
+hard: true
+steps:
+  - name: run_validation_suite rejects a missing scenarios_dir
+    kind: tool
+    check: "run_validation_suite returns success: false with a structured INVALID_PARAM error when scenarios_dir does not exist (verified empirically: scenarios_dir is not a directory)."
+    standard: tool.contract
+    tool: run_validation_suite
+    arguments:
+      scenarios_dir: "scenarios/does-not-exist-validation-suite-boundary"
+      save: false
+    expect: {}
+    error_boundary: true
