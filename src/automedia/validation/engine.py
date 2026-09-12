@@ -42,11 +42,12 @@ in ``failures`` (RED never erased).  Cleanup runs best-effort after the
 main steps under ``cleanup`` and never influences status.
 
 Artifacts (§4.4): GREEN steps with ``collect_artifacts`` copy their
-artifacts into ``<run_root>/artifacts/`` via ``persist.collect_artifacts``
-(entries in the trace; required-missing surfaced loudly in
-``summary.artifacts_missing``).  The exclusive-create run dir exists only
-at persist time, so staging happens under the runs root; ``copied_to``
-paths stay valid.  A ``save=False`` suite collects nothing.
+artifacts into the exclusive per-run dir's ``artifacts/`` via
+``persist.collect_artifacts`` (entries in the trace; required-missing
+surfaced loudly in ``summary.artifacts_missing``).  The run dir is created
+first (``persist.prepare_run_dir``) so artifacts and ``scenarios.json``
+share one immutable directory — evidence can never be overwritten by a later
+run (gap T-16).  A ``save=False`` suite collects nothing.
 
 Redaction (plan fix m8): :func:`_redact` lazily imports ``_redact_secrets``
 from ``automedia.mcp.tools._shared`` (NOT config_loader), falling back to
@@ -81,7 +82,12 @@ from automedia.validation.expects import (
     evaluate_expect,
 )
 from automedia.validation.loader import load_scenarios
-from automedia.validation.persist import collect_artifacts, persist_run, write_latest_pointer
+from automedia.validation.persist import (
+    collect_artifacts,
+    persist_run,
+    prepare_run_dir,
+    write_latest_pointer,
+)
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Scenario, Step
 
 # Keyword set of the local fallback redactor — mirrors (and slightly
@@ -375,17 +381,26 @@ async def run_validation_suite_async(
 
     ``server`` is the FastMCP instance for the ToolAdapter (``None`` makes
     tool-kind steps fail loudly).  ``save=True`` requires ``runs_root``;
-    the record is persisted via ``persist_run`` and ``latest.txt`` is
-    refreshed (guide §3.1 phase 6).  Load failures propagate loudly
+    the exclusive per-run dir is created up front so artifacts are collected
+    beside the record, then the record is persisted via ``persist_run`` and
+    ``latest.txt`` is refreshed (guide §3.1 phase 6).  Load failures
+    propagate loudly
     (:class:`~automedia.validation.loader.LoadError`).
     """
     scenarios = load_scenarios(scenarios_dir)
     adapters = make_adapters(server)
     trace_id = str(uuid.uuid4())
     base = Path.cwd() if cwd is None else Path(cwd)
-    # Artifact staging only makes sense when the record will be persisted;
-    # a save=False run collects nothing and leaves the runs root untouched.
-    run_root = runs_root if save else None
+    # One exclusive per-run dir holds both the artifacts and the record, so
+    # evidence is immutable and two runs can never collide (gap T-16); the
+    # save=False path creates nothing and leaves the runs root untouched.
+    root: Path | None = None
+    run_root: Path | None = None
+    if save:
+        if runs_root is None:
+            raise ValueError("save=True requires runs_root (directory for immutable run records)")
+        root = runs_root
+        run_root = prepare_run_dir(root)
     records = [
         await run_validation_scenario_async(
             scenario, adapters, run_root=run_root, cwd=base, trace_id=trace_id
@@ -400,11 +415,9 @@ async def run_validation_suite_async(
         "hard_safety_violations": violations,
         "blocked": bool(violations),
     }
-    if save:
-        if runs_root is None:
-            raise ValueError("save=True requires runs_root (directory for immutable run records)")
-        record_path = persist_run(runs_root, record)
-        write_latest_pointer(runs_root, record_path.parent.name)
+    if save and root is not None:
+        record_path = persist_run(root, record, run_dir=run_root)
+        write_latest_pointer(root, record_path.parent.name)
     return record
 
 

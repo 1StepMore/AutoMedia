@@ -39,11 +39,28 @@ class PersistError(Exception):
     """A run record could not be persisted without overwriting existing evidence."""
 
 
+def prepare_run_dir(runs_root: Path, *, stamp: str | None = None) -> Path:
+    """Create and return an exclusive per-run directory (no record yet).
+
+    Splitting directory creation from :func:`persist_run` lets the engine
+    collect a GREEN step's artifacts into ``<run_dir>/artifacts/`` *before*
+    the record is written (gap T-16), so artifacts and ``scenarios.json``
+    share one immutable directory.  ``stamp`` pins the name (tests pin it);
+    otherwise the microsecond stamp with the random-suffix collision fallback
+    of :func:`_fresh_run_dir` applies.  A collision raises
+    :class:`PersistError`.
+    """
+    if stamp is not None:
+        return _exclusive_run_dir(runs_root, stamp)
+    return _fresh_run_dir(runs_root)
+
+
 def persist_run(
     runs_root: Path,
     run_record: dict[str, object],
     *,
     stamp: str | None = None,
+    run_dir: Path | None = None,
 ) -> Path:
     """Persist one immutable run record; return the ``scenarios.json`` path.
 
@@ -55,11 +72,15 @@ def persist_run(
     name is used, and a collision (same microsecond) retries with a
     ``-<6-hex>`` random suffix up to :data:`MAX_SUFFIX_RETRIES` times before
     raising.  The run record is written as indented JSON (guide §3.3).
+
+    ``run_dir`` accepts a directory already created by
+    :func:`prepare_run_dir` (the engine's per-run artifact staging, gap
+    T-16); the exclusive ``scenarios.json`` write then lands beside the
+    collected ``artifacts/``.  When omitted, a fresh exclusive dir is created
+    from ``runs_root`` exactly as before.
     """
-    if stamp is not None:
-        run_dir = _exclusive_run_dir(runs_root, stamp)
-    else:
-        run_dir = _fresh_run_dir(runs_root)
+    if run_dir is None:
+        run_dir = prepare_run_dir(runs_root, stamp=stamp)
     record_path = run_dir / "scenarios.json"
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     try:
@@ -130,7 +151,8 @@ def collect_artifacts(
     absolute ``path`` is used as-is) to
     ``<run_dir>/artifacts/<step_index>-<basename>`` (guide §4.4: every green
     step names a verifiable artifact).  ``step_index`` is the 1-based step
-    index of the trace (guide §3.1 phase 5).
+    index of the trace (guide §3.1 phase 5).  ``copied_to`` is the created
+    file's path, which lives inside the run dir.
 
     The returned entries carry ``{path, copied_to, ok, required, reason}``:
     ``ok=True`` means the artifact was copied; a missing source is ``ok=False``
@@ -138,6 +160,8 @@ def collect_artifacts(
     ``reason="not-a-file"``.  A missing REQUIRED artifact must be surfaced
     loudly by the caller (engine run record); ``required=False`` entries are
     tolerated the same way — both are reported, never silently dropped.
+    Copies are exclusive-create: an existing target is never overwritten, so
+    two same-basename sources stay distinct files.
     """
     entries: list[dict[str, object]] = []
     for check in step.collect_artifacts:
@@ -156,12 +180,56 @@ def collect_artifacts(
         else:
             artifacts_dir = run_dir / "artifacts"
             artifacts_dir.mkdir(parents=True, exist_ok=True)
-            target = artifacts_dir / f"{step_index}-{source.name}"
-            shutil.copy2(source, target)
+            target = _copy_artifact_exclusive(artifacts_dir, step_index, source)
             entry["ok"] = True
             entry["copied_to"] = str(target)
         entries.append(entry)
     return entries
+
+
+def _copy_artifact_exclusive(artifacts_dir: Path, step_index: int, source: Path) -> Path:
+    """Copy ``source`` into ``artifacts_dir`` under a fresh, non-overwritten name.
+
+    The target ``<step_index>-<basename>`` is created with ``O_CREAT|O_EXCL``;
+    a collision (same step index and basename) falls back to a ``-<6-hex>``
+    suffix for up to :data:`MAX_SUFFIX_RETRIES` attempts, so an existing
+    artifact is never overwritten.  Returns the created target.
+    """
+    base = f"{step_index}-{source.name}"
+    for attempt in range(MAX_SUFFIX_RETRIES + 1):
+        target = artifacts_dir / (base if attempt == 0 else _suffixed_name(base))
+        try:
+            _copy_exclusive(source, target)
+        except FileExistsError:
+            continue
+        return target
+    raise PersistError(
+        f"could not allocate a unique artifact name for {source} in "
+        f"{artifacts_dir} after {MAX_SUFFIX_RETRIES + 1} attempts (base {base!r})"
+    )
+
+
+def _suffixed_name(base: str) -> str:
+    """Collision fallback: ``1-report.md`` -> ``1-report-<6-hex>.md``."""
+    path = Path(base)
+    return f"{path.stem}-{token_hex(3)}{path.suffix}"
+
+
+def _copy_exclusive(source: Path, target: Path) -> None:
+    """Byte-copy ``source`` to ``target`` created with ``O_CREAT|O_EXCL``.
+
+    Raises :class:`FileExistsError` when ``target`` already exists (never
+    truncates) and removes the partial target if the copy fails.  Metadata is
+    preserved, matching the ``shutil.copy2`` semantics this replaces.
+    """
+    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with source.open("rb") as src, os.fdopen(fd, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+    shutil.copystat(source, target)
 
 
 def _exclusive_run_dir(runs_root: Path, name: str) -> Path:
