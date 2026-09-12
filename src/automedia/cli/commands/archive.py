@@ -12,7 +12,7 @@ from automedia.cli.output import output_error, output_text
 
 
 def archive_cmd(
-    project_id: str = typer.Argument(..., help="Project ID to archive."),
+    project_id: str = typer.Argument(..., metavar="project_id", help="Project ID to archive."),
     force: bool = typer.Option(
         False, "--force", "-f", help="Force archive even if status is not 'published'."
     ),
