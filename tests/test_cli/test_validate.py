@@ -743,6 +743,36 @@ class TestValidateCoverage:
         assert summary["mcp_declared"] == 68
         assert summary["cli_missing"] == 19  # synthetic library covers none
 
+    def test_coverage_reports_evidence_buckets_and_exits_1(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        runs = tmp_path / "runs"
+        persist_run(
+            runs,
+            {
+                "trace_id": "t",
+                "generated_at": "2026-01-01T00:00:00+00:00",
+                "confidence": "mock",
+                "scenarios": [
+                    {
+                        "scenario": "synth-passing",
+                        "status": "passed",
+                        "confidence": "mock",
+                        "steps": [],
+                    }
+                ],
+            },
+            stamp="20260101-000000-000000",
+        )
+        write_latest_pointer(runs, "20260101-000000-000000")
+        result = runner.invoke(
+            app, ["validate", "coverage", "--runs-root", str(runs)]
+        )
+        assert result.exit_code == 1
+        assert "Evidence run: 20260101-000000-000000" in result.output
+        assert "Buckets:" in result.output
+        assert "Unproven" in result.output
+
 
 # =========================================================================
 # validate matrix

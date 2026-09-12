@@ -99,26 +99,45 @@ jobs:
         continue-on-error: ${{ matrix.python-version != '3.11' }}
         run: python3 -m pytest --cov=src/automedia --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -q --tb=short
 
-      - name: Validation coverage audit (W5-T3; exit 1 when missing != 0)
-        # Pinned policy (plan W5-T3): uncovered declared surface (missing)
-        # fails the gate — a regression signal, never silently absorbed.
-        # Boundary-only probes are excluded by the audit itself and listed
-        # loudly in its director_waiver_note.
+      - name: Validation coverage audit (T-01; evidence-backed)
+        # Evidence-backed coverage (gap T-01): coverage = declared surface ∩
+        # surfaces reached by a passed step in the newest persisted run.
+        # `missing` (declared-but-unreferenced, Absent) always fails.
+        # `unproven` fails once an evidence run exists; this static job has no
+        # persisted run, so it reports the unproven set loudly and the
+        # operator-facing `automedia validate coverage` is the strict gate
+        # (exits 1 while any non-allowlisted surface is unproven or missing).
         if: matrix.python-version == '3.11'
         run: |
-          python3 -m automedia.validation.coverage > /tmp/validation-coverage-audit.json
           python3 - <<'EOF'
-          import json, sys
-          audit = json.load(open("/tmp/validation-coverage-audit.json"))
-          s = audit["summary"]
-          missing = s["mcp_missing"] + s["cli_missing"]
+          import sys
+          from automedia.validation.coverage import coverage_audit
+          audit = coverage_audit(runs_root="validation-runs")
+          for surface in ("mcp", "cli", "gates", "modes"):
+              print(
+                  f"{surface}: covered={len(audit['covered'][surface])} "
+                  f"unproven={len(audit['unproven'][surface])} "
+                  f"missing={len(audit['missing'][surface])} "
+                  f"allowlisted={len(audit['allowlisted'][surface])}"
+              )
           print(
-              f"coverage audit: mcp declared={s['mcp_declared']} covered={s['mcp_covered']} "
-              f"missing={s['mcp_missing']} phantom={s['mcp_phantom']} | "
-              f"cli declared={s['cli_declared']} covered={s['cli_covered']} "
-              f"missing={s['cli_missing']} phantom={s['cli_phantom']}"
+              f"evidence_run={audit['evidence_run']} "
+              f"confidence={audit['evidence_confidence']}"
           )
-          sys.exit(1 if missing else 0)
+          if audit["missing_count"]:
+              print(f"FAIL: {audit['missing_count']} absent surface(s)")
+              sys.exit(1)
+          if audit["evidence_run"] is not None and audit["unproven_count"]:
+              print(
+                  f"FAIL: {audit['unproven_count']} unproven surface(s) "
+                  "with a persisted run"
+              )
+              sys.exit(1)
+          if audit["unproven_count"]:
+              print(
+                  f"NOT-ACCEPTED (no evidence run): "
+                  f"{audit['unproven_count']} unproven surface(s)"
+              )
           EOF
 
   test-omni:

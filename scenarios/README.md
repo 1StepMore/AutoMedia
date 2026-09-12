@@ -330,10 +330,16 @@ The `automedia validate` command family drives this layer from the CLI:
   a run, defaulting to the latest
 - `automedia validate diff [--baseline <path>]` — diff the latest two runs
   against each other or a baseline record
-- `automedia validate coverage` — run the static coverage audit, which reports
-  `declared`/`used`/`covered`/`missing`/`phantom`/`boundary_only` per surface
-  for four surfaces (CLI, MCP, gates, pipeline modes); it exits 1 when
-  `missing` is non-empty on any surface
+- `automedia validate coverage` — run the **evidence-backed** coverage audit:
+  coverage is the declared surface ∩ surfaces reached by a `passed` step in
+  the newest persisted suite run (`--runs-root`, default `validation-runs`).
+  It reports `covered`/`unproven`/`missing` per surface (CLI, MCP, gates,
+  pipeline modes) and exits 1 while any non-allowlisted surface is
+  `unproven` or `missing`.  Mock-confidence passes (`Proved (mock)`),
+  `unconfigured` scenarios, boundary probes, and meta scenarios never count
+  as `covered`.  A surface is excluded from `unproven` only while a versioned
+  `boundary_only_allowlist.yml` entry (owner + reason + expiry) covers it.
+  The static declared/used/phantom sets are still printed alongside.
 - `automedia validate matrix` — render the validation matrix: per-surface
   coverage summary plus one row per scenario (surface cells, hard flag,
   last-run status); non-recursive, takes no scenario name

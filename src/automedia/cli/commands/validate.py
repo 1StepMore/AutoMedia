@@ -31,9 +31,9 @@ CLI surface for the validation framework: seven sub-commands.
 
 Exit-code contract (typer conventions per ``doctor.py``): ``run`` exits 1
 when the scenario status is ``failed``, 0 otherwise (passed / unconfigured /
-partial-pass / recovered) with a clear status line; ``coverage`` exits 1 when
-``missing`` is non-empty on ANY surface (mcp, cli, and — issue #78 — gates
-and modes; boundary-only excluded); usage errors exit 2
+partial-pass / recovered) with a clear status line; ``coverage`` is
+evidence-backed (gap T-01) and exits 1 while any non-allowlisted surface is
+``unproven`` or ``missing``; usage errors exit 2
 (typer/click default).  ``--json`` switches every command to machine-readable
 JSON via the shared ``--json`` global flag (``automedia.cli.output``).
 """
@@ -554,17 +554,28 @@ def _render_diff_text(diff_result: dict[str, Any]) -> str:
 
 
 @app.command("coverage")
-def validate_coverage() -> None:
-    """Run the coverage audit over the scenario library.
+def validate_coverage(
+    runs_root: str = typer.Option(
+        "validation-runs",
+        "--runs-root",
+        help=(
+            "Directory of immutable run records. Coverage is evidence-backed: "
+            "surfaces are covered only by a passed step in the newest run here."
+        ),
+    ),
+) -> None:
+    """Run the evidence-backed coverage audit over the scenario library.
 
-    Exit 1 when ``missing`` is non-empty on any surface (MCP tools, CLI
-    commands, and — issue #78 — gates and modes), excluding boundary-only
-    probes which are listed loudly instead.
+    Coverage = declared surface ∩ surfaces reached by a ``passed`` step in the
+    newest persisted suite run (real-confidence only; mock/unconfigured/
+    boundary/meta never count).  Reports ``covered``/``unproven``/``missing``
+    per surface and exits 1 while any non-allowlisted surface is ``unproven``
+    or ``missing`` (a versioned boundary-only allowlist excludes its entries).
     """
     from automedia.validation.coverage import coverage_audit
 
     try:
-        audit = coverage_audit()
+        audit = coverage_audit(runs_root=runs_root)
     except (LoadError, OSError) as exc:
         output_error(f"Coverage audit failed: {exc}")
         return
@@ -573,6 +584,9 @@ def validate_coverage() -> None:
     missing_cli = list(audit.get("missing_cli", []))
     missing_gates = list(audit.get("missing_gates", []))
     missing_modes = list(audit.get("missing_modes", []))
+    unproven = audit.get("unproven", {})
+    unproven_count = int(audit.get("unproven_count", 0))
+    missing_count = int(audit.get("missing_count", 0))
 
     if get_output_mode() == OutputMode.JSON:
         output_json(audit)
@@ -614,6 +628,19 @@ def validate_coverage() -> None:
             f"boundary_only={summary.get('modes_boundary_only')} "
             f"phantom={summary.get('modes_phantom')}"
         )
+        typer.echo(
+            f"  Evidence run: {audit.get('evidence_run') or '(none)'} "
+            f"(confidence={audit.get('evidence_confidence') or '(none)'})"
+        )
+        for surface in ("mcp", "cli", "gates", "modes"):
+            bucket = unproven.get(surface, []) if isinstance(unproven, dict) else []
+            if bucket:
+                typer.echo(f"  Unproven {surface} ({len(bucket)}): {', '.join(bucket)}")
+        typer.echo(
+            f"  Buckets: covered={audit.get('covered_count')} "
+            f"unproven={unproven_count} missing={missing_count} "
+            f"allowlisted={len(audit.get('allowlisted', {}).get('mcp', []))}"
+        )
         if missing_mcp:
             typer.echo(f"  Missing MCP tools (declared, not covered): {', '.join(missing_mcp)}")
         if missing_cli:
@@ -625,7 +652,7 @@ def validate_coverage() -> None:
         if not (missing_mcp or missing_cli or missing_gates or missing_modes):
             typer.echo("  missing = 0 (excluding boundary-only, listed above)")
 
-    if missing_mcp or missing_cli or missing_gates or missing_modes:
+    if unproven_count or missing_count:
         raise typer.Exit(code=1)
 
 

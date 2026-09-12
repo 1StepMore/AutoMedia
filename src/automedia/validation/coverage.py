@@ -1,8 +1,25 @@
 """Coverage audit for the agent-tester validation layer (guide §5.1, plan W3-T7/C4).
 
-Computes the coverage sets over the committed scenario library, purely
-statically — regex/parse over committed source and scenario files, never a
-runtime probe (guide §5.1 determinism requirement):
+Two halves, one output:
+
+* The STATIC half (declarative, deterministic) computes the declared/used/
+  covered/missing/phantom/boundary-only sets over the committed scenario
+  library as before — regex/parse over committed source and scenario files,
+  never a runtime probe (guide §5.1 determinism requirement).
+* The EVIDENCE half (gap T-01) defines coverage as **declared surface ∩
+  surfaces actually reached by a ``passed`` step in the newest persisted
+  suite run**.  It emits ``covered`` / ``unproven`` / ``missing`` per surface
+  and refuses to count a mock-confidence run, an ``unconfigured`` scenario,
+  an ``error_boundary`` probe, or a meta scenario as proof.  A surface can be
+  excluded from ``unproven`` only while a versioned ``boundary_only``
+  allowlist (owner + reason + expiry) covers it.  The CLI
+  ``automedia validate coverage`` consumes this half and exits 1 while any
+  non-allowlisted surface — including S3/L0 (all gates/modes) — is
+  ``unproven``.
+
+The static half is preserved verbatim for the matrix and MCP audit surfaces;
+the evidence half is additive and only reads a run record when ``runs_root``
+is supplied.
 
 * ``declared`` — the surface as shipped.  MCP tools come from a regex over
   ``src/automedia/mcp/server.py`` (``mcp.tool(...)(fn)`` — the only
@@ -80,12 +97,14 @@ import ast
 import json
 import re
 import shlex
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from automedia.validation.loader import default_scenarios_dir, load_scenarios
+from automedia.validation.loader import LoadError, default_scenarios_dir, load_scenarios
+from automedia.validation.persist import latest_run
 from automedia.validation.schema import Scenario, Step
 
 _MCP_TOOL_RE = re.compile(r"mcp\.tool\((.*?)\)\((\w+)\)", re.DOTALL)
@@ -96,6 +115,17 @@ _FROM_IMPORT_RE = re.compile(
 _CLI_REG_RE = re.compile(r'register_(?:sub_app|fn)\(\s*["\']([^"\']+)["\']')
 _GATE_NAME_ASSIGN_RE = re.compile(r'^\s*_gate_name\s*=\s*"([^"]+)"', re.MULTILINE)
 
+ALLOWLIST_FILENAME = "boundary_only_allowlist.yml"
+"""Versioned boundary-only allowlist read by the evidence half (gap T-01).
+
+Deliberately ``.yml``, not ``.yaml``: the scenario loader globs ``*.yaml``
+recursively across the scenarios directory, so a ``.yaml`` allowlist would be
+rejected as a malformed scenario.
+"""
+
+SURFACES: tuple[str, ...] = ("mcp", "cli", "gates", "modes")
+"""The four declared surfaces the evidence half reports on."""
+
 
 def coverage_audit(
     scenarios_dir: str | Path | None = None,
@@ -104,18 +134,31 @@ def coverage_audit(
     app_path: str | Path | None = None,
     runner_path: str | Path | None = None,
     distribution_path: str | Path | None = None,
+    runs_root: str | Path | None = None,
+    allowlist_path: str | Path | None = None,
+    today: date | None = None,
 ) -> dict[str, Any]:
-    """Deterministic coverage audit over the scenario library (guide §5.1).
+    """Coverage audit over the scenario library (guide §5.1, gap T-01).
 
     ``scenarios_dir`` defaults to the loader's default (env override
     ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` else repo-root ``scenarios/``);
     ``server_path``/``app_path`` default to the repo's ``mcp/server.py`` and
     ``cli/app.py``; ``runner_path``/``distribution_path`` default to the
     repo's ``pipelines/runner.py`` and ``gates/distribution/`` (the gate and
-    mode declared surfaces, issue #78).  Returns the full audit dict
-    (declared/used/covered/missing/phantom/boundary-only sets per surface —
-    mcp, cli, gates, modes —, boundary scenario files, waiver and phantom
-    notes, and a numeric summary).
+    mode declared surfaces, issue #78).
+
+    ``runs_root`` enables the evidence half: when supplied, the newest
+    persisted suite run under it is read and ``covered``/``unproven``/
+    ``missing`` are computed from its ``passed`` steps (``covered`` requires a
+    real-confidence proof; mock/unconfigured/boundary/meta proofs never count).
+    ``allowlist_path`` overrides the versioned boundary-only allowlist
+    (default ``<scenarios_dir>/boundary_only_allowlist.yml``); ``today`` pins
+    the expiry check for deterministic tests.
+
+    Returns the full audit dict: the static sets (declared/used/covered/
+    missing/phantom/boundary-only per surface, notes, summary) PLUS the
+    evidence buckets (``covered``/``unproven``/``missing``, ``allowlisted``,
+    ``evidence_run``, ``evidence_confidence``, counts).
     """
     root = default_scenarios_dir() if scenarios_dir is None else Path(scenarios_dir)
     server_src = _read_declared_source(server_path, "src/automedia/mcp/server.py")
@@ -166,7 +209,7 @@ def coverage_audit(
     phantom_gates = sorted(used_gates - declared_gates_set)
     phantom_modes = sorted(used_modes - declared_modes_set)
 
-    return {
+    result: dict[str, Any] = {
         "declared_mcp": declared_mcp,
         "declared_cli": declared_cli,
         "declared_gates": declared_gates,
@@ -221,12 +264,241 @@ def coverage_audit(
             "modes_boundary_only": len(boundary_modes),
         },
     }
+    result.update(
+        _evidence_coverage(
+            scenarios=scenarios,
+            file_map=file_map,
+            declared={
+                "mcp": declared_mcp_set,
+                "cli": declared_cli_set,
+                "gates": declared_gates_set,
+                "modes": declared_modes_set,
+            },
+            used={
+                "mcp": used_mcp,
+                "cli": used_cli,
+                "gates": used_gates,
+                "modes": used_modes,
+            },
+            runs_root=None if runs_root is None else Path(runs_root),
+            allowlist_path=allowlist_path,
+            default_allowlist=root / ALLOWLIST_FILENAME,
+            today=date.today() if today is None else today,
+        )
+    )
+    return result
 
 
 def _read_declared_source(explicit: str | Path | None, rel: str) -> str:
     """Read a declared-surface source file: explicit path or repo default."""
     path = Path(explicit) if explicit is not None else _repo_root() / rel
     return path.read_text(encoding="utf-8")
+
+
+def _record_confidence(record: dict[str, Any]) -> str:
+    """A run/scenario record's confidence: ``mock`` or ``real`` (absent = real)."""
+    value = record.get("confidence")
+    return value if value in ("real", "mock") else "real"
+
+
+def _is_meta(scenario: Scenario | None, rel_path: str) -> bool:
+    """True when the scenario is harness/meta, never product-surface evidence.
+
+    Meta detection is category-first (``category: meta``) with a file-path
+    fallback (``meta/`` dir, ``*-meta`` stems, the validation self-listing),
+    because the committed meta scenarios do not all carry ``category: meta``.
+    """
+    if scenario is not None and scenario.category == "meta":
+        return True
+    rel = rel_path.replace("\\", "/")
+    if rel.startswith("meta/"):
+        return True
+    return Path(rel).stem.endswith("-meta") or rel == "list-validation-scenarios.yaml"
+
+
+def _load_run_record(path: Path) -> dict[str, Any] | None:
+    """Read a persisted suite record, best-effort (None on absent/corrupt)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _collect_reached(
+    record: dict[str, Any],
+    library: dict[str, Scenario],
+    file_map: dict[str, str],
+    reached: dict[str, set[str]],
+) -> None:
+    """Accumulate the surfaces a real-confidence, passed proof reached.
+
+    mcp/cli surfaces count a ``passed`` step's target; gates/modes count a
+    ``passed`` scenario's declarative ``proves_gates``/``proves_modes``.
+    Mock-confidence records, boundary probes, unconfigured scenarios, and meta
+    scenarios are never proof.
+    """
+    records = record.get("scenarios")
+    if not isinstance(records, list):
+        return
+    for rec in records:
+        if not isinstance(rec, dict) or _record_confidence(rec) == "mock":
+            continue
+        name = str(rec.get("scenario") or "")
+        scenario = library.get(name)
+        if rec.get("error_boundary") is True or (
+            scenario is not None and scenario.error_boundary
+        ):
+            continue
+        if _is_meta(scenario, file_map.get(name, "")):
+            continue
+        steps = rec.get("steps")
+        if isinstance(steps, list):
+            for step in steps:
+                if not isinstance(step, dict) or step.get("passed") is not True:
+                    continue
+                surface = step.get("surface")
+                target = step.get("target")
+                if not isinstance(target, str):
+                    continue
+                if surface == "tool":
+                    reached["mcp"].add(target)
+                elif surface == "cli":
+                    sub = _cli_subcommand(target)
+                    if sub is not None:
+                        reached["cli"].add(sub)
+        if rec.get("status") == "passed" and scenario is not None:
+            reached["gates"] |= set(scenario.proves_gates)
+            reached["modes"] |= set(scenario.proves_modes)
+
+
+def _load_allowlist(
+    path: Path, today: date
+) -> tuple[dict[str, set[str]], dict[str, Any]]:
+    """Load the versioned boundary-only allowlist (gap T-01).
+
+    Every entry must name a known surface, a ``name``, an ``owner``, and a
+    ``reason``; an optional ISO ``expires`` date drops the entry once past
+    (per-release review, max one release).  A malformed file is a loud
+    :class:`LoadError` — the audit never silently waives coverage.
+    """
+    allow: dict[str, set[str]] = {surface: set() for surface in SURFACES}
+    meta: dict[str, Any] = {
+        "path": str(path),
+        "version": None,
+        "reviewed": None,
+        "release": None,
+        "active": [],
+        "expired": [],
+    }
+    if not path.is_file():
+        return allow, meta
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise LoadError(f"{path}: boundary-only allowlist is unreadable: {exc}") from exc
+    if not isinstance(doc, dict):
+        raise LoadError(f"{path}: boundary-only allowlist must be a mapping")
+    if "version" not in doc:
+        raise LoadError(f"{path}: boundary-only allowlist requires a 'version' field")
+    meta["version"] = doc.get("version")
+    meta["reviewed"] = doc.get("reviewed")
+    meta["release"] = doc.get("release")
+    entries = doc.get("entries", [])
+    if not isinstance(entries, list):
+        raise LoadError(f"{path}: 'entries' must be a list")
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise LoadError(f"{path}: entries[{index}] must be a mapping")
+        surface = entry.get("surface")
+        name = entry.get("name")
+        owner = entry.get("owner")
+        reason = entry.get("reason")
+        if surface not in SURFACES:
+            raise LoadError(
+                f"{path}: entries[{index}].surface {surface!r} not in {list(SURFACES)}"
+            )
+        for field, value in (("name", name), ("owner", owner), ("reason", reason)):
+            if not isinstance(value, str) or not value.strip():
+                raise LoadError(f"{path}: entries[{index}].{field} is required")
+        row = {
+            "surface": surface,
+            "name": name,
+            "owner": owner,
+            "reason": reason,
+            "expires": entry.get("expires"),
+        }
+        expires = entry.get("expires")
+        active = True
+        if expires is not None:
+            try:
+                active = date.fromisoformat(str(expires)) >= today
+            except ValueError as err:
+                raise LoadError(
+                    f"{path}: entries[{index}].expires must be ISO YYYY-MM-DD: {err}"
+                ) from err
+        meta["active" if active else "expired"].append(row)
+        if active:
+            allow[surface].add(name)
+    return allow, meta
+
+
+def _evidence_coverage(
+    *,
+    scenarios: list[Scenario],
+    file_map: dict[str, str],
+    declared: dict[str, set[str]],
+    used: dict[str, set[str]],
+    runs_root: Path | None,
+    allowlist_path: str | Path | None,
+    default_allowlist: Path,
+    today: date,
+) -> dict[str, Any]:
+    """Compute the evidence-backed ``covered``/``unproven``/``missing`` buckets.
+
+    Coverage = declared surface ∩ surfaces reached by a ``passed`` step in the
+    newest persisted suite run (gap T-01).  ``unproven`` = referenced but not
+    proven (and not allowlisted); ``missing`` = declared but referenced by no
+    scenario (Absent).  Only real-confidence proofs count.
+    """
+    library = {scenario.name: scenario for scenario in scenarios}
+    reached: dict[str, set[str]] = {surface: set() for surface in SURFACES}
+    evidence_run: str | None = None
+    confidence: str | None = None
+    if runs_root is not None:
+        evidence_run = latest_run(runs_root)
+        if evidence_run is not None:
+            record = _load_run_record(runs_root / evidence_run / "scenarios.json")
+            if record is not None:
+                confidence = _record_confidence(record)
+                _collect_reached(record, library, file_map, reached)
+    allow_path = Path(allowlist_path) if allowlist_path is not None else default_allowlist
+    allow, allowlist_meta = _load_allowlist(allow_path, today)
+    covered: dict[str, list[str]] = {}
+    unproven: dict[str, list[str]] = {}
+    missing: dict[str, list[str]] = {}
+    allowlisted: dict[str, list[str]] = {}
+    for surface in SURFACES:
+        decl = declared[surface]
+        proven = decl & reached[surface]
+        absent = decl - used[surface]
+        waived = decl & allow[surface]
+        unproven[surface] = sorted((used[surface] & decl) - proven - waived)
+        covered[surface] = sorted(proven)
+        missing[surface] = sorted(absent)
+        allowlisted[surface] = sorted(waived)
+    return {
+        "covered": covered,
+        "unproven": unproven,
+        "missing": missing,
+        "allowlisted": allowlisted,
+        "evidence_run": evidence_run,
+        "evidence_confidence": confidence,
+        "covered_count": sum(len(names) for names in covered.values()),
+        "unproven_count": sum(len(names) for names in unproven.values()),
+        "missing_count": sum(len(names) for names in missing.values()),
+        "allowlist": allowlist_meta,
+    }
 
 
 def _repo_root() -> Path:

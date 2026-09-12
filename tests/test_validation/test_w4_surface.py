@@ -150,25 +150,31 @@ class TestValidateCliRealLibrary:
         assert names == {scenario.name for scenario in library}
         assert META_SCENARIO in names
 
-    def test_validate_coverage_exits_0_all_surfaces_covered(self, library_root: Path) -> None:
-        """Issue #78 final contract (A3 landed): every one of the 33 gates and
-        9 pipeline modes is proven by a committed journey scenario, so the
-        extended exit contract (declared-but-missing on ANY surface exits 1)
-        now exits 0 — the Gates/Modes lines print covered=declared and
-        missing=0, and the "missing = 0" summary line is shown."""
+    def test_validate_coverage_reports_unproven_and_exits_1(
+        self, library_root: Path
+    ) -> None:
+        """Evidence-backed contract (gap T-01): the static surfaces are fully
+        declared/used (missing = 0), but coverage now counts only surfaces
+        reached by a passed step in the newest persisted run, so an
+        evidence-free/static environment reports them `unproven` and exits 1
+        (never default GREEN)."""
         result = runner.invoke(app, ["validate", "coverage"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         assert "Coverage audit" in result.output
         assert "Gates:" in result.output
         assert "Modes:" in result.output
         assert "missing = 0 (excluding boundary-only, listed above)" in result.output
+        assert "Evidence run:" in result.output
+        assert "Buckets:" in result.output
+        assert "Unproven" in result.output
 
     def test_validate_coverage_json_regenerated_numbers(self, library_root: Path) -> None:
         """W4-T7 regeneration pins: mcp 68 declared / 60 covered / 0 missing;
         cli 19 / 19 / 0; both phantom = 0; boundary_only 8 (waiver).
         Issue #78 final contract (A3 landed): the pipeline surfaces are fully
-        covered by the committed journeys — gates 33 declared / 33 covered /
-        0 missing, modes 9 / 9 / 0 — so the audit exits 0.
+        declared — gates 33 / 33 / 0 missing, modes 9 / 9 / 0.  Gap T-01 adds
+        the evidence buckets and makes the static job exit 1 while surfaces
+        are unproven.
         Issue #86: the 5th validation MCP tool ``validation_matrix`` is now
         declared and covered by ``validation-matrix-meta``. The
         graph-engineering-rollout adds ``get_pipeline_state`` and the
@@ -178,8 +184,9 @@ class TestValidateCliRealLibrary:
         (boundary-only, covered by ``validation-suite-boundary``) — mcp 68 /
         60, cli 19."""
         result = runner.invoke(app, ["--json", "validate", "coverage"])
-        assert result.exit_code == 0
-        summary: dict[str, Any] = json.loads(result.output)["summary"]
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        summary: dict[str, Any] = data["summary"]
         assert summary["mcp_declared"] == 68
         assert summary["mcp_used"] == 68
         assert summary["mcp_covered"] == 60
@@ -200,6 +207,11 @@ class TestValidateCliRealLibrary:
         assert summary["modes_covered"] == 9
         assert summary["modes_missing"] == 0
         assert summary["modes_phantom"] == 0
+        assert data["missing_count"] == 0
+        for surface in ("mcp", "cli", "gates", "modes"):
+            assert surface in data["covered"]
+            assert surface in data["unproven"]
+            assert surface in data["missing"]
 
 
 # ===================================================================
