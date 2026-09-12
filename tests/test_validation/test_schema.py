@@ -165,6 +165,8 @@ class TestAcceptsValid:
             "min_score",
             "score_state",
             "error_expected",
+            "error_code_has",
+            "recovery_has",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS

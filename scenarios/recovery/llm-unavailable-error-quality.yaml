@@ -1,0 +1,24 @@
+name: llm-unavailable-error-quality
+description: "Forced LLM-unavailable probe: run_brand_strategy must answer with ONE fixed outcome — success: false carrying error.code=LLM_ERROR and a non-empty recovery/resolution string naming AUTOMEDIA_LLM_API_KEY — never a fallback success. Gated on AUTOMEDIA_VALIDATION_EXPECT_LLM_UNAVAILABLE: the runner sets that flag only when the LLM is known unreachable, so the assertions hold there; elsewhere the scenario reports unconfigured (honest)."
+intent: "Prove error quality (R-07/R-08): an unavailable LLM degrades to a coded, recoverable error, not a silent fallback success. The error envelope is the real mcp_error.error_response shape (error.code + error.resolution)."
+category: recovery
+user_level: L0
+requires_env:
+  - AUTOMEDIA_VALIDATION_EXPECT_LLM_UNAVAILABLE
+steps:
+  - name: run_brand_strategy returns the coded LLM error with a recovery instruction
+    kind: tool
+    check: "run_brand_strategy returns success: false with a non-empty error.code and a recovery instruction (resolution) naming the LLM credential; the fixed outcome is the error envelope, never a fallback success."
+    standard: tool.contract
+    tool: run_brand_strategy
+    arguments:
+      brand_name: r07-validation-brand
+      industry: SaaS
+      target_audience: validation harness
+    expect:
+      success: false
+      error_expected: true
+      error_code_has:
+        - LLM_ERROR
+      recovery_has:
+        - AUTOMEDIA_LLM_API_KEY

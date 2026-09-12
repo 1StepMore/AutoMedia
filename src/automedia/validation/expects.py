@@ -85,6 +85,19 @@ _SCORE_KEYS: tuple[str, ...] = ("quality_score", "overall_score", "score")
 _STATE_KEYS: tuple[str, ...] = ("quality_state", "state")
 """Output keys carrying an explicit machine state (T-02 quality_spot_check)."""
 
+_ERROR_CODE_KEYS: tuple[str, ...] = ("code", "error_code", "errorCode")
+"""Error-dict keys carrying the machine-readable code (R-08)."""
+
+_RECOVERY_KEYS: tuple[str, ...] = (
+    "resolution",
+    "recovery",
+    "remediation",
+    "guidance",
+    "hint",
+    "instruction",
+)
+"""Error-dict keys carrying the recovery instruction string (R-08)."""
+
 
 @dataclass(frozen=True, slots=True)
 class CheckTypeEvaluator:
@@ -304,6 +317,35 @@ def evaluate_expect(
                 "error_expected: true to opt in to an error-exercising step"
             )
 
+    if expect.error_code_has is not None:
+        code = _error_code(output)
+        if code is None:
+            failures.append(
+                "expect.error_code_has: no non-empty error code in output; observed "
+                f"keys: {_fmt(sorted(output) if isinstance(output, dict) else [])}"
+            )
+        else:
+            missing = [substring for substring in expect.error_code_has if substring not in code]
+            if missing:
+                failures.append(
+                    f"expect.error_code_has: code {code!r} missing substring(s) {_fmt(missing)}"
+                )
+
+    if expect.recovery_has is not None:
+        recovery = _recovery_text(output)
+        if recovery is None:
+            failures.append(
+                "expect.recovery_has: no non-empty recovery/resolution string in output; "
+                f"observed keys: {_fmt(sorted(output) if isinstance(output, dict) else [])}"
+            )
+        else:
+            missing = [substring for substring in expect.recovery_has if substring not in recovery]
+            if missing:
+                failures.append(
+                    "expect.recovery_has: recovery "
+                    f"{recovery!r} missing substring(s) {_fmt(missing)}"
+                )
+
     return ExpectResult(passed=not failures, failures=failures)
 
 
@@ -507,4 +549,62 @@ def _error_signal(output: object) -> str | None:
     exit_code = output.get("exit_code")
     if isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code != 0:
         return f"exit_code={exit_code}"
+    return None
+
+
+def _error_object(output: object) -> dict[str, object] | None:
+    """The structured ``error`` dict in an envelope (top level or under ``data``)."""
+    if not isinstance(output, dict):
+        return None
+    error = output.get("error")
+    if isinstance(error, dict):
+        return error
+    data = output.get("data")
+    if isinstance(data, dict):
+        error = data.get("error")
+        if isinstance(error, dict):
+            return error
+    return None
+
+
+def _error_code(output: object) -> str | None:
+    """The non-empty machine-readable error code in an envelope, or None (R-08).
+
+    Resolution order: the structured ``error`` dict's ``code``/``error_code``,
+    then the same keys at the envelope top level, then a ``data`` nested
+    envelope.  An empty or non-string value never resolves.
+    """
+    error = _error_object(output)
+    if error is not None:
+        for key in _ERROR_CODE_KEYS:
+            value = error.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+    if isinstance(output, dict):
+        for key in _ERROR_CODE_KEYS:
+            value = output.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+    return None
+
+
+def _recovery_text(output: object) -> str | None:
+    """The non-empty recovery/resolution instruction string, or None (R-08).
+
+    Resolution order mirrors :func:`_error_code`: the structured ``error``
+    dict, then the envelope top level.  The real AutoMedia error envelope uses
+    ``resolution`` (``mcp_error.error_response``); ``recovery``/``remediation``/
+    ``guidance``/``hint``/``instruction`` are accepted aliases.
+    """
+    error = _error_object(output)
+    if error is not None:
+        for key in _RECOVERY_KEYS:
+            value = error.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+    if isinstance(output, dict):
+        for key in _RECOVERY_KEYS:
+            value = output.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
     return None
