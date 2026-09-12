@@ -85,11 +85,13 @@ from automedia.validation.expects import (
     evaluate_expect,
 )
 from automedia.validation.loader import load_scenarios
+from automedia.validation.metrics import build_metrics
 from automedia.validation.persist import (
     collect_artifacts,
     persist_run,
     prepare_run_dir,
     write_latest_pointer,
+    write_metrics,
 )
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Scenario, Step
 
@@ -426,8 +428,11 @@ async def run_validation_suite_async(
         "blocked": bool(violations),
         "confidence": _confidence(),
     }
+    record["metrics"] = build_metrics(record)
     if save and root is not None:
         record_path = persist_run(root, record, run_dir=run_root)
+        if run_root is not None:
+            write_metrics(run_root, record["metrics"])  # type: ignore[arg-type]
         write_latest_pointer(root, record_path.parent.name)
     return record
 

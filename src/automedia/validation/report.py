@@ -39,6 +39,7 @@ from automedia.validation.report_text import (
     hard_safety_section,
     header_section,
     marker,
+    metrics_section,
     regression_section,
     signoff_section,
     step_failure_lines,
@@ -202,6 +203,7 @@ def render_report_text(run_record: dict, *, runs_root: Path | None = None) -> st
     sections = [
         header_section(run_record),
         exec_summary_section(_counts(records, flags)),
+        metrics_section(run_record.get("metrics")),
         verdicts_section(records, flags),
         hard_safety_section(_hard_violations(records), _suite_blocked(run_record, records)),
         blockers_section(_blockers(records)),
@@ -258,7 +260,7 @@ def render_report_json(run_record: dict) -> dict:
         ]
         for record in sorted(records, key=_name)
     }
-    return {
+    payload: dict = {
         "trace_id": run_record.get("trace_id"),
         "generated_at": run_record.get("generated_at"),
         "summary": _counts(records, flags),
@@ -272,3 +274,6 @@ def render_report_json(run_record: dict) -> dict:
         "traces": traces,
         "artifacts": _artifact_entries(records),
     }
+    if "metrics" in run_record:
+        payload["metrics"] = run_record.get("metrics")
+    return payload

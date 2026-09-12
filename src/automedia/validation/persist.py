@@ -94,6 +94,24 @@ def persist_run(
     return record_path
 
 
+def write_metrics(run_dir: Path, metrics: dict[str, object]) -> Path:
+    """Write ``metrics.json`` into an already-created run dir; return its path.
+
+    The run dir is exclusive (gap T-16), so ``metrics.json`` is never
+    overwritten: it is created with ``O_CREAT|O_EXCL`` and a pre-existing file
+    raises :class:`PersistError`, exactly like ``scenarios.json``.
+    """
+    path = run_dir / "metrics.json"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    try:
+        fd = os.open(path, flags, 0o644)
+    except FileExistsError:
+        raise PersistError(f"metrics file already exists, refusing to overwrite: {path}") from None
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(metrics, fh, indent=2)
+    return path
+
+
 def write_latest_pointer(runs_root: Path, run_dir_name: str) -> Path:
     """Refresh the stable ``latest.txt`` pointer; return its path.
 

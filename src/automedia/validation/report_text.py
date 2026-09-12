@@ -14,6 +14,8 @@ render byte-identical text.
 
 from __future__ import annotations
 
+from automedia.validation.metrics import METRIC_KEYS
+
 _MARKERS: dict[str, str] = {
     "passed": "PASS",
     "failed": "FAIL",
@@ -61,6 +63,34 @@ def exec_summary_section(counts: dict[str, int]) -> list[str]:
             boundary=counts["boundary_only"], regression=counts["regression_failed"]
         ),
     ]
+
+
+def metrics_section(metrics: object) -> list[str]:
+    """The six Tr-02 metrics + null reasons; omitted when no metrics recorded."""
+    if not isinstance(metrics, dict):
+        return []
+    lines = ["## Metrics"]
+    for key in METRIC_KEYS:
+        value = metrics.get(key)
+        lines.append(f"{key}: {_metric_value(value)}")
+    if metrics.get("unproven") is True:
+        lines.append("unproven: true")
+    reasons = metrics.get("reasons")
+    if isinstance(reasons, dict):
+        for key in METRIC_KEYS:
+            reason = reasons.get(key)
+            if metrics.get(key) is None and isinstance(reason, str):
+                lines.append(f"  {key}: null — {reason}")
+    return lines
+
+
+def _metric_value(value: object) -> str:
+    """Render a metric value; ``None`` renders as the literal ``null``."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
 
 def verdicts_section(records: list[dict], flags: dict[str, tuple[bool, str | None]]) -> list[str]:
