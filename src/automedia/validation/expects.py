@@ -35,14 +35,15 @@ explicit ``min_score`` / ``score_state`` assertions, never free text.
    With no resolvable path the assertion fails.
 2. The path resolves against ``cwd`` (absolute paths are used as-is).
 3. The file must exist and parse as JSON.
-4. The parsed value must be a JSON object carrying non-empty gate/pass
-   records: any of the keys ``"gates"``, ``"gate_results"``,
-   ``"passed_gates"`` present as a NON-EMPTY list passes.  Entry-level
-   pass flags are NOT inspected — record presence + non-emptiness is the
-   evidence.
-5. Minimal pass: if none of those keys is present, a ``"status"`` key with
-   a value in ``{"passed", "complete", "completed", "success"}`` passes.
-6. Otherwise the assertion fails.
+4. The parsed value must be a JSON object carrying gate/pass records: the
+   first present of the keys ``"gates"``, ``"gate_results"``,
+   ``"passed_gates"`` must be a NON-EMPTY list.
+5. Every entry of that list must pass (T-03): an explicit
+   ``passed: false`` or a ``status``/``result``/``state``/``outcome`` that
+   is not a pass value fails the observation and names the offending entry.
+   An entry with no pass indicator counts as a recorded pass.
+6. A bare top-level ``"status"`` is NOT accepted — the minimal-pass fallback
+   is removed; with no gate list the assertion fails.
 
 The observed boolean is compared against the declared ``gate_records_pass``
 value (``true`` in scenarios; declaring ``false`` inverts the check).
@@ -65,10 +66,18 @@ from typing import Protocol
 from automedia.validation.schema import Expect, Scenario, Step
 
 _GATE_RECORD_KEYS: tuple[str, ...] = ("gates", "gate_results", "passed_gates")
-"""Accepted key names for non-empty gate/pass record lists in a project-info JSON."""
+"""Accepted key names for gate/pass record lists in a project-info JSON."""
 
-_MINIMAL_PASS_STATUSES: frozenset[str] = frozenset({"passed", "complete", "completed", "success"})
-"""Accepted ``status`` values for the minimal-pass fallback of gate_records_pass."""
+_GATE_PASS_STATES: frozenset[str] = frozenset(
+    {"passed", "pass", "success", "succeeded", "complete", "completed", "ok"}
+)
+"""Explicit pass values for a gate entry's status/result/state field (T-03)."""
+
+_GATE_ENTRY_STATUS_KEYS: tuple[str, ...] = ("status", "result", "state", "outcome")
+"""Gate-entry keys carrying an explicit pass/fail status (T-03)."""
+
+_GATE_ENTRY_NAME_KEYS: tuple[str, ...] = ("name", "gate", "gate_name", "id")
+"""Gate-entry keys naming the gate, for failure messages (T-03)."""
 
 _SCORE_KEYS: tuple[str, ...] = ("quality_score", "overall_score", "score")
 """Output keys carrying a numeric quality score (T-02 quality_spot_check)."""
@@ -388,20 +397,55 @@ def _gate_records_observation(expect: Expect, step: Step | None, cwd: Path) -> t
     if not isinstance(parsed, dict):
         return False, f"{path} parsed as {type(parsed).__name__}, not a JSON object"
     for key in _GATE_RECORD_KEYS:
-        if key in parsed:
-            value = parsed[key]
-            if isinstance(value, list) and value:
-                return True, f"{key}: {len(value)} record(s)"
-            if isinstance(value, list):
-                return False, f"{key}: empty list"
+        if key not in parsed:
+            continue
+        value = parsed[key]
+        if not isinstance(value, list):
             return False, f"{key}: {type(value).__name__}, not a list"
-    status = parsed.get("status")
-    if isinstance(status, str) and status in _MINIMAL_PASS_STATUSES:
-        return True, f"status: {status!r}"
-    return (
-        False,
-        f"no gate records and no passing status (keys: {sorted(parsed)}, status: {status!r})",
-    )
+        if not value:
+            return False, f"{key}: empty list"
+        for index, entry in enumerate(value, 1):
+            if _gate_entry_passed(entry) is False:
+                return False, (
+                    f"{key}: entry {index} ({_gate_entry_label(entry, index)}) did "
+                    f"not pass; observed {entry!r}"
+                )
+        return True, f"{key}: {len(value)} record(s), all passed"
+    return False, f"no gate records (keys: {sorted(parsed)})"
+
+
+def _gate_entry_passed(entry: object) -> bool | None:
+    """The pass/fail verdict of one gate entry (T-03).
+
+    True/False when the entry carries an explicit pass indicator; None when
+    it carries none (bare record presence, which counts as a recorded pass).
+    """
+    if isinstance(entry, bool):
+        return entry
+    if isinstance(entry, str):
+        return True
+    if not isinstance(entry, dict):
+        return None
+    if "passed" in entry:
+        value = entry["passed"]
+        return value if isinstance(value, bool) else None
+    for key in _GATE_ENTRY_STATUS_KEYS:
+        value = entry.get(key)
+        if isinstance(value, str):
+            return value.strip().lower() in _GATE_PASS_STATES
+    return None
+
+
+def _gate_entry_label(entry: object, index: int) -> str:
+    """A human-readable label for a gate entry in failure messages."""
+    if isinstance(entry, str) and entry:
+        return entry
+    if isinstance(entry, dict):
+        for key in _GATE_ENTRY_NAME_KEYS:
+            value = entry.get(key)
+            if isinstance(value, str) and value:
+                return value
+    return f"#{index}"
 
 
 def _fmt(items: Sequence[object]) -> str:

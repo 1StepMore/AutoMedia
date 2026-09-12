@@ -282,8 +282,51 @@ class TestGateRecordsPass:
         r = evaluate_expect(expect(gate_records_pass=True), {}, step=self._file_step(), cwd=cwd)
         assert r.passed is True
 
-    def test_minimal_pass_via_status(self, cwd: Path) -> None:
+    def test_bare_status_no_longer_passes(self, cwd: Path) -> None:
         (cwd / "info.json").write_text(gate_json({"status": "passed"}), encoding="utf-8")
+        r = evaluate_expect(expect(gate_records_pass=True), {}, step=self._file_step(), cwd=cwd)
+        assert r.passed is False
+        assert "no gate records" in r.failures[0]
+
+    def test_fails_on_one_failed_gate_entry(self, cwd: Path) -> None:
+        (cwd / "info.json").write_text(
+            gate_json(
+                {
+                    "gates": [
+                        {"name": "G0", "passed": True},
+                        {"name": "G1", "passed": False},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        r = evaluate_expect(expect(gate_records_pass=True), {}, step=self._file_step(), cwd=cwd)
+        assert r.passed is False
+        assert "expect.gate_records_pass" in r.failures[0]
+        assert "G1" in r.failures[0]
+
+    def test_fails_on_failed_status_entry(self, cwd: Path) -> None:
+        (cwd / "info.json").write_text(
+            gate_json({"gates": [{"name": "G0", "status": "failed"}]}),
+            encoding="utf-8",
+        )
+        r = evaluate_expect(expect(gate_records_pass=True), {}, step=self._file_step(), cwd=cwd)
+        assert r.passed is False
+        assert "expect.gate_records_pass" in r.failures[0]
+        assert "G0" in r.failures[0]
+
+    def test_passes_when_every_entry_passes(self, cwd: Path) -> None:
+        (cwd / "info.json").write_text(
+            gate_json(
+                {
+                    "gate_results": [
+                        {"gate": "G0", "status": "passed"},
+                        {"gate": "G1", "passed": True},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
         r = evaluate_expect(expect(gate_records_pass=True), {}, step=self._file_step(), cwd=cwd)
         assert r.passed is True
 
@@ -329,21 +372,29 @@ class TestGateRecordsPass:
         assert "no artifact path resolvable" in r.failures[0]
 
     def test_resolution_order_artifact_exists_wins(self, cwd: Path) -> None:
-        (cwd / "win.json").write_text(gate_json({"status": "passed"}), encoding="utf-8")
-        (cwd / "command.json").write_text(gate_json({"status": "running"}), encoding="utf-8")
+        (cwd / "win.json").write_text(
+            gate_json({"gates": [{"name": "G0", "passed": True}]}), encoding="utf-8"
+        )
+        (cwd / "command.json").write_text(
+            gate_json({"gates": [{"name": "G0", "passed": False}]}), encoding="utf-8"
+        )
         s = step(kind="file", command="command.json")
         e = expect(gate_records_pass=True, artifact_exists="win.json")
         r = evaluate_expect(e, {}, step=s, cwd=cwd)
         assert r.passed is True
 
     def test_resolution_falls_back_to_step_command_for_file_kind(self, cwd: Path) -> None:
-        (cwd / "command.json").write_text(gate_json({"status": "passed"}), encoding="utf-8")
+        (cwd / "command.json").write_text(
+            gate_json({"gates": [{"name": "G0", "passed": True}]}), encoding="utf-8"
+        )
         s = step(kind="file", command="command.json")
         r = evaluate_expect(expect(gate_records_pass=True), {}, step=s, cwd=cwd)
         assert r.passed is True
 
     def test_resolution_falls_back_to_first_collect_artifact(self, cwd: Path) -> None:
-        (cwd / "collected.json").write_text(gate_json({"status": "passed"}), encoding="utf-8")
+        (cwd / "collected.json").write_text(
+            gate_json({"gates": [{"name": "G0", "passed": True}]}), encoding="utf-8"
+        )
         s = step(
             kind="tool",
             collect_artifacts=[{"path": "collected.json"}, {"path": "other.json"}],
