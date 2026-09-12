@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 22828 | file |
-| README.md | 30731 | file |
+| AGENTS.md | 22973 | file |
+| README.md | 30852 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -31,7 +31,9 @@
 | docs/dev/founder-expectations.md | 111669 | file |
 | docs/dev/gate-failure-modes.md | 21304 | file |
 | docs/dev/override-reference.md | 9343 | file |
+| docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-validation-framework.md | 12560 | file |
+| docs/dev/validation-loop-log.md | 2133 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 12648 | file |
 | docs/index.md | 4670 | file |
@@ -46,7 +48,7 @@
 | docs/user/cli-reference.md | 22226 | file |
 | docs/user/deployment.md | 8222 | file |
 | docs/user/hitl-framework.md | 6928 | file |
-| docs/user/mcp-setup.md | 23694 | file |
+| docs/user/mcp-setup.md | 23840 | file |
 | docs/user/omni-integration.md | 13082 | file |
 | docs/user/production-workflow.md | 9543 | file |
 | docs/user/user-introduction.md | 8446 | file |
