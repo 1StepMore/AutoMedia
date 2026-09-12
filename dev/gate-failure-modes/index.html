@@ -1,0 +1,2875 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Failure modes, diagnostics, and remediation for each Gate — based on production experience with AutoMedia.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/gate-failure-modes/">
+      
+      
+        <link rel="prev" href="../../user/production-workflow/">
+      
+      
+        <link rel="next" href="../cron-troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Gate Failure Modes - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gate-failure-modes-and-remediation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Gate Failure Modes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-gate-topic-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pre-gate: Topic Selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g0-fact-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G0: Fact Check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g1-humanizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G1: Humanizer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g2-copy-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G2: Copy Review
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g3-brand-cta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G3: Brand CTA
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g4-wechat-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G4: WeChat Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g5-html-hard-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G5: HTML Hard Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0-lint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V0: Lint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1-vision-qa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V1: Vision QA
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v2-pre-send-whisper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V2: Pre-Send Whisper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v3-content-semantic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V3: Content Semantic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v4-tts-brand-asset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V4: TTS Brand Asset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v5-mp3-vs-srt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V5: MP3 vs SRT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v6-subtitle-rendering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V6: Subtitle Rendering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v7-six-step-hard-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V7: Six-Step Hard Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l1-publish-log-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        L1: Publish Log Schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l2-archive-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        L2: Archive Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l3-platform-integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        L3: Platform Integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#l4-translation-quality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        L4: Translation Quality
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g6-tone-check-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G6: Tone Check Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d1-wechat-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1: WeChat Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d2-twitterx-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2: Twitter/X Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d3-zhihu-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3: Zhihu Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d4-xiaohongshu-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4: Xiaohongshu Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d5-bilibili-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D5: Bilibili Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d6-youtube-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D6: YouTube Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d7-tiktok-distribution-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D7: TikTok Distribution Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p1-wechat-repurpose-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P1: WeChat Repurpose Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p2-twitterx-repurpose-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2: Twitter/X Repurpose Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p3-newsletter-repurpose-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3: Newsletter Repurpose Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p4-bilibili-repurpose-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P4: Bilibili Repurpose Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#h0-human-review-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        H0: Human Review Gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gate-failure-modes-and-remediation">Gate Failure Modes and Remediation<a class="headerlink" href="#gate-failure-modes-and-remediation" title="Permanent link">&para;</a></h1>
+<p>This document records each Gate's failure modes, diagnostic methods, and
+remediation steps. The content draws on experience accumulated from running
+AutoMedia in production.</p>
+<h2 id="pre-gate-topic-selection">pre-gate: Topic Selection<a class="headerlink" href="#pre-gate-topic-selection" title="Permanent link">&para;</a></h2>
+<p>Topic score falls below threshold or duplicates recently published content.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Topic score below minimum threshold (typically &lt; 0.3)</li>
+<li>Semantic similarity with recent N published articles &gt; 0.85</li>
+<li>Topic domain outside channel scope (not AI/media related)</li>
+<li>Source URL unreachable or returns 404</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Adjust scoring weights or re-collect updated data</li>
+<li>Check the recent N range in the semantic dedup library, narrow if needed</li>
+<li>Verify channel domain keywords are configured correctly</li>
+<li>Retry URL fetch or mark as dead link to skip</li>
+</ul>
+<p><strong>Quick diagnosis:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># View topic scores in the topic pool</span>
+automedia<span class="w"> </span>pool<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+</code></pre></div>
+<h2 id="g0-fact-check">G0: Fact Check<a class="headerlink" href="#g0-fact-check" title="Permanent link">&para;</a></h2>
+<p>Five-step verification of content consistency with source data: source tracing,
+data verification, timeline, citations, entities.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Source URL domain not present in generated content</li>
+<li>Key numbers do not match source data</li>
+<li>Event date after source publication date (time reversal)</li>
+<li>Citation not present verbatim in content</li>
+<li>Key entity names misspelled or missing</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Ensure content includes the source URL domain (not just a link)</li>
+<li>Verify all <code>key_numbers</code> from <code>source_data</code> appear in the content</li>
+<li>Check that all mentioned dates are before the source's <code>published_date</code></li>
+<li>Citations must be extracted verbatim from <code>source_data.quotes[]</code></li>
+<li>Entity names must be cross-checked against <code>source_data.entities[]</code></li>
+</ul>
+<p><strong>Common pitfall:</strong> The LLM sometimes "rewrites" data to produce approximate
+but imprecise numbers. For example, writing "about 3%" instead of "3.2%".
+The Gate flags this as a failure. Fix: force the use of exact original values.</p>
+<h2 id="g1-humanizer">G1: Humanizer<a class="headerlink" href="#g1-humanizer" title="Permanent link">&para;</a></h2>
+<p>Remove AI-generated traces, making the text read in a natural human writing
+style.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Output still contains AI marker words like "furthermore", "in summary",
+  "in the realm of"</li>
+<li>Sentence structure too uniform (same length, same beginnings)</li>
+<li>Emotional tone flat or mechanical</li>
+<li>Transition phrases between paragraphs are formulaic</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Replace AI transition phrases with natural spoken expressions</li>
+<li>Vary sentence length and word choice at sentence starts</li>
+<li>Inject appropriate emotional markers (exclamations, rhetorical questions)</li>
+<li>Replace formulaic paragraph openings with context-relevant hooks</li>
+</ul>
+<p><strong>Detector verify loop (issue #62):</strong></p>
+<ul>
+<li>OFF by default. Enable via config <code>gates.humanizer.verify_loop.enabled: true</code>
+  (<code>max_iterations</code>, default 3) or env <code>AUTOMEDIA_HUMANIZER_VERIFY_LOOP=1</code>.</li>
+<li>When enabled, the rewritten output is verified with the <code>deterministic_taste</code>
+  detector (from <code>automedia.detectors</code>); the gate result exposes
+  <code>detector_score</code> (float 0..1, final ai_score; &gt; 0.5 = still AI-written) and
+  <code>verify_iterations</code> (int). The loop stops when the detector passes, the
+  rewrite stops making progress, or the budget is exhausted.</li>
+<li>If <code>detector_score &gt; 0.5</code>: the text still reads AI-written. Check the failing
+  checks named in the detector detail (e.g. <code>hollow_intros</code>,
+  <code>overacademic_vocabulary</code>) and remove those patterns directly — the CN
+  官腔黑话 patterns (赋能 / 抓手 / 闭环 / 颗粒度 / 底层逻辑 / 生态) are
+  detection-only and are NOT removed by the rewrite.</li>
+</ul>
+<p><strong>Quick checklist:</strong></p>
+<div class="highlight"><pre><span></span><code>是否还有 "此外" / "值得注意的是" / "总的来说" 开头段落?
+所有句子长度都在 15-25 字之间? 需要一些短句和长句混合。
+情感是否中性得像百科? 需要一些态度。
+</code></pre></div>
+<h2 id="g2-copy-review">G2: Copy Review<a class="headerlink" href="#g2-copy-review" title="Permanent link">&para;</a></h2>
+<p>Copy structure and style review, ensuring readability and flow.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Paragraphs too long or too short, lacking visual rhythm</li>
+<li>Inconsistent tone between sections</li>
+<li>Opening lacks an effective hook</li>
+<li>CTA weak or missing</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Balance paragraph length (3-5 sentences is ideal)</li>
+<li>Unify tone across the entire piece (formal vs conversational)</li>
+<li>Strengthen the opening hook with a bold assertion or question</li>
+<li>Ensure the CTA is specific, actionable, and visible</li>
+</ul>
+<h2 id="g3-brand-cta">G3: Brand CTA<a class="headerlink" href="#g3-brand-cta" title="Permanent link">&para;</a></h2>
+<p>Brand name integrity and CTA compliance.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Brand name appears with homophone typos</li>
+<li>CTA link or QR code reference missing</li>
+<li>Brand mention frequency below minimum threshold</li>
+<li>CTA placement not prominent enough (not at beginning or end)</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Verify the brand name character by character</li>
+<li>Ensure CTA includes actionable text and link/QR code reference</li>
+<li>Increase brand mentions to at least the required frequency</li>
+<li>Move CTA to high-visibility positions (near beginning or end)</li>
+</ul>
+<p><strong>Common pitfall:</strong> "壹目贯维" is often written by the LLM as "一目贯维" or
+"壹目惯维". You must emphasize this in the prompt and do character-level
+validation.</p>
+<h2 id="g4-wechat-checklist">G4: WeChat Checklist<a class="headerlink" href="#g4-wechat-checklist" title="Permanent link">&para;</a></h2>
+<p>Pre-publish checks specific to the WeChat Official Accounts platform.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Cover image missing or wrong aspect ratio</li>
+<li>Original author declaration not set</li>
+<li>WeChat-specific formatting issues (line spacing, font size)</li>
+<li>Preview mode rendering anomalies</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Upload a 900x500 px cover image that matches the article topic</li>
+<li>Set the original author field before publishing</li>
+<li>Reapply formatting using the WeChat editor</li>
+<li>Always preview on mobile before publishing</li>
+</ul>
+<h2 id="g5-html-hard-gate">G5: HTML Hard Gate<a class="headerlink" href="#g5-html-hard-gate" title="Permanent link">&para;</a></h2>
+<p>HTML output structure and accessibility standard validation.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>HTML fails W3C validation</li>
+<li>Images missing alt attributes</li>
+<li>Inline styles conflicting with site CSS</li>
+<li>Responsive layout breaks at the 768px breakpoint</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Check HTML with W3C validator and fix errors</li>
+<li>Add descriptive alt text to every <code>&lt;img&gt;</code> element</li>
+<li>Scope inline styles to avoid cascade conflicts</li>
+<li>Test layout at 375px, 768px, and 1920px breakpoints</li>
+</ul>
+<h2 id="v0-lint">V0: Lint<a class="headerlink" href="#v0-lint" title="Permanent link">&para;</a></h2>
+<p>Code quality check for HyperFrames HTML/JS output.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>JavaScript syntax errors</li>
+<li>Unused variables or imports in templates</li>
+<li>Templates contain hardcoded test data instead of dynamic bindings</li>
+<li>GSAP animations target non-existent DOM elements</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Fix lint errors then re-render</li>
+<li>Remove unused imports and variables</li>
+<li>Replace hardcoded test data with template variable references</li>
+<li>Check GSAP selectors match actual DOM element IDs</li>
+</ul>
+<h2 id="v1-vision-qa">V1: Vision QA<a class="headerlink" href="#v1-vision-qa" title="Permanent link">&para;</a></h2>
+<p>Visual quality assurance for generated video frames and images.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Images have unwanted artifacts (noise, distortion, cropping)</li>
+<li>Brand name or key text illegible in rendered frames</li>
+<li>Inconsistent color grading across frames</li>
+<li>Aspect ratio does not match target platform (vertical video 9:16)</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Regenerate images with modified prompts (avoid known artifacts)</li>
+<li>Ensure brand text is large enough with sufficient contrast</li>
+<li>Follow the unified color palette defined during composition</li>
+<li>Check the <code>aspect_ratio</code> parameter matches the target format</li>
+</ul>
+<p><strong>Common pitfall:</strong> When the Vision API is rate limited, it degrades to pixel
+luminance analysis. The QA report will note "degraded" in the output. Accuracy
+drops but the flow is not blocked.</p>
+<h2 id="v2-pre-send-whisper">V2: Pre-Send Whisper<a class="headerlink" href="#v2-pre-send-whisper" title="Permanent link">&para;</a></h2>
+<p>Verify the quality of Whisper ASR output.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Whisper transcription WER (Word Error Rate) too high</li>
+<li>Homophone errors for brand names and proper nouns</li>
+<li>Timestamps significantly misaligned with audio</li>
+<li>Whisper model too small for the audio quality</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Use a larger Whisper model (large-v3) for better accuracy</li>
+<li>Cross-check brand names against the known correct script text</li>
+<li>Re-run Whisper with <code>--word_timestamps True</code> for fine alignment</li>
+<li>Apply noise reduction preprocessing when audio quality is poor</li>
+</ul>
+<h2 id="v3-content-semantic">V3: Content Semantic<a class="headerlink" href="#v3-content-semantic" title="Permanent link">&para;</a></h2>
+<p>Check semantic consistency and topic alignment of generated content.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content deviates from the original topic outline</li>
+<li>Key claims lack supporting source material</li>
+<li>Section order does not follow the narrative flow</li>
+<li>Duplicate or contradictory statements across sections</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Align content point by point to the approved topic outline</li>
+<li>Cite source material for every key claim</li>
+<li>Reorder sections according to the story arc defined in planning</li>
+<li>Merge or remove contradictory statements across sections</li>
+</ul>
+<h2 id="v4-tts-brand-asset">V4: TTS Brand Asset<a class="headerlink" href="#v4-tts-brand-asset" title="Permanent link">&para;</a></h2>
+<p>Verify brand audio (TTS) quality and correctness.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>TTS audio mispronounces the brand name</li>
+<li>Speaking rate too fast or too slow</li>
+<li>Audio duration does not match the target slot</li>
+<li>Wrong voice ID or accent used</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Use SSML phoneme tags to force correct brand pronunciation</li>
+<li>Adjust speaking rate via <code>&lt;prosody rate="..."&gt;</code> or TTS API speed parameters</li>
+<li>Trim or extend the script to fit the target duration window</li>
+<li>Select the appropriate voice_id from the voice library</li>
+</ul>
+<h2 id="v5-mp3-vs-srt">V5: MP3 vs SRT<a class="headerlink" href="#v5-mp3-vs-srt" title="Permanent link">&para;</a></h2>
+<p>Cross-validate audio duration against subtitle timing.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>MP3 total duration significantly shorter/longer than SRT timeline</li>
+<li>Individual subtitle segments overlap or have excessive gaps</li>
+<li>WPM exceeds readability threshold (&gt; 300)</li>
+<li>Audio file corrupted or truncated</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Adjust speaking rate and regenerate TTS audio to match SRT timeline</li>
+<li>Merge overlapping segments and redistribute time budget</li>
+<li>Rewrite dense segments to reduce word count</li>
+<li>Verify MP3 integrity with <code>ffprobe</code></li>
+</ul>
+<h2 id="v6-subtitle-rendering">V6: Subtitle Rendering<a class="headerlink" href="#v6-subtitle-rendering" title="Permanent link">&para;</a></h2>
+<p>Ensure subtitles are correctly rendered into the video.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Subtitle text clipped or cropped at video edges</li>
+<li>Font size too small to read on mobile devices</li>
+<li>ASS style PlayRes does not match video resolution</li>
+<li>Subtitle timing out of sync with rendered frames</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Set ASS PlayResX/Y to match video resolution (e.g. 1080x1920)</li>
+<li>Font size at least 28 (for vertical 9:16 video)</li>
+<li>Set bottom margin (MarginV) to 120</li>
+<li>Re-render with corrected timing values</li>
+</ul>
+<h2 id="v7-six-step-hard-gate">V7: Six-Step Hard Gate<a class="headerlink" href="#v7-six-step-hard-gate" title="Permanent link">&para;</a></h2>
+<p>Final comprehensive quality gate before publishing (6 checks).</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>One or more of the 6 checks fail</li>
+<li>Generated assets missing or wrong path</li>
+<li>Metadata (title, description, tags) incomplete</li>
+<li>Cross-platform format conversion introduces artifacts</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Run sub-checks individually to locate the failing step</li>
+<li>Confirm all asset files exist at expected paths</li>
+<li>Fill in missing metadata fields per platform requirements</li>
+<li>Check converted output resolution and format</li>
+</ul>
+<h2 id="l1-publish-log-schema">L1: Publish Log Schema<a class="headerlink" href="#l1-publish-log-schema" title="Permanent link">&para;</a></h2>
+<p>Verify publish log entries conform to the required schema.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Log entry missing required fields (platform, url, timestamp)</li>
+<li>Field value type mismatch (e.g. timestamp is string instead of datetime)</li>
+<li>Publish log schema version does not match the database</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Fill all required fields before writing log entries</li>
+<li>Type-cast values to match schema definitions</li>
+<li>Migrate the publish log table to the latest schema version</li>
+</ul>
+<h2 id="l2-archive-validation">L2: Archive Validation<a class="headerlink" href="#l2-archive-validation" title="Permanent link">&para;</a></h2>
+<p>Verify the project archive is complete and not corrupted.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Archive ZIP file missing or truncated</li>
+<li>Expected files missing from archive (MP4, SRT, cover image)</li>
+<li>File checksum does not match recorded value</li>
+<li>Archive contains expired or irrelevant files</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Recreate the archive ensuring all output assets are included</li>
+<li>Validate the archive against the expected file path manifest</li>
+<li>Recompute checksums and compare against recorded values</li>
+<li>Clean the archive directory before repackaging</li>
+</ul>
+<h2 id="l3-platform-integrity">L3: Platform Integrity<a class="headerlink" href="#l3-platform-integrity" title="Permanent link">&para;</a></h2>
+<p>Ensure the asset set for each target publishing platform is complete.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Platform-specific format conversion fails (e.g. MP4 codec not supported)</li>
+<li>Required resolution variants missing</li>
+<li>Video platform thumbnail not generated</li>
+<li>Subtitle files missing for target platform</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Re-convert using the target platform's recommended codec/settings</li>
+<li>Generate all required resolution variants (1080p, 720p, 480p)</li>
+<li>Generate platform-compatible thumbnails (size, format, aspect ratio)</li>
+<li>Generate platform-specific subtitle files (SRT, VTT, SCC)</li>
+</ul>
+<h2 id="l4-translation-quality">L4: Translation Quality<a class="headerlink" href="#l4-translation-quality" title="Permanent link">&para;</a></h2>
+<p>Validate the quality of translated content across target languages.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Translation quality score is below the minimum threshold</li>
+<li>Brand names or proper nouns were translated instead of being preserved</li>
+<li>Target language grammar or phrasing sounds unnatural</li>
+<li>Formatting or markdown structure was lost during translation</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Increase translation temperature or switch to a better LLM model for higher quality output</li>
+<li>Add a glossary or term list to preserve brand names and proper nouns in their original form</li>
+<li>Use a native-speaker review pass or enable HITL review for critical languages</li>
+<li>Re-translate while preserving markdown structure with explicit format instructions in the prompt</li>
+</ul>
+<p><strong>Quick diagnosis:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check the translation quality score in the project info</span>
+cat<span class="w"> </span>&lt;project-dir&gt;/00_project_info.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>translation_quality
+</code></pre></div>
+<h2 id="g6-tone-check-gate">G6: Tone Check Gate<a class="headerlink" href="#g6-tone-check-gate" title="Permanent link">&para;</a></h2>
+<p>Brand tone consistency gate. Uses LLM evaluation with deterministic fallback to verify content aligns with the brand's defined tone and voice.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content tone deviates from brand profile (e.g., too casual when brand is professional)</li>
+<li>Brand personality attributes (e.g., "authoritative", "playful") not reflected in writing</li>
+<li>Inconsistent tone across different sections of the same article</li>
+<li>Voice attributes from brand profile are missing or contradicted</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Adjust the prompt to emphasize brand tone requirements</li>
+<li>Verify brand profile has specific tone and personality attributes defined</li>
+<li>Rewrite sections that deviate from the target tone</li>
+<li>Run G6 with updated branding parameters</li>
+</ul>
+<h2 id="d1-wechat-distribution-gate">D1: WeChat Distribution Gate<a class="headerlink" href="#d1-wechat-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in WeChat Official Account format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content not converted to WeChat-compatible HTML</li>
+<li>WeChat-specific formatting (line spacing, font size) not applied</li>
+<li>Cover image not referenced correctly</li>
+<li>WeChat CTA not included</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Ensure output includes WeChat-compatible HTML structure</li>
+<li>Apply WeChat line spacing and font conventions</li>
+<li>Reference the correct cover image path</li>
+<li>Include WeChat-specific CTA</li>
+</ul>
+<h2 id="d2-twitterx-distribution-gate">D2: Twitter/X Distribution Gate<a class="headerlink" href="#d2-twitterx-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content as Twitter/X threads.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content exceeds Twitter/X character limits per post</li>
+<li>Thread structure not logically segmented</li>
+<li>Images/media not attached to appropriate tweets</li>
+<li>Hashtags missing or excessive</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Split content into 280-character-aware segments</li>
+<li>Ensure each tweet in the thread is self-contained</li>
+<li>Attach media to the most relevant tweet</li>
+<li>Limit hashtags to 2-3 per tweet</li>
+</ul>
+<h2 id="d3-zhihu-distribution-gate">D3: Zhihu Distribution Gate<a class="headerlink" href="#d3-zhihu-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in Zhihu long-form article format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content not formatted for Zhihu's Markdown variant</li>
+<li>Zhihu-specific section formatting missing</li>
+<li>Citations not in Zhihu reference format</li>
+<li>Title does not match Zhihu's question-answer paradigm</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Convert to Zhihu-compatible Markdown</li>
+<li>Use proper heading hierarchy for Zhihu articles</li>
+<li>Format citations per Zhihu's reference style</li>
+<li>Frame content as an answer to a specific question</li>
+</ul>
+<h2 id="d4-xiaohongshu-distribution-gate">D4: Xiaohongshu Distribution Gate<a class="headerlink" href="#d4-xiaohongshu-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in Xiaohongshu visual-first format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content too text-heavy for Xiaohongshu's visual format</li>
+<li>Image placement suggestions missing</li>
+<li>Title not engaging enough for the platform</li>
+<li>Hashtags not relevant or too few</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Restructure content as image-description pairs</li>
+<li>Add image placement markers at natural break points</li>
+<li>Create a hook-driven opening title</li>
+<li>Include 5-10 relevant platform hashtags</li>
+</ul>
+<h2 id="d5-bilibili-distribution-gate">D5: Bilibili Distribution Gate<a class="headerlink" href="#d5-bilibili-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in Bilibili video+text format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content not segmented for timed comments (danmaku)</li>
+<li>Script not structured for video narration</li>
+<li>Video chapter markers missing</li>
+<li>Description lacks Bilibili-style formatting</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Add danmaku trigger points at engaging moments</li>
+<li>Structure script with clear video chapter markers</li>
+<li>Include on-screen text suggestions</li>
+<li>Format description with Bilibili conventions</li>
+</ul>
+<h2 id="d6-youtube-distribution-gate">D6: YouTube Distribution Gate<a class="headerlink" href="#d6-youtube-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in YouTube video description format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Description too short or too long</li>
+<li>Timestamp chapter markers missing</li>
+<li>Links/CTAs not included</li>
+<li>Tags/keywords not optimized for search</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Structure description with timestamps, links, and CTAs</li>
+<li>Add 5-7 timestamp chapter markers</li>
+<li>Include relevant links and social media CTAs</li>
+<li>Add 10-15 relevant tags/keywords</li>
+</ul>
+<h2 id="d7-tiktok-distribution-gate">D7: TikTok Distribution Gate<a class="headerlink" href="#d7-tiktok-distribution-gate" title="Permanent link">&para;</a></h2>
+<p>Standalone gate for rewriting content in TikTok short-video script format.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Script too long for 60-second format</li>
+<li>Hook not engaging enough for first 3 seconds</li>
+<li>Text overlay suggestions missing</li>
+<li>Trending audio/sound references absent</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Condense script to 30-60 seconds</li>
+<li>Start with a strong hook in the first 3 seconds</li>
+<li>Add text overlay placement suggestions at key moments</li>
+<li>Reference trending sounds or effects where appropriate</li>
+</ul>
+<h2 id="p1-wechat-repurpose-gate">P1: WeChat Repurpose Gate<a class="headerlink" href="#p1-wechat-repurpose-gate" title="Permanent link">&para;</a></h2>
+<p>Deep repurpose gate for WeChat content. Part of the <code>repurpose</code> pipeline mode sub-pipeline.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Repurposed content loses original article's core message</li>
+<li>Platform-native features (templates, card layouts) not utilized</li>
+<li>Content length does not match WeChat's optimal range</li>
+<li>Cross-promotion from original platform not handled</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Preserve the core thesis while adapting format</li>
+<li>Leverage WeChat-specific content blocks (cards, galleries)</li>
+<li>Adjust length to 1500-3000 characters for WeChat</li>
+<li>Add appropriate cross-platform references</li>
+</ul>
+<h2 id="p2-twitterx-repurpose-gate">P2: Twitter/X Repurpose Gate<a class="headerlink" href="#p2-twitterx-repurpose-gate" title="Permanent link">&para;</a></h2>
+<p>Deep repurpose gate for Twitter/X thread content. Part of the <code>repurpose</code> pipeline mode sub-pipeline.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Thread lacks a compelling narrative arc</li>
+<li>Individual tweets not self-contained</li>
+<li>Visual media suggestions missing</li>
+<li>Engagement hooks (polls, questions) not included</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Structure thread with clear hook → body → conclusion arc</li>
+<li>Ensure each tweet is independently understandable</li>
+<li>Suggest media attachments for key tweets</li>
+<li>Add engagement prompts at strategic positions</li>
+</ul>
+<h2 id="p3-newsletter-repurpose-gate">P3: Newsletter Repurpose Gate<a class="headerlink" href="#p3-newsletter-repurpose-gate" title="Permanent link">&para;</a></h2>
+<p>Deep repurpose gate for email newsletter content. Part of the <code>repurpose</code> pipeline mode sub-pipeline.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Content too long for email digest format</li>
+<li>Newsletter structure (header, sections, footer) missing</li>
+<li>Personalization tokens ({{name}}, {{date}}) absent</li>
+<li>Call-to-action not prominent enough</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Condense to 500-1000 words suitable for email</li>
+<li>Apply standard newsletter template structure</li>
+<li>Include personalization placeholders</li>
+<li>Ensure CTA is visible above the fold</li>
+</ul>
+<h2 id="p4-bilibili-repurpose-gate">P4: Bilibili Repurpose Gate<a class="headerlink" href="#p4-bilibili-repurpose-gate" title="Permanent link">&para;</a></h2>
+<p>Deep repurpose gate for Bilibili video+article content. Part of the <code>repurpose</code> pipeline mode sub-pipeline.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Repurposed content does not fit Bilibili's unique culture</li>
+<li>Danmaku interaction points missing</li>
+<li>Video script lacks Bilibili-style pacing</li>
+<li>Article companion content not structured properly</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Adapt tone for Bilibili's community-centric culture</li>
+<li>Add danmaku bait at key moments</li>
+<li>Structure script with Bilibili's fast-paced editing in mind</li>
+<li>Format companion article with proper column structure</li>
+</ul>
+<h2 id="h0-human-review-gate">H0: Human Review Gate<a class="headerlink" href="#h0-human-review-gate" title="Permanent link">&para;</a></h2>
+<p>Pre-publish human-in-the-loop review gate. Pauses the pipeline and waits for human approval before allowing content to proceed to publishing.</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li>Human has not reviewed the content yet (pipeline paused, awaiting HITL approval)</li>
+<li>Content quality deemed insufficient by human reviewer (intentional rejection — since the todo-9 fix, a rejection converts the H0 result to a stop-failure and the pipeline halts; downstream gates do not run)</li>
+<li>No review decision issued within the configured HITL timeout (default 24h; timeout auto-approves)</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Check whether the pipeline is paused: <code>get_pipeline_progress(project_id)</code> (status <code>awaiting_hitl</code>) or <code>automedia hitl list</code></li>
+<li>Approve (MCP, live H0 path): <code>review_decision(project_id, "H0", action="approve")</code></li>
+<li>Reject and halt (MCP): <code>review_decision(project_id, "H0", action="reject", reason="...")</code> — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided in its own terminal (the call fails fast with a structured error, never a deadlock)</li>
+<li>To skip HITL entirely, pass <code>auto_publish=True</code> (or <code>skip_review</code>) to the run</li>
+</ul>
+<p><strong>Quick diagnosis:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check if pipeline is waiting for human review</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+</code></pre></div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

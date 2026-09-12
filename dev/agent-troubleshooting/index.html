@@ -1,0 +1,3429 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated media production pipeline documentation">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/agent-troubleshooting/">
+      
+      
+        <link rel="prev" href="../../glossary/">
+      
+      
+        <link rel="next" href="../../user/hitl-framework/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Agent Troubleshooting - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-troubleshooting-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pipeline-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pipeline Failures
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Pipeline Failures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagnosing-a-failed-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnosing a failed pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-status-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline status values
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-configuration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configuration Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Configuration Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wrong-provider-or-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wrong provider or model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-layer-config-merge-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6-layer config merge order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-automedia-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using automedia doctor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-mcp-server-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. MCP Server Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. MCP Server Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#server-not-starting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server not starting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#allowlist-rejecting-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Allowlist rejecting paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-mcp-tools-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing MCP tools directly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background-pipeline-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background pipeline progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-gate-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Gate Failures
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Gate Failures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#h0-human-review-gate-pre-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        H0 — Human Review Gate (Pre-Publish)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cw-content-writer-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CW — Content Writer Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g0-fact-check-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G0 — Fact Check Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g3-brand-cta-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G3 — Brand CTA Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v1-vision-qa-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V1 — Vision QA Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v5-mp3-vs-srt-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V5 — MP3 vs SRT Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#l1-l4-lifecycle-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        L1-L4 — Lifecycle Gates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cli-command-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CLI Command Debugging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. CLI Command Debugging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify-command-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify command syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-project-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check project directory structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-gate-output-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect gate output files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-with-log-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging with log levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listing-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Listing projects
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-common-errors-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Common Errors &amp; Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-ffmpeg-video-synthesis-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. FFmpeg Video Synthesis Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. FFmpeg Video Synthesis Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ffmpeg-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FFmpeg not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-encoding-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video encoding fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio-video-sync-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio-video sync issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-acceleration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware acceleration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-session-persistence-faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Session Persistence FAQ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Session Persistence FAQ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-a-pipeline-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is a pipeline "session"?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can-i-resume-a-failed-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can I resume a failed session?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-data-persists-between-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What data persists between sessions?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-do-i-list-all-past-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How do I list all past sessions?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can-two-sessions-run-concurrently" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can two sessions run concurrently?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-mcp-rate-limit-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. MCP Rate Limit Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. MCP Rate Limit Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llm-api-rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM API rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-tool-rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP server tool rate limiting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v1-vision-api-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V1 Vision API degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handling-publish-api-rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling publish API rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-extended-environment-variable-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Extended Environment Variable Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Extended Environment Variable Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llm-retry-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM Retry Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logging-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging &amp; Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-network-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Network Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credential-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential Store
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-typeignore-fix-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. type:ignore Fix Principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. type:ignore Fix Principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-typeignore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to use type:ignore
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typeignore-annotation-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        type:ignore annotation format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptable-error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptable error codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-troubleshooting-guide">Agent Troubleshooting Guide<a class="headerlink" href="#agent-troubleshooting-guide" title="Permanent link">&para;</a></h1>
+<p>This guide is for AI coding agents working with the AutoMedia codebase. It helps diagnose and fix common issues when running pipelines, dealing with configuration, or encountering gate failures.</p>
+<hr />
+<h2 id="1-pipeline-failures">1. Pipeline Failures<a class="headerlink" href="#1-pipeline-failures" title="Permanent link">&para;</a></h2>
+<h3 id="diagnosing-a-failed-pipeline">Diagnosing a failed pipeline<a class="headerlink" href="#diagnosing-a-failed-pipeline" title="Permanent link">&para;</a></h3>
+<p>When a pipeline returns a <code>PipelineResult</code> with <code>status="failed"</code> or <code>status="partial"</code>, follow these steps:</p>
+<p><strong>Step 1: Check the project info file</strong></p>
+<p>Every project stores metadata in <code>00_project_info.json</code> at the project root. Read this file first:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&lt;project-dir&gt;/00_project_info.json
+</code></pre></div>
+<p>The file contains <code>project_id</code>, <code>topic</code>, <code>brand</code>, <code>tenant_id</code>, and <code>created_at</code>. If this file is missing or malformed, the pipeline may not have initialized properly.</p>
+<p><strong>Step 2: Check the PipelineResult</strong></p>
+<p>The <code>run_full_pipeline()</code> function returns a <code>PipelineResult</code> dataclass:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>"success"</code>, <code>"failed"</code>, <code>"partial"</code></td>
+<td>Overall pipeline outcome</td>
+</tr>
+<tr>
+<td><code>gates_log</code></td>
+<td><code>list[GateLogEntry]</code></td>
+<td>Per-gate pass/fail with duration and error</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>str \| None</code></td>
+<td>Top-level error message (only for unexpected exceptions)</td>
+</tr>
+<tr>
+<td><code>assets</code></td>
+<td><code>list[AssetInfo]</code></td>
+<td>Produced asset metadata (type, path, md5)</td>
+</tr>
+<tr>
+<td><code>affected_downstream</code></td>
+<td><code>list[str]</code></td>
+<td>Gates blocked by the first gate failure (DAG downstream ∩ mode gates, in canonical order); empty when all gates passed or the pipeline aborted before any gate ran</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>status="partial"</code> means some gates passed but a <code>failure_mode="stop"</code> gate failed or a <code>failure_mode="retry"</code> gate failed and the pipeline continued.</p>
+<p><strong>Step 3: Interpret gate failure modes</strong></p>
+<p>Each gate has a <code>failure_mode</code> defined at the class level:</p>
+<ul>
+<li><strong><code>"stop"</code></strong> — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: pre-gate, CW, G0, G3, G4, G5, G6, V0, V1, V2, V3, V4, V6, V7, L1, L2, L3, L4, H0, D1-D7, P1-P4.</li>
+<li><strong><code>"retry"</code></strong> — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: G1, G2, V5.</li>
+</ul>
+<p>Gates with <code>"retry"</code> mode can be retried by re-running the pipeline with <code>resume_from</code> set to the failed gate name.</p>
+<p><strong>Step 4: Read gate logs</strong></p>
+<p>The <code>gates_log</code> field in <code>PipelineResult</code> contains <code>GateLogEntry</code> objects:</p>
+<div class="highlight"><pre><span></span><code>GateLogEntry(gate_name="G0", status="failed", duration_s=3.2, error="Source URL domain not found in content")
+</code></pre></div>
+<p>Check the <code>error</code> field of each failed entry. If the error message is generic (e.g. an LLM timeout), the failure may be transient.</p>
+<p><strong>Step 5: Retry a failed pipeline</strong></p>
+<p>Use the <code>resume_from</code> parameter to skip gates that already passed, or <code>auto_resume</code> to resume from the last passed gate automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">run_full_pipeline</span><span class="p">(</span>
+    <span class="n">topic</span><span class="o">=</span><span class="s2">"AI tools"</span><span class="p">,</span>
+    <span class="n">brand</span><span class="o">=</span><span class="s2">"my-brand"</span><span class="p">,</span>
+    <span class="n">resume_from</span><span class="o">=</span><span class="s2">"G0"</span><span class="p">,</span>  <span class="c1"># skip pre-gate, CW and start from G0</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Or from the CLI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Resume from the last passed gate (reads history.db)</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI tools"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--auto-resume
+
+<span class="c1"># Inspect per-gate passed/failed/pending + md5 before resuming</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
+</code></pre></div>
+<p>The <code>resume_from</code> value must match a gate name in the current mode's gate list (<code>_AUTO_GATE_NAMES</code>, <code>_TEXT_ONLY_GATE_NAMES</code>, etc. in <code>automedia/pipelines/runner.py</code>). If the name is not found, a <code>ValueError</code> is raised. <code>--auto-resume</code> ignores the requested gate and instead reads the latest completed+passed gate from <code>history.db</code>; explicit <code>--resume-from</code> always takes precedence.</p>
+<h3 id="pipeline-status-values">Pipeline status values<a class="headerlink" href="#pipeline-status-values" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+<th>Next Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"success"</code></td>
+<td>All gates passed</td>
+<td>Pipeline complete, assets ready</td>
+</tr>
+<tr>
+<td><code>"partial"</code></td>
+<td>Some gates failed, pipeline continued</td>
+<td>Check <code>gates_log</code> for failures, retry specific gates</td>
+</tr>
+<tr>
+<td><code>"failed"</code></td>
+<td>Unexpected exception before or during execution</td>
+<td>Check <code>error</code> field for stack trace</td>
+</tr>
+<tr>
+<td>---</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-configuration-issues">2. Configuration Issues<a class="headerlink" href="#2-configuration-issues" title="Permanent link">&para;</a></h2>
+<h3 id="missing-environment-variables">Missing environment variables<a class="headerlink" href="#missing-environment-variables" title="Permanent link">&para;</a></h3>
+<p>The most common config error is a missing <code>AUTOMEDIA_LLM_API_KEY</code>. The LLM client will return an authentication error that propagates as a gate failure (typically in CW, G0, or any LLM-dependent gate).</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify your environment variables are set</span>
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$AUTOMEDIA_LLM_API_KEY</span>
+
+<span class="c1"># Expected output: sk-... (non-empty)</span>
+</code></pre></div>
+<p>If the variable is missing, set it in your shell or in the MCP client config:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"AUTOMEDIA_LLM_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-your-key-here"</span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="wrong-provider-or-model">Wrong provider or model<a class="headerlink" href="#wrong-provider-or-model" title="Permanent link">&para;</a></h3>
+<p>The <code>AUTOMEDIA_LLM_PROVIDER</code> and <code>AUTOMEDIA_LLM_MODEL</code> variables must match a supported provider. Default values:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Acceptable Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LLM_PROVIDER</code></td>
+<td><code>deepseek</code></td>
+<td><code>deepseek</code>, <code>openai</code>, <code>anthropic</code>, <code>openrouter</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_MODEL</code></td>
+<td><code>deepseek-chat</code></td>
+<td>Depends on provider</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_BASE_URL</code></td>
+<td><code>https://api.deepseek.com/v1</code></td>
+<td>Provider-specific API endpoint</td>
+</tr>
+</tbody>
+</table>
+<p>Setting an unknown provider name will cause the LLM client initialization to fail. Check <code>automedia/core/llm_client.py</code> for the list of supported providers.</p>
+<h3 id="6-layer-config-merge-order">6-layer config merge order<a class="headerlink" href="#6-layer-config-merge-order" title="Permanent link">&para;</a></h3>
+<p>Configuration merges from lowest to highest priority. A value in a higher-priority layer overrides the same key in lower layers:</p>
+<ol>
+<li>Built-in <code>automedia/manifests/defaults.yaml</code></li>
+<li>Project <code>.automedia/</code> directory</li>
+<li>User <code>~/.automedia/</code> directory</li>
+<li><code>~/.automedia/overrides/rules/*.yaml</code></li>
+<li><code>~/.automedia/overrides/prompts/*.j2</code></li>
+<li><code>AUTOMEDIA_*</code> environment variables + explicit <code>overrides</code> parameter</li>
+</ol>
+<p>If a config value is not what you expect, check each layer in order. The <code>deep_merge()</code> function in <code>automedia/core/config_loader.py</code> recursively merges dicts and overwrites scalars.</p>
+<h3 id="using-automedia-doctor">Using automedia doctor<a class="headerlink" href="#using-automedia-doctor" title="Permanent link">&para;</a></h3>
+<p>The <code>automedia doctor</code> command checks system dependencies and config health:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>doctor
+</code></pre></div>
+<p>It verifies that <code>python</code>, <code>bun</code>, <code>ffmpeg</code>, <code>whisper</code>, <code>edge-tts</code>, <code>chrome</code>, and <code>comfyui</code> (optional) are available on <code>$PATH</code>. The implementation is in <code>automedia/core/doctor.py</code>.</p>
+<p>If a dependency is missing, install it. For example:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># FFmpeg</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>ffmpeg<span class="w">   </span><span class="c1"># Ubuntu/Debian</span>
+brew<span class="w"> </span>install<span class="w"> </span>ffmpeg<span class="w">           </span><span class="c1"># macOS</span>
+
+<span class="c1"># Bun</span>
+curl<span class="w"> </span>-fsSL<span class="w"> </span>https://bun.sh/install<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+
+<span class="c1"># Whisper</span>
+pip<span class="w"> </span>install<span class="w"> </span>faster-whisper
+
+<span class="c1"># Chrome/Chromium</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>chromium-browser
+</code></pre></div>
+<hr />
+<h2 id="3-mcp-server-issues">3. MCP Server Issues<a class="headerlink" href="#3-mcp-server-issues" title="Permanent link">&para;</a></h2>
+<h3 id="server-not-starting">Server not starting<a class="headerlink" href="#server-not-starting" title="Permanent link">&para;</a></h3>
+<p>If <code>python -m automedia.mcp.server</code> fails silently or with an import error:</p>
+<ol>
+<li>Make sure the package is installed: <code>pip install -e .</code></li>
+<li>Verify Python version is 3.11+: <code>python --version</code></li>
+<li>Check for missing dependencies: the MCP server requires the <code>mcp</code> Python package (install with <code>pip install -e ".[mcp]"</code>)</li>
+</ol>
+<h3 id="allowlist-rejecting-paths">Allowlist rejecting paths<a class="headerlink" href="#allowlist-rejecting-paths" title="Permanent link">&para;</a></h3>
+<p>All file operations through the MCP server are restricted by the path allowlist at <code>automedia/mcp/mcp_allowlist.yaml</code>. If you get a path rejection error:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># mcp_allowlist.yaml</span>
+<span class="nt">allowed_directories</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/automedia/</span>
+</code></pre></div>
+<p>Only paths under the listed directories are accessible. If your project directory is outside the allowlist, the MCP server will reject the operation with a permission error.</p>
+<p><strong>Do not modify <code>mcp_allowlist.yaml</code> without explicit user request</strong> (Red Line 3 in AGENTS.md).</p>
+<p>To work around allowlist restrictions:
+- Place project directories under an already-allowed path (e.g. <code>/tmp/automedia/</code>)
+- Ask the user to add the desired path to the allowlist
+- Use the CLI directly instead of MCP tools (CLI has no path restrictions)</p>
+<h3 id="tool-not-found">Tool not found<a class="headerlink" href="#tool-not-found" title="Permanent link">&para;</a></h3>
+<p>If an MCP tool call returns "tool not found":</p>
+<ol>
+<li>Verify the server is running: check that <code>python -m automedia.mcp.server</code> is still running</li>
+<li>Check the tool name against the 65 tools listed in AGENTS.md section 9</li>
+<li>Restart the server: kill the process and start it again</li>
+</ol>
+<h3 id="testing-mcp-tools-directly">Testing MCP tools directly<a class="headerlink" href="#testing-mcp-tools-directly" title="Permanent link">&para;</a></h3>
+<p>You can test MCP tools by running the server interactively:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Start the server</span>
+python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
+
+<span class="c1"># In another terminal, send JSON-RPC messages over stdio</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
+</code></pre></div>
+<p>This prints all available tools and their parameters.</p>
+<h3 id="background-pipeline-progress">Background pipeline progress<a class="headerlink" href="#background-pipeline-progress" title="Permanent link">&para;</a></h3>
+<p>The MCP tool <code>run_pipeline</code> executes the pipeline in a background thread. Poll for progress with <code>get_pipeline_progress</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get progress for a running pipeline</span>
+get_pipeline_progress<span class="o">(</span><span class="nv">project_id</span><span class="o">=</span><span class="s2">"&lt;project-id&gt;"</span><span class="o">)</span>
+</code></pre></div>
+<p>The response includes <code>current_gate</code> (the gate currently executing) and <code>events</code> (list of completed gate events with status).</p>
+<hr />
+<h2 id="4-gate-failures">4. Gate Failures<a class="headerlink" href="#4-gate-failures" title="Permanent link">&para;</a></h2>
+<p>For detailed mode-by-mode troubleshooting of each gate, see <code>docs/dev/gate-failure-modes.md</code>. This section summarizes common patterns.</p>
+<h3 id="h0-human-review-gate-pre-publish">H0 — Human Review Gate (Pre-Publish)<a class="headerlink" href="#h0-human-review-gate-pre-publish" title="Permanent link">&para;</a></h3>
+<p>H0 is a pre-publish HITL gate. Failure means the pipeline is paused waiting for human review. Approve via the decision layer SDK (<code>from automedia.hitl import NodeExecutor; executor.approve_node(...)</code>) or pass <code>auto_publish=True</code> to skip HITL.</p>
+<h3 id="cw-content-writer-gate">CW — Content Writer Gate<a class="headerlink" href="#cw-content-writer-gate" title="Permanent link">&para;</a></h3>
+<p>The CW gate uses the LLM to generate draft content. Failures here are usually LLM-related.</p>
+<p><strong>Failure patterns:</strong>
+- Empty or error response from LLM provider (check API key, rate limits, network)
+- Token limit exceeded (increase <code>max_tokens</code> or split content into sections)
+- Topic brief too vague (enrich with more specific instructions)</p>
+<h3 id="g0-fact-check-gate">G0 — Fact Check Gate<a class="headerlink" href="#g0-fact-check-gate" title="Permanent link">&para;</a></h3>
+<p>The G0 gate performs 5-step verification. See <code>automedia/gates/failure_modes.py</code> for the full list of checks.</p>
+<p><strong>Key gotcha:</strong> LLMs often round or approximate numbers (e.g. "3.2%" becomes "about 3%"). The gate expects exact values from <code>source_data.key_numbers</code>. Force the LLM to use raw values.</p>
+<h3 id="g3-brand-cta-gate">G3 — Brand CTA Gate<a class="headerlink" href="#g3-brand-cta-gate" title="Permanent link">&para;</a></h3>
+<p>The brand name "壹目贯维" is frequently miswritten by LLMs as "一目贯维" or "壹目惯维". The gate does character-level verification.</p>
+<p><strong>Fix:</strong> Always verify the brand name character-by-character in the prompt.</p>
+<h3 id="v1-vision-qa-gate">V1 — Vision QA Gate<a class="headerlink" href="#v1-vision-qa-gate" title="Permanent link">&para;</a></h3>
+<p>When the Vision API rate limit is hit, V1 degrades to a pixel-luminance fallback. The QA report includes the word "降级" (degraded) in this case. Accuracy drops but the pipeline does not block.</p>
+<h3 id="v5-mp3-vs-srt-gate">V5 — MP3 vs SRT Gate<a class="headerlink" href="#v5-mp3-vs-srt-gate" title="Permanent link">&para;</a></h3>
+<p>This gate cross-validates audio duration against subtitle timing. A common failure is WPM exceeding 300. Fix by rewriting dense subtitle segments to reduce word count.</p>
+<h3 id="l1-l4-lifecycle-gates">L1-L4 — Lifecycle Gates<a class="headerlink" href="#l1-l4-lifecycle-gates" title="Permanent link">&para;</a></h3>
+<p>These gates validate publish logs, archives, platform integrity, and translation quality. They run after content and video gates. Failures here usually mean missing artifacts or schema mismatches.</p>
+<hr />
+<h2 id="5-cli-command-debugging">5. CLI Command Debugging<a class="headerlink" href="#5-cli-command-debugging" title="Permanent link">&para;</a></h2>
+<h3 id="verify-command-syntax">Verify command syntax<a class="headerlink" href="#verify-command-syntax" title="Permanent link">&para;</a></h3>
+<p>Every CLI command is defined in <code>automedia/cli/commands/</code>. The main app is in <code>automedia/cli/app.py</code>. Use the <code>--help</code> flag on any command:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>--help
+automedia<span class="w"> </span>run<span class="w"> </span>--help
+automedia<span class="w"> </span>archive<span class="w"> </span>--help
+</code></pre></div>
+<h3 id="check-project-directory-structure">Check project directory structure<a class="headerlink" href="#check-project-directory-structure" title="Permanent link">&para;</a></h3>
+<p>A valid project has this structure:</p>
+<div class="highlight"><pre><span></span><code>&lt;project-dir&gt;/
+├── 00_project_info.json         # Project metadata
+├── 01_content/
+│   └── drafts/                  # Generated drafts
+├── 02_images/
+│   └── cover/                   # Cover images
+├── 03_video/                    # Video output
+├── 04_subtitle/                 # Subtitle files
+├── 05_review/                   # Review artifacts
+└── 06_publish/                  # Publish logs
+</code></pre></div>
+<p>If <code>00_project_info.json</code> is missing, the project is incomplete. Run the pipeline again.</p>
+<h3 id="inspect-gate-output-files">Inspect gate output files<a class="headerlink" href="#inspect-gate-output-files" title="Permanent link">&para;</a></h3>
+<p>Each gate may produce output files in the project directory. Check the relevant subdirectory:</p>
+<ul>
+<li>CW gate output -&gt; <code>01_content/drafts/</code></li>
+<li>Image gates -&gt; <code>02_images/cover/</code></li>
+<li>Video gates -&gt; <code>03_video/</code></li>
+<li>Subtitle gates -&gt; <code>04_subtitle/</code></li>
+</ul>
+<p>The <code>pipeline_md5.json</code> file in the project root records MD5 checksums of gate outputs. Compare against this to detect corruption:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&lt;project-dir&gt;/pipeline_md5.json
+</code></pre></div>
+<h3 id="debugging-with-log-levels">Debugging with log levels<a class="headerlink" href="#debugging-with-log-levels" title="Permanent link">&para;</a></h3>
+<p>The pipeline uses <code>structlog</code> for structured logging. Set the <code>AUTOMEDIA_LOG_LEVEL</code> environment variable to control verbosity:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LOG_LEVEL</span><span class="o">=</span>debug
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"test"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand
+</code></pre></div>
+<h3 id="listing-projects">Listing projects<a class="headerlink" href="#listing-projects" title="Permanent link">&para;</a></h3>
+<p>List all projects and their status:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>projects<span class="w"> </span>list
+</code></pre></div>
+<p>This scans directories for <code>00_project_info.json</code> files and reads metadata from each.</p>
+<hr />
+<h2 id="6-common-errors-solutions">6. Common Errors &amp; Solutions<a class="headerlink" href="#6-common-errors-solutions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LLM_API_KEY</code> not set</td>
+<td>Missing required environment variable</td>
+<td>Set the API key: <code>export AUTOMEDIA_LLM_API_KEY=sk-...</code> or pass it in MCP config <code>env</code></td>
+</tr>
+<tr>
+<td>Gate returns <code>"passed": False</code> with no error message</td>
+<td>Gate completed but found issues in content (e.g. fact check failed)</td>
+<td>Check the <code>result</code> dict gate-specific details. See section 4 above and <code>docs/dev/gate-failure-modes.md</code></td>
+</tr>
+<tr>
+<td><code>ValueError: Unknown pipeline mode '...'</code></td>
+<td>Invalid mode string passed to <code>run_full_pipeline()</code></td>
+<td>Use one of: <code>"auto"</code>, <code>"text_only"</code>, <code>"text_with_cover"</code>, <code>"video_only"</code>, <code>"qa_only"</code>, <code>"image-carousel"</code>, <code>"social-thread"</code>, <code>"short-video"</code>, <code>"repurpose"</code></td>
+</tr>
+<tr>
+<td><code>ValueError: resume_from gate '...' not found in mode '...' gate list</code></td>
+<td><code>resume_from</code> value does not match any gate name for the current mode</td>
+<td>Check the mode's gate list in <code>automedia/pipelines/runner.py</code> (<code>_AUTO_GATE_NAMES</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>ModuleNotFoundError: No module named 'mcp'</code></td>
+<td>MCP dependencies not installed</td>
+<td>Install with <code>pip install -e ".[mcp]"</code></td>
+</tr>
+<tr>
+<td><code>Permission denied</code> when accessing files via MCP</td>
+<td>Path is not in <code>mcp_allowlist.yaml</code></td>
+<td>Ask the user to add the path to the allowlist, or use a path under <code>/tmp/automedia/</code></td>
+</tr>
+<tr>
+<td>Brand name "壹目贯维" written as "一目贯维"</td>
+<td>LLM writes homophone characters for the brand name</td>
+<td>Add character-level verification in the prompt. The G3 gate rejects incorrect characters</td>
+</tr>
+<tr>
+<td><code>ValueError: topic_slug '...' produces empty slug after sanitisation</code></td>
+<td>Topic string contains no ASCII characters after slugification (e.g., pure CJK)</td>
+<td>Add an ASCII keyword to the topic or set the topic to include Latin characters</td>
+</tr>
+<tr>
+<td><code>ValueError: Path must not contain '..'</code></td>
+<td>Path traversal detected in brand or base_dir</td>
+<td>Check for <code>..</code>, <code>~</code>, or <code>//</code> in the path parameter</td>
+</tr>
+<tr>
+<td><code>Result has status="partial" with G0-V7 all passing</code></td>
+<td>A lifecycle gate (L1-L4) failed</td>
+<td>Check L1-L4 gate outputs. These usually fail due to missing artifacts or schema mismatches</td>
+</tr>
+<tr>
+<td>Audio/Video gates fail with "file not found"</td>
+<td>Asset files were not produced by a previous gate</td>
+<td>Run the pipeline without <code>resume_from</code> to ensure prerequisite gates execute</td>
+</tr>
+<tr>
+<td><code>PipelineProgress</code> shows gate stuck in <code>"running"</code> for &gt;5 minutes</td>
+<td>LLM call timed out or gate logic is hanging</td>
+<td>Check network connectivity and LLM provider status. Restart the pipeline</td>
+</tr>
+<tr>
+<td><code>ffprobe</code> reports unexpected duration in V5 gate</td>
+<td>MP3 audio file is corrupted or truncated</td>
+<td>Re-generate the TTS audio and verify with <code>ffprobe</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-ffmpeg-video-synthesis-troubleshooting">7. FFmpeg Video Synthesis Troubleshooting<a class="headerlink" href="#7-ffmpeg-video-synthesis-troubleshooting" title="Permanent link">&para;</a></h2>
+<p>Video synthesis depends on FFmpeg for encoding, decoding, and format conversion. Failures here produce unreadable or missing video output.</p>
+<h3 id="ffmpeg-not-found">FFmpeg not found<a class="headerlink" href="#ffmpeg-not-found" title="Permanent link">&para;</a></h3>
+<p>The pipeline checks for FFmpeg at startup via <code>automedia doctor</code>. If missing:</p>
+<p><strong>Symptoms:</strong> Pipeline fails at V0 (Lint) or V6 (Subtitle Render) with "ffmpeg not found" or "command not found".</p>
+<p><strong>Fixes:</strong>
+- Install FFmpeg via your package manager: <code>sudo apt-get install ffmpeg</code> (Ubuntu) or <code>brew install ffmpeg</code> (macOS)
+- Verify installation: <code>ffmpeg -version</code>
+- If installed but not on <code>$PATH</code>, symlink it: <code>sudo ln -s /path/to/ffmpeg /usr/local/bin/ffmpeg</code></p>
+<h3 id="video-encoding-fails">Video encoding fails<a class="headerlink" href="#video-encoding-fails" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms:</strong> FFmpeg returns non-zero exit code; output file is 0 bytes or missing; log contains "Error while encoding" or " Unknown encoder".</p>
+<p><strong>Common causes and fixes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Log pattern</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Codec not supported</td>
+<td><code>Unknown encoder 'libx264'</code></td>
+<td>Rebuild FFmpeg with <code>--enable-libx264</code> or use a codec available in your build</td>
+</tr>
+<tr>
+<td>Pixel format mismatch</td>
+<td><code>Invalid pixel format</code></td>
+<td>Set <code>pix_fmt</code> to <code>yuv420p</code> for maximum compatibility</td>
+</tr>
+<tr>
+<td>Resolution not divisible by 2</td>
+<td><code>width not divisible by 2</code></td>
+<td>Pad dimensions to even numbers: <code>ffmpeg -i input -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" output</code></td>
+</tr>
+<tr>
+<td>Corrupted source frames</td>
+<td><code>Invalid data found when processing input</code></td>
+<td>Regenerate source images; check intermediate PNG files with <code>file</code> command</td>
+</tr>
+</tbody>
+</table>
+<h3 id="audio-video-sync-issues">Audio-video sync issues<a class="headerlink" href="#audio-video-sync-issues" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms:</strong> Audio and video tracks drift apart; lip-sync errors.</p>
+<p><strong>Remediation:</strong>
+- Use the <code>-async 1</code> flag to resample audio to match video frame rate
+- Verify source audio duration matches video duration with <code>ffprobe</code>
+- Check subtitle timing in SRT files — misaligned cues cause visible sync issues</p>
+<h3 id="hardware-acceleration">Hardware acceleration<a class="headerlink" href="#hardware-acceleration" title="Permanent link">&para;</a></h3>
+<p>For GPU-accelerated encoding (h264_nvenc, h264_vaapi, etc.):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check available encoders</span>
+ffmpeg<span class="w"> </span>-encoders<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>nvenc<span class="w">   </span><span class="c1"># NVIDIA</span>
+ffmpeg<span class="w"> </span>-encoders<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>vaapi<span class="w">   </span><span class="c1"># Intel/AMD VAAPI</span>
+
+<span class="c1"># Use hardware encoder in pipeline (set via config)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_FFMPEG_ENCODER</span><span class="o">=</span>h264_nvenc
+</code></pre></div>
+<p><strong>Common pitfall:</strong> Hardware encoders produce larger files at the same CRF value. Adjust <code>-crf</code> (lower = better quality, 18-23 recommended for software, 15-20 for hardware).</p>
+<hr />
+<h2 id="8-session-persistence-faq">8. Session Persistence FAQ<a class="headerlink" href="#8-session-persistence-faq" title="Permanent link">&para;</a></h2>
+<h3 id="what-is-a-pipeline-session">What is a pipeline "session"?<a class="headerlink" href="#what-is-a-pipeline-session" title="Permanent link">&para;</a></h3>
+<p>A session is a single invocation of <code>run_full_pipeline()</code>. Each session creates a project directory with a unique <code>project_id</code> derived from the topic and brand.</p>
+<h3 id="can-i-resume-a-failed-session">Can I resume a failed session?<a class="headerlink" href="#can-i-resume-a-failed-session" title="Permanent link">&para;</a></h3>
+<p>Yes. Use the <code>resume_from</code> parameter to skip already-passed gates, or <code>--auto-resume</code> to resume from the last passed gate automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">run_full_pipeline</span><span class="p">(</span>
+    <span class="n">topic</span><span class="o">=</span><span class="s2">"AI tools"</span><span class="p">,</span>
+    <span class="n">brand</span><span class="o">=</span><span class="s2">"my-brand"</span><span class="p">,</span>
+    <span class="n">resume_from</span><span class="o">=</span><span class="s2">"G0"</span><span class="p">,</span>  <span class="c1"># skip pre-gate, CW</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>From the CLI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Resume from the last passed gate (reads history.db)</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI tools"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--auto-resume
+
+<span class="c1"># Audit per-gate state (passed/failed/pending + md5) first</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
+</code></pre></div>
+<p>The pipeline reads <code>pipeline_md5.json</code> from the project directory to verify previous gate outputs before resuming.</p>
+<h3 id="what-data-persists-between-sessions">What data persists between sessions?<a class="headerlink" href="#what-data-persists-between-sessions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Location</th>
+<th>Persists?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gate outputs (drafts, video, subtitles)</td>
+<td><code>project_dir/</code></td>
+<td>✅ Yes, until archived</td>
+</tr>
+<tr>
+<td>MD5 checksums</td>
+<td><code>project_dir/pipeline_md5.json</code></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>Project metadata</td>
+<td><code>project_dir/00_project_info.json</code></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>Topic pool</td>
+<td><code>pool_db</code> (SQLite)</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>Encrypted credentials</td>
+<td><code>~/.automedia/credentials/</code></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>Runtime logs</td>
+<td>stdout/stderr</td>
+<td>❌ No (use <code>AUTOMEDIA_LOG_FORMAT=json</code> for persistent log aggregation)</td>
+</tr>
+<tr>
+<td>Gate context (in-memory state)</td>
+<td>RAM</td>
+<td>❌ No — must be regenerated on resume</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-do-i-list-all-past-sessions">How do I list all past sessions?<a class="headerlink" href="#how-do-i-list-all-past-sessions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all projects with their status</span>
+automedia<span class="w"> </span>projects<span class="w"> </span>list
+
+<span class="c1"># Or scan a custom base directory</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span>
+<span class="s2">from automedia.pipelines.runner import run_full_pipeline</span>
+<span class="s2"># Re-run previous pipeline to check status</span>
+<span class="s2">"</span>
+</code></pre></div>
+<p>For MCP users, use <code>list_projects(base_dir="/path/to/projects")</code>.</p>
+<h3 id="can-two-sessions-run-concurrently">Can two sessions run concurrently?<a class="headerlink" href="#can-two-sessions-run-concurrently" title="Permanent link">&para;</a></h3>
+<p>Yes, but with caveats:</p>
+<ul>
+<li><strong>Same project directory:</strong> Not recommended — concurrent writes to <code>pipeline_md5.json</code> and output files cause race conditions.</li>
+<li><strong>Different projects:</strong> Fully safe. Each session creates a unique <code>project_id</code>.</li>
+<li><strong>Shared resources (LLM API, disk I/O):</strong> Rate limiting applies. Use <code>AUTOMEDIA_LLM_RETRY_MAX</code> and <code>AUTOMEDIA_LLM_RETRY_DELAY</code> to handle API throttling gracefully.</li>
+</ul>
+<hr />
+<h2 id="9-mcp-rate-limit-handling">9. MCP Rate Limit Handling<a class="headerlink" href="#9-mcp-rate-limit-handling" title="Permanent link">&para;</a></h2>
+<p>The MCP server interacts with external APIs (LLM providers, platform publish endpoints) that enforce rate limits. When limits are hit, the server returns errors or degrades functionality.</p>
+<h3 id="llm-api-rate-limits">LLM API rate limits<a class="headerlink" href="#llm-api-rate-limits" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Gates that call the LLM (CW, G0, G2, G3, V3, L4) fail with errors like "429 Too Many Requests", "Rate limit exceeded", or "Request throttled".</p>
+<p><strong>Built-in retry:</strong> The LLM client (<code>automedia/core/llm_client.py</code>) uses tenacity with exponential backoff by default. Configure retry behavior via environment variables:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Maximum retry attempts (default: 3)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_RETRY_MAX</span><span class="o">=</span><span class="m">5</span>
+
+<span class="c1"># Base delay in seconds between retries (default: 2.0)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_RETRY_DELAY</span><span class="o">=</span><span class="m">4</span>.0
+</code></pre></div>
+<h3 id="mcp-server-tool-rate-limiting">MCP server tool rate limiting<a class="headerlink" href="#mcp-server-tool-rate-limiting" title="Permanent link">&para;</a></h3>
+<p>The MCP server itself does not enforce per-tool rate limits, but the underlying operations may trigger provider limits.</p>
+<p><strong>Best practices to avoid rate limits:</strong></p>
+<ol>
+<li>
+<p><strong>Batch operations:</strong> When processing multiple projects, add a delay between calls:
+   <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+    <span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="o">=</span><span class="n">project</span><span class="p">[</span><span class="s2">"topic"</span><span class="p">],</span> <span class="n">brand</span><span class="o">=</span><span class="n">project</span><span class="p">[</span><span class="s2">"brand"</span><span class="p">])</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># Respect API rate window</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Use text_only mode for testing:</strong> Avoids video generation API calls during development iterations.</p>
+</li>
+<li>
+<p><strong>Monitor with get_pipeline_progress:</strong> If a gate is stuck for &gt;5 minutes, it may be waiting for a rate-limited API retry.</p>
+</li>
+</ol>
+<h3 id="v1-vision-api-degradation">V1 Vision API degradation<a class="headerlink" href="#v1-vision-api-degradation" title="Permanent link">&para;</a></h3>
+<p>When the Vision API is rate limited, V1 (Vision QA) automatically degrades to pixel-luminance analysis. The QA report includes "降级" (degraded) in the output. Accuracy drops but the pipeline is not blocked.</p>
+<h3 id="handling-publish-api-rate-limits">Handling publish API rate limits<a class="headerlink" href="#handling-publish-api-rate-limits" title="Permanent link">&para;</a></h3>
+<p>Platform adapters handle rate limits differently. Most use exponential backoff with jitter. If publishing fails with rate limit errors:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check account health</span>
+automedia<span class="w"> </span>account<span class="w"> </span>health<span class="w"> </span>&lt;account_id&gt;
+
+<span class="c1"># The session manager (automedia/accounts/session.py) provides:</span>
+<span class="c1"># - TTL-aware token caching</span>
+<span class="c1"># - Per-account concurrency locks</span>
+<span class="c1"># - Rate-limit backoff with configurable max retries</span>
+</code></pre></div>
+<hr />
+<h2 id="10-extended-environment-variable-reference">10. Extended Environment Variable Reference<a class="headerlink" href="#10-extended-environment-variable-reference" title="Permanent link">&para;</a></h2>
+<p>Beyond the core variables in AGENTS.md section 11, the following variables are available:</p>
+<h3 id="llm-retry-configuration">LLM Retry Configuration<a class="headerlink" href="#llm-retry-configuration" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LLM_RETRY_MAX</code></td>
+<td>Max retry attempts for transient LLM failures</td>
+<td><code>3</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_RETRY_DELAY</code></td>
+<td>Base delay (seconds) between retries (exponential backoff)</td>
+<td><code>2.0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="logging-debugging">Logging &amp; Debugging<a class="headerlink" href="#logging-debugging" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LOG_LEVEL</code></td>
+<td>Log level: <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code></td>
+<td><code>INFO</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LOG_FORMAT</code></td>
+<td>Output format: <code>console</code> (human) or <code>json</code> (log aggregators)</td>
+<td><code>console</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_DOTENV_PATH</code></td>
+<td>Custom path to <code>.env</code> file loaded on startup</td>
+<td>(auto)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mcp-server-network-mode">MCP Server Network Mode<a class="headerlink" href="#mcp-server-network-mode" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_MCP_ALLOWLIST_PATH</code></td>
+<td>Path to MCP allowlist YAML file</td>
+<td><code>&lt;module_dir&gt;/mcp_allowlist.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="credential-store">Credential Store<a class="headerlink" href="#credential-store" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_MASTER_KEY</code></td>
+<td>AES-256-GCM master key for encrypted credential storage</td>
+<td>(required for accounts)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pipeline-configuration">Pipeline Configuration<a class="headerlink" href="#pipeline-configuration" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_DEFAULT_BRAND</code></td>
+<td>Default brand for pipelines</td>
+<td><code>my-brand</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_PROJECTS_DIR</code></td>
+<td>Root directory for projects (overrides working directory)</td>
+<td>(auto)</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_POOL_DB</code></td>
+<td>Path to the topic pool SQLite database</td>
+<td><code>./data/pool.db</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="11-typeignore-fix-principles">11. type:ignore Fix Principles<a class="headerlink" href="#11-typeignore-fix-principles" title="Permanent link">&para;</a></h2>
+<p>When working with Python type annotations in the AutoMedia codebase, you may encounter situations where type checkers (mypy, pyright) report errors that cannot be resolved through normal type annotations. The <code># type: ignore</code> comment is used as a last resort.</p>
+<h3 id="when-to-use-typeignore">When to use type:ignore<a class="headerlink" href="#when-to-use-typeignore" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Acceptable?</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Third-party library lacks stubs</td>
+<td>✅ Yes</td>
+<td>Prefer installing types package (<code>pip install types-xxx</code>)</td>
+</tr>
+<tr>
+<td>Dynamic attribute from framework (e.g., Pydantic model_config)</td>
+<td>✅ Yes</td>
+<td>Consider <code>cast()</code> as alternative</td>
+</tr>
+<tr>
+<td>Known mypy false positive</td>
+<td>✅ Yes</td>
+<td>Link to upstream issue in comment</td>
+</tr>
+<tr>
+<td>Code is being refactored and types are in flux</td>
+<td>⚠️ Temporarily</td>
+<td>Remove once refactoring is complete</td>
+</tr>
+<tr>
+<td>Avoidable type error (missing annotation, Any propagation)</td>
+<td>❌ No</td>
+<td>Fix the root cause instead</td>
+</tr>
+<tr>
+<td>Duck-typed protocol match that mypy cannot infer</td>
+<td>✅ Yes</td>
+<td>Prefer <code>Protocol</code> + <code>isinstance()</code> check</td>
+</tr>
+</tbody>
+</table>
+<h3 id="typeignore-annotation-format">type:ignore annotation format<a class="headerlink" href="#typeignore-annotation-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full suppression — only use when you've exhausted alternatives</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">some_dynamic_value</span>  <span class="c1"># type: ignore[attr-defined]</span>
+
+<span class="c1"># Specific error code is preferred over blanket suppression</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">possibly_str</span><span class="p">)</span>  <span class="c1"># Prefer cast() over type: ignore</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">possibly_str</span>  <span class="c1"># type: ignore[assignment]  # only when cast() doesn't work</span>
+</code></pre></div>
+<p><strong>Required format conventions:</strong>
+1. Always specify the error code (e.g., <code>[arg-type]</code>, <code>[return-value]</code>, <code>[attr-defined]</code>)
+2. Never use bare <code># type: ignore</code> without a code — it suppresses all errors on that line
+3. Add a brief comment explaining <em>why</em> the suppression is necessary when the reason is not obvious
+4. Use <code>cast()</code> from <code>typing</code> as a preferred alternative when the value's type is known</p>
+<h3 id="acceptable-error-codes">Acceptable error codes<a class="headerlink" href="#acceptable-error-codes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Error code</th>
+<th>Meaning</th>
+<th>Example use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[arg-type]</code></td>
+<td>Argument type mismatch</td>
+<td>Passing dynamic data to a strictly-typed function</td>
+</tr>
+<tr>
+<td><code>[return-value]</code></td>
+<td>Return type mismatch</td>
+<td>Function must return a literal union at runtime</td>
+</tr>
+<tr>
+<td><code>[attr-defined]</code></td>
+<td>Attribute not recognized</td>
+<td>Dynamic/hybrid objects or Pydantic model fields set at runtime</td>
+</tr>
+<tr>
+<td><code>[union-attr]</code></td>
+<td>Attribute not on all union members</td>
+<td>Accessing attribute on a narrowable union type</td>
+</tr>
+<tr>
+<td><code>[assignment]</code></td>
+<td>Variable type mismatch</td>
+<td>Assigning broader type to narrower variable</td>
+</tr>
+<tr>
+<td><code>[comparison-overlap]</code></td>
+<td>Types cannot overlap</td>
+<td>Intentional type-heterogeneous comparison (test assertion)</td>
+</tr>
+<tr>
+<td><code>[assert-type]</code></td>
+<td>Assertion type mismatch</td>
+<td>Testing runtime type behavior deliberately</td>
+</tr>
+</tbody>
+</table>
+<h3 id="review-checklist">Review checklist<a class="headerlink" href="#review-checklist" title="Permanent link">&para;</a></h3>
+<p>Before adding <code># type: ignore</code> to any file:</p>
+<ul>
+<li>[ ] Can I import a types package instead? (<code>pip install types-xxx</code>)</li>
+<li>[ ] Can I use <code>cast()</code> from <code>typing</code> instead?</li>
+<li>[ ] Can I use <code>assert isinstance(x, ExpectedType)</code> to narrow?</li>
+<li>[ ] Is this a mypy configuration issue? (check <code>pyproject.toml</code> config)</li>
+<li>[ ] Is this a legitimate dynamic pattern that type checkers cannot express?</li>
+</ul>
+<hr />
+<p>For detailed gate failure mode troubleshooting, see <code>docs/dev/gate-failure-modes.md</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

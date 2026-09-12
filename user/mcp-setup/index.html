@@ -1,0 +1,3466 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Configure the AutoMedia MCP server for AI agents — integration guide for Claude Desktop, OpenCode, Codex CLI, and other clients.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/user/mcp-setup/">
+      
+      
+        <link rel="prev" href="../cli-reference/">
+      
+      
+        <link rel="next" href="../deployment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>MCP Server Setup - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mcp-server-setup" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MCP Server Setup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starting-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting the Server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-tools-67" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Tools (67)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-client-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Client Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Client Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Desktop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opencode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenCode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-allowlist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Allowlist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-calling-mcp-tools-directly-in-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Calling MCP Tools Directly in Python
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example: Calling MCP Tools Directly in Python">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#error-code-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Code Categories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Code Categories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enum-mcperrorcode-defined-in-mcp_errorpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enum: MCPErrorCode (defined in mcp_error.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalid_param" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        INVALID_PARAM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#not_found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NOT_FOUND
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#allowlist_denied" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ALLOWLIST_DENIED
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UNKNOWN
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unused-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unused Codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-deployment-systemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Deployment (systemd)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production Deployment (systemd)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#installation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-copy-the-service-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Copy the service unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-env-directory-and-copy-the-env-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the env directory and copy the env file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-edit-the-env-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Edit the env file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-review-the-service-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Review the service unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-reload-systemd-and-enable-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Reload systemd and enable the service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-start-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Start the service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-verify-the-service-is-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Verify the service is running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-security-hardening-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Security hardening note
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-view-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. View logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="mcp-server-setup">MCP Server Setup<a class="headerlink" href="#mcp-server-setup" title="Permanent link">&para;</a></h1>
+<p>AutoMedia provides an MCP (Model Context Protocol) server that allows any MCP client (Claude Desktop, OpenCode, Cline) to use the AutoMedia pipeline through a standard tool-calling interface.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>automedia-pipeline<span class="o">[</span>mcp<span class="o">]</span>
+</code></pre></div>
+<h2 id="starting-the-server">Starting the Server<a class="headerlink" href="#starting-the-server" title="Permanent link">&para;</a></h2>
+<p>The MCP server uses stdio transport, communicating with the MCP client through standard input/output:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
+</code></pre></div>
+<p>View registered tools:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server<span class="w"> </span>--show-tools
+</code></pre></div>
+<p>Output:</p>
+<div class="highlight"><pre><span></span><code>Registered MCP tools:
+  - add_brand
+  - add_cron_schedule
+  - add_pool_topic
+  - analyze_content
+  - approve_gate
+  - archive_project
+  - batch_run
+  - cancel_pipeline
+  - configure_llm
+  - connect_account
+  - disconnect_account
+  - distribute_content
+  - engine_health
+  - evaluate_content_quality
+  - extract_brief
+  - format_output
+  - get_account_health
+  - get_config
+  - get_cron_health
+  - get_pending_approvals
+  - get_pipeline_progress
+  - get_pipeline_state
+  - get_gate_report
+  - review_decision
+  - get_pipeline_status
+  - get_project_assets
+  - get_redlines
+  - get_validation_report
+  - health_check
+  - health_engine
+  - help_mcp
+  - init_config
+  - list_accounts
+  - list_active_pipelines
+  - list_brands
+  - list_cron_schedules
+  - list_overridable_templates
+  - list_platforms
+  - list_projects
+  - list_topic_pool
+  - list_validation_scenarios
+  - list_workflows
+  - localize_content
+  - localize_output
+  - mcp_help
+  - onboard
+  - pause_pipeline
+  - pool_add_topic
+  - publish_content
+  - register_platform_adapter
+  - reject_gate
+  - remove_cron_schedule
+  - research_topics
+  - resume_pipeline
+  - retry_gate
+  - run_batch
+  - run_brand_strategy
+  - run_pipeline
+  - run_pipeline_from_strategy
+  - run_validation_scenario
+  - search_assets
+  - select_topic
+  - skip_gate
+  - test_cron_schedule
+  - update_engine_config
+  - validation_coverage_audit
+  - validation_matrix
+</code></pre></div>
+<h2 id="available-tools-67">Available Tools (67)<a class="headerlink" href="#available-tools-67" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>select_topic</code></td>
+<td>Select the highest-scored pending topic from the pool</td>
+</tr>
+<tr>
+<td><code>research_topics</code></td>
+<td>Research trending topics using LLM (requires AUTOMEDIA_TAVILY_API_KEY for real-time data; defaults to simulated results)</td>
+</tr>
+<tr>
+<td><code>run_pipeline</code></td>
+<td>Execute full production pipeline (background async)</td>
+</tr>
+<tr>
+<td><code>run_pipeline_from_strategy</code></td>
+<td>Generate content strategy via LLM then execute pipeline</td>
+</tr>
+<tr>
+<td><code>run_brand_strategy</code></td>
+<td>Generate a brand strategy using LLM analysis</td>
+</tr>
+<tr>
+<td><code>evaluate_content_quality</code></td>
+<td>Score content quality against criteria</td>
+</tr>
+<tr>
+<td><code>run_batch</code></td>
+<td>Run pipeline sequentially for multiple topics</td>
+</tr>
+<tr>
+<td><code>batch_run</code></td>
+<td>⚠️ Deprecated: use run_batch</td>
+</tr>
+<tr>
+<td><code>cancel_pipeline</code></td>
+<td>Cancel a running pipeline by project ID</td>
+</tr>
+<tr>
+<td><code>pause_pipeline</code></td>
+<td>Pause a running pipeline after the current gate completes</td>
+</tr>
+<tr>
+<td><code>resume_pipeline</code></td>
+<td>Resume a paused pipeline</td>
+</tr>
+<tr>
+<td><code>retry_gate</code></td>
+<td>Mark a specific gate for retry in a running pipeline</td>
+</tr>
+<tr>
+<td><code>skip_gate</code></td>
+<td>Mark a specific gate for skipping in a running pipeline</td>
+</tr>
+<tr>
+<td><code>review_decision</code></td>
+<td>Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only — MCP-started pipelines; CLI-started ones return a structured error)</td>
+</tr>
+<tr>
+<td><code>get_pipeline_progress</code></td>
+<td>Poll gate-by-gate progress of a running pipeline</td>
+</tr>
+<tr>
+<td><code>get_pipeline_state</code></td>
+<td>Per-gate state view for a project (passed/failed/pending + md5)</td>
+</tr>
+<tr>
+<td><code>get_gate_report</code></td>
+<td>Latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted)</td>
+</tr>
+<tr>
+<td><code>get_pipeline_status</code></td>
+<td>Query project status from its info file</td>
+</tr>
+<tr>
+<td><code>list_projects</code></td>
+<td>List all projects, optionally filtered by status</td>
+</tr>
+<tr>
+<td><code>get_project_assets</code></td>
+<td>List asset files in a project directory</td>
+</tr>
+<tr>
+<td><code>archive_project</code></td>
+<td>Archive a project (Red Line 8: refuses unless published or —force)</td>
+</tr>
+<tr>
+<td><code>help_mcp</code></td>
+<td>Get a categorized listing of all MCP tools with descriptions and parameter schemas</td>
+</tr>
+<tr>
+<td><code>mcp_help</code></td>
+<td>⚠️ Deprecated: use help_mcp</td>
+</tr>
+<tr>
+<td><code>health_engine</code></td>
+<td>Check all engine-related dependencies health</td>
+</tr>
+<tr>
+<td><code>engine_health</code></td>
+<td>⚠️ Deprecated: use health_engine</td>
+</tr>
+<tr>
+<td><code>health_check</code></td>
+<td>Return server health status (version, uptime, tool count)</td>
+</tr>
+<tr>
+<td><code>update_engine_config</code></td>
+<td>Update an engine configuration setting</td>
+</tr>
+<tr>
+<td><code>extract_brief</code></td>
+<td>Extract a content brief from a document (OPP)</td>
+</tr>
+<tr>
+<td><code>localize_content</code></td>
+<td>Translate Markdown content (OL shield pipeline)</td>
+</tr>
+<tr>
+<td><code>localize_output</code></td>
+<td>Translate all project drafts into multiple languages</td>
+</tr>
+<tr>
+<td><code>format_output</code></td>
+<td>Convert content format (ORF adapter)</td>
+</tr>
+<tr>
+<td><code>add_pool_topic</code></td>
+<td>Add a topic to the topic pool</td>
+</tr>
+<tr>
+<td><code>pool_add_topic</code></td>
+<td>⚠️ Deprecated: use add_pool_topic</td>
+</tr>
+<tr>
+<td><code>list_topic_pool</code></td>
+<td>View the topic pool with optional filters</td>
+</tr>
+<tr>
+<td><code>connect_account</code></td>
+<td>Register a new platform account (returns account_id)</td>
+</tr>
+<tr>
+<td><code>list_accounts</code></td>
+<td>List all registered accounts with optional filters</td>
+</tr>
+<tr>
+<td><code>get_account_health</code></td>
+<td>Check an account's health status</td>
+</tr>
+<tr>
+<td><code>disconnect_account</code></td>
+<td>Disconnect/remove a platform account</td>
+</tr>
+<tr>
+<td><code>publish_content</code></td>
+<td>Publish a project to a platform</td>
+</tr>
+<tr>
+<td><code>distribute_content</code></td>
+<td>Distribute pipeline content to platforms via D-gates (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok)</td>
+</tr>
+<tr>
+<td><code>analyze_content</code></td>
+<td>Compute content analytics (word count, sentiment, readability, brand mentions, SEO scores)</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td>Register a platform adapter stub</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>Add a cron schedule entry</td>
+</tr>
+<tr>
+<td><code>list_cron_schedules</code></td>
+<td>List all cron schedules</td>
+</tr>
+<tr>
+<td><code>remove_cron_schedule</code></td>
+<td>Remove a cron schedule entry</td>
+</tr>
+<tr>
+<td><code>get_cron_health</code></td>
+<td>Check cron job configuration health</td>
+</tr>
+<tr>
+<td><code>test_cron_schedule</code></td>
+<td>Validate cron expression and compute next trigger times</td>
+</tr>
+<tr>
+<td><code>search_assets</code></td>
+<td>Search produced content via keyword + semantic search</td>
+</tr>
+<tr>
+<td><code>list_brands</code></td>
+<td>Return all configured brands with profile metadata</td>
+</tr>
+<tr>
+<td><code>add_brand</code></td>
+<td>Create a new brand profile (name required; industry and target audience optional)</td>
+</tr>
+<tr>
+<td><code>get_config</code></td>
+<td>Return merged configuration (secrets redacted)</td>
+</tr>
+<tr>
+<td><code>configure_llm</code></td>
+<td>Configure the LLM provider in <code>~/.automedia/model_config.yaml</code> (preserves an existing LLM fallback chain)</td>
+</tr>
+<tr>
+<td><code>init_config</code></td>
+<td>Initialize AutoMedia configuration: create <code>.automedia/</code> and a default <code>config.yaml</code></td>
+</tr>
+<tr>
+<td><code>onboard</code></td>
+<td>One-step onboarding: configure the LLM and create a brand profile without interactive prompts</td>
+</tr>
+<tr>
+<td><code>get_redlines</code></td>
+<td>Return the list of agent red-line constraints</td>
+</tr>
+<tr>
+<td><code>list_active_pipelines</code></td>
+<td>List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes)</td>
+</tr>
+<tr>
+<td><code>list_platforms</code></td>
+<td>List all registered publishing platforms</td>
+</tr>
+<tr>
+<td><code>list_overridable_templates</code></td>
+<td>List all overridable prompt templates with override status</td>
+</tr>
+<tr>
+<td><code>list_workflows</code></td>
+<td>List all configured workflows from <code>workflows.yaml</code></td>
+</tr>
+<tr>
+<td><code>approve_gate</code></td>
+<td>Approve a paused gate in director mode (HITL approval)</td>
+</tr>
+<tr>
+<td><code>reject_gate</code></td>
+<td>Reject a paused gate in director mode (triggers failure handling)</td>
+</tr>
+<tr>
+<td><code>get_pending_approvals</code></td>
+<td>List all gates awaiting human approval in director mode</td>
+</tr>
+<tr>
+<td><code>list_validation_scenarios</code></td>
+<td>List the agent-tester validation scenario library (name, description, category, status hint)</td>
+</tr>
+<tr>
+<td><code>run_validation_scenario</code></td>
+<td>Run ONE named validation scenario in-process; scenario_name is required (the recursion bound)</td>
+</tr>
+<tr>
+<td><code>get_validation_report</code></td>
+<td>Read a persisted validation run record from validation-runs/ (defaults to the latest run)</td>
+</tr>
+<tr>
+<td><code>validation_coverage_audit</code></td>
+<td>Run the static coverage audit: declared/used/covered/missing/phantom per surface</td>
+</tr>
+<tr>
+<td><code>validation_matrix</code></td>
+<td>Render the validation matrix: per-scenario surface coverage + last-run status + hard-safety flags</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mcp-client-configuration">MCP Client Configuration<a class="headerlink" href="#mcp-client-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="claude-desktop">Claude Desktop<a class="headerlink" href="#claude-desktop" title="Permanent link">&para;</a></h3>
+<p>Edit <code>claude_desktop_config.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AUTOMEDIA_LLM_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-xxx"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="opencode">OpenCode<a class="headerlink" href="#opencode" title="Permanent link">&para;</a></h3>
+<p>Edit <code>.opencode/package.json</code> or the project-level config file:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Or through <code>~/.config/opencode/mcp.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"servers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AUTOMEDIA_LLM_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-xxx"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="cline">Cline<a class="headerlink" href="#cline" title="Permanent link">&para;</a></h3>
+<p>Edit the VSCode extension config or <code>~/.config/cline/mcp.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="path-allowlist">Path Allowlist<a class="headerlink" href="#path-allowlist" title="Permanent link">&para;</a></h2>
+<p>MCP server file access is restricted by an allowlist. The config file is located at:</p>
+<div class="highlight"><pre><span></span><code>~/.automedia/mcp_allowlist.yaml
+</code></pre></div>
+<p>The default allowlist (shipped at <code>automedia/mcp/mcp_allowlist.yaml</code>)
+only includes <code>/tmp/automedia/</code>. Additional paths must be uncommented or
+added as needed:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">allowed_directories</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/automedia/</span>
+<span class="w">  </span><span class="c1"># - /app/data/</span>
+<span class="w">  </span><span class="c1"># - /app/output/</span>
+<span class="w">  </span><span class="c1"># - /app/projects/</span>
+<span class="w">  </span><span class="c1"># - /opt/automedia/</span>
+</code></pre></div>
+<p>If the allowlist is empty, all paths are blocked (fail‑closed). It is recommended to configure a specific allowlist for production environments. The path allowlist can also be overridden via the <code>AUTOMEDIA_MCP_ALLOWLIST_PATH</code> environment variable (see <a href="#environment-variables">Environment Variables</a>).</p>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>The MCP server supports the following environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LLM_API_KEY</code></td>
+<td>LLM API key</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_BASE_URL</code></td>
+<td>Custom API endpoint</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_PROVIDER</code></td>
+<td>LLM provider name</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_MODEL</code></td>
+<td>Model identifier</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_PROJECTS_DIR</code></td>
+<td>Projects root directory override</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MCP_ALLOWLIST_PATH</code></td>
+<td>Custom allowlist path override</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MASTER_KEY</code></td>
+<td>Master key for credential encryption</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LOG_LEVEL</code></td>
+<td>Log level (DEBUG, INFO, WARNING, ERROR)</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_FAKE_LLM</code></td>
+<td>Set to <code>1</code> to use deterministic mock LLM responses (no real API calls)</td>
+</tr>
+<tr>
+<td><code>FEISHU_WEBHOOK_URL</code></td>
+<td>Feishu notification webhook</td>
+</tr>
+<tr>
+<td><code>WX_APPID</code></td>
+<td>WeChat Official Account AppID</td>
+</tr>
+<tr>
+<td><code>WX_APPSECRET</code></td>
+<td>WeChat Official Account AppSecret</td>
+</tr>
+</tbody>
+</table>
+<h2 id="security-notes">Security Notes<a class="headerlink" href="#security-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The <code>archive_project</code> tool follows Red Line 8: archiving is only allowed when project status is <code>published</code> or <code>force=True</code></li>
+<li>The path allowlist prevents malicious agents from reading files outside the project directory</li>
+<li>It is recommended to use dedicated API keys and environment variables for the MCP server</li>
+<li>All file operations are gated by the path allowlist — files outside allowed directories return <code>PermissionError</code>. Some tools (e.g. <code>archive_project</code>, <code>publish_content</code>, <code>format_output</code>) perform write operations within allowed directories.</li>
+</ul>
+<h2 id="example-calling-mcp-tools-directly-in-python">Example: Calling MCP Tools Directly in Python<a class="headerlink" href="#example-calling-mcp-tools-directly-in-python" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.mcp</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">select_topic</span><span class="p">,</span>
+    <span class="n">run_pipeline</span><span class="p">,</span>
+    <span class="n">get_pipeline_progress</span><span class="p">,</span>
+    <span class="n">get_pipeline_state</span><span class="p">,</span>
+    <span class="n">get_gate_report</span><span class="p">,</span>
+    <span class="n">get_pipeline_status</span><span class="p">,</span>
+    <span class="n">list_projects</span><span class="p">,</span>
+    <span class="n">get_project_assets</span><span class="p">,</span>
+    <span class="n">archive_project</span><span class="p">,</span>
+    <span class="n">list_topic_pool</span><span class="p">,</span>
+    <span class="n">register_platform_adapter</span><span class="p">,</span>
+    <span class="n">extract_brief</span><span class="p">,</span>
+    <span class="n">localize_content</span><span class="p">,</span>
+    <span class="n">localize_output</span><span class="p">,</span>
+    <span class="n">format_output</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Select topic</span>
+<span class="n">topic</span> <span class="o">=</span> <span class="n">select_topic</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">"tech"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">topic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"selected"</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Selected: </span><span class="si">{</span><span class="n">topic</span><span class="p">[</span><span class="s1">'selected'</span><span class="p">][</span><span class="s1">'title'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># Run pipeline</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">run_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="o">=</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="o">=</span><span class="s2">"my-brand"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Project ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'project_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># List projects</span>
+<span class="n">projects</span> <span class="o">=</span> <span class="n">list_projects</span><span class="p">(</span><span class="n">base_dir</span><span class="o">=</span><span class="s2">"."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="n">projects</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2"> projects"</span><span class="p">)</span>
+
+<span class="c1"># Archive (requires user confirmation)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">archive_project</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="s2">"abc123def456"</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="o">&lt;</span><span class="err">!</span><span class="o">--</span> <span class="n">Merged</span> <span class="n">from</span><span class="p">:</span> <span class="n">docs</span><span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">error</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">reference</span><span class="o">.</span><span class="n">md</span> <span class="o">--&gt;</span>
+
+<span class="c1">## Error Code Reference</span>
+
+<span class="c1">### Error Response Shape</span>
+
+<span class="n">Every</span> <span class="n">MCP</span> <span class="n">tool</span> <span class="n">returns</span> <span class="n">errors</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">consistent</span> <span class="n">structure</span><span class="o">.</span>  <span class="n">The</span> <span class="n">shape</span> <span class="ow">is</span>
+<span class="n">produced</span> <span class="n">by</span> <span class="err">`</span><span class="n">error_response</span><span class="p">()</span><span class="err">`</span> <span class="ow">in</span> <span class="err">`</span><span class="n">src</span><span class="o">/</span><span class="n">automedia</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span><span class="n">mcp_error</span><span class="o">.</span><span class="n">py</span><span class="err">`</span><span class="p">:</span>
+
+<span class="err">```</span><span class="n">json</span>
+<span class="p">{</span>
+  <span class="s2">"success"</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+  <span class="s2">"error"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">"code"</span><span class="p">:</span> <span class="s2">"ERROR_CODE"</span><span class="p">,</span>
+    <span class="s2">"message"</span><span class="p">:</span> <span class="s2">"Human-readable description of what went wrong."</span><span class="p">,</span>
+    <span class="s2">"resolution"</span><span class="p">:</span> <span class="s2">"Steps the agent can take to resolve the issue."</span>
+  <span class="p">},</span>
+  <span class="s2">"error_message"</span><span class="p">:</span> <span class="s2">"Same as error.message (deprecated, scheduled for removal)"</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The <code>error</code> block is the canonical payload.  The top-level <code>error_message</code>
+key is a duplicate kept for backward compatibility and will be removed in
+a future release.</p>
+<p>Some tools wrap the error inside a result dict with partial fallback data:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"selected"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"remaining_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"success"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"error"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"NOT_FOUND"</span><span class="p">,</span><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"resolution"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Always check <code>success</code> or the presence of an <code>error</code> key before reading
+tool-specific fields.</p>
+<hr />
+<h3 id="error-code-categories">Error Code Categories<a class="headerlink" href="#error-code-categories" title="Permanent link">&para;</a></h3>
+<h4 id="enum-mcperrorcode-defined-in-mcp_errorpy">Enum: <code>MCPErrorCode</code> (defined in <code>mcp_error.py</code>)<a class="headerlink" href="#enum-mcperrorcode-defined-in-mcp_errorpy" title="Permanent link">&para;</a></h4>
+<p>All codes belong to the <code>MCPErrorCode</code> string enum.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+<th>Used In</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INVALID_PARAM</code></td>
+<td>One or more input parameters failed validation</td>
+<td>~20 call sites</td>
+</tr>
+<tr>
+<td><code>NOT_FOUND</code></td>
+<td>A requested resource does not exist</td>
+<td>~15 call sites</td>
+</tr>
+<tr>
+<td><code>PIPELINE_ERROR</code></td>
+<td>Pipeline execution failure</td>
+<td>Reserved, not yet emitted</td>
+</tr>
+<tr>
+<td><code>ENGINE_ERROR</code></td>
+<td>Engine dependency or configuration failure</td>
+<td>Reserved, not yet emitted</td>
+</tr>
+<tr>
+<td><code>ALLOWLIST_DENIED</code></td>
+<td>Access to a path or config key blocked by allowlist</td>
+<td><code>get_config</code></td>
+</tr>
+<tr>
+<td><code>UNKNOWN</code></td>
+<td>Unexpected exception caught at the MCP boundary</td>
+<td>~30 catch-all call sites</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="invalid_param">INVALID_PARAM<a class="headerlink" href="#invalid_param" title="Permanent link">&para;</a></h3>
+<p>One or more input parameters failed validation.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Condition</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_pipeline</code></td>
+<td>Mode not in <code>VALID_MODES</code></td>
+<td>Pass a valid mode: <code>auto</code>, <code>text_only</code>, <code>text_with_cover</code>, <code>video_only</code>, <code>qa_only</code>, <code>image-carousel</code>, <code>social-thread</code>, <code>short-video</code>, <code>repurpose</code></td>
+</tr>
+<tr>
+<td><code>run_pipeline</code></td>
+<td>Workflow name not found</td>
+<td>Check workflow name with <code>list_workflows()</code></td>
+</tr>
+<tr>
+<td><code>run_pipeline_from_strategy</code></td>
+<td>Workflow name not found</td>
+<td>Check workflow name with <code>list_workflows()</code></td>
+</tr>
+<tr>
+<td><code>archive_project</code></td>
+<td>Project status is not <code>published</code> and <code>force</code> is False</td>
+<td>Either publish the project first, or pass <code>force=True</code></td>
+</tr>
+<tr>
+<td><code>archive_project</code></td>
+<td>Archive target directory already exists</td>
+<td>Remove or rename the existing archive directory</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>Cron expression does not have exactly 5 fields</td>
+<td>Use the standard 5-field cron format (<code>min hour dom mon dow</code>)</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>Platform name not in <code>AdapterRegistry</code></td>
+<td>Use <code>register_platform_adapter</code> first or pick a known platform</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>Pipeline mode not in <code>VALID_MODES</code></td>
+<td>Pass a valid mode (same list as <code>run_pipeline</code>)</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>Schedule name already exists</td>
+<td>Use a different name or remove the existing schedule</td>
+</tr>
+<tr>
+<td><code>test_cron_schedule</code></td>
+<td>Cron expression does not have exactly 5 fields</td>
+<td>Use the standard 5-field cron format</td>
+</tr>
+<tr>
+<td><code>approve_gate</code></td>
+<td>Gate name not found or gate is not paused for approval</td>
+<td>Check <code>get_pending_approvals()</code> for the correct gate name</td>
+</tr>
+<tr>
+<td><code>reject_gate</code></td>
+<td>Gate name not found or gate is not paused for approval</td>
+<td>Check <code>get_pending_approvals()</code> for the correct gate name</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td><code>platform_name</code> is empty or not a string</td>
+<td>Provide a non-empty platform name</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td><code>platform_name</code> contains invalid characters</td>
+<td>Use only letters, digits, underscores, and hyphens</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td><code>adapter_class</code> is not a valid dotted path</td>
+<td>Use the <code>package.module.ClassName</code> format</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td><code>adapter_class</code> is not under <code>automedia.adapters.*</code></td>
+<td>Adapter classes must live in the <code>automedia.adapters</code> namespace</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td>Class name does not match <code>[A-Za-z_][A-Za-z0-9_]*</code></td>
+<td>Use a valid Python class name</td>
+</tr>
+<tr>
+<td><code>format_output</code></td>
+<td>Format string contains path separators</td>
+<td>Remove <code>/</code>, <code>\</code>, or <code>..</code> from the format identifier</td>
+</tr>
+<tr>
+<td><code>format_output</code></td>
+<td>Unsupported output format</td>
+<td>Use one of the allowed formats (e.g. <code>html</code>, <code>pdf</code>)</td>
+</tr>
+<tr>
+<td><code>update_engine_config</code></td>
+<td>Invalid modality</td>
+<td>Valid: <code>tts</code>, <code>asr</code>, <code>image</code>, <code>video</code></td>
+</tr>
+<tr>
+<td><code>connect_account</code></td>
+<td>Credentials not provided</td>
+<td>Pass a non-empty <code>credentials</code> dict</td>
+</tr>
+<tr>
+<td><code>connect_account</code></td>
+<td>Credential validation failed</td>
+<td>Check credential key names and values</td>
+</tr>
+</tbody>
+</table>
+<h3 id="not_found">NOT_FOUND<a class="headerlink" href="#not_found" title="Permanent link">&para;</a></h3>
+<p>A requested resource does not exist.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Condition</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>select_topic</code></td>
+<td>No pending topics in the pool</td>
+<td>Add topics via <code>add_pool_topic</code> or <code>research_topics</code></td>
+</tr>
+<tr>
+<td><code>get_pipeline_progress</code></td>
+<td>Project ID not in active pipeline tracker</td>
+<td>Check the project ID from <code>run_pipeline</code> output, or query <code>list_projects()</code></td>
+</tr>
+<tr>
+<td><code>get_pipeline_status</code></td>
+<td>Project not found on disk</td>
+<td>Verify the project ID and base directory</td>
+</tr>
+<tr>
+<td><code>archive_project</code></td>
+<td>Project not found on disk</td>
+<td>Verify the project ID and base directory</td>
+</tr>
+<tr>
+<td><code>publish_content</code></td>
+<td>Project not found on disk</td>
+<td>Verify the project ID and base directory</td>
+</tr>
+<tr>
+<td><code>cancel_pipeline</code></td>
+<td>No active pipeline for project ID</td>
+<td>Start a pipeline with <code>run_pipeline</code> first</td>
+</tr>
+<tr>
+<td><code>pause_pipeline</code></td>
+<td>No active pipeline for project ID</td>
+<td>Start a pipeline with <code>run_pipeline</code> first</td>
+</tr>
+<tr>
+<td><code>resume_pipeline</code></td>
+<td>No active pipeline for project ID</td>
+<td>Start a pipeline with <code>run_pipeline</code> first</td>
+</tr>
+<tr>
+<td><code>retry_gate</code></td>
+<td>No active pipeline for project ID</td>
+<td>Start a pipeline with <code>run_pipeline</code> first</td>
+</tr>
+<tr>
+<td><code>skip_gate</code></td>
+<td>No active pipeline for project ID</td>
+<td>Start a pipeline with <code>run_pipeline</code> first</td>
+</tr>
+<tr>
+<td><code>approve_gate</code></td>
+<td>No active engine for project ID</td>
+<td>Check project ID or start a pipeline first</td>
+</tr>
+<tr>
+<td><code>reject_gate</code></td>
+<td>No active engine for project ID</td>
+<td>Check project ID or start a pipeline first</td>
+</tr>
+<tr>
+<td><code>get_config</code></td>
+<td>Config key not found (deep get returned <code>None</code>)</td>
+<td>Check the key name and use dot notation</td>
+</tr>
+<tr>
+<td><code>get_account_health</code></td>
+<td>Account ID not found</td>
+<td>Verify the account ID from <code>list_accounts()</code></td>
+</tr>
+<tr>
+<td><code>disconnect_account</code></td>
+<td>Account ID not found</td>
+<td>Verify the account ID from <code>list_accounts()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="allowlist_denied">ALLOWLIST_DENIED<a class="headerlink" href="#allowlist_denied" title="Permanent link">&para;</a></h3>
+<p>Access blocked by the MCP path or key allowlist.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Condition</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_config</code></td>
+<td>The requested config key contains a secret keyword (<code>key</code>, <code>secret</code>, <code>password</code>, <code>token</code>)</td>
+<td>Use a non-secret key or access the value through other means</td>
+</tr>
+<tr>
+<td>Various file tools</td>
+<td>File path not in <code>mcp_allowlist.yaml</code></td>
+<td>Have the user add the path to the allowlist</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unknown">UNKNOWN<a class="headerlink" href="#unknown" title="Permanent link">&para;</a></h3>
+<p>Catch-all error for unexpected exceptions at the MCP boundary.  Any MCP
+tool can return this when an unhandled exception escapes.  The <code>message</code>
+field contains the exception string representation.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Typical Causes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All tools</td>
+<td>Database connection failures, file I/O errors, import errors, unexpected <code>None</code> values, network timeouts, API authentication failures</td>
+</tr>
+</tbody>
+</table>
+<p>When an <code>UNKNOWN</code> error is returned:
+1. Check the <code>message</code> for the specific exception text.
+2. Retry the operation.
+3. If the error persists, check server logs for the full traceback.</p>
+<hr />
+<h3 id="unused-codes">Unused Codes<a class="headerlink" href="#unused-codes" title="Permanent link">&para;</a></h3>
+<p>The following codes are defined in <code>MCPErrorCode</code> but are not currently
+emitted by any MCP tool.  They are reserved for future use.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Intended Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PIPELINE_ERROR</code></td>
+<td>Pipeline execution failure (gate failure, runner crash)</td>
+</tr>
+<tr>
+<td><code>ENGINE_ERROR</code></td>
+<td>Engine dependency failure (TTS, ASR, image, video engine errors)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="source-files">Source Files<a class="headerlink" href="#source-files" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/automedia/mcp/mcp_error.py</code></td>
+<td><code>MCPErrorCode</code> enum + <code>error_response()</code> / <code>success_response()</code> helpers</td>
+</tr>
+<tr>
+<td><code>src/automedia/mcp/tools.py</code></td>
+<td>All MCP tool implementations with <code>error_response()</code> call sites</td>
+</tr>
+<tr>
+<td><code>src/automedia/mcp/accounts.py</code></td>
+<td>Account management tools with <code>error_response()</code> call sites</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<!-- Merged from: docs/user/mcp-systemd-setup.md -->
+
+<h2 id="production-deployment-systemd">Production Deployment (systemd)<a class="headerlink" href="#production-deployment-systemd" title="Permanent link">&para;</a></h2>
+<p>Run the AutoMedia MCP server as a persistent systemd service so it stays
+alive across reboots and restarts automatically on failure.</p>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<ul>
+<li>AutoMedia installed in a Python environment reachable by the systemd unit.</li>
+<li><code>sudo</code> access on the host where the service will run.</li>
+</ul>
+<h3 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deploy/systemd/automedia-mcp.service</code></td>
+<td>systemd unit definition</td>
+</tr>
+<tr>
+<td><code>deploy/systemd/automedia-mcp.env</code></td>
+<td>Environment variable template</td>
+</tr>
+<tr>
+<td><code>docs/user/mcp-setup.md#production-deployment-systemd</code></td>
+<td>This guide</td>
+</tr>
+</tbody>
+</table>
+<h3 id="installation_1">Installation<a class="headerlink" href="#installation_1" title="Permanent link">&para;</a></h3>
+<h4 id="1-copy-the-service-unit">1. Copy the service unit<a class="headerlink" href="#1-copy-the-service-unit" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>cp<span class="w"> </span>deploy/systemd/automedia-mcp.service<span class="w"> </span>/etc/systemd/system/
+</code></pre></div>
+<h4 id="2-create-the-env-directory-and-copy-the-env-file">2. Create the env directory and copy the env file<a class="headerlink" href="#2-create-the-env-directory-and-copy-the-env-file" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/automedia
+sudo<span class="w"> </span>cp<span class="w"> </span>deploy/systemd/automedia-mcp.env<span class="w"> </span>/etc/automedia/automedia-mcp.env
+sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>/etc/automedia/automedia-mcp.env
+</code></pre></div>
+<h4 id="3-edit-the-env-file">3. Edit the env file<a class="headerlink" href="#3-edit-the-env-file" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>vim<span class="w"> </span>/etc/automedia/automedia-mcp.env
+</code></pre></div>
+<p>At minimum, set <code>AUTOMEDIA_LLM_API_KEY</code>. Uncomment and adjust other
+variables as needed.</p>
+<h4 id="4-review-the-service-unit">4. Review the service unit<a class="headerlink" href="#4-review-the-service-unit" title="Permanent link">&para;</a></h4>
+<p>If your Python environment is not the system default (e.g. you use a
+virtualenv), edit the <code>ExecStart</code> path in the service file:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>vim<span class="w"> </span>/etc/systemd/system/automedia-mcp.service
+</code></pre></div>
+<p>Change:</p>
+<div class="highlight"><pre><span></span><code>ExecStart=python -m automedia.mcp.server
+</code></pre></div>
+<p>to:</p>
+<div class="highlight"><pre><span></span><code>ExecStart=/home/automedia/.venv/bin/python -m automedia.mcp.server
+</code></pre></div>
+<p>Also adjust <code>WorkingDirectory</code> to match your deployment layout.</p>
+<h4 id="5-reload-systemd-and-enable-the-service">5. Reload systemd and enable the service<a class="headerlink" href="#5-reload-systemd-and-enable-the-service" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>daemon-reload
+sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>automedia-mcp
+</code></pre></div>
+<h4 id="6-start-the-service">6. Start the service<a class="headerlink" href="#6-start-the-service" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>automedia-mcp
+</code></pre></div>
+<h4 id="7-verify-the-service-is-running">7. Verify the service is running<a class="headerlink" href="#7-verify-the-service-is-running" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>automedia-mcp
+</code></pre></div>
+<p>Expected output includes <code>Active: active (running)</code>.</p>
+<h4 id="8-security-hardening-note">8. Security hardening note<a class="headerlink" href="#8-security-hardening-note" title="Permanent link">&para;</a></h4>
+<p>The service files ship with <code>ProtectHome=read-only</code> enabled. Since
+AutoMedia reads user configuration from <code>~/.automedia/</code>, the service
+files also include <code>ReadWritePaths=/home/*/.automedia</code> to grant the
+service access to user-level config while keeping the rest of <code>/home/</code>
+protected.</p>
+<p>If you deploy with a non-standard home directory layout, adjust
+<code>ReadWritePaths</code> accordingly — for example:</p>
+<div class="highlight"><pre><span></span><code><span class="na">ReadWritePaths</span><span class="o">=</span><span class="s">/opt/automedia/.automedia</span>
+</code></pre></div>
+<h4 id="9-view-logs">9. View logs<a class="headerlink" href="#9-view-logs" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Follow new log entries</span>
+sudo<span class="w"> </span>journalctl<span class="w"> </span>-u<span class="w"> </span>automedia-mcp<span class="w"> </span>-f
+
+<span class="c1"># View the last 100 lines</span>
+sudo<span class="w"> </span>journalctl<span class="w"> </span>-u<span class="w"> </span>automedia-mcp<span class="w"> </span>-n<span class="w"> </span><span class="m">100</span>
+
+<span class="c1"># View all logs since the service started</span>
+sudo<span class="w"> </span>journalctl<span class="w"> </span>-u<span class="w"> </span>automedia-mcp<span class="w"> </span>--since<span class="w"> </span><span class="s2">"5 minutes ago"</span>
+</code></pre></div>
+<h3 id="management">Management<a class="headerlink" href="#management" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start</td>
+<td><code>sudo systemctl start automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Stop</td>
+<td><code>sudo systemctl stop automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Restart</td>
+<td><code>sudo systemctl restart automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Status</td>
+<td><code>sudo systemctl status automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Enable on boot</td>
+<td><code>sudo systemctl enable automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Disable on boot</td>
+<td><code>sudo systemctl disable automedia-mcp</code></td>
+</tr>
+<tr>
+<td>View logs</td>
+<td><code>sudo journalctl -u automedia-mcp</code></td>
+</tr>
+<tr>
+<td>Follow logs</td>
+<td><code>sudo journalctl -u automedia-mcp -f</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h3>
+<p>Check that the MCP server registers its tools correctly:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server<span class="w"> </span>--show-tools
+</code></pre></div>
+<p>If using stdio transport, test connectivity from the CLI:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s1">'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>-u<span class="w"> </span>automedia<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
+</code></pre></div>
+<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python: command not found</code></td>
+<td>Python not on systemd <code>PATH</code></td>
+<td>Use absolute path to Python in <code>ExecStart</code></td>
+</tr>
+<tr>
+<td>Permission denied on env file</td>
+<td>Wrong ownership or mode</td>
+<td><code>sudo chmod 600 /etc/automedia/automedia-mcp.env</code></td>
+</tr>
+<tr>
+<td>Service starts then immediately exits</td>
+<td>Missing API key or import error</td>
+<td>Check logs with <code>journalctl -u automedia-mcp -n 50</code></td>
+</tr>
+<tr>
+<td><code>WorkingDirectory</code> does not exist</td>
+<td>Path mismatch</td>
+<td>Create the directory or update <code>WorkingDirectory</code> in the unit file</td>
+</tr>
+<tr>
+<td>```</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

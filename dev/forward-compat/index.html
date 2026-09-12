@@ -1,0 +1,2685 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="v1=readable, v2=re-runnable, v3=auto-migration. Schema stability guarantees and deprecation policy for project metadata files.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/forward-compat/">
+      
+      
+        <link rel="prev" href="../evaluation-matrix-principles/">
+      
+      
+        <link rel="next" href="../deep-module-rfc-001/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Forward Compatibility Policy - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#forward-compatibility-policy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Forward Compatibility Policy
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Matters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-compatibility-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Compatibility Tiers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Compatibility Tiers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v1-readable-current-stable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1: Readable (Current Stable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v2-re-runnable-future-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2: Re-runnable (Future Goal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v3-auto-migration-future-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3: Auto-migration (Future Goal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-schema-stability-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Schema Stability Guarantees
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Schema Stability Guarantees">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-00_project_infojson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 00_project_info.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-pipeline_md5json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 pipeline_md5.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-deprecation-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Deprecation Policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Deprecation Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-deprecation-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Deprecation Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-what-qualifies-as-a-breaking-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 What Qualifies as a Breaking Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-version-numbering-and-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Version Numbering and Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-migration-tool-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Migration Tool Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-agent-facing-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Agent-Facing Guarantees
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-summary-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Summary Table
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-related-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Related Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="forward-compatibility-policy">Forward Compatibility Policy<a class="headerlink" href="#forward-compatibility-policy" title="Permanent link">&para;</a></h1>
+<h2 id="why-this-matters">Why This Matters<a class="headerlink" href="#why-this-matters" title="Permanent link">&para;</a></h2>
+<p>AutoMedia produces project directories that live on disk indefinitely. A
+project created with v0.4.2 should still open, read, and report useful
+information when the codebase is at v2.0.0. This policy defines exactly what
+"still works" means and what guarantees users and agents can rely on.</p>
+<p>This document is referenced by <a href="../founder-expectations/#f48--forward-compatibility">F48</a>
+in the Founder's Expectations. F48 states the priority: readable comes first,
+re-runnable comes second, auto-migration comes third.</p>
+<hr />
+<h2 id="1-compatibility-tiers">1. Compatibility Tiers<a class="headerlink" href="#1-compatibility-tiers" title="Permanent link">&para;</a></h2>
+<p>Forward compatibility is defined in three tiers. Each tier is a superset of the
+one before it. The current codebase targets <strong>v1 (Readable)</strong> as the stable
+contract. v2 (Re-runnable) and v3 (Auto-migration) are <strong>aspirational</strong> — they
+are documented as design intent but have no concrete implementation plan or
+scheduled delivery.</p>
+<h3 id="v1-readable-current-stable">v1: Readable (Current Stable)<a class="headerlink" href="#v1-readable-current-stable" title="Permanent link">&para;</a></h3>
+<p><strong>Guarantee</strong>: New code can open any old project directory and extract
+meaningful information from it.</p>
+<p>What this means in practice:</p>
+<ul>
+<li>All metadata files (<code>00_project_info.json</code>, <code>pipeline_md5.json</code>) parse
+  correctly under the current schema reader.</li>
+<li>Unknown or future fields are silently ignored (never crash on unexpected
+  keys).</li>
+<li>The directory layout (<code>01_content/</code>, <code>02_images/</code>, etc.) is recognized and
+  assets can be enumerated.</li>
+<li>If a file format changes, the old format remains readable for at least one
+  major version cycle.</li>
+</ul>
+<p><strong>What is NOT guaranteed at v1</strong>:</p>
+<ul>
+<li>Old topics cannot be re-processed with the new pipeline (that is v2).</li>
+<li>Old projects cannot be auto-upgraded to a new schema (that is v3).</li>
+</ul>
+<h3 id="v2-re-runnable-future-goal">v2: Re-runnable (Future Goal)<a class="headerlink" href="#v2-re-runnable-future-goal" title="Permanent link">&para;</a></h3>
+<p><strong>Guarantee</strong>: Topics from old projects can be re-processed by the current
+pipeline without manual re-entry.</p>
+<p>What this adds over v1:</p>
+<ul>
+<li><code>00_project_info.json</code> contains enough information to seed a new
+  <code>run_pipeline()</code> call: <code>topic</code>, <code>brand</code>, <code>tenant_id</code> are all present.</li>
+<li>Old <code>pipeline_md5.json</code> checksums do not block a new run (the file is
+  overwritten, not merged).</li>
+<li>Pipeline <code>--resume</code> works across minor version bumps for the same project.</li>
+</ul>
+<p><strong>Adoption criteria</strong>: v2 is achieved when <code>automedia run --resume-from
+&lt;old-project-dir&gt;</code> works for projects created under the previous major version.</p>
+<h3 id="v3-auto-migration-future-goal">v3: Auto-migration (Future Goal)<a class="headerlink" href="#v3-auto-migration-future-goal" title="Permanent link">&para;</a></h3>
+<p><strong>Guarantee</strong>: An optional upgrade tool can convert old project directories to
+the latest schema, directory layout, and file format in one shot.</p>
+<p>What this adds over v2:</p>
+<ul>
+<li>A CLI command <code>automedia project migrate &lt;project-dir&gt;</code> upgrades the project
+  in place.</li>
+<li>Migration is idempotent: running it twice produces the same result as
+  running it once.</li>
+<li>The original project directory is backed up before migration (copy to
+  <code>{project-dir}.bak_{timestamp}</code>).</li>
+<li>Migration covers: <code>00_project_info.json</code> field changes, <code>pipeline_md5.json</code>
+  schema changes, directory restructuring, and output file format updates.</li>
+</ul>
+<p><strong>Adoption criteria</strong>: v3 is achieved when the migration command exists and
+has tests covering every breaking change introduced in the current major
+version.</p>
+<hr />
+<h2 id="2-schema-stability-guarantees">2. Schema Stability Guarantees<a class="headerlink" href="#2-schema-stability-guarantees" title="Permanent link">&para;</a></h2>
+<h3 id="21-00_project_infojson">2.1 <code>00_project_info.json</code><a class="headerlink" href="#21-00_project_infojson" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Project identity and metadata. Written once at project creation,
+never modified afterward.</p>
+<p><strong>Current schema</strong> (v1):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"project_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"010d36582aa2"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"topic"</span><span class="p">:</span><span class="w"> </span><span class="s2">"AI video tools comparison"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"brand"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my-brand"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tenant_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"default"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"created_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-07-15T08:07:20.342725+00:00"</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Stability guarantees</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Stability</th>
+<th>Can Add?</th>
+<th>Can Remove?</th>
+<th>Can Change Type?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>topic</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>brand</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>tenant_id</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Adding new fields</strong>: Allowed, but every new field MUST be optional in the
+reader. Old projects without the field must not error. The reader must supply
+a sensible default (<code>null</code>, <code>""</code>, or <code>0</code> as appropriate).</p>
+<p><strong>Removing fields</strong>: Prohibited without a 2-version deprecation cycle (see
+§3 Deprecation Policy).</p>
+<p><strong>Changing field types</strong>: Prohibited. If a wider type is needed, add a new
+field with a distinct name and deprecate the old one.</p>
+<p><strong>Reader contract</strong>: Code that reads <code>00_project_info.json</code> MUST use a lenient
+parser. Unknown keys are ignored. Missing optional keys use defaults. The only
+hard error is unparseable JSON (malformed file).</p>
+<h3 id="22-pipeline_md5json">2.2 <code>pipeline_md5.json</code><a class="headerlink" href="#22-pipeline_md5json" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Per-gate file integrity checksums. Written incrementally as each
+gate completes. Two subsystems write to this file:</p>
+<ol>
+<li><strong>Gate MD5 tracker</strong> (<code>automedia/hooks/md5_tracker.py</code>): writes per-gate
+   checksums under <code>gates.&lt;gate_name&gt;</code>.</li>
+<li><strong>Omni MD5 tracker</strong> (<code>automedia/omni/md5_integration.py</code>): writes Omni
+   pipeline checksums under <code>omni_*</code> sections.</li>
+</ol>
+<p><strong>Current schema</strong> (v1):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"gates"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"CW"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/abs/path/to/project/01_content/drafts/draft.md"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"md5"</span><span class="p">:</span><span class="w"> </span><span class="s2">"abc123def456"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"recorded_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-07-15T08:07:20.342725+00:00"</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">"G0"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/abs/path/to/project/01_content/drafts/draft.md"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"md5"</span><span class="p">:</span><span class="w"> </span><span class="s2">"abc123def456"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"recorded_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-07-15T08:07:21.102345+00:00"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"omni_inputs"</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">  </span><span class="nt">"omni_extraction"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"/abs/path/to/source.pdf"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"md5"</span><span class="p">:</span><span class="w"> </span><span class="s2">"789ghi012jkl"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"omni_translation"</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">  </span><span class="nt">"omni_orf_outputs"</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Stability guarantees</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Section / Field</th>
+<th>Stability</th>
+<th>Can Add?</th>
+<th>Can Remove?</th>
+<th>Can Change Type?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gates</code> (top-level key)</td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>gates.&lt;name&gt;.file_path</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>gates.&lt;name&gt;.md5</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>gates.&lt;name&gt;.recorded_at</code></td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>omni_inputs</code> (top-level key)</td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>omni_extraction</code> (top-level key)</td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>omni_translation</code> (top-level key)</td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>omni_orf_outputs</code> (top-level key)</td>
+<td><strong>Stable</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>New per-entry fields (e.g. <code>gates.&lt;name&gt;.duration_s</code>)</td>
+<td><strong>Allowed</strong></td>
+<td>Yes</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Adding new per-gate fields</strong>: Allowed. New fields MUST be optional. Readers
+that extract per-gate data MUST tolerate missing keys.</p>
+<p><strong>Adding new top-level sections</strong>: Allowed (e.g. <code>artifact_links</code>). Old readers
+will ignore them per the lenient parser contract.</p>
+<p><strong>Removing sections</strong>: Prohibited without 2-version deprecation cycle.</p>
+<p><strong>Reader contract</strong>: Same as <code>00_project_info.json</code> -- lenient parser, unknown
+keys ignored, missing optional keys use defaults. Malformed JSON is the only
+hard error.</p>
+<h3 id="23-directory-structure">2.3 Directory Structure<a class="headerlink" href="#23-directory-structure" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Standard subdirectory layout inside every project directory.</p>
+<p><strong>Current layout</strong> (v1):</p>
+<div class="highlight"><pre><span></span><code>{project_dir}/
+  00_project_info.json
+  pipeline_md5.json
+  01_content/
+    drafts/
+  02_images/
+    cover/
+  03_video/
+  04_subtitle/
+  05_review/
+  06_publish/
+</code></pre></div>
+<p><strong>Stability guarantees</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Stability</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01_content/drafts/</code></td>
+<td><strong>Stable</strong></td>
+<td>Draft output location</td>
+</tr>
+<tr>
+<td><code>02_images/cover/</code></td>
+<td><strong>Stable</strong></td>
+<td>Cover images</td>
+</tr>
+<tr>
+<td><code>03_video/</code></td>
+<td><strong>Stable</strong></td>
+<td>Video output</td>
+</tr>
+<tr>
+<td><code>04_subtitle/</code></td>
+<td><strong>Stable</strong></td>
+<td>Subtitle files</td>
+</tr>
+<tr>
+<td><code>05_review/</code></td>
+<td><strong>Stable</strong></td>
+<td>Review artifacts</td>
+</tr>
+<tr>
+<td><code>06_publish/</code></td>
+<td><strong>Stable</strong></td>
+<td>Publish artifacts</td>
+</tr>
+<tr>
+<td><code>00_project_info.json</code></td>
+<td><strong>Stable</strong></td>
+<td>At root of project dir</td>
+</tr>
+<tr>
+<td><code>pipeline_md5.json</code></td>
+<td><strong>Stable</strong></td>
+<td>At root of project dir</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Adding new subdirectories</strong>: Allowed. New content types get new numbers
+(e.g. <code>07_audio/</code>). Old readers will not look for them, which is acceptable.</p>
+<p><strong>Renaming or removing directories</strong>: Prohibited without 2-version deprecation
+cycle.</p>
+<hr />
+<h2 id="3-deprecation-policy">3. Deprecation Policy<a class="headerlink" href="#3-deprecation-policy" title="Permanent link">&para;</a></h2>
+<h3 id="31-principles">3.1 Principles<a class="headerlink" href="#31-principles" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>No silent breakage</strong>. Every breaking change goes through a formal
+   deprecation process. Users and agents receive advance notice.</li>
+<li><strong>Backward compatibility during deprecation</strong>. Both old and new formats
+   are supported concurrently for at least one minor version.</li>
+<li><strong>Migration tool for every break</strong>. When the old format is finally removed,
+   a migration command is available.</li>
+</ol>
+<h3 id="32-deprecation-lifecycle">3.2 Deprecation Lifecycle<a class="headerlink" href="#32-deprecation-lifecycle" title="Permanent link">&para;</a></h3>
+<p>A breaking change goes through four stages:</p>
+<div class="highlight"><pre><span></span><code>Stage 0:  Announce  ──  CHANGELOG entry: "FIELD_X will be removed in vN+2"
+Stage 1:  Deprecate ──  Both old and new formats supported. Reader warns
+                        on old format: "FIELD_X is deprecated, see migration guide."
+Stage 2:  Remove    ──  Old format no longer read. Migration tool converts.
+Stage 3:  Cleanup   ──  Migration tool may be archived. Old format fully unsupported.
+</code></pre></div>
+<p>Each stage lasts at minimum one minor version (X.Y.0). A full deprecation
+cycle is therefore at least two minor versions.</p>
+<h3 id="33-what-qualifies-as-a-breaking-change">3.3 What Qualifies as a Breaking Change<a class="headerlink" href="#33-what-qualifies-as-a-breaking-change" title="Permanent link">&para;</a></h3>
+<p>Any change that causes old project directories to fail under new code:</p>
+<ul>
+<li>Removing a field from <code>00_project_info.json</code> or <code>pipeline_md5.json</code>.</li>
+<li>Changing the type or format of an existing field.</li>
+<li>Removing or renaming a standard subdirectory.</li>
+<li>Changing the <code>pipeline_md5.json</code> top-level key structure.</li>
+<li>Requiring a field that old projects do not have.</li>
+</ul>
+<p>Changes that are NOT breaking:</p>
+<ul>
+<li>Adding a new optional field.</li>
+<li>Adding a new subdirectory.</li>
+<li>Adding a new top-level section to <code>pipeline_md5.json</code>.</li>
+<li>Changing internal code that does not affect serialized output.</li>
+</ul>
+<h3 id="34-version-numbering-and-compatibility">3.4 Version Numbering and Compatibility<a class="headerlink" href="#34-version-numbering-and-compatibility" title="Permanent link">&para;</a></h3>
+<p>AutoMedia follows <a href="https://semver.org/">Semantic Versioning 2.0.0</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Bump</th>
+<th>Meaning for Forward Compat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PATCH</strong> (0.4.1 -&gt; 0.4.2)</td>
+<td>Fully backward and forward compatible. No schema changes.</td>
+</tr>
+<tr>
+<td><strong>MINOR</strong> (0.4.0 -&gt; 0.5.0)</td>
+<td>New features added. Schema MAY gain new optional fields. Old projects remain readable. Deprecation warnings MAY begin.</td>
+</tr>
+<tr>
+<td><strong>MAJOR</strong> (1.0.0 -&gt; 2.0.0)</td>
+<td>Breaking changes allowed, but only after a deprecation cycle. Migration tool MUST exist for every documented breaking change.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-migration-tool-contract">3.5 Migration Tool Contract<a class="headerlink" href="#35-migration-tool-contract" title="Permanent link">&para;</a></h3>
+<p>When a migration tool ships (target: v3 tier), it must:</p>
+<ol>
+<li>Accept a project directory path.</li>
+<li>Detect the current schema version of that project.</li>
+<li>If migration is needed, create a backup (<code>{project-dir}.bak_{timestamp}</code>).</li>
+<li>Perform all upgrades in a single pass.</li>
+<li>Print a detailed log of what changed.</li>
+<li>Return exit code 0 on success, non-zero on failure.</li>
+<li>Be idempotent: running on an already-migrated project is a no-op (exit 0).</li>
+</ol>
+<hr />
+<h2 id="4-agent-facing-guarantees">4. Agent-Facing Guarantees<a class="headerlink" href="#4-agent-facing-guarantees" title="Permanent link">&para;</a></h2>
+<p>Agents (OpenCode, Claude Code, etc.) interact with old projects through MCP
+tools. The forward compatibility policy applies to these tools as well:</p>
+<ul>
+<li><code>get_pipeline_status(project_id)</code> must return valid data for old projects
+  (v1 guarantee).</li>
+<li><code>get_project_assets(project_dir)</code> must list all files in old project
+  directories (v1 guarantee).</li>
+<li><code>run_pipeline(topic=old_project.topic, brand=old_project.brand)</code> must
+  accept identity data from <code>00_project_info.json</code> (v2 guarantee).</li>
+<li><code>archive_project(project_id)</code> must work regardless of project age.</li>
+</ul>
+<p>Agent-facing behavior when opening an old project:</p>
+<blockquote>
+<p>"This project was produced with AutoMedia v0.4.2. Content is accessible.
+Re-running with current pipeline is available on request."</p>
+</blockquote>
+<hr />
+<h2 id="5-summary-table">5. Summary Table<a class="headerlink" href="#5-summary-table" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>v1 (Current)</th>
+<th>v2 (Future)</th>
+<th>v3 (Future)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read old metadata files</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>List old project assets</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Parse old <code>00_project_info.json</code></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Parse old <code>pipeline_md5.json</code></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Re-run old topic in new pipeline</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Resume old project after upgrade</td>
+<td>No</td>
+<td>Yes (minor)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Auto-upgrade old project schema</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Migration CLI tool</td>
+<td>Not needed</td>
+<td>Not needed</td>
+<td>Exists</td>
+</tr>
+<tr>
+<td>Backup before upgrade</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Idempotent migration</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-related-documents">6. Related Documents<a class="headerlink" href="#6-related-documents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../founder-expectations/#f48--forward-compatibility">F48: Forward Compatibility</a> -
+  Founder's expectation that old projects remain readable.</li>
+<li><a href="../founder-expectations/#f43--pipeline-integrity-verification">F43: Pipeline Integrity Verification</a> -
+  MD5 checksum tracking and verification.</li>
+<li><a href="../founder-expectations/#f39--run-isolation">F39: Run Isolation</a> -
+  Shared-nothing project isolation model.</li>
+<li><code>src/automedia/hooks/md5_tracker.py</code> - Gate MD5 tracker implementation.</li>
+<li><code>src/automedia/omni/md5_integration.py</code> - Omni MD5 tracker implementation.</li>
+<li><code>src/automedia/core/project.py</code> - Project creation and <code>00_project_info.json</code>
+  writer.</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

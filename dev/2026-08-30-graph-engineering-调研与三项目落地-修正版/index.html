@@ -1,0 +1,2057 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated media production pipeline documentation">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/2026-08-30-graph-engineering-%E8%B0%83%E7%A0%94%E4%B8%8E%E4%B8%89%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0-%E4%BF%AE%E6%AD%A3%E7%89%88/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Graph Engineering 调研报告 + 三项目落地评估（修正版 2026-08-30） - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#graph-engineering-2026-08-30" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Graph Engineering 调研报告 + 三项目落地评估（修正版 2026-08-30）
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="graph-engineering-2026-08-30">Graph Engineering 调研报告 + 三项目落地评估（修正版 2026-08-30）<a class="headerlink" href="#graph-engineering-2026-08-30" title="Permanent link">&para;</a></h1>
+<p><strong>日期</strong>：2026-08-30（修正版） ｜ <strong>调研人</strong>：default profile ｜ <strong>供</strong>：祝任甫
+<strong>主题</strong>：Graph Engineering 这个词怎么来的、有没有原始 paper、以及 AutoMedia / AutoInfo / Omni Suite 三项目中哪些应吸收它的核心价值做改进。
+<strong>修正说明</strong>：本版依据 2026-08-30 code profile 对三项目 backup/main 代码的实测核对，修正了 Gate 数量、域数、AutoInfo 当下瓶颈判断等失真点。</p>
+<hr />
+<h2 id="graph-engineering">一、Graph Engineering 是什么「短平快」<a class="headerlink" href="#graph-engineering" title="Permanent link">&para;</a></h2>
+<h3 id="_1">一句话<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<p><strong>用「图」(graph) 来显式组织 Agent 系统中的「任务分解、多Agent协作、运行时状态」，从而获得超越单Agent的「系统智能」——这是继 Prompt → Context → Harness → Loop 之后的下一代 Agent 工程范式。</strong></p>
+<h3 id="_2">命名怎么来的<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>这个词 2026-07 在 X 上被引爆（Peter Steinberger 一句「从 Loop 到 Graph?」的调侃 + LangChain 以自己 LangGraph 的叙事跟进）。</li>
+<li>但它不是纯 buzzword——背后有两篇系统学术工作，尤其 arXiv <strong>2608.21156</strong>《Graph Engineering in the Era of LLM Agents》是<strong>首次把这个词确立为一个独立范式</strong>、并给出完整 taxonomy 的「奠基综述」。</li>
+<li>中文语境（36氪/学术头条 2026-08-24）同步跟进，称其为「从个体智能走向系统智能」。</li>
+</ul>
+<h3 id="paper">原始 Paper（两条线，别混）<a class="headerlink" href="#paper" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>论文</th>
+<th>定位</th>
+<th>核心</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>arXiv:2506.18019</strong> 《Graphs Meet AI Agents: Taxonomy, Progress…》2025-06</td>
+<td>前身/底层</td>
+<td>图如何赋能 Agent 的四大能力：<strong>规划、执行、记忆、多Agent协调</strong></td>
+</tr>
+<tr>
+<td><strong>arXiv:2608.21156</strong> 《Graph Engineering in the Era of LLM Agents》2026-08-21</td>
+<td><strong>奠基综述（正主）</strong></td>
+<td>正式提出 Graph Engineering，35位作者跨吉大/厦大等，提出<strong>「三视图＋演化」</strong>框架</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>注：2506.18019 的一作 Yuanchen Bei 也出现在 2608.21156 作者名单里——两篇共享作者、构成<strong>学术延续</strong>，但注意 2506.18019 主体是<strong>浙江大学系</strong>（一作邮箱 zju.edu.cn），2608.21156 才是<strong>吉大牵头</strong>（corresponding 邮箱 qinggangzhang@jlu.edu.cn）。2506 是图×Agent 根部，2608 是把根部上升为「Graph Engineering 范式」。</p>
+</blockquote>
+<h3 id="260821156">核心框架（2608.21156 的定义）<a class="headerlink" href="#260821156" title="Permanent link">&para;</a></h3>
+<p>Graph Engineering = 用显式、动态、演化的图结构组织三件事：
+1. <strong>Task Organization（任务组织）</strong>：把复杂目标分解成子任务图，标出依赖/顺序/并行/验证关系。
+2. <strong>Agent Coordination（Agent 协调）</strong>：把任务映射到异构 Agent/组件，规定团队结构、委派路径、通信、结果整合。
+3. <strong>Runtime State Management（运行时状态管理）</strong>：持久化任务进度/共享事实/故障，支持来源追溯、故障定位、恢复回滚。</p>
+<p>加上 <strong>System Evolution（系统演化）</strong>：把执行经验沉淀为可复用的结构改进（可验证、可回滚）——这是「做完一次不改结构」和「真正自演化」的分界。
+另配套提出下一步 <strong>Ontology Engineering</strong>（为整张图建共享语义/本体）。</p>
+<h3 id="_3">关键判语（全文引用式结论）<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Graph Engineering不是 DAG 编排，而是承认「Agent 系统有循环、有并行、有状态」并把它们显式图化；它区别于已有图方法的关键是：<strong>图不只是「表示/计算机制」，而是系统的「组织基底」</strong>（任务/Agent/状态三图耦合，运行时证据可反过来改图）。</p>
+</blockquote>
+<hr />
+<h2 id="graph-engineering_1">二、Graph Engineering 与你三项目的对照<a class="headerlink" href="#graph-engineering_1" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>方法论：先按项目自身的定位框架（不拿外来标尺），再用 Graph Engineering 的「三视图+演化」透视它现在在哪一格、缺什么。</p>
+</blockquote>
+<h3 id="0">0. 一张总览表（结论先行，已修正）<a class="headerlink" href="#0" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>本质</th>
+<th>现有"个体智能"成熟度</th>
+<th>Graph Engineering 可吸收处</th>
+<th>优先级</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Omni Suite</strong>（OPP/OL/ORF 本地化管线）</td>
+<td>单Agent+工作流引擎</td>
+<td>高（最简单的循环+harness）</td>
+<td>时序管线已明；<strong>缺 Agent 分工图 / 状态可恢复</strong></td>
+<td>🟢 收益小，但低风险可做</td>
+</tr>
+<tr>
+<td><strong>AutoMedia</strong>（Content OS）</td>
+<td><strong>多Agent 产物式工作流</strong></td>
+<td>中</td>
+<td>Gate 引擎已代码化（<strong>22 个 Gate</strong> 线性链）→ <strong>升格为 DAG + 状态续跑</strong> = 直接受益</td>
+<td>🔴 核心受益者</td>
+</tr>
+<tr>
+<td><strong>AutoInfo</strong>（信息入口平台）</td>
+<td>采集→门控→入库→生成 长管线</td>
+<td>中</td>
+<td>G1-G5 Gate 链 + KB 关系图 + 产物可溯源 天然对标 Runtime State</td>
+<td>🟡 受益，但<strong>非当下最紧</strong>（详见三-3）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="1-omni-suiteoppolorf">1. Omni Suite（OPP/OL/ORF 本地化管线）— 🟢 可吸收但优先级最低<a class="headerlink" href="#1-omni-suiteoppolorf" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- OPP（Pre-Processor 提取）→ OL（Localizer 翻译）→ ORF（Re-Formatter 还原）是一条<strong>顺序、确定性的管线</strong>，本质是「单 Loop + 明确 harness」。
+- 与你三项目里最接近「DAG / 固定工作流」，<strong>Graph Engineering 最用不上的类型</strong>（LangChain 自己都说：固定结构任务，图的价值在于约束路径，而它路径已经确定）。</p>
+<p><strong>可吸收点（若做）</strong>：
+- <strong>Runtime State 可恢复</strong>：OL 长翻译中断后是否可从中断点续跑/回滚失败单位？这其实是它更该补的（即使不迁 Graph 范式，也是工程债）。
+- <strong>Agent/资源图</strong>：MCP 工具、术语表、TM 记忆之间的依赖/可替代关系，尚是隐式的。</p>
+<p><strong>判断</strong>：✅ 建议<strong>不主动重构</strong>为图。它的价值在"确定流水线"，图工程收益边际最低；若要动，只补「状态可恢复 + 来源可追溯」这两点（这也契合你一贯的 E2E 验证偏好）。</p>
+<hr />
+<h3 id="2-automediacontent-os">2. AutoMedia（Content OS）— 🔴 核心受益者<a class="headerlink" href="#2-automediacontent-os" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>（已实测 backup/main，2026-08-30，修正版）：
+- 你已建成 <strong>22 个强制 Gate</strong>（<code>_AUTO_GATE_NAMES</code>：pre-gate→CW→G0-G6→V0-V7→H0→L1-L4），是<strong>强制的、分阶段、多组件协作的内容生产管线</strong>（修正：上一版误作 14 个，实测为 22 个）。
+- 它现在是 <strong>Loop（单话题跑的复盘循环）＋ 一串顺序硬 Gate</strong>，多 Agent 角色（文案/封面/视频/QA）<strong>逐个上岗、串在单一线性顺序里</strong>——<code>_AUTO_GATE_NAMES</code> 是<strong>线性 list，不是图</strong>。</p>
+<p><strong>Graph Engineering 能给它的核心价值</strong>：
+1. <strong>Task Organization 显式化</strong>：把「一个 Topic 的内容生产」从「一个线性 Gate 链表」升级为「一张子任务图」——文案 Track（CW→G0-G6）与视频 Track（V0-V7）<strong>并行可并发</strong>（互不依赖的产物真正并行，而非串行等），依赖关系（封面依赖文案方向、视频依赖脚本定稿）显式画出来。这正是<strong>「多个不可互不相关任务并行执行」</strong>的图工程用例。当前代码层仍是纯顺序执行，两 Track 只是概念并行。
+2. <strong>Agent Coordination 明确化</strong>：谁写文案、谁做封面（ComfyUI）、谁剪片（HyperFrames）、谁 QA——现在靠 Gate 顺序隐式分工；图化后是带类型的「能力/责任/委派」边，某能力缺失时可找替代（如 TTS 引擎可配置回退默认音色，但目前是单一 <code>voice → config → DEFAULT_VOICE</code> 解析，尚无候选/替代音色机制）。
+3. <strong>Runtime State 可追踪</strong>：多个话题池（topic-pool）、多个生产项目（projects/）、进行中/已交付状态——建一张「状态图」，哪一步失败能定位到最早的无效态、判断影响哪些下游。<strong>注意</strong>：Gate 粒度续跑<strong>已部分实现</strong>——<code>run --resume-from &lt;gate&gt;</code>（runner/CLI/MCP 三入口均支持）、<code>PipelineHistoryHook</code> 已逐 Gate 写 <code>{gate_name}:started/completed/failed</code> 到 <code>history.db</code>、<code>_verify_resume_integrity()</code> 会校验 resume 点前的 MD5；<strong>缺的是「自动定位最后 passed Gate 并续跑」</strong>（当前需手动传 <code>--resume-from</code>）与失败定位反查下游影响（<code>rollback_types.py</code> 有 ProjectAction/rollback 雏形，但止于 project 级 status）。</p>
+<p><strong>最该吸收的一句话</strong>：<strong>Graph Engineering 的 Task+Coord+State 三维，其实你已经约 80% 做出来了（Gate 引擎就是隐式任务图，<code>--resume-from</code> 已实现 Gate 粒度续跑），缺的是把它「外显为图、自动续跑与失败定位」。</strong></p>
+<p><strong>建议动作</strong>（按性价比排序）：
+- P0：把 <strong>22 个 Gate 显式化为一张任务图 DAG</strong>（节点=阶段，边=依赖/并行），产出「AutoMedia 产线全景图」——说服力强、不写代码即价值（可用于对外讲 product）。
+- P1：识别可<strong>并行</strong>的产物阶段（封面/字幕/初剪）真正并行跑，不串行等。
+- P2：补「<strong>自动续跑 + 失败定位</strong>」——<code>--resume-from</code> 已可手动续跑，缺的是自动发现最后 passed Gate 续跑、失败反查下游影响（对应你 E2E/验证的偏好一致）。</p>
+<hr />
+<h3 id="3-autoinfo">3. AutoInfo（信息入口平台）— 🟡 受益，但非当下最紧（修正）<a class="headerlink" href="#3-autoinfo" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>（已实测 backup/main，2026-08-30，修正版）：
+- 采集（collect）→ 相关性门（G1-G3）→ 事实核查（G4）→ 入库（KB）→ 生成（digest/report/…）是一条<strong>长周期的数据→知识→产物管线</strong>，21 个域（修正：上一版作 22，实测 config 为 21 域）× 多数据源（collections/）/ KnowledgeBase 三层。
+- 你已经处理过 <strong>数据血缘</strong>（raw 来源追踪）、<strong>产物可溯源</strong>（manifest），<strong>G1-G5 Gate 纪律</strong>（上一版作 G0-G5，实际入库门为 G1-G5）。</p>
+<p><strong>Graph Engineering 能给它的核心价值</strong>：
+1. <strong>Runtime State Management 的技术框架合适</strong>：AutoInfo 的长管线断点定位依赖「状态图 + 来源图」，任何一环的有效状态变了都能追溯、定位最早的无效状态。上一版把「config 静默失效」（ai-commercial 中英混杂）当作已修复的 P0，<strong>但实测该问题并未根治</strong>——当前库中仍有大量中文财经噪声标题混入（如生猪价格、A股涨跌等），说明过滤规则仍未能完全拦干净，这部分仍是隐患。
+2. <strong>Task Organization</strong>：Gates 之间的<strong>依赖</strong>（事实核查依赖采集完成，入库依赖 G 通过）显式画出来——避免「缺配置就缩范围」这类隐藏依赖。
+3. <strong>Data Lineage / 血缘图</strong>：raw 从哪个源来、经过哪些过滤、进了哪个 KB 层、产出哪份产物——<strong>图化的血缘</strong>比现在的 manifest「更像图」，符合 Graph Engineering 的「来源可追溯」。</p>
+<p><strong>⚠️ 当下现实最紧项（修正，极其重要的判断更新）</strong>：
+AutoInfo <strong>目前的头号瓶颈不是"组织范式"，而是"产物质量缺陷"</strong>。2026-08-29 外部严格复审发现并已提 issue 追踪的缺陷包括（<strong>多数已于 2026-08-29 合并修复</strong>）：
+- digest 报告内部字段裸露/泄漏 → <strong>已修复</strong>（#91，<code>93f6688</code>/<code>4c9a3b7</code>，strip 内部 KB 元数据表与原始平台 id）
+- tutorial 产物空壳（H1 误标 <code># Weekly Digest</code>，根因 <code>_PRODUCT_H1_WORDS</code> 漏 <code>tutorial</code>）→ <strong>已修复</strong>（#92，<code>9e3d778</code>，重建 tutorial 完整性：H1 覆盖 + 确定性填充时长/前置/目标 + 替换 LLM 抄标题目标）
+- presentation 产物假源 → <strong>已修复</strong>（#93，<code>93f6688</code>，剥离伪造来源引用并禁止入 prompt）；「部分生成/空模板」残留项仍需重验
+- financial-intelligence 域数据全 stale（需重新采集，非代码缺陷）→ <strong>仍未处理</strong>（数据问题）
+这些是<strong>模板/LLM 层问题，Graph Engineering 的组织图能力解决不了</strong>。因此 AutoInfo 的落地优先级应排在中位：<strong>先完成现有产物质量闭环（bug-fix debug loop 优先，这是既定铁律），再考虑 Graph 组织升级。</strong></p>
+<p><strong>建议动作</strong>（按性价比排序，已修正）：
+- P0：<strong>先把现有 debug loop 跑完</strong>——presentation「部分生成/空模板」残留项、financial-intelligence stale 数据按 issue→PR→opencode loop 修复并重验，直至 demo package 全产物达标（digest 泄漏 / tutorial 空壳 / presentation 假源 #91-#93 已修，纳入回归验证）。这是用户既定最高优先。
+- P1（Graph 化）：把「采集→G1-G5→KB→产物」全链画成<strong>状态图 + 血缘图</strong>（含「某个 config 开关失效→影响下游哪些产物」的依赖边）。这能把 ai-commercial 那类污染问题变成<strong>图上的一个可见断裂</strong>，而不是靠人肉排查。
+- P2：<strong>Gate 状态的持久化/可恢复</strong>——G1-G5 每个通过/失败状态入库成「状态节点」，失败可定位到最早无效节点并判断影响范围。
+- P3：数据血缘<strong>图化</strong>（现 manifest 可升级为图结构），供付费用户/合规展示"每条结论可追溯到源"（这直接强化你 AutoInfo 的信任卖点）。</p>
+<hr />
+<h2 id="_4">三、落地的总原则与边界（辩证看）<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p><strong>该吸收的（三项目共性）</strong>：
+- <strong>把"隐式的任务/Gate/状态"外显为图</strong> → 并行化、可追踪、可回滚。三项目都受益。
+- <strong>Runtime State Management</strong> → 是 Omni/AutoMedia/AutoInfo 最通用、最该补的一维（失败定位+续跑+溯源）。</p>
+<p><strong>不该盲目做的（边界）</strong>：
+- ❌ <strong>不要为图而图</strong>。固定、顺序的管线（OPP→OL→ORF）图化收益低，LangChain 自己也建议这类用确定性 harness 而非图。
+- ❌ 图工程 ≠ 必须引入图数据库/neo4j。初期<strong>显式化=画图+状态持久化</strong>就够，不一定上重型图存储。
+- ❌ <strong>System Evolution（自演化）是高阶目标</strong>，先别做；先把 Task/Coord/State 三维显式化做扎实。</p>
+<p><strong>一句话给产品定位</strong>：这三项目都不是「做一个 Graph Engineering 框架」，而是<strong>「用 Graph Engineering 的组织视角，把已有的 Gate/管线/状态管理做得更显式、更可并行、更可恢复」</strong>——吸收的是组织范式，不换引擎。对 AutoInfo 尤其要<strong>先质量后图</strong>：产物质量闭环是当务之急，Graph 组织是锦上添花。</p>
+<hr />
+<h2 id="_5">四、附录：关键源头<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<ul>
+<li>奠基综述：arXiv:2608.21156《Graph Engineering in the Era of LLM Agents》(2026-08-21, 吉大等 35 人, CC BY 4.0) — github.com/DEEP-JLU/Awesome-Graph-Engineering</li>
+<li>前身：arXiv:2506.18019《Graphs Meet AI Agents》(2025-06)</li>
+<li>引爆语境：LangChain《3 Years of Graph Engineering with LangGraph》(2026-07-22) — 承认是「老概念的新名字」，loop 是 graph 的简单版</li>
+<li>中文解读：36氪/学术头条《AI Agent 的下一站：一文读懂 Graph Engineering》2026-08-24</li>
+</ul>
+<hr />
+<p><em>修正记录（2026-08-30）：① AutoMedia Gate 数 14→22（实测 <code>_AUTO_GATE_NAMES</code>）；② AutoInfo 域数 22→21（实测 config）；③ AutoInfo Gate 记法 G0-G5→G1-G5（实测入库门）；④ AutoInfo 优先级从「🔴 核心受益者」调整为「🟡 受益但非当下最紧」，并将产物质量缺陷列为 P0 当务之急；⑤ 删去「ai 域 config 问题已根治」的错误表述，改为「实测仍未完全拦净」；⑥ 删去「声音候选取代」表述（实测无此代码，TTS 仅单一 voice 解析）；⑦ AutoInfo 缺陷状态更新：#91/#92/#93 已于 2026-08-29 合并修复，P0 剩余为 presentation 残留项 + financial stale 数据；⑧ 2506.18019 团队归属修正为浙大系（与 2608 吉大系共享作者 Yuanchen Bei）；⑨ AutoMedia Runtime State 声明修正：Gate 粒度续跑已部分实现（<code>--resume-from</code> + <code>PipelineHistoryHook</code> 逐 Gate 记录），缺口为「自动定位最后 passed Gate 并续跑」，成熟度 70%→约 80%。</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

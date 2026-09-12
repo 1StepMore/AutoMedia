@@ -1,0 +1,4063 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AutoMedia CLI command reference — usage and parameter descriptions for 19 subcommands.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/user/cli-reference/">
+      
+      
+        <link rel="prev" href="../api-reference/">
+      
+      
+        <link rel="next" href="../mcp-setup/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CLI Reference - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-cli-naming-equivalences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP-CLI Naming Equivalences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia account
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia account">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-connect-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account connect Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-connect-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account connect Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account list Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-health-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account health Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-disconnect-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account disconnect Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-disconnect-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account disconnect Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia pool
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia pool">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pool-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pool list Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pool-add-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pool add Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pool-prune-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pool prune Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia projects
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia projects">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projects-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        projects list Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projects-get-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        projects get Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia archive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia archive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-distribute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia distribute
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia distribute">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-effects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia effects
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia effects">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia adapter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia adapter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adapter-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        adapter list Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adapter-create-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        adapter create Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-cron" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia cron
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia cron">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cron-run-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron run Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cron-run-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron run Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cron-check-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron check-health
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cron-run-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron run-pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cron run-pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cron-run-pipeline-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron run-pipeline Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia init
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia init">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flags_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia doctor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-omni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia omni
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-export-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline export-dag
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pipeline export-dag">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-export-dag-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline export-dag Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline state
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pipeline state">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-state-arguments-and-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline state Arguments and Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-hitl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia hitl
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-onboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia onboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia history
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia history">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments-and-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments and Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia rollback
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia rollback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments-and-flags_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments and Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia validate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate-run-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate run Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
+<h2 id="mcp-cli-naming-equivalences">MCP-CLI Naming Equivalences<a class="headerlink" href="#mcp-cli-naming-equivalences" title="Permanent link">&para;</a></h2>
+<p>AutoMedia exposes the same functionality through both CLI commands and MCP
+tools. Some operations use different names depending on the interface:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>CLI Command</th>
+<th>MCP Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Document extraction</td>
+<td><code>automedia omni ingest</code></td>
+<td><code>extract_brief</code></td>
+</tr>
+<tr>
+<td>Content translation</td>
+<td><code>automedia omni localize</code></td>
+<td><code>localize_content</code></td>
+</tr>
+<tr>
+<td>Format conversion</td>
+<td><code>automedia omni format-output</code></td>
+<td><code>format_output</code></td>
+</tr>
+</tbody>
+</table>
+<p>These pairs are <strong>semantically equivalent</strong> — they call the same underlying
+implementation (:func:<code>automedia.pipelines.runner.run_full_pipeline</code> for
+pipeline operations; the Omni adapter layer for extract/translate/convert).</p>
+<h2 id="commands-overview">Commands Overview<a class="headerlink" href="#commands-overview" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>automedia run</code></td>
+<td>Execute production pipeline (single topic or batch via <code>--topics</code>)</td>
+</tr>
+<tr>
+<td><code>automedia pool</code></td>
+<td>Topic pool management (list, add, score)</td>
+</tr>
+<tr>
+<td><code>automedia projects</code></td>
+<td>List and manage production projects</td>
+</tr>
+<tr>
+<td><code>automedia distribute</code></td>
+<td>Distribute pipeline content to platforms (D-gates with <code>--platforms</code>, <code>--all</code>, <code>--dry-run</code>)</td>
+</tr>
+<tr>
+<td><code>automedia effects</code></td>
+<td>Compute content analytics stats (word count, sentiment, readability, brand mentions, SEO)</td>
+</tr>
+<tr>
+<td><code>automedia adapter</code></td>
+<td>Platform adapter audit + templates (<code>list</code> with <code>--real</code>/<code>--stub</code>/<code>--json</code>, <code>create</code>)</td>
+</tr>
+<tr>
+<td><code>automedia cron</code></td>
+<td>Execute scheduled cron jobs and pipeline runs</td>
+</tr>
+<tr>
+<td><code>automedia account</code></td>
+<td>Platform account management</td>
+</tr>
+<tr>
+<td><code>automedia archive</code></td>
+<td>Archive a project</td>
+</tr>
+<tr>
+<td><code>automedia init</code></td>
+<td>Initialize AutoMedia configuration</td>
+</tr>
+<tr>
+<td><code>automedia doctor</code></td>
+<td>Check system dependencies</td>
+</tr>
+<tr>
+<td><code>automedia omni</code></td>
+<td>Omni Triad operations (extract, translate, convert)</td>
+</tr>
+<tr>
+<td><code>automedia pipeline</code></td>
+<td>Pipeline DAG export and state inspection (export-dag, state)</td>
+</tr>
+<tr>
+<td><code>automedia hitl</code></td>
+<td>Human-in-the-loop review operations</td>
+</tr>
+<tr>
+<td><code>automedia mcp</code></td>
+<td>Generate MCP client configuration for various IDEs</td>
+</tr>
+<tr>
+<td><code>automedia onboard</code></td>
+<td>Onboarding wizard</td>
+</tr>
+<tr>
+<td><code>automedia history</code></td>
+<td>Show pipeline execution history for a project</td>
+</tr>
+<tr>
+<td><code>automedia rollback</code></td>
+<td>Roll back a project: archive it and revert status to draft</td>
+</tr>
+<tr>
+<td><code>automedia validate</code></td>
+<td>Run the agent-tester validation suite (list, run, report, diff, coverage, matrix)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="global">Global<a class="headerlink" href="#global" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>--help
+automedia<span class="w"> </span>--version
+</code></pre></div>
+<h2 id="automedia-account"><code>automedia account</code><a class="headerlink" href="#automedia-account" title="Permanent link">&para;</a></h2>
+<p>Manage platform accounts for publishing.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Connect a new account</span>
+automedia<span class="w"> </span>account<span class="w"> </span>connect<span class="w"> </span>wechat<span class="w"> </span>--auth-type<span class="w"> </span>cookie<span class="w"> </span>--label<span class="w"> </span><span class="s2">"Main WeChat"</span>
+
+<span class="c1"># List all accounts</span>
+automedia<span class="w"> </span>account<span class="w"> </span>list
+
+<span class="c1"># List accounts filtered by platform</span>
+automedia<span class="w"> </span>account<span class="w"> </span>list<span class="w"> </span>--platform<span class="w"> </span>wechat
+
+<span class="c1"># Check account health</span>
+automedia<span class="w"> </span>account<span class="w"> </span>health<span class="w"> </span>acc_wechat_a1b2c3d4
+
+<span class="c1"># Disconnect an account</span>
+automedia<span class="w"> </span>account<span class="w"> </span>disconnect<span class="w"> </span>acc_wechat_a1b2c3d4
+
+<span class="c1"># Force disconnect without confirmation</span>
+automedia<span class="w"> </span>account<span class="w"> </span>disconnect<span class="w"> </span>acc_wechat_a1b2c3d4<span class="w"> </span>--yes
+</code></pre></div>
+<h3 id="subcommands">Subcommands<a class="headerlink" href="#subcommands" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connect</code></td>
+<td>Register a new platform account (prompts for credentials)</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>List registered accounts, supports <code>--platform</code> and <code>--status</code> filtering</td>
+</tr>
+<tr>
+<td><code>health</code></td>
+<td>Check an account's health status and last check time</td>
+</tr>
+<tr>
+<td><code>disconnect</code></td>
+<td>Remove a platform account (requires confirmation unless <code>--yes</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-connect-arguments">account connect Arguments<a class="headerlink" href="#account-connect-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Platform name (e.g. wechat, zhihu, xiaohongshu)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-connect-flags">account connect Flags<a class="headerlink" href="#account-connect-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--auth-type</code></td>
+<td><code>str</code></td>
+<td><code>api_key</code></td>
+<td>Authentication type (api_key, cookie, oauth2_client_cred)</td>
+</tr>
+<tr>
+<td><code>--label</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Human-readable label for the account</td>
+</tr>
+</tbody>
+</table>
+<p>After running the command, enter credentials as <code>key=value</code> pairs (one per line, empty line to finish):</p>
+<div class="highlight"><pre><span></span><code>  cookie=sessionid=abc123; token=xyz789
+  user_agent=Mozilla/5.0...
+</code></pre></div>
+<h3 id="account-list-flags">account list Flags<a class="headerlink" href="#account-list-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--platform</code></td>
+<td><code>-p</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Filter by platform</td>
+</tr>
+<tr>
+<td><code>--status</code></td>
+<td><code>-s</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Filter by status (active, inactive, stale)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-health-arguments">account health Arguments<a class="headerlink" href="#account-health-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>account_id</code></td>
+<td><code>str</code></td>
+<td>Account ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-disconnect-arguments">account disconnect Arguments<a class="headerlink" href="#account-disconnect-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>account_id</code></td>
+<td><code>str</code></td>
+<td>Account ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-disconnect-flags">account disconnect Flags<a class="headerlink" href="#account-disconnect-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--yes</code></td>
+<td><code>-y</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Skip confirmation prompt</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-run"><code>automedia run</code><a class="headerlink" href="#automedia-run" title="Permanent link">&para;</a></h2>
+<p>Execute the full content production pipeline.</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI Video Generation Tool Comparison"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand
+
+<span class="c1"># Text-only mode</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--mode<span class="w"> </span>text_only
+
+<span class="c1"># Image carousel mode</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--mode<span class="w"> </span>image-carousel
+
+<span class="c1"># Short video mode</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--mode<span class="w"> </span>short-video
+
+<span class="c1"># Resume from a specific Gate</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--resume-from<span class="w"> </span>G3
+</code></pre></div>
+<h3 id="flags">Flags<a class="headerlink" href="#flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--topic</code></td>
+<td><code>-t</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Content topic</td>
+</tr>
+<tr>
+<td><code>--topics</code></td>
+<td></td>
+<td><code>str</code></td>
+<td><code>None</code></td>
+<td>Comma-separated topics for batch mode (overrides <code>--topic</code>)</td>
+</tr>
+<tr>
+<td><code>--brand</code></td>
+<td><code>-b</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Brand identifier</td>
+</tr>
+<tr>
+<td><code>--mode</code></td>
+<td><code>-m</code></td>
+<td><code>str</code></td>
+<td><code>auto</code></td>
+<td>Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose</td>
+</tr>
+<tr>
+<td><code>--resume-from</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Resume from a specific Gate (skip preceding gates)</td>
+</tr>
+<tr>
+<td><code>--auto-resume</code></td>
+<td></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Resume from the last passed gate (reads history.db)</td>
+</tr>
+<tr>
+<td><code>--decision-mode</code></td>
+<td></td>
+<td><code>str</code></td>
+<td><code>build</code></td>
+<td>(DEPRECATED) Decision mode for pipeline execution — no longer functional</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Show full error traceback for debugging</td>
+</tr>
+<tr>
+<td><code>--source-path</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Path to a source document (<code>.md</code>, <code>.txt</code>, <code>.pdf</code>). Content is loaded into the pipeline</td>
+</tr>
+<tr>
+<td><code>--source-url</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>URL to fetch source content from. Content is loaded into the pipeline</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-pool"><code>automedia pool</code><a class="headerlink" href="#automedia-pool" title="Permanent link">&para;</a></h2>
+<p>Manage the topic pool.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># List topics (filterable by status)</span>
+automedia<span class="w"> </span>pool<span class="w"> </span>list
+automedia<span class="w"> </span>pool<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+
+<span class="c1"># Add a topic</span>
+automedia<span class="w"> </span>pool<span class="w"> </span>add<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI Trends 2026"</span><span class="w"> </span>--url<span class="w"> </span><span class="s2">"https://..."</span><span class="w"> </span>--source<span class="w"> </span>weibo
+
+<span class="c1"># Clean up expired topics</span>
+automedia<span class="w"> </span>pool<span class="w"> </span>prune<span class="w"> </span>--days<span class="w"> </span><span class="m">7</span>
+</code></pre></div>
+<h3 id="subcommands_1">Subcommands<a class="headerlink" href="#subcommands_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list</code></td>
+<td>List topics, supports <code>--status</code> filtering</td>
+</tr>
+<tr>
+<td><code>add</code></td>
+<td>Add a new topic, requires <code>--topic</code></td>
+</tr>
+<tr>
+<td><code>attach-brief</code></td>
+<td>Attach a content brief to a topic</td>
+</tr>
+<tr>
+<td><code>prune</code></td>
+<td>Clean up expired topics from N days ago, defaults to 7 days</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pool-list-flags">pool list Flags<a class="headerlink" href="#pool-list-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--status</code></td>
+<td><code>-s</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Filter by status (pending, selected, published)</td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Pool SQLite file path</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pool-add-flags">pool add Flags<a class="headerlink" href="#pool-add-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--topic</code></td>
+<td><code>-t</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Topic title</td>
+</tr>
+<tr>
+<td><code>--url</code></td>
+<td><code>-u</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Source URL</td>
+</tr>
+<tr>
+<td><code>--source</code></td>
+<td><code>-s</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Source platform</td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Pool SQLite file path</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pool-prune-flags">pool prune Flags<a class="headerlink" href="#pool-prune-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--days</code></td>
+<td><code>-d</code></td>
+<td><code>int</code></td>
+<td><code>7</code></td>
+<td>Delete pending topics older than N days</td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Pool SQLite file path</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-projects"><code>automedia projects</code><a class="headerlink" href="#automedia-projects" title="Permanent link">&para;</a></h2>
+<p>View and manage projects.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all projects</span>
+automedia<span class="w"> </span>projects<span class="w"> </span>list
+
+<span class="c1"># Filter by status</span>
+automedia<span class="w"> </span>projects<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>published
+
+<span class="c1"># View specific project details</span>
+automedia<span class="w"> </span>projects<span class="w"> </span>get<span class="w"> </span>&lt;project-id&gt;
+</code></pre></div>
+<h3 id="subcommands_2">Subcommands<a class="headerlink" href="#subcommands_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list</code></td>
+<td>List projects</td>
+</tr>
+<tr>
+<td><code>get</code></td>
+<td>View project details (JSON)</td>
+</tr>
+<tr>
+<td><code>get-assets</code></td>
+<td>Get project asset list</td>
+</tr>
+</tbody>
+</table>
+<h3 id="projects-list-flags">projects list Flags<a class="headerlink" href="#projects-list-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--status</code></td>
+<td><code>-s</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Filter by status</td>
+</tr>
+<tr>
+<td><code>--base-dir</code></td>
+<td><code>-d</code></td>
+<td><code>str</code></td>
+<td><code>.</code></td>
+<td>Root directory to scan for projects</td>
+</tr>
+</tbody>
+</table>
+<h3 id="projects-get-arguments">projects get Arguments<a class="headerlink" href="#projects-get-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-archive"><code>automedia archive</code><a class="headerlink" href="#automedia-archive" title="Permanent link">&para;</a></h2>
+<p>Archive a project (Red Line 8 mandatory constraint).</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Normal archive (status must be published)</span>
+automedia<span class="w"> </span>archive<span class="w"> </span>&lt;project-id&gt;
+
+<span class="c1"># Force archive (skip published check)</span>
+automedia<span class="w"> </span>archive<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--force
+</code></pre></div>
+<h3 id="arguments">Arguments<a class="headerlink" href="#arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flags_1">Flags<a class="headerlink" href="#flags_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--force</code></td>
+<td><code>-f</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Force archive, skip published status check</td>
+</tr>
+<tr>
+<td><code>--base-dir</code></td>
+<td><code>-d</code></td>
+<td><code>str</code></td>
+<td><code>.</code></td>
+<td>Project root directory</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-distribute"><code>automedia distribute</code><a class="headerlink" href="#automedia-distribute" title="Permanent link">&para;</a></h2>
+<p>Distribute pipeline content to platforms via D1-D7 distribution gates.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Distribute to specific platforms</span>
+automedia<span class="w"> </span>distribute<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--platforms<span class="w"> </span>wechat,twitter
+
+<span class="c1"># Distribute to all platforms</span>
+automedia<span class="w"> </span>distribute<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--all
+
+<span class="c1"># Dry run (preview without executing)</span>
+automedia<span class="w"> </span>distribute<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--platforms<span class="w"> </span>wechat<span class="w"> </span>--dry-run
+
+<span class="c1"># Distribute via cron schedule</span>
+automedia<span class="w"> </span>distribute<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--all<span class="w"> </span>--cron
+</code></pre></div>
+<h3 id="arguments_1">Arguments<a class="headerlink" href="#arguments_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flags_2">Flags<a class="headerlink" href="#flags_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--platforms</code></td>
+<td><code>-p</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Comma-separated list of target platforms</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td><code>-a</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Distribute to all configured platforms</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td><code>-d</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Preview distribution without executing</td>
+</tr>
+<tr>
+<td><code>--cron</code></td>
+<td></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Run as cron job (suppresses interactive output)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-effects"><code>automedia effects</code><a class="headerlink" href="#automedia-effects" title="Permanent link">&para;</a></h2>
+<p>Compute content analytics for a project.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Compute all analytics for a project</span>
+automedia<span class="w"> </span>effects<span class="w"> </span>&lt;project-id&gt;
+
+<span class="c1"># Get analytics with summary</span>
+automedia<span class="w"> </span>effects<span class="w"> </span>&lt;project-id&gt;<span class="w"> </span>--summary
+</code></pre></div>
+<h3 id="arguments_2">Arguments<a class="headerlink" href="#arguments_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flags_3">Flags<a class="headerlink" href="#flags_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--summary</code></td>
+<td><code>-s</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Print a human-readable summary</td>
+</tr>
+</tbody>
+</table>
+<p>Analytics computed: word count, sentiment score, readability score, brand mention count, SEO scores (5 dimensions).</p>
+<h2 id="automedia-adapter"><code>automedia adapter</code><a class="headerlink" href="#automedia-adapter" title="Permanent link">&para;</a></h2>
+<p>Manage platform adapters.</p>
+<p>The <code>adapter</code> command family is <strong>deprecated</strong> for account and publish flows.
+Those moved to <code>automedia account</code>. <code>adapter list</code> remains the sanctioned
+platform-audit surface: every row carries its automation status derived from
+the adapter's <code>is_stub</code> attribute.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all registered platform adapters with a real/stub status column</span>
+automedia<span class="w"> </span>adapter<span class="w"> </span>list
+
+<span class="c1"># Platform-audit filters (plan P1-1): only real-API automation, only manual stubs</span>
+automedia<span class="w"> </span>adapter<span class="w"> </span>list<span class="w"> </span>--real
+automedia<span class="w"> </span>adapter<span class="w"> </span>list<span class="w"> </span>--stub
+
+<span class="c1"># Machine-readable audit output</span>
+automedia<span class="w"> </span>adapter<span class="w"> </span>list<span class="w"> </span>--json
+automedia<span class="w"> </span>adapter<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span>--real
+
+<span class="c1"># Create new adapter template</span>
+automedia<span class="w"> </span>adapter<span class="w"> </span>create<span class="w"> </span>--name<span class="w"> </span>youtube
+</code></pre></div>
+<p>Plain <code>automedia adapter list</code> prints one line per platform with its status:
+20 registered adapters, 12 <code>real</code> (is_stub=False; 11 publish APIs plus the
+feishu notifier) and 8 <code>stub</code> (is_stub=True; intentional manual-publish
+stubs). <code>--real</code> filters to the 12 real-automation adapters, <code>--stub</code> to the 8
+manual-publish stubs. <code>--json</code> emits the machine-readable payload instead:
+<code>{"status", "adapters": [{name, is_stub}], "count", "filters"}</code>.</p>
+<h3 id="subcommands_3">Subcommands<a class="headerlink" href="#subcommands_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list</code></td>
+<td>List registered platform adapters with a real/stub audit status column</td>
+</tr>
+<tr>
+<td><code>create</code></td>
+<td>Generate a new adapter template file</td>
+</tr>
+</tbody>
+</table>
+<h3 id="adapter-list-flags">adapter list Flags<a class="headerlink" href="#adapter-list-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--real</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Only platforms with real API automation (is_stub=False — 11 publish APIs + feishu notifier)</td>
+</tr>
+<tr>
+<td><code>--stub</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Only intentional manual-publish stub platforms (is_stub=True — 8)</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Machine-readable JSON output (also accepted app-level as <code>automedia --json adapter list</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><code>--real</code> and <code>--stub</code> are mutually exclusive: passing both together is an
+error and the command exits with status 1.</p>
+<h3 id="adapter-create-flags">adapter create Flags<a class="headerlink" href="#adapter-create-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td><code>-n</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Platform name (e.g. youtube)</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td><code>-o</code></td>
+<td><code>str</code></td>
+<td><code>src/automedia/adapters/platforms</code></td>
+<td>Output directory</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-cron"><code>automedia cron</code><a class="headerlink" href="#automedia-cron" title="Permanent link">&para;</a></h2>
+<p>Run scheduled jobs and health checks.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run a specific job</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>run<span class="w"> </span>&lt;job-name&gt;
+
+<span class="c1"># Full system health check</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>check-health
+</code></pre></div>
+<h3 id="known-jobs">Known Jobs<a class="headerlink" href="#known-jobs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Job Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pool-collect</code></td>
+<td>Collect new topics into the pool</td>
+</tr>
+<tr>
+<td><code>pool-score</code></td>
+<td>Score and rank topics</td>
+</tr>
+<tr>
+<td><code>pool-prune</code></td>
+<td>Clean up expired topics</td>
+</tr>
+<tr>
+<td><code>publish-check</code></td>
+<td>Check pending publish content</td>
+</tr>
+<tr>
+<td><code>run-pipeline</code></td>
+<td>Execute scheduled pipeline runs from cron/jobs.yaml</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cron-run-arguments">cron run Arguments<a class="headerlink" href="#cron-run-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>job_name</code></td>
+<td><code>str</code></td>
+<td>Job name (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cron-run-flags">cron run Flags<a class="headerlink" href="#cron-run-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--timeout</code></td>
+<td><code>int</code></td>
+<td><code>120</code></td>
+<td>Job timeout in seconds</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cron-check-health">cron check-health<a class="headerlink" href="#cron-check-health" title="Permanent link">&para;</a></h3>
+<p>Run a 4-step health check:</p>
+<ol>
+<li><code>.automedia/</code> config directory exists</li>
+<li><code>pool.db</code> accessible</li>
+<li>Core dependencies: Python &gt;= 3.11, ffmpeg available</li>
+<li><code>jobs.yaml</code> valid</li>
+</ol>
+<h3 id="cron-run-pipeline">cron run-pipeline<a class="headerlink" href="#cron-run-pipeline" title="Permanent link">&para;</a></h3>
+<p>Execute scheduled pipeline runs defined in <code>cron/jobs.yaml</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run all pipeline schedules</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>run-pipeline
+
+<span class="c1"># Run a specific schedule by name</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>run-pipeline<span class="w"> </span>--name<span class="w"> </span>daily-wechat
+
+<span class="c1"># Run with explicit pool database path</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>run-pipeline<span class="w"> </span>--pool-db<span class="w"> </span>/path/to/pool.db
+</code></pre></div>
+<h4 id="cron-run-pipeline-flags">cron run-pipeline Flags<a class="headerlink" href="#cron-run-pipeline-flags" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td><code>-n</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Schedule name (empty = run all schedules)</td>
+</tr>
+<tr>
+<td><code>--pool-db</code></td>
+<td></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Explicit path to topic pool SQLite database</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-init"><code>automedia init</code><a class="headerlink" href="#automedia-init" title="Permanent link">&para;</a></h2>
+<p>Initialize AutoMedia configuration.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Interactive wizard</span>
+automedia<span class="w"> </span>init
+
+<span class="c1"># Minimal config (non-interactive)</span>
+automedia<span class="w"> </span>init<span class="w"> </span>--template<span class="w"> </span>minimal
+</code></pre></div>
+<h3 id="flags_4">Flags<a class="headerlink" href="#flags_4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--template</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Template mode: <code>minimal</code></td>
+</tr>
+</tbody>
+</table>
+<p>The interactive wizard prompts for the following:</p>
+<ul>
+<li>LLM provider (<code>openai</code> / <code>anthropic</code>)</li>
+<li>API base URL</li>
+<li>API key (hidden input)</li>
+</ul>
+<p>Reconfiguring preserves an existing LLM fallback chain in <code>model_config.yaml</code>; only the fields you change are updated.</p>
+<h2 id="automedia-doctor"><code>automedia doctor</code><a class="headerlink" href="#automedia-doctor" title="Permanent link">&para;</a></h2>
+<p>System dependency and runtime environment health check.</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>doctor
+</code></pre></div>
+<p>Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.</p>
+<p>When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the <code>llm</code> field. These warnings are advisory and do not affect the exit code.</p>
+<h2 id="automedia-omni"><code>automedia omni</code><a class="headerlink" href="#automedia-omni" title="Permanent link">&para;</a></h2>
+<p>Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF).</p>
+<p>Each CLI subcommand has a corresponding MCP tool with a different name (see the
+<a href="#mcp-cli-naming-equivalences">MCP-CLI Naming Equivalences</a> table at the top of this page):</p>
+<table>
+<thead>
+<tr>
+<th>CLI Subcommand</th>
+<th>MCP Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>automedia omni ingest</code></td>
+<td><code>extract_brief</code></td>
+</tr>
+<tr>
+<td><code>automedia omni localize</code></td>
+<td><code>localize_content</code></td>
+</tr>
+<tr>
+<td><code>automedia omni format-output</code></td>
+<td><code>format_output</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Extract content brief</span>
+automedia<span class="w"> </span>omni<span class="w"> </span>ingest<span class="w"> </span>--file<span class="w"> </span>document.md
+
+<span class="c1"># Localization translation</span>
+automedia<span class="w"> </span>omni<span class="w"> </span>localize<span class="w"> </span>--content<span class="w"> </span><span class="s2">"Hello world"</span><span class="w"> </span>--source-lang<span class="w"> </span>en<span class="w"> </span>--target-lang<span class="w"> </span>zh
+
+<span class="c1"># Format conversion</span>
+automedia<span class="w"> </span>omni<span class="w"> </span>format-output<span class="w"> </span>--content<span class="w"> </span><span class="s2">"# Title"</span><span class="w"> </span>--target-format<span class="w"> </span>html
+</code></pre></div>
+<h2 id="automedia-pipeline"><code>automedia pipeline</code><a class="headerlink" href="#automedia-pipeline" title="Permanent link">&para;</a></h2>
+<p>Pipeline DAG export and per-gate state inspection (read-only views over the
+canonical gate DAG in <code>automedia.pipelines.dag</code> and the project's
+<code>history.db</code> / <code>pipeline_md5.json</code>).</p>
+<h3 id="pipeline-export-dag">pipeline export-dag<a class="headerlink" href="#pipeline-export-dag" title="Permanent link">&para;</a></h3>
+<p>Export pipeline-mode gate DAGs as Markdown gate tables and Graphviz DOT graphs.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Render one mode (writes &lt;mode&gt;.md and &lt;mode&gt;.dot to the output directory)</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>export-dag<span class="w"> </span>--mode<span class="w"> </span>auto<span class="w"> </span>--out<span class="w"> </span>./dag
+
+<span class="c1"># Render every pipeline mode (one .md/.dot pair per mode)</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>export-dag<span class="w"> </span>--all<span class="w"> </span>--out<span class="w"> </span>./dag
+
+<span class="c1"># Overlay gates recorded in a project's history.db with a run marker</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>export-dag<span class="w"> </span>--mode<span class="w"> </span>auto<span class="w"> </span>--project<span class="w"> </span>./projects/&lt;id&gt;<span class="w"> </span>--out<span class="w"> </span>./dag
+</code></pre></div>
+<h4 id="pipeline-export-dag-flags">pipeline export-dag Flags<a class="headerlink" href="#pipeline-export-dag-flags" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--mode, -m</code></td>
+<td>Pipeline mode to render (see <code>--all</code> for the full list)</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td>Render all pipeline modes</td>
+</tr>
+<tr>
+<td><code>--project, -p</code></td>
+<td>Project directory; overlays gates recorded in its history.db</td>
+</tr>
+<tr>
+<td><code>--out, -o</code></td>
+<td>Output directory for the rendered files (default: <code>.</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pipeline-state">pipeline state<a class="headerlink" href="#pipeline-state" title="Permanent link">&para;</a></h3>
+<p>Show the per-gate state (passed/failed/pending + asset md5) for a project,
+aggregated from its <code>history.db</code> and <code>pipeline_md5.json</code>. Rows are grouped by
+track (copy, video, qa, lifecycle). A project without history prints an
+all-pending note instead of an error.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Plain-text track-grouped table</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
+
+<span class="c1"># JSON payload: {"project_id": ..., "gates": [gate, status, track, md5, recorded_at]}</span>
+automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects<span class="w"> </span>--json
+</code></pre></div>
+<h4 id="pipeline-state-arguments-and-flags">pipeline state Arguments and Flags<a class="headerlink" href="#pipeline-state-arguments-and-flags" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument / Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td>Project ID (12-char hex)</td>
+</tr>
+<tr>
+<td><code>--base-dir, -d</code></td>
+<td>Base directory to scan for projects (default: <code>.</code>)</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Output JSON instead of the plain-text table</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-hitl"><code>automedia hitl</code><a class="headerlink" href="#automedia-hitl" title="Permanent link">&para;</a></h2>
+<p>Human-in-the-loop review management.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># View review configuration</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>config
+
+<span class="c1"># List presets</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>preset<span class="w"> </span>--list
+</code></pre></div>
+<h2 id="automedia-onboard"><code>automedia onboard</code><a class="headerlink" href="#automedia-onboard" title="Permanent link">&para;</a></h2>
+<p>Guided configuration wizard.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Launch configuration wizard</span>
+automedia<span class="w"> </span>onboard
+
+<span class="c1"># List available wizards</span>
+automedia<span class="w"> </span>onboard<span class="w"> </span>list
+</code></pre></div>
+<p>The LLM step preserves an existing fallback chain in <code>model_config.yaml</code> and offers fallback guidance during the flow.</p>
+<h2 id="automedia-history"><code>automedia history</code><a class="headerlink" href="#automedia-history" title="Permanent link">&para;</a></h2>
+<p>Show pipeline execution history for a project.</p>
+<p>Displays a table of Timestamp, Action, and Details columns from the per-project
+history database recorded by <code>PipelineHistoryHook</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show the history for a project</span>
+automedia<span class="w"> </span><span class="nb">history</span><span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
+
+<span class="c1"># Machine-readable JSON output</span>
+automedia<span class="w"> </span><span class="nb">history</span><span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects<span class="w"> </span>--json
+</code></pre></div>
+<h3 id="arguments-and-flags">Arguments and Flags<a class="headerlink" href="#arguments-and-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument / Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td>Project ID to query history for</td>
+</tr>
+<tr>
+<td><code>--base-dir, -d</code></td>
+<td>Base directory to scan for projects (default: <code>.</code>)</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Output JSON instead of the plain-text table</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-rollback"><code>automedia rollback</code><a class="headerlink" href="#automedia-rollback" title="Permanent link">&para;</a></h2>
+<p>Roll back a project: archive it and revert its status to draft.</p>
+<p>The project directory is renamed to <code>{name}_archived</code>, its status is set to
+<code>"draft"</code>, and a <code>rolled_back</code> entry is appended to the project's pipeline
+history database.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Roll back a project (requires confirmation)</span>
+automedia<span class="w"> </span>rollback<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
+</code></pre></div>
+<p>Refuses to roll back a project that has no pipeline history or is already
+archived.</p>
+<h3 id="arguments-and-flags_1">Arguments and Flags<a class="headerlink" href="#arguments-and-flags_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument / Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td>Project ID to roll back</td>
+</tr>
+<tr>
+<td><code>--base-dir, -d</code></td>
+<td>Base directory to scan for projects (default: <code>.</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automedia-validate"><code>automedia validate</code><a class="headerlink" href="#automedia-validate" title="Permanent link">&para;</a></h2>
+<p>Run the agent-tester validation suite: an agent runs real calls against the
+live surface, grades each response against a declared expect block, and writes
+an immutable run record for director sign-off.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># List the scenario library (load only, no engine run)</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>list
+
+<span class="c1"># Run ONE named scenario (recursion bound: scenario_name is required)</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>run<span class="w"> </span>--scenario<span class="w"> </span>&lt;name&gt;
+
+<span class="c1"># Render a run record (defaults to the latest run)</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>report
+
+<span class="c1"># Diff the latest two runs, or against an explicit baseline</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>diff<span class="w"> </span><span class="o">[</span>--baseline<span class="w"> </span>&lt;path&gt;<span class="o">]</span>
+
+<span class="c1"># Static coverage audit (declared/used/covered/missing/phantom per surface)</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>coverage
+
+<span class="c1"># Per-scenario surface coverage + status matrix</span>
+automedia<span class="w"> </span>validate<span class="w"> </span>matrix
+</code></pre></div>
+<h3 id="subcommands_4">Subcommands<a class="headerlink" href="#subcommands_4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list</code></td>
+<td>Load and list the scenario library (load only, no engine run)</td>
+</tr>
+<tr>
+<td><code>run</code></td>
+<td>Run ONE named scenario via the engine; <code>--scenario</code> is required (the recursion bound); exits 1 on failed or hard-safety violations</td>
+</tr>
+<tr>
+<td><code>report</code></td>
+<td>Render a run record (verdicts table + per-scenario status lines)</td>
+</tr>
+<tr>
+<td><code>diff</code></td>
+<td>Diff the latest two runs, or against an explicit baseline</td>
+</tr>
+<tr>
+<td><code>coverage</code></td>
+<td>Run the coverage audit over the scenario library; exits 1 when <code>missing</code> is non-empty on any surface</td>
+</tr>
+<tr>
+<td><code>matrix</code></td>
+<td>Render the validation matrix: coverage grid + run-record assertion cards + diff classification</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validate-run-flags">validate run Flags<a class="headerlink" href="#validate-run-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--scenario</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Scenario name to run (required — the recursion bound)</td>
+</tr>
+<tr>
+<td><code>--env-gate</code></td>
+<td><code>str</code></td>
+<td><code>report</code></td>
+<td><code>report</code> (default) shows unconfigured when required env vars are missing; <code>skip</code> runs the scenario even when env vars are missing</td>
+</tr>
+<tr>
+<td><code>--runs-root</code></td>
+<td><code>str</code></td>
+<td><code>validation-runs</code></td>
+<td>Directory for immutable run records (gitignored)</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

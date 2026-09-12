@@ -1,0 +1,2751 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="OPP (extraction), OL (localization), ORF (format conversion) — the three companion tools of Omni Triad.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/user/omni-integration/">
+      
+      
+        <link rel="prev" href="../hitl-framework/">
+      
+      
+        <link rel="next" href="../asset-library/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Omni Triad Integration - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#omni-triad-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Omni Triad Integration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-cli-naming-equivalences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP-CLI Naming Equivalences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#explicit-dependency-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit Dependency Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graceful Degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-integration-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three Integration Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Three Integration Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-proxy-mode-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Proxy Mode (default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-parallel-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Parallel Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sdk-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SDK Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automediaomni_configyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~/.automedia/omni_config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automediaomni_allowlistyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~/.automedia/omni_allowlist.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automediaomniol_configyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~/.automedia/omni/ol_config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#initialise-omni-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initialise Omni Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attach-a-brief-manually-opp-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attach a Brief Manually (OPP fallback)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#localise-a-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Localise a Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convert-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convert Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-ingest-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Ingest Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-language-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Language Support
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opp-extraction-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OPP Extraction Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ol-translation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OL Translation Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orf-backfill-produces-broken-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ORF Backfill Produces Broken Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-allowlist-violation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Allowlist Violation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ol-independent-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OL Independent Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#artifact-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifact Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ascii-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ASCII Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="omni-triad-integration">Omni Triad Integration<a class="headerlink" href="#omni-triad-integration" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Omni Triad is a set of three companion tools that work alongside the
+AutoMedia production pipeline as a <strong>side-channel adapter</strong>.  Omni is
+<strong>not embedded</strong> in the main pipeline — it runs before (OPP document
+extraction) and after (OL translation + ORF format re-flow) the core
+gate chain, leaving the production gate sequence unchanged. In <code>auto</code>
+mode the full pipeline runs 22 gates: pre-gate, CW, G0-G6, V0-V7, H0,
+L1-L4.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Package</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OPP</strong> (Omni Pre-Processor)</td>
+<td><code>omni-pre-processor</code></td>
+<td>Document extraction — DOCX/PPTX/PDF → Markdown + XLIFF + skeleton</td>
+</tr>
+<tr>
+<td><strong>OL</strong> (Omni Localizer)</td>
+<td><code>omni-localizer</code></td>
+<td>Multi-language translation — Markdown/XLIFF → translated output</td>
+</tr>
+<tr>
+<td><strong>ORF</strong> (Omni Re-Formatter)</td>
+<td><code>omni-re-formatter</code></td>
+<td>Format backfill — translated XLIFF → DOCX/PPTX</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mcp-cli-naming-equivalences">MCP-CLI Naming Equivalences<a class="headerlink" href="#mcp-cli-naming-equivalences" title="Permanent link">&para;</a></h2>
+<p>The three Omni tools use <strong>different names</strong> in the MCP and CLI interfaces
+even though they call the same underlying implementation:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>CLI Command</th>
+<th>MCP Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Document extraction</td>
+<td><code>automedia omni ingest</code></td>
+<td><code>extract_brief</code></td>
+</tr>
+<tr>
+<td>Content translation</td>
+<td><code>automedia omni localize</code></td>
+<td><code>localize_content</code></td>
+</tr>
+<tr>
+<td>Format conversion</td>
+<td><code>automedia omni format-output</code></td>
+<td><code>format_output</code></td>
+</tr>
+</tbody>
+</table>
+<p>These pairs are <strong>semantically equivalent</strong>.  The CLI and MCP interfaces
+share the same Omni adapter layer (:class:<code>~automedia.omni.OPPAdapter</code>,
+:class:<code>~automedia.omni.OLAdapter</code>, :class:<code>~automedia.omni.ORFAdapter</code>).</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Minimal OPP-only environment</span>
+pip<span class="w"> </span>install<span class="w"> </span>automedia-pipeline<span class="o">[</span>omni-core<span class="o">]</span>
+
+<span class="c1"># Full Omni suite (includes ML dependencies for OL)</span>
+pip<span class="w"> </span>install<span class="w"> </span>automedia-pipeline<span class="o">[</span>omni<span class="o">]</span>
+
+<span class="c1"># Development</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[dev,omni]"</span>
+</code></pre></div>
+<p>The optional dependency groups are:</p>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>Includes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[omni-core]</code></td>
+<td><code>lxml</code>, <code>python-docx</code>, <code>python-pptx</code>, <code>openpyxl</code>, <code>pandas</code></td>
+</tr>
+<tr>
+<td><code>[omni-pdf]</code></td>
+<td><code>pymupdf</code></td>
+</tr>
+<tr>
+<td><code>[omni-ml]</code></td>
+<td><code>sentence-transformers</code>, <code>torch</code></td>
+</tr>
+<tr>
+<td><code>[omni]</code></td>
+<td>All of the above + <code>omni-pre-processor</code>, <code>omni-localizer</code>, <code>omni-re-formatter</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="explicit-dependency-requirements">Explicit Dependency Requirements<a class="headerlink" href="#explicit-dependency-requirements" title="Permanent link">&para;</a></h3>
+<p>The <code>[omni]</code> extra installs three version-pinned packages, each wrapping a
+different external tool:</p>
+<table>
+<thead>
+<tr>
+<th>Python Import</th>
+<th>PyPI Package</th>
+<th>Version Constraint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>opp</code></td>
+<td><code>omni-pre-processor</code></td>
+<td><code>&gt;=0.9,&lt;1.0</code></td>
+<td>Document extraction (OPP)</td>
+</tr>
+<tr>
+<td><code>ol_mcp</code></td>
+<td><code>omni-localizer</code></td>
+<td><code>&gt;=0.7,&lt;1.0</code></td>
+<td>Multi-language translation (OL)</td>
+</tr>
+<tr>
+<td><code>orf</code></td>
+<td><code>omni-re-formatter</code></td>
+<td><code>&gt;=0.4,&lt;1.0</code></td>
+<td>Format conversion (ORF)</td>
+</tr>
+</tbody>
+</table>
+<p>These constraints are defined in <code>pyproject.toml</code> under
+<code>[project.optional-dependencies] omni</code> and are enforced at install time by
+<code>pip</code>.</p>
+<h3 id="graceful-degradation">Graceful Degradation<a class="headerlink" href="#graceful-degradation" title="Permanent link">&para;</a></h3>
+<p>All three adapters handle missing packages gracefully.  If an Omni package
+is not installed (e.g. <code>pip install automedia-pipeline</code> without
+<code>[omni]</code>), the corresponding adapter methods return empty results with
+descriptive warnings instead of raising <code>ImportError</code>:</p>
+<ul>
+<li><strong>OPPAdapter.extract()</strong> → <code>ExtractionResult(md_content="", warnings=[...])</code></li>
+<li><strong>OLAdapter.translate()</strong> → <code>TranslationResult(translated_md="", warnings=[...])</code></li>
+<li><strong>ORFAdapter.convert()</strong> → <code>{"status": "error", "errors": [...], ...}</code></li>
+</ul>
+<p>This preserves the main pipeline: missing Omni packages never crash
+production runs. Gate logs contain <code>WARNING</code> messages pointing users
+to <code>pip install automedia-pipeline[omni]</code>.</p>
+<h2 id="three-integration-modes">Three Integration Modes<a class="headerlink" href="#three-integration-modes" title="Permanent link">&para;</a></h2>
+<p>The integration mode is set in <code>~/.automedia/omni_config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">integration_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxy</span><span class="w">   </span><span class="c1"># "proxy" | "parallel" | "sdk"</span>
+</code></pre></div>
+<h3 id="1-proxy-mode-default">1. Proxy Mode (default)<a class="headerlink" href="#1-proxy-mode-default" title="Permanent link">&para;</a></h3>
+<p>AutoMedia's built-in MCP server internally instantiates the Omni adapters
+and exposes three simplified tools. No additional servers needed.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># The three Omni MCP tools are always available on the AutoMedia MCP server:</span>
+<span class="c1">#   extract_brief  — extract document content via OPP</span>
+<span class="c1">#   localize_content — translate Markdown via OL</span>
+<span class="c1">#   format_output   — convert Markdown to target format via ORF</span>
+</code></pre></div>
+<p>Best for: single-user desktop, zero-config setup.</p>
+<h3 id="2-parallel-mode">2. Parallel Mode<a class="headerlink" href="#2-parallel-mode" title="Permanent link">&para;</a></h3>
+<p><code>automedia omni start-all</code> launches four independent MCP server processes:</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Transport</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AutoMedia MCP</td>
+<td>stdio</td>
+<td>Core production pipeline</td>
+</tr>
+<tr>
+<td>OPP MCP</td>
+<td>stdio</td>
+<td>Document extraction</td>
+</tr>
+<tr>
+<td>OL MCP</td>
+<td>stdio</td>
+<td>Translation</td>
+</tr>
+<tr>
+<td>ORF MCP</td>
+<td>stdio</td>
+<td>Format re-flow</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>omni<span class="w"> </span>start-all
+<span class="c1"># Each server can be connected independently by host agents.</span>
+<span class="c1"># Stop gracefully with Ctrl+C or automedia omni stop-all.</span>
+</code></pre></div>
+<p>Best for: multi-server setups, remote agent orchestration.</p>
+<h3 id="3-sdk-mode">3. SDK Mode<a class="headerlink" href="#3-sdk-mode" title="Permanent link">&para;</a></h3>
+<p>Import adapters directly in Python scripts:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.omni</span><span class="w"> </span><span class="kn">import</span> <span class="n">OPPAdapter</span><span class="p">,</span> <span class="n">OLAdapter</span><span class="p">,</span> <span class="n">ORFAdapter</span>
+
+<span class="c1"># OPP: extract document</span>
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">OPPAdapter</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="s2">"brief.docx"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">md_content</span><span class="p">)</span>
+
+<span class="c1"># OL: translate</span>
+<span class="n">ol</span> <span class="o">=</span> <span class="n">OLAdapter</span><span class="p">()</span>
+<span class="n">translated</span> <span class="o">=</span> <span class="n">ol</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">md_content</span><span class="p">,</span> <span class="n">source_lang</span><span class="o">=</span><span class="s2">"zh"</span><span class="p">,</span> <span class="n">target_lang</span><span class="o">=</span><span class="s2">"en"</span><span class="p">)</span>
+
+<span class="c1"># ORF: backfill</span>
+<span class="n">orf</span> <span class="o">=</span> <span class="n">ORFAdapter</span><span class="p">()</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">orf</span><span class="o">.</span><span class="n">apply_md</span><span class="p">(</span><span class="n">translated</span><span class="o">.</span><span class="n">translated_md</span><span class="p">,</span> <span class="s2">"docx"</span><span class="p">)</span>
+</code></pre></div>
+<p>Best for: CI/CD pipelines, batch processing, custom automation.</p>
+<h2 id="configuration-files">Configuration Files<a class="headerlink" href="#configuration-files" title="Permanent link">&para;</a></h2>
+<h3 id="automediaomni_configyaml"><code>~/.automedia/omni_config.yaml</code><a class="headerlink" href="#automediaomni_configyaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">integration_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proxy</span>
+<span class="nt">opp</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_auto_extract_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">  </span><span class="nt">supported_formats</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.docx</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.pptx</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.pdf</span>
+<span class="nt">ol</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">config_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.automedia/omni/ol_config.yaml</span>
+<span class="nt">orf</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/omni_outputs</span>
+</code></pre></div>
+<h3 id="automediaomni_allowlistyaml"><code>~/.automedia/omni_allowlist.yaml</code><a class="headerlink" href="#automediaomni_allowlistyaml" title="Permanent link">&para;</a></h3>
+<p>Controls which directories Omni can read from and write to:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">allowed_paths</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Documents/briefs</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/projects/automedia</span>
+<span class="nt">write_paths</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Documents/outputs</span>
+</code></pre></div>
+<p>File operations outside these paths raise <code>PermissionError</code>.</p>
+<h3 id="automediaomniol_configyaml"><code>~/.automedia/omni/ol_config.yaml</code><a class="headerlink" href="#automediaomniol_configyaml" title="Permanent link">&para;</a></h3>
+<p>OL has an independent LLM pool configuration — it does <strong>not</strong> share
+AutoMedia's <code>model_config.yaml</code>. Configure three LLM roles:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">llm_pool</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">translation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-4o-mini</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">judging</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-4o-mini</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">restoration</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-4o-mini</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</code></pre></div>
+<p>Set API keys via environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OL_TRANSLATION_API_KEY</code></td>
+<td>Translation LLM</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>OL_JUDGING_API_KEY</code></td>
+<td>Judging LLM</td>
+<td>No (falls back to translation)</td>
+</tr>
+<tr>
+<td><code>OL_RESTORATION_API_KEY</code></td>
+<td>Restoration LLM</td>
+<td>No (falls back to translation)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-guide">Usage Guide<a class="headerlink" href="#usage-guide" title="Permanent link">&para;</a></h2>
+<h3 id="initialise-omni-configuration">Initialise Omni Configuration<a class="headerlink" href="#initialise-omni-configuration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>init<span class="w"> </span>--omni
+</code></pre></div>
+<p>Generates three template files: <code>omni_config.yaml</code>, <code>omni_allowlist.yaml</code>,
+<code>ol_config.yaml</code>.</p>
+<h3 id="attach-a-brief-manually-opp-fallback">Attach a Brief Manually (OPP fallback)<a class="headerlink" href="#attach-a-brief-manually-opp-fallback" title="Permanent link">&para;</a></h3>
+<p>When OPP auto-extraction fails, inject a Markdown brief directly:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>pool<span class="w"> </span>attach-brief<span class="w"> </span>--topic<span class="w"> </span><span class="m">42</span><span class="w"> </span>--md-file<span class="w"> </span>/path/to/brief.md
+</code></pre></div>
+<p>The content is stored in the topic's <code>research_data</code> field and used when
+the pipeline runs.</p>
+<h3 id="localise-a-project">Localise a Project<a class="headerlink" href="#localise-a-project" title="Permanent link">&para;</a></h3>
+<p>Translate all Markdown drafts in a project to target languages:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>omni<span class="w"> </span>localize<span class="w"> </span>--project<span class="w"> </span>/path/to/project<span class="w"> </span>--target-langs<span class="w"> </span>en,ja
+</code></pre></div>
+<p>Output lands in <code>05_publish/en/</code>, <code>05_publish/ja/</code>.</p>
+<h3 id="convert-format">Convert Format<a class="headerlink" href="#convert-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>omni<span class="w"> </span>format-output<span class="w"> </span>--input<span class="w"> </span>article.md<span class="w"> </span>--target-format<span class="w"> </span>docx
+</code></pre></div>
+<p>Produces a DOCX file with the converted content.</p>
+<h3 id="batch-ingest-documents">Batch Ingest Documents<a class="headerlink" href="#batch-ingest-documents" title="Permanent link">&para;</a></h3>
+<p>Extract all supported documents from a directory:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>omni<span class="w"> </span>ingest<span class="w"> </span>--dir<span class="w"> </span>/path/to/briefs/<span class="w"> </span>--output-dir<span class="w"> </span>/path/to/output/
+</code></pre></div>
+<p>Extracted Markdown files are written to the output directory.</p>
+<h2 id="multi-language-support">Multi-Language Support<a class="headerlink" href="#multi-language-support" title="Permanent link">&para;</a></h2>
+<p>The pipeline can be configured per language via <code>brand-profile.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">brand_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MyBrand</span>
+<span class="nt">languages</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">zh</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tts_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zh-CN-YunxiNeural</span>
+<span class="w">    </span><span class="nt">whisper_lang</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zh</span>
+<span class="w">    </span><span class="nt">cta_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">立即体验 {brand}！</span>
+<span class="w">    </span><span class="nt">blocked_words</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">竞品A</span>
+<span class="w">    </span><span class="nt">date_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YYYY-MM-DD</span>
+<span class="w">  </span><span class="nt">en</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tts_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">en-US-JennyNeural</span>
+<span class="w">    </span><span class="nt">whisper_lang</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">en</span>
+<span class="w">    </span><span class="nt">cta_template</span><span class="p">:</span><span class="w"> </span><span class="s">"Check</span><span class="nv"> </span><span class="s">out</span><span class="nv"> </span><span class="s">{brand}</span><span class="nv"> </span><span class="s">today!"</span>
+<span class="w">    </span><span class="nt">blocked_words</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">competitor</span>
+<span class="w">    </span><span class="nt">date_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MM/DD/YYYY</span>
+</code></pre></div>
+<p>The pipeline's <code>run_full_pipeline()</code> accepts a <code>default_lang</code> parameter.
+If not set, <code>zh</code> is used. The resolved configuration is injected into
+<code>gate_context["lang_config"]</code> for downstream gates.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="opp-extraction-fails">OPP Extraction Fails<a class="headerlink" href="#opp-extraction-fails" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms</strong>: <code>ExtractionResult</code> with empty <code>md_content</code>, error in
+<code>manifest["error"]</code>.</p>
+<p><strong>Root causes</strong>: File corruption, unsupported format variant, OPP package
+not installed.</p>
+<p><strong>Resolution</strong>:
+1. Verify <code>pip list | grep omni-pre-processor</code> is installed.
+2. Use <code>automedia pool attach-brief</code> to inject the brief content manually.
+3. The pipeline will continue without OPP content — gate logs will contain
+   a warning.</p>
+<h3 id="ol-translation-fails">OL Translation Fails<a class="headerlink" href="#ol-translation-fails" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms</strong>: All LLM API calls fail → translated_md is empty.</p>
+<p><strong>Root causes</strong>: API key misconfigured, network unreachable, rate-limited.</p>
+<p><strong>Resolution</strong>:
+1. Check <code>OL_TRANSLATION_API_KEY</code> environment variable is set.
+2. Verify network connectivity to the LLM provider.
+3. The original Markdown content is preserved as a degraded delivery.</p>
+<h3 id="orf-backfill-produces-broken-layout">ORF Backfill Produces Broken Layout<a class="headerlink" href="#orf-backfill-produces-broken-layout" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms</strong>: Output DOCX has missing images, misaligned text.</p>
+<p><strong>Root causes</strong>: OPP skeleton extraction incomplete, XLIFF segment
+mismatch, ORF version incompatibility.</p>
+<p><strong>Resolution</strong>:
+1. Verify OPP produced a complete <code>skeleton.zip</code>.
+2. Check <code>manifest.json</code> for image position metadata.
+3. ORF has built-in layout overflow detection — check warnings.</p>
+<h3 id="path-allowlist-violation">Path Allowlist Violation<a class="headerlink" href="#path-allowlist-violation" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms</strong>: <code>PermissionError</code> when calling any Omni adapter method.</p>
+<p><strong>Resolution</strong>: Edit <code>~/.automedia/omni_allowlist.yaml</code> to add the required
+directory to <code>allowed_paths</code> or <code>write_paths</code>.</p>
+<h2 id="ol-independent-configuration">OL Independent Configuration<a class="headerlink" href="#ol-independent-configuration" title="Permanent link">&para;</a></h2>
+<p>OL (Omni Localizer) uses its own LLM configuration, separate from
+AutoMedia's <code>model_config.yaml</code>. The configuration lives at
+<code>~/.automedia/omni/ol_config.yaml</code> and defines an <code>llm_pool</code> with three
+roles:</p>
+<ol>
+<li><strong>translation</strong> (priority 1): Primary LLM for translation.</li>
+<li><strong>judging</strong> (priority 2): Evaluates translation quality.</li>
+<li><strong>restoration</strong> (priority 3): Restores content from skeleton.</li>
+</ol>
+<p>Each role can use a different provider/model. If a higher-priority LLM is
+unavailable, OL falls back to the next priority.</p>
+<p>OL does <strong>not</strong> use the AutoMedia <code>model_config.yaml</code> because translation
+workloads have different requirements (lower latency tolerance, different
+prompting strategy).</p>
+<h2 id="artifact-mapping">Artifact Mapping<a class="headerlink" href="#artifact-mapping" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Source</th>
+<th>Destination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPP</td>
+<td>Document file</td>
+<td><code>research_data/{name}/{name}.md</code>, <code>.xlf</code>, <code>_manifest.json</code>, <code>.skeleton.zip</code></td>
+</tr>
+<tr>
+<td>OL</td>
+<td>Markdown content</td>
+<td><code>05_publish/{lang}/{name}.md</code>, <code>.xlf</code></td>
+</tr>
+<tr>
+<td>ORF</td>
+<td>XLIFF + skeleton</td>
+<td><code>05_publish/{lang}/deliverables/{name}.{format}</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting-checklist">Troubleshooting Checklist<a class="headerlink" href="#troubleshooting-checklist" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>□ pip install automedia-pipeline[omni] succeeded
+□ automedia init --omni ran and created config files
+□ ~/.automedia/omni_allowlist.yaml has correct paths
+□ OL_TRANSLATION_API_KEY is set (if using OL)
+□ automedia doctor shows no errors
+□ Test: automedia omni ingest --dir /tmp/test --output-dir /tmp/out
+□ Test: automedia pool attach-brief --topic 1 --md-file /tmp/test.md
+</code></pre></div>
+<h2 id="ascii-architecture">ASCII Architecture<a class="headerlink" href="#ascii-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>                      ┌──────────────────────────────────────────────┐
+                      │           AutoMedia Main Pipeline            │
+                      │  (Omni is a side-channel, not embedded)      │
+                      │                                              │
+                      │  Topic → Research → 4-Modal Parallel → Gate  │
+                      │    Chain → Publish                           │
+                      │         |                      |              │
+                      │    (OPP bypass A)         (OL+ORF bypass B)  │
+                      └─────────┼──────────────────────┼─────────────┘
+                                │                      │
+                     ┌──────────▼──────────┐  ┌────────▼─────────────┐
+                     │  Omni Adapter Layer  │  │  Omni Adapter Layer  │
+                     │  (automedia/omni/)   │  │  (automedia/omni/)   │
+                     │                     │  │                      │
+                     │  OPPAdapter         │  │  OLAdapter           │
+                     │  OLAdapter          │  │  ORFAdapter          │
+                     │  ORFAdapter         │  │                      │
+                     └─────────────────────┘  └──────────────────────┘
+</code></pre></div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

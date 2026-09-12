@@ -1,0 +1,2938 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Set up AutoMedia on Windows — WSL2, Docker Desktop, and native Windows paths.">
+      
+      
+      
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/user/windows-deployment/">
+      
+      
+        <link rel="prev" href="../deployment/">
+      
+      
+        <link rel="next" href="../production-workflow/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Windows Deployment - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#windows-deployment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Windows Deployment
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/project-validation-framework/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/renanzai40/AutoMedia_BackUp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-1-wsl2-setup-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path 1: WSL2 Setup (Recommended)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path 1: WSL2 Setup (Recommended)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Install WSL2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-install-automedia-inside-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Install AutoMedia inside WSL2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-access-windows-files-from-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Access Windows Files from WSL2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-mcp-server-in-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. MCP Server in WSL2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-wsl2-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. WSL2 Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-2-docker-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path 2: Docker Desktop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path 2: Docker Desktop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-docker-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Install Docker Desktop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pull-and-run-automedia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Pull and Run AutoMedia
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-use-with-local-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Use with Local Directories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-mcp-server-via-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. MCP Server via Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-3-native-windows-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path 3: Native Windows Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path 3: Native Windows Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-python-311" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Install Python 3.11+
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-install-ffmpeg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Install FFmpeg
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-install-bun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Install Bun
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-install-google-chrome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Install Google Chrome
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-clone-and-setup-automedia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Clone and Setup AutoMedia
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-install-edge-tts-and-whisper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Install edge-tts and Whisper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-path-differences-on-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Path Differences on Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-run-the-windows-setup-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Run the Windows Setup Script
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server-as-windows-service-nssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server as Windows Service (NSSM)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server as Windows Service (NSSM)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-nssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Install NSSM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the Service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-manage-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Manage the Service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-view-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. View Logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripts Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scripts Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setupps1-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup.ps1 Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wsl2-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WSL2 Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-desktop-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Desktop Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-windows-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native Windows Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-client-on-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Client on Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="windows-deployment">Windows Deployment<a class="headerlink" href="#windows-deployment" title="Permanent link">&para;</a></h1>
+<p>AutoMedia runs on Windows through three paths. Pick the one that fits your setup:</p>
+<ul>
+<li><strong>WSL2 (recommended)</strong> — Full Linux environment on Windows. Best compatibility.</li>
+<li><strong>Docker Desktop</strong> — Containerized setup, no manual dependency install.</li>
+<li><strong>Native Windows</strong> — Runs directly on Windows with Python via winget.</li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p>Before any path, make sure you have:</p>
+<ul>
+<li>Windows 10 version 2004+ or Windows 11</li>
+<li>8 GB RAM minimum (16 GB recommended)</li>
+<li>Admin rights for software installation</li>
+<li><a href="https://git-scm.com/download/win">Git for Windows</a> (<code>winget install Git.Git</code>)</li>
+<li>At least 10 GB free disk space</li>
+</ul>
+<hr />
+<h2 id="path-1-wsl2-setup-recommended">Path 1: WSL2 Setup (Recommended)<a class="headerlink" href="#path-1-wsl2-setup-recommended" title="Permanent link">&para;</a></h2>
+<p>WSL2 gives you a full Linux kernel inside Windows. This is the smoothest way to run AutoMedia, because all Linux tooling (FFmpeg, Bun, edge-tts) works without translation layers.</p>
+<h3 id="1-install-wsl2">1. Install WSL2<a class="headerlink" href="#1-install-wsl2" title="Permanent link">&para;</a></h3>
+<p>Open PowerShell as Administrator and run:</p>
+<div class="highlight"><pre><span></span><code><span class="n">wsl</span> <span class="p">-</span><span class="n">-install</span> <span class="n">-d</span> <span class="n">Ubuntu</span><span class="p">-</span><span class="n">24</span><span class="p">.</span><span class="n">04</span>
+</code></pre></div>
+<p>This installs WSL2 and Ubuntu 24.04. Restart your machine when prompted.</p>
+<p>After reboot, verify:</p>
+<div class="highlight"><pre><span></span><code><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></div>
+<p>You should see <code>Ubuntu-24.04</code> running version 2.</p>
+<h3 id="2-install-automedia-inside-wsl2">2. Install AutoMedia inside WSL2<a class="headerlink" href="#2-install-automedia-inside-wsl2" title="Permanent link">&para;</a></h3>
+<p>Open your WSL2 terminal (type <code>wsl</code> in PowerShell or start "Ubuntu" from Start Menu):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Update packages</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>upgrade<span class="w"> </span>-y
+
+<span class="c1"># Install Python 3.11+</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>python3.11<span class="w"> </span>python3.11-venv<span class="w"> </span>python3-pip
+
+<span class="c1"># Install FFmpeg</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>ffmpeg
+
+<span class="c1"># Install Bun</span>
+curl<span class="w"> </span>-fsSL<span class="w"> </span>https://bun.sh/install<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+
+<span class="c1"># Reload PATH for Bun</span>
+<span class="nb">source</span><span class="w"> </span>~/.bashrc
+
+<span class="c1"># Install edge-tts</span>
+pip<span class="w"> </span>install<span class="w"> </span>edge-tts
+
+<span class="c1"># Install Whisper (choose one)</span>
+pip<span class="w"> </span>install<span class="w"> </span>faster-whisper
+
+<span class="c1"># Clone AutoMedia</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/renanzai40/AutoMedia_BackUp.git
+<span class="nb">cd</span><span class="w"> </span>AutoMedia_BackUp
+
+<span class="c1"># Run setup script</span>
+bash<span class="w"> </span>scripts/setup.sh
+</code></pre></div>
+<h3 id="3-access-windows-files-from-wsl2">3. Access Windows Files from WSL2<a class="headerlink" href="#3-access-windows-files-from-wsl2" title="Permanent link">&para;</a></h3>
+<p>Your Windows drives are mounted under <code>/mnt/</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Access C: drive</span>
+<span class="nb">cd</span><span class="w"> </span>/mnt/c/Users/YourName/projects
+
+<span class="c1"># Or work inside WSL2's native filesystem (faster for I/O)</span>
+<span class="nb">cd</span><span class="w"> </span>~/automedia
+</code></pre></div>
+<blockquote>
+<p><strong>Tip:</strong> Work inside the WSL2 filesystem (<code>~/automedia</code>) for better performance. The <code>/mnt/c</code> mount is slower for file I/O.</p>
+</blockquote>
+<h3 id="4-mcp-server-in-wsl2">4. MCP Server in WSL2<a class="headerlink" href="#4-mcp-server-in-wsl2" title="Permanent link">&para;</a></h3>
+<p>The MCP server runs inside WSL2. Configure your MCP client to point to the WSL2 Python:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"wsl"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"python"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AUTOMEDIA_LLM_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-xxx"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Some MCP clients (Claude Desktop, OpenCode) can invoke WSL commands directly. If your client runs on Windows and needs to talk to WSL2, use <code>wsl</code> as the command.</p>
+<h3 id="5-wsl2-management">5. WSL2 Management<a class="headerlink" href="#5-wsl2-management" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Command (PowerShell)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start WSL2</td>
+<td><code>wsl</code></td>
+</tr>
+<tr>
+<td>Shut down WSL2</td>
+<td><code>wsl --shutdown</code></td>
+</tr>
+<tr>
+<td>List distros</td>
+<td><code>wsl -l -v</code></td>
+</tr>
+<tr>
+<td>Set default version</td>
+<td><code>wsl --set-default-version 2</code></td>
+</tr>
+<tr>
+<td>Open file explorer</td>
+<td><code>wsl --cd ~</code> then <code>explorer.exe .</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="path-2-docker-desktop">Path 2: Docker Desktop<a class="headerlink" href="#path-2-docker-desktop" title="Permanent link">&para;</a></h2>
+<p>If you prefer containers over managing dependencies, Docker Desktop is the quickest path.</p>
+<h3 id="1-install-docker-desktop">1. Install Docker Desktop<a class="headerlink" href="#1-install-docker-desktop" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">winget</span> <span class="n">install</span> <span class="n">Docker</span><span class="p">.</span><span class="n">DockerDesktop</span>
+</code></pre></div>
+<p>After install, launch Docker Desktop, go to <strong>Settings &gt; Resources &gt; WSL Integration</strong>, and enable integration with your Ubuntu distro.</p>
+<h3 id="2-pull-and-run-automedia">2. Pull and Run AutoMedia<a class="headerlink" href="#2-pull-and-run-automedia" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">pull</span> <span class="n">kevinzhow</span><span class="p">/</span><span class="n">automedia-pipeline</span><span class="p">:</span><span class="n">latest</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="n">-it</span> <span class="p">-</span><span class="n">-rm</span> <span class="n">kevinzhow</span><span class="p">/</span><span class="n">automedia-pipeline</span><span class="p">:</span><span class="n">latest</span> <span class="n">automedia</span> <span class="n">doctor</span>
+</code></pre></div>
+<h3 id="3-use-with-local-directories">3. Use with Local Directories<a class="headerlink" href="#3-use-with-local-directories" title="Permanent link">&para;</a></h3>
+<p>Mount your Windows project directory into the container:</p>
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">run</span> <span class="n">-it</span> <span class="p">-</span><span class="n">-rm</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">YourName</span><span class="p">\</span><span class="n">projects</span><span class="p">:/</span><span class="n">data</span> <span class="p">`</span>
+  <span class="n">-e</span> <span class="n">AUTOMEDIA_LLM_API_KEY</span><span class="p">=</span><span class="n">sk-xxx</span> <span class="p">`</span>
+  <span class="n">kevinzhow</span><span class="p">/</span><span class="n">automedia-pipeline</span><span class="p">:</span><span class="n">latest</span> <span class="p">`</span>
+  <span class="n">automedia</span> <span class="n">run</span> <span class="p">-</span><span class="n">-topic</span> <span class="s2">"Your Topic"</span> <span class="p">-</span><span class="n">-brand</span> <span class="n">my-brand</span>
+</code></pre></div>
+<h3 id="4-mcp-server-via-docker">4. MCP Server via Docker<a class="headerlink" href="#4-mcp-server-via-docker" title="Permanent link">&para;</a></h3>
+<p>Run the MCP server as a Docker container:</p>
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">run</span> <span class="n">-d</span> <span class="p">-</span><span class="n">-name</span> <span class="n">automedia-mcp</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">YourName</span><span class="p">\.</span><span class="n">automedia</span><span class="p">:/</span><span class="n">home</span><span class="p">/</span><span class="n">automedia</span><span class="p">/.</span><span class="n">automedia</span> <span class="p">`</span>
+  <span class="n">-e</span> <span class="n">AUTOMEDIA_LLM_API_KEY</span><span class="p">=</span><span class="n">sk-xxx</span> <span class="p">`</span>
+  <span class="n">kevinzhow</span><span class="p">/</span><span class="n">automedia-pipeline</span><span class="p">:</span><span class="n">latest</span> <span class="p">`</span>
+  <span class="n">python</span> <span class="n">-m</span> <span class="n">automedia</span><span class="p">.</span><span class="n">mcp</span><span class="p">.</span><span class="n">server</span>
+</code></pre></div>
+<p>For clients on the Windows host, configure:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"automedia"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"docker"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"exec"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-i"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia-mcp"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"python"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-m"</span><span class="p">,</span><span class="w"> </span><span class="s2">"automedia.mcp.server"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AUTOMEDIA_LLM_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-xxx"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="path-3-native-windows-setup">Path 3: Native Windows Setup<a class="headerlink" href="#path-3-native-windows-setup" title="Permanent link">&para;</a></h2>
+<p>Run AutoMedia directly on Windows without WSL2 or Docker.</p>
+<h3 id="1-install-python-311">1. Install Python 3.11+<a class="headerlink" href="#1-install-python-311" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">winget</span> <span class="n">install</span> <span class="n">Python</span><span class="p">.</span><span class="n">Python</span><span class="p">.</span><span class="n">3</span><span class="p">.</span><span class="n">11</span>
+</code></pre></div>
+<p>Close and reopen PowerShell, then verify:</p>
+<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="p">-</span><span class="n">-version</span>
+</code></pre></div>
+<h3 id="2-install-ffmpeg">2. Install FFmpeg<a class="headerlink" href="#2-install-ffmpeg" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">winget</span> <span class="n">install</span> <span class="s2">"FFmpeg (Essentials Build)"</span>
+</code></pre></div>
+<p>Verify:</p>
+<div class="highlight"><pre><span></span><code><span class="n">ffmpeg</span> <span class="n">-version</span>
+</code></pre></div>
+<p>Add FFmpeg to your PATH if winget doesn't do it automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$ffmpegPath</span> <span class="p">=</span> <span class="s2">"$env:LOCALAPPDATA\Microsoft\WinGet\Packages\FFmpeg.Essentials_Build_Microsoft.Winget.Source_*\ffmpeg.exe"</span>
+<span class="nv">$resolved</span> <span class="p">=</span> <span class="nb">Resolve-Path</span> <span class="nv">$ffmpegPath</span>
+<span class="no">[Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">"Path"</span><span class="p">,</span> <span class="nv">$env:Path</span> <span class="p">+</span> <span class="s2">";"</span> <span class="p">+</span> <span class="nv">$resolved</span><span class="p">.</span><span class="n">Directory</span><span class="p">,</span> <span class="s2">"User"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="3-install-bun">3. Install Bun<a class="headerlink" href="#3-install-bun" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">powershell</span> <span class="n">-c</span> <span class="s2">"irm https://bun.sh/install.ps1 | iex"</span>
+</code></pre></div>
+<p>Verify (reopen PowerShell):</p>
+<div class="highlight"><pre><span></span><code><span class="n">bun</span> <span class="p">-</span><span class="n">-version</span>
+</code></pre></div>
+<h3 id="4-install-google-chrome">4. Install Google Chrome<a class="headerlink" href="#4-install-google-chrome" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">winget</span> <span class="n">install</span> <span class="n">Google</span><span class="p">.</span><span class="n">Chrome</span>
+</code></pre></div>
+<h3 id="5-clone-and-setup-automedia">5. Clone and Setup AutoMedia<a class="headerlink" href="#5-clone-and-setup-automedia" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">renanzai40</span><span class="p">/</span><span class="n">AutoMedia_BackUp</span><span class="p">.</span><span class="n">git</span>
+<span class="nb">cd </span><span class="n">AutoMedia_BackUp</span>
+</code></pre></div>
+<p>Create a virtual environment and install:</p>
+<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">venv</span>
+<span class="p">.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">-e</span> <span class="s2">".[all]"</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> If you get an execution policy error when activating the venv, run:
+<div class="highlight"><pre><span></span><code><span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+</code></pre></div></p>
+</blockquote>
+<p>Initialize configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="n">automedia</span> <span class="n">init</span>
+<span class="n">automedia</span> <span class="n">doctor</span>
+</code></pre></div>
+<h3 id="6-environment-variables">6. Environment Variables<a class="headerlink" href="#6-environment-variables" title="Permanent link">&para;</a></h3>
+<p>Set AutoMedia environment variables. You can add these to your PowerShell profile (<code>$PROFILE</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:AUTOMEDIA_LLM_API_KEY</span> <span class="p">=</span> <span class="s2">"sk-xxx"</span>
+<span class="nv">$env:AUTOMEDIA_PROJECTS_DIR</span> <span class="p">=</span> <span class="s2">"$env:USERPROFILE\automedia-projects"</span>
+</code></pre></div>
+<p>To make them permanent, add them to your PowerShell profile:</p>
+<div class="highlight"><pre><span></span><code><span class="c"># Check if profile exists</span>
+<span class="nb">Test-Path</span> <span class="nv">$PROFILE</span>
+
+<span class="c"># If not, create it</span>
+<span class="nb">New-Item</span> <span class="n">-Path</span> <span class="nv">$PROFILE</span> <span class="n">-ItemType</span> <span class="n">File</span> <span class="n">-Force</span>
+
+<span class="c"># Edit profile</span>
+<span class="n">notepad</span> <span class="nv">$PROFILE</span>
+</code></pre></div>
+<p>Add this line to the profile:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:AUTOMEDIA_LLM_API_KEY</span> <span class="p">=</span> <span class="s2">"sk-xxx"</span>
+</code></pre></div>
+<h3 id="7-install-edge-tts-and-whisper">7. Install edge-tts and Whisper<a class="headerlink" href="#7-install-edge-tts-and-whisper" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">pip</span> <span class="n">install</span> <span class="n">edge-tts</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">faster-whisper</span>
+</code></pre></div>
+<h3 id="8-path-differences-on-windows">8. Path Differences on Windows<a class="headerlink" href="#8-path-differences-on-windows" title="Permanent link">&para;</a></h3>
+<p>AutoMedia reads and writes files using Python path handling, which works on Windows. But be aware of these differences:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Linux/WSL2</th>
+<th>Windows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Config directory</td>
+<td><code>~/.automedia/</code></td>
+<td><code>$env:USERPROFILE\.automedia\</code></td>
+</tr>
+<tr>
+<td>Project separator</td>
+<td><code>/</code></td>
+<td><code>\</code> (AutoMedia normalizes internally)</td>
+</tr>
+<tr>
+<td>Virtual environment</td>
+<td><code>.venv/bin/activate</code></td>
+<td><code>.venv\Scripts\Activate.ps1</code></td>
+</tr>
+<tr>
+<td>Python command</td>
+<td><code>python3</code></td>
+<td><code>python</code></td>
+</tr>
+<tr>
+<td>WSL paths</td>
+<td><code>/mnt/c/Users/...</code></td>
+<td><code>C:\Users\...</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="9-run-the-windows-setup-script">9. Run the Windows Setup Script<a class="headerlink" href="#9-run-the-windows-setup-script" title="Permanent link">&para;</a></h3>
+<p>For a one-command setup, use the provided PowerShell script:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">setup</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<p>See <a href="#scripts-reference">Scripts Reference</a> for details.</p>
+<hr />
+<h2 id="mcp-server-as-windows-service-nssm">MCP Server as Windows Service (NSSM)<a class="headerlink" href="#mcp-server-as-windows-service-nssm" title="Permanent link">&para;</a></h2>
+<p>For production deployments on Windows, run the MCP server as a Windows service using NSSM (Non-Sucking Service Manager).</p>
+<h3 id="1-install-nssm">1. Install NSSM<a class="headerlink" href="#1-install-nssm" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">winget</span> <span class="n">install</span> <span class="n">NSSM</span><span class="p">.</span><span class="n">NSSM</span>
+</code></pre></div>
+<p>Or download from <a href="https://nssm.cc/download">nssm.cc</a> and add to PATH.</p>
+<h3 id="2-create-the-service">2. Create the Service<a class="headerlink" href="#2-create-the-service" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">nssm</span> <span class="n">install</span> <span class="n">AutoMedia-MCP</span> <span class="s2">"C:\path\to\automedia\.venv\Scripts\python.exe"</span> <span class="s2">"-m automedia.mcp.server"</span>
+</code></pre></div>
+<p>Set the working directory and environment:</p>
+<div class="highlight"><pre><span></span><code><span class="n">nssm</span> <span class="nb">set </span><span class="n">AutoMedia-MCP</span> <span class="n">AppDirectory</span> <span class="s2">"C:\path\to\automedia"</span>
+<span class="n">nssm</span> <span class="nb">set </span><span class="n">AutoMedia-MCP</span> <span class="n">AppEnvironmentExtra</span> <span class="n">AUTOMEDIA_LLM_API_KEY</span><span class="p">=</span><span class="n">sk-xxx</span> <span class="n">AUTOMEDIA_LOG_LEVEL</span><span class="p">=</span><span class="n">INFO</span>
+</code></pre></div>
+<h3 id="3-manage-the-service">3. Manage the Service<a class="headerlink" href="#3-manage-the-service" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c"># Start</span>
+<span class="n">nssm</span> <span class="nb">start </span><span class="n">AutoMedia-MCP</span>
+
+<span class="c"># Stop</span>
+<span class="n">nssm</span> <span class="n">stop</span> <span class="n">AutoMedia-MCP</span>
+
+<span class="c"># Restart</span>
+<span class="n">nssm</span> <span class="n">restart</span> <span class="n">AutoMedia-MCP</span>
+
+<span class="c"># Status</span>
+<span class="n">nssm</span> <span class="n">status</span> <span class="n">AutoMedia-MCP</span>
+</code></pre></div>
+<p>Or use the standard PowerShell service cmdlets:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">Get-Service</span> <span class="n">AutoMedia-MCP</span>
+<span class="nb">Start-Service</span> <span class="n">AutoMedia-MCP</span>
+<span class="nb">Stop-Service</span> <span class="n">AutoMedia-MCP</span>
+</code></pre></div>
+<h3 id="4-view-logs">4. View Logs<a class="headerlink" href="#4-view-logs" title="Permanent link">&para;</a></h3>
+<p>NSSM writes logs to the directory specified during install. By default, these go to <code>C:\path\to\automedia\logs\</code>. Check:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">Get-Content</span> <span class="s2">"C:\path\to\automedia\logs\AutoMedia-MCP.log"</span> <span class="n">-Tail</span> <span class="n">50</span>
+</code></pre></div>
+<hr />
+<h2 id="environment-variables-reference">Environment Variables Reference<a class="headerlink" href="#environment-variables-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Windows Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOMEDIA_LLM_API_KEY</code></td>
+<td>LLM API key</td>
+<td><code>sk-xxx</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_BASE_URL</code></td>
+<td>Custom API endpoint</td>
+<td><code>https://api.deepseek.com/v1</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_PROVIDER</code></td>
+<td>LLM provider name</td>
+<td><code>deepseek</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LLM_MODEL</code></td>
+<td>Model identifier</td>
+<td><code>deepseek-chat</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_PROJECTS_DIR</code></td>
+<td>Projects root directory</td>
+<td><code>C:\Users\You\automedia-projects</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MCP_ALLOWLIST_PATH</code></td>
+<td>Custom allowlist path</td>
+<td><code>C:\Users\You\.automedia\allowlist.yaml</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MASTER_KEY</code></td>
+<td>Master key for credential encryption</td>
+<td>(32+ hex chars)</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_LOG_LEVEL</code></td>
+<td>Log level</td>
+<td><code>INFO</code>, <code>DEBUG</code>, <code>WARNING</code></td>
+</tr>
+</tbody>
+</table>
+<p>Set them in PowerShell:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:AUTOMEDIA_PROJECTS_DIR</span> <span class="p">=</span> <span class="s2">"C:\Users\You\automedia-projects"</span>
+<span class="no">[Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">"AUTOMEDIA_PROJECTS_DIR"</span><span class="p">,</span> <span class="s2">"C:\Users\You\automedia-projects"</span><span class="p">,</span> <span class="s2">"User"</span><span class="p">)</span>
+</code></pre></div>
+<p>The second command makes it permanent for your user account.</p>
+<hr />
+<h2 id="scripts-reference">Scripts Reference<a class="headerlink" href="#scripts-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Purpose</th>
+<th>How to Run (Windows)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/setup.ps1</code></td>
+<td>One-command venv + install + init</td>
+<td><code>.\scripts\setup.ps1</code></td>
+</tr>
+<tr>
+<td><code>scripts/setup.sh</code></td>
+<td>Linux/WSL2 setup (same as setup.ps1)</td>
+<td><code>bash scripts/setup.sh</code> (in WSL2)</td>
+</tr>
+<tr>
+<td><code>scripts/run-tests.sh</code></td>
+<td>pytest with coverage</td>
+<td><code>bash scripts/run-tests.sh</code> (in WSL2)</td>
+</tr>
+<tr>
+<td><code>scripts/mcp-server.sh</code></td>
+<td>MCP launcher</td>
+<td>WSL2 only (uses SIGTERM handler)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setupps1-details">setup.ps1 Details<a class="headerlink" href="#setupps1-details" title="Permanent link">&para;</a></h3>
+<p>The PowerShell setup script (<code>scripts/setup.ps1</code>) does the following:</p>
+<ol>
+<li>Checks for Python 3.11+</li>
+<li>Creates a Python virtual environment (<code>.venv</code>)</li>
+<li>Activates the virtual environment</li>
+<li>Installs AutoMedia with <code>pip install -e ".[all]"</code></li>
+<li>Installs FFmpeg via winget (if missing)</li>
+<li>Installs Bun via the official install script (if missing)</li>
+<li>Runs <code>automedia init</code> to initialize configuration</li>
+<li>Runs <code>automedia doctor</code> to verify dependencies</li>
+</ol>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="wsl2-issues">WSL2 Issues<a class="headerlink" href="#wsl2-issues" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wsl: command not found</code></td>
+<td>WSL2 not installed</td>
+<td>Run <code>wsl --install -d Ubuntu-24.04</code> as Admin</td>
+</tr>
+<tr>
+<td>WSL2 is slow on <code>/mnt/c/</code></td>
+<td>Cross-filesystem I/O</td>
+<td>Move project to WSL2 native fs: <code>cp -r /mnt/c/... ~/automedia</code></td>
+</tr>
+<tr>
+<td><code>vmmem</code> uses too much RAM</td>
+<td>WSL2 memory limit</td>
+<td>Create <code>%USERPROFILE%\.wslconfig</code> with <code>memory=8GB</code></td>
+</tr>
+<tr>
+<td>Network issues in WSL2</td>
+<td>VPN or proxy conflict</td>
+<td>Restart WSL2: <code>wsl --shutdown</code> then <code>wsl</code></td>
+</tr>
+<tr>
+<td><code>System has not been booted with systemd</code></td>
+<td>WSL2 defaults to init</td>
+<td>Add <code>systemd=true</code> to <code>/etc/wsl.conf</code> in WSL2, then <code>wsl --shutdown</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="docker-desktop-issues">Docker Desktop Issues<a class="headerlink" href="#docker-desktop-issues" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Desktop fails to start</td>
+<td>WSL2 not installed/updated</td>
+<td><code>wsl --update</code> then restart Docker Desktop</td>
+</tr>
+<tr>
+<td><code>docker: command not found</code></td>
+<td>Not in PATH</td>
+<td>Reinstall Docker Desktop or add to PATH manually</td>
+</tr>
+<tr>
+<td>Volume mounts empty</td>
+<td>Windows path with wrong format</td>
+<td>Use forward slashes: <code>-v C:/Users/...:/data</code></td>
+</tr>
+<tr>
+<td>Container exits immediately</td>
+<td>Missing environment or config</td>
+<td>Check logs: <code>docker logs automedia-mcp</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="native-windows-issues">Native Windows Issues<a class="headerlink" href="#native-windows-issues" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python: command not found</code></td>
+<td>Python not in PATH</td>
+<td>Reinstall with "Add Python to PATH" checked, or run <code>$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")</code></td>
+</tr>
+<tr>
+<td><code>ffmpeg: command not found</code></td>
+<td>FFmpeg not in PATH</td>
+<td>Run <code>refreshenv</code> or restart PowerShell. Or add manually: <code>[Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\tools\ffmpeg\bin", "User")</code></td>
+</tr>
+<tr>
+<td>Execution policy blocks scripts</td>
+<td>PowerShell security</td>
+<td><code>Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned</code></td>
+</tr>
+<tr>
+<td><code>venv</code> activation fails</td>
+<td>Execution policy</td>
+<td>Same fix as above. Then run <code>.\\.venv\\Scripts\\Activate.ps1</code></td>
+</tr>
+<tr>
+<td>Bun install hangs</td>
+<td>Network/firewall issue</td>
+<td>Try with <code>-SkipCertificateCheck</code>: <code>[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }</code> before the install command</td>
+</tr>
+<tr>
+<td>Long path errors</td>
+<td>Windows MAX_PATH limit</td>
+<td>Enable long paths: <code>New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force</code></td>
+</tr>
+<tr>
+<td>Audio processing fails</td>
+<td>Missing codecs</td>
+<td>Install FFmpeg full build (not essentials) from <a href="https://www.gyan.dev/ffmpeg/builds/">gyan.dev</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mcp-client-on-windows">MCP Client on Windows<a class="headerlink" href="#mcp-client-on-windows" title="Permanent link">&para;</a></h3>
+<p>If your MCP client (Claude Desktop, OpenCode) runs on the Windows host and needs to connect to AutoMedia:</p>
+<ul>
+<li><strong>With WSL2:</strong> Configure the client to run <code>wsl python -m automedia.mcp.server</code> as the command</li>
+<li><strong>With Docker:</strong> Configure the client to run <code>docker exec -i automedia-mcp python -m automedia.mcp.server</code></li>
+<li><strong>Native:</strong> Use the full path to the venv Python: <code>C:\path\to\automedia\.venv\Scripts\python.exe -m automedia.mcp.server</code></li>
+</ul>
+<h3 id="getting-help">Getting Help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h3>
+<p>If you run into Windows-specific issues not covered here:</p>
+<ol>
+<li>Check the <a href="../../dev/agent-troubleshooting/">AutoMedia Troubleshooting Guide</a></li>
+<li>Open a GitHub issue with your Windows version and the path you're using (WSL2/Docker/native)</li>
+<li>Include the output of <code>automedia doctor</code> and your PowerShell version (<code>$PSVersionTable.PSVersion</code>)</li>
+</ol>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/renanzai40/AutoMedia_BackUp" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
