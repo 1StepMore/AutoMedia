@@ -151,7 +151,7 @@ def _handle_fix_install(results: list[dict[str, Any]]) -> bool:
     for name, instruction in missing_installable:
         typer.secho(f"Installing {name}...", fg=typer.colors.CYAN)
         try:
-            subprocess.run(instruction, shell=True, check=False, timeout=120)  # noqa: S602 — instructions are hardcoded constants
+            subprocess.run(instruction, shell=True, check=False, timeout=120)  # noqa: S602  # nosec B602 — instructions are hardcoded constants
         except Exception as exc:
             typer.secho(f"  ✗ Failed to install {name}: {exc}", fg=typer.colors.RED)
 

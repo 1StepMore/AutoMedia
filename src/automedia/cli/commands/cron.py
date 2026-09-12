@@ -321,7 +321,7 @@ def _job_run_distribute() -> None:
         try:
             proc = subprocess.run(  # noqa: S602 — command strings come from trusted pipeline schedule config
                 command,
-                shell=True,
+                shell=True,  # nosec B602 — command from trusted pipeline schedule config
                 capture_output=True,
                 text=True,
                 timeout=600,
