@@ -1,0 +1,31 @@
+name: update-engine-config-positive
+description: "update_engine_config writes an engine override YAML under the user config dir and returns the success envelope {status: ok, modality, setting, value, file}."
+intent: "Prove the engine-config surface's success branch: the tool writes the override file and reports its path, against the isolated AUTOMEDIA_CONFIG_DIR the validation runner sets (never the real user config)."
+category: surface
+user_level: L1
+requires_env: []
+steps:
+  - name: update_engine_config writes the override
+    kind: tool
+    check: "update_engine_config returns success: true with status ok and the written override file path (the real writer, exercised against the isolated config dir)."
+    standard: tool.contract
+    tool: update_engine_config
+    arguments:
+      modality: tts
+      setting: voice
+      value: zh-CN-XiaoxiaoNeural
+    expect:
+      success: true
+      output_has:
+        - status
+        - file
+cleanup_steps:
+  - name: remove the isolated engine override
+    kind: cli
+    check: Removes the engine-override-tts-*.yaml file this scenario wrote under the isolated config dir (config-dir-scoped, never the real user config).
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'import glob, os; from automedia.core.paths import get_user_config_dir; [os.remove(p) for p in glob.glob(str(get_user_config_dir()/"overrides"/"rules"/"engine-override-tts-*.yaml"))]'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

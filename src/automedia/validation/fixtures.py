@@ -1,0 +1,143 @@
+"""Deterministic in-process fixture seam for control/approval MCP tools (T-05).
+
+The seven control/approval MCP tools (``pause_pipeline``, ``resume_pipeline``,
+``cancel_pipeline``, ``retry_gate``, ``skip_gate``, ``approve_gate``,
+``reject_gate``) act on runtime state that ``run_pipeline`` creates under a
+``uuid4`` project id.  A static YAML scenario has no output interpolation
+(``automedia.validation.engine`` dispatches fixed ``arguments``), so it can
+never address the live run's id — the honest contract is the ``NOT_FOUND``
+boundary probe.  To prove each surface's success branch deterministically, a
+scenario may declare a ``fixtures:`` entry; the engine then seeds the SAME
+in-process state ``run_pipeline``/``run_full_pipeline`` create — a
+``PipelineProgress`` in the tracker and a paused engine in the engine
+registry — under the fixed ids below, and calls the REAL tool through the
+REAL MCP dispatcher.  The fixture provides state only; the tool's own lookup,
+mutation, and success envelope are the evidence.
+
+This is a harness seam, not a product behaviour: no fixture code ships in the
+MCP tools, and a scenario that does not declare a fixture never sees this
+state (so the boundary probes and ``get_pending_approvals`` stay untouched).
+
+Lifecycle: :func:`apply_fixtures` is a context manager — the engine enters it
+around the primary steps and it always tears the seeded state back out, so
+one scenario's fixture can never leak into the next.
+"""
+
+from __future__ import annotations
+
+import threading
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from typing import Any
+
+from automedia.validation.schema import FIXTURES as FIXTURE_NAMES
+
+PIPELINE_CONTROL_ID: str = "valctrlpipeline1"
+"""Fixed tracker id seeded by the ``pipeline_control`` fixture."""
+
+PAUSED_ENGINE_ID: str = "valctrlengine1"
+"""Fixed engine-registry id seeded by the ``paused_engine`` fixture."""
+
+APPROVAL_GATE_NAME: str = "H0"
+"""Gate name the ``paused_engine`` fixture leaves awaiting approval."""
+
+
+class PausedEngineFixture:
+    """A minimal paused-engine double exposing the GateEngine surface the
+    director-mode approval tools consume (``resume`` +
+    ``list_pending_approvals``).
+
+    Using a fixture double rather than a concrete :class:`~automedia.gates.base
+    .BaseGate` subclass is deliberate: a production-module gate subclass would
+    auto-register in the global ``GateRegistry`` and break the RL7 feature-tier
+    parity assertions (``tests/test_features.py``).  The tools under test only
+    call the two methods below, so the double is the narrowest faithful seam.
+    """
+
+    def __init__(self, gate_name: str) -> None:
+        self._gate_name = gate_name
+        self._pending = True
+        self._lock = threading.Lock()
+        self.last_decision: dict[str, Any] | None = None
+
+    def resume(
+        self,
+        gate_name: str,
+        approved: bool = True,
+        modifications: dict[str, Any] | None = None,
+    ) -> None:
+        """Unblock the paused gate; raise ``KeyError`` for the wrong gate."""
+        with self._lock:
+            if not self._pending or gate_name != self._gate_name:
+                raise KeyError(
+                    f"No gate awaiting approval: {gate_name!r}. "
+                    f"Active waiters: {{{self._gate_name!r}}}"
+                )
+            self._pending = False
+            self.last_decision = {"approved": approved, "modifications": modifications or {}}
+
+    def list_pending_approvals(self) -> list[dict[str, Any]]:
+        """Pending gates, mirroring ``GateEngine.list_pending_approvals``."""
+        with self._lock:
+            if not self._pending:
+                return []
+            return [{"gate_name": self._gate_name, "status": "awaiting_approval"}]
+
+
+def _seed_pipeline_control() -> dict[str, Any]:
+    """Seed a real ``PipelineProgress`` under the fixed control id."""
+    from automedia.mcp._state import _lock, _pipeline_tracker
+    from automedia.pipelines.gate_types import PipelineProgress
+
+    progress = PipelineProgress(project_id=PIPELINE_CONTROL_ID)
+    progress.set_gate_names(["G0", "G1", "V0"])
+    with _lock:
+        _pipeline_tracker[PIPELINE_CONTROL_ID] = progress
+    return {"id": PIPELINE_CONTROL_ID, "progress": progress}
+
+
+def _seed_paused_engine() -> dict[str, Any]:
+    """Register a paused-engine fixture under the fixed engine id."""
+    from automedia.pipelines.gate_engine import register_engine
+
+    engine = PausedEngineFixture(APPROVAL_GATE_NAME)
+    register_engine(PAUSED_ENGINE_ID, engine)  # type: ignore[arg-type]  # fixture double
+    return {"id": PAUSED_ENGINE_ID, "engine": engine}
+
+
+_SEEDERS = {
+    "pipeline_control": _seed_pipeline_control,
+    "paused_engine": _seed_paused_engine,
+}
+
+
+def _teardown(seeded: Sequence[dict[str, Any]]) -> None:
+    """Remove every seeded fixture (tracker entries + engine registrations)."""
+    from automedia.mcp._state import _lock, _pipeline_tracker
+    from automedia.pipelines.gate_engine import unregister_engine
+
+    for entry in seeded:
+        if "progress" in entry:
+            with _lock:
+                _pipeline_tracker.pop(entry["id"], None)
+        if "engine" in entry:
+            unregister_engine(entry["id"])
+
+
+@contextmanager
+def apply_fixtures(names: Sequence[str]) -> Iterator[None]:
+    """Seed the declared fixtures, yield, then always tear them down.
+
+    Unknown names raise ``ValueError`` loudly (the schema already rejects
+    them; this is the engine-side belt-and-braces).
+    """
+    seeded: list[dict[str, Any]] = []
+    try:
+        for name in names:
+            seeder = _SEEDERS.get(name)
+            if seeder is None:
+                raise ValueError(f"unknown validation fixture {name!r}; known: {FIXTURE_NAMES}")
+            seeded.append(seeder())
+        yield
+    finally:
+        _teardown(seeded)

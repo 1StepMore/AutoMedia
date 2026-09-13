@@ -68,6 +68,18 @@ CONTROL_SCENARIOS: tuple[str, ...] = (
     "skip-gate-boundary",
 )
 
+# The 7 positive-path control scenarios (T-05): each seeds the runtime state
+# the tool acts on (fixtures) and asserts the real success envelope.
+CONTROL_POSITIVE_SCENARIOS: tuple[str, ...] = (
+    "approve-gate-positive",
+    "cancel-pipeline-positive",
+    "pause-pipeline-positive",
+    "reject-gate-positive",
+    "resume-pipeline-positive",
+    "retry-gate-positive",
+    "skip-gate-positive",
+)
+
 _CMD_VALIDATE_RE = re.compile(r"\bvalidate\b")
 
 
@@ -219,17 +231,13 @@ def test_meta_self_validation(
 
 def test_error_boundary_scenarios_present(library: list[Scenario], library_root: Path) -> None:
     """The 7 boundary-only control scenarios exist with scenario-level
-    error_boundary: true (what the coverage audit reads)."""
+    error_boundary: true (what the coverage audit reads), and the paired 7
+    positive-path scenarios assert the real success envelope via fixtures."""
     control_dir = library_root / "surface" / "control"
-    files = sorted(control_dir.glob("*.yaml"))
-    assert len(files) == len(CONTROL_SCENARIOS), (
-        f"surface/control/ holds {len(files)} files, expected "
-        f"{len(CONTROL_SCENARIOS)}: {[f.name for f in files]}"
-    )
     by_name = {scenario.name: scenario for scenario in library}
-    for filename, name in zip(files, CONTROL_SCENARIOS, strict=True):
-        assert filename.stem == name, (
-            f"control file {filename.name!r} does not match its scenario name {name!r}"
+    for name in CONTROL_SCENARIOS:
+        assert (control_dir / f"{name}.yaml").is_file(), (
+            f"boundary control scenario file {name!r} missing"
         )
         scenario = by_name[name]
         assert scenario.error_boundary is True, (
@@ -238,6 +246,19 @@ def test_error_boundary_scenarios_present(library: list[Scenario], library_root:
         assert scenario.steps and all(
             step.expect.error_expected is True for step in scenario.steps
         ), f"control scenario {name!r} steps must opt in with expect.error_expected: true"
+    positives = sorted(path.stem for path in control_dir.glob("*-positive.yaml"))
+    assert positives == sorted(CONTROL_POSITIVE_SCENARIOS), (
+        f"surface/control/ positive scenarios {positives} != {sorted(CONTROL_POSITIVE_SCENARIOS)}"
+    )
+    for name in CONTROL_POSITIVE_SCENARIOS:
+        scenario = by_name[name]
+        assert scenario.error_boundary is False, (
+            f"positive scenario {name!r} must not be a boundary probe"
+        )
+        assert scenario.fixtures, f"positive scenario {name!r} must declare a fixture"
+        assert scenario.steps and all(step.expect.success is True for step in scenario.steps), (
+            f"positive scenario {name!r} steps must assert success: true"
+        )
 
 
 def test_schema_conformance(library_root: Path) -> None:

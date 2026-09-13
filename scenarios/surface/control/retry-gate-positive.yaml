@@ -1,0 +1,22 @@
+name: retry-gate-positive
+description: "retry_gate marks a named gate for retry on a tracked pipeline and returns the success envelope {retrying: true, project_id, gate_name}."
+intent: "Prove the retry-gate control surface's success branch deterministically via the pipeline_control fixture (which seeds the runtime PipelineProgress state under a fixed id), exercising the real tool lookup, mutation, and envelope."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: retry_gate marks the gate for retry
+    kind: tool
+    check: "retry_gate returns success: true with retrying: true and the fixture project_id and gate_name (the real tool finds the seeded PipelineProgress and calls progress.mark_retry_gate())."
+    standard: tool.contract
+    tool: retry_gate
+    arguments:
+      project_id: valctrlpipeline1
+      gate_name: G0
+    expect:
+      success: true
+      output_has:
+        - retrying
+        - gate_name

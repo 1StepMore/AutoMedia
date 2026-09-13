@@ -84,6 +84,7 @@ from automedia.validation.expects import (
     apply_recovery,
     evaluate_expect,
 )
+from automedia.validation.fixtures import apply_fixtures
 from automedia.validation.loader import load_scenarios
 from automedia.validation.metrics import build_metrics
 from automedia.validation.persist import (
@@ -353,10 +354,11 @@ async def run_validation_scenario_async(
             "confidence": _confidence(),
             **(_skip_marker(skipped) if skipped else {}),
         }
-    steps = [
-        await _run_primary_step(step, adapters, trace_id, index, cwd=base, run_root=run_root)
-        for index, step in enumerate(scenario.steps, 1)
-    ]
+    with apply_fixtures(scenario.fixtures):
+        steps = [
+            await _run_primary_step(step, adapters, trace_id, index, cwd=base, run_root=run_root)
+            for index, step in enumerate(scenario.steps, 1)
+        ]
     cleanup = [
         (await _execute_step(cleanup_step, adapters, trace_id, 0, cwd=base))[0]
         for cleanup_step in scenario.cleanup_steps

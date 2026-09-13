@@ -1,0 +1,22 @@
+name: approve-gate-positive
+description: "approve_gate resumes a gate paused for director approval and returns the success envelope {approved: true, project_id, gate_name}."
+intent: "Prove the director-mode approve surface's success branch deterministically. The success path needs a live engine paused on approval under a random runtime project id a static scenario cannot address; the paused_engine fixture seeds that paused engine under a fixed id and the real tool resume path is the evidence."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - paused_engine
+steps:
+  - name: approve_gate approves the paused gate
+    kind: tool
+    check: "approve_gate returns success: true with approved: true and the fixture project_id and gate_name (the real tool finds the registered paused engine and calls engine.resume(approved=True))."
+    standard: tool.contract
+    tool: approve_gate
+    arguments:
+      project_id: valctrlengine1
+      gate_name: H0
+    expect:
+      success: true
+      output_has:
+        - approved
+        - gate_name

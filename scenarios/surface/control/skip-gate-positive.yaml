@@ -1,0 +1,22 @@
+name: skip-gate-positive
+description: "skip_gate marks a named gate for skipping on a tracked pipeline and returns the success envelope {skipping: true, project_id, gate_name}."
+intent: "Prove the skip-gate control surface's success branch deterministically via the pipeline_control fixture (which seeds the runtime PipelineProgress state under a fixed id), exercising the real tool lookup, mutation, and envelope."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: skip_gate marks the gate for skipping
+    kind: tool
+    check: "skip_gate returns success: true with skipping: true and the fixture project_id and gate_name (the real tool finds the seeded PipelineProgress and calls progress.mark_skip_gate())."
+    standard: tool.contract
+    tool: skip_gate
+    arguments:
+      project_id: valctrlpipeline1
+      gate_name: G0
+    expect:
+      success: true
+      output_has:
+        - skipping
+        - gate_name

@@ -6,48 +6,15 @@
 # `.yml` on purpose: the scenario loader globs `*.yaml`, so a `.yaml`
 # allowlist would be rejected as a malformed scenario.
 #
-# Scope: these MCP tools have only an error-boundary probe today.  Wave-2
-# T-05 adds a positive-path scenario for each, at which point the entry is
-# deleted and the surface becomes `covered`.
+# Scope: `run_validation_suite` cannot be success-called without unbounded
+# recursion (R-09), so its boundary probe is the honest contract and it stays
+# allowlisted.  Wave-2 T-05 added a positive-path scenario for each of the 10
+# control/account/config tools that previously had only a boundary probe, so
+# none of those needs an entry any more.
 version: 1
 reviewed: "2026-09-13"
-release: "wave1"
+release: "wave2"
 entries:
-  - surface: mcp
-    name: approve_gate
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: reject_gate
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: pause_pipeline
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: resume_pipeline
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: cancel_pipeline
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: retry_gate
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
-  - surface: mcp
-    name: skip_gate
-    owner: validation-maintainer
-    reason: "Boundary-only today; positive path lands in T-05 (Wave 2)."
-    expires: "2026-12-31"
   - surface: mcp
     name: run_validation_suite
     owner: validation-maintainer

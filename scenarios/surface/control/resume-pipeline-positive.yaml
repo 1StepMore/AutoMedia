@@ -1,0 +1,21 @@
+name: resume-pipeline-positive
+description: "resume_pipeline resumes a previously paused tracked pipeline and returns the success envelope {resumed: true, project_id}."
+intent: "Prove the resume control surface's success branch deterministically via the pipeline_control fixture (which seeds the runtime PipelineProgress state under a fixed id), exercising the real tool lookup, mutation, and envelope."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: resume_pipeline resumes the tracked pipeline
+    kind: tool
+    check: "resume_pipeline returns success: true with resumed: true and the fixture project_id (the real tool finds the seeded PipelineProgress and calls progress.resume())."
+    standard: tool.contract
+    tool: resume_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - resumed
+        - project_id

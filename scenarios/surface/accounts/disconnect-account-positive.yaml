@@ -1,0 +1,38 @@
+name: disconnect-account-positive
+description: "disconnect_account removes a registered account and returns the success envelope {account_id, platform}; the store requires AUTOMEDIA_MASTER_KEY, so a missing key gates the scenario to unconfigured."
+intent: "Prove the account-disconnect surface's success branch against an isolated registry seeded with a synthetic fixed-id account, so the tool's real lookup and delete are the evidence (account ids are random in the product, so a static scenario must seed the id it disconnects)."
+category: surface
+user_level: L2
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: seed an isolated synthetic account
+    kind: cli
+    check: "A python3 one-liner saves a synthetic account under the fixed id valaccdisc01 in the isolated encrypted store (config-dir-scoped, synthetic credentials only), the state disconnect_account then removes."
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().save("wechat", "valaccdisc01", {"api_key": "synthetic-validation-key"}, label="validation-disconnect")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: disconnect_account removes the registered account
+    kind: tool
+    check: "disconnect_account returns success: true carrying the removed account_id and platform (the real registry lookup + delete, not a stub)."
+    standard: tool.contract
+    tool: disconnect_account
+    arguments:
+      account_id: valaccdisc01
+    expect:
+      success: true
+      output_has:
+        - account_id
+cleanup_steps:
+  - name: remove the seeded synthetic account if disconnect did not
+    kind: cli
+    check: AccountStore().delete is idempotent here — it removes the fixed-id synthetic account this scenario seeded if the tool step failed before deleting it.
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().delete("valaccdisc01")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

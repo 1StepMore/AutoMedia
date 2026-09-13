@@ -1,0 +1,23 @@
+name: reject-gate-positive
+description: "reject_gate resumes a gate paused for director approval with approved=false and returns the success envelope {rejected: true, project_id, gate_name}."
+intent: "Prove the director-mode reject surface's success branch deterministically via the paused_engine fixture (a paused engine at a fixed id), exercising the real tool resume path with approved=false."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - paused_engine
+steps:
+  - name: reject_gate rejects the paused gate
+    kind: tool
+    check: "reject_gate returns success: true with rejected: true and the fixture project_id and gate_name (the real tool finds the registered paused engine and calls engine.resume(approved=False, modifications={reason}))."
+    standard: tool.contract
+    tool: reject_gate
+    arguments:
+      project_id: valctrlengine1
+      gate_name: H0
+      reason: validation-reject
+    expect:
+      success: true
+      output_has:
+        - rejected
+        - gate_name

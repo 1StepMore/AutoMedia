@@ -61,6 +61,14 @@ render the stage×user matrix from data instead of auditor judgment."""
 ARTIFACT_CHECK_FIELDS: tuple[str, ...] = ("path", "required")
 """Closed field set of one ``collect_artifacts`` entry (guide §2.2/§4)."""
 
+FIXTURES: tuple[str, ...] = ("pipeline_control", "paused_engine")
+"""Closed set of in-process state fixtures a scenario may declare (T-05).
+
+The engine seeds the same runtime state ``run_pipeline`` creates so the
+control/approval MCP tools' success branches are provable deterministically
+(a static scenario cannot address the random runtime project id).  See
+``automedia.validation.fixtures``."""
+
 
 @dataclass(frozen=True)
 class ArtifactCheck:
@@ -273,6 +281,8 @@ class Scenario:
     # consumes them; the engine ignores them.
     proves_gates: list[str] = field(default_factory=list)
     proves_modes: list[str] = field(default_factory=list)
+    # In-process state fixtures seeded around the primary steps (T-05).
+    fixtures: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: object) -> Scenario:
@@ -305,6 +315,13 @@ class Scenario:
             raise SchemaError(
                 "scenario: regression=True requires 'regression_issue' (bug reference)"
             )
+        fixtures = _expect_str_list(data.get("fixtures", []), prefix + "fixtures")
+        for index, fixture_name in enumerate(fixtures):
+            if fixture_name not in FIXTURES:
+                raise SchemaError(
+                    f"{prefix}fixtures[{index}]: unknown fixture {fixture_name!r}; "
+                    f"known: {list(FIXTURES)}"
+                )
         return cls(
             name=_expect_str(data["name"], prefix + "name"),
             description=_expect_str(data["description"], prefix + "description"),
@@ -337,6 +354,7 @@ class Scenario:
             proves_modes=_expect_declarative_list(
                 data.get("proves_modes", []), prefix + "proves_modes"
             ),
+            fixtures=fixtures,
         )
 
 

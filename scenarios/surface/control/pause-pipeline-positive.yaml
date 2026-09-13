@@ -1,0 +1,21 @@
+name: pause-pipeline-positive
+description: "pause_pipeline signals a running tracked pipeline to pause after the current gate and returns the success envelope {paused: true, project_id}."
+intent: "Prove the pause control surface's success branch deterministically. The control tools act on runtime state under a random run_pipeline project id that a static scenario cannot address, so the pipeline_control fixture seeds the SAME PipelineProgress state run_pipeline creates under a fixed id; the real tool lookup, mutation, and envelope are the evidence."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: pause_pipeline pauses the tracked pipeline
+    kind: tool
+    check: "pause_pipeline returns success: true with paused: true and the fixture project_id (the real tool finds the seeded PipelineProgress and calls progress.pause())."
+    standard: tool.contract
+    tool: pause_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - paused
+        - project_id

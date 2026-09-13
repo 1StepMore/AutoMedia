@@ -1,0 +1,39 @@
+name: get-account-health-positive
+description: "get_account_health returns the health envelope (account_id, platform, label, status) for a registered account; the store requires AUTOMEDIA_MASTER_KEY, so a missing key gates the scenario to unconfigured."
+intent: "Prove the account-health surface's success branch against an isolated registry seeded with a synthetic fixed-id account, so the tool's real lookup and envelope are the evidence (account ids are random in the product, so a static scenario must seed the id it queries)."
+category: surface
+user_level: L2
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: seed an isolated synthetic account
+    kind: cli
+    check: "A python3 one-liner saves a synthetic account under the fixed id valacchealth01 in the isolated encrypted store (config-dir-scoped, synthetic credentials only), the state get_account_health then reads."
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().save("wechat", "valacchealth01", {"api_key": "synthetic-validation-key"}, label="validation-health")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: get_account_health reports the registered account
+    kind: tool
+    check: "get_account_health returns success: true carrying the registered account_id and platform (the real registry lookup, not a stub)."
+    standard: tool.contract
+    tool: get_account_health
+    arguments:
+      account_id: valacchealth01
+    expect:
+      success: true
+      output_has:
+        - account_id
+        - platform
+cleanup_steps:
+  - name: remove the seeded synthetic account
+    kind: cli
+    check: AccountStore().delete removes only the fixed-id synthetic account this scenario seeded, leaving any other accounts in the isolated store untouched.
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().delete("valacchealth01")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

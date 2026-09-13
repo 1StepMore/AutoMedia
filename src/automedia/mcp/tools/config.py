@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import yaml
 from structlog import get_logger
 
+from automedia.core.paths import get_user_config_dir
 from automedia.exceptions import ConfigError
 from automedia.mcp.server_types import EngineModality
 from automedia.mcp.tools._shared import (
@@ -103,7 +103,7 @@ def update_engine_config(
         ``{"status": "ok", "modality": str, "setting": str, "value": str, "file": str}``
         or ``{"error": {"code": ..., "message": ..., "resolution": ...}}`` on failure.
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     valid_modalities = {"tts", "asr", "image", "video"}
 
@@ -115,7 +115,7 @@ def update_engine_config(
         )
 
     try:
-        overrides_dir = Path.home() / ".automedia" / "overrides" / "rules"
+        overrides_dir = get_user_config_dir() / "overrides" / "rules"
         overrides_dir.mkdir(parents=True, exist_ok=True)
 
         override_data = {
@@ -126,7 +126,7 @@ def update_engine_config(
             },
         }
 
-        ts = datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         filename = f"engine-override-{modality}-{ts}.yaml"
         filepath = overrides_dir / filename
 

@@ -1,0 +1,21 @@
+name: cancel-pipeline-positive
+description: "cancel_pipeline sets the cancellation flag on a tracked pipeline and returns the success envelope {cancelled: true, project_id}."
+intent: "Prove the cancel control surface's success branch deterministically via the pipeline_control fixture (which seeds the runtime PipelineProgress state under a fixed id), exercising the real tool lookup, mutation, and envelope."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: cancel_pipeline cancels the tracked pipeline
+    kind: tool
+    check: "cancel_pipeline returns success: true with cancelled: true and the fixture project_id (the real tool finds the seeded PipelineProgress and calls progress.cancel())."
+    standard: tool.contract
+    tool: cancel_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - cancelled
+        - project_id
