@@ -59,13 +59,36 @@ def _committed(name: str) -> Scenario:
 
 
 def _wait_for_marker(timeout: float = 5.0) -> dict[str, Any]:
+    """Poll until the marker holds parseable, non-empty JSON or the deadline passes.
+
+    The writer may expose the file before its content is durable (and a
+    global path can be re-created by an overlapping run), so mere existence
+    is not enough: keep polling on empty/partial content and only fail once
+    the deadline passes, reporting the path, the last byte count and the last
+    parse error so the CI failure is diagnosable without another round trip.
+    """
     marker = Path(HITL_MARKER_PATH)
     deadline = time.monotonic() + timeout
+    last_size: int | None = None
+    last_error: str | None = None
     while time.monotonic() < deadline:
         if marker.is_file():
-            return json.loads(marker.read_text(encoding="utf-8"))
+            raw = marker.read_text(encoding="utf-8")
+            last_size = len(raw.encode("utf-8"))
+            if raw.strip():
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    last_error = f"{type(exc).__name__}: {exc}"
+                else:
+                    if isinstance(parsed, dict) and parsed:
+                        return parsed
+                    last_error = "marker JSON parsed to an empty object"
         time.sleep(0.05)
-    raise AssertionError(f"live HITL marker {marker} was never written")
+    raise AssertionError(
+        f"live HITL marker {marker} never held parseable, non-empty JSON within "
+        f"{timeout:g}s: last_observed_bytes={last_size!r}, last_parse_error={last_error!r}"
+    )
 
 
 class TestFixtureRegistration:
