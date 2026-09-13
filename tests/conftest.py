@@ -5,6 +5,7 @@ All fixtures produce synthetic data — zero production project data.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Generator
 from typing import Any
 
@@ -28,6 +29,80 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "filterwarnings",
         "ignore:Gate '[A-Z][0-9]+' is registered but missing from FAILURE_MODES",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Environment-leak guard
+# ---------------------------------------------------------------------------
+
+_ENV_WATCHLIST: tuple[str, ...] = (
+    "AUTOMEDIA_MASTER_KEY",
+    "AUTOMEDIA_FAKE_LLM",
+    "AUTOMEDIA_LLM_API_KEY",
+    "AUTOMEDIA_CONFIG_DIR",
+)
+"""Environment variables the leak guard watches.
+
+pytest collects and imports every test module up front, then runs the whole
+session in one process.  A raw ``os.environ[name] = value`` executed at module
+import time survives for the rest of the session and silently leaks into every
+later test — the account-MCP modules used to set ``AUTOMEDIA_MASTER_KEY`` at
+import time, which broke tests asserting the variable is absent.  Use
+``monkeypatch.setenv`` / ``monkeypatch.delenv`` (auto-restored) instead.
+
+The guard detects *import-time* mutations only: it snapshots the watched vars
+in ``pytest_sessionstart`` (before collection) and re-checks them in
+``pytest_collection_finish`` (after every test module has been imported but
+before any test runs).  It deliberately does NOT police per-test mutations —
+product code legitimately sets some of these (e.g. ``AUTOMEDIA_CONFIG_DIR`` in
+``scripts/validation_run_affected.py``), so a per-test failure guard would
+produce false positives.
+"""
+
+_session_env_baseline: dict[str, str | None] = {}
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Snapshot watched env vars before collection imports any test module.
+
+    The snapshot must happen here rather than in a session-scoped fixture:
+    pytest imports every test module during collection, before the first
+    fixture is set up, so an import-time mutation would already be baked into
+    a fixture-captured baseline.  ``pytest_sessionstart`` runs before
+    collection, so it records the real pre-session environment.
+    """
+    _session_env_baseline.clear()
+    for name in _ENV_WATCHLIST:
+        _session_env_baseline[name] = os.environ.get(name)
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Abort the session if collection mutated a watched env var.
+
+    Runs after every test module has been imported (collection end) but before
+    any test executes.  An import-time ``os.environ`` write is the defect class
+    this guard targets: it leaks into every subsequent test in the session.
+    """
+    leaked = [
+        name
+        for name in _ENV_WATCHLIST
+        if os.environ.get(name) != _session_env_baseline.get(name)
+    ]
+    if not leaked:
+        return
+    detail = "\n".join(
+        f"  {name}: {_session_env_baseline.get(name)!r} -> {os.environ.get(name)!r}"
+        for name in leaked
+    )
+    pytest.exit(
+        "Environment-leak guard: a watched variable was mutated at import time "
+        "during collection:\n"
+        f"{detail}\n"
+        "A watchlist var mutated at import time leaks into every test of the "
+        "session; move it into a fixture (monkeypatch.setenv) or set it in "
+        "pytest_sessionstart-documented config.",
+        returncode=1,
     )
 
 
