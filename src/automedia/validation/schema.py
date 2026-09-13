@@ -3,7 +3,7 @@
 Parsing is strict: unknown keys and wrong types raise :class:`SchemaError`
 naming the offending field — load-time rejection is loud by design (guide §2.4).
 
-AutoMedia deviations from ``docs/agent-tester-validation-guide.md`` §2:
+AutoMedia deviations from ``scenarios/STANDARDS.md``:
 ``intent`` (scenario) and ``check``/``standard`` (step) are REQUIRED; step
 ``kind`` is closed to {"tool", "cli", "file"} (no HTTP adapter —
 ``requires_http`` stays a schema-only inert flag); ``error_boundary`` is

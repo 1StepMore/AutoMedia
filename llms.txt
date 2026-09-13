@@ -1,0 +1,27 @@
+# AutoMedia
+
+> Automated media production pipeline for content teams and AI coding agents.
+
+AutoMedia automates content production from topic selection through draft
+writing, video generation, subtitle rendering, and multi-platform publishing.
+
+## Agent entry points
+- [AGENTS.md](AGENTS.md): agent-role codebase context, constraints, red lines, MCP/CLI references
+- [README.md](README.md): project entry point — install, quick start, architecture, testing
+- [docs/index.md](docs/index.md): documentation home
+
+## Validation
+- [scenarios/STANDARDS.md](scenarios/STANDARDS.md): the single schema authority for validation `standard:` keys
+- [scenarios/README.md](scenarios/README.md): agent-tester validation framework onboarding
+- [docs/dev/agent-reference.md](docs/dev/agent-reference.md): validation layer contract, directory layout, task patterns
+
+## Reference
+- [docs/dev/developer-guide.md](docs/dev/developer-guide.md): full developer guide
+- [docs/user/cli-reference.md](docs/user/cli-reference.md): CLI command reference
+- [docs/user/mcp-setup.md](docs/user/mcp-setup.md): MCP server setup
+- [docs/user/api-reference.md](docs/user/api-reference.md): Python SDK API reference
+- [docs/dev/agent-troubleshooting.md](docs/dev/agent-troubleshooting.md): troubleshooting guide
+
+## Optional
+- [CHANGELOG.md](CHANGELOG.md): version history
+- [docs/doc-inventory.md](docs/doc-inventory.md): generated documentation inventory

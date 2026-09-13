@@ -292,5 +292,5 @@ if today - last_verified > max_age_days:
 
 - [`founder-expectations.md`](founder-expectations.md) — D3: Founder 视角的 48 条期望
 - [`evaluation-matrix-principles.md`](evaluation-matrix-principles.md) — 8 维度系统诊断工具包
-- [`d3-gap-analysis.md`](../archived/d3-gap-analysis.md) — 一次性差距审计（已归档）
+- `d3-gap-analysis.md`（位于 `docs/archived/`）— 一次性差距审计（已归档，不参与构建）
 - [`.opencode/skills/project-validation.md`](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/.opencode/skills/project-validation.md) — 规范位置（所有 agent 共享）。Claude Code 使用 `.claude/skills/` 原生副本，Codex CLI 使用 `.codex/skills/` 原生副本

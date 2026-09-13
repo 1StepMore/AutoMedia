@@ -13,7 +13,7 @@ Automated Media Production Pipeline — for content teams and AI coding agents.
 
 AutoMedia automates content production from **topic selection** through **draft writing**, **video generation**, **subtitle rendering**, and **multi-platform publishing**. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-**Stats:** 62,408 LOC (core) · ~183,000+ LOC (total) · 734+ Python files · Python 3.11+ · MIT License
+**Stats:** 62,461 LOC (core) · ~183,000+ LOC (total) · 737+ Python files · Python 3.11+ · MIT License
 
 ---
 
@@ -69,7 +69,8 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
 | [Architecture Decision Records](adr/README.md) | ADR-001..ADR-006 index + template, canonical source in docs/adr/ |
-| [Archived documents](archived/) | One-off historical reports (migration guides, per-run acceptance, superseded master plans) |
+| [Agent Reference](dev/agent-reference.md) | On-demand deep reference split out of AGENTS.md (layout, task patterns, validation contract) |
+| [Validation Schema Authority](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/scenarios/STANDARDS.md) | `scenarios/STANDARDS.md` — the single schema authority for validation `standard:` keys |
 
 ---
 

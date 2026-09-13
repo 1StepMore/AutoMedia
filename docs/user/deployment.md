@@ -64,8 +64,8 @@ A healthcheck script at `deploy/systemd/healthcheck.sh` performs a
 two-phase check: a fast `pgrep` pre-check followed by a real MCP
 JSON-RPC ping.
 
-For full installation and management instructions, see the
-[archived systemd setup guide](../archived/mcp-systemd-setup.md).
+For full installation and management instructions, see the archived
+systemd setup guide (`docs/archived/mcp-systemd-setup.md`).
 The MCP server production deployment section in
 [MCP Server Setup](mcp-setup.md#production-deployment-systemd) also
 covers the same content with updated references.

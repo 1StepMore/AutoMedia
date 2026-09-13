@@ -6,9 +6,9 @@ written to be executed and graded by an AI agent and adjudicated by a human.
 This README is the onboarding doc: read it before you read any scenario file.
 It explains the two roles, how to read a scenario field by field, one complete
 worked example, the five verdict statuses, and how to run the suite. The
-authority for the schema semantics is `docs/agent-tester-validation-guide.md`
-§2; where this README and the guide differ, this README reflects the
-AutoMedia implementation.
+single schema authority is `scenarios/STANDARDS.md` — the closed vocabulary of
+every `standard:` key a step may cite; where this README and the handbook
+differ, the handbook wins.
 
 ## What this is
 
@@ -377,5 +377,6 @@ family); the loader's recursive glob picks them up with no registration. The
 bug template (`.github/ISSUE_TEMPLATE/bug_report.yml`) mandates the scenario
 name, so a bug cannot be filed without committing to its lock. The
 `automedia.validation.regression` helpers list the pins and verify the
-discipline. See `docs/agent-tester-validation-guide.md` §5.2 for the full
-flywheel lifecycle.
+discipline. The `standard:` keys every step cites are defined in
+`scenarios/STANDARDS.md`; `scenarios/regression/README.md` covers the
+regression-flywheel lifecycle for authors and reviewers.

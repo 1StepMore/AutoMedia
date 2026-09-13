@@ -8,10 +8,9 @@ version: 1.0.0
 # AutoMedia Validation Runner Skill
 
 The QA loop for developing AutoMedia. Canonical depth lives in
-`docs/agent-tester-validation-guide.md` (schema semantics, five verdict
-statuses, regression flywheel lifecycle) and `scenarios/README.md` (how to
-read a scenario field by field, one worked example). This skill is the
-loadable procedure — read the guide when authoring scenarios.
+`scenarios/STANDARDS.md` (the single schema authority — standard keys and
+semantics) and `scenarios/README.md` (how to read a scenario field by field,
+one worked example). This skill is the loadable procedure.
 
 ## When to load
 
@@ -25,12 +24,12 @@ loadable procedure — read the guide when authoring scenarios.
   the recursive glob auto-loads them — no registration).
 - **Acceptance run** → run the suite, persist the record, write the evidence.
 
-## Scenario library (103)
+## Scenario library (142)
 
-`scenarios/` holds 103 declarative YAML scripts across `cli/`, `journeys/`,
+`scenarios/` holds 142 declarative YAML scripts across `cli/`, `journeys/`,
 `publish/`, `quality/`, `regression/`, `surface/`, `meta/`, `fixtures/`,
 `baseline/`. Every step is one **real** MCP/CLI/file call graded against an
-`expect` block. Authority: `docs/agent-tester-validation-guide.md` §2.
+`expect` block. Authority: `scenarios/STANDARDS.md`.
 Run `automedia validate list` for the live list — never trust a stale count.
 
 ## Execution discipline
