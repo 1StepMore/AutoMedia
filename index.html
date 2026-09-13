@@ -318,7 +318,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="dev/project-validation-framework/" class="md-tabs__link">
+        <a href="dev/agent-reference/" class="md-tabs__link">
           
   
   
@@ -1381,6 +1381,34 @@
   
   
     <li class="md-nav__item">
+      <a href="dev/agent-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="dev/project-validation-framework/" class="md-nav__link">
         
   
@@ -1972,11 +2000,11 @@
 <hr />
 <h2 id="what-is-automedia">What is AutoMedia?<a class="headerlink" href="#what-is-automedia" title="Permanent link">&para;</a></h2>
 <p>AutoMedia automates content production from <strong>topic selection</strong> through <strong>draft writing</strong>, <strong>video generation</strong>, <strong>subtitle rendering</strong>, and <strong>multi-platform publishing</strong>. It handles the repetitive parts of media production so you can focus on creative decisions.</p>
-<p><strong>Stats:</strong> 33,619 LOC (core) · ~90,000+ LOC (total) · 442+ Python files · Python 3.11+ · MIT License</p>
+<p><strong>Stats:</strong> 62,461 LOC (core) · ~183,000+ LOC (total) · 737+ Python files · Python 3.11+ · MIT License</p>
 <hr />
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Three-layer API</strong> — Python SDK / CLI (19 commands) / MCP Server (67 tools)</li>
+<li><strong>Three-layer API</strong> — Python SDK / CLI (19 commands) / MCP Server (68 tools)</li>
 <li><strong>33 quality gates</strong> — G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), D1-D7 (distribution), P1-P4 (repurpose)</li>
 <li><strong>6-layer configuration</strong> — defaults → project → user → overrides → prompts → env vars</li>
 <li><strong>Topic pool</strong> — SQLite-backed with scoring, dedup, scheduling</li>
@@ -2057,8 +2085,12 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <td>ADR-001..ADR-006 index + template, canonical source in docs/adr/</td>
 </tr>
 <tr>
-<td><a href="archived/">Archived documents</a></td>
-<td>One-off historical reports (migration guides, per-run acceptance, superseded master plans)</td>
+<td><a href="dev/agent-reference/">Agent Reference</a></td>
+<td>On-demand deep reference split out of AGENTS.md (layout, task patterns, validation contract)</td>
+</tr>
+<tr>
+<td><a href="https://github.com/renanzai40/AutoMedia_BackUp/blob/main/scenarios/STANDARDS.md">Validation Schema Authority</a></td>
+<td><code>scenarios/STANDARDS.md</code> — the single schema authority for validation <code>standard:</code> keys</td>
 </tr>
 </tbody>
 </table>

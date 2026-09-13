@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Common pitfalls when using the AutoMedia API — drawn from the original SKILL.md and day-to-day development lessons.">
+        <meta name="description" content="Automated media production pipeline documentation">
       
       
       
-        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/api-gotchas/">
+        <link rel="canonical" href="https://renanzai40.github.io/AutoMedia_BackUp/dev/agent-reference/">
       
       
-        <link rel="prev" href="../cron-troubleshooting/">
+        <link rel="prev" href="../api-gotchas/">
       
       
-        <link rel="next" href="../agent-reference/">
+        <link rel="next" href="../project-validation-framework/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>API Gotchas - AutoMedia</title>
+        <title>Agent Reference - AutoMedia</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#common-api-pitfalls" class="md-skip">
+        <a href="#automedia-agent-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              API Gotchas
+              Agent Reference
             
           </span>
         </div>
@@ -294,12 +294,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../user/production-workflow/" class="md-tabs__link">
           
   
@@ -316,11 +314,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../agent-reference/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -1022,31 +1022,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1064,7 +1059,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1163,6 +1158,98 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
     
   
   
@@ -1182,7 +1269,7 @@
   <span class="md-ellipsis">
     
   
-    API Gotchas
+    Agent Reference
   
 
     
@@ -1200,7 +1287,7 @@
   <span class="md-ellipsis">
     
   
-    API Gotchas
+    Agent Reference
   
 
     
@@ -1226,22 +1313,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#paths-and-directories" class="md-nav__link">
+  <a href="#directory-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Paths and Directories
+        Directory Layout
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Paths and Directories">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-task-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Task Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Task Patterns">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#projectinit-slugifies-the-topic-parameter" class="md-nav__link">
+  <a href="#add-a-new-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Project.init() slugifies the topic parameter
+        Add a New Gate
       
     </span>
   </a>
@@ -1249,10 +1347,43 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sanitize_path-rejects-path-traversal" class="md-nav__link">
+  <a href="#add-a-new-cli-command" class="md-nav__link">
     <span class="md-ellipsis">
       
-        sanitize_path() rejects path traversal
+        Add a New CLI Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-a-new-platform-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a New Platform Adapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-a-new-mcp-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a New MCP Tool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-a-new-environment-variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a New Environment Variable
       
     </span>
   </a>
@@ -1265,22 +1396,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-loading" class="md-nav__link">
+  <a href="#validation-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Loading
+        Validation Layer
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Loading">
+    <nav class="md-nav" aria-label="Validation Layer">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#config-merge-is-shallow-recursive-hybrid" class="md-nav__link">
+  <a href="#driving-surface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Config merge is shallow + recursive hybrid
+        Driving surface
       
     </span>
   </a>
@@ -1288,10 +1419,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#environment-variable-override-rules" class="md-nav__link">
+  <a href="#the-evidence-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment variable override rules
+        The evidence contract
       
     </span>
   </a>
@@ -1299,10 +1430,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#save_model_config-merges-it-does-not-overwrite" class="md-nav__link">
+  <a href="#where-things-live" class="md-nav__link">
     <span class="md-ellipsis">
       
-        save_model_config merges, it does not overwrite
+        Where things live
       
     </span>
   </a>
@@ -1315,291 +1446,46 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pipeline-execution" class="md-nav__link">
+  <a href="#config-key-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pipeline Execution
+        Config Key Reference
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Pipeline Execution">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#run_full_pipeline-does-not-throw-exceptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        run_full_pipeline() does not throw exceptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resume_from-uses-gate-names-not-numbers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        resume_from uses Gate names, not numbers
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mode-affects-the-gate-list" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mode affects the gate list
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#gate-development" class="md-nav__link">
+  <a href="#documentation-index" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gate Development
+        Documentation Index
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Gate Development">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#gate-must-define-_gate_name-and-_failure_mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gate must define _gate_name and _failure_mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gate-names-cannot-be-duplicated" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gate names cannot be duplicated
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#failure_mode-has-two-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        failure_mode has two values
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#execute-must-return-a-dict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        execute() must return a dict
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#gatehook" class="md-nav__link">
+  <a href="#skills" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GateHook
+        Skills
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="GateHook">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hooks-cannot-modify-anything" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hooks cannot modify anything
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#files-recorded-by-md5-must-be-readable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files recorded by MD5 must be readable
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-server" class="md-nav__link">
+  <a href="#user-facing-skills" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MCP Server
+        User-Facing Skills
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="MCP Server">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#run_pipelines-resume_from-empty-string-and-none-differ" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        run_pipeline's resume_from: empty string and None differ
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#an-empty-allowlist-allows-all-paths" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        An empty allowlist allows all paths
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#archive-operation-and-red-line-8" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Archive operation and Red Line 8
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Testing">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#gate-registration-order-in-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gate registration order in tests
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#use-run_with_results-for-full-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Use run_with_results() for full results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Other">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#automedia-doctor-does-not-block-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        automedia doctor does not block execution
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pooldb-uses-an-in-memory-database-by-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        pool.db uses an in-memory database by default
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#project-directories-include-a-date-prefix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project directories include a date prefix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1607,93 +1493,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Developer
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Developer
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Agent Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2292,230 +2091,316 @@
   
 
 
-<h1 id="common-api-pitfalls">Common API Pitfalls<a class="headerlink" href="#common-api-pitfalls" title="Permanent link">&para;</a></h1>
-<p>This document records common pitfalls when using the AutoMedia API, drawn from
-the original SKILL.md and day-to-day development experience.</p>
-<h2 id="paths-and-directories">Paths and Directories<a class="headerlink" href="#paths-and-directories" title="Permanent link">&para;</a></h2>
-<h3 id="projectinit-slugifies-the-topic-parameter"><code>Project.init()</code> slugifies the topic parameter<a class="headerlink" href="#projectinit-slugifies-the-topic-parameter" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># topic is slugified: lowercased, non-ASCII removed, hyphenated</span>
-<span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">"Hello World 项目启动"</span><span class="p">)</span>  <span class="c1"># directory name: 20260707_hello-world</span>
+<h1 id="automedia-agent-reference">AutoMedia Agent Reference<a class="headerlink" href="#automedia-agent-reference" title="Permanent link">&para;</a></h1>
+<p>Deep reference split out of <code>AGENTS.md</code> (plan T-14) so the root agent file stays
+under 200 lines. Read the section you need — none of it is required up front.</p>
+<h2 id="directory-layout">Directory Layout<a class="headerlink" href="#directory-layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>AutoMedia/
+├── src/
+│   └── automedia/              # Core Python package (62,461 LOC)
+│       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow
+│       ├── pipelines/          # runner.py (shared entry point), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
+│       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
+│       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
+│       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
+│       ├── cli/                # Typer CLI: app.py + 19 command modules
+│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist
+│       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
+│       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
+│       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
+│       ├── omni/               # Omni Triad: ol_adapter, opp_adapter, orf_adapter, registry, config, allowlist
+│       ├── decision/           # Decision Layer (PRD-3)
+│       ├── hitl/               # HITL framework: config, executor, presets
+│       ├── pool/               # Topic pool (SQLite): db, collector, scorer, dedup
+│       ├── cron/               # Scheduled job definitions
+│       ├── prompts/            # Jinja2 prompt templates (platform-scoped)
+│       ├── manifests/          # defaults.yaml, brand_profile_schema, model_config_schema
+│       └── asset_library/      # Vector store: db, ingest, search, vector_store, migrate
+├── docs/ · scripts/ · tests/   # Documentation, build scripts, test suite (synthetic fixtures only)
+├── deploy/ · .github/workflows/
+└── pyproject.toml · .pre-commit-config.yaml · .env.example
 </code></pre></div>
-<p>Chinese characters are completely removed, so the directory name may be shorter
-than expected. If the slug result is empty, a <code>ValueError</code> is raised.</p>
-<p><strong>Gotcha:</strong> Do not assume the original Chinese topic content is preserved in
-<code>project_dir</code>.</p>
-<h3 id="sanitize_path-rejects-path-traversal"><code>sanitize_path()</code> rejects path traversal<a class="headerlink" href="#sanitize_path-rejects-path-traversal" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.core.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitize_path</span>
-
-<span class="n">sanitize_path</span><span class="p">(</span><span class="s2">"../etc"</span><span class="p">)</span>   <span class="c1"># ValueError: Path must not contain '..'</span>
-<span class="n">sanitize_path</span><span class="p">(</span><span class="s2">"~/config"</span><span class="p">)</span> <span class="c1"># ValueError: Path must not contain '~'</span>
-<span class="n">sanitize_path</span><span class="p">(</span><span class="s2">"a//b"</span><span class="p">)</span>     <span class="c1"># ValueError: Path must not contain '//'</span>
-</code></pre></div>
-<p>This is a security measure to prevent the topic parameter from being used for
-path traversal attacks.</p>
-<h2 id="configuration-loading">Configuration Loading<a class="headerlink" href="#configuration-loading" title="Permanent link">&para;</a></h2>
-<h3 id="config-merge-is-shallow-recursive-hybrid">Config merge is shallow + recursive hybrid<a class="headerlink" href="#config-merge-is-shallow-recursive-hybrid" title="Permanent link">&para;</a></h3>
-<p><code>deep_merge()</code> recursively merges dict values but directly overwrites lists.
-This means:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># defaults.yaml</span>
-<span class="nt">blocked_words</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">investment</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">finance</span>
-
-<span class="c1"># brand-profile.yaml</span>
-<span class="nt">blocked_words</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">politics</span>
-</code></pre></div>
-<p>Result: <code>blocked_words</code> only contains <code>["politics"]</code>, it does not merge with
-the defaults.</p>
-<p><strong>Solution:</strong> To append list items, write the complete list in overrides.</p>
-<h3 id="environment-variable-override-rules">Environment variable override rules<a class="headerlink" href="#environment-variable-override-rules" title="Permanent link">&para;</a></h3>
-<p><code>AUTOMEDIA_LLM_API_KEY=sk-xxx</code> resolves to:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="s2">"llm"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"api"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"key"</span><span class="p">:</span> <span class="s2">"sk-xxx"</span><span class="p">}}}</span>
-</code></pre></div>
-<p>That is, each underscore-delimited segment becomes a nesting level. This can
-lead to unexpected nesting depth:</p>
-<div class="highlight"><pre><span></span><code>AUTOMEDIA_FOO_BAR_BAZ=val  →  {"foo": {"bar": {"baz": "val"}}}
-</code></pre></div>
-<p><strong>Gotcha:</strong> Do not use extra underscores in variable names, or they will
-produce unexpected nested structures.</p>
-<h3 id="save_model_config-merges-it-does-not-overwrite"><code>save_model_config</code> merges, it does not overwrite<a class="headerlink" href="#save_model_config-merges-it-does-not-overwrite" title="Permanent link">&para;</a></h3>
-<p><code>save_model_config(path, updates)</code> (used by <code>configure_llm</code>, <code>automedia init</code>,
-and <code>automedia onboard</code>) deep-merges a partial update into the existing
-<code>model_config.yaml</code>. Keys you do not touch, notably the LLM <code>fallback</code> chain,
-are preserved. Do not assume a reconfigure wipes the fallback chain, and do
-not hand-write an overwrite that drops it.</p>
-<h2 id="pipeline-execution">Pipeline Execution<a class="headerlink" href="#pipeline-execution" title="Permanent link">&para;</a></h2>
-<h3 id="run_full_pipeline-does-not-throw-exceptions"><code>run_full_pipeline()</code> does not throw exceptions<a class="headerlink" href="#run_full_pipeline-does-not-throw-exceptions" title="Permanent link">&para;</a></h3>
-<p>All exceptions are caught and placed into the <code>PipelineResult.error</code> field,
-with status set to <code>"failed"</code>. This is by design, so callers check
-<code>result.status</code> uniformly instead of using try/except.</p>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"failed"</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># do not try/except</span>
-</code></pre></div>
-<p><strong>Gotcha:</strong> If you forget to check <code>result.status</code>, you might mistakenly
-assume the Pipeline completed successfully.</p>
-<h3 id="resume_from-uses-gate-names-not-numbers"><code>resume_from</code> uses Gate names, not numbers<a class="headerlink" href="#resume_from-uses-gate-names-not-numbers" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Correct</span>
-<span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="p">,</span> <span class="n">resume_from</span><span class="o">=</span><span class="s2">"G3"</span><span class="p">)</span>
-
-<span class="c1"># Wrong (won't error but won't work as expected)</span>
-<span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="p">,</span> <span class="n">resume_from</span><span class="o">=</span><span class="s2">"3"</span><span class="p">)</span>
-</code></pre></div>
-<p>The <code>resume_from</code> value must exist in the current mode's gate list, otherwise
-a <code>ValueError</code> is raised.</p>
-<h3 id="mode-affects-the-gate-list">mode affects the gate list<a class="headerlink" href="#mode-affects-the-gate-list" title="Permanent link">&para;</a></h3>
-<p>Different modes execute different Gate subsets:</p>
+<h2 id="common-task-patterns">Common Task Patterns<a class="headerlink" href="#common-task-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="add-a-new-gate">Add a New Gate<a class="headerlink" href="#add-a-new-gate" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create a file in <code>automedia/gates/</code> inheriting from <code>BaseGate</code></li>
+<li>Set class-level <code>_gate_name</code> (e.g. <code>"G6"</code>) and <code>_failure_mode</code> (<code>"stop"</code> or <code>"retry"</code>)</li>
+<li>Implement <code>execute(self, gate_context: dict) -&gt; dict</code></li>
+<li>Add a failure mode entry in <code>automedia/gates/failure_modes.py</code></li>
+<li>Add the gate name to the gate lists in <code>automedia/pipelines/runner.py</code> (<code>_AUTO_GATE_NAMES</code>, etc.)</li>
+<li>Write an ADR entry in <code>docs/adr/</code> documenting the design decision</li>
+<li>Create tests in <code>tests/test_gates/</code></li>
+</ol>
+<h3 id="add-a-new-cli-command">Add a New CLI Command<a class="headerlink" href="#add-a-new-cli-command" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create a file in <code>automedia/cli/commands/</code></li>
+<li>Define a typer <code>app</code> with the command(s)</li>
+<li>Register in <code>automedia/cli/app.py</code> via <code>app.add_typer()</code> (subcommand groups) or <code>app.command()</code> (standalone)</li>
+</ol>
+<h3 id="add-a-new-platform-adapter">Add a New Platform Adapter<a class="headerlink" href="#add-a-new-platform-adapter" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create an adapter class in <code>automedia/adapters/</code> implementing the adapter protocol</li>
+<li>Register via <code>AdapterRegistry.register()</code></li>
+<li>Or use MCP tool <code>register_platform_adapter(platform_name="...", adapter_class="...")</code></li>
+</ol>
+<h3 id="add-a-new-mcp-tool">Add a New MCP Tool<a class="headerlink" href="#add-a-new-mcp-tool" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define a module-level handler function in <code>automedia/mcp/server.py</code></li>
+<li>Register inside <code>create_server()</code> via <code>mcp.tool()</code></li>
+</ol>
+<h3 id="add-a-new-environment-variable">Add a New Environment Variable<a class="headerlink" href="#add-a-new-environment-variable" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define it with the <code>AUTOMEDIA_</code> prefix</li>
+<li>Add mapping in <code>_LLM_KEY_MAP</code> in <code>automedia/core/config_loader.py</code> if it maps under <code>llm.text_generation.*</code></li>
+<li>Add to the Config Key Reference below</li>
+</ol>
+<h2 id="validation-layer">Validation Layer<a class="headerlink" href="#validation-layer" title="Permanent link">&para;</a></h2>
+<p>AutoMedia is agent-oriented; the validation framework makes agents the testers.
+Agents run real calls against the live surface, grade each response against a
+declared expect block, and write an immutable run record. Humans are the
+director: they review the record and its artifacts and sign it off. Nothing the
+agent decides alone is final, nothing the director has not seen is accepted.</p>
+<h3 id="driving-surface">Driving surface<a class="headerlink" href="#driving-surface" title="Permanent link">&para;</a></h3>
+<p>CLI (run from the repo root so relative artifact paths resolve):
+- <code>automedia validate list</code>: load and list the scenario library
+- <code>automedia validate run --scenario &lt;name&gt;</code>: run ONE named scenario; <code>--scenario</code> is required (the recursion bound); exits 1 on failed or hard-safety violations
+- <code>automedia validate report [--run &lt;name|latest&gt;]</code>: render a run record
+- <code>automedia validate diff [--baseline &lt;path&gt;]</code>: diff the latest two runs or a baseline
+- <code>automedia validate coverage</code>: static coverage audit (CLI, MCP, gates, modes); exits 1 on declared-but-missing
+- <code>automedia validate matrix</code>: per-scenario surface coverage + status matrix; non-recursive
+- <code>automedia validate sign</code>: record the director's verdict in the run dir's <code>signed.txt</code></p>
+<p>MCP tools: <code>list_validation_scenarios</code>, <code>run_validation_scenario</code>, <code>run_validation_suite</code>, <code>get_validation_report</code>, <code>validation_coverage_audit</code>, <code>validation_matrix</code>.</p>
+<h3 id="the-evidence-contract">The evidence contract<a class="headerlink" href="#the-evidence-contract" title="Permanent link">&para;</a></h3>
+<p>The single schema authority is <code>scenarios/STANDARDS.md</code>; <code>scenarios/README.md</code>
+is the onboarding guide. How to read a scenario:</p>
+<ol>
+<li><code>name</code> is the identity: unique across the library, survives file renames.</li>
+<li><code>description</code> says what the scenario proves, in one or two sentences.</li>
+<li><code>intent</code> says WHY it exists. Schema-required; read it first.</li>
+<li><code>requires_env</code> lists env vars; a missing one gates the scenario to <code>unconfigured</code>, never a pass.</li>
+<li><code>steps</code> are ordered; each is one real call plus an expect block; later steps can depend on earlier state.</li>
+<li>Per step: <code>kind</code> picks the surface (<code>tool</code>, <code>cli</code>, <code>file</code>); <code>check</code> says WHAT to verify; <code>standard</code> cites a key in <code>STANDARDS.md</code>.</li>
+<li><code>expect</code> holds the assertions; every assertion present must hold.</li>
+<li><code>recovery_steps</code> repair state after a primary step fails; <code>cleanup_steps</code> remove scenario-created state. Neither proves capability.</li>
+<li>Artifacts are the evidence: <code>collect_artifacts</code> copies files into the run record; <code>artifact_*</code> expect keys grade them.</li>
+<li><code>min_passing</code> / <code>pass_ratio</code> set the partial-pass policy; <code>regression</code> pins the scenario to a specific bug or fix.</li>
+</ol>
+<p><strong>The 5 statuses:</strong>
+- <code>passed</code>: every primary step met its expect block and reached the surface.
+- <code>failed</code>: a primary step failed its expect and no partial-pass policy saved it.
+- <code>unconfigured</code>: a required env var was missing, so nothing ran. A state, never a verdict of acceptance.
+- <code>recovered</code>: a primary step failed and a recovery step succeeded. The failure stays in the record; recovery never erases RED.
+- <code>partial-pass</code>: some steps failed but <code>min_passing</code>/<code>pass_ratio</code> was met. Never hides a failure.</p>
+<p><strong>Honesty rules:</strong>
+- Unconfigured never passes and never fails silently; the missing prerequisite is reported loudly with its reason.
+- RED first. Record the honest negative state before fixing anything. GREEN with no recorded RED is suspect and re-run from the pre-flight baseline.
+- Artifacts must be shown. GREEN means the call succeeded, the artifact exists, and it was carried to the director.
+- Director sign-off: the director appends run name, date, and verdict to <code>signed.txt</code> in the run dir; the agent grades, the human disposes.</p>
+<h3 id="where-things-live">Where things live<a class="headerlink" href="#where-things-live" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>scenarios/</code>: committed scenario library (142 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).</li>
+<li><code>scenarios/STANDARDS.md</code>: the single schema authority — standard keys (14 core plus 33 <code>gate.*</code> and 9 <code>mode.*</code>); unknown keys rejected at load.</li>
+<li><code>scenarios/baseline/</code>: committed pre-flight baseline run record and coverage audit.</li>
+<li><code>validation-runs/</code>: gitignored immutable run records with a <code>latest.txt</code> pointer.</li>
+<li><code>AUTOMEDIA_VALIDATION_SCENARIOS_DIR</code>: env override for the scenarios directory.</li>
+</ul>
+<p>Any agent can drive this layer standalone (Hermes, Claude Code, Codex CLI, OpenCode); the <strong>validation-driving surface is the CLI and the MCP server only</strong>. The Python SDK (<code>automedia/__init__.py</code>, 19 public symbols) is a <strong>product entry point, not a validation-driving surface</strong>: agents drive real calls through the CLI and MCP, and the SDK's behavior is exercised transitively where those entry points delegate to the same <code>run_full_pipeline()</code> implementation. No SDK scenario is added to <code>scenarios/</code>; SDK-only behavior is explicitly out of validation scope. See <code>scenarios/README.md</code> for the full reference.</p>
+<h2 id="config-key-reference">Config Key Reference<a class="headerlink" href="#config-key-reference" title="Permanent link">&para;</a></h2>
+<p>Key <code>AUTOMEDIA_*</code> environment variables:</p>
 <table>
 <thead>
 <tr>
-<th>mode</th>
-<th>Gates Included</th>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>auto</code></td>
-<td>pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4</td>
+<td><code>AUTOMEDIA_LLM_PROVIDER</code></td>
+<td>LLM provider name</td>
+<td><code>deepseek</code></td>
 </tr>
 <tr>
-<td><code>text_only</code></td>
-<td>CW → G0-G6 → H0 → L1-L4</td>
+<td><code>AUTOMEDIA_LLM_MODEL</code></td>
+<td>Model identifier</td>
+<td><code>deepseek-chat</code></td>
 </tr>
 <tr>
-<td><code>text_with_cover</code></td>
-<td>CW → G0-G6 → H0 → L1-L4 (+ cover image)</td>
+<td><code>AUTOMEDIA_LLM_BASE_URL</code></td>
+<td>API endpoint</td>
+<td><code>https://api.deepseek.com/v1</code></td>
 </tr>
 <tr>
-<td><code>video_only</code></td>
-<td>V0-V7 → H0 → L1-L4</td>
+<td><code>AUTOMEDIA_LLM_API_KEY</code></td>
+<td>API key</td>
+<td>(required)</td>
 </tr>
 <tr>
-<td><code>image-carousel</code></td>
-<td>CW → G0-G6 → L1-L4 (+ carousel images)</td>
+<td><code>AUTOMEDIA_LLM_TEMPERATURE</code></td>
+<td>LLM temperature</td>
+<td>(varies)</td>
 </tr>
 <tr>
-<td><code>social-thread</code></td>
-<td>CW → G0-G6 → L1-L4 (thread format)</td>
+<td><code>AUTOMEDIA_LLM_MAX_TOKENS</code></td>
+<td>Max tokens per request</td>
+<td>(varies)</td>
 </tr>
 <tr>
-<td><code>short-video</code></td>
-<td>pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4</td>
+<td><code>AUTOMEDIA_LLM_TIMEOUT</code></td>
+<td>LLM request timeout (seconds)</td>
+<td><code>60</code></td>
 </tr>
 <tr>
-<td><code>qa_only</code></td>
-<td>G0 → G2 → G3 → V1 → V6</td>
+<td><code>AUTOMEDIA_FAKE_LLM</code></td>
+<td>Set to <code>1</code> for deterministic mock LLM responses</td>
+<td>(unset)</td>
 </tr>
 <tr>
-<td><code>repurpose</code></td>
-<td>CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4</td>
+<td><code>AUTOMEDIA_DEFAULT_BRAND</code></td>
+<td>Default brand for pipelines</td>
+<td><code>my-brand</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_FEATURE_TIER</code></td>
+<td>Open-core tier override: core|pro|enterprise; gates above the override tier are excluded at gate-list composition (declarative; unset = all tiers available)</td>
+<td>(unset)</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_DATA_DIR</code></td>
+<td>Data directory</td>
+<td><code>./data</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_OUTPUT_DIR</code></td>
+<td>Output directory</td>
+<td><code>./output</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_PROJECTS_DIR</code></td>
+<td>Projects root override</td>
+<td>(auto)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Gotcha:</strong> <code>qa_only</code> only runs 5 gates, far fewer than the full pipeline's
-33 gates. Do not use <code>qa_only</code> results to judge whether the entire pipeline
-is working correctly. <code>text_with_cover</code> gate list is identical to <code>text_only</code>
-but additionally generates a cover image.</p>
-<h2 id="gate-development">Gate Development<a class="headerlink" href="#gate-development" title="Permanent link">&para;</a></h2>
-<h3 id="gate-must-define-_gate_name-and-_failure_mode">Gate must define <code>_gate_name</code> and <code>_failure_mode</code><a class="headerlink" href="#gate-must-define-_gate_name-and-_failure_mode" title="Permanent link">&para;</a></h3>
-<p>Missing either attribute raises <code>NotImplementedError</code> at runtime:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MyGate</span><span class="p">(</span><span class="n">BaseGate</span><span class="p">):</span>
-    <span class="c1"># Missing _gate_name → NotImplementedError</span>
-    <span class="c1"># Missing _failure_mode → NotImplementedError</span>
-    <span class="k">pass</span>
-</code></pre></div>
-<p>Gates are automatically registered via <code>__init_subclass__</code>, so these two
-attributes are class-level and do not need <code>__init__</code>.</p>
-<h3 id="gate-names-cannot-be-duplicated">Gate names cannot be duplicated<a class="headerlink" href="#gate-names-cannot-be-duplicated" title="Permanent link">&para;</a></h3>
-<p>If two Gate classes define the same <code>_gate_name</code>, registration raises a
-<code>KeyError</code>:</p>
-<div class="highlight"><pre><span></span><code>KeyError: "Gate 'G0' is already registered by &lt;class '...'&gt;"
-</code></pre></div>
-<h3 id="failure_mode-has-two-values"><code>failure_mode</code> has two values<a class="headerlink" href="#failure_mode-has-two-values" title="Permanent link">&para;</a></h3>
+<p>These env vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>
+<h2 id="documentation-index">Documentation Index<a class="headerlink" href="#documentation-index" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/dev/developer-guide.md</code></td>
+<td>Full developer guide (enforcement mechanisms, PRD-4 summary, ADRs)</td>
+</tr>
+<tr>
+<td><code>docs/user/api-reference.md</code></td>
+<td>SDK API reference</td>
+</tr>
+<tr>
+<td><code>docs/user/cli-reference.md</code></td>
+<td>CLI command reference</td>
+</tr>
+<tr>
+<td><code>docs/user/mcp-setup.md</code></td>
+<td>MCP server setup guide (systemd deployment, error code reference)</td>
+</tr>
+<tr>
+<td><code>docs/user/hitl-framework.md</code></td>
+<td>Human-in-the-loop framework docs</td>
+</tr>
+<tr>
+<td><code>docs/user/omni-integration.md</code></td>
+<td>Omni Triad integration docs</td>
+</tr>
+<tr>
+<td><code>docs/user/asset-library.md</code></td>
+<td>Asset library documentation</td>
+</tr>
+<tr>
+<td><code>docs/glossary.md</code></td>
+<td>Plain-language AutoMedia term glossary for agents</td>
+</tr>
+<tr>
+<td><code>docs/adr/README.md</code></td>
+<td>ADR index + template (<code>docs/adr/TEMPLATE.md</code>), immutable decision records</td>
+</tr>
+<tr>
+<td><code>docs/dev/gate-failure-modes.md</code></td>
+<td>Gate failure troubleshooting</td>
+</tr>
+<tr>
+<td><code>docs/user/production-workflow.md</code></td>
+<td>Production operations guide</td>
+</tr>
+<tr>
+<td><code>docs/dev/cron-troubleshooting.md</code></td>
+<td>Cron job debugging</td>
+</tr>
+<tr>
+<td><code>docs/dev/api-gotchas.md</code></td>
+<td>Common API pitfalls</td>
+</tr>
+<tr>
+<td><code>docs/dev/override-reference.md</code></td>
+<td>Override system reference (rules, prompts, platform scoping)</td>
+</tr>
+<tr>
+<td><code>CHANGELOG.md</code></td>
+<td>Version history</td>
+</tr>
+<tr>
+<td><code>docs/dev/agent-troubleshooting.md</code></td>
+<td>Agent troubleshooting guide for pipeline, config, MCP, and gate issues</td>
+</tr>
+<tr>
+<td><code>docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md</code></td>
+<td>7-phase AI development methodology note (own your process, AFK implementation)</td>
+</tr>
+<tr>
+<td><code>docs/archived/</code></td>
+<td>One-off historical reports (migration guides, per-run acceptance, superseded master plans) — not authoritative</td>
+</tr>
+<tr>
+<td><code>docs/doc-inventory.md</code></td>
+<td>AUTO-GENERATED doc inventory — regenerate with <code>python3 scripts/doc_inventory.py</code>; never hand-edit</td>
+</tr>
+</tbody>
+</table>
+<h2 id="skills">Skills<a class="headerlink" href="#skills" title="Permanent link">&para;</a></h2>
+<p>Agent skills live in <code>.opencode/skills/</code> (canonical), with native copies synced to <code>.claude/skills/</code> and <code>.codex/skills/</code>. Cline references <code>.opencode/skills/</code> directly. When updating a skill, edit the canonical file and sync the copies.</p>
 <ul>
-<li><code>"stop"</code>: Gate failure stops the Pipeline immediately, returns
-  <code>status="partial"</code></li>
-<li><code>"retry"</code>: Gate failure allows the Pipeline to continue (used for
-  retryable gates)</li>
+<li><code>project-validation</code>: Post-change validation against founder expectations</li>
+<li><code>doc-sync</code>: Documentation impact mapping when code changes affect docs (CLI/MCP tools, gates, config, API, pipelines, adapters)</li>
+<li><code>validation-runner</code>: Dev-side validation workflow; author regression scenarios on every bug fix; RED to GREEN evidence</li>
+<li><code>deep-modules</code>: Deep-module refactoring practice (Ousterhout, methodology §3.1)</li>
 </ul>
-<h3 id="execute-must-return-a-dict"><code>execute()</code> must return a dict<a class="headerlink" href="#execute-must-return-a-dict" title="Permanent link">&para;</a></h3>
-<p>The returned dict is appended to <code>gate_context</code> and passed to downstream
-Gates. At minimum, it should include:</p>
-<div class="highlight"><pre><span></span><code><span class="k">return</span> <span class="p">{</span><span class="s2">"passed"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">"gate"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gate_name</span><span class="p">}</span>
-</code></pre></div>
-<p>If the return value lacks a <code>"gate"</code> key, the Gate name in logs will show
-as <code>"unknown"</code>.</p>
-<h2 id="gatehook">GateHook<a class="headerlink" href="#gatehook" title="Permanent link">&para;</a></h2>
-<h3 id="hooks-cannot-modify-anything">Hooks cannot modify anything<a class="headerlink" href="#hooks-cannot-modify-anything" title="Permanent link">&para;</a></h3>
-<p><code>GateHook</code> is a <code>Protocol</code>, and all three methods have a return type of
-<code>None</code>. If a hook tries to modify <code>context</code> or <code>result</code>, the modifications
-will not propagate between Gates (context is a plain dict, so modifications
-are visible to Gates, but this violates the contract).</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BadHook</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">before_gate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gate_name</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-        <span class="n">context</span><span class="p">[</span><span class="s2">"topic"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"hacked"</span>  <span class="c1"># Technically works, but violates contract</span>
-</code></pre></div>
-<p><strong>Design principle:</strong> Hooks are observers, not interceptors. If you need
-custom blocking logic, use overrides/rules instead of hooks.</p>
-<h3 id="files-recorded-by-md5-must-be-readable">Files recorded by MD5 must be readable<a class="headerlink" href="#files-recorded-by-md5-must-be-readable" title="Permanent link">&para;</a></h3>
-<p><code>record_md5()</code> computes the MD5 of a file. If the file does not exist or is
-not readable, it is silently ignored (OSError is caught). But you will not
-receive a warning, so manually confirm that <code>pipeline_md5.json</code> has the
-expected records.</p>
-<h2 id="mcp-server">MCP Server<a class="headerlink" href="#mcp-server" title="Permanent link">&para;</a></h2>
-<h3 id="run_pipelines-resume_from-empty-string-and-none-differ"><code>run_pipeline</code>'s <code>resume_from</code>: empty string and None differ<a class="headerlink" href="#run_pipelines-resume_from-empty-string-and-none-differ" title="Permanent link">&para;</a></h3>
-<p>The MCP server converts empty strings to <code>None</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">resume_from</span> <span class="o">=</span> <span class="n">resume_from</span> <span class="ow">or</span> <span class="kc">None</span>  <span class="c1"># "" → None</span>
-</code></pre></div>
-<p>So if you pass an empty string from MCP, it is equivalent to starting from
-scratch.</p>
-<h3 id="an-empty-allowlist-allows-all-paths">An empty allowlist allows all paths<a class="headerlink" href="#an-empty-allowlist-allows-all-paths" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># mcp_allowlist.yaml does not exist or is empty</span>
-</code></pre></div>
-<p>In this case, <code>check_path_allowed()</code> returns <code>True</code>, and all paths pass
-through. This is not a secure configuration. Configure the allowlist in
-production.</p>
-<h3 id="archive-operation-and-red-line-8">Archive operation and Red Line 8<a class="headerlink" href="#archive-operation-and-red-line-8" title="Permanent link">&para;</a></h3>
-<p><code>archive_project()</code> checks whether the project status is <code>"published"</code>. If
-not and <code>force=True</code> is not set, it returns
-<code>{"archived": False, "error": "..."}</code>. This is not an exception, it is
-expected behavior. Do not treat this return value as a bug.</p>
-<h2 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h2>
-<h3 id="gate-registration-order-in-tests">Gate registration order in tests<a class="headerlink" href="#gate-registration-order-in-tests" title="Permanent link">&para;</a></h3>
-<p>Gates are automatically registered via <code>__init_subclass__</code> on module import.
-If gate modules are imported multiple times during testing, already-registered
-gates with the same name will raise a <code>KeyError</code>.</p>
-<p><strong>Solution:</strong> Call <code>_registry._gates.clear()</code> (note the private attribute)
-between tests, or use an isolated registry instance.</p>
-<h3 id="use-run_with_results-for-full-results">Use <code>run_with_results()</code> for full results<a class="headerlink" href="#use-run_with_results-for-full-results" title="Permanent link">&para;</a></h3>
-<p><code>run()</code> returns early when a stop-mode Gate fails. If you need the complete
-Gate execution list (including Gates that were not executed due to failure),
-use <code>run_with_results()</code>.</p>
-<h2 id="other">Other<a class="headerlink" href="#other" title="Permanent link">&para;</a></h2>
-<h3 id="automedia-doctor-does-not-block-execution"><code>automedia doctor</code> does not block execution<a class="headerlink" href="#automedia-doctor-does-not-block-execution" title="Permanent link">&para;</a></h3>
-<p>Missing dependencies are marked in red but do not cause an exit. This can
-lead to pipeline failures mid-execution. For example, if ComfyUI is
-unavailable, V1 Vision QA will fail.</p>
-<h3 id="pooldb-uses-an-in-memory-database-by-default">pool.db uses an in-memory database by default<a class="headerlink" href="#pooldb-uses-an-in-memory-database-by-default" title="Permanent link">&para;</a></h3>
-<p>If the <code>--db</code> parameter is not specified, the topic pool is created in
-<code>:memory:</code> by default. This means the data only lives as long as the current
-process and is lost on restart. Always specify <code>--db</code> in production:</p>
-<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>pool<span class="w"> </span>list<span class="w"> </span>--db<span class="w"> </span>/path/to/pool.db
-</code></pre></div>
-<h3 id="project-directories-include-a-date-prefix">Project directories include a date prefix<a class="headerlink" href="#project-directories-include-a-date-prefix" title="Permanent link">&para;</a></h3>
-<p><code>Project.init()</code> creates directories with the format <code>{YYYYMMDD}_{slug}</code>.
-Running multiple times on the same day with the same topic produces the same
-directory name, causing conflicts. Ensure topics are distinguishable.</p>
+<h2 id="user-facing-skills">User-Facing Skills<a class="headerlink" href="#user-facing-skills" title="Permanent link">&para;</a></h2>
+<p>Skills for agents who USE AutoMedia (calling MCP tools to produce content) live in <code>docs/skills/</code>. They are not auto-discovered as OpenCode commands; they target users, not codebase maintainers.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/skills/brand-strategy.md</code></td>
+<td>How to call <code>run_brand_strategy</code> MCP tool: parameters, output structure, error handling</td>
+</tr>
+</tbody>
+</table>
 
 
 
 
 
 
-
-  
-  
 
 
 
