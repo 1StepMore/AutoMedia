@@ -26,6 +26,8 @@ one scenario's fixture can never leak into the next.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import threading
 import time
 from collections.abc import Iterator, Sequence
@@ -161,15 +163,13 @@ class LiveHITLFixture:
             ok, results = outcome if isinstance(outcome, tuple) else (None, [])
             approved = results[0].get("_hitl_approved") if results else None
             self._state.update(done=True, ok=ok, approved=approved)
-        self._marker.write_text(
-            json.dumps(
-                {
-                    "ok": self._state.get("ok"),
-                    "approved": self._state.get("approved"),
-                    "error": self._state.get("error"),
-                }
-            ),
-            encoding="utf-8",
+        _write_marker_atomic(
+            self._marker,
+            {
+                "ok": self._state.get("ok"),
+                "approved": self._state.get("approved"),
+                "error": self._state.get("error"),
+            },
         )
 
     def _wait_until_paused(self, timeout: float = 10.0) -> None:
@@ -198,6 +198,29 @@ class LiveHITLFixture:
         with _hitl_lock:
             _hitl_waiters.pop(self.project_id, None)
         unregister_engine(self.project_id)
+
+
+def _write_marker_atomic(marker: Path, payload: dict[str, Any]) -> None:
+    """Write ``payload`` to ``marker`` atomically.
+
+    ``Path.write_text`` truncates the destination before writing, so a
+    concurrent reader can observe an empty file.  Write to a temp file in the
+    same directory, flush + fsync it, then ``os.replace`` it onto the final
+    path: the reader sees either the old file or the complete new one, never
+    a truncated one.
+    """
+    data = json.dumps(payload)
+    fd, tmp_name = tempfile.mkstemp(dir=str(marker.parent), prefix=marker.name, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, marker)
+    except BaseException:
+        with suppress(FileNotFoundError):
+            os.unlink(tmp_name)
+        raise
 
 
 def _seed_hitl_pause() -> dict[str, Any]:
