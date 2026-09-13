@@ -12,6 +12,7 @@ steps:
     command: automedia --json doctor
     timeout_seconds: 180
     expect:
+      error_expected: true
       stdout_has:
         - dependencies
         - installed
