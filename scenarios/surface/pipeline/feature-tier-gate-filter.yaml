@@ -1,6 +1,6 @@
 name: feature-tier-gate-filter
-description: "AUTOMEDIA_FEATURE_TIER restricts gate-list composition: qa_only runs only its core gates under tier=core (pro V-gates dropped with a skipped_tier_gate log), and all gates under tier=pro."
-intent: "Close the T-11 stage gap: the open-core feature-tier enforcement (runner._filter_gates_by_tier) was never driven through a real pipeline. Prove the L4 enterprise-operator control on the shipped CLI: with AUTOMEDIA_FEATURE_TIER=core the qa_only mode drops its pro-tier V1/V6 gates (3 gates run, skipped_tier_gate logged) while tier=pro keeps all 5, so the override observably changes gate composition. Run under AUTOMEDIA_FAKE_LLM=1 for determinism."
+description: "AUTOMEDIA_FEATURE_TIER restricts gate-list composition: qa_only runs only its core gates under tier=core (pro V-gates dropped with a skipped_tier_gate log), and includes its pro-tier gates under tier=pro."
+intent: "Close the T-11 stage gap: the open-core feature-tier enforcement (runner._filter_gates_by_tier) was never driven through a real pipeline. Prove the L4 enterprise-operator control on the shipped CLI: with AUTOMEDIA_FEATURE_TIER=core the qa_only mode drops its pro-tier V1/V6 gates (3 gates run, skipped_tier_gate logged) while tier=pro composes 5 gates and executes the pro tier's V1 (a gate the core 3-gate list never reaches), so the override observably changes gate composition. Run under AUTOMEDIA_FAKE_LLM=1 for determinism."
 category: surface
 user_level: L4
 requires_env: []
@@ -26,9 +26,9 @@ steps:
         - "Gates executed: 3"
       stderr_has:
         - "skipped_tier_gate"
-  - name: tier=pro keeps the pro-tier gates
+  - name: tier=pro includes the pro-tier gates
     kind: cli
-    check: "With AUTOMEDIA_FEATURE_TIER=pro the same mode runs all 5 gates (G0, G2, G3, V1, V6): stdout reports `Gates executed: 5` and no tier gate is skipped, proving the override (not the mode) decided the composition."
+    check: "With AUTOMEDIA_FEATURE_TIER=pro the same mode composes 5 gates (G0, G2, G3, V1, V6) instead of core's 3: stdout reports the 5-gate total (`/5 gates complete`) and executes V1, the pro-tier video gate the core list never runs — proving the override (not the mode) decided the inclusion. V1 fails under the deterministic fake LLM, so its downstream V6 is skipped; this step proves pro-gate inclusion, not V6's execution."
     standard: founder-expectations.F02
     command: |-
       python3 -c 'import os,subprocess,sys; env=dict(os.environ); env.update({"AUTOMEDIA_FEATURE_TIER":"pro","AUTOMEDIA_FAKE_LLM":"1","AUTOMEDIA_CONFIG_DIR":"/tmp/automedia/w2-tier/config","AUTOMEDIA_PROJECTS_DIR":"/tmp/automedia/w2-tier/pro-projects"}); r=subprocess.run(["automedia","run","--topic","feature tier pro probe","--brand","my-brand","--mode","qa_only"],cwd="/tmp/automedia/w2-tier/cwd",env=env); sys.exit(r.returncode)'
@@ -36,7 +36,8 @@ steps:
     expect:
       exit_code: 0
       stdout_has:
-        - "Gates executed: 5"
+        - "V1"
+        - "/5 gates complete"
 cleanup_steps:
   - name: remove the isolated tier-probe directories
     kind: cli
