@@ -261,3 +261,35 @@ class TestCollectArtifacts:
         step = step_with_artifacts(ArtifactCheck(path="a.txt"))
         with pytest.raises(TypeError):
             collect_artifacts(step, 1, tmp_path / "run", tmp_path)
+
+    def test_expands_environment_variable_in_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        marker = tmp_path / "per-run" / "decision.json"
+        marker.parent.mkdir()
+        marker.write_text('{"ok": true}', encoding="utf-8")
+        monkeypatch.setenv("AUTOMEDIA_TEST_ARTIFACT", str(marker))
+        step = step_with_artifacts(ArtifactCheck(path="$AUTOMEDIA_TEST_ARTIFACT"))
+        entries = collect_artifacts(step, 1, tmp_path / "run", cwd=tmp_path)
+        assert entries[0]["ok"] is True
+        assert entries[0]["path"] == str(marker)
+        assert (tmp_path / "run" / "artifacts" / "1-decision.json").is_file()
+
+    def test_unset_variable_stays_verbatim_and_misses(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("AUTOMEDIA_TEST_ARTIFACT", raising=False)
+        step = step_with_artifacts(
+            ArtifactCheck(path="$AUTOMEDIA_TEST_ARTIFACT", required=False)
+        )
+        entries = collect_artifacts(step, 1, tmp_path / "run", cwd=tmp_path)
+        assert entries[0]["ok"] is False
+        assert entries[0]["reason"] == "missing"
+        assert entries[0]["path"] == "$AUTOMEDIA_TEST_ARTIFACT"
+
+    def test_plain_path_is_unchanged(self, tmp_path: Path) -> None:
+        (tmp_path / "plain.txt").write_text("x", encoding="utf-8")
+        step = step_with_artifacts(ArtifactCheck(path="plain.txt"))
+        entries = collect_artifacts(step, 1, tmp_path / "run", cwd=tmp_path)
+        assert entries[0]["ok"] is True
+        assert entries[0]["path"] == "plain.txt"

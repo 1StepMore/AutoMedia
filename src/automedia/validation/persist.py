@@ -238,6 +238,12 @@ def collect_artifacts(
     so the record stays portable and :func:`assert_artifact_index` can prove
     every entry resolves inside the run dir.
 
+    ``path`` is expanded with :func:`os.path.expandvars` semantics before it
+    is resolved (issue #17), so a scenario can collect a per-run artifact the
+    fixture published through an environment variable without the YAML
+    hardcoding a path.  The expanded path is what the entry records; an
+    unset variable is left verbatim and simply misses as before.
+
     The returned entries carry ``{path, copied_to, ok, required, reason}``:
     ``ok=True`` means the artifact was copied; a missing source is ``ok=False``
     with ``reason="missing"`` and an existing non-file source is
@@ -249,9 +255,10 @@ def collect_artifacts(
     """
     entries: list[dict[str, object]] = []
     for check in step.collect_artifacts:
-        source = cwd / check.path
+        expanded = os.path.expandvars(check.path)
+        source = cwd / expanded
         entry: dict[str, object] = {
-            "path": check.path,
+            "path": expanded,
             "copied_to": None,
             "ok": False,
             "required": check.required,

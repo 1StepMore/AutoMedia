@@ -27,9 +27,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import threading
 import time
+import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -49,8 +51,33 @@ APPROVAL_GATE_NAME: str = "H0"
 HITL_PIPELINE_ID: str = "valctrlhitl01"
 """Fixed project id of the live H0 pipeline seeded by ``hitl_pause``."""
 
+HITL_MARKER_ENV_VAR: str = "AUTOMEDIA_HITL_MARKER_PATH"
+"""Env var that redirects the live-HITL run-completion marker (issue #17).
+
+The ``hitl_pause`` fixture exports a UNIQUE per-run marker path through this
+var for the lifetime of the fixture, so a marker written by another run,
+session, or parallel pytest worker can never be read by this run's assertion.
+Every reader must resolve through :func:`resolve_hitl_marker_path`, never the
+module constant directly.
+"""
+
 HITL_MARKER_PATH: str = "/tmp/automedia/hitl-live/decision.json"  # noqa: S108 — synthetic isolated scratch
-"""Run-completion marker the ``hitl_pause`` harness writes (ok + approved)."""
+"""Default live-HITL marker path, used when :data:`HITL_MARKER_ENV_VAR` is unset."""
+
+HITL_MARKER_ROOT: str = "/tmp/automedia/hitl-live"  # noqa: S108 — synthetic isolated scratch
+"""Parent directory for the fixture's per-run marker dirs."""
+
+
+def resolve_hitl_marker_path() -> Path:
+    """Resolve the live-HITL marker path: env override, else the default.
+
+    The env var wins when set (the ``hitl_pause`` fixture sets it to a unique
+    per-run path); otherwise the committed :data:`HITL_MARKER_PATH` is the
+    documented fallback.  Readers must use this helper so the fixture and its
+    assertions can never disagree about where the marker lives.
+    """
+    override = os.environ.get(HITL_MARKER_ENV_VAR)
+    return Path(override) if override else Path(HITL_MARKER_PATH)
 
 
 class PausedEngineFixture:
@@ -139,10 +166,13 @@ class LiveHITLFixture:
         from automedia.pipelines.gate_types import PipelineProgress
 
         self.project_id = project_id
-        self._marker = Path(HITL_MARKER_PATH)
+        # Unique per-run marker dir (issue #17): a fixed global path let one
+        # run's marker satisfy the next run's assertion.  The env var carries
+        # this path to the CLI step's subprocess; teardown restores/deletes it.
+        self._marker = Path(HITL_MARKER_ROOT) / uuid.uuid4().hex / "decision.json"
         self._marker.parent.mkdir(parents=True, exist_ok=True)
-        if self._marker.exists():
-            self._marker.unlink()
+        self._previous_marker_env: str | None = os.environ.get(HITL_MARKER_ENV_VAR)
+        os.environ[HITL_MARKER_ENV_VAR] = str(self._marker)
         self.engine = GateEngine([H0HumanReviewGate()])
         self.progress = PipelineProgress(project_id=project_id)
         self._state: dict[str, Any] = {"done": False, "ok": None, "approved": None}
@@ -198,6 +228,12 @@ class LiveHITLFixture:
         with _hitl_lock:
             _hitl_waiters.pop(self.project_id, None)
         unregister_engine(self.project_id)
+        if self._previous_marker_env is None:
+            os.environ.pop(HITL_MARKER_ENV_VAR, None)
+        else:
+            os.environ[HITL_MARKER_ENV_VAR] = self._previous_marker_env
+        with suppress(OSError):
+            shutil.rmtree(self._marker.parent)
 
 
 def _write_marker_atomic(marker: Path, payload: dict[str, Any]) -> None:

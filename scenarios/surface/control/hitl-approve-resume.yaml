@@ -39,21 +39,26 @@ steps:
     check: "The H0 engine resumes after the approval and completes: the harness completion marker records ok: true and approved: true. The python3 assertion prints a stable marker on success."
     standard: founder-expectations.F01
     command: |-
-      python3 -c 'import json, time, pathlib; time.sleep(1); d = json.loads(pathlib.Path("/tmp/automedia/hitl-live/decision.json").read_text()); assert d["ok"] is True and d["approved"] is True, d; print("hitl-approve-resumed-to-completion")'
+      python3 -c 'import json, time, os, pathlib; time.sleep(1); d = json.loads(pathlib.Path(os.environ["AUTOMEDIA_HITL_MARKER_PATH"]).read_text()); assert d["ok"] is True and d["approved"] is True, d; print("hitl-approve-resumed-to-completion")'
     timeout_seconds: 60
     expect:
       exit_code: 0
       stdout_has:
         - hitl-approve-resumed-to-completion
     collect_artifacts:
-      - path: /tmp/automedia/hitl-live/decision.json
+      - path: "$AUTOMEDIA_HITL_MARKER_PATH"
         required: true
 cleanup_steps:
   - name: remove the live HITL scratch dir
     kind: cli
-    check: "rm -rf removes the harness marker dir created by this scenario."
+    check: "The fixture teardown already removed this run's per-run marker dir; this step only drops the shared parent when no run dir remains (a sibling run's dir is never deleted)."
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/hitl-live
+    command: |-
+      python3 -c 'import os, pathlib
+      try:
+          os.rmdir(pathlib.Path("/tmp/automedia/hitl-live"))
+      except OSError:
+          pass'
     timeout_seconds: 60
     expect:
       exit_code: 0
