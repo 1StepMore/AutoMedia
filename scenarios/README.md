@@ -144,6 +144,13 @@ or value.
 | `artifact_nonempty` | The given path exists and is non-empty |
 | `gate_records_pass` | The artifact's JSON carries non-empty gate or pass records |
 
+A step that deliberately exercises a failing call **must** declare
+`error_expected: true` in its `expect` block; otherwise the harness treats the
+error envelope (`success: false`, or a non-zero exit) as a step failure, since
+an un-opted-in error usually means the surface broke rather than being probed
+on purpose. Opt in only on steps whose intent is to exercise the error path —
+never on steps that are supposed to report success.
+
 ## Worked example
 
 The scenario below is complete, schema-valid, and loads through the real
