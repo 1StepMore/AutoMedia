@@ -1864,7 +1864,29 @@
 </blockquote>
 <h2 id="pitfall-checklist">坑清单（pitfall checklist，迭代前逐条对照）<a class="headerlink" href="#pitfall-checklist" title="Permanent link">&para;</a></h2>
 <p>（2026-09-07 复活。历史坑清单见归档版 <code>docs/archived/validation-loop-log-20260823.md</code>；新坑在此追加。）</p>
+<ul>
+<li><strong>坑 4（2026-09-13，现象→根因→预防）</strong>：CI 全红，但失败源于「新规则落地时未同步既有主体」——3 个 doctor 场景在 error envelope 严格化后 failed。
+  根因：新检查/新规则的 PR 只验证了「新东西本身通过」，没有跑既有全集。
+  预防：任何改变步骤判定语义的规则，PR 必须同时跑全库（<code>--all</code>）<strong>并贴出全部非 passed 场景清单</strong>；不能只跑 affected 子集。已 gate 化：<code>error_expected</code> 的语义写进 <code>scenarios/README.md</code>（PR 见 issue #11）。</li>
+<li><strong>坑 5（2026-09-13）</strong>：<code>test (3.11)</code> 红，断言「某 env 变量应缺失」却为 True。
+  根因：测试模块在 <strong>import 期</strong>写 <code>os.environ</code> 且从不清除，pytest 在收集阶段就污染了整个进程；断言 env 缺失的测试因此必挂。
+  预防：<strong>禁止模块级 env 写入</strong>，一律用 <code>monkeypatch</code>；<code>tests/conftest.py</code> 已加 import/collection 期泄漏闸（快照 → 比对 → <code>pytest.exit(1)</code>，issue #14 / PR #16）。</li>
+<li><strong>坑 6（2026-09-13）</strong>：live-HITL 测试单独跑通过、连跑或 CI 偶发 <code>JSONDecodeError: Expecting value: line 1 column 1 (char 0)</code>。
+  根因：三个独立缺陷叠加——marker 用 <code>write_text</code>（先截断后写，读者能看到空文件）、读者「存在即读」不重试、marker 是<strong>固定全局路径</strong>（跨运行/跨会话/并行 worker 互相读到对方的 marker）。
+  预防：写侧原子化（临时文件 + <code>fsync</code> + <code>os.replace</code>）、读侧轮询到可解析非空 JSON、<strong>跨进程共享的临时路径一律 per-run</strong>（issue #15 / #17，PR #18 / #21）。</li>
+<li><strong>坑 7（2026-09-13）</strong>：新增测试文件导致<strong>排在它后面</strong>的测试失败（committed 场景 <code>partial-pass-omni-extraction</code> 由 partial-pass 变 failed）。
+  根因：测试真的跑了一次 pipeline 工具却没带隔离 fixture；更隐蔽的是它触发了<strong>进程全局缓存</strong>（<code>automedia.mcp.allowlist._cached_allowlist</code>）按 tmp cwd 解析并缓存，污染后续场景的真实路径解析。
+  预防：有副作用的测试必须显式带隔离 fixture（重定向 config/projects/db <strong>并 reset 进程级缓存</strong>）；验证时用「小集合组合跑」定位顺序依赖，不要只看单文件绿（issue #13 验证期发现，PR #22）。</li>
+</ul>
 <h2 id="major-eventsnewest-on-top">循环事件（major events，newest on top）<a class="headerlink" href="#major-eventsnewest-on-top" title="Permanent link">&para;</a></h2>
+<h3 id="2026-09-13-backupmain-main-ci-6-issue-6-pr">2026-09-13 backup/main 同步后发现 main CI 全红 → 6 个 issue → 6 个修复 PR<a class="headerlink" href="#2026-09-13-backupmain-main-ci-6-issue-6-pr" title="Permanent link">&para;</a></h3>
+<ul>
+<li>同步 <code>backup/main</code>（+30 commits，validation 体系强化）后发现 <strong>CI 自本次 push 起全红</strong>（<code>test (3.11)</code> / <code>checkov</code> / <code>validation-affected</code>），release PR（automedia 1.5.0）被同一批失败卡住。</li>
+<li>逐条定位根因（全部在本机用真引擎/真测试复现，非看日志猜测）→ 提 5 个 issue：<strong>#11</strong>（doctor 场景缺 <code>error_expected</code> opt-in）、<strong>#12</strong>（checkov <code>CKV_SECRET_6</code> 命中红队夹具的合成金丝雀）、<strong>#13</strong>（correlation id 从未进 MCP 工具输出，使一个「故意红」的场景把 affected job 永久拖红）、<strong>#14</strong>（测试 import 期 env 泄漏）、<strong>#15</strong>（HITL marker 空文件竞态）；修复 #15 时发现更深一层的 <strong>#17</strong>（marker 固定全局路径）另立 issue。</li>
+<li>维护者选定 #13 与 #17 均走「根治（选项 A）」：<strong>#13</strong> 把 correlation id 传播进工具输出（故意红场景转绿，PR #22）；<strong>#17</strong> 把 marker 改为 per-run 路径（PR #21）。</li>
+<li>交付：PR <strong>#16 / #18 / #19 / #20 / #21 / #22</strong>（全部未 merge，按工作流留给维护者）。每个 PR 的验收都由验证侧独立复跑，并包含<strong>纯 main 对照组</strong>——用于区分「既存失败」与「本次引入」（#13 的一个 partial-pass 失败正是靠对照组才被判定为真实污染并打回修）。</li>
+<li>已 gate 化的预防：import 期 env 泄漏闸（#14）；<code>error_expected</code> 语义写进场景文档（#11）；marker 原子写 + per-run 路径 + artifact 路径变量展开（#15 / #17）。</li>
+</ul>
 <h3 id="2026-09-07-loop-log-fix-retro">2026-09-07 LOOP-LOG 复活 + fix-retro 复盘机制接入<a class="headerlink" href="#2026-09-07-loop-log-fix-retro" title="Permanent link">&para;</a></h3>
 <ul>
 <li>归档版（docs/archived/validation-loop-log-20260823.md）复活为活跃文档（docs/dev/），路径与 AutoInfo / omni suite 统一。</li>
@@ -1874,30 +1896,37 @@
 <blockquote>
 <p>每轮修复完成后按 <code>fix-retro</code> skill 输出复盘块（5 问）追加到此段。目标：不只记坑，沉淀模式——根因分类统计 → 重复模式识别 → 预防措施 → 技能沉淀。复盘块的根因分类基于失败定性协议（validation-run-governance.md §2），不凭印象。</p>
 </blockquote>
-<h3 id="_1">复盘模板（首轮复盘在下一轮修复后追加）<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="gu">## 复盘（fix-retro @ YYYY-MM-DD）</span>
-<span class="gs">**本轮修了什么**</span>:
-<span class="k">-</span><span class="w"> </span>issue <span class="ni">#NNN:</span> 一句话
-
-<span class="gs">**根因分类统计**</span>:
+<h3 id="fix-retro-2026-09-13">复盘（fix-retro @ 2026-09-13）<a class="headerlink" href="#fix-retro-2026-09-13" title="Permanent link">&para;</a></h3>
+<p><strong>本轮修了什么</strong>（6 条，全部有 issue 号与 PR 号）:
+- issue <strong>#11</strong>: 3 个 doctor 场景 deliberately 跑会 exit 1 的命令，却没声明 <code>error_expected: true</code> → CI <code>validation-affected</code> 红（PR #19）
+- issue <strong>#12</strong>: 红队夹具里的合成金丝雀是连续字面量 → checkov <code>CKV_SECRET_6</code> 误报，<code>checkov</code> job 红（PR #20）
+- issue <strong>#13</strong>: correlation id 有绑定、进了 run record，却从未进 MCP 工具输出 → 「故意红」的场景把 affected job 永久拖红，卡住 release（PR #22，产品修复）
+- issue <strong>#14</strong>: 测试模块 import 期写 <code>os.environ</code> 且不清除 → 污染整个 pytest 进程，打挂 env-gate 测试（PR #16）
+- issue <strong>#15</strong>: HITL marker 非原子写 + 读者「存在即读、不重试」 → 空文件竞态（PR #18）
+- issue <strong>#17</strong>: HITL marker 是固定全局路径，被 fixture 与两个场景共享 → 跨运行/跨会话/并行污染（PR #21，per-run 根治）</p>
+<p><strong>根因分类统计</strong>（基于失败定性，非印象）:
 | 类型 | 数量 | 例子 |
 |------|------|------|
-| 类型错误 | N | ... |
-| 边界/空值 | N | ... |
-| 环境/配置 | N | ... |
-| 依赖/版本 | N | ... |
-| 其他 | N | ... |
-
-<span class="gs">**模式识别**</span>（重复出现的根因 → 系统性问题）:
-<span class="k">-</span><span class="w"> </span>模式: ...（出现 ≥2 次）
-<span class="k">-</span><span class="w"> </span>系统性解读: ...
-
-<span class="gs">**预防措施**</span>（哪些可以 gate 预防而非事后修）:
-<span class="k">-</span><span class="w"> </span>...
-
-<span class="gs">**沉淀**</span>（新的 skill/checklist/坑清单条目）:
-<span class="k">-</span><span class="w"> </span>...
-</code></pre></div>
+| 环境/配置 | 3 | #11 新判定规则未同步既有场景；#12 扫描器对合成夹具误报；#14 import 期 env 泄漏 |
+| 边界/空值/竞态 | 1 | #15 读者拿到被截断后的空 marker |
+| 设计缺陷（跨运行共享可变状态） | 1 | #17 固定全局 marker 路径 |
+| 产品能力缺口 | 1 | #13 关联 id 未传播到工具输出 |</p>
+<p><strong>模式识别</strong>（重复出现的根因 → 系统性问题）:
+- <strong>模式 1：新规则/新设施落地时，只验证「新东西本身」，未验证「既有全集」</strong>（出现 3 次：#11 判定语义变更、#12 新增夹具、#17/#15 新增 live-HITL 设施）。
+  系统性解读：场景 / 检查 / 夹具三者的约定没有单一权威源，且没有「变更判定语义必须回归全库」的硬性步骤；因此失败以「CI 全红，但很难一眼看出是谁的责任」的形式暴露。
+- <strong>模式 2：测试与 harness 共享进程级或文件系统级全局状态</strong>（出现 4 次：#14 import 期 env、#15 全局 marker、#17 全局路径、#13 验证期发现的进程全局 <code>_cached_allowlist</code>）。
+  系统性解读：pytest 会话内的隐式状态既无 guard 也无 reset 规范。隐式依赖一旦存在，失败的表现形式是「看起来是别人的测试挂了」——本轮 #13 的 partial-pass 失败、以及 #11 被误判为「场景本身坏了」都属此类；只有<strong>对照组</strong>（同一命令跑纯 main）能切开责任。
+- <strong>模式 3（源自历史）：「坑清单已记录但未 gate 化 → 原样复发」</strong>。历史坑清单里已有「模块副本同步」「全局临时路径」类记录，本轮仍出现 #15/#17 的全局路径问题；说明「记在文档里」不足以预防，必须变成可执行闸。</p>
+<p><strong>预防措施</strong>（哪些可以 gate 预防而非事后修）:
+- <strong>判定语义类规则的迁移检查</strong>：任何修改步骤通过/失败语义的 PR，必须跑全库 <code>--all</code> 并在 PR 里贴出所有非 passed 场景 + 逐个解释（gate：PR 模板 + reviewer 检查；#11 的教训）。
+- <strong>import/collection 期 env 泄漏闸</strong>（已落，PR #16）：任何模块级 env 写入当场让会话中止并报出变量名与 baseline→now。
+- <strong>跨进程共享临时路径约定</strong>（已落，#15/#17）：一律 per-run 目录 + 环境变量传递；<code>collect_artifacts</code> 支持变量展开；禁止新增固定全局 scratch 路径。
+- <strong>进程全局缓存的测试纪律</strong>（#13 验证期发现）：有副作用的测试必须带隔离 fixture 并 reset 进程级缓存，本次已在 <code>isolated_env</code> 中覆盖 <code>_cached_allowlist</code>。
+- <strong>验证必带对照组</strong>：任何「某 PR 引入失败了吗」的判断，都要跑一次纯 main 的同一命令；没有对照组就不下结论。</p>
+<p><strong>沉淀</strong>（新的 skill/checklist/坑清单条目）:
+- 坑清单新增坑 4–7（见上）。
+- <code>opencode-orchestration</code> skill 新增三条：①新检查的作用域过宽时，子进程会去「修爆炸半径」（改被误报的文件）→ 必须 kill 并重写 brief，让闸对准真实缺陷类；②子进程沙箱禁止 <code>/tmp</code> 写入与重型工具链安装 → scratch 放工作目录内、用底层小库替代大工具做验证；③切修复分支前先回 <code>main</code>（否则新分支带着上一个修复的提交）。
+- 通用工作法：<strong>「验证者独立复跑 + 纯 main 对照组」</strong> 是本轮识别出真实污染（#13）与排除既存失败（#11 的同类扫描）的关键手段；修复者自报不可作为验收依据。</p>
 
 
 
