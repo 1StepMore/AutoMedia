@@ -1,0 +1,28 @@
+name: validate-coverage-meta
+description: "automedia validate coverage runs the evidence-backed coverage audit and reports the per-surface buckets."
+intent: "Self-host the validate coverage command (T-06): the audit runs behaviourally and reports its surface summary; with no persisted evidence it honestly exits 1 (surfaces unproven), which the step opts into."
+category: meta
+user_level: L0
+requires_env: []
+steps:
+  - name: validate coverage prints the audit
+    kind: cli
+    check: "automedia validate coverage --runs-root <empty tmp> runs the audit and prints the Coverage audit summary; it exits 1 while surfaces are unproven, the honest no-evidence contract, so the step opts into the error."
+    standard: founder-expectations.F02
+    command: >-
+      automedia validate coverage
+      --runs-root /tmp/automedia/val-meta-coverage/runs
+    timeout_seconds: 120
+    expect:
+      exit_code: 1
+      stdout_has:
+        - "Coverage audit"
+      error_expected: true
+cleanup_steps:
+  - name: remove the coverage scratch root
+    kind: cli
+    check: rm -rf removes the isolated runs root this scenario referenced.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/val-meta-coverage
+    expect:
+      exit_code: 0

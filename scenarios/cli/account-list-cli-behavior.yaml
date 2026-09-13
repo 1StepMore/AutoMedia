@@ -1,0 +1,37 @@
+name: account-list-cli-behavior
+description: "automedia account list prints the registered accounts in the isolated encrypted store; the store requires AUTOMEDIA_MASTER_KEY, so a missing key gates the scenario to unconfigured."
+intent: "Prove the account list CLI leaf executes real behaviour against a seeded isolated registry (not just --help)."
+category: cli
+user_level: L2
+requires_env:
+  - AUTOMEDIA_MASTER_KEY
+steps:
+  - name: seed an isolated synthetic account
+    kind: cli
+    check: "A python3 one-liner saves a synthetic account under the fixed id valcliacct01 in the isolated encrypted store."
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().save("wechat", "valcliacct01", {"api_key": "synthetic-validation-key"}, label="validation-cli-list")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: account list prints the registered account
+    kind: cli
+    check: "automedia account list exits 0 and lists the seeded account id."
+    standard: founder-expectations.F02
+    command: automedia account list
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "valcliacct01"
+cleanup_steps:
+  - name: remove the seeded synthetic account
+    kind: cli
+    check: AccountStore().delete removes only the fixed-id synthetic account this scenario seeded.
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'from automedia.accounts.store import AccountStore; AccountStore().delete("valcliacct01")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

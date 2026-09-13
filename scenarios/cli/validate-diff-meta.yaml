@@ -1,0 +1,35 @@
+name: validate-diff-meta
+description: "automedia validate diff compares the two latest persisted runs and reports the run-to-run change buckets."
+intent: "Self-host the validate diff command (T-06) against two seeded run records, so the drift detector is exercised behaviourally without depending on a live run."
+category: meta
+user_level: L0
+requires_env: []
+steps:
+  - name: seed two run records
+    kind: cli
+    check: A python3 one-liner writes two minimal suite records (a scenario moving failed -> passed) into an isolated runs root.
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'import json, pathlib; root = pathlib.Path("/tmp/automedia/val-meta-diff/runs"); before = {"trace_id": "b", "generated_at": "2026-01-01T00:00:00+00:00", "scenarios": [{"scenario": "sample-scenario", "status": "failed", "steps": []}]}; after = {"trace_id": "a", "generated_at": "2026-01-02T00:00:00+00:00", "scenarios": [{"scenario": "sample-scenario", "status": "passed", "steps": []}]}; [(root / name).mkdir(parents=True, exist_ok=True) for name in ("20260101-000000-000000", "20260102-000000-000000")]; (root / "20260101-000000-000000" / "scenarios.json").write_text(json.dumps(before)); (root / "20260102-000000-000000" / "scenarios.json").write_text(json.dumps(after)); (root / "latest.txt").write_text("20260102-000000-000000")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: validate diff compares the latest two runs
+    kind: cli
+    check: "automedia validate diff --runs-root <tmp> exits 0 and prints the two compared run names."
+    standard: founder-expectations.F02
+    command: >-
+      automedia validate diff --runs-root /tmp/automedia/val-meta-diff/runs
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Latest two runs"
+cleanup_steps:
+  - name: remove the diff scratch root
+    kind: cli
+    check: rm -rf removes the isolated runs root this scenario seeded.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/val-meta-diff
+    expect:
+      exit_code: 0

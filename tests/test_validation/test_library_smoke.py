@@ -52,6 +52,23 @@ META_SCENARIOS: tuple[str, ...] = (
     "validate-list-meta",
     "validation-matrix-meta",
     "validate-matrix-meta",
+    "validate-run-meta",
+    "validate-report-meta",
+    "validate-diff-meta",
+    "validate-coverage-meta",
+)
+
+# Meta scenario files allowed to invoke `automedia validate`: `validate run`
+# is bounded by its required `--scenario`; the others are non-recursive.
+VALIDATE_META_FILES: frozenset[str] = frozenset(
+    {
+        "validate-list-meta.yaml",
+        "validate-matrix-meta.yaml",
+        "validate-run-meta.yaml",
+        "validate-report-meta.yaml",
+        "validate-diff-meta.yaml",
+        "validate-coverage-meta.yaml",
+    }
 )
 
 # The 7 boundary-only control scenarios (scenarios/surface/control/*.yaml):
@@ -215,10 +232,7 @@ def test_meta_self_validation(
             tool = step.get("tool")
             if isinstance(tool, str) and "list_validation_scenarios" in tool:
                 tool_offenders.add(path)
-    assert cmd_offenders == {
-        library_root / "cli" / "validate-list-meta.yaml",
-        library_root / "cli" / "validate-matrix-meta.yaml",
-    }, (
+    assert cmd_offenders == {library_root / "cli" / name for name in VALIDATE_META_FILES}, (
         f"recursion guard violated: scenarios invoking `automedia validate`: "
         f"{sorted(p.relative_to(library_root) for p in cmd_offenders)}"
     )

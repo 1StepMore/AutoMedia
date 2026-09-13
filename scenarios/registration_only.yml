@@ -1,0 +1,132 @@
+# Versioned registration-only exemptions list (gaps T-06, T-07).
+#
+# A leaf listed here is reachable but NOT behaviourally exercised by the
+# committed scenario library.  Every entry MUST carry an owner and a reason,
+# and is reviewed once per release (max one release); an ISO `expires` drops
+# the entry once past.  `automedia.validation.cli_leaves` reports a leaf as
+# `uncovered` only when it is neither behaviourally covered nor actively
+# exempt, and fails loudly on a malformed entry.
+version: 1
+reviewed: "2026-09-13"
+release: "wave2"
+entries:
+  - surface: cli
+    name: account connect
+    owner: validation-maintainer
+    reason: "Writes an encrypted credential; needs a synthetic master key + isolated store."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account disconnect
+    owner: validation-maintainer
+    reason: "Mutates the credential store; requires a seeded registered account."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account health
+    owner: validation-maintainer
+    reason: "Requires a seeded registered account + platform credential."
+    expires: "2026-12-31"
+  - surface: cli
+    name: adapter create
+    owner: validation-maintainer
+    reason: "Generates a platform adapter stub file (mutating)."
+    expires: "2026-12-31"
+  - surface: cli
+    name: archive
+    owner: validation-maintainer
+    reason: "Red Line 8: archiving is destructive and refuses unless published/--force."
+    expires: "2026-12-31"
+  - surface: cli
+    name: cron check-health
+    owner: validation-maintainer
+    reason: "Machine-dependent (reports missing system deps) and reads the cwd config dir."
+    expires: "2026-12-31"
+  - surface: cli
+    name: cron run
+    owner: validation-maintainer
+    reason: "Executes scheduled jobs with real side effects; not deterministic."
+    expires: "2026-12-31"
+  - surface: cli
+    name: cron run-pipeline
+    owner: validation-maintainer
+    reason: "Starts a real pipeline run (LLM + long wall-clock)."
+    expires: "2026-12-31"
+  - surface: cli
+    name: hitl preset
+    owner: validation-maintainer
+    reason: "Mutates the HITL preset configuration."
+    expires: "2026-12-31"
+  - surface: cli
+    name: init
+    owner: validation-maintainer
+    reason: "Interactive wizard that mutates the user config; the journey covers init --help."
+    expires: "2026-12-31"
+  - surface: cli
+    name: omni format-output
+    owner: validation-maintainer
+    reason: "Needs ORF + a real content artifact; owned by the omni surface scenarios."
+    expires: "2026-12-31"
+  - surface: cli
+    name: omni ingest
+    owner: validation-maintainer
+    reason: "Needs OPP + a source document/URL; external dependency."
+    expires: "2026-12-31"
+  - surface: cli
+    name: omni localize
+    owner: validation-maintainer
+    reason: "Needs OL + an LLM provider + a source document."
+    expires: "2026-12-31"
+  - surface: cli
+    name: omni start
+    owner: validation-maintainer
+    reason: "Long-running server process; does not return."
+    expires: "2026-12-31"
+  - surface: cli
+    name: omni start-all
+    owner: validation-maintainer
+    reason: "Long-running multi-server process; does not return."
+    expires: "2026-12-31"
+  - surface: cli
+    name: onboard start
+    owner: validation-maintainer
+    reason: "Interactive wizard that mutates the user config."
+    expires: "2026-12-31"
+  - surface: cli
+    name: pool add
+    owner: validation-maintainer
+    reason: "Mutates the topic-pool SQLite database."
+    expires: "2026-12-31"
+  - surface: cli
+    name: pool attach-brief
+    owner: validation-maintainer
+    reason: "Mutates a pool topic with an external brief document."
+    expires: "2026-12-31"
+  - surface: cli
+    name: pool list
+    owner: validation-maintainer
+    reason: "Reads a shared pool.db not scoped by the isolated config dir; output is host-state dependent."
+    expires: "2026-12-31"
+  - surface: cli
+    name: pool prune
+    owner: validation-maintainer
+    reason: "Destroys topic-pool rows."
+    expires: "2026-12-31"
+  - surface: cli
+    name: projects get
+    owner: validation-maintainer
+    reason: "Requires a materialized project dir; covered by the projects list journey + MCP get_project_assets."
+    expires: "2026-12-31"
+  - surface: cli
+    name: projects get-assets
+    owner: validation-maintainer
+    reason: "Requires a materialized project dir; covered at the MCP surface."
+    expires: "2026-12-31"
+  - surface: cli
+    name: rollback
+    owner: validation-maintainer
+    reason: "Destructive archive+revert; Red Line 8 applies."
+    expires: "2026-12-31"
+  - surface: cli
+    name: validate sign
+    owner: validation-maintainer
+    reason: "Mutates a run dir's signed.txt; covered by the signoff unit tests."
+    expires: "2026-12-31"

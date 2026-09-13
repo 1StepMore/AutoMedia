@@ -1,0 +1,67 @@
+name: cli-surface-behavior
+description: "Behavioral coverage for the read-only CLI leaves that were previously --help-only: adapter list, onboard list/status, hitl config, mcp, and history."
+intent: "Prove the read-only CLI leaves execute real behaviour (not just registration): each command runs, exits 0, and prints its documented contract against the shipped library."
+category: cli
+user_level: L0
+requires_env: []
+steps:
+  - name: adapter list prints the registered adapters
+    kind: cli
+    check: "automedia adapter list exits 0 and prints the registered platform adapters."
+    standard: founder-expectations.F02
+    command: automedia adapter list
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Registered adapters"
+  - name: onboard list prints the current configuration
+    kind: cli
+    check: "automedia onboard list exits 0 and prints the current onboarding configuration summary."
+    standard: founder-expectations.F02
+    command: automedia onboard list
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Current Configuration"
+  - name: onboard status prints the checklist
+    kind: cli
+    check: "automedia onboard status exits 0 and prints the onboarding status checklist."
+    standard: founder-expectations.F02
+    command: automedia onboard status
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Onboarding Status"
+  - name: hitl config prints the node summary
+    kind: cli
+    check: "automedia hitl config exits 0 and prints the HITL configuration summary (preset + node counts)."
+    standard: founder-expectations.F02
+    command: automedia hitl config
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "HITL Configuration Summary"
+  - name: mcp prints the client configuration
+    kind: cli
+    check: "automedia mcp exits 0 and prints the MCP client configuration JSON."
+    standard: founder-expectations.F02
+    command: automedia mcp
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "mcpServers"
+  - name: history answers for an unknown project
+    kind: cli
+    check: "automedia history for an unknown project exits 0 and reports no recorded history (the honest empty-state contract)."
+    standard: founder-expectations.F02
+    command: automedia history deadbeef00ab
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "No history found"

@@ -1,0 +1,36 @@
+name: validate-report-meta
+description: "automedia validate report renders a persisted run record: verdict counts and one status line per scenario."
+intent: "Self-host the validate report command (T-06) against a seeded immutable run record, so the renderer is exercised behaviourally without depending on a live run."
+category: meta
+user_level: L0
+requires_env: []
+steps:
+  - name: seed an immutable run record
+    kind: cli
+    check: A python3 one-liner writes a minimal suite record (one passed scenario) plus the latest.txt pointer into an isolated runs root.
+    standard: founder-expectations.F01
+    command: >-
+      python3 -c 'import json, pathlib; root = pathlib.Path("/tmp/automedia/val-meta-report/runs"); run = root / "20260101-000000-000000"; run.mkdir(parents=True, exist_ok=True); (run / "scenarios.json").write_text(json.dumps({"trace_id": "t", "generated_at": "2026-01-01T00:00:00+00:00", "scenarios": [{"scenario": "sample-scenario", "status": "passed", "steps": []}]})); (root / "latest.txt").write_text("20260101-000000-000000")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: validate report renders the run
+    kind: cli
+    check: "automedia validate report --run 20260101-000000-000000 --runs-root <tmp> exits 0 and renders the seeded scenario's status line."
+    standard: founder-expectations.F02
+    command: >-
+      automedia validate report --run 20260101-000000-000000
+      --runs-root /tmp/automedia/val-meta-report/runs
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "sample-scenario"
+cleanup_steps:
+  - name: remove the report scratch root
+    kind: cli
+    check: rm -rf removes the isolated runs root this scenario seeded.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/val-meta-report
+    expect:
+      exit_code: 0
