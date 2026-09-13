@@ -81,17 +81,13 @@ class TestPersistRun:
         path = persist_run(root, {"ok": True}, stamp=BASE)
         assert path.parent.is_dir()
 
-    def test_same_stamp_twice_raises_and_keeps_original(
-        self, tmp_path: Path
-    ) -> None:
+    def test_same_stamp_twice_raises_and_keeps_original(self, tmp_path: Path) -> None:
         first = {"verdict": "first"}
         second = {"verdict": "second"}
         persist_run(tmp_path, first, stamp=BASE)
         with pytest.raises(PersistError):
             persist_run(tmp_path, second, stamp=BASE)
-        saved = json.loads(
-            (tmp_path / BASE / "scenarios.json").read_text(encoding="utf-8")
-        )
+        saved = json.loads((tmp_path / BASE / "scenarios.json").read_text(encoding="utf-8"))
         assert saved == first
 
     def test_pre_existing_run_dir_raises_persist_error(self, tmp_path: Path) -> None:
@@ -102,9 +98,7 @@ class TestPersistRun:
     def test_collision_falls_back_to_random_suffix(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "automedia.validation.persist._stamp_now", _frozen_stamp
-        )
+        monkeypatch.setattr("automedia.validation.persist._stamp_now", _frozen_stamp)
         first = persist_run(tmp_path, {"n": 1})
         assert first.parent.name == BASE
         second = persist_run(tmp_path, {"n": 2})
@@ -114,12 +108,8 @@ class TestPersistRun:
     def test_collision_fallback_uses_random_suffix_value(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "automedia.validation.persist._stamp_now", _frozen_stamp
-        )
-        monkeypatch.setattr(
-            "automedia.validation.persist.token_hex", _fixed_token_hex("aabbcc")
-        )
+        monkeypatch.setattr("automedia.validation.persist._stamp_now", _frozen_stamp)
+        monkeypatch.setattr("automedia.validation.persist.token_hex", _fixed_token_hex("aabbcc"))
         persist_run(tmp_path, {"n": 1})
         second = persist_run(tmp_path, {"n": 2})
         assert second.parent.name == f"{BASE}-aabbcc"
@@ -127,12 +117,8 @@ class TestPersistRun:
     def test_collision_exhaustion_raises_persist_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "automedia.validation.persist._stamp_now", _frozen_stamp
-        )
-        monkeypatch.setattr(
-            "automedia.validation.persist.token_hex", _fixed_token_hex("000000")
-        )
+        monkeypatch.setattr("automedia.validation.persist._stamp_now", _frozen_stamp)
+        monkeypatch.setattr("automedia.validation.persist.token_hex", _fixed_token_hex("000000"))
         (tmp_path / BASE).mkdir()
         (tmp_path / f"{BASE}-000000").mkdir()
         with pytest.raises(PersistError, match="unique run directory"):
@@ -208,7 +194,7 @@ class TestCollectArtifacts:
         assert entries == [
             {
                 "path": "out/report.md",
-                "copied_to": str(tmp_path / "run" / "artifacts" / "3-report.md"),
+                "copied_to": "artifacts/3-report.md",
                 "ok": True,
                 "required": True,
                 "reason": None,
@@ -257,9 +243,7 @@ class TestCollectArtifacts:
     def test_preserves_collect_order(self, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("a", encoding="utf-8")
         (tmp_path / "b.txt").write_text("b", encoding="utf-8")
-        step = step_with_artifacts(
-            ArtifactCheck(path="a.txt"), ArtifactCheck(path="b.txt")
-        )
+        step = step_with_artifacts(ArtifactCheck(path="a.txt"), ArtifactCheck(path="b.txt"))
         entries = collect_artifacts(step, 1, tmp_path / "run", cwd=tmp_path)
         assert [entry["path"] for entry in entries] == ["a.txt", "b.txt"]
         assert [entry["ok"] for entry in entries] == [True, True]

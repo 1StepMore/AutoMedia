@@ -404,7 +404,7 @@ class TestArtifacts:
         (copied, missing) = trace["artifacts"]
         assert copied["ok"] is True
         assert copied["copied_to"].endswith("1-out.json")
-        assert Path(copied["copied_to"]).is_file()
+        assert (runs_root / str(copied["copied_to"])).is_file()
         assert missing["ok"] is False
         assert missing["reason"] == "missing"
         assert record["summary"]["artifacts_missing"] == [

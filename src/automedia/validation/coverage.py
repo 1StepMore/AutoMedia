@@ -167,7 +167,7 @@ def coverage_audit(
     app_src = _read_declared_source(app_path, "src/automedia/cli/app.py")
     declared_gates, declared_modes = _declared_pipeline_surfaces(runner_path, distribution_path)
 
-    declared_mcp = _declared_mcp(server_src)
+    declared_mcp, deprecated_mcp = _declared_mcp(server_src)
     declared_cli = _declared_cli(app_src)
     scenarios = load_scenarios(root)
     file_map = _scenario_file_map(root)
@@ -212,6 +212,7 @@ def coverage_audit(
     boundary_modes -= non_boundary_modes
 
     declared_mcp_set = set(declared_mcp)
+    deprecated_mcp_set = set(deprecated_mcp)
     declared_cli_set = set(declared_cli)
     declared_gates_set = set(declared_gates)
     declared_modes_set = set(declared_modes)
@@ -223,13 +224,16 @@ def coverage_audit(
     missing_cli = sorted(declared_cli_set - set(covered_cli) - boundary_cli)
     missing_gates = sorted(declared_gates_set - set(covered_gates) - boundary_gates)
     missing_modes = sorted(declared_modes_set - set(covered_modes) - boundary_modes)
-    phantom_mcp = sorted(used_mcp - declared_mcp_set)
+    phantom_mcp = sorted(used_mcp - declared_mcp_set - deprecated_mcp_set)
     phantom_cli = sorted(used_cli - declared_cli_set)
     phantom_gates = sorted(used_gates - declared_gates_set)
     phantom_modes = sorted(used_modes - declared_modes_set)
+    deprecated_covered_mcp = sorted(deprecated_mcp_set & used_mcp)
 
     result: dict[str, Any] = {
         "declared_mcp": declared_mcp,
+        "deprecated_mcp": deprecated_mcp,
+        "deprecated_mcp_covered": deprecated_covered_mcp,
         "declared_cli": declared_cli,
         "declared_gates": declared_gates,
         "declared_modes": declared_modes,
@@ -258,11 +262,13 @@ def coverage_audit(
         "phantom_note": _phantom_note(phantom_mcp, phantom_cli),
         "summary": {
             "mcp_declared": len(declared_mcp),
-            "mcp_used": len(used_mcp),
+            "mcp_used": len(used_mcp & declared_mcp_set),
             "mcp_covered": len(covered_mcp),
             "mcp_missing": len(missing_mcp),
             "mcp_phantom": len(phantom_mcp),
             "mcp_boundary_only": len(boundary_mcp),
+            "mcp_deprecated": len(deprecated_mcp),
+            "mcp_deprecated_covered": len(deprecated_covered_mcp),
             "cli_declared": len(declared_cli),
             "cli_used": len(used_cli),
             "cli_covered": len(covered_cli),
@@ -588,20 +594,26 @@ def _import_aliases(src: str) -> dict[str, str]:
     return aliases
 
 
-def _declared_mcp(src: str) -> list[str]:
+def _declared_mcp(src: str) -> tuple[list[str], list[str]]:
     """Extract registered tool names from a server module source.
 
-    Matches every ``mcp.tool(...)(fn)`` registration (no ``Tool(name=...)``
-    declarations exist in server.py); the callable name is the ``name=``
-    kwarg when present, else ``fn`` resolved through import aliases.
+    Returns ``(live, deprecated)``.  Matches every ``mcp.tool(...)(fn)``
+    registration (no ``Tool(name=...)`` declarations exist in server.py); the
+    callable name is the ``name=`` kwarg when present, else ``fn`` resolved
+    through import aliases.  A registration whose arguments carry the
+    ``DEPRECATED`` marker is a backward-compat alias (gap T-12): it is reported
+    separately and excluded from the live coverage denominator.
     """
     aliases = _import_aliases(src)
-    names: list[str] = []
+    live: list[str] = []
+    deprecated: list[str] = []
     for match in _MCP_TOOL_RE.finditer(src):
-        kw = _NAME_KW_RE.search(match.group(1) or "")
+        args = match.group(1) or ""
+        kw = _NAME_KW_RE.search(args)
         fn = match.group(2) or ""
-        names.append(kw.group(1) if kw else aliases.get(fn, fn))
-    return sorted(set(names))
+        name = kw.group(1) if kw else aliases.get(fn, fn)
+        (deprecated if "DEPRECATED" in args.upper() else live).append(name)
+    return sorted(set(live)), sorted(set(deprecated))
 
 
 def _declared_cli(src: str) -> list[str]:

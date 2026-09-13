@@ -342,7 +342,11 @@ class TestMissingBucket:
             {"health.yaml": _HEALTH_SCENARIO},
         )
         audit = coverage_audit(lib)
-        assert "pool_add_topic" in audit["missing"]["mcp"]
+        # Gap T-12: deprecated aliases are excluded from the live denominator
+        # and reported separately, so they are never "missing".
+        assert "pool_add_topic" not in audit["missing"]["mcp"]
+        assert "pool_add_topic" in audit["deprecated_mcp"]
+        assert "add_brand" in audit["missing"]["mcp"]
         assert "health_check" not in audit["missing"]["mcp"]
 
     def test_missing_count_serializes(self, tmp_path: Path) -> None:

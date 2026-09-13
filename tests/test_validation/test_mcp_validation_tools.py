@@ -30,6 +30,7 @@ expect ``success: true`` — it passed the W2-T3/W3 empirical suites).
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
 import shutil
 from pathlib import Path
@@ -39,6 +40,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 
 from automedia.mcp.server import create_server
+from automedia.validation import mcp_tools
 
 STANDARDS_FIXTURE = (
     Path(__file__).resolve().parents[1]
@@ -340,14 +342,21 @@ class TestValidationCoverageAudit:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # 59 pre-existing + 6 validation tools + get_pipeline_state
-        # + get_gate_report (todo 6) + review_decision (todo 9)
-        assert summary["mcp_declared"] == 68
-        assert summary["mcp_used"] == 68
+        # Live denominator after gap T-12 (4 deprecated aliases reported
+        # separately): 64 live declared / 64 used / 63 covered.
+        assert summary["mcp_declared"] == 64
+        assert summary["mcp_used"] == 64
         # the meta scenarios cover the validation tools (W4-T7's
         # validation-self-check plus validation-matrix-meta) -> missing = 0;
         # run_validation_suite is boundary-only (a success call would recurse).
-        assert summary["mcp_covered"] == 67
+        assert summary["mcp_covered"] == 63
+        assert summary["mcp_deprecated"] == 4
+        assert payload["deprecated_mcp"] == [
+            "batch_run",
+            "engine_health",
+            "mcp_help",
+            "pool_add_topic",
+        ]
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]
@@ -389,3 +398,12 @@ class TestValidationMatrix:
         # accept an empty arguments dict (no required params).
         payload = _call_tool(server, "validation_matrix", {})
         assert payload["success"] is True
+
+
+class TestMcpPersistenceDefaults:
+    """Gap T-17: both MCP run tools persist by default (never silently skip)."""
+
+    def test_save_defaults_to_true(self) -> None:
+        for func in (mcp_tools.run_validation_scenario, mcp_tools.run_validation_suite):
+            default = inspect.signature(func).parameters["save"].default
+            assert default is True, f"{func.__name__} must default save=True"

@@ -150,9 +150,7 @@ class TestValidateCliRealLibrary:
         assert names == {scenario.name for scenario in library}
         assert META_SCENARIO in names
 
-    def test_validate_coverage_reports_unproven_and_exits_1(
-        self, library_root: Path
-    ) -> None:
+    def test_validate_coverage_reports_unproven_and_exits_1(self, library_root: Path) -> None:
         """Evidence-backed contract (gap T-01): the static surfaces are fully
         declared/used (missing = 0), but coverage now counts only surfaces
         reached by a passed step in the newest persisted run, so an
@@ -189,9 +187,20 @@ class TestValidateCliRealLibrary:
         assert result.exit_code == 1
         data = json.loads(result.output)
         summary: dict[str, Any] = data["summary"]
-        assert summary["mcp_declared"] == 68
-        assert summary["mcp_used"] == 68
-        assert summary["mcp_covered"] == 67
+        # Gap T-12: the 4 deprecated aliases are reported separately and are
+        # excluded from the live denominator -> 64 live declared / 63 covered
+        # (run_validation_suite stays boundary-only).
+        assert summary["mcp_declared"] == 64
+        assert summary["mcp_used"] == 64
+        assert summary["mcp_covered"] == 63
+        assert summary["mcp_deprecated"] == 4
+        assert summary["mcp_deprecated_covered"] == 4
+        assert data["deprecated_mcp"] == [
+            "batch_run",
+            "engine_health",
+            "mcp_help",
+            "pool_add_topic",
+        ]
         assert summary["mcp_missing"] == 0
         assert summary["mcp_phantom"] == 0
         assert summary["mcp_boundary_only"] == 1
@@ -239,7 +248,7 @@ class TestValidationToolsRealDispatcher:
         assert payload["success"] is True
         summary: dict[str, Any] = payload["summary"]
         assert summary["mcp_missing"] == 0
-        assert summary["mcp_covered"] == 67
+        assert summary["mcp_covered"] == 63
         assert summary["mcp_phantom"] == 0
         assert summary["cli_missing"] == 0
         assert payload["missing_mcp"] == []

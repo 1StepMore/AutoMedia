@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from secrets import token_hex
@@ -37,6 +38,41 @@ MAX_SUFFIX_RETRIES = 5
 
 class PersistError(Exception):
     """A run record could not be persisted without overwriting existing evidence."""
+
+
+class ArtifactIndexError(PersistError):
+    """A run record references an artifact outside its own run directory."""
+
+
+def assert_artifact_index(run_record: object, run_dir: Path) -> None:
+    """Refuse a record whose collected artifact resolves outside ``run_dir``.
+
+    Artifacts are stored run-relative (gap Tr-06); a path that escapes the run
+    directory breaks the evidence→subject trace, so the record is rejected
+    before it is written.  Absolute paths are tolerated only when they already
+    point inside ``run_dir``.
+    """
+    base = run_dir.resolve()
+    for copied in _iter_copied_to(run_record):
+        candidate = Path(copied)
+        resolved = (candidate if candidate.is_absolute() else run_dir / candidate).resolve()
+        if base not in resolved.parents and resolved != base:
+            raise ArtifactIndexError(
+                f"artifact {copied!r} resolves outside the run directory {run_dir}"
+            )
+
+
+def _iter_copied_to(value: object) -> Iterator[str]:
+    """Yield every non-empty ``copied_to`` string anywhere in a record tree."""
+    if isinstance(value, dict):
+        copied = value.get("copied_to")
+        if isinstance(copied, str) and copied:
+            yield copied
+        for child in value.values():
+            yield from _iter_copied_to(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _iter_copied_to(child)
 
 
 def prepare_run_dir(runs_root: Path, *, stamp: str | None = None) -> Path:
@@ -81,6 +117,7 @@ def persist_run(
     """
     if run_dir is None:
         run_dir = prepare_run_dir(runs_root, stamp=stamp)
+    assert_artifact_index(run_record, run_dir)
     record_path = run_dir / "scenarios.json"
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     try:
@@ -197,7 +234,9 @@ def collect_artifacts(
     ``<run_dir>/artifacts/<step_index>-<basename>`` (guide §4.4: every green
     step names a verifiable artifact).  ``step_index`` is the 1-based step
     index of the trace (guide §3.1 phase 5).  ``copied_to`` is the created
-    file's path, which lives inside the run dir.
+    file's path **relative to the run dir** (``artifacts/<name>``, gap Tr-06),
+    so the record stays portable and :func:`assert_artifact_index` can prove
+    every entry resolves inside the run dir.
 
     The returned entries carry ``{path, copied_to, ok, required, reason}``:
     ``ok=True`` means the artifact was copied; a missing source is ``ok=False``
@@ -227,7 +266,7 @@ def collect_artifacts(
             artifacts_dir.mkdir(parents=True, exist_ok=True)
             target = _copy_artifact_exclusive(artifacts_dir, step_index, source)
             entry["ok"] = True
-            entry["copied_to"] = str(target)
+            entry["copied_to"] = (Path("artifacts") / target.name).as_posix()
         entries.append(entry)
     return entries
 

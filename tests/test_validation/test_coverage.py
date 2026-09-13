@@ -206,6 +206,7 @@ class TestShape:
         )
         for key in (
             "declared_mcp",
+            "deprecated_mcp",
             "declared_cli",
             "used_mcp",
             "used_cli",
@@ -230,6 +231,7 @@ class TestShape:
             "mcp_missing",
             "mcp_phantom",
             "mcp_boundary_only",
+            "mcp_deprecated",
             "cli_declared",
             "cli_used",
             "cli_covered",
@@ -250,8 +252,8 @@ class TestDeclaredMCP:
             "analyze_content",
             "cancel_pipeline",
             "health_check",
-            "pool_add_topic",
         ]
+        assert result["deprecated_mcp"] == ["pool_add_topic"]
 
     def test_alias_import_resolves_to_callable_name(self, tmp_path: Path) -> None:
         # The scenario calls the CALLABLE name (fn.__name__), not the alias.

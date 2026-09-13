@@ -60,6 +60,7 @@ from automedia.validation.persist import (
     latest_run,
     list_runs,
     persist_run,
+    prepare_run_dir,
     write_latest_pointer,
 )
 from automedia.validation.schema import Scenario
@@ -188,21 +189,22 @@ async def run_validation_scenario(
         )
     server = context.fastmcp if context is not None else None
     adapters = make_adapters(server)
-    run_root = Path(runs_root) if save else None
+    root = Path(runs_root)
+    run_dir = prepare_run_dir(root) if save else None
     record = await run_validation_scenario_async(
-        scenario, adapters, run_root=run_root, cwd=_repo_root()
+        scenario, adapters, run_root=run_dir, cwd=_repo_root()
     )
-    if save and run_root is not None:
+    if save and run_dir is not None:
         suite = build_single_run_record(record)
         try:
-            record_path = persist_run(run_root, suite)
+            record_path = persist_run(root, suite, run_dir=run_dir)
         except PersistError as exc:
             return error_response(
                 MCPErrorCode.UNKNOWN,
-                f"could not persist run record under {run_root}: {exc}",
+                f"could not persist run record under {root}: {exc}",
                 "Choose a runs_root with no colliding run directory",
             )
-        write_latest_pointer(run_root, record_path.parent.name)
+        write_latest_pointer(root, record_path.parent.name)
     return success_response(record)
 
 
