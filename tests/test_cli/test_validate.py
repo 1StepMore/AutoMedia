@@ -19,7 +19,7 @@ import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
-from automedia.validation.persist import persist_run, write_latest_pointer
+from automedia.validation.persist import list_runs, persist_run, write_latest_pointer
 
 runner = CliRunner()
 
@@ -350,6 +350,41 @@ class TestValidateRun:
         )
         assert result.exit_code == 0
         assert "Status: passed" in result.output
+
+    def test_run_env_gate_skip_records_untrusted_marker(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        """gap R-06: a skipped run is visibly non-Proved in its record."""
+        runs_root = tmp_path / "runs"
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-env-gated",
+                "--env-gate",
+                "skip",
+                "--runs-root",
+                str(runs_root),
+            ],
+        )
+        assert result.exit_code == 0
+        (run_name,) = list_runs(runs_root)
+        stored = json.loads((runs_root / run_name / "scenarios.json").read_text(encoding="utf-8"))
+        assert set(stored) == {
+            "trace_id",
+            "generated_at",
+            "scenarios",
+            "hard_safety_violations",
+            "blocked",
+            "confidence",
+            "trusted",
+        }
+        assert stored["trusted"] is False
+        scenario_record = stored["scenarios"][0]
+        assert scenario_record["env_gate_skipped"] == ["SYNTH_REQUIRED_ENV"]
+        assert scenario_record["trusted"] is False
 
     def test_run_failed_scenario_exits_1(self, scenarios_dir: Path, tmp_path: Path) -> None:
         result = runner.invoke(

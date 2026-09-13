@@ -43,7 +43,6 @@ from __future__ import annotations
 import importlib
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +50,7 @@ import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_json
 from automedia.validation.engine import (
+    build_single_run_record,
     make_adapters,
     run_validation_scenario,
     run_validation_suite,
@@ -186,20 +186,19 @@ def validate_run(
         more = f", ... ({len(by_name)} total)" if len(by_name) > 30 else ""
         output_error(f"Unknown scenario {scenario!r}. Available scenarios: {names}{more}")
         return
+    skipped_env: list[str] = []
     if env_gate == "skip" and target.requires_env:
+        skipped_env = list(target.requires_env)
         target = replace(target, requires_env=[])
 
     from automedia.mcp.server import create_server
 
     adapters = make_adapters(create_server())
     root = Path(runs_root)
-    record = run_validation_scenario(target, adapters, run_root=root)
-    run_record: dict[str, object] = {
-        "trace_id": record["trace_id"],
-        "generated_at": datetime.now(UTC).isoformat(),
-        "scenarios": [record],
-        "confidence": record.get("confidence", "real"),
-    }
+    record = run_validation_scenario(
+        target, adapters, run_root=root, env_gate_skipped=skipped_env or None
+    )
+    run_record = build_single_run_record(record)
     try:
         record_path = persist_run(root, run_record)
         write_latest_pointer(root, record_path.parent.name)
@@ -239,6 +238,8 @@ def validate_run(
                 "hard_safety_violation": hard_violation,
                 "summary": summary if isinstance(summary, dict) else {},
                 "reason": record.get("reason"),
+                "trusted": bool(record.get("trusted", True)),
+                "env_gate_skipped": record.get("env_gate_skipped", []),
                 "run_dir": record_path.parent.name,
                 "steps": step_rows,
             }

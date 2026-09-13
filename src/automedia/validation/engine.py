@@ -137,6 +137,11 @@ def _confidence() -> str:
     return "mock" if fake_mode_active() else "real"
 
 
+def _skip_marker(skipped: list[str]) -> dict[str, object]:
+    """The ``env_gate_skipped`` + ``trusted: false`` record marker (gap R-06)."""
+    return {"env_gate_skipped": skipped, "trusted": False} if skipped else {}
+
+
 def _redact(value: object) -> object:
     """Recursively replace secret values with ``***REDACTED***``.
 
@@ -312,6 +317,7 @@ async def run_validation_scenario_async(
     run_root: Path | None = None,
     cwd: Path | None = None,
     trace_id: str | None = None,
+    env_gate_skipped: list[str] | None = None,
 ) -> dict[str, object]:
     """Phase 4 orchestration for ONE scenario (guide §3.3).
 
@@ -320,9 +326,17 @@ async def run_validation_scenario_async(
     artifact collection per GREEN step), best-effort cleanup, aggregation.
     ``trace_id`` threads the run-wide UUID (§3.1 phase 5); a standalone
     call with ``None`` generates a fresh one.
+
+    ``env_gate_skipped`` (gap R-06): the CLI ``--env-gate skip`` path passes
+    the scenario's original ``requires_env`` names here after it has emptied
+    them for the run.  The record then carries ``env_gate_skipped: [vars]``
+    and ``trusted: false`` — the run RAN, but the gate that would have
+    proved the prerequisite was bypassed, so it is plumbing evidence only and
+    the coverage audit never counts it as a Proved surface.
     """
     base = Path.cwd() if cwd is None else Path(cwd)
     trace_id = trace_id or str(uuid.uuid4())
+    skipped = list(env_gate_skipped) if env_gate_skipped else []
     gate = check_env(scenario.requires_env, requires_real_llm=scenario.requires_real_llm)
     if not gate.configured:
         return {
@@ -335,6 +349,7 @@ async def run_validation_scenario_async(
             "error_boundary": scenario.error_boundary,
             "hard_safety_violation": scenario.hard,
             "confidence": _confidence(),
+            **(_skip_marker(skipped) if skipped else {}),
         }
     steps = [
         await _run_primary_step(step, adapters, trace_id, index, cwd=base, run_root=run_root)
@@ -348,7 +363,7 @@ async def run_validation_scenario_async(
         scenario,
         [SimpleRecord(passed=bool(step["passed"]), status=str(step["status"])) for step in steps],
     )
-    return {
+    record: dict[str, object] = {
         "scenario": scenario.name,
         "status": status,
         "summary": _summarize(steps),
@@ -359,6 +374,8 @@ async def run_validation_scenario_async(
         "hard_safety_violation": scenario.hard and status != "passed",
         "confidence": _confidence(),
     }
+    record.update(_skip_marker(skipped))
+    return record
 
 
 def run_validation_scenario(
@@ -368,6 +385,7 @@ def run_validation_scenario(
     run_root: Path | None = None,
     cwd: Path | None = None,
     trace_id: str | None = None,
+    env_gate_skipped: list[str] | None = None,
 ) -> dict[str, object]:
     """Sync wrapper of :func:`run_validation_scenario_async` (CLI/test only).
 
@@ -376,9 +394,35 @@ def run_validation_scenario(
     """
     return asyncio.run(
         run_validation_scenario_async(
-            scenario, adapters, run_root=run_root, cwd=cwd, trace_id=trace_id
+            scenario,
+            adapters,
+            run_root=run_root,
+            cwd=cwd,
+            trace_id=trace_id,
+            env_gate_skipped=env_gate_skipped,
         )
     )
+
+
+def build_single_run_record(record: dict[str, object]) -> dict[str, object]:
+    """Wrap ONE scenario record in the suite shape (gap Tr-05).
+
+    The CLI single-scenario path and the MCP ``run_validation_scenario``
+    tool share this builder so their persisted records carry identical
+    top-level keys: ``trace_id``, ``generated_at``, ``scenarios``,
+    ``hard_safety_violations``, ``blocked``, ``confidence``, ``trusted``.
+    """
+    name = str(record.get("scenario") or "")
+    violation = record.get("hard_safety_violation") is True
+    return {
+        "trace_id": record["trace_id"],
+        "generated_at": datetime.now(UTC).isoformat(),
+        "scenarios": [record],
+        "hard_safety_violations": [name] if violation else [],
+        "blocked": violation,
+        "confidence": record.get("confidence", "real"),
+        "trusted": bool(record.get("trusted", True)),
+    }
 
 
 async def run_validation_suite_async(
@@ -427,6 +471,8 @@ async def run_validation_suite_async(
         "hard_safety_violations": violations,
         "blocked": bool(violations),
         "confidence": _confidence(),
+        # A suite is trusted only when every scenario record is (gap R-06).
+        "trusted": all(bool(r.get("trusted", True)) for r in records),
     }
     record["metrics"] = build_metrics(record)
     if save and root is not None:

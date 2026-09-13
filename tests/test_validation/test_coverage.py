@@ -468,6 +468,9 @@ class TestDeterminism:
         }
         first = _audit(tmp_path, files)
         second = _audit(tmp_path, files)
+        # generated_at is the one inherently run-specific field (gap Tr-03).
+        first.pop("generated_at", None)
+        second.pop("generated_at", None)
         assert first == second
 
     def test_output_lists_are_sorted(self, tmp_path: Path) -> None:

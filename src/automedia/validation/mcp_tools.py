@@ -38,7 +38,6 @@ already pin that rule; importing server here would be circular with W4).
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +49,7 @@ from automedia.mcp.mcp_error import (
     success_response,
 )
 from automedia.validation.engine import (
+    build_single_run_record,
     make_adapters,
     run_validation_scenario_async,
     run_validation_suite_async,
@@ -66,6 +66,16 @@ from automedia.validation.schema import Scenario
 
 DEFAULT_RUNS_ROOT = "validation-runs"
 """Default runs root shared by the run/report tools (CLI parity)."""
+
+
+def _repo_root() -> Path:
+    """Repo root from this module's location (engine cwd for all MCP runs).
+
+    Passing the repo root makes a run's relative artifact/expect paths resolve
+    identically to the CLI path (which runs from the repo root), so MCP records
+    and CLI records describe the same evidence (gap Tr-05).
+    """
+    return Path(__file__).resolve().parents[3]
 
 
 def _status_hint(scenario: Scenario) -> str:
@@ -131,7 +141,7 @@ def list_validation_scenarios() -> dict[str, Any]:
 async def run_validation_scenario(
     scenario_name: str,
     runs_root: str = DEFAULT_RUNS_ROOT,
-    save: bool = False,
+    save: bool = True,
     context: Context | None = None,
 ) -> dict[str, Any]:
     """Run ONE named validation scenario in-process against this server.
@@ -141,10 +151,11 @@ async def run_validation_scenario(
     unknown name errors with the available scenarios listed.  The run uses
     the engine's async core and dispatches tool-kind steps back through this
     server instance (in-process isolation — see module docstring).  With
-    ``save=True`` the run record is persisted immutably under ``runs_root``
-    (default ``validation-runs/``, created on demand) as a suite-shaped
-    ``scenarios.json`` plus a ``latest.txt`` pointer, readable via
-    ``get_validation_report``.
+    ``save=True`` (the default, gap T-17) the run record is persisted
+    immutably under ``runs_root`` (default ``validation-runs/``, created on
+    demand) as a suite-shaped ``scenarios.json`` plus a ``latest.txt``
+    pointer, readable via ``get_validation_report``; the record carries the
+    same top-level keys as the CLI single-run path (gap Tr-05).
 
     Returns
     -------
@@ -178,14 +189,11 @@ async def run_validation_scenario(
     server = context.fastmcp if context is not None else None
     adapters = make_adapters(server)
     run_root = Path(runs_root) if save else None
-    record = await run_validation_scenario_async(scenario, adapters, run_root=run_root)
+    record = await run_validation_scenario_async(
+        scenario, adapters, run_root=run_root, cwd=_repo_root()
+    )
     if save and run_root is not None:
-        suite: dict[str, object] = {
-            "trace_id": record["trace_id"],
-            "generated_at": datetime.now(UTC).isoformat(),
-            "scenarios": [record],
-            "confidence": record.get("confidence", "real"),
-        }
+        suite = build_single_run_record(record)
         try:
             record_path = persist_run(run_root, suite)
         except PersistError as exc:
@@ -237,7 +245,9 @@ async def run_validation_suite(
     server = context.fastmcp if context is not None else None
     root = Path(runs_root) if save else None
     try:
-        record = await run_validation_suite_async(server, scenarios_dir, runs_root=root, save=save)
+        record = await run_validation_suite_async(
+            server, scenarios_dir, runs_root=root, save=save, cwd=_repo_root()
+        )
     except LoadError as exc:
         return error_response(
             MCPErrorCode.VALIDATION_ERROR,
@@ -254,15 +264,20 @@ async def run_validation_suite(
     return success_response({**record, "run_dir": run_dir})
 
 
-def get_validation_report(run_dir: str | None = None) -> dict[str, Any]:
+def get_validation_report(
+    run_dir: str | None = None,
+    runs_root: str = DEFAULT_RUNS_ROOT,
+) -> dict[str, Any]:
     """Read a persisted validation run record.
 
-    Reads ``validation-runs/<run_dir>/scenarios.json``; with no ``run_dir``
-    (or an empty one) the latest run named by ``latest.txt`` is read.  The
-    record is the suite shape ``{trace_id, generated_at, scenarios}``; a
-    single-scenario save from :func:`run_validation_scenario` is stored in
-    the same shape with one entry.  No run record found → error envelope
-    naming what exists under the runs root.
+    Reads ``<runs_root>/<run_dir>/scenarios.json``; with no ``run_dir`` (or an
+    empty one) the latest run named by ``latest.txt`` is read.  ``runs_root``
+    defaults to ``validation-runs/`` but a caller-provided root is honored
+    (gap T-17) so a run persisted anywhere is readable.  The record is the
+    suite shape ``{trace_id, generated_at, scenarios}``; a single-scenario
+    save from :func:`run_validation_scenario` is stored in the same shape with
+    one entry.  No run record found → error envelope naming what exists under
+    the runs root.
 
     Returns
     -------
@@ -270,7 +285,7 @@ def get_validation_report(run_dir: str | None = None) -> dict[str, Any]:
         ``{"success": true, "run_dir": <dir read>, "trace_id": ...,
         "generated_at": ..., "scenarios": [...]}``.
     """
-    root = Path(DEFAULT_RUNS_ROOT)
+    root = Path(runs_root)
     target = run_dir.strip() if run_dir else None
     name = target or latest_run(root)
     if name is None:

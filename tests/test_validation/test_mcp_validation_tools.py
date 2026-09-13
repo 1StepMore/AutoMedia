@@ -183,7 +183,9 @@ class TestRunValidationScenario:
     def test_runs_named_scenario_through_real_dispatcher(self, server: FastMCP) -> None:
         """health-check-baseline runs a health_check step via Context injection."""
         payload = _call_tool(
-            server, "run_validation_scenario", {"scenario_name": "health-check-baseline"}
+            server,
+            "run_validation_scenario",
+            {"scenario_name": "health-check-baseline", "save": False},
         )
         assert payload["success"] is True
         assert payload["scenario"] == "health-check-baseline"

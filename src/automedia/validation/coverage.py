@@ -97,9 +97,9 @@ import ast
 import json
 import re
 import shlex
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -287,6 +287,11 @@ def coverage_audit(
         )
     )
     result["by_level"] = _by_user_level(scenarios)
+    # Freshness metadata (gap Tr-03): the audit is recomputed by CI and
+    # drift-checked against the committed copy; `generated_at` is the
+    # inherently run-specific field the drift check excludes.
+    result["generated_at"] = datetime.now(UTC).isoformat()
+    result["scenario_count"] = len(scenarios)
     return result
 
 
@@ -370,6 +375,10 @@ def _collect_reached(
     for rec in records:
         if not isinstance(rec, dict) or _record_confidence(rec) == "mock":
             continue
+        if rec.get("trusted") is False:
+            # gap R-06: an env-gate-skipped run bypassed its prerequisite, so
+            # it proves plumbing only and never counts as a Proved surface.
+            continue
         name = str(rec.get("scenario") or "")
         scenario = library.get(name)
         if rec.get("error_boundary") is True or (scenario is not None and scenario.error_boundary):
@@ -406,7 +415,7 @@ def _load_allowlist(path: Path, today: date) -> tuple[dict[str, set[str]], dict[
     """
     allow: dict[str, set[str]] = {surface: set() for surface in SURFACES}
     meta: dict[str, Any] = {
-        "path": str(path),
+        "path": _display_path(path),
         "version": None,
         "reviewed": None,
         "release": None,
@@ -459,7 +468,7 @@ def _load_allowlist(path: Path, today: date) -> tuple[dict[str, set[str]], dict[
                 ) from err
         meta["active" if active else "expired"].append(row)
         if active:
-            allow[surface].add(name)
+            allow[surface].add(cast(str, name))
     return allow, meta
 
 
@@ -524,6 +533,18 @@ def _evidence_coverage(
 def _repo_root() -> Path:
     """Repo root from this module's location (same trick as the loader)."""
     return Path(__file__).resolve().parents[3]
+
+
+def _display_path(path: Path) -> str:
+    """A repo-relative path when inside the repo, else the given path.
+
+    The committed coverage audit is drift-checked byte-for-byte in CI
+    (gap Tr-03), so the allowlist path must not embed the checkout location.
+    """
+    try:
+        return str(path.resolve().relative_to(_repo_root()))
+    except ValueError:
+        return str(path)
 
 
 def _import_aliases(src: str) -> dict[str, str]:

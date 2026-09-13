@@ -1,4 +1,84 @@
 {
+  "allowlist": {
+    "active": [
+      {
+        "expires": "2026-12-31",
+        "name": "approve_gate",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "reject_gate",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "pause_pipeline",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "resume_pipeline",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "cancel_pipeline",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "retry_gate",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "skip_gate",
+        "owner": "validation-maintainer",
+        "reason": "Boundary-only today; positive path lands in T-05 (Wave 2).",
+        "surface": "mcp"
+      },
+      {
+        "expires": "2026-12-31",
+        "name": "run_validation_suite",
+        "owner": "validation-maintainer",
+        "reason": "Cannot be success-called without recursion (R-09); boundary-only by design.",
+        "surface": "mcp"
+      }
+    ],
+    "expired": [],
+    "path": "scenarios/boundary_only_allowlist.yml",
+    "release": "wave1",
+    "reviewed": "2026-09-13",
+    "version": 1
+  },
+  "allowlisted": {
+    "cli": [],
+    "gates": [],
+    "mcp": [
+      "approve_gate",
+      "cancel_pipeline",
+      "pause_pipeline",
+      "reject_gate",
+      "resume_pipeline",
+      "retry_gate",
+      "run_validation_suite",
+      "skip_gate"
+    ],
+    "modes": []
+  },
   "boundary_only_cli": [],
   "boundary_only_gates": [],
   "boundary_only_mcp": [
@@ -8,9 +88,109 @@
     "reject_gate",
     "resume_pipeline",
     "retry_gate",
+    "run_validation_suite",
     "skip_gate"
   ],
   "boundary_only_modes": [],
+  "by_level": {
+    "distribution": {
+      "L0": 86,
+      "L1": 20,
+      "L2": 5,
+      "L3": 0,
+      "L4": 0,
+      "L5": 0
+    },
+    "levels": [
+      "L0",
+      "L1",
+      "L2",
+      "L3",
+      "L4",
+      "L5"
+    ],
+    "matrix": {
+      "baseline": {
+        "L0": 13,
+        "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "cli": {
+        "L0": 20,
+        "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "journey": {
+        "L0": 0,
+        "L1": 11,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "meta": {
+        "L0": 3,
+        "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "publish": {
+        "L0": 2,
+        "L1": 0,
+        "L2": 1,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "quality": {
+        "L0": 0,
+        "L1": 2,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "recovery": {
+        "L0": 2,
+        "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "regression": {
+        "L0": 1,
+        "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "surface": {
+        "L0": 45,
+        "L1": 7,
+        "L2": 4,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      }
+    },
+    "total": 111
+  },
+  "covered": {
+    "cli": [],
+    "gates": [],
+    "mcp": [],
+    "modes": []
+  },
   "covered_cli": [
     "account",
     "adapter",
@@ -32,6 +212,7 @@
     "run",
     "validate"
   ],
+  "covered_count": 0,
   "covered_gates": [
     "CW",
     "D1",
@@ -257,6 +438,7 @@
     "run_pipeline",
     "run_pipeline_from_strategy",
     "run_validation_scenario",
+    "run_validation_suite",
     "search_assets",
     "select_topic",
     "skip_gate",
@@ -276,8 +458,9 @@
     "text_with_cover",
     "video_only"
   ],
-  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (approve_gate, cancel_pipeline, pause_pipeline, reject_gate, resume_pipeline, retry_gate, skip_gate) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = \u2205 means '\u2205 excluding boundary-only (listed)'. Director waiver required for this classification (guide \u00a75.1: error-boundary probes are never silently counted as coverage).",
+  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (approve_gate, cancel_pipeline, pause_pipeline, reject_gate, resume_pipeline, retry_gate, run_validation_suite, skip_gate) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = \u2205 means '\u2205 excluding boundary-only (listed)'. Director waiver required for this classification (guide \u00a75.1: error-boundary probes are never silently counted as coverage).",
   "error_boundary_scenarios": [
+    "meta/validation-suite-boundary.yaml",
     "surface/control/approve-gate-boundary.yaml",
     "surface/control/cancel-pipeline-boundary.yaml",
     "surface/control/pause-pipeline-boundary.yaml",
@@ -286,7 +469,17 @@
     "surface/control/retry-gate-boundary.yaml",
     "surface/control/skip-gate-boundary.yaml"
   ],
+  "evidence_confidence": null,
+  "evidence_run": null,
+  "generated_at": "2026-09-12T22:52:25.988909+00:00",
+  "missing": {
+    "cli": [],
+    "gates": [],
+    "mcp": [],
+    "modes": []
+  },
   "missing_cli": [],
+  "missing_count": 0,
   "missing_gates": [],
   "missing_mcp": [],
   "missing_modes": [],
@@ -295,6 +488,7 @@
   "phantom_mcp": [],
   "phantom_modes": [],
   "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
+  "scenario_count": 111,
   "summary": {
     "cli_boundary_only": 0,
     "cli_covered": 19,
@@ -308,12 +502,12 @@
     "gates_missing": 0,
     "gates_phantom": 0,
     "gates_used": 33,
-    "mcp_boundary_only": 7,
+    "mcp_boundary_only": 8,
     "mcp_covered": 60,
-    "mcp_declared": 67,
+    "mcp_declared": 68,
     "mcp_missing": 0,
     "mcp_phantom": 0,
-    "mcp_used": 67,
+    "mcp_used": 68,
     "modes_boundary_only": 0,
     "modes_covered": 9,
     "modes_declared": 9,
@@ -321,6 +515,138 @@
     "modes_phantom": 0,
     "modes_used": 9
   },
+  "unproven": {
+    "cli": [
+      "account",
+      "adapter",
+      "archive",
+      "cron",
+      "distribute",
+      "doctor",
+      "effects",
+      "history",
+      "hitl",
+      "init",
+      "mcp",
+      "omni",
+      "onboard",
+      "pipeline",
+      "pool",
+      "projects",
+      "rollback",
+      "run",
+      "validate"
+    ],
+    "gates": [
+      "CW",
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7",
+      "G0",
+      "G1",
+      "G2",
+      "G3",
+      "G4",
+      "G5",
+      "G6",
+      "H0",
+      "L1",
+      "L2",
+      "L3",
+      "L4",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "V0",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6",
+      "V7",
+      "pre-gate"
+    ],
+    "mcp": [
+      "add_brand",
+      "add_cron_schedule",
+      "add_pool_topic",
+      "analyze_content",
+      "archive_project",
+      "batch_run",
+      "configure_llm",
+      "connect_account",
+      "disconnect_account",
+      "distribute_content",
+      "engine_health",
+      "evaluate_content_quality",
+      "extract_brief",
+      "format_output",
+      "get_account_health",
+      "get_config",
+      "get_cron_health",
+      "get_gate_report",
+      "get_pending_approvals",
+      "get_pipeline_progress",
+      "get_pipeline_state",
+      "get_pipeline_status",
+      "get_project_assets",
+      "get_redlines",
+      "get_validation_report",
+      "health_check",
+      "health_engine",
+      "help_mcp",
+      "init_config",
+      "list_accounts",
+      "list_active_pipelines",
+      "list_brands",
+      "list_cron_schedules",
+      "list_overridable_templates",
+      "list_platforms",
+      "list_projects",
+      "list_topic_pool",
+      "list_validation_scenarios",
+      "list_workflows",
+      "localize_content",
+      "localize_output",
+      "mcp_help",
+      "onboard",
+      "pool_add_topic",
+      "publish_content",
+      "register_platform_adapter",
+      "remove_cron_schedule",
+      "research_topics",
+      "review_decision",
+      "run_batch",
+      "run_brand_strategy",
+      "run_pipeline",
+      "run_pipeline_from_strategy",
+      "run_validation_scenario",
+      "search_assets",
+      "select_topic",
+      "test_cron_schedule",
+      "update_engine_config",
+      "validation_coverage_audit",
+      "validation_matrix"
+    ],
+    "modes": [
+      "auto",
+      "image-carousel",
+      "qa_only",
+      "repurpose",
+      "short-video",
+      "social-thread",
+      "text_only",
+      "text_with_cover",
+      "video_only"
+    ]
+  },
+  "unproven_count": 121,
   "used_cli": [
     "account",
     "adapter",
@@ -438,6 +764,7 @@
     "run_pipeline",
     "run_pipeline_from_strategy",
     "run_validation_scenario",
+    "run_validation_suite",
     "search_assets",
     "select_topic",
     "skip_gate",

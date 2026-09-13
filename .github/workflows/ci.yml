@@ -140,6 +140,38 @@ jobs:
               )
           EOF
 
+      - name: Coverage audit drift check (Tr-03)
+        # The committed scenarios/baseline/coverage-audit.json is regenerated
+        # here and must match byte-for-byte except for `generated_at` (the one
+        # inherently run-specific field). A drift means the committed audit is
+        # stale relative to the library/source.
+        if: matrix.python-version == '3.11'
+        run: |
+          python3 - <<'EOF'
+          import json
+          import sys
+          from pathlib import Path
+          from automedia.validation.coverage import coverage_audit
+
+          committed_path = Path("scenarios/baseline/coverage-audit.json")
+          committed = json.loads(committed_path.read_text(encoding="utf-8"))
+          fresh = coverage_audit()
+          committed.pop("generated_at", None)
+          fresh.pop("generated_at", None)
+          if fresh != committed:
+              print("FAIL: committed coverage-audit.json drifted from a fresh audit")
+              for key in sorted(set(fresh) | set(committed)):
+                  if fresh.get(key) != committed.get(key):
+                      print(f"  differs: {key}")
+                      print(f"    committed: {committed.get(key)!r}")
+                      print(f"    fresh:     {fresh.get(key)!r}")
+              sys.exit(1)
+          print(
+              f"OK: committed audit matches fresh regeneration "
+              f"(scenario_count={fresh['scenario_count']})"
+          )
+          EOF
+
   test-omni:
     runs-on: ubuntu-latest
     strategy:
