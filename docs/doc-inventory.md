@@ -33,7 +33,7 @@
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
-| docs/dev/validation-loop-log.md | 2133 | file |
+| docs/dev/validation-loop-log.md | 10012 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 12648 | file |
 | docs/index.md | 4889 | file |
