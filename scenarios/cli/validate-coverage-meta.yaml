@@ -3,6 +3,7 @@ description: "automedia validate coverage runs the evidence-backed coverage audi
 intent: "Self-host the validate coverage command (T-06): the audit runs behaviourally and reports its surface summary; with no persisted evidence it honestly exits 1 (surfaces unproven), which the step opts into."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: validate coverage prints the audit

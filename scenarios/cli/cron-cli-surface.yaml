@@ -3,6 +3,7 @@ description: automedia cron --help exits 0 and prints the cron sub-commands (run
 intent: Prove the cron CLI surface is callable and exposes its real contract (run, run-pipeline, check-health sub-commands) without executing any jobs.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: cron --help shows sub-commands

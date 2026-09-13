@@ -262,7 +262,7 @@ MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `run_validati
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.
 - `AUTOMEDIA_VALIDATION_SCENARIOS_DIR`: env override for the scenarios directory.
 
-Any agent can drive this layer standalone (Hermes, Claude Code, Codex CLI, OpenCode); the surface is CLI and MCP only. See `scenarios/README.md` for the full reference.
+Any agent can drive this layer standalone (Hermes, Claude Code, Codex CLI, OpenCode); the **validation-driving surface is the CLI and the MCP server only**. The Python SDK (`automedia/__init__.py`, 19 public symbols) is a **product entry point, not a validation-driving surface**: agents drive real calls through the CLI and MCP, and the SDK's behavior is exercised transitively where those entry points delegate to the same `run_full_pipeline()` implementation. No SDK scenario is added to `scenarios/`; SDK-only behavior is explicitly out of validation scope. See `scenarios/README.md` for the full reference.
 
 ## 12. Config Key Reference
 Key `AUTOMEDIA_*` environment variables:

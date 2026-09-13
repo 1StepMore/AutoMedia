@@ -3,6 +3,7 @@ description: automedia history --help exits 0 and prints usage naming the requir
 intent: Prove the history CLI surface is callable and exposes its real contract (project_id argument, base-dir option) without querying any project.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: history --help shows the usage contract

@@ -649,6 +649,11 @@ def validate_coverage(
             f"  Evidence run: {audit.get('evidence_run') or '(none)'} "
             f"(confidence={audit.get('evidence_confidence') or '(none)'})"
         )
+        typer.echo(
+            f"  Scenarios: surface={audit.get('surface_scenario_count', '?')} "
+            f"meta={audit.get('meta_scenario_count', '?')} "
+            f"(total={audit.get('scenario_count', '?')})"
+        )
         for surface in ("mcp", "cli", "gates", "modes"):
             bucket = unproven.get(surface, []) if isinstance(unproven, dict) else []
             if bucket:

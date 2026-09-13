@@ -3,6 +3,7 @@ description: automedia effects --help exits 0 and prints usage naming the requir
 intent: Prove the effects CLI surface is callable and exposes its real contract (Project ID argument) without touching any project state.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: effects --help shows the usage contract

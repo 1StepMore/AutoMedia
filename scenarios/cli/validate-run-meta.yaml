@@ -3,6 +3,7 @@ description: "automedia validate run --scenario <leaf> executes one named scenar
 intent: "Self-host the validate run command (T-06): the suite's own entry point is exercised behaviourally against a bounded, non-recursive leaf scenario (--scenario is the recursion bound), so a static scenario cannot trigger an unbounded validate chain."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: validate run executes a named scenario

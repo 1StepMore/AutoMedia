@@ -3,6 +3,7 @@ description: automedia projects --help exits 0 and prints the project management
 intent: Prove the projects CLI surface is callable and exposes its real contract (list/get/get-assets sub-commands) without scanning any directory.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: projects --help shows sub-commands

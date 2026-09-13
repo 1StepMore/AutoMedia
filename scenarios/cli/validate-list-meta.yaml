@@ -3,6 +3,7 @@ description: "automedia validate list exposes the validate family (list, run, re
 intent: "Prove the validate family is callable via CLI and lists its sub-commands. The validate command does not exist yet (W4-T1 ships it); this scenario asserts the DESIGN contract (exit 0, stdout_has the sub-command names) and will turn GREEN when W4-T1 is implemented. No other scenario may invoke automedia validate (recursion guard)."
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: validate list shows the sub-command family

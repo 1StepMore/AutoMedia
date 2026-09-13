@@ -3,6 +3,7 @@ description: "The validation surface exposes a meta tool that lists the scenario
 intent: Prove the validation MCP surface is discoverable by the same agents it validates; this RED-first marker turns GREEN when the tool lands in W4-T2.
 category: baseline
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: list_validation_scenarios answers

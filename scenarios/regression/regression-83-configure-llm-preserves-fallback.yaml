@@ -3,6 +3,7 @@ description: The save_model_config writer preserves an existing fallback chain w
 intent: Pin the issue #83 regression: configure_llm (and onboard) must use the merge-preserving save_model_config writer instead of a destructive overwrite, so that an existing LLM fallback chain is never silently destroyed.
 category: regression
 user_level: L0
+meta: true
 regression: true
 regression_issue: "#83"
 requires_env: []

@@ -3,6 +3,7 @@ description: automedia pool --help exits 0 and prints the topic-pool management 
 intent: Prove the pool CLI surface is callable and exposes its real contract (list/add sub-commands) without mutating the pool database.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: pool --help shows sub-commands

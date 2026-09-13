@@ -3,6 +3,7 @@ description: automedia rollback --help exits 0 and prints usage naming the requi
 intent: Prove the rollback CLI surface is callable and exposes its real contract (project_id argument, base-dir option) without rolling back any project.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: rollback --help shows the usage contract

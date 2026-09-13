@@ -169,8 +169,9 @@ class TestValidateCliRealLibrary:
         assert "Unproven" in result.output
 
     def test_validate_coverage_json_regenerated_numbers(self, library_root: Path) -> None:
-        """W4-T7 regeneration pins: mcp 68 declared / 60 covered / 0 missing;
-        cli 19 / 19 / 0; both phantom = 0; boundary_only 8 (waiver).
+        """W4-T7 regeneration pins: mcp 68 declared / 67 covered / 0 missing;
+        cli 19 / 19 / 0; both phantom = 0; boundary_only 1 (run_validation_suite,
+        waiver).
         Issue #78 final contract (A3 landed): the pipeline surfaces are fully
         declared — gates 33 / 33 / 0 missing, modes 9 / 9 / 0.  Gap T-01 adds
         the evidence buckets and makes the static job exit 1 while surfaces
@@ -182,17 +183,18 @@ class TestValidateCliRealLibrary:
         ``gate-report-surface``) and ``review_decision`` (covered by
         ``review-decision-surface``). Gap R-09 adds ``run_validation_suite``
         (boundary-only, covered by ``validation-suite-boundary``) — mcp 68 /
-        60, cli 19."""
+        67, cli 19.  Wave-2 T-05 adds positive-path scenarios for the 7
+        control tools, so only ``run_validation_suite`` stays boundary-only."""
         result = runner.invoke(app, ["--json", "validate", "coverage"])
         assert result.exit_code == 1
         data = json.loads(result.output)
         summary: dict[str, Any] = data["summary"]
         assert summary["mcp_declared"] == 68
         assert summary["mcp_used"] == 68
-        assert summary["mcp_covered"] == 60
+        assert summary["mcp_covered"] == 67
         assert summary["mcp_missing"] == 0
         assert summary["mcp_phantom"] == 0
-        assert summary["mcp_boundary_only"] == 8
+        assert summary["mcp_boundary_only"] == 1
         assert summary["cli_declared"] == 19
         assert summary["cli_covered"] == 19
         assert summary["cli_missing"] == 0
@@ -237,7 +239,7 @@ class TestValidationToolsRealDispatcher:
         assert payload["success"] is True
         summary: dict[str, Any] = payload["summary"]
         assert summary["mcp_missing"] == 0
-        assert summary["mcp_covered"] == 60
+        assert summary["mcp_covered"] == 67
         assert summary["mcp_phantom"] == 0
         assert summary["cli_missing"] == 0
         assert payload["missing_mcp"] == []

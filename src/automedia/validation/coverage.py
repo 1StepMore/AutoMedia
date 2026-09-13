@@ -55,9 +55,11 @@ Two policy classes shape the output (both pinned in the plan):
   ``error_boundary: true`` probe the dispatcher, not the surface (guide
   §5.1: "never silently counted as coverage"), so their tool/command targets
   are classified ``boundary_only_*``: listed loudly, excluded from
-  ``covered_*`` AND from ``missing_*``.  ``missing = ∅`` in the committed
-  output means "∅ excluding boundary-only (listed)" — the output carries a
-  ``director_waiver_note``.  Step-level ``error_boundary`` (inside a
+  ``covered_*`` AND from ``missing_*``.  A target is boundary-ONLY only while
+  no non-boundary scenario also reaches it: a positive-path scenario (T-05)
+  retires the classification and the allowlist entry.  ``missing = ∅`` in the
+  committed output means "∅ excluding boundary-only (listed)" — the output
+  carries a ``director_waiver_note``.  Step-level ``error_boundary`` (inside a
   non-boundary scenario) does NOT reclassify: the audit reads the scenario
   level only.
 * PHANTOM POLICY (documented decision): phantom detection is PURE — used
@@ -178,6 +180,10 @@ def coverage_audit(
     boundary_cli: set[str] = set()
     boundary_gates: set[str] = set()
     boundary_modes: set[str] = set()
+    non_boundary_mcp: set[str] = set()
+    non_boundary_cli: set[str] = set()
+    non_boundary_gates: set[str] = set()
+    non_boundary_modes: set[str] = set()
     boundary_files: list[str] = []
     for scenario in scenarios:
         tools, clis = _scenario_targets(scenario)
@@ -191,6 +197,19 @@ def coverage_audit(
             boundary_gates |= set(scenario.proves_gates)
             boundary_modes |= set(scenario.proves_modes)
             boundary_files.append(file_map.get(scenario.name, scenario.name))
+        else:
+            non_boundary_mcp |= tools
+            non_boundary_cli |= clis
+            non_boundary_gates |= set(scenario.proves_gates)
+            non_boundary_modes |= set(scenario.proves_modes)
+
+    # A tool is boundary-ONLY when no non-boundary scenario also targets it
+    # (T-05: a positive-path scenario retires the classification and the
+    # allowlist entry; a lone error probe stays boundary-only).
+    boundary_mcp -= non_boundary_mcp
+    boundary_cli -= non_boundary_cli
+    boundary_gates -= non_boundary_gates
+    boundary_modes -= non_boundary_modes
 
     declared_mcp_set = set(declared_mcp)
     declared_cli_set = set(declared_cli)
@@ -287,6 +306,13 @@ def coverage_audit(
         )
     )
     result["by_level"] = _by_user_level(scenarios)
+    meta = [s for s in scenarios if _is_meta(s, file_map.get(s.name, ""))]
+    surface = [s for s in scenarios if not _is_meta(s, file_map.get(s.name, ""))]
+    result["meta_scenarios"] = sorted(s.name for s in meta)
+    result["surface_scenarios"] = sorted(s.name for s in surface)
+    result["meta_scenario_count"] = len(meta)
+    result["surface_scenario_count"] = len(surface)
+    result["surface_by_level"] = _by_user_level(surface)
     # Freshness metadata (gap Tr-03): the audit is recomputed by CI and
     # drift-checked against the committed copy; `generated_at` is the
     # inherently run-specific field the drift check excludes.
@@ -339,6 +365,8 @@ def _is_meta(scenario: Scenario | None, rel_path: str) -> bool:
     fallback (``meta/`` dir, ``*-meta`` stems, the validation self-listing),
     because the committed meta scenarios do not all carry ``category: meta``.
     """
+    if scenario is not None and scenario.meta:
+        return True
     if scenario is not None and scenario.category == "meta":
         return True
     rel = rel_path.replace("\\", "/")

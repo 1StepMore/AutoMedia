@@ -3,6 +3,7 @@ description: automedia run --help exits 0 and prints usage naming the pipeline m
 intent: Prove the run CLI surface is callable and exposes its real contract (mode, brand, topic options) without executing a pipeline — the journeys own full runs.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: run --help shows the usage contract

@@ -3,6 +3,7 @@ description: "automedia validate report renders a persisted run record: verdict 
 intent: "Self-host the validate report command (T-06) against a seeded immutable run record, so the renderer is exercised behaviourally without depending on a live run."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: seed an immutable run record

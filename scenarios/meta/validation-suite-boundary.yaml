@@ -3,6 +3,7 @@ description: "BOUNDARY-ONLY probe (director-waiver required — never GREEN-asse
 intent: "Cover the whole-library MCP suite tool (run_validation_suite, gap R-09) without ever running the library from inside a library run — a success-asserting call here would recurse. The safe contract is the argument boundary: a missing scenarios_dir errors loudly instead of silently running an empty library. The probe passes on error and fails only on full success."
 category: meta
 user_level: L0
+meta: true
 error_boundary: true
 hard: true
 steps:

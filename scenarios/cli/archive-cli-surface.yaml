@@ -3,6 +3,7 @@ description: automedia archive --help exits 0 and prints usage naming the requir
 intent: Prove the archive CLI surface is callable and exposes its real contract (project_id argument, --force option, Red Line 8 hint) without archiving any project.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: archive --help shows the usage contract

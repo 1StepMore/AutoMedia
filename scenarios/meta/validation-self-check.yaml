@@ -3,6 +3,7 @@ description: "The validation surface validates itself: run_validation_scenario e
 intent: "Cover the three uncovered validation MCP tools (run_validation_scenario, get_validation_report, validation_coverage_audit) so the coverage audit reaches missing = ∅ (plan C2). The run step names health-check-baseline — a deterministic scenario whose steps never invoke validation tools — so the name filter bounds recursion (review fix M5). get_validation_report has no runs_root parameter (it reads the default validation-runs/ root), so step 1 saves there and step 2 reads latest via latest.txt."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: run a named scenario in-process

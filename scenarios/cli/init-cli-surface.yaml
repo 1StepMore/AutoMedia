@@ -3,6 +3,7 @@ description: automedia init --help exits 0 and prints usage naming the Initializ
 intent: Prove the init CLI surface is callable and exposes its real contract (template mode, omni flag) without writing any config files.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: init --help shows the usage contract

@@ -326,7 +326,7 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 68 declared / 60 covered / 0 missing (the W4-T7 meta scenario
+    mcp 68 declared / 67 covered / 0 missing (the W4-T7 meta scenario
     ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
     covers ``validation_matrix``; the productization-roadmap todo-6
     ``get_gate_report`` tool is covered by ``gate-report-surface`` and the
@@ -347,14 +347,14 @@ class TestValidationCoverageAudit:
         # the meta scenarios cover the validation tools (W4-T7's
         # validation-self-check plus validation-matrix-meta) -> missing = 0;
         # run_validation_suite is boundary-only (a success call would recurse).
-        assert summary["mcp_covered"] == 60
+        assert summary["mcp_covered"] == 67
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]
         assert summary["mcp_missing"] == 0
         assert payload["missing_mcp"] == []
         assert "run_validation_suite" in payload["boundary_only_mcp"]
-        assert summary["mcp_boundary_only"] == 8
+        assert summary["mcp_boundary_only"] == 1
 
     def test_cli_side_reflects_w4t1_validate_command(self, server: FastMCP) -> None:
         """W4-T1's validate command: declared 19, phantom ∅ (covered via list)."""

@@ -3,6 +3,7 @@ description: "validation_matrix returns the full AutoInfo-style matrix envelope 
 intent: "Cover the 5th validation MCP tool (validation_matrix, issue #86) so the coverage audit reaches missing = 0. The call takes no scenario name — the recursion bound is preserved (no unbounded validation run chain). The envelope is flat (success_response); success: true proves the tool answers, and the matrix keys (incl. the report_cards/assertions/diff assertion half) prove the AutoInfo-style shape."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: validation_matrix returns the matrix envelope

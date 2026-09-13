@@ -3,6 +3,7 @@ description: "automedia validate diff compares the two latest persisted runs and
 intent: "Self-host the validate diff command (T-06) against two seeded run records, so the drift detector is exercised behaviourally without depending on a live run."
 category: meta
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: seed two run records

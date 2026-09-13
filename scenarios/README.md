@@ -23,6 +23,21 @@ pipeline is: agents produce evidence, humans accept or reject it. Nothing the
 agent decides alone is final, and nothing the director has not seen is
 accepted.
 
+## Validation scope: the SDK is out
+
+The **validation-driving surface is the CLI and the MCP server only**. Every
+scenario step dispatches a real call through one of those two shipped
+surfaces (`kind: cli` or `kind: tool`), plus `kind: file` for artifacts.
+
+The Python SDK (`from automedia import run_full_pipeline`) is a **product
+entry point, not a validation-driving surface**. It is deliberately not
+driven by scenarios: an SDK-only test would exercise the same
+`run_full_pipeline()` implementation the CLI and MCP already reach, so it
+would duplicate surface evidence rather than add a new surface. The SDK is
+therefore explicitly out of validation scope, and no SDK scenario is added.
+Behavior reached only through an SDK-only code path is untested here by
+design and must be proven by the unit/integration test suite.
+
 ## Two-role model
 
 The framework has exactly two roles.

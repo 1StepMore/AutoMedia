@@ -283,6 +283,8 @@ class Scenario:
     proves_modes: list[str] = field(default_factory=list)
     # In-process state fixtures seeded around the primary steps (T-05).
     fixtures: list[str] = field(default_factory=list)
+    # Harness/registration scenario (T-09), not a product-surface scenario.
+    meta: bool = False
 
     @classmethod
     def from_dict(cls, data: object) -> Scenario:
@@ -355,6 +357,7 @@ class Scenario:
                 data.get("proves_modes", []), prefix + "proves_modes"
             ),
             fixtures=fixtures,
+            meta=_expect_bool(data.get("meta", False), prefix + "meta"),
         )
 
 

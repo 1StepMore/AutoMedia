@@ -3,6 +3,7 @@ description: automedia hitl --help exits 0 and prints the HITL sub-commands (pre
 intent: Prove the hitl CLI surface is callable and exposes its real contract (preset/config sub-commands) without modifying any HITL configuration.
 category: cli
 user_level: L0
+meta: true
 requires_env: []
 steps:
   - name: hitl --help shows sub-commands
