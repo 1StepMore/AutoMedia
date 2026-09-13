@@ -260,6 +260,7 @@ class Scenario:
     requires_env: list[str] = field(default_factory=list)
     requires_http: bool = False
     requires_real_llm: bool = False
+    requires_real_adapter: bool = False
     min_passing: int | None = None
     pass_ratio: float | None = None
     regression: bool = False
@@ -314,6 +315,9 @@ class Scenario:
             requires_http=_expect_bool(data.get("requires_http", False), prefix + "requires_http"),
             requires_real_llm=_expect_bool(
                 data.get("requires_real_llm", False), prefix + "requires_real_llm"
+            ),
+            requires_real_adapter=_expect_bool(
+                data.get("requires_real_adapter", False), prefix + "requires_real_adapter"
             ),
             min_passing=min_passing,
             pass_ratio=pass_ratio,

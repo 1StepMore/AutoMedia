@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Validation stub for the hyperframes CLI (gap T-21): a no-op stand-in so the
+# video engine's availability probe succeeds without the real toolchain.
+exit 0

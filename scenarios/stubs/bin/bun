@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Validation stub for bun (gap T-21): a no-op stand-in for the JS runtime the
+# HyperFrames toolchain shells out to.
+exit 0

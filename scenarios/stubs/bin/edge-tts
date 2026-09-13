@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Validation stub for the edge-tts CLI (gap T-21): writes the --write-media
+# file so callers that assert the audio artifact exists succeed.
+out=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--write-media" ]; then out="$arg"; fi
+  prev="$arg"
+done
+if [ -n "$out" ]; then
+  mkdir -p "$(dirname "$out")" 2>/dev/null || true
+  : > "$out"
+fi
+exit 0

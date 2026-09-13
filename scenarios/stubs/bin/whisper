@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Validation stub for whisper (gap T-21): emits an empty transcript, both on
+# stdout and as the <stem>.json file the caller reads from --output_dir.
+outdir=""
+input=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--output_dir" ]; then outdir="$arg"; fi
+  case "$arg" in
+    -*) ;;
+    *) if [ -z "$input" ]; then input="$arg"; fi ;;
+  esac
+  prev="$arg"
+done
+payload='{"text": "", "segments": []}'
+if [ -n "$outdir" ] && [ -n "$input" ]; then
+  stem="$(basename "$input")"
+  stem="${stem%.*}"
+  mkdir -p "$outdir"
+  printf '%s' "$payload" > "$outdir/$stem.json"
+fi
+printf '%s\n' "$payload"
+exit 0

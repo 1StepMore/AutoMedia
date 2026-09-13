@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Validation stub for a generic tts entry point (gap T-21): delegates to the
+# edge-tts stub (the binary the product actually invokes).
+exec "$(dirname "$0")/edge-tts" "$@"

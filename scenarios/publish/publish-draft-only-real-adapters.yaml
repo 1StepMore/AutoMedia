@@ -55,6 +55,7 @@ requires_env:
   - AUTOMEDIA_FACEBOOK_PAGE_TOKEN
   - AUTOMEDIA_FACEBOOK_PAGE_ID
   - AUTOMEDIA_FEISHU_WEBHOOK_URL
+requires_real_adapter: true
 steps:
   - name: create the synthetic project
     kind: cli

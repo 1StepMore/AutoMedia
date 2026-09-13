@@ -83,6 +83,7 @@ inside names the most recent run.
 | `requires_env` | List of env var names the scenario needs | The gate: a missing var marks the whole scenario `unconfigured`, never a pass |
 | `requires_http` | Flag that the scenario needs a live HTTP service | Inert in AutoMedia (no HTTP adapter ships); kept for guide portability |
 | `requires_real_llm` | Flag that the scenario must use the real LLM provider | Opt-out from the fake-LLM-aware gate: with `AUTOMEDIA_FAKE_LLM=1` a scenario without this flag runs against the deterministic mock instead of short-circuiting to `unconfigured`; with it, a missing provider key still gates |
+| `requires_real_adapter` | Flag that the scenario must use a real (credentialed) platform adapter | Excluded from the CI denominator when set: the 21-credential publish scenario is proved once by a recorded real-adapter dry-run, not by the credential-free suite |
 | `min_passing` | Integer count of primary steps that must succeed | Partial-pass policy, checked before `pass_ratio` |
 | `pass_ratio` | Fraction of primary steps that must succeed | Partial-pass policy for scenarios whose step count grows |
 | `regression: true` | Marks the scenario as pinned to a specific fix | The regression flywheel: it must stay green forever |
@@ -264,7 +265,9 @@ scenario is not pinned to a bug fix.
 - **Mocks prove plumbing, never capability.** Every step dispatches a real
   call through the shipped surface. The ONE sanctioned exception is the
   deterministic fake LLM (`AUTOMEDIA_FAKE_LLM=1`) and the validation stub
-  seam: a run executed against a simulated layer is recorded with
+  seam (`AUTOMEDIA_VALIDATION_STUB_BIN`, a committed `scenarios/stubs/bin/`
+  fixture directory prepended to `PATH`): a run executed against a simulated
+  layer is recorded with
   `confidence: mock` and its passes are labelled **`Proved (mock)`**. A
   `Proved (mock)` pass proves the plumbing (the call routed, the record
   persisted), NOT the capability; it never satisfies real-surface coverage

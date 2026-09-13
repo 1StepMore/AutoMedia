@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Validation stub for ffprobe (gap T-21): reports a zero duration so callers
+# that parse a numeric duration succeed without a real FFprobe.
+echo "0.0"
+exit 0

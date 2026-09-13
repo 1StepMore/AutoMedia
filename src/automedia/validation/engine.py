@@ -94,6 +94,7 @@ from automedia.validation.persist import (
     write_metrics,
 )
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Scenario, Step
+from automedia.validation.stub_bin import apply_stub_bin_to_path
 
 # Keyword set of the local fallback redactor — mirrors (and slightly
 # widens) ``mcp/tools/_shared.py``'s ``_SECRET_KEYWORDS``.
@@ -334,6 +335,7 @@ async def run_validation_scenario_async(
     proved the prerequisite was bypassed, so it is plumbing evidence only and
     the coverage audit never counts it as a Proved surface.
     """
+    apply_stub_bin_to_path()
     base = Path.cwd() if cwd is None else Path(cwd)
     trace_id = trace_id or str(uuid.uuid4())
     skipped = list(env_gate_skipped) if env_gate_skipped else []
@@ -432,6 +434,7 @@ async def run_validation_suite_async(
     runs_root: Path | None = None,
     save: bool = True,
     cwd: Path | None = None,
+    include_requires_real_adapter: bool = False,
 ) -> dict[str, object]:
     """Load the library, run every scenario, persist one immutable run record.
 
@@ -443,7 +446,15 @@ async def run_validation_suite_async(
     propagate loudly
     (:class:`~automedia.validation.loader.LoadError`).
     """
+    apply_stub_bin_to_path()
     scenarios = load_scenarios(scenarios_dir)
+    # gap T-21: a requires_real_adapter scenario can only be proved with real
+    # platform credentials, so the credential-free suite excludes it from the
+    # denominator by default (the nightly credentialed job proves it once).
+    flagged = [scenario.name for scenario in scenarios if scenario.requires_real_adapter]
+    excluded = [] if include_requires_real_adapter else flagged
+    if excluded:
+        scenarios = [scenario for scenario in scenarios if not scenario.requires_real_adapter]
     adapters = make_adapters(server)
     trace_id = str(uuid.uuid4())
     base = Path.cwd() if cwd is None else Path(cwd)
@@ -474,6 +485,8 @@ async def run_validation_suite_async(
         # A suite is trusted only when every scenario record is (gap R-06).
         "trusted": all(bool(r.get("trusted", True)) for r in records),
     }
+    if excluded:
+        record["requires_real_adapter_excluded"] = sorted(excluded)
     record["metrics"] = build_metrics(record)
     if save and root is not None:
         record_path = persist_run(root, record, run_dir=run_root)
@@ -490,6 +503,7 @@ def run_validation_suite(
     runs_root: Path | None = None,
     save: bool = True,
     cwd: Path | None = None,
+    include_requires_real_adapter: bool = False,
 ) -> dict[str, object]:
     """Sync wrapper of :func:`run_validation_suite_async` (CLI path only).
 
@@ -497,5 +511,12 @@ def run_validation_suite(
     (in-process isolation, see module docstring).
     """
     return asyncio.run(
-        run_validation_suite_async(server, scenarios_dir, runs_root=runs_root, save=save, cwd=cwd)
+        run_validation_suite_async(
+            server,
+            scenarios_dir,
+            runs_root=runs_root,
+            save=save,
+            cwd=cwd,
+            include_requires_real_adapter=include_requires_real_adapter,
+        )
     )

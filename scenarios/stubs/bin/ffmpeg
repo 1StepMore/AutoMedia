@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Validation stub for ffmpeg (gap T-21): not a real encoder. It creates the
+# output path (last non-flag argument) and exits 0, so a pipeline step that
+# only asserts the output file exists can proceed without a real FFmpeg.
+out=""
+for arg in "$@"; do
+  case "$arg" in
+    -*) ;;
+    *) out="$arg" ;;
+  esac
+done
+if [ -n "$out" ]; then
+  mkdir -p "$(dirname "$out")" 2>/dev/null || true
+  : > "$out"
+fi
+exit 0
