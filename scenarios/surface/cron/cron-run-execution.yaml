@@ -1,0 +1,44 @@
+name: cron-run-execution
+description: "The shipped `automedia cron run <job>` CLI dispatches a named job, executes its handler against an isolated pool.db, and exits 0 with the completion marker."
+intent: "Close the T-11 stage gap: the cron surface's schedule CRUD is covered, but the actual `cron run` execution path (job lookup -> handler -> output) was never driven end to end. Prove the real CLI dispatch runs a deterministic job (pool-prune) with no credentials, network, or repo state: the wrapper runs the shipped binary in an isolated working directory so the job's relative pool.db resolves in scratch space."
+category: surface
+user_level: L0
+requires_env: []
+steps:
+  - name: prepare the isolated cron working directory
+    kind: cli
+    check: "python3 creates /tmp/automedia/w2-cron-run/.automedia so the cron job's relative pool.db path resolves inside isolated scratch space, never the repo's real .automedia/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; pathlib.Path("/tmp/automedia/w2-cron-run/.automedia").mkdir(parents=True, exist_ok=True)'
+    expect:
+      exit_code: 0
+  - name: cron run executes the pool-prune job
+    kind: cli
+    check: "A python subprocess runs the shipped `automedia cron run pool-prune` CLI in the isolated cwd; the handler opens the isolated pool.db, finds 0 stale pending topics, and the command exits 0 printing the job completion marker. Exercises the real CLI dispatch (known-job lookup, handler invocation, output envelope) with no credentials."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import subprocess,sys; r=subprocess.run(["automedia","cron","run","pool-prune"],cwd="/tmp/automedia/w2-cron-run"); sys.exit(r.returncode)'
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Job 'pool-prune' completed."
+        - "Removed 0 stale pending topic(s)."
+  - name: an unknown job is refused
+    kind: cli
+    check: "The same dispatch refuses an unknown job name with a nonzero exit and the documented error message (the boundary half of the execution contract)."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import subprocess,sys; r=subprocess.run(["automedia","cron","run","not-a-real-job"],cwd="/tmp/automedia/w2-cron-run"); sys.exit(0 if r.returncode != 0 else 1)'
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+cleanup_steps:
+  - name: remove the isolated cron working directory
+    kind: cli
+    check: rm -rf removes the isolated cwd (including its scratch pool.db) created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2-cron-run
+    expect:
+      exit_code: 0

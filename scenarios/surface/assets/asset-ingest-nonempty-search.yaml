@@ -1,0 +1,51 @@
+name: asset-ingest-nonempty-search
+description: "The real product ingest path imports a project artifact into the brand asset library, and the shipped search_assets MCP surface then answers a non-empty result set for that brand."
+intent: "Close the T-11 stage gap: the library only proved an EMPTY asset search (search-assets-empty). Prove the ingest + non-empty search path end to end: the real ingest_artifacts path imports a synthetic brief, and the shipped search_assets tool returns at least one hit. The ingest step is setup (no shipped ingest surface exists); the graded capability is the search surface returning non-empty results and the ingest summary recording a successful import."
+category: surface
+user_level: L0
+requires_env: []
+steps:
+  - name: ingest a synthetic brief into the brand library
+    kind: cli
+    check: "python3 writes a synthetic brief and runs the real product ingest path (automedia.asset_library.ingest_artifacts) for the isolated brand w2-validation-asset; it asserts success_count >= 1 with no failures and prints the import summary. No production data is touched."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib,sys; from automedia.asset_library import ingest_artifacts; base=pathlib.Path("/tmp/automedia/w2-asset"); (base/"proj").mkdir(parents=True,exist_ok=True); (base/"proj"/"brief.md").write_text("# W2 Validation Brief\n\nStrategy body for the ingest probe.\n"); r=ingest_artifacts(str(base/"proj"),"w2-validation-asset"); print(f"ASSET_INGEST_OK success={r.success_count} fail={r.fail_count}"); sys.exit(0 if r.success_count>=1 and r.fail_count==0 else 1)'
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "ASSET_INGEST_OK success=1 fail=0"
+  - name: search_assets answers on the populated library
+    kind: tool
+    check: "search_assets returns success: true carrying results, count and error (the shipped search surface answers against the brand scope the ingest populated)."
+    standard: tool.contract
+    tool: search_assets
+    arguments:
+      query: brief
+      brand: w2-validation-asset
+    expect:
+      success: true
+      output_has:
+        - results
+        - count
+  - name: the search result set is non-empty
+    kind: cli
+    check: "A python subprocess drives the same shipped MCP search_assets tool through the real FastMCP server and asserts count >= 1, then prints the evidence marker. This is the value assertion the expect vocabulary cannot express; it proves the populated library returns a non-empty result set, not merely a success envelope."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import asyncio,json; from automedia.mcp.server import create_server; raw=asyncio.run(create_server().call_tool("search_assets",{"query":"brief","brand":"w2-validation-asset"})); d=raw[1] if isinstance(raw,tuple) and len(raw)==2 and isinstance(raw[1],dict) else (json.loads(getattr(raw[0],"text",str(raw[0]))) if isinstance(raw,list) and raw else raw); assert d.get("count",0)>=1, d; print("ASSET_SEARCH_NONEMPTY count="+str(d["count"]))'
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "ASSET_SEARCH_NONEMPTY"
+cleanup_steps:
+  - name: remove the ingested brand library and temp project
+    kind: cli
+    check: "python3 removes the isolated /tmp project and the w2-validation-asset brand directory under ~/.automedia/asset-library/ (SQLite index + Chroma vectors) created by this scenario."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib,shutil; shutil.rmtree("/tmp/automedia/w2-asset", ignore_errors=True); shutil.rmtree(pathlib.Path.home()/".automedia"/"asset-library"/"w2-validation-asset", ignore_errors=True)'
+    expect:
+      exit_code: 0

@@ -1,0 +1,46 @@
+name: orf-format-output-happy
+description: "The ORF format-conversion happy path: `automedia omni format-output` converts a markdown input to HTML, exits 0, and writes a non-empty output artifact."
+intent: "Close the T-11 stage gap: the library only recorded the ORF DEFECT (format-output-contract asserts the misrouted-options error envelope). Prove the CLI conversion path actually succeeds on an orf-installed runner: the real ORFAdapter converts markdown to HTML, the CLI exits 0, and the converted file exists and is non-empty. Gated on AUTOMEDIA_VALIDATION_EXPECT_ORF so machines without the optional orf package report unconfigured instead of a false failure."
+category: surface
+user_level: L0
+requires_env:
+  - AUTOMEDIA_VALIDATION_EXPECT_ORF
+steps:
+  - name: prepare the isolated conversion input
+    kind: cli
+    check: "python3 creates an isolated scratch cwd and a markdown input file so the conversion writes its output (and any logs/) inside scratch space, never the repo."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; d=pathlib.Path("/tmp/automedia/w2-orf"); d.mkdir(parents=True, exist_ok=True); (d/"input.md").write_text("# Title\n\nHello **world** body text for conversion.\n")'
+    expect:
+      exit_code: 0
+  - name: orf format-output converts markdown to html
+    kind: cli
+    check: "The shipped `automedia omni format-output` CLI runs in the isolated cwd and converts input.md to input.html via the real ORFAdapter, exiting 0 and reporting the output path (verified empirically: orf ChunkedMDConverter returns success and the CLI prints Output: input.html)."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import subprocess,sys; r=subprocess.run(["automedia","omni","format-output","--input","input.md","--target-format","html"],cwd="/tmp/automedia/w2-orf"); sys.exit(r.returncode)'
+    timeout_seconds: 180
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Output: input.html"
+  - name: the converted artifact exists and is non-empty
+    kind: file
+    check: "The conversion wrote a non-empty HTML file next to the input (the concrete evidence a GREEN conversion must show, not just an exit code)."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/w2-orf/input.html
+    expect:
+      artifact_exists: /tmp/automedia/w2-orf/input.html
+      artifact_nonempty: /tmp/automedia/w2-orf/input.html
+    collect_artifacts:
+      - path: /tmp/automedia/w2-orf/input.html
+        required: true
+cleanup_steps:
+  - name: remove the isolated conversion scratch dir
+    kind: cli
+    check: rm -rf removes the scratch cwd and converted artifact created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2-orf
+    expect:
+      exit_code: 0

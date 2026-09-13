@@ -1,0 +1,47 @@
+name: feature-tier-gate-filter
+description: "AUTOMEDIA_FEATURE_TIER restricts gate-list composition: qa_only runs only its core gates under tier=core (pro V-gates dropped with a skipped_tier_gate log), and all gates under tier=pro."
+intent: "Close the T-11 stage gap: the open-core feature-tier enforcement (runner._filter_gates_by_tier) was never driven through a real pipeline. Prove the L4 enterprise-operator control on the shipped CLI: with AUTOMEDIA_FEATURE_TIER=core the qa_only mode drops its pro-tier V1/V6 gates (3 gates run, skipped_tier_gate logged) while tier=pro keeps all 5, so the override observably changes gate composition. Run under AUTOMEDIA_FAKE_LLM=1 for determinism."
+category: surface
+user_level: L4
+requires_env: []
+steps:
+  - name: prepare the isolated tier-probe config and cwd
+    kind: cli
+    check: "python3 creates an isolated config dir (with a minimal model_config.yaml), an isolated cwd, and an isolated projects root so the tier probe never reads or writes user or repo state."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; base=pathlib.Path("/tmp/automedia/w2-tier"); [ (base/d).mkdir(parents=True, exist_ok=True) for d in ("config","cwd") ]; (base/"config"/"model_config.yaml").write_text("text_generation:\n  provider: deepseek\n  model: deepseek-chat\n  base_url: https://api.deepseek.com/v1\n")'
+    expect:
+      exit_code: 0
+  - name: tier=core drops the pro-tier gates
+    kind: cli
+    check: "With AUTOMEDIA_FEATURE_TIER=core the fake-LLM qa_only pipeline runs only its 3 core gates (G0, G2, G3): stdout reports `Gates executed: 3` and stderr carries the runner's gate.V1/gate.V6 skipped_tier_gate warnings, proving the pro-tier gates were filtered out."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import os,subprocess,sys; env=dict(os.environ); env.update({"AUTOMEDIA_FEATURE_TIER":"core","AUTOMEDIA_FAKE_LLM":"1","AUTOMEDIA_CONFIG_DIR":"/tmp/automedia/w2-tier/config","AUTOMEDIA_PROJECTS_DIR":"/tmp/automedia/w2-tier/core-projects"}); r=subprocess.run(["automedia","run","--topic","feature tier core probe","--brand","my-brand","--mode","qa_only"],cwd="/tmp/automedia/w2-tier/cwd",env=env); sys.exit(r.returncode)'
+    timeout_seconds: 300
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Gates executed: 3"
+      stderr_has:
+        - "skipped_tier_gate"
+  - name: tier=pro keeps the pro-tier gates
+    kind: cli
+    check: "With AUTOMEDIA_FEATURE_TIER=pro the same mode runs all 5 gates (G0, G2, G3, V1, V6): stdout reports `Gates executed: 5` and no tier gate is skipped, proving the override (not the mode) decided the composition."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import os,subprocess,sys; env=dict(os.environ); env.update({"AUTOMEDIA_FEATURE_TIER":"pro","AUTOMEDIA_FAKE_LLM":"1","AUTOMEDIA_CONFIG_DIR":"/tmp/automedia/w2-tier/config","AUTOMEDIA_PROJECTS_DIR":"/tmp/automedia/w2-tier/pro-projects"}); r=subprocess.run(["automedia","run","--topic","feature tier pro probe","--brand","my-brand","--mode","qa_only"],cwd="/tmp/automedia/w2-tier/cwd",env=env); sys.exit(r.returncode)'
+    timeout_seconds: 300
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Gates executed: 5"
+cleanup_steps:
+  - name: remove the isolated tier-probe directories
+    kind: cli
+    check: rm -rf removes the config, cwd, and project roots created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2-tier
+    expect:
+      exit_code: 0

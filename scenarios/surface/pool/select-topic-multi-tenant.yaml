@@ -1,0 +1,46 @@
+name: select-topic-multi-tenant
+description: "select_topic scopes pool selection by tenant_id: a tenant with a pending topic is served, while a tenant with no topics is refused NOT_FOUND even though another tenant's pending topics exist."
+intent: "Close the T-11 stage gap: the multi-tenant (L4 enterprise operator) pool path was never driven. Prove tenant isolation on the shipped select_topic surface against a seeded allowlisted temp pool: selecting for tenant acme succeeds while tenant ghost is refused, so the tenant filter genuinely scopes the candidate set rather than returning a cross-tenant topic."
+category: surface
+user_level: L4
+requires_env: []
+steps:
+  - name: seed two-tenant pending topics
+    kind: cli
+    check: "a python3 one-liner seeds /tmp/automedia/w2-tenant/pool.db with a pending topic for tenant acme (score 1.0) and a higher-scored pending topic for tenant beta (score 9.0), so a missing tenant filter would visibly cross tenants."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; from automedia.pool.db import PoolDB; p=pathlib.Path("/tmp/automedia/w2-tenant/pool.db"); p.parent.mkdir(parents=True, exist_ok=True); db=PoolDB(str(p)); db.add_topic({"title":"acme pending topic","tenant_id":"acme","status":"pending","score":1.0}); db.add_topic({"title":"beta pending topic","tenant_id":"beta","status":"pending","score":9.0}); db.close()'
+    expect:
+      exit_code: 0
+  - name: select_topic serves the requested tenant
+    kind: tool
+    check: "select_topic for tenant acme returns success: true with the acme topic selected from the seeded allowlisted pool."
+    standard: tool.contract
+    tool: select_topic
+    arguments:
+      tenant_id: acme
+      pool_db_path: /tmp/automedia/w2-tenant/pool.db
+    expect:
+      success: true
+  - name: a tenant with no topics is refused
+    kind: tool
+    check: "select_topic for tenant ghost returns success: false with a NOT_FOUND error, even though acme and beta still have pool rows — proving the tenant_id filter scopes the candidate set (a missing filter would have returned one of their topics)."
+    standard: tool.contract
+    tool: select_topic
+    arguments:
+      tenant_id: ghost
+      pool_db_path: /tmp/automedia/w2-tenant/pool.db
+    expect:
+      success: false
+      error_expected: true
+      error_code_has:
+        - NOT_FOUND
+cleanup_steps:
+  - name: remove the temp multi-tenant pool
+    kind: cli
+    check: rm -rf removes the seeded temp pool created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2-tenant
+    expect:
+      exit_code: 0
