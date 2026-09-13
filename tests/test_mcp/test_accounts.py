@@ -9,13 +9,8 @@ and encryption-key dependencies.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 from unittest.mock import MagicMock, patch
-
-# Set env var before importing module under test — AccountRegistry
-# reads AUTOMEDIA_MASTER_KEY at import time.
-os.environ["AUTOMEDIA_MASTER_KEY"] = "test-key-for-accounts-tests"
 
 from automedia.mcp.accounts import (
     connect_account,
