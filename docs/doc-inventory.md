@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 22973 | file |
-| README.md | 30852 | file |
+| AGENTS.md | 23847 | file |
+| README.md | 30860 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -36,7 +36,7 @@
 | docs/dev/validation-loop-log.md | 2133 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 12648 | file |
-| docs/index.md | 4670 | file |
+| docs/index.md | 4671 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5042 | file |
 | docs/skills/brand-strategy.md | 3228 | file |

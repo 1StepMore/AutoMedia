@@ -37,6 +37,11 @@ jobs:
         # recommendation "None") is informational — W5-T2 zeroed every
         # high/medium finding, so this pin keeps the gate green-able.
         run: python3 scripts/check-doc-consistency.py
+      - name: Doc inventory drift check (T-13)
+        # docs/doc-inventory.md is source-generated (scripts/doc_inventory.py);
+        # --check regenerates in memory and fails on any byte difference, so a
+        # stale committed inventory can never merge.
+        run: python3 scripts/doc_inventory.py --check
       - name: Docstring coverage (interrogate)
         continue-on-error: true
         run: interrogate src/automedia/

@@ -4,7 +4,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 
 ## 1. Project Overview
 - **Language:** Python 3.11+
-- **Size:** 33,619 LOC across 150 Python files (automedia/ core) · ~90,000 LOC across 442+ files (repo)
+- **Size:** 62,408 LOC across 252 Python files (automedia/ core) · ~183,000 LOC across 734+ files (repo)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 - **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
@@ -20,7 +20,7 @@ First file an AI coding agent reads to understand the AutoMedia codebase. Read i
 ```
 AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (33,619 LOC)
+│   └── automedia/              # Core Python package (62,408 LOC)
 │       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow
 │       ├── pipelines/          # runner.py (shared entry point), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
@@ -181,6 +181,11 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `update_engine_config` | modality, setting, value | Update engine config |
 | `help_mcp` | — | Categorized tool listing |
 | `mcp_help` | — | Deprecated: use help_mcp |
+| `list_overridable_templates` | — | List overridable prompt templates + override status |
+| `list_workflows` | — | List configured workflows from workflows.yaml |
+| `approve_gate` | gate_name | Approve a paused gate in director mode (HITL) |
+| `reject_gate` | gate_name, reason | Reject a paused gate (triggers failure handling) |
+| `get_pending_approvals` | — | List gates awaiting human approval in director mode |
 | `list_validation_scenarios` | — | List validation scenario library |
 | `run_validation_scenario` | scenario_name, runs_root, save | Run one validation scenario |
 | `run_validation_suite` | scenarios_dir, runs_root, save | Run the whole validation library; persist one suite record |
@@ -210,7 +215,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `automedia history` | Pipeline execution history |
 | `automedia pipeline` | Pipeline DAG export and state inspection (export-dag, state) |
 | `automedia rollback` | Archive project, revert to draft |
-| `automedia validate` | Validation suite (list, run, report, diff, coverage, matrix) |
+| `automedia validate` | Validation suite (list, run, report, diff, coverage, matrix, sign) |
 
 ## 11. Validation Layer
 
@@ -256,7 +261,7 @@ MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `run_validati
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (107 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (142 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: handbook of standard keys (14 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.

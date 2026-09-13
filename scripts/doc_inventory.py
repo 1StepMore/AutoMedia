@@ -15,10 +15,12 @@ and the checker's ``_INVENTORY_MARKER``).
 ``--check`` mode regenerates the inventory in memory and diffs it against the
 committed file: exit 0 on a byte match, exit 1 on any difference.
 
-MANUAL-ONLY (plan doc-hardening-pass2): NOT wired into pre-commit/CI.  The
-marker check on the committed file runs inside ``scripts/check-doc-consistency.py``
-(the one doc step); regenerating the inventory is a deliberate manual action
-so the file only changes when someone means it to.
+MANUAL-ONLY regeneration, CI-CHECKED drift: the ``--check`` mode is wired into
+CI (``.github/workflows/ci.yml``, T-13) so a stale committed inventory fails the
+build; ``automedia``-runs the file only changes when someone means it to
+(regenerate with ``python3 scripts/doc_inventory.py``).  The marker check on
+the committed file also runs inside ``scripts/check-doc-consistency.py`` (the
+one doc-consistency step).
 """
 
 from __future__ import annotations
@@ -113,8 +115,10 @@ def main(argv: list[str] | None = None) -> int:
         if committed == generated:
             print(f"OK: {_OUTPUT} matches the generated inventory")
             return 0
-        print(f"FAIL: {_OUTPUT} differs from the generated inventory "
-              f"(run python scripts/doc_inventory.py)")
+        print(
+            f"FAIL: {_OUTPUT} differs from the generated inventory "
+            f"(run python scripts/doc_inventory.py)"
+        )
         return 1
 
     _OUTPUT.parent.mkdir(parents=True, exist_ok=True)

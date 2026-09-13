@@ -31,11 +31,11 @@
   "boundary_only_modes": [],
   "by_level": {
     "distribution": {
-      "L0": 97,
-      "L1": 21,
+      "L0": 106,
+      "L1": 23,
       "L2": 8,
-      "L3": 0,
-      "L4": 0,
+      "L3": 3,
+      "L4": 2,
       "L5": 0
     },
     "levels": [
@@ -59,13 +59,13 @@
         "L0": 21,
         "L1": 0,
         "L2": 1,
-        "L3": 0,
+        "L3": 1,
         "L4": 0,
         "L5": 0
       },
       "journey": {
         "L0": 0,
-        "L1": 11,
+        "L1": 12,
         "L2": 0,
         "L3": 0,
         "L4": 0,
@@ -74,6 +74,14 @@
       "meta": {
         "L0": 7,
         "L1": 0,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "partial": {
+        "L0": 2,
+        "L1": 1,
         "L2": 0,
         "L3": 0,
         "L4": 0,
@@ -111,16 +119,24 @@
         "L4": 0,
         "L5": 0
       },
-      "surface": {
-        "L0": 51,
-        "L1": 8,
-        "L2": 6,
+      "security": {
+        "L0": 3,
+        "L1": 0,
+        "L2": 0,
         "L3": 0,
         "L4": 0,
         "L5": 0
+      },
+      "surface": {
+        "L0": 55,
+        "L1": 8,
+        "L2": 6,
+        "L3": 2,
+        "L4": 2,
+        "L5": 0
       }
     },
-    "total": 126
+    "total": 142
   },
   "covered": {
     "cli": [],
@@ -415,7 +431,7 @@
   ],
   "evidence_confidence": null,
   "evidence_run": null,
-  "generated_at": "2026-09-13T02:12:50.405504+00:00",
+  "generated_at": "2026-09-13T03:33:32.466875+00:00",
   "meta_scenario_count": 27,
   "meta_scenarios": [
     "account-cli-surface",
@@ -462,7 +478,7 @@
   "phantom_mcp": [],
   "phantom_modes": [],
   "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
-  "scenario_count": 126,
+  "scenario_count": 142,
   "summary": {
     "cli_boundary_only": 0,
     "cli_covered": 19,
@@ -491,11 +507,11 @@
   },
   "surface_by_level": {
     "distribution": {
-      "L0": 70,
-      "L1": 21,
+      "L0": 79,
+      "L1": 23,
       "L2": 8,
-      "L3": 0,
-      "L4": 0,
+      "L3": 3,
+      "L4": 2,
       "L5": 0
     },
     "levels": [
@@ -519,13 +535,21 @@
         "L0": 3,
         "L1": 0,
         "L2": 1,
-        "L3": 0,
+        "L3": 1,
         "L4": 0,
         "L5": 0
       },
       "journey": {
         "L0": 0,
-        "L1": 11,
+        "L1": 12,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "partial": {
+        "L0": 2,
+        "L1": 1,
         "L2": 0,
         "L3": 0,
         "L4": 0,
@@ -555,18 +579,26 @@
         "L4": 0,
         "L5": 0
       },
-      "surface": {
-        "L0": 51,
-        "L1": 8,
-        "L2": 6,
+      "security": {
+        "L0": 3,
+        "L1": 0,
+        "L2": 0,
         "L3": 0,
         "L4": 0,
         "L5": 0
+      },
+      "surface": {
+        "L0": 55,
+        "L1": 8,
+        "L2": 6,
+        "L3": 2,
+        "L4": 2,
+        "L5": 0
       }
     },
-    "total": 99
+    "total": 115
   },
-  "surface_scenario_count": 99,
+  "surface_scenario_count": 115,
   "surface_scenarios": [
     "account-list-cli-behavior",
     "add-brand-isolated",
@@ -577,6 +609,7 @@
     "approve-gate-boundary",
     "approve-gate-positive",
     "archive-refusal-redline8",
+    "asset-ingest-nonempty-search",
     "auto-journey",
     "batch-run-alias",
     "cancel-pipeline-boundary",
@@ -584,6 +617,7 @@
     "cli-surface-behavior",
     "configure-llm-isolated",
     "connect-account-masterkey",
+    "cron-run-execution",
     "dep-doctor-missing-ffmpeg",
     "dep-doctor-structural",
     "dep-health-engine-structural",
@@ -598,6 +632,7 @@
     "engine-health-list",
     "evaluate-content-quality-llm",
     "extract-brief-markdown",
+    "feature-tier-gate-filter",
     "format-output-contract",
     "gate-report-surface",
     "get-account-health-masterkey",
@@ -605,12 +640,15 @@
     "get-config-baseline",
     "get-cron-health-isolated",
     "get-pending-approvals-empty",
+    "get-pending-approvals-paused",
     "get-pipeline-progress-probe",
     "get-pipeline-status-synthetic",
     "get-project-assets-synthetic",
     "get-redlines-contract",
     "health-check-baseline",
     "help-mcp-manifest",
+    "hitl-approve-resume",
+    "hitl-reject-halt",
     "image-carousel-journey",
     "init-config-recovery",
     "init-config-tempdir",
@@ -628,8 +666,13 @@
     "localize-output-llm",
     "mcp-help-alias",
     "onboard-isolated",
+    "orf-format-output-happy",
+    "partial-pass-cli-contract",
+    "partial-pass-omni-extraction",
+    "partial-pass-progress-surface",
     "pause-pipeline-boundary",
     "pause-pipeline-positive",
+    "pipeline-checkpoint-resume",
     "pipeline-export-dag-surface",
     "pipeline-state-surface",
     "pool-add-topic-alias",
@@ -640,6 +683,9 @@
     "qa-only-journey",
     "quality-draft-eval",
     "quality-translation-eval",
+    "redteam-credential-exfiltration",
+    "redteam-path-traversal-refused",
+    "redteam-prompt-injection-topic",
     "register-platform-adapter-stub",
     "reject-gate-boundary",
     "reject-gate-positive",
@@ -651,11 +697,13 @@
     "retry-gate-boundary",
     "retry-gate-positive",
     "review-decision-surface",
+    "rollback-behavior",
     "run-batch-empty",
     "run-brand-strategy-llm",
     "run-pipeline-async-start",
     "run-pipeline-from-strategy-llm",
     "search-assets-empty",
+    "select-topic-multi-tenant",
     "select-topic-pending",
     "short-video-journey",
     "skip-gate-boundary",

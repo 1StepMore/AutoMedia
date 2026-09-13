@@ -80,7 +80,7 @@ import click
 
 from automedia.cli.app import app as _cli_app
 from automedia.mcp.server import create_server
-from automedia.validation.doc_reality import doc_reality_audit
+from automedia.validation.doc_reality import _documented_names, doc_reality_audit
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -109,6 +109,7 @@ _USER_DOC_FILES: tuple[str, ...] = (
 _CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("tools", re.compile(r"(\d+)\s+tools?\b", re.IGNORECASE)),
     ("commands", re.compile(r"(\d+)\s+commands?(?:\s+modules?)?\b", re.IGNORECASE)),
+    ("scenarios", re.compile(r"(\d+)\s+scenarios?\b", re.IGNORECASE)),
 )
 
 # Markdown link destinations that are root-relative docs paths, e.g.
@@ -191,6 +192,19 @@ def _count_cli_commands() -> int:
     return len(group.list_commands(ctx))
 
 
+def _count_scenarios() -> int:
+    """Derive the committed scenario-library size from the loader.
+
+    ``load_scenarios()`` resolves the default scenarios directory (env override
+    ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` else repo ``scenarios/``) and returns
+    every schema-valid scenario, so the doc gate's ``N scenarios`` claims track
+    the library source, never a hand-maintained number.
+    """
+    from automedia.validation.loader import load_scenarios
+
+    return len(load_scenarios())
+
+
 @dataclass(frozen=True)
 class Finding:
     """One stale numeric claim in a scanned file."""
@@ -201,12 +215,22 @@ class Finding:
     expected: str
 
 
-def _scan_file(path: Path, tool_count: int, command_count: int) -> list[Finding]:
-    """Scan one file for numeric tool/command claims that disagree with the derived counts."""
+def _scan_file(
+    path: Path,
+    tool_count: int,
+    command_count: int,
+    scenario_count: int = 0,
+) -> list[Finding]:
+    """Scan one file for numeric tool/command/scenario claims disagreeing with derived counts."""
     findings: list[Finding] = []
+    expected_counts = {
+        "tools": tool_count,
+        "commands": command_count,
+        "scenarios": scenario_count,
+    }
     for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         for kind, pattern in _CLAIM_PATTERNS:
-            expected = tool_count if kind == "tools" else command_count
+            expected = expected_counts[kind]
             for match in pattern.finditer(line):
                 claimed = int(match.group(1))
                 if claimed != expected:
@@ -322,11 +346,7 @@ def _read_allowlist() -> set[str]:
         lines = _ALLOWLIST_FILE.read_text(encoding="utf-8").splitlines()
     except OSError:
         return set()
-    return {
-        line.strip()
-        for line in lines
-        if line.strip() and not line.lstrip().startswith("#")
-    }
+    return {line.strip() for line in lines if line.strip() and not line.lstrip().startswith("#")}
 
 
 def _add_yaml_keys(excluded: set[str]) -> None:
@@ -337,7 +357,7 @@ def _add_yaml_keys(excluded: set[str]) -> None:
     transitively), so a missing import degrades to no-op rather than crash.
     """
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
     except ImportError:
         return
     path = REPO_ROOT / "src" / "automedia" / "manifests" / "defaults.yaml"
@@ -414,8 +434,12 @@ def _build_exclusion_set() -> frozenset[str]:
     _add_yaml_keys(excluded)
 
     env_names: set[str] = set()
-    for rel in (*_DEFAULT_DOC_FILES, "docs/user/cli-reference.md",
-                "docs/user/mcp-setup.md", "docs/user/api-reference.md"):
+    for rel in (
+        *_DEFAULT_DOC_FILES,
+        "docs/user/cli-reference.md",
+        "docs/user/mcp-setup.md",
+        "docs/user/api-reference.md",
+    ):
         path = REPO_ROOT / rel
         if path.is_file():
             env_names.update(_ENV_VAR_RE.findall(path.read_text(encoding="utf-8")))
@@ -441,14 +465,15 @@ def _build_exclusion_set() -> frozenset[str]:
     for name in _BACKTICKED_RE.findall(
         " ".join(
             p.read_text(encoding="utf-8")
-            for p in (REPO_ROOT / "AGENTS.md", REPO_ROOT / "README.md",
-                      REPO_ROOT / "docs" / "index.md")
+            for p in (
+                REPO_ROOT / "AGENTS.md",
+                REPO_ROOT / "README.md",
+                REPO_ROOT / "docs" / "index.md",
+            )
             if p.is_file()
         )
     ):
-        if _IDENTIFIER_RE.fullmatch(name) and (
-            name.startswith("_") or name == name.upper()
-        ):
+        if _IDENTIFIER_RE.fullmatch(name) and (name.startswith("_") or name == name.upper()):
             excluded.add(name)
 
     excluded.update(_read_allowlist())
@@ -507,7 +532,7 @@ def _resolver(name: str) -> bool:
 
         if hasattr(automedia, name):
             return True
-    except Exception:  # noqa: S110, BLE001 — resolver boundary; never a finding
+    except Exception:  # noqa: S110 — resolver boundary; never a finding
         pass
     return name in _package_symbols()
 
@@ -515,10 +540,7 @@ def _resolver(name: str) -> bool:
 def _print_findings(findings: list[Finding], file_label: str) -> None:
     """Print findings as ``file:line: ...``; return nothing (mutates only stdout)."""
     for finding in findings:
-        print(
-            f"{file_label}:{finding.line}: '{finding.found}' "
-            f"expected {finding.expected}"
-        )
+        print(f"{file_label}:{finding.line}: '{finding.found}' expected {finding.expected}")
 
 
 def _run_doc_reality_audit() -> tuple[list[str], list[str]]:
@@ -556,7 +578,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     tool_count = _count_mcp_tools()
     command_count = _count_cli_commands()
-    print(f"Derived counts: {tool_count} MCP tools, {command_count} CLI commands")
+    scenario_count = _count_scenarios()
+    print(
+        f"Derived counts: {tool_count} MCP tools, {command_count} CLI commands, "
+        f"{scenario_count} scenarios"
+    )
 
     files = list(_DEFAULT_DOC_FILES)
     if args.check_user_docs:
@@ -568,22 +594,41 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not path.exists():
             print(f"WARNING: {rel} not found — skipped")
             continue
-        for finding in _scan_file(path, tool_count, command_count):
+        for finding in _scan_file(path, tool_count, command_count, scenario_count):
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
+
+    # MCP table membership, PER FILE: the doc↔reality audit checks the UNION
+    # of AGENTS.md + README.md table names, so one file can silently omit a
+    # tool the other documents.  Each agent-facing table must independently
+    # document every registered tool (source-derived from server.py).
+    registered_tools = set(doc_reality_audit()["mcp_tools"]["declared"])
+    for rel in ("AGENTS.md", "README.md"):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        documented_tools, _documented_cmds = _documented_names(path.read_text(encoding="utf-8"))
+        for name in sorted(registered_tools - documented_tools):
+            print(
+                f"{rel}: MCP tool table omits '{name}' — expected all "
+                f"{len(registered_tools)} registered tools"
+            )
+            all_findings.append(
+                Finding(
+                    file=rel,
+                    line=0,
+                    found=name,
+                    expected=f"all {len(registered_tools)} registered MCP tools in {rel}",
+                )
+            )
 
     # Link check: AGENTS.md only (its table-driven docs/ references are the
     # contract; README links are overwhelmingly external/anchored and the
     # README is regenerated manually — AGENTS.md is the agent-facing source).
     agents_path = REPO_ROOT / "AGENTS.md"
     if agents_path.is_file():
-        for finding in scan_links(
-            agents_path.read_text(encoding="utf-8"), REPO_ROOT
-        ):
-            print(
-                f"AGENTS.md:{finding.line}: link '{finding.found}' "
-                f"expected {finding.expected}"
-            )
+        for finding in scan_links(agents_path.read_text(encoding="utf-8"), REPO_ROOT):
+            print(f"AGENTS.md:{finding.line}: link '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
     # Identifier check: AGENTS.md + README.md + docs/index.md. Resolver
@@ -595,19 +640,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         text = path.read_text(encoding="utf-8")
         for finding in scan_identifiers(text, _resolver):
-            print(
-                f"{rel}:{finding.line}: '{finding.found}' "
-                f"expected {finding.expected}"
-            )
+            print(f"{rel}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
     # Marker check: the committed docs/doc-inventory.md must carry the exact
     # AUTO-GENERATED marker on its first line (plan item 1c/3).
     inventory_path = REPO_ROOT / "docs" / "doc-inventory.md"
     if inventory_path.is_file():
-        for finding in scan_marker(
-            inventory_path.read_text(encoding="utf-8"), _INVENTORY_MARKER
-        ):
+        for finding in scan_marker(inventory_path.read_text(encoding="utf-8"), _INVENTORY_MARKER):
             print(
                 f"docs/doc-inventory.md:{finding.line}: '{finding.found}' "
                 f"expected {finding.expected}"
@@ -621,8 +661,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(line)
     if all_findings or blocking:
         total = len(all_findings) + len(blocking)
-        print(f"\nFAIL: {len(all_findings)} stale doc finding(s) + "
-              f"{len(blocking)} blocking doc↔reality finding(s) = {total}")
+        print(
+            f"\nFAIL: {len(all_findings)} stale doc finding(s) + "
+            f"{len(blocking)} blocking doc↔reality finding(s) = {total}"
+        )
         return 1
     print("\nOK: all doc numeric claims match derived counts; doc↔reality audit clean")
     return 0
