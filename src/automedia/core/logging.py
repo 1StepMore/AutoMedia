@@ -99,6 +99,19 @@ def bind_correlation_id(correlation_id: str | None = None) -> str:
     return correlation_id
 
 
+def get_correlation_id() -> str | None:
+    """Return the correlation ID currently bound to the structlog context.
+
+    Reads the same contextvar that :func:`bind_correlation_id` writes to.
+    Returns ``None`` when no non-empty identifier is bound, so callers can
+    distinguish "no trace in progress" from an empty string.
+    """
+    value = structlog.contextvars.get_contextvars().get("correlation_id")
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Return a structlog logger bound to *name*.
 
