@@ -16,6 +16,7 @@ import asyncio
 
 import pytest
 
+from automedia.core.llm_client import llm_complete
 from automedia.validation.engine import make_adapters, run_validation_scenario_async
 from automedia.validation.env_gate import check_env, fake_mode_active
 from automedia.validation.schema import Expect, Scenario, Step
@@ -125,3 +126,24 @@ class TestEngineFakeMode:
             )
         )
         assert record["status"] == "unconfigured"
+
+
+class TestFakeTextResponse:
+    def test_fake_text_exceeds_the_journey_draft_floor(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(_FAKE, "1")
+        response = llm_complete("Write an article about image carousels", config={})
+        assert len(response.encode("utf-8")) > 500
+        assert len(response) >= 1500
+
+    def test_fake_text_is_deterministic_and_echoes_the_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(_FAKE, "1")
+        prompt = "A fixed prompt used to prove the echo"
+        first = llm_complete(prompt, config={})
+        second = llm_complete(prompt, config={})
+        assert first == second
+        assert prompt in first
+        assert "This is a fake LLM response" not in first
