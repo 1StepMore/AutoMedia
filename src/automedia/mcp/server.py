@@ -444,9 +444,9 @@ def _instrument_tool_dispatch(mcp: FastMCP) -> None:
     async def _call_tool_with_trace(
         name: str,
         arguments: dict[str, Any],
-        context: Any = None,
+        context: Any = None,  # noqa: ANN401 — FastMCP dispatch boundary; mirrors ToolManager.call_tool
         convert_result: bool = False,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401 — returns tool-specific payloads the wrapper must pass through
         from automedia.core.logging import bind_correlation_id, get_correlation_id
 
         saved = get_contextvars()
