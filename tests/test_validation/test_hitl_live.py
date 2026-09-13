@@ -23,18 +23,23 @@ weaker evidence).  Synthetic fixtures only (Red Line 4).
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from automedia.mcp.server import create_server
 from automedia.mcp.tools.review import review_decision
 from automedia.pipelines.gate_types import _hitl_lock, _hitl_waiters
 from automedia.validation.engine import make_adapters, run_validation_scenario
 from automedia.validation.fixtures import (
+    HITL_MARKER_ENV_VAR,
     HITL_MARKER_PATH,
     HITL_PIPELINE_ID,
     apply_fixtures,
+    resolve_hitl_marker_path,
 )
 from automedia.validation.loader import load_scenarios
 from automedia.validation.schema import FIXTURES, Scenario
@@ -59,7 +64,7 @@ def _committed(name: str) -> Scenario:
 
 
 def _wait_for_marker(timeout: float = 5.0) -> dict[str, Any]:
-    marker = Path(HITL_MARKER_PATH)
+    marker = resolve_hitl_marker_path()
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if marker.is_file():
@@ -71,6 +76,53 @@ def _wait_for_marker(timeout: float = 5.0) -> dict[str, Any]:
 class TestFixtureRegistration:
     def test_hitl_pause_fixture_is_registered(self) -> None:
         assert "hitl_pause" in FIXTURES
+
+
+class TestPerRunMarkerPath:
+    """Issue #17: the marker path is per-run, never a shared global path."""
+
+    def test_resolve_defaults_to_committed_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(HITL_MARKER_ENV_VAR, raising=False)
+        assert resolve_hitl_marker_path() == Path(HITL_MARKER_PATH)
+
+    def test_resolve_honors_env_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        override = tmp_path / "decision.json"
+        monkeypatch.setenv(HITL_MARKER_ENV_VAR, str(override))
+        assert resolve_hitl_marker_path() == override
+
+    def test_fixture_exports_a_unique_per_run_path_and_restores(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(HITL_MARKER_ENV_VAR, raising=False)
+        with apply_fixtures(["hitl_pause"]):
+            first = os.environ[HITL_MARKER_ENV_VAR]
+            assert Path(first) != Path(HITL_MARKER_PATH)
+            assert Path(first).parent.is_dir()
+        assert HITL_MARKER_ENV_VAR not in os.environ
+        with apply_fixtures(["hitl_pause"]):
+            second = os.environ[HITL_MARKER_ENV_VAR]
+        assert second != first
+
+    def test_fixture_restores_a_prior_env_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        prior = "/tmp/some-other/decision.json"
+        monkeypatch.setenv(HITL_MARKER_ENV_VAR, prior)
+        with apply_fixtures(["hitl_pause"]):
+            assert os.environ[HITL_MARKER_ENV_VAR] != prior
+        assert os.environ[HITL_MARKER_ENV_VAR] == prior
+
+    def test_fixture_teardown_removes_its_per_run_dir(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(HITL_MARKER_ENV_VAR, raising=False)
+        with apply_fixtures(["hitl_pause"]):
+            marker = Path(os.environ[HITL_MARKER_ENV_VAR])
+        assert not marker.parent.exists()
 
 
 class TestLiveHITLFixture:
@@ -113,7 +165,7 @@ class TestCommittedHITLScenarios:
         assert "review_decision" in tools
         assert scenario.steps[0].arguments["action"] == "approve"
         collected = [a.path for step in scenario.steps for a in step.collect_artifacts]
-        assert HITL_MARKER_PATH in collected, collected
+        assert f"${HITL_MARKER_ENV_VAR}" in collected, collected
 
     def test_reject_scenario_reaches_review_decision(self) -> None:
         scenario = _committed(_REJECT)
