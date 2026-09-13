@@ -91,6 +91,11 @@ def _seed_pipeline_control() -> dict[str, Any]:
 
     progress = PipelineProgress(project_id=PIPELINE_CONTROL_ID)
     progress.set_gate_names(["G0", "G1", "V0"])
+    # Record G0 as completed so a pause/resume scenario can prove the
+    # runtime gate checkpoint survives the cycle (no restart): ``gates_done``
+    # must still hold G0 after resume.
+    progress.on_gate_start("G0")
+    progress.on_gate_end("G0", True, 0.0)
     with _lock:
         _pipeline_tracker[PIPELINE_CONTROL_ID] = progress
     return {"id": PIPELINE_CONTROL_ID, "progress": progress}

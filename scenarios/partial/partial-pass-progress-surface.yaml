@@ -1,0 +1,48 @@
+# Partial-pass integration scenario (gap R-04) — graceful degradation.
+#
+# Multi-step integration across two shipped surfaces: the health check and
+# the pipeline control surface both PASS on the seeded in-process tracker,
+# while the no-arg progress surface is probed with a deterministic unknown
+# project id (RED — structured NOT_FOUND).  min_passing 2 yields
+# `partial-pass`, and the failed progress probe stays named in the run
+# record.
+
+name: partial-pass-progress-surface
+description: "Health and pause control pass, a progress probe with an unknown project id fails, and min_passing 2 yields partial-pass with the failed step listed."
+intent: "Exercise the partial-success policy (gap R-04) across control and progress surfaces: prove a partial-pass run keeps the failed NOT_FOUND probe in the record instead of masking it."
+category: partial
+user_level: L0
+requires_env: []
+fixtures:
+  - pipeline_control
+min_passing: 2
+steps:
+  - name: health check passes
+    kind: tool
+    check: "health_check returns success: true — the server baseline leg of the integration."
+    standard: tool.contract
+    tool: health_check
+    arguments: {}
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: pause control passes on the tracked pipeline
+    kind: tool
+    check: "pause_pipeline returns success: true for the seeded tracked pipeline — the control surface leg."
+    standard: tool.contract
+    tool: pause_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    timeout_seconds: 60
+    expect:
+      success: true
+  - name: progress probe degrades for an unknown project
+    kind: tool
+    check: "get_pipeline_progress for an unknown project id returns success: false with a structured NOT_FOUND error. This step asserts success: true so the degradation is RED — partial-pass retains it, it never hides the failure."
+    standard: tool.contract
+    tool: get_pipeline_progress
+    arguments:
+      project_id: deadbeef00ab
+    timeout_seconds: 60
+    expect:
+      success: true

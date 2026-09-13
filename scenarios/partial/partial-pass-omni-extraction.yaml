@@ -1,0 +1,56 @@
+# Partial-pass integration scenario (gap R-04) — graceful degradation.
+#
+# Multi-step integration: a produced fixture artifact is inspected, the OPP
+# extraction surface runs against it (both PASS), and the same surface is
+# probed with a path outside the committed MCP allowlist (RED — the call
+# returns a structured path-deny error).  min_passing 2 lets the scenario
+# report `partial-pass` while the run record still names every failed step.
+#
+# The RED step asserts `success: true` on purpose: the capability is expected
+# to succeed, and the denied-source probe records the honest degradation a
+# restricted host sees.  partial-pass NEVER hides it — the failed step
+# and its expect failure stay in the record, and the director must review a
+# partial-pass run before anything ships (guide §2.7).
+
+name: partial-pass-omni-extraction
+description: "A multi-step OPP extraction integration degrades gracefully: the fixture artifact and a real extraction pass, a denied-source extraction fails, and min_passing 2 yields partial-pass with the failed step listed."
+intent: "Exercise the partial-success policy (gap R-04) on a real integration: prove a partial-pass run lists every failed step and never hides the degradation behind a passing verdict."
+category: partial
+user_level: L1
+requires_env: []
+min_passing: 2
+steps:
+  - name: committed draft artifact exists and is non-trivial
+    kind: file
+    check: "The committed synthetic draft scenarios/fixtures/sample-draft.md exists, is non-empty, and is at least 1024 bytes — the produced artifact this integration inspects."
+    standard: founder-expectations.F01
+    command: scenarios/fixtures/sample-draft.md
+    expect:
+      artifact_exists: scenarios/fixtures/sample-draft.md
+      artifact_nonempty: scenarios/fixtures/sample-draft.md
+      artifact_size_min: 1024
+    collect_artifacts:
+      - path: scenarios/fixtures/sample-draft.md
+        required: true
+  - name: OPP extraction reads the committed draft
+    kind: tool
+    check: "extract_brief returns success: true with the extracted markdown content for the committed fixture — the real extraction surface working on a real file."
+    standard: tool.contract
+    tool: extract_brief
+    arguments:
+      file_path: scenarios/fixtures/sample-draft.md
+    timeout_seconds: 60
+    expect:
+      success: true
+      output_has:
+        - md_content
+  - name: OPP extraction degrades on a denied source
+    kind: tool
+    check: "extract_brief on a path outside the committed MCP allowlist returns success: false (the path-deny contract). This step asserts success: true so the degradation is RED in the record — partial-pass retains it, it never hides the failure."
+    standard: tool.contract
+    tool: extract_brief
+    arguments:
+      file_path: /tmp/opencode/partial-pass-denied-source.md
+    timeout_seconds: 60
+    expect:
+      success: true

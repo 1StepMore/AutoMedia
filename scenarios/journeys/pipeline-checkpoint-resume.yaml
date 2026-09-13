@@ -1,0 +1,120 @@
+# Checkpoint/resume recovery journey (gap R-02).
+#
+# Long-running pipeline recovery was unproven: no scenario exercised a
+# persisted checkpoint surviving an interruption and being read back without
+# restarting.  This scenario has two legs, both against shipped surfaces:
+#
+#   1. RUNTIME checkpoint: the `pipeline_control` fixture seeds a tracked
+#      PipelineProgress (G0 already completed), then pause -> interrupt ->
+#      resume must preserve `gates_done`/`gates_remaining`/`total_gates` —
+#      resume continues, it never restarts the gate list.
+#   2. PERSISTED checkpoint: a synthetic project carries a real
+#      `.automedia/history.db` + `pipeline_md5.json` checkpoint;
+#      `automedia pipeline state` reads it back showing CW as passed (not
+#      pending), and the `pipeline_md5.json` artifact is collected as
+#      evidence.
+#
+# The synthetic project is created under /tmp/automedia and removed by the
+# cleanup step.  No LLM, no network, no credentials.
+
+name: pipeline-checkpoint-resume
+description: "A persisted gate checkpoint survives an interruption and is read back as passed state, and the control surface resumes a paused pipeline without restarting its gate list."
+intent: "Prove long-running pipeline recovery (gap R-02): pause -> interrupt -> resume preserves the runtime gate checkpoint with no restart, and the on-disk check checkpoint (history.db + pipeline_md5.json) is read back as passed state rather than recomputed from scratch."
+category: journey
+user_level: L1
+requires_env: []
+fixtures:
+  - pipeline_control
+steps:
+  - name: seed a persisted pipeline checkpoint
+    kind: cli
+    check: "a python3 one-liner writes a synthetic project (00_project_info.json status running), records CW:completed and G0:completed passed rows in .automedia/history.db, writes a draft, and records its CW md5 into pipeline_md5.json — the persisted checkpoint."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, sqlite3, time, pathlib; base = pathlib.Path("/tmp/automedia/checkpoint-resume/projects/ckptproj0001"); base.mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "ckptproj0001", "topic": "checkpoint-resume", "brand": "my-brand", "tenant_id": "", "created_at": "2026-09-13T00:00:00+00:00", "status": "running"})); import automedia.hooks.pipeline_history as ph; db = pathlib.Path(ph._db_path(str(base))); db.parent.mkdir(parents=True, exist_ok=True); con = sqlite3.connect(str(db)); ph._ensure_schema(con); con.execute("INSERT INTO pipeline_history (project_id, action, timestamp, metadata_json) VALUES (?, ?, ?, ?)", ("ckptproj0001", "CW:completed", time.time(), json.dumps({"gate": "CW", "project_id": "ckptproj0001", "passed": True}))); con.execute("INSERT INTO pipeline_history (project_id, action, timestamp, metadata_json) VALUES (?, ?, ?, ?)", ("ckptproj0001", "G0:completed", time.time() + 1, json.dumps({"gate": "G0", "project_id": "ckptproj0001", "passed": True}))); con.commit(); con.close(); out = base / "01_content" / "drafts"; out.mkdir(parents=True, exist_ok=True); draft = out / "draft.md"; draft.write_text("checkpoint draft body"); from automedia.hooks.md5_tracker import record_md5; record_md5(str(base), "CW", str(draft))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: runtime checkpoint before the interrupt
+    kind: tool
+    check: "get_pipeline_progress reports the seeded tracked pipeline's checkpoint (gates_done, gates_remaining, total_gates) — the state a pause/resume must preserve."
+    standard: tool.contract
+    tool: get_pipeline_progress
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - gates_done
+        - gates_remaining
+        - total_gates
+  - name: pause the pipeline
+    kind: tool
+    check: "pause_pipeline signals the tracked pipeline to pause after the current gate completes (the interruption)."
+    standard: tool.contract
+    tool: pause_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - paused
+        - project_id
+  - name: resume the interrupted pipeline
+    kind: tool
+    check: "resume_pipeline lifts the pause on the previously interrupted pipeline."
+    standard: tool.contract
+    tool: resume_pipeline
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - resumed
+        - project_id
+  - name: checkpoint preserved after resume
+    kind: tool
+    check: "get_pipeline_progress after resume still reports gates_done/gates_remaining/total_gates — the same checkpoint, proving the resume did not restart the pipeline."
+    standard: tool.contract
+    tool: get_pipeline_progress
+    arguments:
+      project_id: valctrlpipeline1
+    expect:
+      success: true
+      output_has:
+        - gates_done
+        - gates_remaining
+        - total_gates
+  - name: persisted checkpoint is read back as passed state
+    kind: cli
+    check: "automedia pipeline state reads the persisted history.db + pipeline_md5.json checkpoint and prints CW as passed (not pending) with its recorded md5 — the checkpoint survived the interruption."
+    standard: founder-expectations.F01
+    command: automedia pipeline state ckptproj0001 --base-dir /tmp/automedia/checkpoint-resume/projects
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "[copy]"
+        - "CW"
+        - "passed"
+        - "md5="
+  - name: checkpoint artifact is non-empty
+    kind: file
+    check: "pipeline_md5.json is the persisted checkpoint artifact the state surface read back."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/checkpoint-resume/projects/ckptproj0001/pipeline_md5.json
+    expect:
+      artifact_exists: /tmp/automedia/checkpoint-resume/projects/ckptproj0001/pipeline_md5.json
+      artifact_nonempty: /tmp/automedia/checkpoint-resume/projects/ckptproj0001/pipeline_md5.json
+    collect_artifacts:
+      - path: /tmp/automedia/checkpoint-resume/projects/ckptproj0001/pipeline_md5.json
+        required: true
+cleanup_steps:
+  - name: remove the checkpoint scratch tree
+    kind: cli
+    check: "rm -rf removes the temp projects tree created by this scenario."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/checkpoint-resume
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

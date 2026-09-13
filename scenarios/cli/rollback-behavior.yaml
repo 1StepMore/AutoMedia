@@ -1,0 +1,72 @@
+# Behavioural coverage for `automedia rollback` (gap R-05).
+#
+# The command had only a `--help` surface probe.  This scenario advances a
+# synthetic project to `published` with recorded pipeline history (rollback
+# eligibility), confirms the interactive prompt, runs the real rollback, and
+# asserts the full contract: the project directory is renamed to
+# `{name}_archived`, the status is reverted to `draft`, and NO orphan
+# directory is left behind.  The archived 00_project_info.json is collected
+# as evidence.
+#
+# The interactive confirmation is answered with `yes` through bash; the whole
+# tree lives under /tmp/automedia and is removed by the cleanup step.
+
+name: rollback-behavior
+description: "A published project with pipeline history is rolled back: the archive is intact, the status reverts to draft, and no orphan directory remains."
+intent: "Prove the rollback CLI compensates an advanced project (gap R-05): the real command archives the directory, reverts the status, and leaves no orphan state, not merely a callable --help surface."
+category: cli
+user_level: L3
+requires_env: []
+steps:
+  - name: seed a published project with pipeline history
+    kind: cli
+    check: "a python3 one-liner writes 00_project_info.json (status published) and a non-empty .automedia/history.db with a CW:completed row under /tmp/automedia/rollback-behavior/projects/projroll — the advanced project rollback must compensate."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, sqlite3, time, pathlib; base = pathlib.Path("/tmp/automedia/rollback-behavior/projects/projroll"); base.mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "rollback0001", "topic": "rollback-check", "brand": "my-brand", "tenant_id": "", "created_at": "2026-09-13T00:00:00+00:00", "status": "published"})); import automedia.hooks.pipeline_history as ph; db = pathlib.Path(ph._db_path(str(base))); db.parent.mkdir(parents=True, exist_ok=True); con = sqlite3.connect(str(db)); ph._ensure_schema(con); con.execute("INSERT INTO pipeline_history (project_id, action, timestamp, metadata_json) VALUES (?, ?, ?, ?)", ("rollback0001", "CW:completed", time.time(), json.dumps({"gate": "CW", "project_id": "rollback0001", "passed": True}))); con.commit(); con.close()'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: rollback reverts the project
+    kind: cli
+    check: "automedia rollback (interactive prompt answered with yes) exits 0 and prints the rollback result naming the archive directory."
+    standard: founder-expectations.F01
+    command: bash -c "echo y | automedia rollback rollback0001 --base-dir /tmp/automedia/rollback-behavior/projects"
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Rolled back project rollback0001"
+        - "projroll_archived"
+        - "draft"
+  - name: archive is intact and no orphan remains
+    kind: cli
+    check: "a python3 assertion proves the archive directory exists, the original directory is gone, the archived status is draft, and the base dir holds no orphan directory besides the archive."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/rollback-behavior/projects"); archived = base / "projroll_archived"; assert archived.is_dir(), "archive missing"; assert not (base / "projroll").exists(), "original directory still present"; info = json.loads((archived / "00_project_info.json").read_text()); assert info["status"] == "draft", info["status"]; orphans = sorted(p.name for p in base.iterdir() if p.name != "projroll_archived"); assert not orphans, orphans; print("rollback-reverted-no-orphans")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - rollback-reverted-no-orphans
+  - name: archived project info is intact
+    kind: file
+    check: "The archived 00_project_info.json exists and is non-empty — the intact archive evidence."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/rollback-behavior/projects/projroll_archived/00_project_info.json
+    expect:
+      artifact_exists: /tmp/automedia/rollback-behavior/projects/projroll_archived/00_project_info.json
+      artifact_nonempty: /tmp/automedia/rollback-behavior/projects/projroll_archived/00_project_info.json
+    collect_artifacts:
+      - path: /tmp/automedia/rollback-behavior/projects/projroll_archived/00_project_info.json
+        required: true
+cleanup_steps:
+  - name: remove the rollback scratch tree
+    kind: cli
+    check: "rm -rf removes the temp projects tree created by this scenario."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/rollback-behavior
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

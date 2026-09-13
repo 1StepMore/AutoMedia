@@ -1,0 +1,48 @@
+# Partial-pass integration scenario (gap R-04) — graceful degradation.
+#
+# Multi-step integration across the CLI and MCP surfaces: the init help
+# contract and the doctor dependency listing both PASS, while the
+# pipeline-status surface is probed with a deterministic unknown project id
+# (RED — structured NOT_FOUND).  min_passing 2 yields `partial-pass`, and the
+# failed status probe stays named in the run record.
+
+name: partial-pass-cli-contract
+description: "Init help and doctor both pass, a pipeline-status probe with an unknown project id fails, and min_passing 2 yields partial-pass with the failed step listed."
+intent: "Exercise the partial-success policy (gap R-04) across CLI and MCP surfaces: prove a partial-pass run keeps the failed NOT_FOUND probe in the record instead of masking it."
+category: partial
+user_level: L0
+requires_env: []
+min_passing: 2
+steps:
+  - name: init help contract passes
+    kind: cli
+    check: "automedia init --help exits 0 and prints the init usage contract — the CLI baseline leg."
+    standard: founder-expectations.F02
+    command: automedia init --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Initialize AutoMedia configuration."
+  - name: doctor dependency listing passes
+    kind: cli
+    check: "automedia --json doctor prints the dependency-listing contract (python and ffmpeg appear by name); exit_code is deliberately not asserted (machine-dependent), and error_expected opts in because a missing dependency makes doctor exit non-zero."
+    standard: cli.doctor
+    command: automedia --json doctor
+    timeout_seconds: 60
+    expect:
+      error_expected: true
+      stdout_has:
+        - python
+        - ffmpeg
+  - name: pipeline status degrades for an unknown project
+    kind: tool
+    check: "get_pipeline_status for an unknown project id returns success: false with a structured NOT_FOUND error. This step asserts success: true so the degradation is RED — partial-pass retains it, it never hides the failure."
+    standard: tool.contract
+    tool: get_pipeline_status
+    arguments:
+      project_id: deadbeef00ab
+      base_dir: /tmp/automedia/partial-pass
+    timeout_seconds: 60
+    expect:
+      success: true
