@@ -1,0 +1,56 @@
+name: redteam-path-traversal-refused
+description: "Path-traversal probes against the file-parameter tools: a benign allowlisted call passes, while paths that escape the allowlist or use traversal separators are safely refused with a structured error envelope."
+intent: "Red Team (T-20): prove untrusted path parameters cannot escape the MCP allowlist or smuggle separators through a format parameter. The benign control call passes; the two malicious calls are refused (structured success: false, never a raise and never a file read outside the allowlist), and every outcome is recorded as an ordinary run record."
+category: security
+user_level: L0
+requires_env: []
+steps:
+  - name: create an allowlisted brief for the benign control
+    kind: cli
+    check: "python3 writes a synthetic brief under the allowlisted /tmp/automedia/ tree so the benign extract_brief call has a real, in-policy file to parse."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import pathlib; d=pathlib.Path("/tmp/automedia/w2-rt-traversal"); d.mkdir(parents=True, exist_ok=True); (d/"brief.md").write_text("# Red Team Brief\n\nBenign content inside the allowlist.\n")'
+    expect:
+      exit_code: 0
+  - name: benign allowlisted extraction passes
+    kind: tool
+    check: "extract_brief on the allowlisted /tmp/automedia brief returns success: true — the benign control, so a failure below is the traversal defence, not a broken surface."
+    standard: tool.contract
+    tool: extract_brief
+    arguments:
+      file_path: /tmp/automedia/w2-rt-traversal/brief.md
+    expect:
+      success: true
+  - name: traversal separators in a format parameter are refused
+    kind: tool
+    check: "format_output with target_format '../../etc/passwd' is refused before any I/O with a structured INVALID_PARAM error (success: false), proving separator smuggling is blocked at the parameter boundary."
+    standard: evaluation-matrix.dim7
+    tool: format_output
+    arguments:
+      content: "# probe"
+      target_format: ../../etc/passwd
+      options: {}
+    expect:
+      success: false
+      error_expected: true
+      error_code_has:
+        - INVALID_PARAM
+  - name: a path outside the allowlist is refused
+    kind: tool
+    check: "extract_brief on /etc/passwd is refused with a structured error (success: false) instead of reading the file — the MCP allowlist fail-closed behaviour recorded as a Red Team finding."
+    standard: evaluation-matrix.dim7
+    tool: extract_brief
+    arguments:
+      file_path: /etc/passwd
+    expect:
+      success: false
+      error_expected: true
+cleanup_steps:
+  - name: remove the synthetic brief
+    kind: cli
+    check: rm -rf removes the synthetic allowlisted brief created by this scenario.
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/w2-rt-traversal
+    expect:
+      exit_code: 0
