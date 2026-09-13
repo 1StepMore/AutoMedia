@@ -61,7 +61,7 @@ render the stage×user matrix from data instead of auditor judgment."""
 ARTIFACT_CHECK_FIELDS: tuple[str, ...] = ("path", "required")
 """Closed field set of one ``collect_artifacts`` entry (guide §2.2/§4)."""
 
-FIXTURES: tuple[str, ...] = ("pipeline_control", "paused_engine")
+FIXTURES: tuple[str, ...] = ("pipeline_control", "paused_engine", "hitl_pause")
 """Closed set of in-process state fixtures a scenario may declare (T-05).
 
 The engine seeds the same runtime state ``run_pipeline`` creates so the

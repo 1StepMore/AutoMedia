@@ -25,9 +25,12 @@ one scenario's fixture can never leak into the next.
 
 from __future__ import annotations
 
+import json
 import threading
+import time
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
+from pathlib import Path
 from typing import Any
 
 from automedia.validation.schema import FIXTURES as FIXTURE_NAMES
@@ -40,6 +43,12 @@ PAUSED_ENGINE_ID: str = "valctrlengine1"
 
 APPROVAL_GATE_NAME: str = "H0"
 """Gate name the ``paused_engine`` fixture leaves awaiting approval."""
+
+HITL_PIPELINE_ID: str = "valctrlhitl01"
+"""Fixed project id of the live H0 pipeline seeded by ``hitl_pause``."""
+
+HITL_MARKER_PATH: str = "/tmp/automedia/hitl-live/decision.json"  # noqa: S108 — synthetic isolated scratch
+"""Run-completion marker the ``hitl_pause`` harness writes (ok + approved)."""
 
 
 class PausedEngineFixture:
@@ -110,9 +119,96 @@ def _seed_paused_engine() -> dict[str, Any]:
     return {"id": PAUSED_ENGINE_ID, "engine": engine}
 
 
+class LiveHITLFixture:
+    """A REAL H0-paused :class:`GateEngine` running in a daemon thread.
+
+    ``review_decision`` (gap R-03) resolves live HITL waiters through the
+    in-process ``_hitl_waiters`` registry, so this harness starts the SAME
+    pause path a ``run_pipeline`` daemon thread uses and lets the real tool
+    approve or reject it.  The engine is registered under the fixed id too,
+    so a pending-approvals scenario can observe the paused gate.  The
+    harness writes a run-completion marker the scenarios assert on:
+    ``ok`` (engine outcome) and ``approved`` (the human decision).
+    """
+
+    def __init__(self, project_id: str = HITL_PIPELINE_ID) -> None:
+        from automedia.gates.h0_human_review import H0HumanReviewGate
+        from automedia.pipelines.gate_engine import GateEngine, register_engine
+        from automedia.pipelines.gate_types import PipelineProgress
+
+        self.project_id = project_id
+        self._marker = Path(HITL_MARKER_PATH)
+        self._marker.parent.mkdir(parents=True, exist_ok=True)
+        if self._marker.exists():
+            self._marker.unlink()
+        self.engine = GateEngine([H0HumanReviewGate()])
+        self.progress = PipelineProgress(project_id=project_id)
+        self._state: dict[str, Any] = {"done": False, "ok": None, "approved": None}
+        register_engine(project_id, self.engine)
+        self._thread = threading.Thread(target=self._run, daemon=True, name="validation-live-hitl")
+        self._thread.start()
+        self._wait_until_paused()
+
+    def _run(self) -> None:
+        try:
+            outcome = self.engine.run(
+                {"topic": "validation-live-hitl", "skip_review": False},
+                progress=self.progress,
+            )
+        except Exception as exc:
+            self._state.update(done=True, error=repr(exc))
+        else:
+            ok, results = outcome if isinstance(outcome, tuple) else (None, [])
+            approved = results[0].get("_hitl_approved") if results else None
+            self._state.update(done=True, ok=ok, approved=approved)
+        self._marker.write_text(
+            json.dumps(
+                {
+                    "ok": self._state.get("ok"),
+                    "approved": self._state.get("approved"),
+                    "error": self._state.get("error"),
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def _wait_until_paused(self, timeout: float = 10.0) -> None:
+        from automedia.pipelines.gate_types import _hitl_lock, _hitl_waiters
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with _hitl_lock:
+                if _hitl_waiters.get(self.project_id) is not None:
+                    return
+            if self._state["done"]:
+                raise RuntimeError("live HITL pipeline finished without pausing at H0")
+            time.sleep(0.05)
+        raise TimeoutError("live HITL pipeline never paused at H0")
+
+    def teardown(self) -> None:
+        from automedia.pipelines.gate_engine import unregister_engine
+        from automedia.pipelines.gate_types import _hitl_lock, _hitl_waiters
+
+        with _hitl_lock:
+            pending = _hitl_waiters.get(self.project_id) is not None
+        if pending and not self._state["done"]:
+            with suppress(Exception):
+                self.progress.reject_hitl()
+        self._thread.join(timeout=10)
+        with _hitl_lock:
+            _hitl_waiters.pop(self.project_id, None)
+        unregister_engine(self.project_id)
+
+
+def _seed_hitl_pause() -> dict[str, Any]:
+    """Seed the live H0-paused pipeline harness under the fixed id."""
+    return {"kind": "hitl", "harness": LiveHITLFixture()}
+
+
 _SEEDERS = {
     "pipeline_control": _seed_pipeline_control,
     "paused_engine": _seed_paused_engine,
+    "hitl_pause": _seed_hitl_pause,
 }
 
 
@@ -122,6 +218,9 @@ def _teardown(seeded: Sequence[dict[str, Any]]) -> None:
     from automedia.pipelines.gate_engine import unregister_engine
 
     for entry in seeded:
+        if entry.get("kind") == "hitl":
+            entry["harness"].teardown()
+            continue
         if "progress" in entry:
             with _lock:
                 _pipeline_tracker.pop(entry["id"], None)

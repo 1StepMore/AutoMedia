@@ -1,0 +1,61 @@
+# Live HITL reject branch (gap R-03).
+#
+# The `hitl_pause` fixture starts a REAL H0HumanReviewGate GateEngine in a
+# daemon thread, paused at the live HITL wait and registered in the
+# in-process `_hitl_waiters` registry.  `review_decision`(reject) resolves
+# that live waiter, signals `reject_hitl()`, and the engine halts: the gate
+# result becomes a stop-failure and the run does NOT continue.  The harness
+# writes a completion marker (`ok: false`, `approved: false`) which the CLI
+# step asserts and collects as evidence.
+#
+# The H0 pause path is LLM-free, so this is deterministic without a model
+# provider.
+
+name: hitl-reject-halt
+description: "A live H0-paused pipeline is rejected through review_decision and stays halted, with the completion marker recorded."
+intent: "Prove the live HITL reject branch (gap R-03): review_decision resolves a real paused H0 waiter in this process, signals rejection, and the engine halts instead of continuing — not merely a boundary NOT_FOUND probe."
+category: surface
+user_level: L3
+requires_env: []
+fixtures:
+  - hitl_pause
+steps:
+  - name: review_decision rejects the paused H0 gate
+    kind: tool
+    check: "review_decision returns success: true with rejected: true for the live paused pipeline resolved through _hitl_waiters (the real reject_hitl signal)."
+    standard: tool.contract
+    tool: review_decision
+    arguments:
+      project_id: valctrlhitl01
+      gate_name: H0
+      action: reject
+      reason: validation-reject
+    timeout_seconds: 60
+    expect:
+      success: true
+      output_has:
+        - rejected
+        - gate_name
+  - name: rejected pipeline stays halted
+    kind: cli
+    check: "The H0 engine halts after the rejection: the harness completion marker records ok: false and approved: false (the gate failed with a stop-failure). The python3 assertion prints a stable marker on success."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, time, pathlib; time.sleep(1); d = json.loads(pathlib.Path("/tmp/automedia/hitl-live/decision.json").read_text()); assert d["ok"] is False and d["approved"] is False, d; print("hitl-reject-halted")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - hitl-reject-halted
+    collect_artifacts:
+      - path: /tmp/automedia/hitl-live/decision.json
+        required: true
+cleanup_steps:
+  - name: remove the live HITL scratch dir
+    kind: cli
+    check: "rm -rf removes the harness marker dir created by this scenario."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/hitl-live
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

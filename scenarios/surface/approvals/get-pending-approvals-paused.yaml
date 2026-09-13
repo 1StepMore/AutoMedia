@@ -1,0 +1,29 @@
+# Pending-approval queue with a paused gate (gap R-03).
+#
+# The directory-mode approvals queue was only proven EMPTY.  The
+# `paused_engine` fixture registers a director-mode engine awaiting approval
+# under a fixed id, so `get_pending_approvals` must now surface that paused
+# gate in its queue instead of the empty contract.
+
+name: get-pending-approvals-paused
+description: "get_pending_approvals surfaces a gate that is paused for director approval, returning the non-empty pending queue envelope."
+intent: "Prove the approval-queue surface reports a real paused gate (gap R-03), closing the empty-only coverage gap: an agent polling for pending director approvals sees the awaiting gate."
+category: surface
+user_level: L0
+requires_env: []
+fixtures:
+  - paused_engine
+steps:
+  - name: pending approvals queue surfaces the paused gate
+    kind: tool
+    check: "get_pending_approvals for the fixture project returns success: true carrying pending_approvals and count for the engine paused at H0 — a non-empty queue, not the empty-queue contract."
+    standard: tool.contract
+    tool: get_pending_approvals
+    arguments:
+      project_id: valctrlengine1
+    timeout_seconds: 60
+    expect:
+      success: true
+      output_has:
+        - pending_approvals
+        - count
