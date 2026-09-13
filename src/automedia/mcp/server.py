@@ -28,10 +28,12 @@ Usage::
 
 from __future__ import annotations
 
+import json
 import warnings
 from typing import TYPE_CHECKING, Any
 
 from structlog import get_logger
+from structlog.contextvars import bind_contextvars, clear_contextvars, get_contextvars
 
 from automedia._version import __version__ as _automedia_version
 
@@ -373,6 +375,94 @@ def health_engine() -> dict[str, Any]:
     from automedia.mcp.tools import health_engine as _impl
 
     return _impl()
+
+
+# ---------------------------------------------------------------------------
+# Correlation-id instrumentation (trace propagation, issue #13)
+# ---------------------------------------------------------------------------
+
+
+def _restamp_text_blocks(blocks: object, structured: dict[str, Any]) -> object:
+    """Rewrite JSON text blocks so unstructured content matches *structured*.
+
+    FastMCP renders the tool's return dict into text blocks before the
+    dispatcher sees it.  When the dispatcher stamps an id onto the structured
+    dict, the matching text payload must be re-rendered too so both wire
+    representations of the response carry the identifier.
+    """
+    try:
+        rendered = json.dumps(structured, indent=2)
+    except (TypeError, ValueError):
+        return blocks
+    restamped: list[Any] = []
+    for block in blocks:  # type: ignore[union-attr]
+        text = getattr(block, "text", None)
+        if isinstance(text, str):
+            restamped.append(block.model_copy(update={"text": rendered}))
+        else:
+            restamped.append(block)
+    return restamped
+
+
+def _stamp_trace(result: object, correlation_id: str) -> object:
+    """Attach *correlation_id* to a dispatcher result.
+
+    Handles both FastMCP result shapes: a plain dict, or the
+    ``(text_blocks, structured_dict)`` tuple FastMCP returns for
+    dict-annotated tools.  Never overwrites a value the tool already set
+    (``attach_trace_id`` is a no-op in that case).
+    """
+    from automedia.mcp.mcp_error import attach_trace_id
+
+    if isinstance(result, tuple) and len(result) == 2:
+        blocks, structured = result
+        if isinstance(structured, dict):
+            stamped = attach_trace_id(structured, correlation_id)
+            if stamped is not structured:
+                return _restamp_text_blocks(blocks, stamped), stamped
+        return result
+    if isinstance(result, dict):
+        return attach_trace_id(result, correlation_id)
+    return result
+
+
+def _instrument_tool_dispatch(mcp: FastMCP) -> None:
+    """Bind a correlation id around every tool call at the dispatch choke point.
+
+    ``ToolManager.call_tool`` is the single function every invocation passes
+    through: ``FastMCP.call_tool`` (the real dispatcher the validation
+    ``ToolAdapter`` and direct clients use) delegates to it, and the stdio
+    protocol handler registers ``FastMCP.call_tool``.  Wrapping it once binds
+    the id for the whole tool body and stamps the response, so tools that
+    build their own dicts are covered without per-tool boilerplate.  The
+    structlog context is snapshotted and restored afterwards, so a call never
+    leaks a correlation id into the next call or back into the caller.
+    """
+    manager = mcp._tool_manager
+    original = manager.call_tool
+
+    async def _call_tool_with_trace(
+        name: str,
+        arguments: dict[str, Any],
+        context: Any = None,
+        convert_result: bool = False,
+    ) -> Any:
+        from automedia.core.logging import bind_correlation_id, get_correlation_id
+
+        saved = get_contextvars()
+        correlation_id = get_correlation_id()
+        if correlation_id is None:
+            correlation_id = bind_correlation_id()
+        try:
+            result = await original(
+                name, arguments, context=context, convert_result=convert_result
+            )
+            return _stamp_trace(result, correlation_id)
+        finally:
+            clear_contextvars()
+            bind_contextvars(**saved)
+
+    manager.call_tool = _call_tool_with_trace  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -1100,6 +1190,9 @@ def create_server() -> FastMCP:
 
     # Pass AutoMedia version to MCP protocol-level server info
     mcp._mcp_server.version = _automedia_version
+
+    # Bind + stamp a correlation id for every tool invocation (issue #13).
+    _instrument_tool_dispatch(mcp)
 
     return mcp
 

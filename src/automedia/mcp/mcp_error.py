@@ -69,15 +69,41 @@ _RESOLUTIONS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
+def attach_trace_id(
+    payload: dict[str, Any],
+    correlation_id: str | None = None,
+) -> dict[str, Any]:
+    """Return *payload* carrying the in-flight correlation id as ``trace_id``.
+
+    The identifier is read from the structlog context bound by
+    :func:`automedia.core.logging.bind_correlation_id` unless *correlation_id*
+    is passed explicitly (the MCP dispatcher stamps after the context has been
+    restored).  A payload that already carries ``trace_id`` or
+    ``correlation_id`` is returned unchanged — a producer-set value is never
+    overwritten.  When no identifier is available the payload is returned
+    unchanged, so callers outside a traced call see the existing shape.
+    """
+    if "trace_id" in payload or "correlation_id" in payload:
+        return payload
+    if correlation_id is None:
+        from automedia.core.logging import get_correlation_id
+
+        correlation_id = get_correlation_id()
+    if not correlation_id:
+        return payload
+    return {**payload, "trace_id": correlation_id}
+
+
 def success_response(data: dict[str, Any]) -> dict[str, Any]:
     """Wrap a data dict with a success flag.
 
-    If the dict already contains a ``"success"`` key, it is returned as-is
-    without modification.
+    If the dict already contains a ``"success"`` key, it is returned with the
+    correlation id stamped on it; otherwise a ``success=True`` envelope is
+    built.  The bound ``trace_id`` is added whenever one is in flight.
     """
     if "success" in data:
-        return data
-    return {"success": True, **data}
+        return attach_trace_id(data)
+    return attach_trace_id({"success": True, **data})
 
 
 def error_response(
@@ -100,14 +126,16 @@ def error_response(
     """
     error_code = code.value if isinstance(code, MCPErrorCode) else code
     resolved = resolution or _RESOLUTIONS.get(str(error_code), "")
-    return {
-        "success": False,
-        "error": {
-            "code": error_code,
-            "message": message,
-            "resolution": resolved or "See documentation or contact support",
-        },
-    }
+    return attach_trace_id(
+        {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": message,
+                "resolution": resolved or "See documentation or contact support",
+            },
+        }
+    )
 
 
 def validation_error_response(
@@ -148,7 +176,13 @@ def validation_error_response(
     }
     if errors:
         payload["error"]["errors"] = errors
-    return payload
+    return attach_trace_id(payload)
 
 
-__all__ = ["MCPErrorCode", "error_response", "success_response", "validation_error_response"]
+__all__ = [
+    "MCPErrorCode",
+    "attach_trace_id",
+    "error_response",
+    "success_response",
+    "validation_error_response",
+]

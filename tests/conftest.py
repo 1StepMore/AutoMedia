@@ -55,6 +55,24 @@ def _gate_registry_isolation() -> Generator[None, None, None]:
     registry._registry.update(saved)
 
 
+@pytest.fixture(autouse=True)
+def _correlation_id_isolation() -> Generator[None, None, None]:
+    """Save and restore the structlog contextvar context between tests.
+
+    ``bind_correlation_id`` binds into a thread-wide contextvar, and the
+    runner/tools bind without unbinding.  Now that MCP envelopes carry the
+    bound ``trace_id`` (issue #13), a leaked id would make exact-shape
+    assertions order-dependent; snapshotting the context keeps each test
+    hermetic.
+    """
+    import structlog.contextvars
+
+    saved = structlog.contextvars.get_contextvars()
+    yield
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(**saved)
+
+
 @pytest.fixture()
 def tmp_project_dir(tmp_path: Any) -> Any:
     """Create a temporary project directory with basic structure.
