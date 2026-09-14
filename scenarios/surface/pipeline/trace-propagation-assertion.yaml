@@ -1,6 +1,6 @@
 name: trace-propagation-assertion
-description: "Traceability probe (Tr-01): run_brand_strategy's produced record must carry a non-empty trace/correlation identifier. The product binds a correlation_id (core/logging.py bind_correlation_id; pipelines/runner.py) but never propagates it into the MCP tool output, so this scenario is the EXPECTED RED for the product fix — a recorded product defect, never waived."
-intent: "Assert traceability end to end: a product call's produced record carries the run trace id, so a later report or artifact can be correlated back to the execution that produced it. RED until the product propagates its correlation id into its output."
+description: "Traceability probe (Tr-01): run_brand_strategy's produced record must carry a non-empty trace/correlation identifier. Originally recorded as a product defect: the product bound a correlation_id (core/logging.py bind_correlation_id; pipelines/runner.py) but never propagated it into the MCP tool output. The product now passes: it stamps the in-flight correlation id onto MCP tool responses (core/logging.py get_correlation_id; mcp/mcp_error.py attach_trace_id used by success_response/error_response; mcp/server.py binds a fresh id and stamps at the ToolManager.call_tool dispatch point), so this scenario passes and must not be waived — it is the acceptance anchor for that fix (commit b1c48a0)."
+intent: "Assert traceability end to end: a product call's produced record carries the run trace id, so a later report or artifact can be correlated back to the execution that produced it. Now satisfied: the product propagates its correlation id into its MCP output. This scenario is the acceptance anchor for the fix and must not be waived."
 category: surface
 user_level: L0
 steps:

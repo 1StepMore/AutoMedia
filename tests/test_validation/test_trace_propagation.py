@@ -11,10 +11,11 @@ record for a trace/correlation identifier:
   or any nested string (stdout JSON included);
 * ``trace_id: false`` — the inverse (no trace id present).
 
-The committed ``trace-propagation-assertion`` scenario is the expected RED for
-the product: the tool binds a correlation id but does not propagate it into
-the MCP output.  The tests below prove the key in both directions with an
-injected dispatcher, and assert the committed scenario is load-bearing.
+The committed ``trace-propagation-assertion`` scenario now passes: it is no
+longer a pending failure, but the acceptance anchor for the product fix (commit
+b1c48a0) that stamps the in-flight correlation id onto MCP tool responses.  The
+tests below prove the key in both directions with an injected dispatcher, and
+assert the committed scenario is load-bearing.
 """
 
 from __future__ import annotations
