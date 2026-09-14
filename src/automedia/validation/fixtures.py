@@ -61,10 +61,10 @@ Every reader must resolve through :func:`resolve_hitl_marker_path`, never the
 module constant directly.
 """
 
-HITL_MARKER_PATH: str = "/tmp/automedia/hitl-live/decision.json"  # noqa: S108 — synthetic isolated scratch
+HITL_MARKER_PATH: str = "/tmp/automedia/hitl-live/decision.json"  # noqa: S108  # nosec B108 — synthetic isolated scratch
 """Default live-HITL marker path, used when :data:`HITL_MARKER_ENV_VAR` is unset."""
 
-HITL_MARKER_ROOT: str = "/tmp/automedia/hitl-live"  # noqa: S108 — synthetic isolated scratch
+HITL_MARKER_ROOT: str = "/tmp/automedia/hitl-live"  # noqa: S108  # nosec B108 — synthetic isolated scratch
 """Parent directory for the fixture's per-run marker dirs."""
 
 
