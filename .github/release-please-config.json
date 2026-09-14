@@ -4,7 +4,12 @@
     ".": {
       "release-type": "python",
       "package-name": "automedia",
-      "version-file": "src/automedia/_version.py",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "src/automedia/_version.py"
+        }
+      ],
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,
