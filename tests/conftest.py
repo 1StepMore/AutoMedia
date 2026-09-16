@@ -5,8 +5,12 @@ All fixtures produce synthetic data — zero production project data.
 
 from __future__ import annotations
 
+import errno
+import ipaddress
 import os
+import socket
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -85,9 +89,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     this guard targets: it leaks into every subsequent test in the session.
     """
     leaked = [
-        name
-        for name in _ENV_WATCHLIST
-        if os.environ.get(name) != _session_env_baseline.get(name)
+        name for name in _ENV_WATCHLIST if os.environ.get(name) != _session_env_baseline.get(name)
     ]
     if not leaked:
         return
@@ -104,6 +106,119 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         "pytest_sessionstart-documented config.",
         returncode=1,
     )
+
+
+# ---------------------------------------------------------------------------
+# Hermetic network guard
+# ---------------------------------------------------------------------------
+
+_LOCAL_CONNECT_HOSTNAMES: frozenset[str] = frozenset({"localhost", ""})
+"""Hostnames that always count as the local machine for the network guard."""
+
+_SocketAddress = tuple[Any, ...] | str | bytes
+"""Address shapes accepted by :meth:`socket.socket.connect` (INET tuple / UNIX path)."""
+
+_real_socket_connect = socket.socket.connect
+"""The unpatched :meth:`socket.socket.connect`, captured before any patch."""
+
+_network_guard_state: dict[str, bool] = {"active": False}
+
+
+def _is_local_connect_target(address: _SocketAddress) -> bool:
+    """Return whether *address* targets the local machine.
+
+    ``AF_UNIX`` addresses are ``str``/``bytes`` paths and are local by
+    definition.  ``AF_INET``/``AF_INET6`` addresses are tuples whose first
+    element is the host: ``localhost`` and any loopback IP literal
+    (``127.0.0.0/8``, ``::1``) are local; every other host is external.
+    """
+    if isinstance(address, (str, bytes)):
+        return True
+    if not isinstance(address, tuple) or not address:
+        return True
+    host = address[0]
+    if isinstance(host, bytes):
+        host = host.decode("ascii", errors="ignore")
+    host = str(host)
+    if host in _LOCAL_CONNECT_HOSTNAMES:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _guarded_connect(self: socket.socket, address: _SocketAddress) -> None:
+    """Refuse connects to non-local hosts during the test session.
+
+    Raises ``ConnectionRefusedError`` (``errno.ECONNREFUSED``) — the same
+    failure a dead proxy produces — so the hermetic test session behaves
+    exactly like the measured "LLM provider unreachable" regime while every
+    real client code path (retry, provider fallback, error classification)
+    still runs.  Local connects are delegated unchanged.
+    """
+    if self.family in (socket.AF_INET, socket.AF_INET6) and not _is_local_connect_target(address):
+        raise ConnectionRefusedError(
+            errno.ECONNREFUSED,
+            "Hermetic test guard: outbound network access is disabled. "
+            "Request the `allow_network` fixture if this test genuinely "
+            "needs to reach a non-local host.",
+        )
+    _real_socket_connect(self, address)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _hermetic_network_guard() -> Generator[None, None, None]:
+    """Block outbound socket connects to non-loopback hosts for the session.
+
+    Why
+    ---
+    With a live LLM provider configured, ``python3 -m pytest`` issues real
+    ``openai``/``httpx`` calls (background ``mode="auto"`` pipelines, the topic
+    ``HotCollector``, the cron ``pool-collect`` job).  When the provider answers
+    or holds the socket open the suite becomes slow, non-deterministic, and can
+    hang inside a blocking SSL read that pytest-timeout's ``thread`` method
+    cannot interrupt.  The suite is only reliably green in the measured
+    "provider unreachable" regime (``4636 passed``), which is precisely a
+    refused ``socket.connect``.
+
+    This session-scoped, autouse guard reproduces that regime in-process: it
+    patches :meth:`socket.socket.connect` to raise ``ConnectionRefusedError``
+    for any non-loopback target.  It patches **no** ``automedia`` function, so
+    tests that mock or inspect ``llm_complete`` /
+    ``_structured_completion_with_fallback`` behaviour are unaffected.
+
+    Loopback (``localhost``, ``127.0.0.0/8``, ``::1``) and ``AF_UNIX`` sockets
+    remain reachable, so tests that start local servers (e.g. the OAuth2
+    localhost callback server) keep working.
+
+    Opt-out
+    -------
+    Request the ``allow_network`` fixture in a test that must make a genuine
+    external connection.  Keep the exemption as narrow as possible.
+    """
+    socket.socket.connect = _guarded_connect  # type: ignore[assignment]
+    _network_guard_state["active"] = True
+    try:
+        yield
+    finally:
+        socket.socket.connect = _real_socket_connect  # type: ignore[assignment]
+        _network_guard_state["active"] = False
+
+
+@pytest.fixture()
+def allow_network() -> Generator[None, None, None]:
+    """Lift :func:`_hermetic_network_guard` for the duration of one test.
+
+    Use sparingly: lifting the guard means the test can reach the public
+    network, which the rest of the suite deliberately treats as unreachable.
+    """
+    socket.socket.connect = _real_socket_connect  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        if _network_guard_state["active"]:
+            socket.socket.connect = _guarded_connect  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +239,7 @@ def _gate_registry_isolation() -> Generator[None, None, None]:
     from automedia.gates.base import GateRegistry
 
     registry = GateRegistry()
-    saved = dict(registry._registry)  # noqa: SLF001  # intentional test isolation
+    saved = dict(registry._registry)  # intentional test isolation
     yield
     registry._registry.clear()
     registry._registry.update(saved)
@@ -149,7 +264,7 @@ def _correlation_id_isolation() -> Generator[None, None, None]:
 
 
 @pytest.fixture()
-def tmp_project_dir(tmp_path: Any) -> Any:
+def tmp_project_dir(tmp_path: Path) -> Path:
     """Create a temporary project directory with basic structure.
 
     Returns the ``tmp_path`` so tests can build on it.
@@ -161,7 +276,7 @@ def tmp_project_dir(tmp_path: Any) -> Any:
 
 
 @pytest.fixture()
-def mock_config_dir(tmp_path: Any) -> Any:
+def mock_config_dir(tmp_path: Path) -> Path:
     """Create a temporary configuration directory with a minimal config file.
 
     Returns the directory path.
@@ -234,9 +349,8 @@ def sample_gate_context(
     calling any LLM or external service.
     """
     _pass = {"passed": True, "detail": "mock-pass"}
-    _all_pass = {
-        name: _pass
-        for name in [
+    _all_pass = dict.fromkeys(
+        [
             # pre-gate
             "topic_not_charity",
             "topic_not_gov_tool",
@@ -344,8 +458,9 @@ def sample_gate_context(
             "cross_platform_consistency",
             "format_completeness",
             "metadata_integrity",
-        ]
-    }
+        ],
+        _pass,
+    )
 
     return {
         # Shared
