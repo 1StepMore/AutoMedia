@@ -15,19 +15,23 @@ Design constraints (productization-roadmap-20260902 todo 4 / roadmap P0-1):
   (persisted rows only) marks H0 as ``review`` ONLY when the caller asserts
   the run's director/hitl mode via ``hitl_mode=True``.  It never guesses from
   persisted data alone.
-- **Output.**  ``write_gate_report`` writes a human-readable Markdown file and
-  a structured JSON file to
-  ``<project_dir>/05_review/gate-report/gate-report-<UTC-ISO-ts>.{md,json}``,
+- **Output.**  ``write_gate_report`` writes a human-readable Markdown file, a
+  structured JSON file, and ONE self-contained HTML file to
+  ``<project_dir>/05_review/gate-report/gate-report-<UTC-ISO-ts>.{md,json,html}``,
   creating the parent directory.  Nothing else in the project layout is
-  touched.
+  touched.  The HTML view is rendered with the standard library only — it
+  references no external resource (no ``http(s)`` URL, no ``<script>``) and
+  HTML-escapes every dynamic value.
 """
 
 from __future__ import annotations
 
+import html
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NamedTuple, TypedDict, cast
 
 from structlog import get_logger
 
@@ -36,7 +40,7 @@ from automedia.pipelines.gate_engine import GateLogEntry
 
 log = get_logger(__name__)
 
-__all__ = ["render_gate_report", "write_gate_report"]
+__all__ = ["GateReportArtifacts", "render_gate_report", "write_gate_report"]
 
 #: Report directory relative to the project root (layout: core/project.py).
 REPORT_SUBDIR = Path("05_review") / "gate-report"
@@ -279,6 +283,114 @@ def _render_markdown(report: GateReport) -> str:
     return "\n".join(lines)
 
 
+def _esc(value: object) -> str:
+    """HTML-escape a report value (stdlib ``html.escape``)."""
+    return html.escape(str(value))
+
+
+def _render_html(report: GateReport) -> str:
+    """Render the report as ONE self-contained HTML document (stdlib only).
+
+    Same content as :func:`_render_markdown` plus the Fix column, with every
+    dynamic value escaped.  No external resource is referenced: the stylesheet
+    is inline and no ``<script>``/``<link>``/``http(s)`` URL is emitted.
+    """
+    summary = report["summary"]
+    parts: list[str] = [
+        "<!DOCTYPE html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        "<title>Gate Report</title>",
+        "<style>",
+        "body{font-family:system-ui,sans-serif;margin:2rem;color:#1a1a1a}",
+        "table{border-collapse:collapse;width:100%;margin:1rem 0}",
+        "th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top}",
+        "th{background:#f2f2f2}",
+        ".fail{color:#b00020;font-weight:600}.review{color:#a05a00}.pass{color:#1b5e20}",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<h1>Gate Report</h1>",
+        "<ul>",
+        f"<li>Project: <code>{_esc(report['project_dir'])}</code></li>",
+        f"<li>Generated (UTC): {_esc(report['generated_at'])}</li>",
+        (
+            f"<li>Gates: {_esc(summary['total'])} "
+            f"(pass {_esc(summary['passed'])} / fail {_esc(summary['failed'])} / "
+            f"review {_esc(summary['errored'])})</li>"
+        ),
+    ]
+    if report["blocked_by_gate"]:
+        parts.append(f"<li><strong>Blocked by</strong>: {_esc(report['blocked_by'])}</li>")
+    parts.append("</ul>")
+
+    if not report["gates"]:
+        parts.append(
+            "<p><em>No gate executions were recorded for this run "
+            "(empty gates log) — nothing to report.</em></p>"
+        )
+        parts.append("</body>")
+        parts.append("</html>")
+        return "\n".join(parts)
+
+    parts.append("<table>")
+    parts.append(
+        "<thead><tr>"
+        "<th>Gate</th><th>Verdict</th><th>Duration (s)</th><th>Reason</th><th>Fix</th>"
+        "</tr></thead><tbody>"
+    )
+    for row in report["gates"]:
+        verdict = row["verdict"]
+        if row.get("reviewed"):
+            verdict += " (reviewed)"
+        parts.append(
+            "<tr>"
+            f"<td>{_esc(row['gate'])}</td>"
+            f'<td class="{_esc(row["verdict"])}">{_esc(verdict)}</td>'
+            f"<td>{_esc(row.get('duration_s', 0.0))}</td>"
+            f"<td>{_esc(row.get('error') or '')}</td>"
+            f"<td>{_esc(_gate_fix(row))}</td>"
+            "</tr>"
+        )
+    parts.append("</tbody></table>")
+
+    for row in report["gates"]:
+        checks = row.get("checks")
+        eva = row.get("expected_vs_actual")
+        output_path = row.get("output_path")
+        if not (checks or eva or output_path):
+            continue
+        parts.append(f"<h2>{_esc(row['gate'])} — details</h2>")
+        parts.append("<ul>")
+        if output_path:
+            parts.append(f"<li>Output: <code>{_esc(output_path)}</code></li>")
+        if eva:
+            parts.append(f"<li>Expected: {_esc(eva.get('expected', ''))}</li>")
+            parts.append(f"<li>Actual: {_esc(eva.get('actual', ''))}</li>")
+        parts.append("</ul>")
+        if checks:
+            parts.append("<table>")
+            parts.append(
+                "<thead><tr><th>Check</th><th>Passed</th><th>Detail</th><th>Fix</th>"
+                "</tr></thead><tbody>"
+            )
+            parts.extend(
+                "<tr>"
+                f"<td>{_esc(c.get('name', ''))}</td>"
+                f"<td>{'yes' if c.get('passed') else 'no'}</td>"
+                f"<td>{_esc(c.get('detail', ''))}</td>"
+                f"<td>{_esc(c.get('suggestion', ''))}</td>"
+                "</tr>"
+                for c in checks
+            )
+            parts.append("</tbody></table>")
+
+    parts.append("</body>")
+    parts.append("</html>")
+    return "\n".join(parts)
+
+
 def render_gate_report(
     project_dir: str,
     gates_log: list[GateLogEntry],
@@ -363,14 +475,27 @@ def _timestamp_for_filename() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace(":", "")
 
 
-def write_gate_report(project_dir: str, report: dict[str, Any]) -> tuple[Path, Path]:
-    """Write the report as Markdown + JSON under ``05_review/gate-report/``.
+class GateReportArtifacts(NamedTuple):
+    """Paths of the three views written by :func:`write_gate_report`.
 
-    Creates the parent directory.  Returns ``(markdown_path, json_path)``.
+    A ``NamedTuple`` keeps positional UNPACKING backward-compatible in shape
+    (``md_path, json_path, html_path = write_gate_report(...)``) while also
+    giving attribute access (``artifacts.html_path``).
+    """
 
-    Note: the plan text types the return as ``Path``; both files are written
-    as one pair, so the concrete contract here returns the 2-tuple — callers
-    that need a single path can take either element.
+    md_path: Path
+    json_path: Path
+    html_path: Path
+
+
+def write_gate_report(project_dir: str, report: Mapping[str, Any]) -> GateReportArtifacts:
+    """Write the report as Markdown + JSON + HTML under ``05_review/gate-report/``.
+
+    Creates the parent directory.  Returns the three written paths as a
+    :class:`GateReportArtifacts` ``(md_path, json_path, html_path)``.
+
+    All three views share one timestamped stem and carry the same content
+    (the HTML adds no data and references no external resource).
     """
     out_dir = Path(project_dir) / REPORT_SUBDIR
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -378,11 +503,13 @@ def write_gate_report(project_dir: str, report: dict[str, Any]) -> tuple[Path, P
     stem = f"{REPORT_STEM}-{_timestamp_for_filename()}"
     md_path = out_dir / f"{stem}.md"
     json_path = out_dir / f"{stem}.json"
+    html_path = out_dir / f"{stem}.html"
 
+    typed = cast(GateReport, report)
     markdown = report.get("markdown")
     if not isinstance(markdown, str) or not markdown:
         # Re-render if the caller passed a report without the markdown view.
-        markdown = _render_markdown(report)  # type: ignore[arg-type]
+        markdown = _render_markdown(typed)
 
     md_path.write_text(markdown, encoding="utf-8")
 
@@ -391,10 +518,13 @@ def write_gate_report(project_dir: str, report: dict[str, Any]) -> tuple[Path, P
         json.dump(payload, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
 
+    html_path.write_text(_render_html(typed), encoding="utf-8")
+
     log.debug(
         "gate_report written",
         markdown=str(md_path),
         json=str(json_path),
+        html=str(html_path),
         project_dir=project_dir,
     )
-    return md_path, json_path
+    return GateReportArtifacts(md_path=md_path, json_path=json_path, html_path=html_path)

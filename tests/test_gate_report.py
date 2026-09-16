@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -23,7 +24,7 @@ from automedia.pipelines.gate_report import render_gate_report, write_gate_repor
 
 def _entry(
     gate_name: str,
-    status: str,
+    status: Literal["passed", "failed", "error"],
     duration_s: float,
     error: str | None = None,
 ) -> GateLogEntry:
@@ -120,7 +121,9 @@ class TestRenderFromGatesLog:
         report = render_gate_report(str(project_dir), gates_log, gate_results)
         row = report["gates"][0]
         assert row["checks"] is not None and len(row["checks"]) == 2
-        assert row["expected_vs_actual"]["expected"] == "No banned phrases"
+        eva = row["expected_vs_actual"]
+        assert eva is not None
+        assert eva["expected"] == "No banned phrases"
         assert "banned_phrase" in report["markdown"]
         assert "No banned phrases" in report["markdown"]
 
@@ -158,8 +161,8 @@ class TestEmptyGatesLog:
 
     def test_write_empty_report_creates_files(self, project_dir: Path) -> None:
         report = render_gate_report(str(project_dir), [])
-        md_path, json_path = write_gate_report(str(project_dir), report)
-        assert md_path.exists() and json_path.exists()
+        md_path, json_path, html_path = write_gate_report(str(project_dir), report)
+        assert md_path.exists() and json_path.exists() and html_path.exists()
         assert md_path.parent == project_dir / "05_review" / "gate-report"
 
 
@@ -242,13 +245,14 @@ class TestWriteGateReport:
             _entry("G1", "failed", 2.25, error="human_likeness below threshold"),
         ]
         report = render_gate_report(str(project_dir), gates_log)
-        md_path, json_path = write_gate_report(str(project_dir), report)
+        md_path, json_path, html_path = write_gate_report(str(project_dir), report)
 
         assert md_path.name.startswith("gate-report-") and md_path.suffix == ".md"
         assert json_path.name.startswith("gate-report-") and json_path.suffix == ".json"
+        assert html_path.name.startswith("gate-report-") and html_path.suffix == ".html"
         assert md_path.parent == project_dir / "05_review" / "gate-report"
-        # Timestamps match between the pair
-        assert md_path.stem == json_path.stem
+        # Timestamps match between the three views
+        assert md_path.stem == json_path.stem == html_path.stem
 
         md_text = md_path.read_text(encoding="utf-8")
         assert "G1" in md_text and "human_likeness below threshold" in md_text
@@ -261,8 +265,8 @@ class TestWriteGateReport:
     def test_creates_missing_parent_dir(self, tmp_path: Path) -> None:
         """The parent dir 05_review/gate-report must be created if absent."""
         report = render_gate_report(str(tmp_path), [_entry("CW", "passed", 0.1)])
-        md_path, json_path = write_gate_report(str(tmp_path), report)
-        assert md_path.exists() and json_path.exists()
+        md_path, json_path, html_path = write_gate_report(str(tmp_path), report)
+        assert md_path.exists() and json_path.exists() and html_path.exists()
 
     def test_unique_timestamped_files(self, project_dir: Path) -> None:
         """Two writes produce distinct files (timestamp in the name)."""
