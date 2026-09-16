@@ -1,4 +1,5 @@
 """Project management MCP tools — listing, assets, archiving."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -52,9 +53,17 @@ def list_projects(
         return success_response({"projects": projects, "count": len(projects)})
 
     except PermissionError as exc:
-        return {"projects": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")}
+        return {
+            "projects": [],
+            "count": 0,
+            **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}"),
+        }
     except OSError as exc:
-        return {"projects": [], "count": 0, **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning projects: {exc}")}
+        return {
+            "projects": [],
+            "count": 0,
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning projects: {exc}"),
+        }
     except Exception as exc:
         return {"projects": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
@@ -82,7 +91,10 @@ def get_project_assets(
     except PermissionError as exc:
         return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")}
     except OSError as exc:
-        return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning assets: {exc}")}
+        return {
+            "assets": [],
+            **error_response(MCPErrorCode.UNKNOWN, f"File I/O error scanning assets: {exc}"),
+        }
     except Exception as exc:
         return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
@@ -152,12 +164,43 @@ def archive_project(
                 ),
             }
 
+        # L2 archive validation: runs after the Red Line 8 eligibility check
+        # and before the rename. ``force=True`` short-circuits before L2.
+        if not force:
+            from automedia.cli.commands.archive import (
+                build_l2_archive_context,
+                run_l2_archive_gate,
+            )
+
+            l2_passed, l2_failure_mode, _l2_result = run_l2_archive_gate(
+                build_l2_archive_context(proj, project_dir, archive_dir, force=force)
+            )
+            if not l2_passed and l2_failure_mode == "stop":
+                return {
+                    "archived": False,
+                    **error_response(
+                        MCPErrorCode.GATE_FAILURE,
+                        "Refused: L2 archive validation failed (Red Line 8).",
+                        "Resolve the archive integrity checks or set force=True.",
+                    ),
+                }
+
         project_dir.rename(archive_dir)
         return success_response({"archived": True, "archive_dir": str(archive_dir)})
 
     except PermissionError as exc:
-        return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}", "Check file permissions")}
+        return {
+            "archived": False,
+            **error_response(
+                MCPErrorCode.UNKNOWN,
+                f"Permission denied: {exc}",
+                "Check file permissions",
+            ),
+        }
     except OSError as exc:
-        return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, f"File operation error: {exc}")}
+        return {
+            "archived": False,
+            **error_response(MCPErrorCode.UNKNOWN, f"File operation error: {exc}"),
+        }
     except Exception as exc:
         return {"archived": False, **error_response(MCPErrorCode.UNKNOWN, str(exc))}

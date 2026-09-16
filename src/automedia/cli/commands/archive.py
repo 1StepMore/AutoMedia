@@ -4,11 +4,53 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import typer
 
 from automedia.cli.output import output_error, output_text
+
+
+def build_l2_archive_context(
+    project_info: dict[str, Any],
+    project_dir: Path,
+    archive_dir: Path,
+    *,
+    force: bool,
+) -> dict[str, Any]:
+    """Derive the L2 archive-validation context from real project data.
+
+    ``platform`` is resolved from the brand profile keyed by the project's
+    ``brand`` field — ``00_project_info.json`` stores ``brand``, not
+    ``platforms`` — and falls back to the literal ``"unspecified"`` when the
+    brand declares no platforms.
+    """
+    from automedia.manifests.brand_profile_schema import load_brand_profiles
+
+    brand = str(project_info.get("brand", ""))
+    profile = load_brand_profiles().get(brand)
+    platforms = ", ".join(profile.platforms) if profile and profile.platforms else "unspecified"
+
+    return {
+        "archive_status": str(project_info.get("status", "")),
+        "force": force,
+        "archive_path": str(archive_dir),
+        "output_dir": str(project_dir),
+        "archive_metadata": {
+            "title": str(project_info.get("topic", "")),
+            "platform": platforms,
+            "created_at": str(project_info.get("created_at", "")),
+        },
+    }
+
+
+def run_l2_archive_gate(context: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+    """Execute L2 on *context* and return ``(passed, failure_mode, result)``."""
+    from automedia.gates.archive_validation import L2ArchiveValidation
+
+    gate = L2ArchiveValidation()
+    result = gate.execute(context)
+    return bool(result.get("passed", False)), gate.failure_mode, result
 
 
 def archive_cmd(
@@ -64,6 +106,18 @@ def archive_cmd(
     archive_dir = project_dir.parent / f"{project_dir.name}_archived"
     if archive_dir.exists():
         output_error(f"Archive target already exists: {archive_dir}")
+
+    # L2 archive validation: runs after the Red Line 8 eligibility check and
+    # before the rename. ``force=True`` short-circuits so L2 is never invoked.
+    if not force:
+        l2_passed, l2_failure_mode, _l2_result = run_l2_archive_gate(
+            build_l2_archive_context(project_info, project_dir, archive_dir, force=force)
+        )
+        if not l2_passed and l2_failure_mode == "stop":
+            output_error(
+                "Refused: L2 archive validation failed. "
+                "Resolve the archive integrity issues or use --force (Red Line 8)."
+            )
 
     try:
         project_dir.rename(archive_dir)
