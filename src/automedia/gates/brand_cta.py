@@ -107,7 +107,7 @@ def _check_brand_name_present(
     """Check 1: 主品牌名或别名是否在内容中出现。"""
     name = "brand_name_present"
     brand_name: str = brand_profile.get("brand_name", "")
-    aliases: list[str] = brand_profile.get("brand_aliases", [])
+    aliases: list[str] = brand_profile.get("aliases", [])
 
     # Build list of all names to search for
     all_names: list[str] = []
@@ -119,7 +119,7 @@ def _check_brand_name_present(
         return {
             "name": name,
             "passed": False,
-            "detail": "no brand_name or brand_aliases defined in brand_profile",
+            "detail": "no brand_name or aliases defined in brand_profile",
         }
 
     content_lower = content.lower()
@@ -385,7 +385,7 @@ class G3BrandCTA(BaseGate):
         - ``content``: str — article/content to check
         - ``brand_profile``: dict with keys:
             - ``brand_name``: str — primary brand name
-            - ``brand_aliases``: list[str] — alternative brand names
+            - ``aliases``: list[str] — alternative brand names
             - ``brand_identity``: str — declared brand identity
             - ``blocked_words``: list[str] — forbidden words
         - ``video_script`` (optional): str — for CTA direction sync check

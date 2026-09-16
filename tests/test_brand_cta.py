@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from automedia.gates._result import build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.brand_cta import (
     _CHECK_NAMES,
     G3BrandCTA,
+    _check_brand_name_present,
 )
 
 # ---------------------------------------------------------------------------
@@ -17,7 +18,8 @@ from automedia.gates.brand_cta import (
 
 _DEFAULT_BRAND_PROFILE: dict[str, Any] = {
     "brand_name": "壹目贯维",
-    "brand_aliases": ["1StepMore", "OneStepMore"],
+    # Schema key is ``aliases`` (see BrandProfile.aliases / asdict in runner).
+    "aliases": ["1StepMore", "OneStepMore"],
     "brand_identity": "AI内容生产公司",
     "blocked_words": ["投资情报", "股票推荐", "保证收益"],
 }
@@ -180,6 +182,28 @@ class TestG3RealBrandName:
         result = G3BrandCTA().execute(ctx)
         bn = next(c for c in result["checks"] if c["name"] == "brand_name_present")
         assert bn["passed"] is True
+
+    def test_aliases_key_matched_in_content(self) -> None:
+        """``_check_brand_name_present`` reads the schema key ``aliases``."""
+        profile = {
+            "brand_name": "壹目贯维",
+            "aliases": ["A1"],
+            "brand_identity": "AI内容生产公司",
+        }
+        result = _check_brand_name_present("A1 leads the AI content market.", profile)
+        assert result["passed"] is True
+        assert "A1" in result["detail"]
+
+    def test_aliases_key_absent_reports_expected_names(self) -> None:
+        """Alias defined via ``aliases`` but absent from content → fail names it."""
+        profile = {
+            "brand_name": "壹目贯维",
+            "aliases": ["A1"],
+            "brand_identity": "AI内容生产公司",
+        }
+        result = _check_brand_name_present("这是一篇没有品牌名的通用文章。", profile)
+        assert result["passed"] is False
+        assert "A1" in result["detail"]
 
     def test_brand_name_missing_fails(self) -> None:
         """No brand name in content → fail."""
@@ -400,7 +424,9 @@ class TestG3EdgeCases:
 
     def test_build_result_all_pass(self) -> None:
         """build_gate_result returns passed=True when all checks pass."""
-        checks = [{"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES]
+        checks: list[CheckResult] = [
+            {"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES
+        ]
         result = build_gate_result(checks, gate="G3")
         assert result["passed"] is True
         assert result["gate"] == "G3"
@@ -408,7 +434,9 @@ class TestG3EdgeCases:
 
     def test_build_result_one_fail(self) -> None:
         """build_gate_result returns passed=False when any check fails."""
-        checks = [{"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES]
+        checks: list[CheckResult] = [
+            {"name": n, "passed": True, "detail": "ok"} for n in _CHECK_NAMES
+        ]
         checks[2] = {"name": "brand_identity", "passed": False, "detail": "bad"}
         result = build_gate_result(checks, gate="G3")
         assert result["passed"] is False
