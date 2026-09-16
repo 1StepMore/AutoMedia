@@ -63,13 +63,19 @@ def add_brand(
     name: str,
     industry: str = "",
     target_audience: str = "",
+    aliases: list[str] | None = None,
+    blocked_words: list[str] | None = None,
+    brand_identity: str = "",
+    tone_guidelines: str = "",
 ) -> dict[str, Any]:
     """Create a new brand profile.
 
     Uses :func:`automedia.manifests.brand_profile_schema.save_brand_profile`
     to write the profile into ``~/.automedia/brand_profiles.yaml``.
-    The brand *name* is required; *industry* and *target_audience* are
-    optional.
+    The brand *name* is required; every other parameter is optional.
+
+    ``aliases``, ``blocked_words`` and ``brand_identity`` are read by the
+    G3 brand-CTA gate; ``tone_guidelines`` is read by the G6 tone gate.
 
     Parameters
     ----------
@@ -79,6 +85,14 @@ def add_brand(
         Optional industry / vertical (e.g. ``"SaaS"``, ``"e-commerce"``).
     target_audience:
         Optional audience description (e.g. ``"Tech professionals"``).
+    aliases:
+        Optional alternate names the brand may appear under.
+    blocked_words:
+        Optional forbidden words that must not appear in content.
+    brand_identity:
+        Optional brand positioning statement.
+    tone_guidelines:
+        Optional textual tone-of-voice guidelines.
 
     Returns
     -------
@@ -93,6 +107,14 @@ def add_brand(
             data["industry"] = industry
         if target_audience:
             data["target_audience"] = target_audience
+        if aliases:
+            data["aliases"] = aliases
+        if blocked_words:
+            data["blocked_words"] = blocked_words
+        if brand_identity:
+            data["brand_identity"] = brand_identity
+        if tone_guidelines:
+            data["tone_guidelines"] = tone_guidelines
 
         save_brand_profile(name, data)
 
