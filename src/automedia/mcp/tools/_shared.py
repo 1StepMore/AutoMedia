@@ -12,9 +12,10 @@ import fcntl
 import json
 import os
 import threading
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 import yaml
 from pydantic import ValidationError
@@ -72,6 +73,9 @@ class CronScheduleEntry(TypedDict):
     count: int
     platform: str
     mode: str
+    # Optional so legacy entries (MCP ``add_cron_schedule`` and pre-``kind``
+    # files) remain constructible; an absent value is treated as "pipeline".
+    kind: NotRequired[str]
 
 
 # Track registered tool count (set dynamically by server.py after registration)
@@ -372,18 +376,77 @@ def _deep_get(data: dict, key_path: str) -> object | None:
 
 
 def _get_jobs_yaml_path() -> Path:
-    """Resolve the pipeline schedules YAML file path."""
+    """Resolve the canonical pipeline schedules YAML file path."""
     from automedia.core.paths import get_user_config_dir
 
     return get_user_config_dir() / "pipeline_schedules.yaml"
 
 
+def _get_package_jobs_yaml_path() -> Path:
+    """Resolve the legacy package-shipped ``cron/jobs.yaml`` path."""
+    import automedia as _am_pkg
+
+    return Path(_am_pkg.__file__).resolve().parent / "cron" / "jobs.yaml"
+
+
+def _infer_schedule_kind(entry: Mapping[str, Any]) -> str:
+    """Infer ``"distribute"`` vs ``"pipeline"`` from a legacy entry's shape."""
+    command = entry.get("command")
+    if isinstance(command, str) and command.strip().startswith("automedia distribute"):
+        return "distribute"
+    if "platforms" in entry or "project_id" in entry:
+        return "distribute"
+    return "pipeline"
+
+
+def _migrate_legacy_package_schedules() -> None:
+    """Copy legacy package-side schedules into the canonical store once.
+
+    The migration is idempotent: it only runs when the canonical file is
+    absent, and afterwards the canonical file exists so it is never repeated.
+    """
+    path = _get_jobs_yaml_path()
+    if path.is_file():
+        return
+
+    package_path = _get_package_jobs_yaml_path()
+    if not package_path.is_file():
+        return
+
+    try:
+        data = yaml.safe_load(package_path.read_text(encoding="utf-8")) or {}
+    except (yaml.YAMLError, OSError):
+        return
+    if not isinstance(data, dict):
+        return
+
+    entries = data.get("pipeline_schedules", [])
+    if not isinstance(entries, list) or not entries:
+        return
+
+    migrated: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        migrated_entry = dict(entry)
+        if "kind" not in migrated_entry:
+            migrated_entry["kind"] = _infer_schedule_kind(migrated_entry)
+        migrated.append(migrated_entry)
+
+    if migrated:
+        _write_pipeline_schedules(migrated)
+
+
 def _read_pipeline_schedules() -> list[CronScheduleEntry]:
-    """Read pipeline schedules from the YAML file.
+    """Read pipeline schedules from the canonical YAML file.
 
     The YAML file uses a ``{"pipeline_schedules": [...]}`` structure,
-    consistent with :func:`get_cron_health` and the cron CLI tests.
+    consistent with :func:`get_cron_health` and the cron CLI tests.  A missing
+    canonical file is seeded once from the legacy package ``cron/jobs.yaml``.
+    Entries that omit ``kind`` are treated as ``"pipeline"``.
     """
+    _migrate_legacy_package_schedules()
+
     path = _get_jobs_yaml_path()
     if not path.is_file():
         return []
@@ -393,14 +456,21 @@ def _read_pipeline_schedules() -> list[CronScheduleEntry]:
         if isinstance(data, list):
             data = {}
         entries: list = data.get("pipeline_schedules", [])
-        return [CronScheduleEntry(**entry) for entry in entries]
+        result: list[CronScheduleEntry] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            normalized: dict[str, Any] = dict(entry)
+            normalized.setdefault("kind", _infer_schedule_kind(normalized))
+            result.append(cast("CronScheduleEntry", normalized))
+        return result
     except (yaml.YAMLError, OSError, ValidationError):
         log.warning("Failed to read pipeline schedules from %s", path)
         return []
 
 
-def _write_pipeline_schedules(schedules: list[CronScheduleEntry]) -> None:
-    """Write pipeline schedules to the YAML file.
+def _write_pipeline_schedules(schedules: Sequence[Mapping[str, Any]]) -> None:
+    """Write pipeline schedules to the canonical YAML file.
 
     Writes in ``{"pipeline_schedules": [...]}`` structure so that
     ``get_cron_health`` and the cron CLI tests read the correct format.

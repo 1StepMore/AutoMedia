@@ -239,7 +239,7 @@ def _job_run_pipeline() -> None:
     from automedia.cron.runner import run_scheduled_pipeline
     from automedia.mcp.tools import _read_pipeline_schedules
 
-    schedules = _read_pipeline_schedules()
+    schedules = [s for s in _read_pipeline_schedules() if s.get("kind", "pipeline") != "distribute"]
     if not schedules:
         typer.echo("  [run-pipeline] No pipeline schedules defined in cron/jobs.yaml.")
         return
@@ -304,9 +304,7 @@ def _job_run_distribute() -> None:
     from automedia.mcp.tools import _read_pipeline_schedules
 
     schedules = _read_pipeline_schedules()
-    distribute_entries = [
-        s for s in schedules if s.get("command", "").startswith("automedia distribute")
-    ]
+    distribute_entries = [s for s in schedules if s.get("kind") == "distribute"]
 
     if not distribute_entries:
         typer.echo("  [run-distribute] No scheduled distributions found.")

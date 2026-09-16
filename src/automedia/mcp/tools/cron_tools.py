@@ -108,6 +108,7 @@ def add_cron_schedule(
             "count": count,
             "platform": platform,
             "mode": mode,
+            "kind": "pipeline",
         }
     )
 

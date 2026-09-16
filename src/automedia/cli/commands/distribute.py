@@ -6,9 +6,10 @@ result under ``04_distribution/<platform>/`` in the project directory.
 
 Cron integration
 ----------------
-Use ``--cron`` to schedule a distribution for later execution.  The entry
-is stored in ``cron/jobs.yaml`` under ``pipeline_schedules`` and is executed
-by the ``automedia cron run run-distribute`` command.
+Use ``--cron`` to schedule a distribution for later execution.  The entry is
+written to the canonical user-level pipeline-schedule store
+(``~/.automedia/pipeline_schedules.yaml``) with ``kind="distribute"`` and is
+executed by the ``automedia cron run run-distribute`` command.
 
 Use ``--cron-list`` to view scheduled distributions and ``--cron-remove``
 to delete one.
@@ -23,7 +24,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import typer
-import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 
@@ -174,47 +174,18 @@ def distribute_cmd(
     scheduled distributions and ``--cron-remove`` to delete one.
     """
     # ------------------------------------------------------------------
-    # Resolve the jobs.yaml path (reuse MCP helper logic)
+    # Canonical schedule store (single source shared with the MCP tools)
     # ------------------------------------------------------------------
-    _jobs_yaml_path: Path | None = None
-
-    def _get_jobs_yaml() -> Path:
-        """Locate ``cron/jobs.yaml`` under the automedia package."""
-        nonlocal _jobs_yaml_path
-        if _jobs_yaml_path is None:
-            import automedia as _am_pkg
-            _jobs_yaml_path = (
-                Path(_am_pkg.__file__).resolve().parent / "cron" / "jobs.yaml"
-            )
-        return _jobs_yaml_path
+    from automedia.mcp.tools._shared import (
+        _read_pipeline_schedules,
+        _write_pipeline_schedules,
+    )
 
     def _read_schedules() -> list[dict[str, Any]]:
-        """Read ``pipeline_schedules`` from ``cron/jobs.yaml``."""
-        path = _get_jobs_yaml()
-        if not path.is_file():
-            return []
-        try:
-            with open(path, encoding="utf-8") as fh:
-                data = yaml.safe_load(fh)
-            if not isinstance(data, dict):
-                return []
-            return data.get("pipeline_schedules", []) or []
-        except Exception:
-            return []
+        return [dict(s) for s in _read_pipeline_schedules()]
 
     def _write_schedules(schedules: list[dict[str, Any]]) -> None:
-        """Write ``pipeline_schedules`` back to ``cron/jobs.yaml``."""
-        path = _get_jobs_yaml()
-        if path.is_file():
-            with open(path, encoding="utf-8") as fh:
-                data = yaml.safe_load(fh) or {}
-        else:
-            data = {}
-        if not isinstance(data, dict):
-            data = {}
-        data["pipeline_schedules"] = schedules
-        with open(path, "w", encoding="utf-8") as fh:
-            yaml.dump(data, fh, default_flow_style=False, allow_unicode=True)
+        _write_pipeline_schedules(schedules)
 
     # ------------------------------------------------------------------
     # Handle --cron-list: show scheduled distributions
@@ -222,8 +193,7 @@ def distribute_cmd(
     if cron_list:
         all_schedules = _read_schedules()
         project_schedules = [
-            s for s in all_schedules
-            if s.get("name", "").startswith(f"distribute-{project_id}")
+            s for s in all_schedules if s.get("name", "").startswith(f"distribute-{project_id}")
         ]
 
         if get_output_mode() == OutputMode.JSON:
@@ -332,6 +302,7 @@ def distribute_cmd(
             "command": command,
             "project_id": project_id,
             "platforms": platforms_str,
+            "kind": "distribute",
         }
         schedules.append(entry)
         _write_schedules(schedules)
