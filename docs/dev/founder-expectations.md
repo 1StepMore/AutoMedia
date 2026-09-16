@@ -279,22 +279,22 @@ Expectations are grouped by journey phase.
 | **Agent: select best topic** | `select_topic(category="tech")` — returns single highest-scored topic, auto-marks as "in_production" |
 | **Scoring factors** | Trending score, category relevance, freshness, platform fit, production history (dedup) |
 | **Dedup** | Fuzzy title matching prevents duplicate topics. If same/similar topic exists, new add is idempotent. |
-| **Cron collection** | External crond calls `automedia cron run` → runs `research_topics` → auto-adds results to pool |
+| **Cron collection** | External crond calls `automedia cron run --due`; the `pool-collect` job runs `HotCollector` and persists deduped topics to `.automedia/pool.db`; the MCP `research_topics` tool persists its own output. |
 | **Pool isolation** | Each pool is a SQLite DB file. Separate pools per tenant/project if needed. |
 
-#### F15 — Trending Topic Discovery ✅
+#### F15 — Trending Topic Discovery 🔄
 
 *The system can discover what topics are currently hot.*
 
 | UX Detail | Specification |
 |-----------|---------------|
 | **Trigger — agent** | `research_topics(category="tech", count=10, trending=true)` |
-| **Trigger — human** | `automedia pool add --trending --category tech` (one-shot trend fetch + add to pool) |
+| **Trigger — human** | Not implemented — no CLI trend-fetch flag exists; use the MCP `research_topics` tool. |
 | **Output** | Returns list of `{title, description, source, trending_score, category}` |
-| **Sources** | Multi-platform trend aggregation (social media, news, search trends). Exact sources configured by brand/integration. |
+| **Sources** | Tavily (only when `AUTOMEDIA_TAVILY_API_KEY` is set) + LLM generation; multi-platform trend aggregation (social/news/search) is NOT implemented. |
 | **LLM enrichment** | LLM analyzes raw trend data → generates structured topic suggestions with reasoning |
 | **To pool flow** | Agent calls `research_topics` → reviews results → `add_pool_topic` for selected topics → `select_topic` for the best one → `run_pipeline`. All via MCP tools. |
-| **Implementation status** | ✅ Full implementation. `research_topics` MCP tool uses LLM with optional `trending_data` parameter. Results can flow through topic pool: `research_topics` → `add_pool_topic` → `select_topic` → `run_pipeline`. |
+| **Implementation status** | 🔄 Partial — `research_topics` (LLM + optional Tavily) persists to the pool; the `--trending` CLI flag and multi-platform aggregation are not implemented. |
 | **Human review point** | Agent may present trending topics to human for approval before adding to pool (HITL gate). |
 
 #### F16 — Brand Selection at Input Time ✅
