@@ -152,6 +152,9 @@ automedia run --topic "..." --brand my-brand --mode short-video
 # Resume from a specific Gate
 automedia run --topic "..." --brand my-brand --resume-from G3
 
+# Tolerate a gate-blocked run in unattended automation (exit 0 on `partial`)
+automedia run --topic "..." --brand my-brand --allow-partial
+
 ```
 
 ### Flags
@@ -164,6 +167,7 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 | `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose |
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate (skip preceding gates) |
 | `--auto-resume` | | `bool` | `False` | Resume from the last passed gate (reads history.db) |
+| `--allow-partial` | | `bool` | `False` | Exit 0 when the pipeline stops at a gate (`partial`). A `failed` pipeline still exits non-zero |
 | `--decision-mode` | | `str` | `build` | (DEPRECATED) Decision mode for pipeline execution — no longer functional |
 | `--verbose` | `-v` | `bool` | `False` | Show full error traceback for debugging |
 | `--source-path` | | `str \| None` | `None` | Path to a source document (`.md`, `.txt`, `.pdf`). Content is loaded into the pipeline |

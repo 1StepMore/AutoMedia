@@ -15,7 +15,7 @@ from automedia.cli.output import OutputMode, get_output_mode, output_error, outp
 from automedia.cli.output_format import output_formatted_error, output_pipeline_error
 from automedia.core.logging import bind_correlation_id
 from automedia.core.paths import get_user_config_dir
-from automedia.pipelines.gate_engine import PipelineProgress
+from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
 from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
 _MODEL_CONFIG_PATH = get_user_config_dir() / "model_config.yaml"
@@ -111,6 +111,18 @@ def _validate_brand(value: str) -> str:
     return value
 
 
+def _is_failure_status(status: str, allow_partial: bool) -> bool:
+    """Return ``True`` when *status* must exit non-zero.
+
+    ``failed`` (pipeline-level error) always fails.  ``partial`` (a gate
+    stopped the run) fails unless the caller explicitly opted in with
+    ``--allow-partial``.
+    """
+    if status == "failed":
+        return True
+    return status == "partial" and not allow_partial
+
+
 def run_cmd(
     topic: str | None = typer.Option(None, "--topic", "-t", help="Content topic / subject."),
     topics: str | None = typer.Option(
@@ -150,6 +162,14 @@ def run_cmd(
         False,
         "--auto-resume",
         help="Resume from the last passed gate (reads history.db).",
+    ),
+    allow_partial: bool = typer.Option(
+        False,
+        "--allow-partial",
+        help=(
+            "Exit 0 when the pipeline stops at a gate (status 'partial'). "
+            "A failed pipeline still exits non-zero."
+        ),
     ),
     verbose: bool = typer.Option(
         False,
@@ -239,7 +259,9 @@ def run_cmd(
                         "error": {
                             "code": "CLI_ERROR",
                             "message": str(exc),
-                            "resolution": "Check the error message and fix the issue before retrying",
+                            "resolution": (
+                                "Check the error message and fix the issue before retrying"
+                            ),
                         },
                     }
                 )
@@ -299,11 +321,11 @@ def run_cmd(
             "   Install HyperFrames for full video QA, or use --mode text_only to skip video."
         )
 
-    result = None
+    pipeline_result: PipelineResult | None = None
     try:
         bind_correlation_id()
         cli_progress = CLIPipelineProgress() if get_output_mode() == OutputMode.TEXT else None
-        result = run_full_pipeline(
+        pipeline_result = run_full_pipeline(
             topic,
             brand,
             mode=mode,
@@ -320,61 +342,61 @@ def run_cmd(
             error=str(exc),
             verbose=verbose,
             exc_info=exc,
-            gates_log=result.gates_log if result else None,
+            gates_log=pipeline_result.gates_log if pipeline_result else None,
         )
         raise typer.Exit(code=1) from exc
 
     data: dict[str, Any] = {
-        "status": result.status,
-        "project_id": result.project_id,
-        "project_dir": result.project_dir,
-        "total_duration_s": result.total_duration_s,
+        "status": pipeline_result.status,
+        "project_id": pipeline_result.project_id,
+        "project_dir": pipeline_result.project_dir,
+        "total_duration_s": pipeline_result.total_duration_s,
     }
-    if result.gates_log:
-        data["gates_log"] = [asdict(e) for e in result.gates_log]
-    if result.assets:
-        data["assets"] = [asdict(a) for a in result.assets]
-    if result.error:
-        data["error"] = result.error
+    if pipeline_result.gates_log:
+        data["gates_log"] = [asdict(e) for e in pipeline_result.gates_log]
+    if pipeline_result.assets:
+        data["assets"] = [asdict(a) for a in pipeline_result.assets]
+    if pipeline_result.error:
+        data["error"] = pipeline_result.error
 
     if output_text(None, data=data):
-        if result.status == "failed":
+        if _is_failure_status(pipeline_result.status, allow_partial):
             raise typer.Exit(code=1)
         return
 
     # Print summary
-    colour = typer.colors.GREEN if result.status == "success" else typer.colors.YELLOW
-    typer.secho(f"\nPipeline finished: {result.status}", fg=colour, bold=True)
+    colour = typer.colors.GREEN if pipeline_result.status == "success" else typer.colors.YELLOW
+    typer.secho(f"\nPipeline finished: {pipeline_result.status}", fg=colour, bold=True)
 
-    if result.project_id:
-        typer.echo(f"  Project ID : {result.project_id}")
-    if result.project_dir:
-        typer.echo(f"  Project dir: {result.project_dir}")
-    typer.echo(f"  Duration   : {result.total_duration_s:.1f}s")
+    if pipeline_result.project_id:
+        typer.echo(f"  Project ID : {pipeline_result.project_id}")
+    if pipeline_result.project_dir:
+        typer.echo(f"  Project dir: {pipeline_result.project_dir}")
+    typer.echo(f"  Duration   : {pipeline_result.total_duration_s:.1f}s")
 
-    if result.gates_log:
-        typer.echo(f"\n  Gates executed: {len(result.gates_log)}")
-        for entry in result.gates_log:
+    if pipeline_result.gates_log:
+        typer.echo(f"\n  Gates executed: {len(pipeline_result.gates_log)}")
+        for entry in pipeline_result.gates_log:
             icon = "✓" if entry.status == "passed" else "✗"
             typer.echo(f"    {icon} {entry.gate_name} ({entry.duration_s:.2f}s)")
 
-    if result.affected_downstream:
+    if pipeline_result.affected_downstream:
         typer.secho(
-            f"⚠ Downstream affected: {', '.join(result.affected_downstream)}",
+            f"⚠ Downstream affected: {', '.join(pipeline_result.affected_downstream)}",
             fg=typer.colors.YELLOW,
         )
 
-    if result.assets:
-        typer.echo(f"\n  Assets produced: {len(result.assets)}")
-        for asset in result.assets:
+    if pipeline_result.assets:
+        typer.echo(f"\n  Assets produced: {len(pipeline_result.assets)}")
+        for asset in pipeline_result.assets:
             typer.echo(f"    - [{asset.type}] {asset.path}")
 
-    if result.error:
+    if pipeline_result.error:
         output_pipeline_error(
-            result.error,
-            gates_log=result.gates_log,
+            pipeline_result.error,
+            gates_log=pipeline_result.gates_log,
             verbose=verbose,
         )
 
-    if result.status == "failed":
+    if _is_failure_status(pipeline_result.status, allow_partial):
         raise typer.Exit(code=1)
