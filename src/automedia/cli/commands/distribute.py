@@ -56,6 +56,12 @@ _PLATFORM_MODULES: dict[str, str] = {
 
 ALL_PLATFORMS: list[str] = sorted(_PLATFORM_GATES.keys())
 
+# The only artifact format every D-gate produces is Markdown.  L3's default
+# ``required_formats`` (``["mp4", "txt", "json"]``) would block every real
+# distribution, so the producible format is declared explicitly here rather
+# than derived from whatever files happen to be present.
+_L3_REQUIRED_FORMATS: list[str] = ["md"]
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -111,6 +117,55 @@ def _import_gate_class(platform: str) -> type[BaseGate]:
     mod = importlib.import_module(module_path)
     class_name = _PLATFORM_GATES[platform]
     return getattr(mod, class_name)
+
+
+def build_l3_distribution_context(
+    project_info: dict[str, Any],
+    platforms: list[str],
+    produced_files: list[str],
+    *,
+    unified_content: str,
+) -> dict[str, Any]:
+    """Build the L3 platform-integrity context from real distribution data.
+
+    Every key L3 reads that can fail is present and grounded in what the
+    D-gates actually produced.  ``content_platform_map`` is deliberately not
+    set — an empty map makes ``no_platform_splitting`` pass.
+
+    ``archive_metadata.platform`` is a single deterministic member
+    (``sorted(platforms)[0]``): the gate only requires the value to be a
+    member of ``platforms``, so one member is sufficient even when the run
+    targets several platforms.
+    """
+    target_platforms = sorted(platforms)
+    formats = sorted(
+        {suffix for f in produced_files if (suffix := Path(f).suffix.lstrip(".").lower())}
+    )
+    return {
+        "platforms": target_platforms,
+        "expected_platforms": target_platforms,
+        "file_paths": list(produced_files),
+        "media_files": list(produced_files),
+        "formats": formats,
+        "required_formats": list(_L3_REQUIRED_FORMATS),
+        "unified_content": unified_content,
+        "archive_metadata": {
+            "title": str(project_info.get("topic", "")),
+            "platform": target_platforms[0] if target_platforms else "",
+            "created_at": str(project_info.get("created_at", "")),
+        },
+    }
+
+
+def run_l3_distribution_gate(
+    context: dict[str, Any],
+) -> tuple[bool, str, dict[str, Any]]:
+    """Execute L3 on *context* and return ``(passed, failure_mode, result)``."""
+    from automedia.gates.platform_integrity import L3PlatformIntegrity
+
+    gate = L3PlatformIntegrity()
+    result = gate.execute(context)
+    return bool(result.get("passed", False)), gate.failure_mode, result
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +519,32 @@ def distribute_cmd(
                 f"  {platform} ❌ — {exc}",
                 fg=typer.colors.RED,
             )
+
+    # ------------------------------------------------------------------
+    # L3 platform integrity — runs once, after the D-gates produced the
+    # platform artifacts, over the COMPLETE, grounded run context.
+    # ------------------------------------------------------------------
+    produced_files = [
+        str(r["output_path"]) for r in results if r.get("passed") and r.get("output_path")
+    ]
+    l3_passed, l3_failure_mode, l3_result = run_l3_distribution_gate(
+        build_l3_distribution_context(
+            project_info,
+            selected,
+            produced_files,
+            unified_content=content,
+        )
+    )
+
+    if not l3_passed and l3_failure_mode == "stop":
+        typer.secho(
+            f"  L3 platform integrity ❌ — {l3_result.get('error') or 'incomplete artifacts'}",
+            fg=typer.colors.RED,
+        )
+        output_error(
+            "Distribution blocked: L3 platform integrity failed — the produced "
+            "artifacts do not satisfy the platform/material contract."
+        )
 
     # ------------------------------------------------------------------
     # Summary
