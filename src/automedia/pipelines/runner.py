@@ -848,6 +848,7 @@ def run_full_pipeline(
     default_lang: str | None = None,
     force_provenance: bool = False,
     director: bool = False,
+    skip_review: bool = False,
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
@@ -902,6 +903,10 @@ def run_full_pipeline(
         ``director`` HITL preset so that gates with
         ``requires_approval`` pause for external approve/reject calls.
         Default: ``False`` (backward compatible).
+    skip_review:
+        When ``True``, sets ``skip_review`` in the gate context so the H0
+        human-review gate auto-passes (``status="skipped"``) — for
+        unattended runs.  Default: ``False`` (H0 pauses for a human).
     progress:
         Optional progress tracker.  When provided, ``GateEngine.run()``
         emits ``GateProgressEvent`` entries for each gate so agents
@@ -941,6 +946,7 @@ def run_full_pipeline(
         default_lang=default_lang,
         force_provenance=force_provenance,
         director=director,
+        skip_review=skip_review,
         progress=progress,
         source_path=source_path,
         source_url=source_url,
@@ -963,6 +969,7 @@ def _run_pipeline(
     default_lang: str | None = None,
     force_provenance: bool = False,
     director: bool = False,
+    skip_review: bool = False,
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
@@ -1026,6 +1033,7 @@ def _run_pipeline(
             source_url,
             correlation_id,
             gate_names,
+            skip_review,
         )
 
         success, results = _setup_and_run_engine(
@@ -1238,6 +1246,7 @@ def _build_pipeline_context(
     source_url: str,
     correlation_id: str,
     gate_names: list[str],
+    skip_review: bool = False,
 ) -> GateContext:
     from automedia.engines import resolve_engine
     from automedia.engines.errors import (
@@ -1299,6 +1308,7 @@ def _build_pipeline_context(
 
     gate_context["hitl_config"] = hitl_config
     gate_context["hitl_preset"] = "director" if director else "automated"
+    gate_context["skip_review"] = skip_review
 
     hyperframes_available = _check_hyperframes(mode=mode)
     video_engine_available = False

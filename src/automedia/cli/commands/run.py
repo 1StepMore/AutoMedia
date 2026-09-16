@@ -171,6 +171,14 @@ def run_cmd(
             "A failed pipeline still exits non-zero."
         ),
     ),
+    skip_review: bool = typer.Option(
+        False,
+        "--skip-review",
+        help=(
+            "Auto-pass the H0 human-review gate for unattended runs. "
+            "Default pauses for human approval."
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -238,6 +246,7 @@ def run_cmd(
                     decision_mode=decision_mode,
                     resume_from=resume_from,
                     auto_resume=auto_resume,
+                    skip_review=skip_review,
                     progress=cli_progress,
                     source_path=source_path,
                     source_url=source_url,
@@ -332,6 +341,7 @@ def run_cmd(
             decision_mode=decision_mode,
             resume_from=resume_from,
             auto_resume=auto_resume,
+            skip_review=skip_review,
             progress=cli_progress,
             source_path=source_path,
             source_url=source_url,

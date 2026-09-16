@@ -155,6 +155,9 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 # Tolerate a gate-blocked run in unattended automation (exit 0 on `partial`)
 automedia run --topic "..." --brand my-brand --allow-partial
 
+# Unattended run — auto-pass the H0 human-review gate
+automedia run --topic "..." --brand my-brand --skip-review
+
 ```
 
 ### Flags
@@ -168,6 +171,7 @@ automedia run --topic "..." --brand my-brand --allow-partial
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate (skip preceding gates) |
 | `--auto-resume` | | `bool` | `False` | Resume from the last passed gate (reads history.db) |
 | `--allow-partial` | | `bool` | `False` | Exit 0 when the pipeline stops at a gate (`partial`). A `failed` pipeline still exits non-zero |
+| `--skip-review` | | `bool` | `False` | Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval |
 | `--decision-mode` | | `str` | `build` | (DEPRECATED) Decision mode for pipeline execution — no longer functional |
 | `--verbose` | `-v` | `bool` | `False` | Show full error traceback for debugging |
 | `--source-path` | | `str \| None` | `None` | Path to a source document (`.md`, `.txt`, `.pdf`). Content is loaded into the pipeline |
