@@ -6,7 +6,9 @@ identically to its replacement.
 
 from __future__ import annotations
 
+import contextlib
 import warnings
+from pathlib import Path
 
 import pytest
 
@@ -17,24 +19,26 @@ from automedia.mcp.tools import batch_run, engine_health, pool_add_topic
 class TestPoolAddTopicDeprecation:
     """pool_add_topic → add_pool_topic"""
 
-    def test_emits_deprecation_warning(self) -> None:
+    def test_emits_deprecation_warning(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Calling pool_add_topic emits a DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="pool_add_topic is deprecated"):
-            try:
-                pool_add_topic("test", "test-cat")
-            except Exception:
-                pass
+        monkeypatch.chdir(tmp_path)
+        with (
+            pytest.warns(DeprecationWarning, match="pool_add_topic is deprecated"),
+            contextlib.suppress(Exception),
+        ):
+            pool_add_topic("test", "test-cat")
 
-    def test_replacement_no_warning(self) -> None:
+    def test_replacement_no_warning(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Calling add_pool_topic does NOT emit a DeprecationWarning."""
         from automedia.mcp.tools import add_pool_topic
 
+        monkeypatch.chdir(tmp_path)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            try:
+            with contextlib.suppress(Exception):
                 add_pool_topic("test", "test-cat")
-            except Exception:
-                pass
             dep = [
                 x
                 for x in w
@@ -49,11 +53,11 @@ class TestBatchRunDeprecation:
 
     def test_emits_deprecation_warning(self) -> None:
         """Calling batch_run emits a DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="batch_run is deprecated"):
-            try:
-                batch_run(["test"], brand="test", mode="auto")
-            except Exception:
-                pass
+        with (
+            pytest.warns(DeprecationWarning, match="batch_run is deprecated"),
+            contextlib.suppress(Exception),
+        ):
+            batch_run(["test"], brand="test", mode="auto")
 
     def test_replacement_no_warning(self) -> None:
         """Calling run_batch does NOT emit a DeprecationWarning."""
@@ -61,10 +65,8 @@ class TestBatchRunDeprecation:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            try:
+            with contextlib.suppress(Exception):
                 run_batch(["test"], brand="test", mode="auto")
-            except Exception:
-                pass
             dep = [
                 x
                 for x in w
@@ -79,11 +81,11 @@ class TestEngineHealthDeprecation:
 
     def test_emits_deprecation_warning(self) -> None:
         """Calling engine_health emits a DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="engine_health is deprecated"):
-            try:
-                engine_health()
-            except Exception:
-                pass
+        with (
+            pytest.warns(DeprecationWarning, match="engine_health is deprecated"),
+            contextlib.suppress(Exception),
+        ):
+            engine_health()
 
     def test_replacement_no_warning(self) -> None:
         """Calling health_engine does NOT emit a DeprecationWarning."""
@@ -91,10 +93,8 @@ class TestEngineHealthDeprecation:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            try:
+            with contextlib.suppress(Exception):
                 health_engine()
-            except Exception:
-                pass
             dep = [
                 x
                 for x in w
@@ -109,11 +109,11 @@ class TestMcpHelpDeprecation:
 
     def test_emits_deprecation_warning(self) -> None:
         """Calling mcp_help emits a DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="mcp_help is deprecated"):
-            try:
-                mcp_help()
-            except Exception:
-                pass
+        with (
+            pytest.warns(DeprecationWarning, match="mcp_help is deprecated"),
+            contextlib.suppress(Exception),
+        ):
+            mcp_help()
 
     def test_replacement_no_warning(self) -> None:
         """Calling help_mcp does NOT emit a DeprecationWarning."""
@@ -121,10 +121,8 @@ class TestMcpHelpDeprecation:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            try:
+            with contextlib.suppress(Exception):
                 help_mcp()
-            except Exception:
-                pass
             dep = [
                 x
                 for x in w

@@ -393,9 +393,11 @@ class TestServerCreation:
 class TestSelectTopic:
     """Tests for the select_topic tool."""
 
-    def test_select_topic_empty_pool(self) -> None:
+    def test_select_topic_empty_pool(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Returns error when no pending topics exist."""
         create_server()
+        # Isolate cwd: the default pool is now a persistent .automedia/pool.db
+        monkeypatch.chdir(tmp_path)
         # Call the underlying function directly
         from automedia.mcp.server import select_topic
 
@@ -604,8 +606,9 @@ class TestArchiveProject:
 class TestListTopicPool:
     """Tests for the list_topic_pool tool."""
 
-    def test_empty_pool(self) -> None:
-        """Returns empty list for in-memory empty DB."""
+    def test_empty_pool(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Returns empty list for an empty pool DB."""
+        monkeypatch.chdir(tmp_path)
         from automedia.mcp.server import list_topic_pool
 
         result = list_topic_pool()

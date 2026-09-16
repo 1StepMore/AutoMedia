@@ -1,4 +1,5 @@
 """Topic pool MCP tools — selection, research, pool management."""
+
 from __future__ import annotations
 
 import os
@@ -55,13 +56,13 @@ def select_topic(
         where the error dict contains ``code``, ``message``, ``resolution`` keys.
     """
     try:
-        from automedia.pool.db import PoolDB
+        from automedia.pool.db import PoolDB, default_pool_path
 
         if pool_db_path:
             _require_allowed(pool_db_path, tool_name="select_topic")
             db = PoolDB(pool_db_path)
         else:
-            db = PoolDB(":memory:")
+            db = PoolDB(default_pool_path())
 
         topics = db.list_topics(status="pending")
         if category:
@@ -227,8 +228,10 @@ def research_topics(
             "total_found": 0,
             **validation_error_response(
                 f"LLM response validation failed: {exc}",
-                errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
-                        for e in (exc.errors() if hasattr(exc, "errors") else [])],
+                errors=[
+                    {"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                    for e in (exc.errors() if hasattr(exc, "errors") else [])
+                ],
             ),
         }
     except Exception as exc:
@@ -262,13 +265,13 @@ def list_topic_pool(
         ``{"topics": [...], "count": int}``.
     """
     try:
-        from automedia.pool.db import PoolDB
+        from automedia.pool.db import PoolDB, default_pool_path
 
         if pool_db_path:
             _require_allowed(pool_db_path, tool_name="list_topic_pool")
             db = PoolDB(pool_db_path)
         else:
-            db = PoolDB(":memory:")
+            db = PoolDB(default_pool_path())
 
         topics = db.list_topics(status=status or None)
         if category:
@@ -307,13 +310,13 @@ def add_pool_topic(
         or an error dict on failure.
     """
     try:
-        from automedia.pool.db import PoolDB
+        from automedia.pool.db import PoolDB, default_pool_path
 
         if pool_db_path:
             _require_allowed(pool_db_path, tool_name="add_pool_topic")
             db = PoolDB(pool_db_path)
         else:
-            db = PoolDB(":memory:")
+            db = PoolDB(default_pool_path())
 
         topic_id = db.add_topic(data={"title": title, "category": category})
         db.close()

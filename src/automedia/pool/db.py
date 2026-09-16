@@ -14,6 +14,25 @@ from structlog import get_logger
 log = get_logger(__name__)
 
 
+def default_pool_path() -> Path:
+    """Return the default topic-pool database path.
+
+    The location rule mirrors the CLI's ``_DEFAULT_DB``
+    (``cli/commands/cron.py``): a cwd-relative ``.automedia/pool.db``.
+    Resolving against the current working directory uses the same base the
+    MCP allowlist resolves its ``./`` entry against
+    (``automedia.mcp.allowlist``), so the default pool always lives inside
+    the workspace the MCP server was started from.
+
+    Returns
+    -------
+    Path
+        Absolute path to ``<cwd>/.automedia/pool.db``.  The file is created
+        on first :class:`PoolDB` open.
+    """
+    return Path.cwd() / ".automedia" / "pool.db"
+
+
 class TopicRecord(TypedDict, total=False):
     """A single topic row from the pool database."""
 
