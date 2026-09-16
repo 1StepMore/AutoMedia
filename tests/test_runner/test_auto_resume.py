@@ -122,7 +122,7 @@ class TestFindAutoResumePoint:
     # -- (a) anchor selection: latest passed completed row -------------------
 
     def test_anchor_is_latest_passed_completed_row(self, tmp_path: Path) -> None:
-        """G0..G3 all completed+passed → anchor G3 → resume at G4."""
+        """G0..G3 all completed+passed → anchor G3 → resume at G6."""
         project_dir = _create_project_with_history(
             tmp_path / "20260707_test-topic",
             PROJECT_ID,
@@ -132,7 +132,7 @@ class TestFindAutoResumePoint:
 
         result = _find_auto_resume_point(project_dir, "auto", gate_names)
 
-        assert result == "G4"
+        assert result == "G6"
 
     # -- (a2) completed-with-failure does not anchor -------------------------
 
@@ -195,9 +195,7 @@ class TestFindAutoResumePoint:
         project_dir_obj = tmp_path / "20260707_test-topic"
         project_dir_obj.mkdir(parents=True)
         info = {"project_id": PROJECT_ID, "topic": "Test Topic", "brand": "TestBrand"}
-        (project_dir_obj / "00_project_info.json").write_text(
-            json.dumps(info), encoding="utf-8"
-        )
+        (project_dir_obj / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
         gate_names = _MODE_MAP["auto"]
 
         result = _find_auto_resume_point(str(project_dir_obj), "auto", gate_names)
@@ -206,9 +204,7 @@ class TestFindAutoResumePoint:
 
     def test_empty_history_returns_none(self, tmp_path: Path) -> None:
         """Existing ``history.db`` with zero rows → ``None``."""
-        project_dir = _create_project_with_history(
-            tmp_path / "20260707_test-topic", PROJECT_ID, []
-        )
+        project_dir = _create_project_with_history(tmp_path / "20260707_test-topic", PROJECT_ID, [])
         gate_names = _MODE_MAP["auto"]
 
         result = _find_auto_resume_point(project_dir, "auto", gate_names)
@@ -232,9 +228,7 @@ class TestFindAutoResumePoint:
             "tenant_id": "default",
             "created_at": "2026-07-07T00:00:00+00:00",
         }
-        (Path(foreign_dir) / "00_project_info.json").write_text(
-            json.dumps(info), encoding="utf-8"
-        )
+        (Path(foreign_dir) / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
         gate_names = _MODE_MAP["auto"]
 
         result = _find_auto_resume_point(foreign_dir, "auto", gate_names)
@@ -260,11 +254,11 @@ class TestFindAutoResumePoint:
     # -- (e) anchor is the last gate → nothing to resume ----------------------
 
     def test_anchor_is_last_gate_returns_none(self, tmp_path: Path) -> None:
-        """L4 (final gate) passed → ``index + 1`` out of range → ``None``."""
+        """H0 (auto's final gate) passed → ``index + 1`` out of range → ``None``."""
         project_dir = _create_project_with_history(
             tmp_path / "20260707_test-topic",
             PROJECT_ID,
-            [_completed("L4")],
+            [_completed("H0")],
         )
         gate_names = _MODE_MAP["auto"]
 

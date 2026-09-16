@@ -10,9 +10,6 @@ All tests use mocked LLM responses — no real API calls.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
-
-import pytest
 
 from automedia.gates.base import _registry
 from automedia.gates.sub_pipelines.p1_wechat import P1WechatGate
@@ -20,24 +17,19 @@ from automedia.gates.sub_pipelines.p2_twitter import P2TwitterGate
 from automedia.gates.sub_pipelines.p3_newsletter import P3NewsletterGate
 from automedia.gates.sub_pipelines.p4_bilibili import P4BilibiliRepurpose
 from automedia.pipelines.gate_engine import GateEngine
-
 from tests.test_sub_pipelines.conftest import (
-    _LONG_CONTENT,
-    P1_CANNED_FACT_CHECK,
-    P1_CANNED_HUMANIZE,
-    P1_CANNED_REWRITE,
+    mock_p1_fact_check_fails,
     mock_p1_llm_calls,
     mock_p1_llm_failure,
-    mock_p1_fact_check_fails,
+    mock_p2_humanize_fails,
     mock_p2_llm_calls,
     mock_p2_llm_failure,
-    mock_p2_humanize_fails,
     mock_p3_llm_calls,
     mock_p3_llm_failure,
     mock_p3_review_fails,
+    mock_p4_humanize_fails,
     mock_p4_llm_calls,
     mock_p4_llm_failure,
-    mock_p4_humanize_fails,
 )
 
 # ===========================================================================
@@ -153,9 +145,7 @@ class TestP1WechatRepurpose:
         assert result["passed"] is True
         assert result["gate"] == "P1"
         # fact_check check should be marked as passed because execution continued
-        fact_check_checks = [
-            c for c in result["checks"] if "fact_check" in c["name"].lower()
-        ]
+        fact_check_checks = [c for c in result["checks"] if "fact_check" in c["name"].lower()]
         if fact_check_checks:
             assert fact_check_checks[0]["passed"] is True
 
@@ -354,9 +344,7 @@ class TestP4BilibiliRepurpose:
         assert result["passed"] is False
         assert "humanize" in (result.get("error", "") or "").lower()
         # humanize_step check should be present and failed
-        humanize_checks = [
-            c for c in result["checks"] if c["name"] == "humanize_step"
-        ]
+        humanize_checks = [c for c in result["checks"] if c["name"] == "humanize_step"]
         if humanize_checks:
             assert humanize_checks[0]["passed"] is False
 
@@ -374,55 +362,117 @@ class TestRepurposeMode:
         _p: dict[str, Any] = {"passed": True, "detail": "mock-pass"}
         names = [
             # pre-gate
-            "topic_not_charity", "topic_not_gov_tool", "topic_not_investment",
-            "topic_not_finance", "topic_not_entertainment", "topic_length_valid",
+            "topic_not_charity",
+            "topic_not_gov_tool",
+            "topic_not_investment",
+            "topic_not_finance",
+            "topic_not_entertainment",
+            "topic_length_valid",
             # CW
             "content_written",
             # G0
-            "source_trace", "number_verification", "timeline", "quotes", "entities",
+            "source_trace",
+            "number_verification",
+            "timeline",
+            "quotes",
+            "entities",
             # G1
-            "overused_adverbs", "hollow_intros", "vague_subjects",
-            "filler_connectors", "long_conjunctions", "template_conclusions",
-            "overacademic_vocabulary", "absolute_assertions", "repetitive_structures",
+            "overused_adverbs",
+            "hollow_intros",
+            "vague_subjects",
+            "filler_connectors",
+            "long_conjunctions",
+            "template_conclusions",
+            "overacademic_vocabulary",
+            "absolute_assertions",
+            "repetitive_structures",
             # G2
-            "clarity", "tone", "so_what", "evidence", "specificity",
+            "clarity",
+            "tone",
+            "so_what",
+            "evidence",
+            "specificity",
             # G3
-            "brand_name_present", "cta_present", "brand_identity",
-            "blocked_words_absent", "cta_direction_sync", "bridge_sentence",
+            "brand_name_present",
+            "cta_present",
+            "brand_identity",
+            "blocked_words_absent",
+            "cta_direction_sync",
+            "bridge_sentence",
             # G4
-            "title_length", "digest_length", "no_markdown", "cover_exists",
-            "tag_count", "body_image_count", "sensitive_words",
+            "title_length",
+            "digest_length",
+            "no_markdown",
+            "cover_exists",
+            "tag_count",
+            "body_image_count",
+            "sensitive_words",
             # G5
-            "tag_integrity", "no_markdown", "tag_count",
+            "tag_integrity",
+            "no_markdown",
+            "tag_count",
             # V0
-            "lint_errors", "lint_warnings", "syntax_valid",
+            "lint_errors",
+            "lint_warnings",
+            "syntax_valid",
             # V1
-            "mid_frame_valid", "end_silence_valid", "all_entries_passed", "red_line_6",
+            "mid_frame_valid",
+            "end_silence_valid",
+            "all_entries_passed",
+            "red_line_6",
             # V2
-            "whisper_transcription", "transcription_length", "md5_integrity", "red_line_7",
+            "whisper_transcription",
+            "transcription_length",
+            "md5_integrity",
+            "red_line_7",
             # V3
-            "keyword_coverage", "source_alignment", "no_hallucination",
+            "keyword_coverage",
+            "source_alignment",
+            "no_hallucination",
             # V4
-            "voice_id_match", "speaking_rate", "voice_consistency",
+            "voice_id_match",
+            "speaking_rate",
+            "voice_consistency",
             # V5
-            "whisper_vs_srt_diff", "srt_not_empty", "whisper_not_empty",
+            "whisper_vs_srt_diff",
+            "srt_not_empty",
+            "whisper_not_empty",
             # V6
-            "subtitle_region_brightness", "subtitle_region_contrast",
-            "subtitle_visible", "red_line_5",
+            "subtitle_region_brightness",
+            "subtitle_region_contrast",
+            "subtitle_visible",
+            "red_line_5",
             # V7
-            "file_exists", "file_size_valid", "md5_verified",
-            "whisper_full", "format_valid", "duration_valid",
+            "file_exists",
+            "file_size_valid",
+            "md5_verified",
+            "whisper_full",
+            "format_valid",
+            "duration_valid",
             # L1
-            "topic_present", "content_present", "media_paths_valid",
-            "platform_valid", "version_valid", "timestamp_valid",
+            "topic_present",
+            "content_present",
+            "media_paths_valid",
+            "platform_valid",
+            "version_valid",
+            "timestamp_valid",
             # L2
-            "archive_status", "force_flag", "archive_path_exists",
-            "archive_metadata_complete", "archive_version_valid", "output_directory_exists",
+            "archive_status",
+            "force_flag",
+            "archive_path_exists",
+            "archive_metadata_complete",
+            "archive_version_valid",
+            "output_directory_exists",
             # L3
-            "all_platforms_present", "no_platform_splitting", "material_integrity",
-            "cross_platform_consistency", "format_completeness", "metadata_integrity",
+            "all_platforms_present",
+            "no_platform_splitting",
+            "material_integrity",
+            "cross_platform_consistency",
+            "format_completeness",
+            "metadata_integrity",
             # L4
-            "translation_present", "translation_complete",
+            "translation_present",
+            "translation_complete",
         ]
         return {name: dict(_p) for name in names}
 
@@ -434,10 +484,11 @@ class TestRepurposeMode:
         assert "P2" in _REPURPOSE_GATE_NAMES
         assert "P3" in _REPURPOSE_GATE_NAMES
         assert "P4" in _REPURPOSE_GATE_NAMES
-        # P-gates should appear after L gates
-        l4_idx = _REPURPOSE_GATE_NAMES.index("L4")
+        # P-gates should appear after the pipeline gates (H0 is repurpose's
+        # last non-P gate; the lifecycle gates are no longer in the preset)
+        h0_idx = _REPURPOSE_GATE_NAMES.index("H0")
         p1_idx = _REPURPOSE_GATE_NAMES.index("P1")
-        assert p1_idx > l4_idx, "P1 should come after L4 in repurpose mode"
+        assert p1_idx > h0_idx, "P1 should come after H0 in repurpose mode"
 
     def test_repurpose_mode_gates_registered(self) -> None:
         """All P-gates in repurpose mode are registered in GateRegistry."""
@@ -476,7 +527,7 @@ class TestRepurposeMode:
         ctx["lint_result"] = {"errors": 0, "warnings": 0, "syntax_ok": True}
         ctx["entries"] = []
         ctx["transcription"] = "test"
-        ctx["audio_path"] = "/tmp/test.mp3"
+        ctx["audio_path"] = "/tmp/test.mp3"  # noqa: S108 — synthetic fixture path
         ctx["source_keywords"] = ["AI", "tech"]
         ctx["content_keywords"] = ["AI", "tech"]
         ctx["source_texts"] = ["Source text"]
@@ -509,9 +560,13 @@ class TestRepurposeMode:
         }
         ctx["archive_status"] = "published"
         ctx["force"] = True
-        ctx["archive_path"] = "/tmp/archive.zip"
-        ctx["archive_metadata"] = {"title": "test", "platform": "wechat", "created_at": "2025-01-01"}
-        ctx["output_dir"] = "/tmp/output"
+        ctx["archive_path"] = "/tmp/archive.zip"  # noqa: S108 — synthetic fixture path
+        ctx["archive_metadata"] = {
+            "title": "test",
+            "platform": "wechat",
+            "created_at": "2025-01-01",
+        }
+        ctx["output_dir"] = "/tmp/output"  # noqa: S108 — synthetic fixture path
         ctx["platforms"] = ["wechat", "twitter"]
         ctx["expected_platforms"] = ["wechat", "twitter"]
         ctx["unified_content"] = "Content"

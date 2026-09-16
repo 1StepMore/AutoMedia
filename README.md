@@ -614,7 +614,7 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 | D1-D7 | 7 | Distribution gates: platform-specific standalone rewrites for WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok |
 | P1-P4 | 4 | Repurpose gates: sub-pipeline deep repurpose for WeChat, Twitter/X, Newsletter, Bilibili |
 
-**Total: 33 gates.** Gate order: pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4. D-gates invoked via `automedia distribute` CLI/MCP (not in pipeline). P-gates run at end of `repurpose` pipeline mode.
+**Total: 33 gates.** Preset order: pre-gate → CW → G0-G3 → G6 → V0-V7 → H0 (G4/G5 and L1-L4 stay registered but are in no preset; L1-L4 run via their lifecycle commands). D-gates invoked via `automedia distribute` CLI/MCP (not in pipeline). P-gates run at end of `repurpose` pipeline mode.
 
 ## Security
 

@@ -184,7 +184,7 @@ class TestExportDagEmitsFiles:
         assert md.index("CW") < md.index("G0")
         assert md.index("G0") < md.index("V0")
         assert md.index("V7") < md.index("H0")
-        assert md.index("H0") < md.index("L4")
+        assert mode_gates[-1] == "H0"  # H0 is auto's terminal gate
 
     def test_md_has_async_parallel_marker_near_v0(self, tmp_path: Path) -> None:
         """The markdown annotates V0's async-parallel fork with ``∥``."""
@@ -453,15 +453,16 @@ class TestPipelineStateTable:
         assert "md5" in result.output.lower()
 
     def test_state_groups_by_track(self, tmp_path: Path) -> None:
-        """The table is grouped by the four canonical tracks."""
+        """The auto table groups by copy/video/qa — no lifecycle rows remain."""
         proj = _create_project_with_state_history(tmp_path)
         result = runner.invoke(
             app,
             ["pipeline", "state", proj["project_id"], "--base-dir", proj["base_dir"]],
         )
         assert result.exit_code == 0
-        for track in ("copy", "video", "qa", "lifecycle"):
+        for track in ("copy", "video", "qa"):
             assert track in result.output, f"track {track!r} missing from state output"
+        assert "lifecycle" not in result.output
 
 
 class TestPipelineStateJson:

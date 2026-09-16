@@ -31,7 +31,7 @@ docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 ```
 
 ## 4. Key Architecture Decisions
-- **Gate Engine:** ordered gates with `failure_mode`: `"stop"` halts the pipeline, `"rewrite"` retries. Order: pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4. Nine modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`) select gate subsets; D-gates (D1-D7) run standalone via CLI/MCP, P-gates (P1-P4) end repurpose. See `automedia/pipelines/runner.py`.
+- **Gate Engine:** ordered gates with `failure_mode`: `"stop"` halts the pipeline, `"rewrite"` retries. Preset order: pre-gate → CW → G0-G3 → G6 → V0-V7 → H0 (G4/G5 and L1-L4 stay registered but are in no preset; L1-L4 run via their lifecycle commands). Nine modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`) select gate subsets; D-gates (D1-D7) run standalone via CLI/MCP, P-gates (P1-P4) end repurpose. See `automedia/pipelines/runner.py`.
 - **6-Layer Configuration:** built-in `defaults.yaml` → project `.automedia/` → user `~/.automedia/` → override rules → override prompts → `AUTOMEDIA_*` env vars + explicit overrides. See `automedia/core/config_loader.py`.
 - **GateHook Observer Protocol:** readonly observers; never mutate or skip gates. Lifecycle: `before_gate()`, `after_gate()`, `on_gate_failed()`; each returns `None`. See `automedia/hooks/protocol.py`.
 - **MD5 Tracking:** gates write product checksums to `pipeline_md5.json` in the project dir. See `automedia/hooks/md5_tracker.py`.

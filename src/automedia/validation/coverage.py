@@ -28,13 +28,14 @@ is supplied.
   ``src/automedia/cli/app.py`` ``register_sub_app``/``register_fn``
   registrations (17 pre-existing; the W4 ``validate`` command is counted
   automatically because the audit reads the live file).  Gates and modes
-  (issue #78) come from the pipeline source constants: ``_MODE_MAP`` keys
-  in ``src/automedia/pipelines/runner.py`` name the modes, and the
-  ``_<MODE>_GATE_NAMES`` lists it references define each mode's gate set;
-  the declared gates are the union across all mode lists plus the
-  standalone D-gates (D1-D7), whose ``_gate_name`` class attributes live in
-  ``src/automedia/gates/distribution/*.py`` (never referenced by a mode
-  list — the union must still include them, 33 gates / 9 modes).
+  (issue #78) come from a RECURSIVE STATIC SCAN, never the runtime registry:
+  modes are the ``_MODE_MAP`` keys in ``src/automedia/pipelines/runner.py``,
+  and gates are the union of that map's ``_<MODE>_GATE_NAMES`` lists with
+  every ``_gate_name`` class attribute found under
+  ``src/automedia/gates/**/*.py`` (recursive — ``distribution/`` D1-D7 and
+  ``sub_pipelines/`` P1-P4 included).  The scan is import-free and yields the
+  stable 33 gates / 9 modes even when a mode preset no longer references a
+  gate (e.g. G4/G5/L1-L4 stay registered but out of every preset).
 * ``scenario_used`` — every tool-kind ``tool:`` name and every cli-kind
   ``command:`` subcommand declared by the loaded scenarios (including
   recovery and cleanup steps: they are declared adapter calls too).  A
@@ -135,7 +136,7 @@ def coverage_audit(
     server_path: str | Path | None = None,
     app_path: str | Path | None = None,
     runner_path: str | Path | None = None,
-    distribution_path: str | Path | None = None,
+    gates_path: str | Path | None = None,
     runs_root: str | Path | None = None,
     allowlist_path: str | Path | None = None,
     today: date | None = None,
@@ -145,9 +146,9 @@ def coverage_audit(
     ``scenarios_dir`` defaults to the loader's default (env override
     ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` else repo-root ``scenarios/``);
     ``server_path``/``app_path`` default to the repo's ``mcp/server.py`` and
-    ``cli/app.py``; ``runner_path``/``distribution_path`` default to the
-    repo's ``pipelines/runner.py`` and ``gates/distribution/`` (the gate and
-    mode declared surfaces, issue #78).
+    ``cli/app.py``; ``runner_path``/``gates_path`` default to the repo's
+    ``pipelines/runner.py`` and the ``gates/`` root (the gate and mode
+    declared surfaces, issue #78).
 
     ``runs_root`` enables the evidence half: when supplied, the newest
     persisted suite run under it is read and ``covered``/``unproven``/
@@ -165,7 +166,7 @@ def coverage_audit(
     root = default_scenarios_dir() if scenarios_dir is None else Path(scenarios_dir)
     server_src = _read_declared_source(server_path, "src/automedia/mcp/server.py")
     app_src = _read_declared_source(app_path, "src/automedia/cli/app.py")
-    declared_gates, declared_modes = _declared_pipeline_surfaces(runner_path, distribution_path)
+    declared_gates, declared_modes = _declared_pipeline_surfaces(runner_path, gates_path)
 
     declared_mcp, deprecated_mcp = _declared_mcp(server_src)
     declared_cli = _declared_cli(app_src)
@@ -663,27 +664,27 @@ def _parse_mode_map(runner_src: str) -> dict[str, list[str]]:
 
 def _declared_pipeline_surfaces(
     runner_path: str | Path | None,
-    distribution_path: str | Path | None,
+    gates_path: str | Path | None,
 ) -> tuple[list[str], list[str]]:
-    """Declared gate and mode names from the pipeline source constants.
+    """Declared gate and mode names from a recursive static source scan.
 
-    Modes are the ``_MODE_MAP`` keys; gates are the union across that map's
-    per-mode lists.  D-gates (D1-D7) are standalone distribution gates never
-    referenced by a mode list, so the union is completed with the
-    ``_gate_name`` class attributes in ``src/automedia/gates/distribution/*.py``
-    — the declared set is 33 gates / 9 modes and drifts automatically with
-    the source constants (issue #78 A2).
+    Modes are the ``_MODE_MAP`` keys; gates are the union of that map's
+    per-mode lists with every ``_gate_name`` class attribute under the
+    ``gates/`` root (``rglob("*.py")``).  The recursive scan covers the
+    standalone D-gates (``distribution/`` D1-D7) and the repurpose
+    sub-pipelines (``sub_pipelines/`` P1-P4) that a mode list may not
+    reference, plus the registered-but-unpreset gates (G4/G5/L1-L4) once a
+    preset drops them — so the declared set stays 33 gates / 9 modes and
+    drifts automatically with the source constants (issue #78 A2).  The
+    registry is deliberately NOT imported: it is a process-global singleton
+    that collection-time test-gate registration would pollute.
     """
     runner_src = _read_declared_source(runner_path, "src/automedia/pipelines/runner.py")
     mode_map = _parse_mode_map(runner_src)
     gates = set().union(*mode_map.values()) if mode_map else set()
-    dist_dir = (
-        _repo_root() / "src/automedia/gates/distribution"
-        if distribution_path is None
-        else Path(distribution_path)
-    )
-    if dist_dir.is_dir():
-        for path in sorted(dist_dir.glob("*.py")):
+    gates_root = _repo_root() / "src/automedia/gates" if gates_path is None else Path(gates_path)
+    if gates_root.is_dir():
+        for path in sorted(gates_root.rglob("*.py")):
             gates.update(_GATE_NAME_ASSIGN_RE.findall(path.read_text(encoding="utf-8")))
     return sorted(gates), sorted(mode_map)
 

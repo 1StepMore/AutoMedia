@@ -45,12 +45,11 @@ import sqlite3
 import time
 from pathlib import Path
 
-from automedia.pipelines.state_view import GateState, aggregate_pipeline_state
-
 from automedia.hooks.md5_tracker import record_md5
 from automedia.hooks.pipeline_history import _db_path, _ensure_schema
 from automedia.pipelines.dag import AUTO_GATE_DAG
 from automedia.pipelines.runner import _MODE_MAP
+from automedia.pipelines.state_view import GateState, aggregate_pipeline_state
 
 PROJECT_ID = "test-proj-001"
 
@@ -278,9 +277,7 @@ class TestEmptyProject:
         project_dir_obj = tmp_path / "20260707_test-topic"
         project_dir_obj.mkdir(parents=True)
         info = {"project_id": PROJECT_ID, "topic": "Test Topic", "brand": "TestBrand"}
-        (project_dir_obj / "00_project_info.json").write_text(
-            json.dumps(info), encoding="utf-8"
-        )
+        (project_dir_obj / "00_project_info.json").write_text(json.dumps(info), encoding="utf-8")
 
         result = aggregate_pipeline_state(str(project_dir_obj), "auto")
 
@@ -319,11 +316,11 @@ class TestTrackAssignment:
     """Track comes from AUTO_GATE_DAG."""
 
     def test_track_assignment(self, tmp_path: Path) -> None:
-        """G0→copy, V1→video, L1→lifecycle, H0→qa (from AUTO_GATE_DAG)."""
+        """G0→copy, V1→video, H0→qa (auto preset; lifecycle is DAG-only now)."""
         project_dir = _create_project_with_history(
             tmp_path / "20260707_test-topic",
             PROJECT_ID,
-            [_completed("G0"), _completed("V1"), _completed("L1"), _completed("H0")],
+            [_completed("G0"), _completed("V1"), _completed("H0")],
         )
 
         result = aggregate_pipeline_state(project_dir, "auto")
@@ -331,8 +328,8 @@ class TestTrackAssignment:
         by_gate = {row.gate: row for row in result}
         assert by_gate["G0"].track == "copy"
         assert by_gate["V1"].track == "video"
-        assert by_gate["L1"].track == "lifecycle"
         assert by_gate["H0"].track == "qa"
+        assert AUTO_GATE_DAG["L1"].track == "lifecycle"
         # And it mirrors the DAG exactly for every gate in the mode.
         for row in result:
             assert row.track == AUTO_GATE_DAG[row.gate].track
@@ -394,9 +391,7 @@ class TestGateStateShape:
         explicit = aggregate_pipeline_state(project_dir, "auto")
 
         assert [row.gate for row in with_default] == [row.gate for row in explicit]
-        assert [row.status for row in with_default] == [
-            row.status for row in explicit
-        ]
+        assert [row.status for row in with_default] == [row.status for row in explicit]
 
 
 class TestMissingHistoryDb:

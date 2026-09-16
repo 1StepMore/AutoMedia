@@ -42,8 +42,6 @@ _AUTO_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
     "V0",
     "V1",
@@ -54,10 +52,6 @@ _AUTO_GATE_NAMES: list[str] = [
     "V6",
     "V7",
     "H0",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _TEXT_ONLY_GATE_NAMES: list[str] = [
@@ -79,10 +73,6 @@ _VIDEO_ONLY_GATE_NAMES: list[str] = [
     "V5",
     "V6",
     "V7",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _QA_ONLY_GATE_NAMES: list[str] = [
@@ -128,8 +118,6 @@ _SHORT_VIDEO_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
     "V0",
     "V1",
@@ -140,10 +128,6 @@ _SHORT_VIDEO_GATE_NAMES: list[str] = [
     "V6",
     "V7",
     "H0",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _REPURPOSE_GATE_NAMES: list[str] = [
@@ -153,8 +137,6 @@ _REPURPOSE_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
     "V0",
     "V1",
@@ -165,10 +147,6 @@ _REPURPOSE_GATE_NAMES: list[str] = [
     "V6",
     "V7",
     "H0",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
     "P1",
     "P2",
     "P3",

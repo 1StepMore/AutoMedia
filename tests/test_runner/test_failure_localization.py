@@ -27,26 +27,20 @@ class TestComputeAffectedDownstream:
     """The pure helper: DAG downstream closure ∩ mode gate list."""
 
     def test_affected_downstream_for_g3_in_auto(self) -> None:
-        """G3's closure restricted to auto mode = copy tail + H0 + lifecycle."""
+        """G3's closure restricted to auto mode = G6 + H0."""
         assert _compute_affected_downstream(_MODE_MAP["auto"], "G3") == [
-            "G4",
-            "G5",
             "G6",
             "H0",
-            "L1",
-            "L2",
-            "L3",
-            "L4",
         ]
 
     def test_affected_downstream_none_gate_returns_empty(self) -> None:
         """No failed gate → empty affected set."""
         assert _compute_affected_downstream(_MODE_MAP["auto"], None) == []
 
-    def test_affected_downstream_v3_includes_h0_and_lifecycle(self) -> None:
-        """V3's closure spans the video tail, H0 and lifecycle — no copy gates."""
+    def test_affected_downstream_v3_includes_h0(self) -> None:
+        """V3's closure spans the video tail and H0 — no copy gates."""
         affected = _compute_affected_downstream(_MODE_MAP["auto"], "V3")
-        assert affected == ["V4", "V5", "V6", "V7", "H0", "L1", "L2", "L3", "L4"]
+        assert affected == ["V4", "V5", "V6", "V7", "H0"]
 
     def test_affected_downstream_restricted_to_mode_list(self) -> None:
         """V3 failed in text_only: only gates present in the mode's list count.
@@ -125,7 +119,7 @@ class TestFinalizePipelineAttachesField:
             )
 
     def test_partial_result_carries_affected_downstream(self, project: MagicMock) -> None:
-        """A G3 failure in auto mode marks G4..L4 affected, NOT the video track."""
+        """A G3 failure in auto mode marks G4, G5, G6 and H0 affected, NOT video."""
         results = [
             {"passed": True, "gate": "CW", "duration_s": 0.1},
             {"passed": True, "gate": "G0", "duration_s": 0.1},
@@ -135,14 +129,8 @@ class TestFinalizePipelineAttachesField:
         assert result.status == "partial"
         assert result.error is None  # gate failure never sets error
         assert result.affected_downstream == [
-            "G4",
-            "G5",
             "G6",
             "H0",
-            "L1",
-            "L2",
-            "L3",
-            "L4",
         ]
 
     def test_success_result_has_empty_affected_downstream(self, project: MagicMock) -> None:
@@ -171,8 +159,4 @@ class TestFinalizePipelineAttachesField:
             "V6",
             "V7",
             "H0",
-            "L1",
-            "L2",
-            "L3",
-            "L4",
         ]

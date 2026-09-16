@@ -78,15 +78,63 @@ class TestModeMap:
 
     def test_auto_mode_includes_all_groups(self) -> None:
         names = _MODE_MAP["auto"]
-        # G0-G5
-        for i in range(6):
+        # G0-G3 + G6 (G4/G5 are produced by no preset any more)
+        for i in (0, 1, 2, 3, 6):
             assert f"G{i}" in names
         # V0-V7
         for i in range(8):
             assert f"V{i}" in names
-        # L1-L3
-        for i in range(1, 4):
-            assert f"L{i}" in names
+        # H0 joins the copy and video tracks
+        assert "H0" in names
+
+    def test_no_preset_contains_unproducible_gates(self) -> None:
+        """No preset carries G4/G5/L1-L4: no preset produces their inputs.
+
+        G4/G5 (WeChat checklist / HTML lint) consume assets no preset
+        produces, and L1-L4 are lifecycle gates driven by their standalone
+        publish/archive/distribute/localize commands, not by a preset.
+        """
+        banned = ("G4", "G5", "L1", "L2", "L3", "L4")
+        for mode, names in _MODE_MAP.items():
+            for gate in banned:
+                assert gate not in names, f"{gate} must not be in preset {mode!r}"
+
+    def test_video_and_p_gate_membership_pinned(self) -> None:
+        """V0-V7 / P1-P4 membership per preset is pinned to HEAD (unchanged).
+
+        This is the non-regression half of the preset realignment: the todo
+        removes G4/G5/L1-L4 only, so every V/P occurrence stays byte-identical.
+        The expected mapping is a LITERAL set (not derived from _MODE_MAP), and
+        a mode added without updating it must fail here rather than drift.
+        """
+        expected_by_mode: dict[str, tuple[str, ...]] = {
+            "auto": ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7"),
+            "text_only": (),
+            "text_with_cover": (),
+            "video_only": ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7"),
+            "qa_only": ("V1", "V6"),
+            "image-carousel": (),
+            "social-thread": (),
+            "short-video": ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7"),
+            "repurpose": (
+                "V0",
+                "V1",
+                "V2",
+                "V3",
+                "V4",
+                "V5",
+                "V6",
+                "V7",
+                "P1",
+                "P2",
+                "P3",
+                "P4",
+            ),
+        }
+        assert set(expected_by_mode) == set(_MODE_MAP)
+        for mode, expected in expected_by_mode.items():
+            present = tuple(g for g in _MODE_MAP[mode] if g[:1] in ("V", "P"))
+            assert present == expected, f"{mode}: {present} != {expected}"
 
     def test_text_only_has_no_video_gates(self) -> None:
         names = _MODE_MAP["text_only"]

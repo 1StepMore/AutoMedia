@@ -150,10 +150,14 @@ class TestDownstreamReverseTopologicalClosure:
         assert not (set(result) & _VIDEO_TRACK)
 
     def test_downstream_g3_affected_set_in_auto_mode(self) -> None:
-        """G3 failure affects the copy tail + H0 + lifecycle + repurpose, NOT video."""
+        """G3 failure affects G6 + H0 in auto mode, NOT video.
+
+        The DAG closure contains G4/G5 and the lifecycle gates, but ``auto``
+        presets none of them, so they are filtered out of the affected set.
+        """
         result = downstream(AUTO_GATE_DAG, "G3")
         affected = [g for g in result if g in _MODE_MAP["auto"]]
-        assert affected == ["G4", "G5", "G6", "H0", "L1", "L2", "L3", "L4"]
+        assert affected == ["G6", "H0"]
         assert not (set(affected) & _VIDEO_TRACK)  # V0 depends on CW, not G3
 
 

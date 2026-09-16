@@ -547,9 +547,12 @@ class TestGateModeSurfaces:
         assert result["phantom_gates"] == ["Z9"]
         assert result["phantom_modes"] == ["hologram"]
 
-    def test_declared_counts_from_real_runner_constants(self, tmp_path: Path) -> None:
-        """33 gates / 9 modes from the REAL runner.py + distribution sources
-        (empty synthetic library: used = ∅, everything missing)."""
+    def test_declared_counts_from_recursive_static_scan(self, tmp_path: Path) -> None:
+        """33 gates / 9 modes from the REAL runner.py + recursive
+        ``gates/**/*.py`` static scan (empty synthetic library: used = ∅,
+        everything missing).  The scan is import-free — it must not consult
+        the process-global GateRegistry (collection-time test gates would
+        inflate it)."""
         result = _audit(tmp_path, {})
         summary = result["summary"]
         assert summary["gates_declared"] == 33
