@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates.base import BaseGate, _registry
-from automedia.gates.publish_log_schema import _CHECK_NAMES, L1PublishLogSchema
+from automedia.gates.publish_log_schema import (
+    _CHECK_NAMES,
+    PUBLISH_PLATFORMS,
+    L1PublishLogSchema,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -180,12 +184,81 @@ class TestL1RealLogic:
                 "topic": "Topic",
                 "content": "Content",
                 "media_paths": [],
-                "platform": "linkedin",
+                "platform": "not_a_platform",
             }
         )
         result = L1PublishLogSchema().execute(ctx)
         pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
         assert pv["passed"] is False
+
+    def test_widened_enum_accepts_zhihu(self) -> None:
+        """zhihu (outside the old 7-value enum) is now a valid platform."""
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "zhihu",
+            }
+        )
+        result = L1PublishLogSchema().execute(ctx)
+        pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
+        assert pv["passed"] is True
+
+    def test_widened_enum_accepts_linkedin(self) -> None:
+        """linkedin (the old invalid example) is now a valid platform."""
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "linkedin",
+            }
+        )
+        result = L1PublishLogSchema().execute(ctx)
+        pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
+        assert pv["passed"] is True
+
+    def test_feishu_notifier_is_not_a_publish_target(self) -> None:
+        """The feishu notifier is a registered adapter but NOT a publish target."""
+        ctx = _make_context(
+            publish_log={
+                "topic": "Topic",
+                "content": "Content",
+                "media_paths": [],
+                "platform": "feishu",
+            }
+        )
+        result = L1PublishLogSchema().execute(ctx)
+        pv = next(c for c in result["checks"] if c["name"] == "platform_valid")
+        assert pv["passed"] is False
+
+    def test_publish_platform_constant_is_the_exact_19_target_set(self) -> None:
+        """The static literal contains exactly the 19 publish platforms, no feishu."""
+        expected = {
+            "wechat",
+            "zhihu",
+            "youtube",
+            "twitter",
+            "reddit",
+            "tiktok",
+            "facebook",
+            "instagram",
+            "linkedin",
+            "medium",
+            "wordpress",
+            "douyin",
+            "kuaishou",
+            "baijiahao",
+            "bilibili",
+            "weibo",
+            "toutiao",
+            "juejin",
+            "xiaohongshu",
+        }
+        assert set(PUBLISH_PLATFORMS) == expected
+        assert len(PUBLISH_PLATFORMS) == 19
+        assert "feishu" not in PUBLISH_PLATFORMS
 
     def test_media_paths_not_a_list_fails(self) -> None:
         """media_paths being a non-list fails media_paths_valid."""

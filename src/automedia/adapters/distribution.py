@@ -112,12 +112,13 @@ def distribute_to_platforms(
 
     # --- Resolve target platforms -----------------------------------------
     from automedia.adapters.registry import AdapterRegistry
+    from automedia.gates.publish_log_wiring import PUBLISH_PLATFORM_SET
 
     registered = AdapterRegistry.list()
 
-    target_platforms: list[str] = []
+    desired_platforms: list[str] = []
     if all_platforms:
-        target_platforms = list(registered)
+        desired_platforms = list(registered)
     elif platforms:
         # Validate that requested platforms are registered
         unknown = [p for p in platforms if p not in registered]
@@ -131,7 +132,7 @@ def distribute_to_platforms(
                     "registered": registered,
                 },
             }
-        target_platforms = list(platforms)
+        desired_platforms = list(platforms)
     else:
         # No platforms specified and all_platforms is False
         return {
@@ -140,6 +141,10 @@ def distribute_to_platforms(
             "dry_run": dry_run,
             "error": "No target platforms",
         }
+
+    # Intersect with the publish-platform constant so non-publish adapters
+    # (the feishu notifier) are never treated as publish targets.
+    target_platforms = [p for p in desired_platforms if p in PUBLISH_PLATFORM_SET]
 
     if not artifact_dir:
         return {
@@ -175,6 +180,25 @@ def distribute_to_platforms(
         }
 
     # --- Actual publish via PublishEngine ----------------------------------
+    from automedia.gates.publish_log_wiring import (
+        PublishLogGateError,
+        prepare_publish_log,
+    )
+
+    try:
+        prepare_publish_log(
+            artifact_dir=artifact_dir,
+            topic=str(proj.get("topic", "")),
+            declared_platforms=target_platforms,
+        )
+    except PublishLogGateError as exc:
+        return {
+            "platforms": {},
+            "summary": str(exc),
+            "dry_run": False,
+            "error": str(exc),
+        }
+
     engine = PublishEngine()
     try:
         raw_results = engine.publish_all(

@@ -84,18 +84,37 @@ def publish_content(
         from automedia.manifests.brand_profile_schema import load_brand_profiles
 
         automation: dict[str, str] | None = None
+        declared_platforms: list[str] | None = None
         brand_name = proj.get("brand", "")
         if brand_name:
             profiles = load_brand_profiles()
             profile = profiles.get(brand_name)
             if profile is not None:
                 automation = dict(profile.automation) if profile.automation else {}
+                declared_platforms = list(profile.platforms) if profile.platforms else None
 
         # mode="publish" overrides review → auto for the target platform
         if mode == "publish":
             if automation is None:
                 automation = {}
             automation[platform] = "auto"
+
+        from automedia.gates.publish_log_wiring import (
+            PublishLogGateError,
+            prepare_publish_log,
+        )
+
+        try:
+            prepare_publish_log(
+                artifact_dir=artifact_dir,
+                topic=str(proj.get("topic", "")),
+                declared_platforms=declared_platforms,
+            )
+        except PublishLogGateError as exc:
+            return {
+                "published": False,
+                **error_response(MCPErrorCode.GATE_FAILURE, str(exc)),
+            }
 
         engine = PublishEngine()
         account_ids = [account_id] if account_id else None

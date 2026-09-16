@@ -87,12 +87,19 @@ def _publish_to_platform(
         Publish result dict from the adapter.
     """
     from automedia.adapters.publish_engine import PublishEngine
+    from automedia.gates.publish_log_wiring import prepare_publish_log
 
     project: dict[str, Any] = {
         "project_id": project_id,
         "topic": topic,
         "brand": brand,
     }
+
+    prepare_publish_log(
+        artifact_dir=artifact_dir,
+        topic=topic,
+        declared_platforms=[platform],
+    )
 
     engine = PublishEngine()
     results = engine.publish_all(
@@ -129,12 +136,22 @@ def _publish_to_all_platforms(
         Mapping of platform name -> publish result dict.
     """
     from automedia.adapters.publish_engine import PublishEngine
+    from automedia.gates.publish_log_wiring import (
+        brand_declared_platforms,
+        prepare_publish_log,
+    )
 
     project: dict[str, Any] = {
         "project_id": project_id,
         "topic": topic,
         "brand": brand,
     }
+
+    prepare_publish_log(
+        artifact_dir=artifact_dir,
+        topic=topic,
+        declared_platforms=brand_declared_platforms(brand),
+    )
 
     engine = PublishEngine()
     return engine.publish_all(
@@ -215,7 +232,8 @@ def run_scheduled_pipeline(
         return {"status": "failed", "error": msg}
 
     if topic is None:
-        msg = "No pending topic available for schedule" + (f" (category={category})" if category else "")
+        suffix = f" (category={category})" if category else ""
+        msg = "No pending topic available for schedule" + suffix
         log.warning("cron.runner.no_topic", name=name, category=category)
         return {"status": "failed", "error": msg}
 

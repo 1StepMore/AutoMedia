@@ -10,11 +10,11 @@ All tests use mocked external dependencies — no real API calls or file writes.
 
 from __future__ import annotations
 
-import json
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -29,10 +29,19 @@ _SAMPLE_PROJECT: dict[str, Any] = {
     "topic": "AI technology trends 2025",
     "brand": "TestBrand",
     "mode": "auto",
-    "_dir": "/tmp/projects/test-project",
+    "_dir": "test-project",
 }
 
 _FAKE_REGISTERED_PLATFORMS: list[str] = ["wechat", "zhihu", "twitter", "xiaohongshu"]
+
+
+def _sample_project_with_content(base: Path) -> dict[str, Any]:
+    """Materialize ``_SAMPLE_PROJECT`` on disk with a draft so L1 passes."""
+    proj_dir = base / "test-project"
+    drafts = proj_dir / "01_content" / "drafts"
+    drafts.mkdir(parents=True)
+    (drafts / "draft.md").write_text("# Title\n\nBody text", encoding="utf-8")
+    return {**_SAMPLE_PROJECT, "_dir": str(proj_dir)}
 
 
 class _FakeAdapter:
@@ -94,7 +103,7 @@ class TestDistributeToPlatforms:
                 def validate(self, artifact_dir: str) -> bool:
                     return True
 
-            AdapterRegistry.register(_TestAdapter)
+            AdapterRegistry.register(_TestAdapter)  # type: ignore[arg-type]
 
     def _teardown_adapter_mocks(self) -> None:
         """Clean up registered test adapters."""
@@ -127,7 +136,9 @@ class TestDistributeToPlatforms:
         assert result["dry_run"] is True
         assert len(result["platforms"]) == len(_FAKE_REGISTERED_PLATFORMS)
         for platform, status in result["platforms"].items():
-            assert status in ("would_succeed", "would_fail"), f"Unexpected status for {platform}: {status}"
+            assert status in ("would_succeed", "would_fail"), (
+                f"Unexpected status for {platform}: {status}"
+            )
         assert result["summary"].startswith(f"{len(_FAKE_REGISTERED_PLATFORMS)}/")
         assert "would succeed" in result["summary"]
 
@@ -155,7 +166,7 @@ class TestDistributeToPlatforms:
         for status in result["platforms"].values():
             assert status == "would_succeed"
 
-    def test_publish_all_platforms_with_mocked_engine(self) -> None:
+    def test_publish_all_platforms_with_mocked_engine(self, tmp_path: Path) -> None:
         """Publish to all platforms with mocked PublishEngine returns success."""
         from automedia.adapters.distribution import distribute_to_platforms
 
@@ -164,7 +175,7 @@ class TestDistributeToPlatforms:
             with (
                 patch(
                     "automedia.adapters.distribution._discover_projects",
-                    return_value=[_SAMPLE_PROJECT],
+                    return_value=[_sample_project_with_content(tmp_path)],
                 ),
                 patch(
                     "automedia.adapters.distribution.PublishEngine.publish_all",
@@ -189,7 +200,7 @@ class TestDistributeToPlatforms:
             assert status == "success", f"Platform {platform} failed: {status}"
         assert "succeeded" in result["summary"]
 
-    def test_publish_partial_failure(self) -> None:
+    def test_publish_partial_failure(self, tmp_path: Path) -> None:
         """Partial publish failure returns mixed statuses."""
         from automedia.adapters.distribution import distribute_to_platforms
 
@@ -198,7 +209,7 @@ class TestDistributeToPlatforms:
             with (
                 patch(
                     "automedia.adapters.distribution._discover_projects",
-                    return_value=[_SAMPLE_PROJECT],
+                    return_value=[_sample_project_with_content(tmp_path)],
                 ),
                 patch(
                     "automedia.adapters.distribution.PublishEngine.publish_all",
@@ -244,7 +255,9 @@ class TestDistributeToPlatforms:
         finally:
             self._teardown_adapter_mocks()
 
-        assert result["summary"] == "No platforms specified. Provide a platform list or set all=True."
+        assert result["summary"] == (
+            "No platforms specified. Provide a platform list or set all=True."
+        )
         assert "error" in result
 
     def test_project_not_found(self) -> None:
@@ -284,7 +297,7 @@ class TestDistributeToPlatforms:
         assert "Unknown platforms" in result["summary"]
         assert "error" in result
 
-    def test_engine_publish_error(self) -> None:
+    def test_engine_publish_error(self, tmp_path: Path) -> None:
         """PublishEngine raises exception -> all platforms show failed."""
         from automedia.adapters.distribution import distribute_to_platforms
 
@@ -293,7 +306,7 @@ class TestDistributeToPlatforms:
             with (
                 patch(
                     "automedia.adapters.distribution._discover_projects",
-                    return_value=[_SAMPLE_PROJECT],
+                    return_value=[_sample_project_with_content(tmp_path)],
                 ),
                 patch(
                     "automedia.adapters.distribution.PublishEngine.publish_all",
@@ -322,7 +335,8 @@ class TestDistributeContentMCP:
     """Verify ``distribute_content`` MCP tool parameter validation and delegation.
 
     ``distribute_to_platforms`` is lazily imported inside ``distribute_content()``,
-    so we patch it at its definition site: ``automedia.adapters.distribution.distribute_to_platforms``.
+    so we patch it at its definition site:
+    ``automedia.adapters.distribution.distribute_to_platforms``.
     """
 
     def test_mcp_valid_params_delegates(self) -> None:
@@ -442,7 +456,7 @@ class TestCronScheduleLifecycle:
     """
 
     @pytest.fixture()
-    def temp_jobs_yaml(self) -> Generator[Path, None, None]:
+    def temp_jobs_yaml(self) -> Iterator[Path]:
         """Create a temporary jobs.yaml for testing."""
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -518,49 +532,53 @@ class TestCronScheduleLifecycle:
 
     def test_list_schedules(self, temp_jobs_yaml: Path) -> None:
         """List schedules filtered by project ID prefix."""
-        self._write_schedules(temp_jobs_yaml, [
-            {
-                "name": "distribute-a1b2c3d4e5f6",
-                "expression": "0 8 * * *",
-                "command": "automedia distribute a1b2c3d4e5f6 --platforms wechat",
-                "project_id": "a1b2c3d4e5f6",
-                "platforms": "wechat",
-            },
-            {
-                "name": "distribute-zzzzzzzzzzzz",
-                "expression": "0 9 * * *",
-                "command": "automedia distribute zzzzzzzzzzzz --platforms zhihu",
-                "project_id": "zzzzzzzzzzzz",
-                "platforms": "zhihu",
-            },
-        ])
+        self._write_schedules(
+            temp_jobs_yaml,
+            [
+                {
+                    "name": "distribute-a1b2c3d4e5f6",
+                    "expression": "0 8 * * *",
+                    "command": "automedia distribute a1b2c3d4e5f6 --platforms wechat",
+                    "project_id": "a1b2c3d4e5f6",
+                    "platforms": "wechat",
+                },
+                {
+                    "name": "distribute-zzzzzzzzzzzz",
+                    "expression": "0 9 * * *",
+                    "command": "automedia distribute zzzzzzzzzzzz --platforms zhihu",
+                    "project_id": "zzzzzzzzzzzz",
+                    "platforms": "zhihu",
+                },
+            ],
+        )
 
         all_schedules = self._read_schedules(temp_jobs_yaml)
         project_schedules = [
-            s for s in all_schedules
-            if s.get("name", "").startswith("distribute-a1b2c3d4e5f6")
+            s for s in all_schedules if s.get("name", "").startswith("distribute-a1b2c3d4e5f6")
         ]
 
         assert len(project_schedules) == 1
         assert project_schedules[0]["project_id"] == "a1b2c3d4e5f6"
 
         other_schedules = [
-            s for s in all_schedules
-            if s.get("name", "").startswith("distribute-zzzzzzzzzzzz")
+            s for s in all_schedules if s.get("name", "").startswith("distribute-zzzzzzzzzzzz")
         ]
         assert len(other_schedules) == 1
 
     def test_remove_schedule(self, temp_jobs_yaml: Path) -> None:
         """Remove a cron schedule entry."""
-        self._write_schedules(temp_jobs_yaml, [
-            {
-                "name": "distribute-a1b2c3d4e5f6",
-                "expression": "0 8 * * *",
-                "command": "automedia distribute a1b2c3d4e5f6 --platforms wechat",
-                "project_id": "a1b2c3d4e5f6",
-                "platforms": "wechat",
-            },
-        ])
+        self._write_schedules(
+            temp_jobs_yaml,
+            [
+                {
+                    "name": "distribute-a1b2c3d4e5f6",
+                    "expression": "0 8 * * *",
+                    "command": "automedia distribute a1b2c3d4e5f6 --platforms wechat",
+                    "project_id": "a1b2c3d4e5f6",
+                    "platforms": "wechat",
+                },
+            ],
+        )
         assert len(self._read_schedules(temp_jobs_yaml)) == 1
 
         all_schedules = self._read_schedules(temp_jobs_yaml)

@@ -22,6 +22,37 @@ log = get_logger(__name__)
 # JSON Schema for publish_log
 # ---------------------------------------------------------------------------
 
+#: Every registered PUBLISH platform — the 11 real-automation adapters plus the
+#: 8 manual-stub adapters (see ``automedia/adapters/platforms/``), EXCLUDING the
+#: ``feishu`` notifier, which is a registered adapter but not a publish target.
+#:
+#: This is a STATIC LITERAL on purpose: ``AdapterRegistry`` is only populated
+#: once ``automedia.adapters`` is imported, so deriving the enum at import time
+#: would yield an empty enum and block every publish.
+PUBLISH_PLATFORMS: tuple[str, ...] = (
+    "wechat",
+    "zhihu",
+    "youtube",
+    "twitter",
+    "reddit",
+    "tiktok",
+    "facebook",
+    "instagram",
+    "linkedin",
+    "medium",
+    "wordpress",
+    "douyin",
+    "kuaishou",
+    "baijiahao",
+    "bilibili",
+    "weibo",
+    "toutiao",
+    "juejin",
+    "xiaohongshu",
+)
+
+PUBLISH_PLATFORM_SET: frozenset[str] = frozenset(PUBLISH_PLATFORMS)
+
 _PUBLISH_LOG_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["topic", "content", "media_paths", "platform"],
@@ -31,15 +62,7 @@ _PUBLISH_LOG_SCHEMA: dict[str, Any] = {
         "media_paths": {"type": "array", "items": {"type": "string"}},
         "platform": {
             "type": "string",
-            "enum": [
-                "wechat",
-                "weibo",
-                "douyin",
-                "bilibili",
-                "xiaohongshu",
-                "youtube",
-                "twitter",
-            ],
+            "enum": list(PUBLISH_PLATFORMS),
         },
         "version": {"type": "string"},
         "created_at": {"type": "string"},
