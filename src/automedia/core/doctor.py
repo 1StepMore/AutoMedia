@@ -31,6 +31,11 @@ _DEPENDENCIES: list[dict[str, Any]] = [
 
 logger = structlog.get_logger(__name__)
 
+# Bounded LLM probe: cap the whole probe so a hanging provider cannot block
+# ``automedia doctor`` for the SDK's default multi-retry × 600 s timeout.
+_LLM_PROBE_TIMEOUT_S = 15.0
+_LLM_PROBE_MAX_ATTEMPTS = 1
+
 # ---------------------------------------------------------------------------
 # OS-specific install instructions
 # ---------------------------------------------------------------------------
@@ -190,17 +195,38 @@ class Doctor:
         Gracefully degrades when the ``openai`` package is not installed.
         Returns ``(installed, version)`` where *version* is a human-readable
         status message or error detail.
+
+        The probe is bounded: each provider spec gets a single attempt with a
+        ``_LLM_PROBE_TIMEOUT_S`` timeout, so a blackholing host cannot hang the
+        whole ``doctor`` run.  Fake-LLM mode is resolved from the *same* merged
+        config the probe would use (env var OR ``llm.fake_mode``), and is
+        reported as not-reachable rather than a false-positive "API reachable".
         """
         try:
-            from automedia.core.llm_client import llm_complete
+            from automedia.core.llm_client import _is_fake_mode, llm_complete
         except ImportError:
             return False, "openai package not installed"
+
+        from automedia.core.config_loader import load_config
+
+        try:
+            config = load_config()
+        except Exception as exc:
+            msg = str(exc).strip()
+            if len(msg) > 120:
+                msg = msg[:117] + "..."
+            return False, msg or "config load failed"
+
+        if _is_fake_mode(config):
+            return False, "fake LLM mode active — provider API not contacted"
 
         try:
             llm_complete(
                 prompt="Reply with exactly 'OK'.",
                 max_tokens=10,
                 temperature=0.0,
+                timeout=_LLM_PROBE_TIMEOUT_S,
+                max_attempts=_LLM_PROBE_MAX_ATTEMPTS,
             )
             return True, "API reachable"
         except Exception as exc:

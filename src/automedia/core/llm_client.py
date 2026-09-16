@@ -438,6 +438,7 @@ def _llm_chat_completion_with_retry(
     temperature: float,
     max_tokens: int,
     response_format: dict[str, str] | None = None,
+    max_attempts: int = 3,
 ) -> ChatCompletion:
     """Call ``client.chat.completions.create`` with exponential-backoff retry.
 
@@ -453,10 +454,14 @@ def _llm_chat_completion_with_retry(
         Optional ``response_format`` dict (e.g. ``{"type": "json_object"}``)
         passed to the provider.  Structured-output fallback paths use this to
         nudge providers that accept ``json_object`` mode.
+    max_attempts:
+        Total number of calls to ``create`` per provider, including the first.
+        Callers that need a hard wall-clock bound (the bounded doctor probe)
+        pass ``1`` so a hanging host cannot consume ``max_attempts`` timeouts.
     """
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(max_attempts),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type(_RETRYABLE_ERRORS),
         reraise=True,
@@ -870,6 +875,8 @@ def llm_complete(
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
+    timeout: float | None = None,
+    max_attempts: int = 3,
 ) -> str:
     """Send a chat-completion request and return the response text.
 
@@ -892,6 +899,17 @@ def llm_complete(
         Config section under ``llm`` to read (e.g. ``text_generation``,
         ``vision``, ``subtitle_proofread``).  Defaults to
         ``text_generation``.
+    timeout:
+        Optional per-request timeout in seconds.  When *None* (the default)
+        the OpenAI SDK's own default timeout is left untouched — passing
+        ``None`` to ``with_options`` would *disable* that default, so
+        ``with_options`` is only called when a value is supplied.  When set,
+        the SDK's transparent retries are also disabled so the timeout bounds
+        the entire call, not each internal attempt.
+    max_attempts:
+        Total attempts per provider spec for transient errors
+        (default 3).  Pass ``1`` for a hard wall-clock bound; the walk over
+        the provider-spec chain still continues to the next spec on failure.
 
     Returns
     -------
@@ -930,6 +948,11 @@ def llm_complete(
         spec_provider: str = spec.get("provider", "openai") or "openai"
         try:
             client = _build_client(config, task_type=task_type, provider_spec=spec)
+            if timeout is not None:
+                # Bound the entire request.  ``max_retries=0`` disables the
+                # SDK's own transparent retries (default 2); without it a 15s
+                # socket timeout still costs up to 3x as the SDK retries.
+                client = client.with_options(timeout=timeout, max_retries=0)
             resolved_model: str = model or spec.get("model", "")
             if not resolved_model:
                 raise LLMError(
@@ -949,6 +972,7 @@ def llm_complete(
                 messages=messages,
                 temperature=resolved_temp,
                 max_tokens=resolved_max,
+                max_attempts=max_attempts,
             )
             choice = response.choices[0]
             content: str = choice.message.content or ""
