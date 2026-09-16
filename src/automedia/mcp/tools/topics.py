@@ -139,6 +139,48 @@ def _fetch_tavily_trending(category: str) -> str:
     return "\n".join(lines) if lines else ""
 
 
+def _persist_researched_topics(topics: list[dict[str, Any]], category: str) -> int:
+    """Insert researched topics into the default pool, deduped by title.
+
+    Mirrors the CLI's ``pool-collect`` insert pattern (``cli/commands/cron.py``):
+    a :class:`TopicDeduplicator` skips any title similar to one already in the
+    pool, and each newly inserted title is appended to the in-batch comparison
+    set so duplicates *within* one response are skipped too.
+
+    Returns
+    -------
+    int
+        Number of rows actually inserted (duplicates skipped).
+    """
+    from automedia.pool.db import PoolDB, default_pool_path
+    from automedia.pool.dedup import TopicDeduplicator
+
+    db = PoolDB(default_pool_path())
+    try:
+        dedup = TopicDeduplicator()
+        existing_titles = [str(t.get("title", "")) for t in db.list_topics()]
+        inserted = 0
+        for topic in topics:
+            title = str(topic.get("title", "")).strip()
+            if not title or dedup.is_duplicate(title, existing_titles):
+                continue
+            raw_score = topic.get("confidence_score", 0.0)
+            db.add_topic(
+                {
+                    "title": title,
+                    "category": str(topic.get("category", "") or category),
+                    "source": "research_topics",
+                    "score": float(raw_score) if isinstance(raw_score, (int, float)) else 0.0,
+                    "status": "pending",
+                }
+            )
+            existing_titles.append(title)
+            inserted += 1
+        return inserted
+    finally:
+        db.close()
+
+
 def research_topics(
     category: str,
     count: int = 5,
@@ -206,7 +248,9 @@ def research_topics(
             prompt,
             response_format=TopicResearchOutput,
         )
-        return success_response(result.model_dump())
+        payload = result.model_dump()
+        payload["persisted"] = _persist_researched_topics(payload.get("topics", []), category)
+        return success_response(payload)
     except LLMError as exc:
         return {
             "topics": [],
