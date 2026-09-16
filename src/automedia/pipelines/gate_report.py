@@ -49,6 +49,11 @@ _VERDICT_MAP: dict[str, str] = {
     "error": "review",
 }
 
+#: Per-check remediation keys produced by
+#: :func:`automedia.gates._result._enrich_failing_checks` (failing checks
+#: only).  Preserved verbatim when present; never synthesized in this module.
+_CHECK_REMEDIATION_KEYS = ("check_name", "actual_value", "threshold", "suggestion")
+
 
 class GateReportRow(TypedDict, total=False):
     """One per-gate row in the report (JSON-serializable)."""
@@ -140,15 +145,23 @@ def _build_row(
         # Per-check detail where present (live in-memory result dicts only).
         checks = result.get("checks")
         if isinstance(checks, list):
-            row["checks"] = [
-                {
+            normalized: list[dict[str, Any]] = []
+            for c in checks:
+                if not isinstance(c, dict):
+                    continue
+                check: dict[str, Any] = {
                     "name": c.get("name", ""),
                     "passed": bool(c.get("passed", False)),
                     "detail": c.get("detail", ""),
                 }
-                for c in checks
-                if isinstance(c, dict)
-            ]
+                # Keep the remediation fields already derived for failing
+                # checks (suggestion/threshold/actual_value/check_name).
+                # Passing checks carry none, so none are invented here.
+                for key in _CHECK_REMEDIATION_KEYS:
+                    if key in c:
+                        check[key] = c[key]
+                normalized.append(check)
+            row["checks"] = normalized
         eva = result.get("expected_vs_actual")
         if isinstance(eva, dict) and eva:
             row["expected_vs_actual"] = eva
