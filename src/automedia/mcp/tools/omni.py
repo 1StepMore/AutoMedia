@@ -145,12 +145,14 @@ def localize_content(
 def localize_output(
     project_dir: str,
     target_langs: str,
+    source_lang: str = "",
 ) -> dict[str, Any]:
     """Translate all project drafts into multiple target languages.
 
     Reads markdown files from ``01_content/drafts/``, translates each into
     every target language via OLAdapter, writes to ``05_publish/{lang}/``,
-    and returns a mapping of language → output file paths.
+    and returns a mapping of language → output file paths plus the recorded
+    L4 translation-quality verdicts.
 
     Parameters
     ----------
@@ -158,30 +160,47 @@ def localize_output(
         Path to the project root directory.
     target_langs:
         Comma-separated language codes (e.g. ``"en,ja"``).
+    source_lang:
+        Source language code. Defaults to the merged config's
+        ``content.default_language`` (``zh``); the literal ``"auto"`` is never
+        passed to ``OLAdapter.translate`` or the L4 gate.
 
     Returns
     -------
     dict
-        ``{"project_dir": str, "results": {lang: [file_path, ...]}, "warnings": [...]}``
+        ``{"project_dir": str, "results": {lang: [file_path, ...]},
+        "source_lang": str, "l4_verdicts": [...], "warnings": [...]}``
         or error dict.
+
+    Notes
+    -----
+    L4 is **ADVISORY** in this integration.  The gate declares
+    ``_failure_mode = "stop"``, but here its verdict is only recorded in
+    ``l4_verdicts`` (with ``"failure_mode": "advisory"``) and appended to
+    ``warnings`` — a failing or crashing L4 never blocks or aborts translation.
     """
     try:
         _require_allowed(project_dir, tool_name="localize_output")
         from pathlib import Path
 
-        from automedia.omni.ol_adapter import OLAdapter
+        from automedia.gates.translation_quality import L4TranslationQuality
+        from automedia.omni.ol_adapter import OLAdapter, resolve_source_lang
 
+        effective_source_lang = resolve_source_lang(source_lang)
         proj = Path(project_dir)
         drafts_dir = proj / "01_content" / "drafts"
 
         results: dict[str, list[str]] = {}
         warnings: list[str] = []
+        l4_verdicts: list[dict[str, Any]] = []
 
         if not drafts_dir.is_dir():
             return success_response(
                 {
                     "project_dir": project_dir,
                     "results": results,
+                    "source_lang": effective_source_lang,
+                    "l4_verdicts": l4_verdicts,
                     "warnings": [f"Drafts directory not found: {drafts_dir}"],
                 }
             )
@@ -192,6 +211,8 @@ def localize_output(
                 {
                     "project_dir": project_dir,
                     "results": results,
+                    "source_lang": effective_source_lang,
+                    "l4_verdicts": l4_verdicts,
                     "warnings": ["No target languages specified"],
                 }
             )
@@ -202,6 +223,8 @@ def localize_output(
                 {
                     "project_dir": project_dir,
                     "results": results,
+                    "source_lang": effective_source_lang,
+                    "l4_verdicts": l4_verdicts,
                     "warnings": [f"No markdown files found in {drafts_dir}"],
                 }
             )
@@ -214,22 +237,60 @@ def localize_output(
                 try:
                     trans_result = adapter.translate(
                         md_content=content,
-                        source_lang="auto",
+                        source_lang=effective_source_lang,
                         target_lang=lang,
                     )
+                except Exception as exc:
+                    # Per-file catch-all: one file failure doesn't stop other translations
+                    warnings.append(f"Translation failed for {md_file.name} \u2192 {lang}: {exc}")
+                    continue
+
+                # L4 translation quality — ADVISORY by decision (see docstring).
+                verdict: dict[str, Any] = {
+                    "file": md_file.name,
+                    "target_lang": lang,
+                    "passed": False,
+                    "failure_mode": "advisory",
+                    "failures": [],
+                    "warnings": [],
+                }
+                try:
+                    l4_result = L4TranslationQuality().execute(
+                        {
+                            "translation_result": trans_result,
+                            "source_lang": effective_source_lang,
+                            "target_lang": lang,
+                        }
+                    )
+                    verdict["passed"] = bool(l4_result.get("passed", False))
+                    verdict["failures"] = list(l4_result.get("failures", []))
+                    verdict["warnings"] = list(l4_result.get("warnings", []))
+                except Exception as exc:  # advisory — a gate crash must not abort
+                    verdict["failures"] = [f"L4 gate error: {exc}"]
+                l4_verdicts.append(verdict)
+                if not verdict["passed"]:
+                    issues = [*verdict["failures"], *verdict["warnings"]]
+                    warnings.append(
+                        f"L4 quality gate (advisory) {md_file.name} → {lang}: "
+                        + "; ".join(str(issue) for issue in issues)
+                    )
+
+                try:
                     publish_dir = proj / "05_publish" / lang
                     publish_dir.mkdir(parents=True, exist_ok=True)
                     output_file = publish_dir / md_file.name
                     output_file.write_text(trans_result.translated_md, encoding="utf-8")
-                    results.setdefault(lang, []).append(str(output_file))
-                except Exception as exc:
-                    # Per-file catch-all: one file failure doesn't stop other translations
-                    warnings.append(f"Translation failed for {md_file.name} \u2192 {lang}: {exc}")
+                except OSError as exc:
+                    warnings.append(f"Write failed for {md_file.name} → {lang}: {exc}")
+                    continue
+                results.setdefault(lang, []).append(str(output_file))
 
         return success_response(
             {
                 "project_dir": project_dir,
                 "results": results,
+                "source_lang": effective_source_lang,
+                "l4_verdicts": l4_verdicts,
                 "warnings": warnings,
             }
         )

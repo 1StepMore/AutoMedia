@@ -149,16 +149,29 @@ def omni_localize(
     target_langs: str = typer.Option(
         ..., "--target-langs", help="Comma-separated target language codes, e.g. en,ja,zh-CN."
     ),
+    source_lang: str = typer.Option(
+        "",
+        "--source-lang",
+        help=(
+            "Source language code. Defaults to content.default_language (zh). "
+            "'auto' resolves to the configured default."
+        ),
+    ),
 ) -> None:
     """Translate project markdown content into one or more target languages.
 
     Reads markdown files from ``01_content/drafts/``, translates each into
     every specified target language via OLAdapter, and writes the translated
     files into ``05_publish/{lang}/``.
+
+    ``--source-lang`` defaults to the merged config's ``content.default_language``
+    (``zh``); the literal ``"auto"`` is never passed to ``OLAdapter.translate``
+    or the L4 gate.  L4 is ADVISORY here: a failing verdict is reported as a
+    warning and never aborts the localisation.
     """
     from automedia.gates.translation_quality import L4TranslationQuality
     from automedia.omni.artifact_mapping import ol_output_path
-    from automedia.omni.ol_adapter import OLAdapter
+    from automedia.omni.ol_adapter import OLAdapter, resolve_source_lang
 
     project_dir = Path(project)
     drafts_dir = project_dir / "01_content" / "drafts"
@@ -174,6 +187,7 @@ def omni_localize(
     if not md_files:
         output_error(f"No markdown files found in {drafts_dir}")
 
+    effective_source_lang = resolve_source_lang(source_lang)
     adapter = OLAdapter()
     produced: list[Path] = []
     warnings_list: list[str] = []
@@ -184,7 +198,7 @@ def omni_localize(
             try:
                 result = adapter.translate(
                     md_content=content,
-                    source_lang="auto",
+                    source_lang=effective_source_lang,
                     target_lang=lang,
                 )
             except Exception as exc:
@@ -194,12 +208,13 @@ def omni_localize(
                 warnings_list.append(msg)
                 continue
 
-            # L4 Translation Quality gate (non-blocking warning only)
+            # L4 Translation Quality gate — ADVISORY by decision: a failing
+            # verdict is reported as a warning and never aborts localisation.
             gate = L4TranslationQuality()
             gate_result = gate.execute(
                 {
                     "translation_result": result,
-                    "source_lang": "auto",
+                    "source_lang": effective_source_lang,
                     "target_lang": lang,
                 }
             )

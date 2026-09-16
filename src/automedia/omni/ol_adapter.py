@@ -23,6 +23,28 @@ class TranslationResult:
     warnings: list[str] = field(default_factory=list)
 
 
+def resolve_source_lang(source_lang: str = "") -> str:
+    """Resolve the effective OL source language for translation and L4.
+
+    Returns *source_lang* when it is a real language code; otherwise the merged
+    config's ``content.default_language`` (``"zh"`` by default).  The literal
+    sentinel ``"auto"`` is always resolved to the configured default: L4
+    compares the expected ``source_lang`` against the frontmatter's real value,
+    so the sentinel can never match and must never reach the gate or
+    ``OLAdapter.translate``.
+    """
+    candidate = source_lang.strip()
+    if candidate and candidate.lower() != "auto":
+        return candidate
+
+    from automedia.core.config_loader import load_config
+
+    configured = str(load_config().get("content", {}).get("default_language", "")).strip()
+    if not configured or configured.lower() == "auto":
+        return "zh"
+    return configured
+
+
 class OLAdapter(BaseOmniAdapter):
     config_path: str
 
