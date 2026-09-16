@@ -205,7 +205,7 @@ Pipeline finished: success
     - [subtitle] 03_subtitle/subtitle.srt
     - [audio] 03_video/tts_audio.mp3
     - [report] 04_review/qa_report.json
-    - [log] 05_publish/publish_log.json
+    - [log] 06_publish/publish_log.json
 ```
 
 ### Failure Handling
@@ -263,7 +263,7 @@ auto-publish is configured:
 
 ```bash
 # Check publish log
-cat 20260707_*/05_publish/publish_log.json
+cat 20260707_*/06_publish/publish_log.json
 ```
 
 ### 4. Distribute to Platforms
