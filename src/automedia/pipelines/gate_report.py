@@ -31,6 +31,7 @@ from typing import Any, TypedDict
 
 from structlog import get_logger
 
+from automedia.gates.failure_modes import FAILURE_MODES
 from automedia.pipelines.gate_engine import GateLogEntry
 
 log = get_logger(__name__)
@@ -189,6 +190,29 @@ def _match_result(
     return matched
 
 
+def _gate_fix(row: GateReportRow) -> str:
+    """Remediation text for one gate row ("" when none applies).
+
+    Prefers the first non-empty per-check ``suggestion`` — the failing check's
+    remediation derived by ``gates._result``.  A FAILED gate with no per-check
+    suggestion falls back to the first gate-level fix in :data:`FAILURE_MODES`;
+    a gate absent from the knowledge base yields "" rather than invented text.
+    """
+    checks = row.get("checks")
+    if checks:
+        for check in checks:
+            suggestion = check.get("suggestion")
+            if isinstance(suggestion, str) and suggestion:
+                return suggestion
+    if row.get("verdict") == "fail":
+        mode = FAILURE_MODES.get(row.get("gate", ""))
+        if mode is not None:
+            fixes = mode.get("fixes")
+            if isinstance(fixes, list) and fixes and isinstance(fixes[0], str):
+                return fixes[0]
+    return ""
+
+
 def _render_markdown(report: GateReport) -> str:
     """Render the human-readable Markdown view of the report dict."""
     lines: list[str] = []
@@ -213,14 +237,17 @@ def _render_markdown(report: GateReport) -> str:
         lines.append("")
         return "\n".join(lines)
 
-    lines.append("| Gate | Verdict | Duration (s) | Reason |")
-    lines.append("|------|---------|--------------|--------|")
+    lines.append("| Gate | Verdict | Duration (s) | Reason | Fix |")
+    lines.append("|------|---------|--------------|--------|-----|")
     for row in report["gates"]:
         verdict = row["verdict"]
         if row.get("reviewed"):
             verdict += " (reviewed)"
         reason = row.get("error") or ""
-        lines.append(f"| {row['gate']} | {verdict} | {row.get('duration_s', 0.0)} | {reason} |")
+        fix = _gate_fix(row)
+        lines.append(
+            f"| {row['gate']} | {verdict} | {row.get('duration_s', 0.0)} | {reason} | {fix} |"
+        )
     lines.append("")
 
     # Per-check detail sections for rows that carry them (live renders).
@@ -240,11 +267,11 @@ def _render_markdown(report: GateReport) -> str:
             lines.append(f"- Actual: {eva.get('actual', '')}")
         if checks:
             lines.append("")
-            lines.append("| Check | Passed | Detail |")
-            lines.append("|-------|--------|--------|")
+            lines.append("| Check | Passed | Detail | Fix |")
+            lines.append("|-------|--------|--------|-----|")
             lines.extend(
                 f"| {c.get('name', '')} | {'yes' if c.get('passed') else 'no'} "
-                f"| {c.get('detail', '')} |"
+                f"| {c.get('detail', '')} | {c.get('suggestion', '')} |"
                 for c in checks
             )
         lines.append("")
