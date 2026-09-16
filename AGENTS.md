@@ -35,7 +35,7 @@ docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 - **6-Layer Configuration:** built-in `defaults.yaml` → project `.automedia/` → user `~/.automedia/` → override rules → override prompts → `AUTOMEDIA_*` env vars + explicit overrides. See `automedia/core/config_loader.py`.
 - **GateHook Observer Protocol:** readonly observers; never mutate or skip gates. Lifecycle: `before_gate()`, `after_gate()`, `on_gate_failed()`; each returns `None`. See `automedia/hooks/protocol.py`.
 - **MD5 Tracking:** gates write product checksums to `pipeline_md5.json` in the project dir. See `automedia/hooks/md5_tracker.py`.
-- **External Scheduling:** no built-in scheduler; external crond calls `automedia cron run`. See `automedia/cron/`.
+- **External Scheduling:** no built-in scheduler; external crond calls `automedia cron run --due` (dispatches every schedule entry due now; `automedia cron run <job>` remains the explicit single-job path). See `automedia/cron/`.
 - **Three-Entry-Point Design:** CLI, MCP, and SDK all delegate to `run_full_pipeline()` (see §2); MCP also exposes Omni triad tools (extract, translate, convert).
 - **Gate Auto-Registration:** `BaseGate` subclasses auto-register in the global `GateRegistry` singleton via `__init_subclass__`.
 - **Canonical Gate DAG:** `pipelines/dag.py` (`AUTO_GATE_DAG`, 26 nodes) + `pipelines/state_view.py` are an additive, order-equivalent representation of `_MODE_MAP` — mode gate lists stay authoritative, and the DAG layer adds topological/downstream/state queries on top.

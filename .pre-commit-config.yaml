@@ -12,8 +12,10 @@ repos:
       - id: mypy
         # types-all is uninstallable since types-pkg-resources was yanked
         # from PyPI; mypy runs with --ignore-missing-imports so stubs are
-        # not required.
-        args: [--ignore-missing-imports]
+        # not required.  mypy >= 0.990 reports untyped third-party imports
+        # (e.g. PyYAML) as `import-untyped`, which --ignore-missing-imports
+        # does not silence — disable that code explicitly.
+        args: [--ignore-missing-imports, --disable-error-code=import-untyped]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.22.0

@@ -25,7 +25,7 @@ Type=oneshot
 #   /usr/local/bin/python          (system pip install)
 #   /home/automedia/.venv/bin/python   (virtualenv)
 #   /opt/automedia/.venv/bin/python
-ExecStart=python -m automedia cron run
+ExecStart=python -m automedia cron run --due
 
 # Working directory — used for relative-path resolution.
 WorkingDirectory=/opt/automedia
