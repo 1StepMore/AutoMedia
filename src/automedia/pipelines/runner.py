@@ -66,14 +66,8 @@ _TEXT_ONLY_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
     "H0",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _VIDEO_ONLY_GATE_NAMES: list[str] = [
@@ -105,13 +99,7 @@ _IMAGE_CAROUSEL_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _TEXT_WITH_COVER_GATE_NAMES: list[str] = [
@@ -120,14 +108,8 @@ _TEXT_WITH_COVER_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
     "H0",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _SOCIAL_THREAD_GATE_NAMES: list[str] = [
@@ -136,13 +118,7 @@ _SOCIAL_THREAD_GATE_NAMES: list[str] = [
     "G1",
     "G2",
     "G3",
-    "G4",
-    "G5",
     "G6",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
 ]
 
 _SHORT_VIDEO_GATE_NAMES: list[str] = [

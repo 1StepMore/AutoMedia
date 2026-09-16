@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
 
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.fact_check import _CHECK_NAMES, G0FactCheck
@@ -178,8 +181,12 @@ class TestG0MockDriven:
 class TestG0RealLogic:
     """execute() without _mock_results runs actual check functions."""
 
-    def test_source_trace_finds_domain(self) -> None:
+    def test_source_trace_finds_domain(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Content mentioning the source domain passes source_trace."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="According to example.com, the event happened.",
             source_data={
@@ -194,8 +201,12 @@ class TestG0RealLogic:
         trace = next(c for c in result["checks"] if c["name"] == "source_trace")
         assert trace["passed"] is True
 
-    def test_source_trace_missing_domain(self) -> None:
+    def test_source_trace_missing_domain(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Content without source domain fails source_trace."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Some content without any domain reference.",
             source_data={
@@ -210,8 +221,12 @@ class TestG0RealLogic:
         trace = next(c for c in result["checks"] if c["name"] == "source_trace")
         assert trace["passed"] is False
 
-    def test_number_verification_passes(self) -> None:
+    def test_number_verification_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Numbers in content matching source_data pass."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Revenue was 42 million this year.",
             source_data={
@@ -226,8 +241,12 @@ class TestG0RealLogic:
         num = next(c for c in result["checks"] if c["name"] == "number_verification")
         assert num["passed"] is True
 
-    def test_number_verification_fails_on_mismatch(self) -> None:
+    def test_number_verification_fails_on_mismatch(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Numbers in content NOT matching source_data fail."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Revenue was 99 million this year.",
             source_data={
@@ -242,8 +261,12 @@ class TestG0RealLogic:
         num = next(c for c in result["checks"] if c["name"] == "number_verification")
         assert num["passed"] is False
 
-    def test_timeline_future_date_fails(self) -> None:
+    def test_timeline_future_date_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Dates after published_date fail timeline check."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Event on 2025-12-31 was significant.",
             source_data={
@@ -258,8 +281,12 @@ class TestG0RealLogic:
         tl = next(c for c in result["checks"] if c["name"] == "timeline")
         assert tl["passed"] is False
 
-    def test_timeline_no_future_date_passes(self) -> None:
+    def test_timeline_no_future_date_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """All dates before published_date pass timeline check."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Event on 2023-06-15 was significant.",
             source_data={
@@ -274,8 +301,12 @@ class TestG0RealLogic:
         tl = next(c for c in result["checks"] if c["name"] == "timeline")
         assert tl["passed"] is True
 
-    def test_quotes_missing_fails(self) -> None:
+    def test_quotes_missing_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Quotes not found in content fail."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="No matching text here.",
             source_data={
@@ -290,8 +321,12 @@ class TestG0RealLogic:
         qt = next(c for c in result["checks"] if c["name"] == "quotes")
         assert qt["passed"] is False
 
-    def test_entities_found_passes(self) -> None:
+    def test_entities_found_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """All entities present in content pass."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Alice met Bob at the conference.",
             source_data={
@@ -306,8 +341,12 @@ class TestG0RealLogic:
         ent = next(c for c in result["checks"] if c["name"] == "entities")
         assert ent["passed"] is True
 
-    def test_entities_missing_fails(self) -> None:
+    def test_entities_missing_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Entities not found in content fail."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client._structured_completion_with_fallback",
+            MagicMock(side_effect=TimeoutError("LLM API timeout (simulated)")),
+        )
         ctx = _make_context(
             content="Charlie spoke at the event.",
             source_data={

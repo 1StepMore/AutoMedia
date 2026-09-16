@@ -55,8 +55,14 @@ class TestCollectAll:
         result = collector.collect_all()
         assert isinstance(result, list)
 
-    def test_returns_empty_when_no_keys(self, collector: HotCollector) -> None:
+    def test_returns_empty_when_no_keys(
+        self, collector: HotCollector, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Without API keys, all collectors return [] so the result is []."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client.llm_complete",
+            MagicMock(side_effect=LLMError("no provider configured")),
+        )
         result = collector.collect_all()
         assert result == []
 
@@ -265,8 +271,12 @@ class TestSearchTavily:
 class TestFetchAIHOT:
     """_fetch_aihot() uses LLM-based trending generation."""
 
-    def test_no_key_returns_empty(self) -> None:
+    def test_no_key_returns_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Even without LLM key, should return empty gracefully."""
+        monkeypatch.setattr(
+            "automedia.core.llm_client.llm_complete",
+            MagicMock(side_effect=LLMError("no provider configured")),
+        )
         c = HotCollector()
         items = c._fetch_aihot()
         # Without LLM configured, llm_complete will raise, so returns []

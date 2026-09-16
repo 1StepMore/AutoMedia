@@ -102,29 +102,23 @@ class TestModeMap:
         names = _MODE_MAP["qa_only"]
         assert names == ["G0", "G2", "G3", "V1", "V6"]
 
-    def test_non_qa_modes_have_lifecycle_gates(self) -> None:
-        for mode, names in _MODE_MAP.items():
-            if mode == "qa_only":
-                continue  # qa_only is a subset, no L1-L3
-            for i in range(1, 4):
-                assert f"L{i}" in names, f"L{i} missing from {mode}"
+    def test_content_only_modes_have_no_lifecycle_gates(self) -> None:
+        for mode in ("text_only", "text_with_cover", "image-carousel", "social-thread"):
+            names = _MODE_MAP[mode]
+            for i in range(1, 5):
+                assert f"L{i}" not in names, f"L{i} should not be in {mode}"
 
     def test_image_carousel_mode_in_map(self) -> None:
         """image-carousel mode is registered in _MODE_MAP."""
         assert "image-carousel" in _MODE_MAP
 
     def test_image_carousel_has_correct_gates(self) -> None:
-        """image-carousel has CW → G0-G5 → L1-L4, no video gates."""
+        """image-carousel has CW → G0-G3 + G6, no lifecycle and no video gates."""
         names = _MODE_MAP["image-carousel"]
-        # Has CW
         assert "CW" in names
-        # Has G0-G5
-        for i in range(6):
+        for i in range(4):
             assert f"G{i}" in names, f"G{i} missing from image-carousel"
-        # Has L1-L4
-        for i in range(1, 5):
-            assert f"L{i}" in names, f"L{i} missing from image-carousel"
-        # No video gates
+        assert "G6" in names
         for i in range(8):
             assert f"V{i}" not in names, f"V{i} should not be in image-carousel"
 
@@ -146,14 +140,13 @@ class TestModeMap:
         for i in range(8):
             assert f"V{i}" not in names
 
-    def test_text_with_cover_has_cw_and_g0_g5(self) -> None:
-        """text_with_cover has CW, G0-G5, lifecycle gates."""
+    def test_text_with_cover_has_cw_and_copy_gates(self) -> None:
+        """text_with_cover has CW and G0-G3 + G6 — no lifecycle gates."""
         names = _MODE_MAP["text_with_cover"]
         assert "CW" in names
-        for i in range(6):
+        for i in range(4):
             assert f"G{i}" in names, f"G{i} missing from text_with_cover"
-        for i in range(1, 5):
-            assert f"L{i}" in names, f"L{i} missing from text_with_cover"
+        assert "G6" in names
 
     def test_text_with_cover_gate_list_constant_matches(self) -> None:
         """_TEXT_WITH_COVER_GATE_NAMES matches _MODE_MAP entry."""
@@ -656,9 +649,7 @@ class TestRunFullPipeline:
             _gate_name = "H99"
             _failure_mode = "stop"
 
-            def execute(  # noqa: PLR6301
-                self, gate_context: dict[str, Any]
-            ) -> dict[str, Any]:
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured["hitl_config"] = gate_context.get("hitl_config", {})
                 return {"passed": True, "gate": self.gate_name}
 
@@ -752,7 +743,7 @@ class TestFallbackContentGuard:
             _gate_name = "V99"
             _failure_mode = "stop"
 
-            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured["content"] = __gate_context.get("content", "")
                 return {"passed": True, "gate": self.gate_name}
 
@@ -792,7 +783,7 @@ class TestFallbackContentGuard:
             _gate_name = "V98"
             _failure_mode = "stop"
 
-            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured["content"] = __gate_context.get("content", "")
                 return {"passed": True, "gate": self.gate_name}
 
@@ -832,7 +823,7 @@ class TestFallbackContentGuard:
             _gate_name = "V97"
             _failure_mode = "stop"
 
-            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured["content"] = __gate_context.get("content", "")
                 return {"passed": True, "gate": self.gate_name}
 
@@ -868,7 +859,7 @@ class TestFallbackContentGuard:
             _gate_name = "V96"
             _failure_mode = "stop"
 
-            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, __gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured["content"] = __gate_context.get("content", "")
                 return {"passed": True, "gate": self.gate_name}
 
@@ -1170,7 +1161,7 @@ class TestRunFullPipelineModeDerivation:
             _gate_name = "H98"
             _failure_mode = "stop"
 
-            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured_ctx["brand_platforms"] = gate_context.get("brand_platforms", [])
                 return {"passed": True, "gate": self.gate_name}
 
@@ -1210,7 +1201,7 @@ class TestRunFullPipelineModeDerivation:
             _gate_name = "H97"
             _failure_mode = "stop"
 
-            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR6301
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
                 captured_ctx["brand_platforms"] = gate_context.get("brand_platforms", "MISSING")
                 return {"passed": True, "gate": self.gate_name}
 
@@ -1366,7 +1357,7 @@ class TestOverrideGateRules:
         )
         self._patch_home(monkeypatch, home)
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=None,
             resume_from=None,
@@ -1390,7 +1381,7 @@ class TestOverrideGateRules:
         )
         self._patch_home(monkeypatch, home)
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="auto",
             brand_profile=None,
             resume_from=None,
@@ -1415,7 +1406,7 @@ class TestOverrideGateRules:
         self._patch_home(monkeypatch, home)
 
         # Other brand should NOT get V0
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=None,
             resume_from=None,
@@ -1439,7 +1430,7 @@ class TestOverrideGateRules:
         )
         self._patch_home(monkeypatch, home)
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=None,
             resume_from=None,
@@ -1466,7 +1457,7 @@ class TestOverrideGateRules:
         )
         self._patch_home(monkeypatch, home)
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=None,
             resume_from=None,
@@ -1495,7 +1486,7 @@ class TestOverrideGateRules:
 
         brand_profile = BrandProfile(platforms=["wechat"])
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=brand_profile,
             resume_from=None,
@@ -1544,7 +1535,7 @@ class TestOverrideGateRules:
         empty_home.mkdir()
         self._patch_home(monkeypatch, empty_home)
 
-        gate_names, gates = _select_gates(
+        gate_names, _gates = _select_gates(
             mode="text_only",
             brand_profile=None,
             resume_from=None,

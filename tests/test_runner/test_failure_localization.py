@@ -49,13 +49,13 @@ class TestComputeAffectedDownstream:
         assert affected == ["V4", "V5", "V6", "V7", "H0", "L1", "L2", "L3", "L4"]
 
     def test_affected_downstream_restricted_to_mode_list(self) -> None:
-        """V3 failed in text_only: video tail + repurpose excluded, lifecycle kept.
+        """V3 failed in text_only: only gates present in the mode's list count.
 
         V3's full closure is V4..V7, H0, L1..L4, P1..P4 — but text_only runs
-        no V/P gates, so only H0 and L1-L4 are affected.
+        no V/P gates and no lifecycle gates, so only H0 is affected.
         """
         affected = _compute_affected_downstream(_MODE_MAP["text_only"], "V3")
-        assert affected == ["H0", "L1", "L2", "L3", "L4"]
+        assert affected == ["H0"]
 
     def test_affected_downstream_unknown_gate_returns_empty(self) -> None:
         """A gate not in the DAG has no downstream closure."""
@@ -145,17 +145,13 @@ class TestFinalizePipelineAttachesField:
             "L4",
         ]
 
-    def test_success_result_has_empty_affected_downstream(
-        self, project: MagicMock
-    ) -> None:
+    def test_success_result_has_empty_affected_downstream(self, project: MagicMock) -> None:
         results = [{"passed": True, "gate": "CW", "duration_s": 0.1}]
         result = self._finalize(project, results, success=True)
         assert result.status == "success"
         assert result.affected_downstream == []
 
-    def test_error_status_entry_also_drives_localization(
-        self, project: MagicMock
-    ) -> None:
+    def test_error_status_entry_also_drives_localization(self, project: MagicMock) -> None:
         """``status="error"`` entries count as failures, same as ``failed``."""
         results = [
             {"passed": True, "gate": "V0", "duration_s": 0.1},

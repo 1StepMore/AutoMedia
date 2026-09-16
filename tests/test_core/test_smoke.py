@@ -6,6 +6,7 @@ with mocked dependencies.  These are quick-check tests, not exhaustive.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -45,7 +46,7 @@ class TestTextOnlyPipelineSucceeds:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Pipeline completes with status='success' and project_dir is set."""
         # Arrange
@@ -85,7 +86,7 @@ class TestTextOnlyPipelineSucceeds:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """text_only mode gates list contains zero V gates."""
         # Arrange
@@ -136,14 +137,15 @@ class TestGatesAreConstructed:
             assert f"V{i}" not in names, f"V{i} should not be in text_only mode"
 
     def test_text_only_has_cw_and_copy_gates(self) -> None:
-        """text_only must include CW, G0-G5, H0, and lifecycle gates."""
+        """text_only includes CW, G0-G3 + G6, H0 — and no lifecycle gates."""
         names = _MODE_MAP["text_only"]
         assert "CW" in names
-        for i in range(6):
+        for i in range(4):
             assert f"G{i}" in names, f"G{i} missing from text_only"
+        assert "G6" in names
         assert "H0" in names
-        for i in range(1, 5):
-            assert f"L{i}" in names, f"L{i} missing from text_only"
+        for gate in ("G4", "G5", "L1", "L2", "L3", "L4"):
+            assert gate not in names, f"{gate} should not be in text_only"
 
 
 # =========================================================================
@@ -164,7 +166,7 @@ class TestResumeFromNoCrash:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Resume from G0 works — gates are sliced from G0 onward."""
         mock_proj = MagicMock()
@@ -175,7 +177,7 @@ class TestResumeFromNoCrash:
         # Capture the gate names passed to _build_gates_from_names
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
@@ -202,7 +204,7 @@ class TestResumeFromNoCrash:
         mock_build: MagicMock,
         mock_project: MagicMock,
         mock_config: MagicMock,
-        tmp_path: Any,
+        tmp_path: Path,
     ) -> None:
         """Resume from None runs the full gate list from the start."""
         mock_proj = MagicMock()
@@ -212,7 +214,7 @@ class TestResumeFromNoCrash:
 
         captured_names: list[list[str]] = []
 
-        def capture(names: list[str], **kwargs: Any) -> list[BaseGate]:
+        def capture(names: list[str], **kwargs: object) -> list[BaseGate]:
             captured_names.append(names)
             return [_AlwaysPassGate()]
 
