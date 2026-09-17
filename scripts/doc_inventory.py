@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Generate ``docs/doc-inventory.md`` — a deterministic inventory of the docs tree.
 
-Walks ``docs/`` (EXCLUDING ``docs/archived/``) plus the root instruction
-files (``AGENTS.md``, ``README.md``) and emits a markdown table listing every
-walked file with its path, size in bytes, and type (``dir`` for directories,
-``file`` for files).
+Inventories the **git-tracked** files under ``docs/`` (EXCLUDING
+``docs/archived/``) plus the root instruction files (``AGENTS.md``,
+``README.md``), and emits a markdown table listing each with its path, size in
+bytes, and type (``dir`` for directories, ``file`` for files).
+
+Tracked, not on-disk: the inventory is a COMMITTED artifact and ``--check``
+runs on a clean CI clone.  An on-disk walk also counted untracked drafts and
+gitignored files that do not exist in the clone, so the gate compared "this
+working directory" against "the committed tree" and flipped red/green
+depending on whose scratch files happened to be present.  Listing the tracked
+set makes both sides describe the same thing; ``git add`` a new doc and
+regenerate to include it.
 
 Deterministic: the walk order is sorted by POSIX path string
 (``sorted(..., key=lambda p: p.as_posix())``), so two runs produce
@@ -26,6 +34,8 @@ one doc-consistency step).
 from __future__ import annotations
 
 import argparse
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -44,30 +54,90 @@ _OUTPUT = REPO_ROOT / "docs" / "doc-inventory.md"
 # two root instruction files.
 _WALK_ROOTS: tuple[Path, ...] = (REPO_ROOT / "docs",)
 
+#: ``git ls-files`` pathspecs covering the inventory's scope.
+_TRACKED_PATHSPECS: tuple[str, ...] = ("docs", "AGENTS.md", "README.md")
+
+_DOCS_ROOT = REPO_ROOT / "docs"
+_ARCHIVED_ROOT = _DOCS_ROOT / "archived"
+
+_INSTRUCTION_FILES: tuple[str, ...] = ("AGENTS.md", "README.md")
+
+
+def _git_tracked_files() -> list[Path] | None:
+    """Repo-absolute paths of every git-tracked file in the inventory's scope.
+
+    Returns ``None`` when git cannot be consulted (no ``.git``, git not
+    installed), so :func:`_walked_files` can fall back to a filesystem walk.
+    """
+    git = shutil.which("git")
+    if git is None:
+        return None
+    try:
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "--", *_TRACKED_PATHSPECS],
+            capture_output=True,
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    names = proc.stdout.decode("utf-8", errors="surrogateescape").split("\0")
+    return [REPO_ROOT / name for name in names if name]
+
+
+def _filesystem_files() -> list[Path]:
+    """On-disk fallback; only reached without a git checkout (see _walked_files)."""
+    on_disk = [path for path in _DOCS_ROOT.rglob("*") if path != _DOCS_ROOT]
+    on_disk.extend(path for path in (REPO_ROOT / n for n in _INSTRUCTION_FILES) if path.is_file())
+    return on_disk
+
+
+def _is_inventoried(path: Path) -> bool:
+    if path == _OUTPUT:
+        return False
+    if path == _ARCHIVED_ROOT or _ARCHIVED_ROOT in path.parents:
+        return False
+    return path != _DOCS_ROOT
+
+
+def _with_ancestor_dirs(files: list[Path]) -> list[Path]:
+    """The files plus every directory strictly under ``docs/`` containing one.
+
+    Directory rows show the tree shape.  They are derived from the file set
+    rather than from ``rglob`` because git tracks no empty directories — a row
+    for one would not exist in a clean clone.
+    """
+    dirs: set[Path] = set()
+    for path in files:
+        if _DOCS_ROOT not in path.parents:
+            continue
+        for parent in path.parents:
+            if parent == _DOCS_ROOT:
+                break
+            dirs.add(parent)
+    return [*files, *dirs]
+
 
 def _walked_files() -> list[Path]:
-    """Every walked file, sorted deterministically by POSIX path string.
+    """Every inventoried path, sorted deterministically by POSIX path string.
 
-    Directories under docs/ are included (sorted the same way) so the
-    inventory shows the tree shape.  docs/archived/ is excluded per plan,
-    and the output file itself (docs/doc-inventory.md) is excluded — its
-    size would otherwise depend on its own contents (a self-referential
-    feedback loop that breaks byte-determinism).
+    ``docs/archived/`` is excluded per plan, and the output file itself
+    (``docs/doc-inventory.md``) is excluded — its size would otherwise depend
+    on its own contents (a self-referential feedback loop that breaks
+    byte-determinism).
     """
-    files: list[Path] = []
-    docs_root = REPO_ROOT / "docs"
-    archived = docs_root / "archived"
-    for path in docs_root.rglob("*"):
-        if archived in path.parents or path == archived:
-            continue
-        if path == _OUTPUT:
-            continue
-        files.append(path)
-    for name in ("AGENTS.md", "README.md"):
-        path = REPO_ROOT / name
-        if path.is_file():
-            files.append(path)
-    return sorted(files, key=lambda p: p.as_posix())
+    tracked = _git_tracked_files()
+    if tracked is None:
+        print(
+            "WARNING: git unavailable — falling back to a filesystem walk; the "
+            "inventory may include untracked files (see _git_tracked_files).",
+            file=sys.stderr,
+        )
+        candidates = _filesystem_files()
+    else:
+        candidates = [path for path in tracked if path.is_file()]
+    files = [path for path in candidates if _is_inventoried(path)]
+    return sorted(_with_ancestor_dirs(files), key=lambda p: p.as_posix())
 
 
 def _rel_label(path: Path) -> str:
