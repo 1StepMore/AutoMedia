@@ -24,11 +24,7 @@ from automedia.gates.humanizer import (
     _rewrite_content,
 )
 
-_CLEAN_CN = (
-    "人工智能正在改变我们的生活方式。"
-    "科技创新让效率大幅提升。"
-    "团队协作是成功的关键。"
-)
+_CLEAN_CN = "人工智能正在改变我们的生活方式。科技创新让效率大幅提升。团队协作是成功的关键。"
 
 
 # =========================================================================
@@ -477,8 +473,7 @@ class TestRewriteRemovesMidTextSentenceStarts:
 
     def test_english_mid_text_removed_with_space_preserved(self) -> None:
         result = _rewrite_content(
-            "AI is growing fast. Furthermore, we must act now. "
-            "In conclusion, the outlook is good."
+            "AI is growing fast. Furthermore, we must act now. In conclusion, the outlook is good."
         )
         assert "furthermore" not in result.lower()
         assert "in conclusion" not in result.lower()

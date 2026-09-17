@@ -1,4 +1,5 @@
 """Content strategy MCP tools — brand strategy, pipeline from strategy."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -112,8 +113,10 @@ def run_brand_strategy(
     except ValidationError as exc:
         return validation_error_response(
             f"LLM response validation failed: {exc}",
-            errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
-                    for e in (exc.errors() if hasattr(exc, "errors") else [])],
+            errors=[
+                {"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                for e in (exc.errors() if hasattr(exc, "errors") else [])
+            ],
         )
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
@@ -240,8 +243,10 @@ def run_pipeline_from_strategy(
     except ValidationError as exc:
         return validation_error_response(
             f"LLM response validation failed: {exc}",
-            errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
-                    for e in (exc.errors() if hasattr(exc, "errors") else [])],
+            errors=[
+                {"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                for e in (exc.errors() if hasattr(exc, "errors") else [])
+            ],
         )
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))

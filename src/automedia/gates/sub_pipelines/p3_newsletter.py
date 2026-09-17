@@ -54,8 +54,7 @@ _EXPECTED_MAP: dict[str, str] = {
     "content_present": "Content is provided in gate_context",
     "rewrite_success": "LLM rewrite call completes without error",
     "rewrite_quality": (
-        f"Rewritten output exceeds {_MIN_OUTPUT_LENGTH} characters "
-        f"and contains section headings"
+        f"Rewritten output exceeds {_MIN_OUTPUT_LENGTH} characters and contains section headings"
     ),
     "review_completed": "LLM review completes without error",
     "humanize_completed": "LLM humanize call completes without error",
@@ -129,10 +128,7 @@ def _step_review(
         log.info("P3.review no platform-specific prompt, skipping")
         return {"passed": True, "issues": []}
 
-    user_message = (
-        f"Brand: {brand}\n\n"
-        f"Newsletter content to review:\n\n{content}"
-    )
+    user_message = f"Brand: {brand}\n\nNewsletter content to review:\n\n{content}"
 
     try:
         review_raw: str = llm_complete(
@@ -172,9 +168,7 @@ def _step_humanize(
         log.info("P3.humanize no platform-specific prompt, skipping")
         return content
 
-    user_message = (
-        f"Newsletter content to humanize:\n\n{content}"
-    )
+    user_message = f"Newsletter content to humanize:\n\n{content}"
 
     try:
         humanized: str = llm_complete(
@@ -246,10 +240,7 @@ def _check_rewrite_quality(content: str) -> str | None:
     """
     length = len(content.strip())
     if length < _MIN_OUTPUT_LENGTH:
-        return (
-            f"rewritten content length {length} chars is below "
-            f"minimum {_MIN_OUTPUT_LENGTH}"
-        )
+        return f"rewritten content length {length} chars is below minimum {_MIN_OUTPUT_LENGTH}"
     return None
 
 
@@ -491,8 +482,7 @@ class P3NewsletterGate(BaseGate):
                     "name": "rewrite_quality",
                     "passed": True,
                     "detail": (
-                        f"rewritten content length {len(rewritten)} chars "
-                        f">= {_MIN_OUTPUT_LENGTH}"
+                        f"rewritten content length {len(rewritten)} chars >= {_MIN_OUTPUT_LENGTH}"
                     ),
                 },
                 {

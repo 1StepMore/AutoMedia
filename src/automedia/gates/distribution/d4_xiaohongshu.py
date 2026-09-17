@@ -29,9 +29,7 @@ log = get_logger(__name__)
 _MIN_OUTPUT_LENGTH: int = 200
 """Minimum acceptable output length (characters) for the quality check."""
 
-_EMOJI_PATTERN: re.Pattern[str] = re.compile(
-    r"[\U0001F300-\U0001F9FF\u2600-\u27BF\uFE00-\uFE0F]"
-)
+_EMOJI_PATTERN: re.Pattern[str] = re.compile(r"[\U0001F300-\U0001F9FF\u2600-\u27BF\uFE00-\uFE0F]")
 """Regex to detect emoji characters."""
 
 _SECTION_PATTERN: re.Pattern[str] = re.compile(r"^#{1,3}\s", re.MULTILINE)
@@ -65,12 +63,12 @@ def _render_xiaohongshu_prompt(content: str, brand: str, title: str) -> str:
     str
         The rendered prompt string.
     """
-    title_hint = f" (original title: \"{title}\")" if title else ""
+    title_hint = f' (original title: "{title}")' if title else ""
 
     return (
         f"You are a professional content creator for Xiaohongshu (小红书 / RED).\n"
         f"Rewrite the following content into an engaging Xiaohongshu-style "
-        f"note{title_hint} for brand \"{brand}\".\n\n"
+        f'note{title_hint} for brand "{brand}".\n\n'
         f"## Xiaohongshu Note Requirements\n\n"
         f"- Write in Simplified Chinese with a personal, authentic, "
         f"conversational tone\n"
@@ -209,9 +207,7 @@ class D4Gate(BaseGate):
         if not quality_passed:
             detail_parts: list[str] = []
             if output_length <= _MIN_OUTPUT_LENGTH:
-                detail_parts.append(
-                    f"length {output_length} ≤ {_MIN_OUTPUT_LENGTH} chars"
-                )
+                detail_parts.append(f"length {output_length} ≤ {_MIN_OUTPUT_LENGTH} chars")
             if not has_emoji and not has_section:
                 detail_parts.append("no emoji or section headings found")
 
@@ -241,8 +237,7 @@ class D4Gate(BaseGate):
                 ],
                 gate="D4",
                 error=(
-                    f"D4Gate: Xiaohongshu rewrite quality check failed — "
-                    f"{'; '.join(detail_parts)}"
+                    f"D4Gate: Xiaohongshu rewrite quality check failed — {'; '.join(detail_parts)}"
                 ),
                 expected_map=_EXPECTED_MAP,
             )

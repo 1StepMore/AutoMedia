@@ -32,7 +32,9 @@ _DEFAULT_CANNED_RESPONSE: str = (
 
 
 @contextmanager
-def _mock_llm_response(response: str = _DEFAULT_CANNED_RESPONSE) -> Generator[MagicMock, None, None]:
+def _mock_llm_response(
+    response: str = _DEFAULT_CANNED_RESPONSE,
+) -> Generator[MagicMock, None, None]:
     """Mock ``llm_complete`` in ``automedia.core.llm_client``.
 
     D-gates call ``llm_complete(prompt, config=config)`` directly (not the

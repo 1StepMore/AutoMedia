@@ -102,7 +102,8 @@ class WorkflowLoader:
 
     def __init__(self, workflows_dir: str | Path | None = None) -> None:
         self._workflows_dir = (
-            Path(workflows_dir) if workflows_dir is not None
+            Path(workflows_dir)
+            if workflows_dir is not None
             else Path.cwd() / ".automedia" / "workflows"
         )
         self._user_workflows_dir = get_user_config_dir() / "workflows"
@@ -140,22 +141,18 @@ class WorkflowLoader:
         path = self._find_file(name)
         if path is None:
             dirs = [str(self._user_workflows_dir), str(self._workflows_dir)]
-            raise FileNotFoundError(
-                f"Workflow {name!r} not found in:\n  " + "\n  ".join(dirs)
-            )
+            raise FileNotFoundError(f"Workflow {name!r} not found in:\n  " + "\n  ".join(dirs))
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
         if not isinstance(data, dict):
             raise ValueError(
-                f"Workflow file {path} must be a YAML mapping, "
-                f"got {type(data).__name__}"
+                f"Workflow file {path} must be a YAML mapping, got {type(data).__name__}"
             )
         # Validate name field matches filename
         yaml_name = data.get("name")
         if yaml_name is not None and yaml_name != name:
             raise ValueError(
-                f"Workflow file {path} declares name {yaml_name!r} "
-                f"but filename expects {name!r}"
+                f"Workflow file {path} declares name {yaml_name!r} but filename expects {name!r}"
             )
         return data
 
@@ -193,14 +190,11 @@ class WorkflowLoader:
         """
         if depth > self.MAX_EXTENDS_DEPTH:
             raise ValueError(
-                f"Extends chain exceeds max depth "
-                f"({self.MAX_EXTENDS_DEPTH}) for workflow {name!r}"
+                f"Extends chain exceeds max depth ({self.MAX_EXTENDS_DEPTH}) for workflow {name!r}"
             )
         if name in visited:
             chain = " → ".join(visited | {name})
-            raise ValueError(
-                f"Circular extends detected for workflow {name!r}: {chain}"
-            )
+            raise ValueError(f"Circular extends detected for workflow {name!r}: {chain}")
         visited.add(name)
 
         data = self._load_raw(name)
@@ -240,8 +234,7 @@ class WorkflowLoader:
         mode = data.get("mode", "auto")
         if mode not in VALID_MODES:
             raise ValueError(
-                f"Invalid mode {mode!r} in workflow {name!r}. "
-                f"Valid modes: {sorted(VALID_MODES)}"
+                f"Invalid mode {mode!r} in workflow {name!r}. Valid modes: {sorted(VALID_MODES)}"
             )
 
         # Platform validation

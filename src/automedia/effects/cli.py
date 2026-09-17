@@ -80,16 +80,24 @@ def _empty_stats() -> dict[str, Any]:
     """Return an empty stats skeleton."""
     return {
         "word_count": {
-            "word_count": 0, "char_count": 0, "char_count_no_spaces": 0,
-            "sentence_count": 0, "avg_words_per_sentence": 0.0,
+            "word_count": 0,
+            "char_count": 0,
+            "char_count_no_spaces": 0,
+            "sentence_count": 0,
+            "avg_words_per_sentence": 0.0,
         },
         "sentiment": {
-            "score": 0.0, "label": "neutral",
-            "positive_words": 0, "negative_words": 0, "total_scored": 0,
+            "score": 0.0,
+            "label": "neutral",
+            "positive_words": 0,
+            "negative_words": 0,
+            "total_scored": 0,
         },
         "readability": {
-            "flesch_reading_ease": 0.0, "grade_level": "N/A",
-            "avg_syllables_per_word": 0.0, "avg_words_per_sentence": 0.0,
+            "flesch_reading_ease": 0.0,
+            "grade_level": "N/A",
+            "avg_syllables_per_word": 0.0,
+            "avg_words_per_sentence": 0.0,
         },
         "brand_mentions": {"mentions": {}, "total_mentions": 0},
     }
@@ -104,17 +112,20 @@ def effects_cmd(
     project_id: str = typer.Argument(..., help="Project ID to analyse."),
     base_dir: str = typer.Option(
         ".",
-        "--base-dir", "-d",
+        "--base-dir",
+        "-d",
         help="Base directory to scan for projects.",
     ),
     brand: str = typer.Option(
         "",
-        "--brand", "-b",
+        "--brand",
+        "-b",
         help="Brand name for mention tracking.",
     ),
     output: str = typer.Option(
         "table",
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output format: json or table.",
     ),
 ) -> None:

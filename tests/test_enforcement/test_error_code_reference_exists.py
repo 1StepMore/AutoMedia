@@ -44,30 +44,20 @@ class TestErrorCodeReferenceExists:
         """Must document every MCPErrorCode enum member."""
         content = _read_mcp_setup_md()
         for code in REQUIRED_CODES:
-            assert code in content, (
-                f"{MCP_SETUP_MD} must document error code {code!r}"
-            )
+            assert code in content, f"{MCP_SETUP_MD} must document error code {code!r}"
 
     def test_documents_error_shape(self) -> None:
         """Must describe the error response JSON shape."""
         content = _read_mcp_setup_md()
-        assert '"error"' in content, (
-            f"{MCP_SETUP_MD} must document the error response shape"
-        )
-        assert '"code"' in content, (
-            f"{MCP_SETUP_MD} must document the error code field"
-        )
-        assert '"resolution"' in content, (
-            f"{MCP_SETUP_MD} must document the resolution field"
-        )
+        assert '"error"' in content, f"{MCP_SETUP_MD} must document the error response shape"
+        assert '"code"' in content, f"{MCP_SETUP_MD} must document the error code field"
+        assert '"resolution"' in content, f"{MCP_SETUP_MD} must document the resolution field"
 
     def test_references_common_tools(self) -> None:
         """Must reference common tools that return errors."""
         content = _read_mcp_setup_md()
         for tool in REQUIRED_TOOLS:
-            assert tool in content, (
-                f"{MCP_SETUP_MD} must mention tool {tool!r}"
-            )
+            assert tool in content, f"{MCP_SETUP_MD} must mention tool {tool!r}"
 
 
 def _read_mcp_setup_md() -> str:

@@ -69,10 +69,8 @@ class TestD1(DGateTestBase):
     # Gate-specific tests
     # ------------------------------------------------------------------
 
-    def test_context_extra_d1_output(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
-        """Successful gate sets gate_context.extra['d1_output']. """
+    def test_context_extra_d1_output(self, d_gate_context: dict[str, Any]) -> None:
+        """Successful gate sets gate_context.extra['d1_output']."""
         gate = D1Gate()
         with patch_llm_complete(self.mock_llm_target, _D1_CANNED):
             gate.execute(d_gate_context)
@@ -82,9 +80,7 @@ class TestD1(DGateTestBase):
         assert d1_output, "gate_context.extra['d1_output'] was not set"
         assert _D1_CANNED in d1_output or _D1_CANNED[:50] in d1_output
 
-    def test_output_file_in_wechat_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_wechat_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/wechat/."""
         import os
 
@@ -98,9 +94,7 @@ class TestD1(DGateTestBase):
         assert "wechat" in output_path
         assert os.path.isfile(output_path)
 
-    def test_short_llm_response_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_short_llm_response_fails(self, d_gate_context: dict[str, Any]) -> None:
         """LLM returning content shorter than MIN_OUTPUT_LENGTH fails."""
         short_content = "Short content."
         gate = D1Gate()
@@ -108,8 +102,6 @@ class TestD1(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        length_checks = [
-            c for c in result["checks"] if "length" in c["name"].lower()
-        ]
+        length_checks = [c for c in result["checks"] if "length" in c["name"].lower()]
         assert len(length_checks) >= 1
         assert length_checks[0]["passed"] is False

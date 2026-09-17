@@ -25,6 +25,7 @@ from automedia.pipelines.gate_engine import (
 # GateErrorResult TypedDict
 # =====================================================================
 
+
 class TestGateErrorResult:
     """GateErrorResult is a TypedDict(total=False) with optional keys.
 
@@ -75,6 +76,7 @@ class TestGateErrorResult:
         }
         # Accessing missing optional key raises KeyError
         import pytest
+
         with pytest.raises(KeyError):
             _ = result["retry_count"]  # type: ignore[typeddict-item]
 
@@ -92,6 +94,7 @@ class TestGateErrorResult:
 # =====================================================================
 # ProgressData TypedDict
 # =====================================================================
+
 
 class TestProgressData:
     """ProgressData is a TypedDict(total=False) for get_progress() snapshots.
@@ -181,6 +184,7 @@ class TestProgressData:
 # GateProgressEvent dataclass
 # =====================================================================
 
+
 class TestGateProgressEvent:
     """GateProgressEvent dataclass with retry metadata fields."""
 
@@ -265,6 +269,7 @@ class TestGateProgressEvent:
 # PipelineProgress class — construction and default state
 # =====================================================================
 
+
 class TestPipelineProgressConstruction:
     """PipelineProgress default state after __init__."""
 
@@ -299,6 +304,7 @@ class TestPipelineProgressConstruction:
 # =====================================================================
 # PipelineProgress — gate lifecycle methods
 # =====================================================================
+
 
 class TestPipelineProgressLifecycle:
     """PipelineProgress on_gate_start / on_gate_end behavior."""
@@ -361,6 +367,7 @@ class TestPipelineProgressLifecycle:
 # PipelineProgress — set_gate_names and progress query
 # =====================================================================
 
+
 class TestPipelineProgressGates:
     """PipelineProgress.set_gate_names() and get_progress()."""
 
@@ -408,6 +415,7 @@ class TestPipelineProgressGates:
 # =====================================================================
 # PipelineProgress — cancel / pause / resume / retry / skip
 # =====================================================================
+
 
 class TestPipelineProgressControl:
     """PipelineProgress cancel/pause/resume/retry/skip methods."""
@@ -467,6 +475,7 @@ class TestPipelineProgressControl:
 # PipelineProgress — HITL methods
 # =====================================================================
 
+
 class TestPipelineProgressHITL:
     """PipelineProgress HITL (Human-in-the-Loop) methods."""
 
@@ -511,25 +520,30 @@ class TestPipelineProgressHITL:
 # Backward compatibility: import from gate_engine still works
 # =====================================================================
 
+
 class TestBackwardCompatImports:
     """Verifies that importing from gate_engine still works."""
 
     def test_import_gate_error_result_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import GateErrorResult works."""
         from automedia.pipelines.gate_engine import GateErrorResult as GER
+
         assert GER is GateErrorResult
 
     def test_import_progress_data_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import ProgressData works."""
         from automedia.pipelines.gate_engine import ProgressData as PD
+
         assert PD is ProgressData
 
     def test_import_gate_progress_event_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import GateProgressEvent works."""
         from automedia.pipelines.gate_engine import GateProgressEvent as GPE
+
         assert GPE is GateProgressEvent
 
     def test_import_pipeline_progress_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import PipelineProgress works."""
         from automedia.pipelines.gate_engine import PipelineProgress as PP
+
         assert PP is PipelineProgress

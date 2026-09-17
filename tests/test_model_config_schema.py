@@ -113,18 +113,14 @@ class TestParseProvider:
         pc = _parse_provider(raw)
         assert pc.api_key == "sk-ant-env"
 
-    def test_explicit_api_key_not_overridden(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_explicit_api_key_not_overridden(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When api_key is set in YAML, credential loader is NOT called."""
         monkeypatch.setenv("AUTOMEDIA_OPENAI", "sk-from-env")
         raw = {"provider": "openai", "model": "gpt-4", "api_key": "sk-explicit"}
         pc = _parse_provider(raw)
         assert pc.api_key == "sk-explicit"
 
-    def test_no_provider_no_credential_lookup(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_no_provider_no_credential_lookup(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When provider is empty, no credential lookup happens."""
         raw = {"model": "gpt-4"}
         pc = _parse_provider(raw)
@@ -273,9 +269,7 @@ class TestSaveModelConfig:
         with open(path, encoding="utf-8") as fh:
             return yaml.safe_load(fh)
 
-    def test_preserves_fallback_chain_when_update_sets_primary_only(
-        self, tmp_path: Path
-    ) -> None:
+    def test_preserves_fallback_chain_when_update_sets_primary_only(self, tmp_path: Path) -> None:
         """Updating only provider/model must keep the existing fallback chain."""
         seed = {
             "llm": {
@@ -399,9 +393,7 @@ class TestSaveModelConfig:
             "llm": {"text_generation": {"provider": "deepseek", "model": "deepseek-chat"}}
         }
 
-    def test_unparseable_existing_content_is_treated_as_empty_base(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unparseable_existing_content_is_treated_as_empty_base(self, tmp_path: Path) -> None:
         """Garbage YAML must not crash; it is treated as an empty base."""
         path = tmp_path / "model_config.yaml"
         path.write_text("{{{{ not: [valid", encoding="utf-8")

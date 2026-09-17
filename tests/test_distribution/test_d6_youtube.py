@@ -74,9 +74,7 @@ class TestD6(DGateTestBase):
     # path tests must use _D6_CANNED instead.
     # ------------------------------------------------------------------
 
-    def test_llm_success_returns_passed(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_returns_passed(self, d_gate_context: dict[str, Any]) -> None:
         gate = D6YouTubeGate()
         with patch_llm_complete(self.mock_llm_target, _D6_CANNED):
             result = gate.execute(d_gate_context)
@@ -85,9 +83,7 @@ class TestD6(DGateTestBase):
         assert result["gate"] == self.GATE_NAME
         assert result["error"] is None
 
-    def test_llm_success_produces_checks(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_produces_checks(self, d_gate_context: dict[str, Any]) -> None:
         gate = D6YouTubeGate()
         with patch_llm_complete(self.mock_llm_target, _D6_CANNED):
             result = gate.execute(d_gate_context)
@@ -96,9 +92,7 @@ class TestD6(DGateTestBase):
         for check in result["checks"]:
             assert check["passed"] is True, f"Check {check['name']!r} failed"
 
-    def test_llm_success_stores_output_path(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_stores_output_path(self, d_gate_context: dict[str, Any]) -> None:
         gate = D6YouTubeGate()
         with patch_llm_complete(self.mock_llm_target, _D6_CANNED):
             result = gate.execute(d_gate_context)
@@ -106,18 +100,15 @@ class TestD6(DGateTestBase):
         has_path = bool(result.get("output_path"))
         has_modified = bool(result.get("modified_content"))
         assert has_path or has_modified, (
-            f"Result has neither 'output_path' nor 'modified_content': "
-            f"{result.keys()}"
+            f"Result has neither 'output_path' nor 'modified_content': {result.keys()}"
         )
 
     # ------------------------------------------------------------------
     # Gate-specific tests
     # ------------------------------------------------------------------
 
-    def test_context_extra_d6_output(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
-        """Successful gate sets gate_context.extra['d6_output']. """
+    def test_context_extra_d6_output(self, d_gate_context: dict[str, Any]) -> None:
+        """Successful gate sets gate_context.extra['d6_output']."""
         gate = D6YouTubeGate()
         with patch_llm_complete(self.mock_llm_target, _D6_CANNED):
             gate.execute(d_gate_context)
@@ -126,9 +117,7 @@ class TestD6(DGateTestBase):
         d6_output = extra.get("d6_output", "")
         assert d6_output, "gate_context.extra['d6_output'] was not set"
 
-    def test_output_file_in_youtube_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_youtube_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/youtube/."""
         import os
 
@@ -142,9 +131,7 @@ class TestD6(DGateTestBase):
         assert "youtube" in output_path
         assert os.path.isfile(output_path)
 
-    def test_quality_fails_missing_sections(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_quality_fails_missing_sections(self, d_gate_context: dict[str, Any]) -> None:
         """Response missing intro/body/outro sections fails quality check."""
         no_sections = (
             "Just some plain text without any section headings. "
@@ -156,15 +143,11 @@ class TestD6(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        quality_checks = [
-            c for c in result["checks"] if "youtube" in c["name"].lower()
-        ]
+        quality_checks = [c for c in result["checks"] if "youtube" in c["name"].lower()]
         assert len(quality_checks) >= 1
         assert quality_checks[0]["passed"] is False
 
-    def test_quality_fails_missing_project_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_quality_fails_missing_project_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Missing 'project_dir' → gate fails."""
         ctx = {k: v for k, v in d_gate_context.items() if k != "project_dir"}
         gate = D6YouTubeGate()

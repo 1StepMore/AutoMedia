@@ -68,9 +68,7 @@ def project_with_history(tmp_path: Path) -> dict[str, Any]:
         "tenant_id": "default",
         "created_at": "2026-07-07T00:00:00+00:00",
     }
-    (project_dir / "00_project_info.json").write_text(
-        json.dumps(info, indent=2), encoding="utf-8"
-    )
+    (project_dir / "00_project_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
     _create_history_db(str(project_dir), project_id)
 
@@ -97,9 +95,7 @@ def project_without_history(tmp_path: Path) -> dict[str, Any]:
         "tenant_id": "default",
         "created_at": "2026-07-08T00:00:00+00:00",
     }
-    (project_dir / "00_project_info.json").write_text(
-        json.dumps(info, indent=2), encoding="utf-8"
-    )
+    (project_dir / "00_project_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
     return {
         "base_dir": str(tmp_path),
@@ -124,9 +120,7 @@ def archived_project(tmp_path: Path) -> dict[str, Any]:
         "tenant_id": "default",
         "created_at": "2026-07-09T00:00:00+00:00",
     }
-    (project_dir / "00_project_info.json").write_text(
-        json.dumps(info, indent=2), encoding="utf-8"
-    )
+    (project_dir / "00_project_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
     return {
         "base_dir": str(tmp_path),
@@ -174,9 +168,7 @@ class TestRollbackCommand:
         # 3 — ROLLED_BACK was written to history.db (last row)
         conn = sqlite3.connect(str(archived_dir / ".automedia" / "history.db"))
         try:
-            cur = conn.execute(
-                "SELECT action FROM pipeline_history ORDER BY id DESC LIMIT 1"
-            )
+            cur = conn.execute("SELECT action FROM pipeline_history ORDER BY id DESC LIMIT 1")
             row = cur.fetchone()
             assert row is not None
             assert row[0] == "rolled_back"

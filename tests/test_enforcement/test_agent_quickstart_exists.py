@@ -25,16 +25,12 @@ class TestAgentQuickstartExists:
     def test_references_agents_md(self) -> None:
         """Must reference AGENTS.md as a key resource."""
         content = _read_readme_md()
-        assert "AGENTS.md" in content, (
-            f"{README_MD} must reference AGENTS.md"
-        )
+        assert "AGENTS.md" in content, f"{README_MD} must reference AGENTS.md"
 
     def test_references_mcp(self) -> None:
         """Must mention MCP server setup."""
         content = _read_readme_md()
-        assert "MCP" in content, (
-            f"{README_MD} must mention MCP"
-        )
+        assert "MCP" in content, f"{README_MD} must mention MCP"
 
 
 def _read_readme_md() -> str:

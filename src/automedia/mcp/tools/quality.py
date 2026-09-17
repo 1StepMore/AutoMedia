@@ -104,8 +104,10 @@ def evaluate_content_quality(
             "overall_assessment": "",
             **validation_error_response(
                 f"LLM response validation failed: {exc}",
-                errors=[{"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
-                        for e in (exc.errors() if hasattr(exc, "errors") else [])],
+                errors=[
+                    {"field": str(e.get("loc", "unknown")), "message": e.get("msg", "")}
+                    for e in (exc.errors() if hasattr(exc, "errors") else [])
+                ],
             ),
         }
     except Exception as exc:

@@ -121,9 +121,7 @@ class TestReportCards:
             ]
         )
         (card,) = scenario_report_cards(latest, None)[0]
-        assert card["failures"] == [
-            "step 1 (call health_check): expect.success: no"
-        ]
+        assert card["failures"] == ["step 1 (call health_check): expect.success: no"]
 
     def test_hard_failed_scenario_flags_violation_on_card(self) -> None:
         latest = _suite(
@@ -240,7 +238,11 @@ class TestAssertionRows:
                     [
                         _step(
                             artifacts=[
-                                {"path": "draft.md", "copied_to": "artifacts/1-draft.md", "ok": True}
+                                {
+                                    "path": "draft.md",
+                                    "copied_to": "artifacts/1-draft.md",
+                                    "ok": True,
+                                }
                             ]
                         )
                     ],

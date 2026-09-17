@@ -106,9 +106,7 @@ class TestFixtureRegistration:
 class TestPerRunMarkerPath:
     """Issue #17: the marker path is per-run, never a shared global path."""
 
-    def test_resolve_defaults_to_committed_path(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_resolve_defaults_to_committed_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(HITL_MARKER_ENV_VAR, raising=False)
         assert resolve_hitl_marker_path() == Path(HITL_MARKER_PATH)
 
@@ -132,9 +130,7 @@ class TestPerRunMarkerPath:
             second = os.environ[HITL_MARKER_ENV_VAR]
         assert second != first
 
-    def test_fixture_restores_a_prior_env_value(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_fixture_restores_a_prior_env_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
         prior = "/tmp/some-other/decision.json"
         monkeypatch.setenv(HITL_MARKER_ENV_VAR, prior)
         with apply_fixtures(["hitl_pause"]):

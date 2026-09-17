@@ -177,10 +177,7 @@ class P4BilibiliRepurpose(BaseGate):
             if bilibili_sys:
                 rewrite_prompt = bilibili_sys
 
-        rewrite_user = (
-            f"Topic: {topic}\nBrand: {brand}\n\n"
-            f"Draft content:\n\n{draft_content}"
-        )
+        rewrite_user = f"Topic: {topic}\nBrand: {brand}\n\nDraft content:\n\n{draft_content}"
         if brand_profile:
             voice = brand_profile.get("voice", "")
             if voice:
@@ -246,13 +243,8 @@ class P4BilibiliRepurpose(BaseGate):
         fc_prompt = load_prompt("copy_review_g2", platform=platform)
         brand_guidelines = ""
         if brand_profile:
-            brand_guidelines = json.dumps(
-                brand_profile, ensure_ascii=False, default=str
-            )
-        fc_user = (
-            f"Content:\n\n{rewritten_content}\n\n"
-            f"Brand guidelines:\n\n{brand_guidelines}"
-        )
+            brand_guidelines = json.dumps(brand_profile, ensure_ascii=False, default=str)
+        fc_user = f"Content:\n\n{rewritten_content}\n\nBrand guidelines:\n\n{brand_guidelines}"
 
         try:
             review_result_raw: str = llm_complete(
@@ -363,9 +355,7 @@ class P4BilibiliRepurpose(BaseGate):
             {
                 "name": "rewrite_step",
                 "passed": True,
-                "detail": (
-                    f"Bilibili rewrite completed ({len(rewritten_content)} chars)"
-                ),
+                "detail": (f"Bilibili rewrite completed ({len(rewritten_content)} chars)"),
             },
             {
                 "name": "fact_check_step",
@@ -383,9 +373,7 @@ class P4BilibiliRepurpose(BaseGate):
                 "detail": (
                     f"Final content length {len(final_content)} exceeds {_MIN_CONTENT_LENGTH}"
                     if len(final_content) > _MIN_CONTENT_LENGTH
-                    else (
-                        f"Final content length {len(final_content)} ≤ {_MIN_CONTENT_LENGTH}"
-                    )
+                    else (f"Final content length {len(final_content)} ≤ {_MIN_CONTENT_LENGTH}")
                 ),
             },
             {

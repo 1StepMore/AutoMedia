@@ -1,4 +1,5 @@
 """Setup and onboarding MCP tools — init, configure LLM, onboard."""
+
 from __future__ import annotations
 
 import os

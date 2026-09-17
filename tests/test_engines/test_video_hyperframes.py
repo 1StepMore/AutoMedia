@@ -856,7 +856,7 @@ class TestRenderChromePath:
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # Mock os.path.isfile to return False for the chrome path
-        mock_all["isfile"].side_effect = lambda p: (p != "/usr/bin/google-chrome")
+        mock_all["isfile"].side_effect = lambda p: p != "/usr/bin/google-chrome"
 
         engine = HyperFramesVideoEngine(
             engine_config={"chrome_path": "/usr/bin/google-chrome"},

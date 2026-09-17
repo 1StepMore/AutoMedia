@@ -24,9 +24,7 @@ runner = CliRunner()
 class TestOnboardStepLlm:
     """Tests for the LLM onboarding step."""
 
-    def test_llm_step_writes_config(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_llm_step_writes_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Writing provider/model works and no fallback is added when declined."""
         import automedia.cli.commands.onboard as onboard_mod
 
@@ -63,9 +61,7 @@ class TestOnboardStepLlm:
         assert result.exit_code == 0
         assert "fallback" in result.output.lower()
 
-    def test_llm_step_adds_fallback(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_llm_step_adds_fallback(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Accepting the fallback prompt adds a fallback entry to the YAML."""
         import automedia.cli.commands.onboard as onboard_mod
 

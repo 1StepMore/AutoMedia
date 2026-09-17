@@ -108,7 +108,7 @@ def map_affected(
                 break
         else:
             if changed.startswith("scenarios/") and changed.endswith(".yaml"):
-                rel = changed[len("scenarios/"):]
+                rel = changed[len("scenarios/") :]
                 if (root / rel).is_file():
                     selected.add(rel)
                 # A library edit may flip a pinned regression status.
@@ -167,9 +167,7 @@ def _fallback_set(root: Path) -> set[str]:
     deterministic W2 batch); the env-free scan is library-wide.
     """
     batch = {str(path.relative_to(root)) for path in root.glob("*.yaml")}
-    env_free = {
-        rel for rel, doc in _scan_yamls(root) if _is_env_free(doc)
-    }
+    env_free = {rel for rel, doc in _scan_yamls(root) if _is_env_free(doc)}
     return batch | env_free
 
 

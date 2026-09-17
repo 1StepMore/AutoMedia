@@ -170,8 +170,13 @@ class TestDeterministicTasteResultStructure:
             assert isinstance(check["detail"], str)
         failing = [c for c in result["checks"] if not c["passed"]]
         names = {c["name"] for c in failing}
-        assert {"hollow_intros", "filler_connectors", "template_conclusions",
-                "overacademic_vocabulary", "absolute_assertions"} <= names
+        assert {
+            "hollow_intros",
+            "filler_connectors",
+            "template_conclusions",
+            "overacademic_vocabulary",
+            "absolute_assertions",
+        } <= names
 
     def test_detail_mentions_failing_checks(self) -> None:
         """detail is a human summary naming the failing check categories."""

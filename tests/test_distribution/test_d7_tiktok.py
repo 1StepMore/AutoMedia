@@ -48,9 +48,7 @@ class TestD7(DGateTestBase):
     # exceeds D7's 500-char max, so success-path tests must use _D7_CANNED.
     # ------------------------------------------------------------------
 
-    def test_llm_success_returns_passed(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_returns_passed(self, d_gate_context: dict[str, Any]) -> None:
         gate = D7Gate()
         with patch_llm_complete(self.mock_llm_target, _D7_CANNED):
             result = gate.execute(d_gate_context)
@@ -59,9 +57,7 @@ class TestD7(DGateTestBase):
         assert result["gate"] == self.GATE_NAME
         assert result["error"] is None
 
-    def test_llm_success_produces_checks(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_produces_checks(self, d_gate_context: dict[str, Any]) -> None:
         gate = D7Gate()
         with patch_llm_complete(self.mock_llm_target, _D7_CANNED):
             result = gate.execute(d_gate_context)
@@ -70,9 +66,7 @@ class TestD7(DGateTestBase):
         for check in result["checks"]:
             assert check["passed"] is True, f"Check {check['name']!r} failed"
 
-    def test_llm_success_stores_output_path(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_success_stores_output_path(self, d_gate_context: dict[str, Any]) -> None:
         gate = D7Gate()
         with patch_llm_complete(self.mock_llm_target, _D7_CANNED):
             result = gate.execute(d_gate_context)
@@ -80,18 +74,15 @@ class TestD7(DGateTestBase):
         has_path = bool(result.get("output_path"))
         has_modified = bool(result.get("modified_content"))
         assert has_path or has_modified, (
-            f"Result has neither 'output_path' nor 'modified_content': "
-            f"{result.keys()}"
+            f"Result has neither 'output_path' nor 'modified_content': {result.keys()}"
         )
 
     # ------------------------------------------------------------------
     # Gate-specific tests
     # ------------------------------------------------------------------
 
-    def test_context_extra_d7_output(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
-        """Successful gate sets gate_context.extra['d7_output']. """
+    def test_context_extra_d7_output(self, d_gate_context: dict[str, Any]) -> None:
+        """Successful gate sets gate_context.extra['d7_output']."""
         gate = D7Gate()
         with patch_llm_complete(self.mock_llm_target, _D7_CANNED):
             gate.execute(d_gate_context)
@@ -101,9 +92,7 @@ class TestD7(DGateTestBase):
         assert d7_output, "gate_context.extra['d7_output'] was not set"
         assert _D7_CANNED[:50] in d7_output
 
-    def test_output_file_in_tiktok_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_tiktok_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/tiktok/."""
         import os
 
@@ -117,9 +106,7 @@ class TestD7(DGateTestBase):
         assert "tiktok" in output_path
         assert os.path.isfile(output_path)
 
-    def test_output_too_short_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_too_short_fails(self, d_gate_context: dict[str, Any]) -> None:
         """Response shorter than MIN_OUTPUT_LENGTH fails."""
         too_short = "Too short."
         gate = D7Gate()
@@ -127,15 +114,11 @@ class TestD7(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        length_checks = [
-            c for c in result["checks"] if "length" in c["name"].lower()
-        ]
+        length_checks = [c for c in result["checks"] if "length" in c["name"].lower()]
         assert len(length_checks) >= 1
         assert length_checks[0]["passed"] is False
 
-    def test_output_too_long_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_too_long_fails(self, d_gate_context: dict[str, Any]) -> None:
         """Response longer than MAX_OUTPUT_LENGTH fails."""
         too_long = "A" * (_D7_MAX_OUTPUT_LENGTH + 100)
         gate = D7Gate()
@@ -143,8 +126,6 @@ class TestD7(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        length_checks = [
-            c for c in result["checks"] if "length" in c["name"].lower()
-        ]
+        length_checks = [c for c in result["checks"] if "length" in c["name"].lower()]
         assert len(length_checks) >= 1
         assert length_checks[0]["passed"] is False

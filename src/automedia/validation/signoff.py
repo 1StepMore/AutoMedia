@@ -64,14 +64,11 @@ def sign_run(
     if not verdict.strip():
         raise SignoffError("sign-off verdict must be a non-empty string")
     if "\n" in verdict or "\r" in verdict:
-        raise SignoffError(
-            "sign-off verdict must be a single line (one line per sign-off)"
-        )
+        raise SignoffError("sign-off verdict must be a single line (one line per sign-off)")
     run_dir = runs_root / run_name
     if not run_dir.is_dir():
         raise SignoffError(
-            f"cannot sign unknown run {run_name!r}: run directory does not "
-            f"exist: {run_dir}"
+            f"cannot sign unknown run {run_name!r}: run directory does not exist: {run_dir}"
         )
     signed_path = run_dir / SIGNED_FILENAME
     line = f"{_stamp_now()} {signer} {verdict}"
@@ -110,9 +107,7 @@ def signoff_status(runs_root: Path) -> dict[str, dict[str, object]]:
     for name in list_runs(runs_root):
         signed_path = runs_root / name / SIGNED_FILENAME
         verdict_lines = (
-            signed_path.read_text(encoding="utf-8").splitlines()
-            if signed_path.is_file()
-            else []
+            signed_path.read_text(encoding="utf-8").splitlines() if signed_path.is_file() else []
         )
         status[name] = {
             "run": name,

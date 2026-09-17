@@ -188,7 +188,9 @@ class TestRunCommand:
     ) -> None:
         """Batch exception errors should have structured code/message/resolution in JSON mode."""
         mock_runner.side_effect = RuntimeError("batch kaboom")
-        result = runner.invoke(app, ["--json", "run", "--topics", "t1", "--brand", "b", "--mode", "text_only"])
+        result = runner.invoke(
+            app, ["--json", "run", "--topics", "t1", "--brand", "b", "--mode", "text_only"]
+        )
         assert result.exit_code == 1
         data = json.loads(result.output)
         assert "results" in data

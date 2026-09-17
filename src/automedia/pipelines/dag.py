@@ -58,33 +58,15 @@ class GateNode:
 # ---------------------------------------------------------------------------
 
 AUTO_GATE_DAG: dict[str, GateNode] = {
-    "pre-gate": GateNode(
-        name="pre-gate", track="qa", depends_on=(), failure_mode="stop"
-    ),
-    "CW": GateNode(
-        name="CW", track="copy", depends_on=("pre-gate",), failure_mode="stop"
-    ),
-    "G0": GateNode(
-        name="G0", track="copy", depends_on=("CW",), failure_mode="stop"
-    ),
-    "G1": GateNode(
-        name="G1", track="copy", depends_on=("G0",), failure_mode="retry"
-    ),
-    "G2": GateNode(
-        name="G2", track="copy", depends_on=("G1",), failure_mode="retry"
-    ),
-    "G3": GateNode(
-        name="G3", track="copy", depends_on=("G2",), failure_mode="stop"
-    ),
-    "G4": GateNode(
-        name="G4", track="copy", depends_on=("G3",), failure_mode="stop"
-    ),
-    "G5": GateNode(
-        name="G5", track="copy", depends_on=("G4",), failure_mode="stop"
-    ),
-    "G6": GateNode(
-        name="G6", track="copy", depends_on=("G5",), failure_mode="retry"
-    ),
+    "pre-gate": GateNode(name="pre-gate", track="qa", depends_on=(), failure_mode="stop"),
+    "CW": GateNode(name="CW", track="copy", depends_on=("pre-gate",), failure_mode="stop"),
+    "G0": GateNode(name="G0", track="copy", depends_on=("CW",), failure_mode="stop"),
+    "G1": GateNode(name="G1", track="copy", depends_on=("G0",), failure_mode="retry"),
+    "G2": GateNode(name="G2", track="copy", depends_on=("G1",), failure_mode="retry"),
+    "G3": GateNode(name="G3", track="copy", depends_on=("G2",), failure_mode="stop"),
+    "G4": GateNode(name="G4", track="copy", depends_on=("G3",), failure_mode="stop"),
+    "G5": GateNode(name="G5", track="copy", depends_on=("G4",), failure_mode="stop"),
+    "G6": GateNode(name="G6", track="copy", depends_on=("G5",), failure_mode="retry"),
     "V0": GateNode(
         name="V0",
         track="video",
@@ -92,57 +74,27 @@ AUTO_GATE_DAG: dict[str, GateNode] = {
         failure_mode="stop",
         async_parallel=True,
     ),
-    "V1": GateNode(
-        name="V1", track="video", depends_on=("V0",), failure_mode="stop"
-    ),
-    "V2": GateNode(
-        name="V2", track="video", depends_on=("V1",), failure_mode="stop"
-    ),
-    "V3": GateNode(
-        name="V3", track="video", depends_on=("V2",), failure_mode="stop"
-    ),
-    "V4": GateNode(
-        name="V4", track="video", depends_on=("V3",), failure_mode="stop"
-    ),
-    "V5": GateNode(
-        name="V5", track="video", depends_on=("V4",), failure_mode="retry"
-    ),
-    "V6": GateNode(
-        name="V6", track="video", depends_on=("V5",), failure_mode="stop"
-    ),
-    "V7": GateNode(
-        name="V7", track="video", depends_on=("V6",), failure_mode="stop"
-    ),
-    "H0": GateNode(
-        name="H0", track="qa", depends_on=("G6", "V7"), failure_mode="stop"
-    ),
+    "V1": GateNode(name="V1", track="video", depends_on=("V0",), failure_mode="stop"),
+    "V2": GateNode(name="V2", track="video", depends_on=("V1",), failure_mode="stop"),
+    "V3": GateNode(name="V3", track="video", depends_on=("V2",), failure_mode="stop"),
+    "V4": GateNode(name="V4", track="video", depends_on=("V3",), failure_mode="stop"),
+    "V5": GateNode(name="V5", track="video", depends_on=("V4",), failure_mode="retry"),
+    "V6": GateNode(name="V6", track="video", depends_on=("V5",), failure_mode="stop"),
+    "V7": GateNode(name="V7", track="video", depends_on=("V6",), failure_mode="stop"),
+    "H0": GateNode(name="H0", track="qa", depends_on=("G6", "V7"), failure_mode="stop"),
     "L1": GateNode(
         name="L1",
         track="lifecycle",
         depends_on=("H0", "G6", "V7"),
         failure_mode="stop",
     ),
-    "L2": GateNode(
-        name="L2", track="lifecycle", depends_on=("L1",), failure_mode="stop"
-    ),
-    "L3": GateNode(
-        name="L3", track="lifecycle", depends_on=("L2",), failure_mode="stop"
-    ),
-    "L4": GateNode(
-        name="L4", track="lifecycle", depends_on=("L3",), failure_mode="stop"
-    ),
-    "P1": GateNode(
-        name="P1", track="qa", depends_on=("L4",), failure_mode="retry"
-    ),
-    "P2": GateNode(
-        name="P2", track="qa", depends_on=("P1",), failure_mode="retry"
-    ),
-    "P3": GateNode(
-        name="P3", track="qa", depends_on=("P2",), failure_mode="retry"
-    ),
-    "P4": GateNode(
-        name="P4", track="qa", depends_on=("P3",), failure_mode="retry"
-    ),
+    "L2": GateNode(name="L2", track="lifecycle", depends_on=("L1",), failure_mode="stop"),
+    "L3": GateNode(name="L3", track="lifecycle", depends_on=("L2",), failure_mode="stop"),
+    "L4": GateNode(name="L4", track="lifecycle", depends_on=("L3",), failure_mode="stop"),
+    "P1": GateNode(name="P1", track="qa", depends_on=("L4",), failure_mode="retry"),
+    "P2": GateNode(name="P2", track="qa", depends_on=("P1",), failure_mode="retry"),
+    "P3": GateNode(name="P3", track="qa", depends_on=("P2",), failure_mode="retry"),
+    "P4": GateNode(name="P4", track="qa", depends_on=("P3",), failure_mode="retry"),
 }
 
 
@@ -171,9 +123,7 @@ def topological_order(dag: dict[str, GateNode], mode_gates: list[str]) -> list[s
                 remaining.remove(gate)
                 progress = True
         if not progress:
-            raise ValueError(
-                f"Cycle or unsatisfiable dependency: {remaining}"
-            )
+            raise ValueError(f"Cycle or unsatisfiable dependency: {remaining}")
     return emitted
 
 

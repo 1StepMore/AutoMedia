@@ -279,9 +279,7 @@ class TestCollectArtifacts:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("AUTOMEDIA_TEST_ARTIFACT", raising=False)
-        step = step_with_artifacts(
-            ArtifactCheck(path="$AUTOMEDIA_TEST_ARTIFACT", required=False)
-        )
+        step = step_with_artifacts(ArtifactCheck(path="$AUTOMEDIA_TEST_ARTIFACT", required=False))
         entries = collect_artifacts(step, 1, tmp_path / "run", cwd=tmp_path)
         assert entries[0]["ok"] is False
         assert entries[0]["reason"] == "missing"

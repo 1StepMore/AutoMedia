@@ -74,8 +74,7 @@ class DetectorRegistry(BaseRegistry):
         """
         if detector_name not in self._registry:
             raise KeyError(
-                f"Detector '{detector_name}' is not registered. "
-                f"Available: {list(self._registry)}"
+                f"Detector '{detector_name}' is not registered. Available: {list(self._registry)}"
             )
         return self._registry[detector_name]
 

@@ -582,15 +582,12 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "common_causes": [
             "LLM rewrite call fails or returns empty content",
             "Rewritten content is shorter than 300 characters minimum",
-            "LLM review or humanize call fails (non-fatal — continues with"
-            " rewritten content)",
+            "LLM review or humanize call fails (non-fatal — continues with rewritten content)",
             "Output directory 04_repurpose/newsletter/ is not writable",
         ],
         "fixes": [
-            "Retry the gate (failure_mode='retry') which re-runs all three"
-            " sub-pipeline steps",
-            "Ensure base content is long enough for meaningful newsletter"
-            " generation",
+            "Retry the gate (failure_mode='retry') which re-runs all three sub-pipeline steps",
+            "Ensure base content is long enough for meaningful newsletter generation",
             "Check LLM configuration (API key, model, endpoint)",
             "Verify project directory permissions for writing output files",
         ],

@@ -83,10 +83,7 @@ class TestDoctorLlmJson:
         """No fallback chain -> no-fallback warning, config path, status ok."""
         cfg = _write_model_config(
             tmp_path,
-            "llm:\n"
-            "  text_generation:\n"
-            "    provider: deepseek\n"
-            "    model: deepseek-chat\n",
+            "llm:\n  text_generation:\n    provider: deepseek\n    model: deepseek-chat\n",
         )
         data = _invoke_json(monkeypatch, tmp_path)
 
@@ -140,8 +137,7 @@ class TestDoctorLlmJson:
         assert data["status"] == "ok"
         assert (
             "Primary model 'deepseek-chat' may not match base_url "
-            "'https://my-proxy.example/v1' for provider 'deepseek'."
-            in data["llm"]["warnings"]
+            "'https://my-proxy.example/v1' for provider 'deepseek'." in data["llm"]["warnings"]
         )
 
     def test_missing_config_no_warnings(
@@ -164,10 +160,7 @@ class TestDoctorLlmText:
         """Warnings print in text mode without touching the final summary."""
         _write_model_config(
             tmp_path,
-            "llm:\n"
-            "  text_generation:\n"
-            "    provider: deepseek\n"
-            "    model: deepseek-chat\n",
+            "llm:\n  text_generation:\n    provider: deepseek\n    model: deepseek-chat\n",
         )
         monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
         _stub_all_installed(monkeypatch)

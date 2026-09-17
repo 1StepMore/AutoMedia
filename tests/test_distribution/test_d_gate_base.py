@@ -147,7 +147,8 @@ def make_d_gate_context(
     Tests may override individual keys via ``update()`` after creation.
     """
     return {
-        "content": content or (
+        "content": content
+        or (
             "AI technology continues to evolve rapidly in 2025. "
             "Multimodal AI models can now process text, images, and audio "
             "simultaneously, enabling richer content experiences."
@@ -346,9 +347,7 @@ class DGateTestBase:
             content = open(output_path, encoding="utf-8").read()
             assert len(content) > 0, "Output file is empty"
 
-    def test_output_file_contains_canned_response(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_contains_canned_response(self, d_gate_context: dict[str, Any]) -> None:
         """Output file content matches the canned LLM response."""
         gate = self.GATE_CLASS()
         with patch_llm_complete(self.mock_llm_target):
@@ -360,9 +359,9 @@ class DGateTestBase:
 
             assert os.path.isfile(output_path)
             content = open(output_path, encoding="utf-8").read()
-            assert _CANNED_RESPONSE in content or content.startswith(
-                _CANNED_RESPONSE[:50]
-            ), "Output file content does not match the canned response"
+            assert _CANNED_RESPONSE in content or content.startswith(_CANNED_RESPONSE[:50]), (
+                "Output file content does not match the canned response"
+            )
 
 
 # =========================================================================

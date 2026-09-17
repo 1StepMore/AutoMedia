@@ -26,9 +26,7 @@ class TestConfigured:
         assert result.missing == []
 
     def test_all_present_is_configured(self) -> None:
-        result = check_env(
-            ["API_KEY", "HOST"], environ={"API_KEY": "sk-1", "HOST": "db:5432"}
-        )
+        result = check_env(["API_KEY", "HOST"], environ={"API_KEY": "sk-1", "HOST": "db:5432"})
         assert result.configured is True
         assert result.missing == []
 
@@ -61,18 +59,14 @@ class TestMissing:
 
 
 class TestEnvironInjection:
-    def test_injected_environ_is_used_not_os_environ(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_injected_environ_is_used_not_os_environ(self, monkeypatch: pytest.MonkeyPatch) -> None:
         key = "ONLY_IN_PROCESS"
         monkeypatch.setenv(key, "from-process")
         result = check_env([key], environ={})
         assert result.configured is False
         assert result.missing == [key]
 
-    def test_default_environ_is_os_environ(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_default_environ_is_os_environ(self, monkeypatch: pytest.MonkeyPatch) -> None:
         key = "AUTOMEDIA_VALIDATION_ENV_GATE_TEST"
         monkeypatch.setenv(key, "1")
         result = check_env([key])

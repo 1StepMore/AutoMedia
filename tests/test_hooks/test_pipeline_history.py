@@ -203,9 +203,7 @@ class TestPipelineHistoryHookAfterGate:
         meta = json.loads(rows[1]["metadata_json"])
         assert meta["passed"] is True
 
-    def test_metadata_contains_result_failed_with_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_metadata_contains_result_failed_with_error(self, tmp_path: Path) -> None:
         """When a gate fails with an error, the metadata includes it."""
         hook = PipelineHistoryHook()
         ctx = {"project_dir": str(tmp_path), "project_id": "p1"}
@@ -319,9 +317,7 @@ class TestPipelineHistoryHookAccumulation:
 class TestPipelineHistoryHookErrorResilience:
     """Errors during DB operations are logged and do not raise."""
 
-    def test_missing_project_dir_does_not_raise(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_missing_project_dir_does_not_raise(self, caplog: pytest.LogCaptureFixture) -> None:
         """When project_dir is missing from context, the hook logs and returns."""
         import logging
 

@@ -80,9 +80,7 @@ def test_mcp_change_maps_all_surface_scenarios(scenarios_dir: Path) -> None:
 
 
 def test_cli_change_maps_all_cli_scenarios(scenarios_dir: Path) -> None:
-    result = map_affected(
-        ["src/automedia/cli/commands/validate.py"], scenarios_dir=scenarios_dir
-    )
+    result = map_affected(["src/automedia/cli/commands/validate.py"], scenarios_dir=scenarios_dir)
     assert result == ["cli/run-cli.yaml"]
 
 
@@ -106,9 +104,7 @@ def test_adapters_change_maps_publish_scenarios(scenarios_dir: Path) -> None:
 
 
 def test_scenario_change_maps_itself_plus_regression(scenarios_dir: Path) -> None:
-    result = map_affected(
-        ["scenarios/quality/quality-draft.yaml"], scenarios_dir=scenarios_dir
-    )
+    result = map_affected(["scenarios/quality/quality-draft.yaml"], scenarios_dir=scenarios_dir)
     assert result == [
         "quality/quality-draft.yaml",
         "regression/reg-pin.yaml",
@@ -131,9 +127,7 @@ def test_deleted_scenario_contributes_only_regression(scenarios_dir: Path) -> No
         "src/automedia/core/project.py",
     ],
 )
-def test_core_or_validation_change_is_full_suite(
-    scenarios_dir: Path, path: str
-) -> None:
+def test_core_or_validation_change_is_full_suite(scenarios_dir: Path, path: str) -> None:
     assert map_affected([path], scenarios_dir=scenarios_dir) == ["--all"]
 
 
@@ -166,9 +160,7 @@ def test_fallback_excludes_env_gated_non_root_scenarios(scenarios_dir: Path) -> 
 
 def test_fallback_union_with_explicit_rules(scenarios_dir: Path) -> None:
     """An unmatched path does not discard the explicit-rule results."""
-    result = map_affected(
-        ["src/automedia/mcp/server.py", "README.md"], scenarios_dir=scenarios_dir
-    )
+    result = map_affected(["src/automedia/mcp/server.py", "README.md"], scenarios_dir=scenarios_dir)
     assert "surface/health/engine-health.yaml" in result
     assert result == sorted(set(result) | set(_FALLBACK_EXPECTED))
 

@@ -2,6 +2,7 @@
 
 Tests the ``get_redlines`` tool handler in ``automedia.mcp.tools``.
 """
+
 from __future__ import annotations
 
 from automedia.mcp.tools import get_redlines

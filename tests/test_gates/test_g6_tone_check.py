@@ -186,8 +186,10 @@ class TestDeterministicPath:
         )
         result = G6ToneCheckGate().execute(ctx)
         assert result["passed"] is True
-        assert "no tone guidelines" in result["checks"][0]["detail"].lower() or \
-            "positive tone indicators" in result["checks"][0]["detail"]
+        assert (
+            "no tone guidelines" in result["checks"][0]["detail"].lower()
+            or "positive tone indicators" in result["checks"][0]["detail"]
+        )
 
     def test_empty_brand_profile_handled(self) -> None:
         """Brand profile with empty tone_guidelines is handled without crash."""
@@ -197,8 +199,10 @@ class TestDeterministicPath:
         )
         result = G6ToneCheckGate().execute(ctx)
         assert result["passed"] is True
-        assert "no tone guidelines" in result["checks"][0]["detail"].lower() or \
-            "no discernible tone" in result["checks"][0]["detail"].lower()
+        assert (
+            "no tone guidelines" in result["checks"][0]["detail"].lower()
+            or "no discernible tone" in result["checks"][0]["detail"].lower()
+        )
 
 
 # =========================================================================

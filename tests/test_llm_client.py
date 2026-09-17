@@ -1080,12 +1080,15 @@ class TestProviderFallbackChain:
             client._provider_tag = spec.get("provider", "")
             return client
 
-        with patch(
-            "automedia.core.llm_client._build_client",
-            side_effect=_build_side_effect,
-        ), patch(
-            "automedia.core.llm_client._llm_chat_completion_with_retry",
-            side_effect=_side_effect,
+        with (
+            patch(
+                "automedia.core.llm_client._build_client",
+                side_effect=_build_side_effect,
+            ),
+            patch(
+                "automedia.core.llm_client._llm_chat_completion_with_retry",
+                side_effect=_side_effect,
+            ),
         ):
             result = llm_complete("Hello", config=config)
         assert result == "from backup"
@@ -1112,12 +1115,15 @@ class TestProviderFallbackChain:
             client._provider_tag = spec.get("provider", "")
             return client
 
-        with patch(
-            "automedia.core.llm_client._build_client",
-            side_effect=_build_side_effect,
-        ), patch(
-            "automedia.core.llm_client._llm_chat_completion_with_retry",
-            side_effect=_side_effect,
+        with (
+            patch(
+                "automedia.core.llm_client._build_client",
+                side_effect=_build_side_effect,
+            ),
+            patch(
+                "automedia.core.llm_client._llm_chat_completion_with_retry",
+                side_effect=_side_effect,
+            ),
         ):
             result = llm_complete("Hello", config=config)
         assert result == "from last"
@@ -1141,12 +1147,15 @@ class TestProviderFallbackChain:
             client._provider_tag = spec.get("provider", "")
             return client
 
-        with patch(
-            "automedia.core.llm_client._build_client",
-            side_effect=_build_side_effect,
-        ), patch(
-            "automedia.core.llm_client._llm_chat_completion_with_retry",
-            side_effect=_side_effect,
+        with (
+            patch(
+                "automedia.core.llm_client._build_client",
+                side_effect=_build_side_effect,
+            ),
+            patch(
+                "automedia.core.llm_client._llm_chat_completion_with_retry",
+                side_effect=_side_effect,
+            ),
         ):
             with pytest.raises(LLMError, match="primary-provider.*backup-provider.*last-provider"):
                 llm_complete("Hello", config=config)
@@ -1190,15 +1199,16 @@ class TestProviderFallbackChain:
             client._provider_tag = spec.get("provider", "")
             return client
 
-        with patch(
-            "automedia.core.llm_client._build_client",
-            side_effect=_build_side_effect,
-        ), patch(
-            "automedia.core.llm_client._llm_structured_completion_with_retry",
-            side_effect=_side_effect,
+        with (
+            patch(
+                "automedia.core.llm_client._build_client",
+                side_effect=_build_side_effect,
+            ),
+            patch(
+                "automedia.core.llm_client._llm_structured_completion_with_retry",
+                side_effect=_side_effect,
+            ),
         ):
-            result = llm_complete_structured(
-                "Hello", response_format=_FencedOutput, config=config
-            )
+            result = llm_complete_structured("Hello", response_format=_FencedOutput, config=config)
         assert isinstance(result, _FencedOutput)
         assert result.value == "structured ok"

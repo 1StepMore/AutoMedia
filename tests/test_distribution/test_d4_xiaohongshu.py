@@ -51,10 +51,8 @@ class TestD4(DGateTestBase):
     # Gate-specific tests
     # ------------------------------------------------------------------
 
-    def test_context_extra_d4_output(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
-        """Successful gate sets gate_context.extra['d4_output']. """
+    def test_context_extra_d4_output(self, d_gate_context: dict[str, Any]) -> None:
+        """Successful gate sets gate_context.extra['d4_output']."""
         gate = D4Gate()
         with patch_llm_complete(self.mock_llm_target, _D4_CANNED):
             gate.execute(d_gate_context)
@@ -64,9 +62,7 @@ class TestD4(DGateTestBase):
         assert d4_output, "gate_context.extra['d4_output'] was not set"
         assert _D4_CANNED[:50] in d4_output
 
-    def test_output_file_in_xiaohongshu_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_xiaohongshu_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/xiaohongshu/."""
         import os
 
@@ -91,8 +87,6 @@ class TestD4(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        quality_checks = [
-            c for c in result["checks"] if "quality" in c["name"].lower()
-        ]
+        quality_checks = [c for c in result["checks"] if "quality" in c["name"].lower()]
         assert len(quality_checks) >= 1
         assert quality_checks[0]["passed"] is False

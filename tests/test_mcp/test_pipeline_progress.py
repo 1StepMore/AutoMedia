@@ -113,7 +113,9 @@ class TestPipelineProgressPropagation:
         events = progress_result.get("events", [])
 
         # Find the G0 start event
-        g0_starts = [e for e in events if e.get("gate_name") == "G0" and e.get("status") == "running"]
+        g0_starts = [
+            e for e in events if e.get("gate_name") == "G0" and e.get("status") == "running"
+        ]
         assert len(g0_starts) >= 1, "Expected at least one G0 running event"
 
         # Find the G0 end event

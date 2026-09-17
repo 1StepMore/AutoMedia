@@ -50,12 +50,12 @@ def _render_wechat_prompt(content: str, brand: str, title: str) -> str:
     str
         The rendered prompt string.
     """
-    title_hint = f" (original title: \"{title}\")" if title else ""
+    title_hint = f' (original title: "{title}")' if title else ""
 
     return (
         f"You are a professional WeChat Official Account content writer.\n"
         f"Rewrite the following content into a polished WeChat article{title_hint} "
-        f"for brand \"{brand}\".\n\n"
+        f'for brand "{brand}".\n\n'
         f"## WeChat Article Requirements\n\n"
         f"- Write in Simplified Chinese with a professional, authoritative tone\n"
         f"- Structure the article with a compelling hook, clear sections, "

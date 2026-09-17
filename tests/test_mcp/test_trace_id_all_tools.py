@@ -49,9 +49,7 @@ def _unwrap(raw: Any) -> dict[str, Any]:
 
 
 @pytest.fixture()
-def isolated_env(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> Generator[None, None, None]:
+def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> Generator[None, None, None]:
     """Keep tool side effects (config, projects, pool db) inside tmp_path.
 
     The no-arg sweep below invokes ``list_projects``, whose path check

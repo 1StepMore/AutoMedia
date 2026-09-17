@@ -1,4 +1,5 @@
 """Prompt template metadata tools — list_overridable_templates."""
+
 from __future__ import annotations
 
 import contextlib

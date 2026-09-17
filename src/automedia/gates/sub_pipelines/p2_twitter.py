@@ -90,10 +90,10 @@ def _split_into_tweets(raw: str) -> list[str]:
     # Try numbered-tweet format first
     numbered_pattern = re.compile(
         r"(?:^|\n)\s*(?:"
-        r"(?:\d+\s*[./:)])|"           # 1/, 1., 1:, 1)
-        r"(?:Tweet\s*\d+\s*[:.])|"      # Tweet 1:, Tweet 1.
-        r"(?:Thread\s*\d+\s*[:.])|"     # Thread 1:, Thread 1.
-        r"(?:#\d+)"                     # #1
+        r"(?:\d+\s*[./:)])|"  # 1/, 1., 1:, 1)
+        r"(?:Tweet\s*\d+\s*[:.])|"  # Tweet 1:, Tweet 1.
+        r"(?:Thread\s*\d+\s*[:.])|"  # Thread 1:, Thread 1.
+        r"(?:#\d+)"  # #1
         r")\s*\n?"
     )
     parts = numbered_pattern.split(raw)
@@ -124,15 +124,12 @@ def _check_thread_quality(content: str) -> str | None:
     combined_length = len(content.strip())
     if combined_length < _MIN_OUTPUT_LENGTH:
         return (
-            f"combined thread length {combined_length} chars is below "
-            f"minimum {_MIN_OUTPUT_LENGTH}"
+            f"combined thread length {combined_length} chars is below minimum {_MIN_OUTPUT_LENGTH}"
         )
 
     # Check tweet count
     if tweet_count < _MIN_TWEET_COUNT:
-        return (
-            f"Only {tweet_count} tweet(s) found, minimum required is {_MIN_TWEET_COUNT}"
-        )
+        return f"Only {tweet_count} tweet(s) found, minimum required is {_MIN_TWEET_COUNT}"
 
     # Check individual tweet lengths
     over_limit_tweets = [
@@ -141,9 +138,8 @@ def _check_thread_quality(content: str) -> str | None:
         if len(t) > _MAX_TWEET_LENGTH
     ]
     if over_limit_tweets:
-        return (
-            f"{len(over_limit_tweets)} tweet(s) exceed {_MAX_TWEET_LENGTH} chars: "
-            + ", ".join(f"#{t['index']} ({t['length']} chars)" for t in over_limit_tweets)
+        return f"{len(over_limit_tweets)} tweet(s) exceed {_MAX_TWEET_LENGTH} chars: " + ", ".join(
+            f"#{t['index']} ({t['length']} chars)" for t in over_limit_tweets
         )
 
     return None
@@ -176,7 +172,7 @@ def _step_thread_format(
         prompt = (
             f"You are a Twitter/X content strategist who creates viral threads.\n"
             f"Rewrite the following content into a compelling Twitter/X thread "
-            f"for brand \"{brand}\".\n\n"
+            f'for brand "{brand}".\n\n'
             f"## Twitter/X Thread Requirements\n\n"
             f"- Write in the language of the source content\n"
             f"- Create 5-10 connected tweets that tell a complete story\n"

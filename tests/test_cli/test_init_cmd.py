@@ -471,10 +471,7 @@ class TestInitFallback:
         result = runner.invoke(
             app,
             ["init"],
-            input=(
-                "deepseek\ndeepseek-chat\nsk-ds-key\n\n"
-                "y\nopenai\ngpt-4o-mini\nsk-fb-key\n\n"
-            ),
+            input=("deepseek\ndeepseek-chat\nsk-ds-key\n\ny\nopenai\ngpt-4o-mini\nsk-fb-key\n\n"),
         )
         assert result.exit_code == 0
 

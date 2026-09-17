@@ -130,9 +130,7 @@ class TestD3Zhihu:
     # Success path
     # ------------------------------------------------------------------
 
-    def test_success_with_topic(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_success_with_topic(self, d3_gate_context: dict[str, Any]) -> None:
         """Valid context + LLM success → gate passes."""
         gate = D3ZhihuRewrite()
         with _patch_d3_llm(_D3_CANNED):
@@ -142,9 +140,7 @@ class TestD3Zhihu:
         assert result["gate"] == "D3"
         assert result["error"] is None
 
-    def test_success_produces_checks(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_success_produces_checks(self, d3_gate_context: dict[str, Any]) -> None:
         """Successful gate returns quality checks."""
         gate = D3ZhihuRewrite()
         with _patch_d3_llm(_D3_CANNED):
@@ -161,9 +157,7 @@ class TestD3Zhihu:
     # Empty / missing content
     # ------------------------------------------------------------------
 
-    def test_empty_content_fails(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_empty_content_fails(self, d3_gate_context: dict[str, Any]) -> None:
         """Empty content → gate fails with passed=False."""
         ctx = {**d3_gate_context, "content": ""}
         gate = D3ZhihuRewrite()
@@ -172,9 +166,7 @@ class TestD3Zhihu:
         assert result["passed"] is False
         assert result["gate"] == "D3"
 
-    def test_missing_topic_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_missing_topic_fails(self, d_gate_context: dict[str, Any]) -> None:
         """Missing 'topic' → gate fails before LLM call."""
         # d_gate_context does NOT have 'topic'
         gate = D3ZhihuRewrite()
@@ -188,9 +180,7 @@ class TestD3Zhihu:
     # LLM failure
     # ------------------------------------------------------------------
 
-    def test_llm_failure_fails(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_failure_fails(self, d3_gate_context: dict[str, Any]) -> None:
         """LLM exception → gate fails with error."""
         from automedia.core.llm_client import LLMError
 
@@ -206,9 +196,7 @@ class TestD3Zhihu:
     # Output file creation
     # ------------------------------------------------------------------
 
-    def test_output_file_in_zhihu_dir(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_zhihu_dir(self, d3_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/zhihu/."""
         import os
 
@@ -222,9 +210,7 @@ class TestD3Zhihu:
         assert "zhihu" in output_path
         assert os.path.isfile(output_path)
 
-    def test_output_file_content_matches_canned(
-        self, d3_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_content_matches_canned(self, d3_gate_context: dict[str, Any]) -> None:
         """Output file content matches the canned LLM response."""
         import os
 
@@ -236,6 +222,4 @@ class TestD3Zhihu:
         if output_path:
             assert os.path.isfile(output_path)
             content = open(output_path, encoding="utf-8").read()
-            assert _D3_CANNED in content or content.startswith(
-                _D3_CANNED[:50]
-            )
+            assert _D3_CANNED in content or content.startswith(_D3_CANNED[:50])

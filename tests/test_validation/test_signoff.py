@@ -77,8 +77,7 @@ class TestSignRun:
         signed.write_text("2026-08-13T09:00:00 director approved\n", encoding="utf-8")
         sign_run(tmp_path, "run-a", "approved")
         assert signed.read_text(encoding="utf-8") == (
-            "2026-08-13T09:00:00 director approved\n"
-            f"{FROZEN_STAMP} {DEFAULT_SIGNER} approved\n"
+            f"2026-08-13T09:00:00 director approved\n{FROZEN_STAMP} {DEFAULT_SIGNER} approved\n"
         )
 
     def test_creates_signed_txt_when_absent(self, tmp_path: Path) -> None:

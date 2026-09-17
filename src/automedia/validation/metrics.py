@@ -125,9 +125,7 @@ def build_metrics(
     steps = _primary_steps(real)
     attempted_steps = len(steps)
     passed_steps = sum(1 for step in steps if step.get("passed") is True)
-    tool_call_accuracy = (
-        round(passed_steps / attempted_steps, 4) if attempted_steps else None
-    )
+    tool_call_accuracy = round(passed_steps / attempted_steps, 4) if attempted_steps else None
 
     attempted_recoveries, recovered, durations = _recovery_stats(records)
     recovery_success_rate = (

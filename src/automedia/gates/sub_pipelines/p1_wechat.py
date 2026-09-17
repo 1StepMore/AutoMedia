@@ -51,9 +51,7 @@ _HEADING_PATTERN: re.Pattern[str] = re.compile(r"^#{1,3}\s", re.MULTILINE)
 _EXPECTED_MAP: dict[str, str] = {
     "content_present": "Content is provided in gate_context",
     "rewrite_success": "LLM rewrite call completes without error",
-    "rewrite_quality": (
-        f"Rewritten output exceeds {_MIN_OUTPUT_LENGTH} characters"
-    ),
+    "rewrite_quality": (f"Rewritten output exceeds {_MIN_OUTPUT_LENGTH} characters"),
     "fact_check_completed": "Fact-check review completes without error",
     "humanize_completed": "LLM humanize call completes without error",
     "file_write_success": "WeChat repurpose file is written to disk",
@@ -86,7 +84,7 @@ def _render_rewrite_prompt(content: str, brand: str, title: str) -> str:
     return (
         f"You are a professional WeChat Official Account content writer.\n"
         f"Repurpose the following content into a polished WeChat article"
-        f"{title_hint} for brand \"{brand}\".\n\n"
+        f'{title_hint} for brand "{brand}".\n\n'
         f"## WeChat Article Requirements\n\n"
         f"- Write in Simplified Chinese with a professional, authoritative tone\n"
         f"- Structure the article with a compelling hook, clear sections, "
@@ -225,9 +223,7 @@ def _step_fact_check(
         return result
     except (json_mod.JSONDecodeError, ValueError):
         # Non-JSON response — heuristic: check for failure keywords
-        passed = not any(
-            kw in raw.lower() for kw in ("fail", "issue", "error", "inaccurate")
-        )
+        passed = not any(kw in raw.lower() for kw in ("fail", "issue", "error", "inaccurate"))
         return {
             "passed": passed,
             "issues": [],
@@ -331,10 +327,7 @@ def _check_rewrite_quality(content: str) -> str | None:
     """
     length = len(content.strip())
     if length < _MIN_OUTPUT_LENGTH:
-        return (
-            f"rewritten content length {length} chars is below "
-            f"minimum {_MIN_OUTPUT_LENGTH}"
-        )
+        return f"rewritten content length {length} chars is below minimum {_MIN_OUTPUT_LENGTH}"
     return None
 
 
@@ -617,8 +610,7 @@ class P1WechatGate(BaseGate):
                     "name": "rewrite_quality",
                     "passed": True,
                     "detail": (
-                        f"rewritten content length {len(rewritten)} chars "
-                        f">= {_MIN_OUTPUT_LENGTH}"
+                        f"rewritten content length {len(rewritten)} chars >= {_MIN_OUTPUT_LENGTH}"
                     ),
                 },
                 {

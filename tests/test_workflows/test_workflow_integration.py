@@ -148,7 +148,9 @@ class TestWorkflowLoader:
     def test_load_all(self, workflows_dir: Path) -> None:
         """load_all() discovers and returns all unique workflows."""
         _write_workflow_yaml(workflows_dir, "_test_wf_int", _SAMPLE_WORKFLOW)
-        _write_workflow_yaml(workflows_dir, "_test_minimal", {"name": "_test_minimal", "mode": "auto"})
+        _write_workflow_yaml(
+            workflows_dir, "_test_minimal", {"name": "_test_minimal", "mode": "auto"}
+        )
 
         loader = WorkflowLoader(workflows_dir=str(workflows_dir))
         all_wf = loader.load_all()

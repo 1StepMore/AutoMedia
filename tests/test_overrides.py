@@ -342,12 +342,8 @@ class TestLoadGateModifiers:
         loader = self._make_loader(
             tmp_path,
             rules={
-                "acme.yaml": yaml.dump(
-                    {"brand": "Acme", "gates": {"include": ["G6"]}}
-                ),
-                "beta.yaml": yaml.dump(
-                    {"brand": "Beta", "gates": {"include": ["V3"]}}
-                ),
+                "acme.yaml": yaml.dump({"brand": "Acme", "gates": {"include": ["G6"]}}),
+                "beta.yaml": yaml.dump({"brand": "Beta", "gates": {"include": ["V3"]}}),
             },
         )
         result = loader.load_gate_modifiers(brand="Acme")
@@ -358,9 +354,7 @@ class TestLoadGateModifiers:
         loader = self._make_loader(
             tmp_path,
             rules={
-                "acme.yaml": yaml.dump(
-                    {"brand": "Acme", "gates": {"include": ["G6"]}}
-                ),
+                "acme.yaml": yaml.dump({"brand": "Acme", "gates": {"include": ["G6"]}}),
             },
         )
         result = loader.load_gate_modifiers(brand="OtherBrand")
@@ -370,12 +364,8 @@ class TestLoadGateModifiers:
         loader = self._make_loader(
             tmp_path,
             rules={
-                "global.yaml": yaml.dump(
-                    {"gates": {"exclude": ["V1"]}}
-                ),
-                "acme.yaml": yaml.dump(
-                    {"brand": "Acme", "gates": {"include": ["G6"]}}
-                ),
+                "global.yaml": yaml.dump({"gates": {"exclude": ["V1"]}}),
+                "acme.yaml": yaml.dump({"brand": "Acme", "gates": {"include": ["G6"]}}),
             },
         )
         result = loader.load_gate_modifiers(brand="Acme")
@@ -422,9 +412,7 @@ class TestLoadGateModifiers:
             tmp_path,
             rules={
                 "config.yaml": yaml.dump({"some_setting": True}),
-                "gates.yaml": yaml.dump(
-                    {"brand": "Acme", "gates": {"include": ["G6"]}}
-                ),
+                "gates.yaml": yaml.dump({"brand": "Acme", "gates": {"include": ["G6"]}}),
             },
         )
         result = loader.load_gate_modifiers(brand="Acme")

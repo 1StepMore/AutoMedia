@@ -31,9 +31,7 @@ _MAX_OUTPUT_LENGTH: int = 500
 _EXPECTED_MAP: dict[str, str] = {
     "content_present": "Content is provided in gate_context",
     "llm_success": "LLM call completes without error",
-    "output_length": (
-        f"Output between {_MIN_OUTPUT_LENGTH} and {_MAX_OUTPUT_LENGTH} characters"
-    ),
+    "output_length": (f"Output between {_MIN_OUTPUT_LENGTH} and {_MAX_OUTPUT_LENGTH} characters"),
     "file_write_success": "TikTok script file is written to disk",
 }
 
@@ -55,12 +53,12 @@ def _render_tiktok_prompt(content: str, brand: str, title: str) -> str:
     str
         The rendered prompt string.
     """
-    title_hint = f" (adapted from: \"{title}\")" if title else ""
+    title_hint = f' (adapted from: "{title}")' if title else ""
 
     return (
         f"You are a TikTok content creator who makes viral short-form videos.\n"
         f"Rewrite the following content into a TikTok video script{title_hint} "
-        f"for brand \"{brand}\".\n\n"
+        f'for brand "{brand}".\n\n'
         f"## TikTok Script Requirements\n\n"
         f"- Write in Simplified Chinese (or match the source language)\n"
         f"- **CRITICAL: Output must be 100-500 characters total** — brief and punchy\n"

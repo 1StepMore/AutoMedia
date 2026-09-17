@@ -60,16 +60,11 @@ def rollback_cmd(
 
     # Already archived?
     if project_dir.name.endswith("_archived"):
-        output_error(
-            f"Refused: project directory {project_dir.name!r} is already archived."
-        )
+        output_error(f"Refused: project directory {project_dir.name!r} is already archived.")
 
     # Has pipeline history (must have run at least once)?
     if not is_eligible_for_rollback(str(project_dir)):
-        output_error(
-            f"Project {project_id!r} has no pipeline history "
-            "and cannot be rolled back."
-        )
+        output_error(f"Project {project_id!r} has no pipeline history and cannot be rolled back.")
 
     # ------------------------------------------------------------------
     # 3. User confirmation

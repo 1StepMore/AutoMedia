@@ -90,9 +90,7 @@ class TestEnvGateFakeMode:
         assert result.configured is False
         assert result.missing == ["AUTOMEDIA_MASTER_KEY"]
 
-    def test_control_vars_stay_gated_in_fake_mode(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_control_vars_stay_gated_in_fake_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(_FAKE, "1")
         result = check_env(["AUTOMEDIA_VALIDATION_EXPECT_X"])
         assert result.configured is False
@@ -103,16 +101,12 @@ class TestEngineFakeMode:
         self, monkeypatch: pytest.MonkeyPatch, credential_free: None
     ) -> None:
         monkeypatch.setenv(_FAKE, "1")
-        record = asyncio.run(
-            run_validation_scenario_async(_scenario(), make_adapters(None))
-        )
+        record = asyncio.run(run_validation_scenario_async(_scenario(), make_adapters(None)))
         assert record["status"] != "unconfigured"
         assert record["status"] == "passed"
 
     def test_no_fake_no_key_is_unconfigured(self, credential_free: None) -> None:
-        record = asyncio.run(
-            run_validation_scenario_async(_scenario(), make_adapters(None))
-        )
+        record = asyncio.run(run_validation_scenario_async(_scenario(), make_adapters(None)))
         assert record["status"] == "unconfigured"
         assert _LLM_KEY in str(record["reason"])
 
@@ -121,9 +115,7 @@ class TestEngineFakeMode:
     ) -> None:
         monkeypatch.setenv(_FAKE, "1")
         record = asyncio.run(
-            run_validation_scenario_async(
-                _scenario(requires_real_llm=True), make_adapters(None)
-            )
+            run_validation_scenario_async(_scenario(requires_real_llm=True), make_adapters(None))
         )
         assert record["status"] == "unconfigured"
 

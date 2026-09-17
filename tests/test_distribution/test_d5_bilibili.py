@@ -118,9 +118,7 @@ class TestD5Bilibili:
     # Success path
     # ------------------------------------------------------------------
 
-    def test_success_with_topic(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_success_with_topic(self, d5_gate_context: dict[str, Any]) -> None:
         """Valid context + LLM success → gate passes."""
         gate = D5BilibiliRewrite()
         with _patch_d5_llm(_D5_CANNED):
@@ -130,9 +128,7 @@ class TestD5Bilibili:
         assert result["gate"] == "D5"
         assert result["error"] is None
 
-    def test_success_produces_checks(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_success_produces_checks(self, d5_gate_context: dict[str, Any]) -> None:
         """Successful gate returns quality checks."""
         gate = D5BilibiliRewrite()
         with _patch_d5_llm(_D5_CANNED):
@@ -149,9 +145,7 @@ class TestD5Bilibili:
     # Empty / missing content
     # ------------------------------------------------------------------
 
-    def test_empty_content_fails(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_empty_content_fails(self, d5_gate_context: dict[str, Any]) -> None:
         """Empty content → gate fails with passed=False."""
         ctx = {**d5_gate_context, "content": ""}
         gate = D5BilibiliRewrite()
@@ -160,9 +154,7 @@ class TestD5Bilibili:
         assert result["passed"] is False
         assert result["gate"] == "D5"
 
-    def test_missing_topic_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_missing_topic_fails(self, d_gate_context: dict[str, Any]) -> None:
         """Missing 'topic' → gate fails before LLM call."""
         gate = D5BilibiliRewrite()
         result = gate.execute(d_gate_context)
@@ -171,9 +163,7 @@ class TestD5Bilibili:
         assert result["gate"] == "D5"
         assert "topic" in result.get("error", "").lower()
 
-    def test_missing_project_dir_fails(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_missing_project_dir_fails(self, d5_gate_context: dict[str, Any]) -> None:
         """Missing 'project_dir' → gate fails."""
         ctx = {k: v for k, v in d5_gate_context.items() if k != "project_dir"}
         gate = D5BilibiliRewrite()
@@ -186,9 +176,7 @@ class TestD5Bilibili:
     # LLM failure
     # ------------------------------------------------------------------
 
-    def test_llm_failure_fails(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_llm_failure_fails(self, d5_gate_context: dict[str, Any]) -> None:
         """LLM exception → gate fails with error."""
         from automedia.core.llm_client import LLMError
 
@@ -207,9 +195,7 @@ class TestD5Bilibili:
     # Output file creation
     # ------------------------------------------------------------------
 
-    def test_output_file_in_bilibili_dir(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_bilibili_dir(self, d5_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/bilibili/."""
         import os
 
@@ -223,9 +209,7 @@ class TestD5Bilibili:
         assert "bilibili" in output_path
         assert os.path.isfile(output_path)
 
-    def test_output_file_has_content(
-        self, d5_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_has_content(self, d5_gate_context: dict[str, Any]) -> None:
         """Output file is non-empty."""
         import os
 

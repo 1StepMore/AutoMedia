@@ -50,9 +50,7 @@ class TestD2(DGateTestBase):
     # D2 wraps content with "## Tweet N" headers, so the canned response
     # does NOT appear verbatim in the output file. Override this inherited
     # test to check that the file exists and is non-empty instead.
-    def test_output_file_contains_canned_response(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_contains_canned_response(self, d_gate_context: dict[str, Any]) -> None:
         import os
 
         gate = D2Gate()
@@ -68,9 +66,7 @@ class TestD2(DGateTestBase):
     # Gate-specific tests
     # ------------------------------------------------------------------
 
-    def test_context_extra_d2_output(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_context_extra_d2_output(self, d_gate_context: dict[str, Any]) -> None:
         """Successful gate sets gate_context.extra['d2_output'] with tweets."""
         gate = D2Gate()
         with patch_llm_complete(self.mock_llm_target, _D2_CANNED):
@@ -79,17 +75,14 @@ class TestD2(DGateTestBase):
         extra = d_gate_context.get("extra", {})
         d2_output = extra.get("d2_output", [])
         assert len(d2_output) >= 3, (
-            f"Expected at least 3 tweets in extra['d2_output'], "
-            f"got {len(d2_output)}"
+            f"Expected at least 3 tweets in extra['d2_output'], got {len(d2_output)}"
         )
         for tweet in d2_output:
             assert "index" in tweet
             assert "text" in tweet
             assert len(tweet["text"]) <= 280
 
-    def test_output_file_in_twitter_dir(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_output_file_in_twitter_dir(self, d_gate_context: dict[str, Any]) -> None:
         """Output file is created under 04_distribution/twitter/."""
         import os
 
@@ -103,9 +96,7 @@ class TestD2(DGateTestBase):
         assert "twitter" in output_path
         assert os.path.isfile(output_path)
 
-    def test_few_tweets_fails(
-        self, d_gate_context: dict[str, Any]
-    ) -> None:
+    def test_few_tweets_fails(self, d_gate_context: dict[str, Any]) -> None:
         """Response producing < 3 tweets fails quality check."""
         single_tweet = "1/ Only one tweet here."
         gate = D2Gate()
@@ -113,8 +104,6 @@ class TestD2(DGateTestBase):
             result = gate.execute(d_gate_context)
 
         assert result["passed"] is False
-        tweet_checks = [
-            c for c in result["checks"] if "tweet" in c["name"].lower()
-        ]
+        tweet_checks = [c for c in result["checks"] if "tweet" in c["name"].lower()]
         assert len(tweet_checks) >= 1
         assert tweet_checks[0]["passed"] is False

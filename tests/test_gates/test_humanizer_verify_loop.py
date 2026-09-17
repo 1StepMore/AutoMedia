@@ -103,6 +103,7 @@ class TestVerifyLoopOff:
 
     def test_detector_never_invoked_when_off(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """OFF → the deterministic detector is never called (no loop cost)."""
+
         def _boom(_text: str) -> dict[str, Any]:
             raise AssertionError("detector must not be invoked when the toggle is off")
 
@@ -183,9 +184,7 @@ class TestVerifyLoopOn:
 class TestVerifyLoopBudget:
     """The loop is bounded: budget cap, no-progress stop, no hangs."""
 
-    def test_non_converging_rewrite_stops_at_budget(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_non_converging_rewrite_stops_at_budget(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A rewrite that keeps changing but never converges stops at the budget."""
         monkeypatch.setattr(
             "automedia.gates.humanizer._rewrite_content",

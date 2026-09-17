@@ -151,9 +151,7 @@ class D5BilibiliRewrite(BaseGate):
             if bilibili_sys:
                 prompt = bilibili_sys
 
-        user_message = (
-            f"Topic: {topic}\nBrand: {brand}\n\nDraft content:\n\n{draft_content}"
-        )
+        user_message = f"Topic: {topic}\nBrand: {brand}\n\nDraft content:\n\n{draft_content}"
         if brand_profile:
             voice = brand_profile.get("voice", "")
             if voice:
@@ -210,9 +208,7 @@ class D5BilibiliRewrite(BaseGate):
             {
                 "name": "bilibili_content_generated",
                 "passed": True,
-                "detail": (
-                    f"Bilibili video script generated ({len(bilibili_content)} chars)"
-                ),
+                "detail": (f"Bilibili video script generated ({len(bilibili_content)} chars)"),
             },
             {
                 "name": "min_length",
@@ -220,9 +216,7 @@ class D5BilibiliRewrite(BaseGate):
                 "detail": (
                     f"Content length {len(bilibili_content)} exceeds {_MIN_CONTENT_LENGTH}"
                     if len(bilibili_content) > _MIN_CONTENT_LENGTH
-                    else (
-                        f"Content length {len(bilibili_content)} ≤ {_MIN_CONTENT_LENGTH}"
-                    )
+                    else (f"Content length {len(bilibili_content)} ≤ {_MIN_CONTENT_LENGTH}")
                 ),
             },
             {

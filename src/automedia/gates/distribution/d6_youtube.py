@@ -94,11 +94,11 @@ def _render_youtube_prompt(content: str, brand: str, title: str) -> str:
     str
         The rendered prompt string.
     """
-    title_hint = f" (adapted from: \"{title}\")" if title else ""
+    title_hint = f' (adapted from: "{title}")' if title else ""
 
     return (
         f"You are a YouTube script writer. Rewrite the following content "
-        f"into a video script{title_hint} for brand \"{brand}\".\n\n"
+        f'into a video script{title_hint} for brand "{brand}".\n\n'
         f"## YouTube Script Requirements\n\n"
         f"- Write in English — conversational, punchy, spoken-word style\n"
         f"- Structure the script with these three clear sections:\n"
@@ -135,9 +135,7 @@ def _check_youtube_script_quality(script: str) -> str | None:
     # Minimum length
     length = len(script.strip())
     if length < _MIN_OUTPUT_LENGTH:
-        issues.append(
-            f"script length {length} chars is below minimum {_MIN_OUTPUT_LENGTH}"
-        )
+        issues.append(f"script length {length} chars is below minimum {_MIN_OUTPUT_LENGTH}")
 
     # Section structure
     if not _COMPILED_INTRO.search(script):

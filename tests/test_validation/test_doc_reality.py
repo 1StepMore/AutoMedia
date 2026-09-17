@@ -124,8 +124,14 @@ def _make_drift_repo(tmp_path: Path) -> tuple[Path, Path]:
     )
     _write(
         docs / "README.md",
-        _README_TOOLS + "\n" + _README_CMDS + "\n" + _README_GATE_CLAIMS + "\n"
-        + _ADAPTER_CLAIM + "\n",
+        _README_TOOLS
+        + "\n"
+        + _README_CMDS
+        + "\n"
+        + _README_GATE_CLAIMS
+        + "\n"
+        + _ADAPTER_CLAIM
+        + "\n",
     )
     _write(src / "automedia" / "mcp" / "server.py", _SERVER_PY)
     _write(src / "automedia" / "cli" / "app.py", _APP_PY)
@@ -164,7 +170,10 @@ def _make_clean_repo(tmp_path: Path) -> tuple[Path, Path]:
     _write(docs / "AGENTS.md", tools + "\n" + cmds + "\n- **Total: 3 gates.**\n")
     _write(
         docs / "README.md",
-        tools + "\n" + cmds + "\n- **Total: 3 gates.**\n"
+        tools
+        + "\n"
+        + cmds
+        + "\n- **Total: 3 gates.**\n"
         + "- **Platform adapter system**: 3 registered adapters "
         + "(3 real API + 0 documented manual-only stubs)\n",
     )
@@ -240,9 +249,7 @@ class TestDriftDetection:
         assert claims["5 registered adapters"]["count"] == 5
         assert claims["13 real"]["count"] == 13
         assert claims["7 documented manual-only stubs"]["count"] == 7
-        adapter_findings = [
-            f for f in report["findings"] if "is_stub" in f["reality"]
-        ]
+        adapter_findings = [f for f in report["findings"] if "is_stub" in f["reality"]]
         assert {f["claim"] for f in adapter_findings} == {
             "13 real",
             "7 documented manual-only stubs",
@@ -293,7 +300,8 @@ class TestDriftDetection:
         assert "analyze_content" not in report["mcp_tools"]["undocumented"]
         assert "analyze_content" not in report["mcp_tools"]["phantom_docs"]
         note = next(
-            f for f in report["findings"]
+            f
+            for f in report["findings"]
             if f["claim"] == "effects_analyze_content vs analyze_content"
         )
         assert note["severity"] == "low"

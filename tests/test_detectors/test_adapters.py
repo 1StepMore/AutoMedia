@@ -47,9 +47,7 @@ class TestGPTZeroStyleApiDetector:
         monkeypatch.delenv(_ENV_KEY, raising=False)
         assert GPTZeroStyleApiDetector().available() is False
 
-    def test_detect_raises_unavailable_without_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_detect_raises_unavailable_without_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """detect() raises a RuntimeError naming the missing env var."""
         monkeypatch.delenv(_ENV_KEY, raising=False)
         with pytest.raises(RuntimeError, match=_ENV_KEY):

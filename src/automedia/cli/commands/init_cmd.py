@@ -50,6 +50,7 @@ def _yaml_value(val: object) -> str:
         return "''"
     if any(c in s for c in ":,[]{}&*!|>?'\"%@`"):
         import json as _json
+
         return _json.dumps(s, ensure_ascii=False)
     return s
 
@@ -247,7 +248,9 @@ def init_cmd(
         _init_full_template()
     elif template is None:
         if get_output_mode() == OutputMode.JSON:
-            output_error("Interactive init not supported in --json mode. Use --template minimal or --template full.")
+            output_error(
+                "Interactive init not supported in --json mode. Use --template minimal or --template full."
+            )
         _init_interactive()
     else:
         output_error(f"Unknown template: {template!r}")
@@ -317,7 +320,7 @@ def _init_minimal() -> None:
     }
     _write_model_config(data)
     output_text(
-        "Minimal configuration written. Run `automedia doctor` to verify, then `automedia run --topic \"...\" --brand my-brand` to start.",
+        'Minimal configuration written. Run `automedia doctor` to verify, then `automedia run --topic "..." --brand my-brand` to start.',
         data={"status": "ok", "path": str(_MODEL_CONFIG_FILE)},
     )
 

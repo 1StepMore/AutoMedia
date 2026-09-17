@@ -245,9 +245,7 @@ class TestCLIAdapter:
         assert "oops" in result.output["stderr"]
 
     def test_timeout_is_enforced_and_captured(self) -> None:
-        result = CLIAdapter().run(
-            cli_step("python3 -c 'import time; time.sleep(5)'", timeout=0.5)
-        )
+        result = CLIAdapter().run(cli_step("python3 -c 'import time; time.sleep(5)'", timeout=0.5))
         assert result.ok is False
         assert result.output["success"] is False
         assert result.output["exit_code"] is None
