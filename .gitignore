@@ -24,6 +24,7 @@ docs/production-e2e-test-design.md
 # ===== Local config & tooling =====
 .automedia/
 .omo/
+.trae/
 /.hermes/
 
 # Local-agent-only maintainer skills (not for AutoMedia users)
