@@ -235,6 +235,29 @@ class ContentWriterGate(BaseGate):
             voice = brand_profile.get("voice", "")
             if voice:
                 user_message += f"\nBrand voice: {voice}"
+            # Inject CTA principles — this is what they are for: guidance on how
+            # the call-to-action should be written.  Feeding them into the prompt
+            # is deterministic (they take effect as soon as they are present) and
+            # carries no false-failure risk, unlike a heuristic post-hoc check.
+            #
+            # The values come from user-authored YAML, so entries are not guaranteed
+            # to be plain strings: an unquoted colon turns a list line into a mapping
+            # (e.g. ``- Use action verbs: 立即体验``).  Render both shapes rather than
+            # crashing or silently dropping a principle.
+            principles = brand_profile.get("cta_principles", [])
+            rendered: list[str] = []
+            if isinstance(principles, list):
+                for item in principles:
+                    if isinstance(item, str) and item.strip():
+                        rendered.append(item.strip())
+                    elif isinstance(item, dict):
+                        for key, value in item.items():
+                            rendered.append(f"{key}: {value}" if value else str(key))
+            if rendered:
+                user_message += (
+                    "\nBrand CTA principles (follow when writing the call-to-action): "
+                    + "; ".join(rendered)
+                )
 
         # Inject format hint for social-thread mode
         content_format = gate_context.get("content_format", "")

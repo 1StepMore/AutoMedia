@@ -3,7 +3,8 @@
 Todo 16: ``aliases`` / ``blocked_words`` / ``brand_identity`` /
 ``tone_guidelines`` must survive the ``add_brand`` → ``list_brands``
 round-trip, because those are the keys G3 (``brand_cta``) and G6
-(``g6_tone_check``) actually read from the brand profile.
+(``g6_tone_check``) actually read from the brand profile.  The same holds
+for ``cta_principles``, which the CW gate injects into its writer prompt.
 
 A ``tmp_path`` brand-profiles file backs every test; the real
 ``~/.automedia/brand_profiles.yaml`` is never touched.
@@ -11,7 +12,6 @@ A ``tmp_path`` brand-profiles file backs every test; the real
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 
 import pytest
@@ -75,12 +75,31 @@ class TestAddBrandGateConsumedFields:
         assert brand["target_audience"] == "Developers"
         assert brand["aliases"] == []
 
-    def test_cta_principles_is_not_a_parameter(self) -> None:
-        """``cta_principles`` has no gate consumer, so it stays unsupported."""
-        assert "cta_principles" not in inspect.signature(add_brand).parameters
+    def test_cta_principles_round_trips(self, brand_file: Path) -> None:
+        """``cta_principles`` reaches the CW prompt, so it is accepted + read back.
 
-    def test_tool_schema_exposes_only_gate_consumed_optional_fields(self) -> None:
-        """The MCP schema advertises the consumed fields and not cta_principles."""
+        中文说明：健康度整改（P1-3）之前本用例断言 ``cta_principles``
+        「无门消费者，故不支持」——但 CW（content_writer）门确实把它注入
+        写作 prompt，是真实消费者。契约随之改为「接受并回读」。
+        """
+        result = add_brand(
+            name="cta-brand",
+            cta_principles=["Lead with the benefit", "Never use urgency"],
+        )
+
+        assert result["success"] is True
+
+        brand = _brand(list_brands(), "cta-brand")
+        assert brand["cta_principles"] == ["Lead with the benefit", "Never use urgency"]
+
+    def test_omitted_cta_principles_stay_empty(self, brand_file: Path) -> None:
+        """Given no ``cta_principles``, When added, Then it loads as empty."""
+        assert add_brand(name="no-cta-brand")["success"] is True
+
+        assert _brand(list_brands(), "no-cta-brand")["cta_principles"] == []
+
+    def test_tool_schema_exposes_gate_consumed_optional_fields(self) -> None:
+        """The MCP schema advertises every optional field a gate or prompt reads."""
         from automedia.mcp.server import create_server
 
         tool = create_server()._tool_manager._tools["add_brand"]
@@ -90,4 +109,4 @@ class TestAddBrandGateConsumedFields:
         assert "blocked_words" in properties
         assert "brand_identity" in properties
         assert "tone_guidelines" in properties
-        assert "cta_principles" not in properties
+        assert "cta_principles" in properties

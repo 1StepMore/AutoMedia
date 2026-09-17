@@ -67,6 +67,7 @@ def add_brand(
     blocked_words: list[str] | None = None,
     brand_identity: str = "",
     tone_guidelines: str = "",
+    cta_principles: list[str] | None = None,
 ) -> dict[str, Any]:
     """Create a new brand profile.
 
@@ -75,7 +76,9 @@ def add_brand(
     The brand *name* is required; every other parameter is optional.
 
     ``aliases``, ``blocked_words`` and ``brand_identity`` are read by the
-    G3 brand-CTA gate; ``tone_guidelines`` is read by the G6 tone gate.
+    G3 brand-CTA gate; ``tone_guidelines`` is read by the G6 tone gate;
+    ``cta_principles`` is injected into the CW (content writer) prompt so the
+    drafted call-to-action follows the brand's principles.
 
     Parameters
     ----------
@@ -93,6 +96,9 @@ def add_brand(
         Optional brand positioning statement.
     tone_guidelines:
         Optional textual tone-of-voice guidelines.
+    cta_principles:
+        Optional principles guiding how the call-to-action should be written
+        (e.g. ``["Lead with the benefit", "Never use urgency"]``).
 
     Returns
     -------
@@ -115,6 +121,8 @@ def add_brand(
             data["brand_identity"] = brand_identity
         if tone_guidelines:
             data["tone_guidelines"] = tone_guidelines
+        if cta_principles:
+            data["cta_principles"] = cta_principles
 
         save_brand_profile(name, data)
 

@@ -12,6 +12,7 @@ Covers ``ContentWriterGate.execute()`` with:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -111,7 +112,7 @@ class TestExecute:
     # Happy path
     # ------------------------------------------------------------------
 
-    def test_happy_path(self, tmp_path: Any) -> None:
+    def test_happy_path(self, tmp_path: Path) -> None:
         """Minimal valid gate_context produces a draft file with content.
 
         Verifies the full round-trip:
@@ -168,10 +169,92 @@ class TestExecute:
         }
 
     # ------------------------------------------------------------------
+    # Brand CTA principles
+    # ------------------------------------------------------------------
+
+    def test_cta_principles_injected_into_writer_prompt(self, tmp_path: Path) -> None:
+        """``brand_profile["cta_principles"]`` guides the call-to-action in the prompt.
+
+        中文说明：健康度整改（P1-3）之前 ``cta_principles`` 有设定却无消费者。
+        CW 门现在把它注入写作 prompt —— 这是「指导 CTA 怎么写」的本意，且
+        进入 prompt 即确定性生效，无假停机风险。
+        """
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            brand_profile={
+                "voice": "warm",
+                "cta_principles": ["Lead with the benefit", "Never use urgency"],
+            },
+        )
+        gate = ContentWriterGate()
+
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=MOCK_ARTICLE,
+        ) as mock_llm:
+            result = gate.execute(ctx)
+
+        assert result["passed"] is True, f"Expected passed=True, got: {result}"
+        user_msg = mock_llm.call_args_list[0][0][0]
+        assert "Lead with the benefit" in user_msg
+        assert "Never use urgency" in user_msg
+
+    def test_no_cta_principles_means_no_prompt_section(self, tmp_path: Path) -> None:
+        """Given no ``cta_principles``, When writing, Then the CTA section is absent."""
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            brand_profile={"voice": "warm"},
+        )
+        gate = ContentWriterGate()
+
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=MOCK_ARTICLE,
+        ) as mock_llm:
+            result = gate.execute(ctx)
+
+        assert result["passed"] is True, f"Expected passed=True, got: {result}"
+        user_msg = mock_llm.call_args_list[0][0][0]
+        assert "Brand voice: warm" in user_msg
+        assert "CTA principles" not in user_msg
+
+    def test_cta_principles_tolerates_yaml_mapping_entries(self, tmp_path: Path) -> None:
+        """A mapping entry (unquoted colon in YAML) is rendered, not crashed on.
+
+        中文说明：``- Use action verbs: 立即体验`` 这类未加引号的行会被 YAML 解析成
+        mapping 而非字符串（synth fixture ``testbrand.yaml`` 就是如此）。门必须
+        照常渲染该条原则，而不是抛 ``TypeError`` 或悄悄丢掉它。
+        """
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            brand_profile={
+                "cta_principles": [
+                    "Link to product demo page",
+                    {"Use action verbs": "立即体验, 免费试用"},
+                ]
+            },
+        )
+        gate = ContentWriterGate()
+
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=MOCK_ARTICLE,
+        ) as mock_llm:
+            result = gate.execute(ctx)
+
+        assert result["passed"] is True, f"Expected passed=True, got: {result}"
+        user_msg = mock_llm.call_args_list[0][0][0]
+        assert "Link to product demo page" in user_msg
+        assert "Use action verbs: 立即体验, 免费试用" in user_msg
+
+    # ------------------------------------------------------------------
     # Edge case: empty topic
     # ------------------------------------------------------------------
 
-    def test_empty_topic(self, tmp_path: Any) -> None:
+    def test_empty_topic(self, tmp_path: Path) -> None:
         """Empty ``topic`` returns ``passed=False`` with topic_present check.
 
         The gate should short-circuit before any LLM call or file write.
@@ -218,7 +301,7 @@ class TestExecute:
     # Edge case: missing brand configuration
     # ------------------------------------------------------------------
 
-    def test_missing_brand_config(self, tmp_path: Any) -> None:
+    def test_missing_brand_config(self, tmp_path: Path) -> None:
         """Missing brand / config / brand_profile keys still works.
 
         The gate uses default empty values for brand and config, and
@@ -252,7 +335,7 @@ class TestExecute:
     # LLM failure
     # ------------------------------------------------------------------
 
-    def test_llm_failure_returns_error(self, tmp_path: Any) -> None:
+    def test_llm_failure_returns_error(self, tmp_path: Path) -> None:
         """When ``llm_complete`` raises ``LLMError``, gate returns failure.
 
         This tests the error-handling path — the gate must not crash
@@ -281,7 +364,7 @@ class TestExecute:
     # Writer system prompt override
     # ------------------------------------------------------------------
 
-    def test_writer_system_prompt_override(self, tmp_path: Any) -> None:
+    def test_writer_system_prompt_override(self, tmp_path: Path) -> None:
         """When config has ``llm.writer.system_prompt``, it overrides the
         default prompt."""
         custom_prompt = "Custom system prompt for testing"
