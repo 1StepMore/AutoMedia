@@ -108,7 +108,10 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/automedia/.vulture_whitelist.py" = ["F821", "B018", "N999"]
-"tests/**" = ["S101", "S105", "S106"]
+# ANN is deliberately off for tests: forcing a return/parameter annotation on
+# every test function and fixture produced ~860 findings of scaffolding noise
+# with no behavioral value. Product code (src/) keeps ANN enforced.
+"tests/**" = ["S101", "S105", "S106", "ANN"]
 
 [tool.mypy]
 python_version = "3.12"
