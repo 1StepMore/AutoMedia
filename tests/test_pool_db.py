@@ -6,6 +6,7 @@ import os
 import sqlite3
 import tempfile
 import uuid
+from collections.abc import Iterator
 
 import pytest
 
@@ -26,9 +27,20 @@ def db_path() -> str:
 
 
 @pytest.fixture
-def pool(db_path: str) -> PoolDB:
-    """Return a PoolDB instance backed by a temp file."""
-    return PoolDB(db_path)
+def pool(db_path: str) -> Iterator[PoolDB]:
+    """Return a PoolDB instance backed by a temp file, closed on teardown.
+
+    中文说明：必须 ``yield`` 后显式 ``close()``。Windows 上打开的 SQLite 连接
+    会锁定 ``.db`` 文件，使 ``db_path`` fixture 的 teardown ``os.unlink`` 抛
+    ``PermissionError [WinError 32]``——该文件此前有 22 项测试因此失败（测试体
+    全部通过，失败全在 teardown）。``PoolDB`` 已提供 ``close()``，这里只是补上
+    "用完即关"的职责，生产代码无需改动。
+    """
+    db = PoolDB(db_path)
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture
@@ -47,8 +59,13 @@ class TestPoolDBCreate:
 
     def test_db_file_created(self, db_path: str):
         assert not os.path.exists(db_path)
-        PoolDB(db_path)
-        assert os.path.exists(db_path)
+        db = PoolDB(db_path)
+        try:
+            assert os.path.exists(db_path)
+        finally:
+            # 不关连接会让 db_path fixture 的 teardown unlink 在 Windows 上
+            # 抛 WinError 32（见 pool fixture 的说明）。
+            db.close()
 
     def test_schema_has_topics_table(self, pool: PoolDB):
         cur = pool.conn.execute(
@@ -144,12 +161,16 @@ class TestPoolDBMigration:
         conn.close()
 
         pool = PoolDB(db_path)
-        pool.run_migration()
+        try:
+            pool.run_migration()
 
-        # Verify column now exists
-        cur = pool.conn.execute("PRAGMA table_info(topics)")
-        cols = {row["name"] for row in cur.fetchall()}
-        assert "tenant_id" in cols
+            # Verify column now exists
+            cur = pool.conn.execute("PRAGMA table_info(topics)")
+            cols = {row["name"] for row in cur.fetchall()}
+            assert "tenant_id" in cols
+        finally:
+            # 同上：不关连接会让 teardown 的 unlink 在 Windows 上失败。
+            pool.close()
 
     def test_migration_is_idempotent(self, pool: PoolDB):
         # Run migration twice — no error
@@ -167,6 +188,29 @@ class TestPoolDBContextManager:
             assert row is not None
         # After exit the internal connection is closed
         assert pool._conn is None
+
+
+class TestPoolDBFileRelease:
+    """Windows 文件句柄释放 —— 回归锁定 22 项 teardown 失败。
+
+    中文说明：Windows 上打开的 SQLite 连接会锁定 ``.db`` 文件；``close()`` 之后
+    文件必须可删。此前该文件的 22 项失败**全部发生在 teardown 的 ``os.unlink``**
+    （``PermissionError [WinError 32]``），测试体并无问题。本类是"用完即关"这一
+    约定的回归门。
+    """
+
+    def test_close_releases_file_lock(self, db_path: str) -> None:
+        """关闭连接后 db 文件可删且不残留 WAL sidecar。"""
+        db = PoolDB(db_path)
+        db.add_topic({"title": "lock probe"})
+        db.close()
+
+        # 句柄泄漏时，Windows 在此抛 PermissionError [WinError 32]
+        os.unlink(db_path)
+
+        assert not os.path.exists(db_path)
+        for sidecar in (f"{db_path}-wal", f"{db_path}-shm"):
+            assert not os.path.exists(sidecar), f"WAL sidecar left behind: {sidecar}"
 
 
 class TestPoolDBUpdateScore:
