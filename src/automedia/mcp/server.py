@@ -454,9 +454,7 @@ def _instrument_tool_dispatch(mcp: FastMCP) -> None:
         if correlation_id is None:
             correlation_id = bind_correlation_id()
         try:
-            result = await original(
-                name, arguments, context=context, convert_result=convert_result
-            )
+            result = await original(name, arguments, context=context, convert_result=convert_result)
             return _stamp_trace(result, correlation_id)
         finally:
             clear_contextvars()
@@ -477,12 +475,24 @@ def create_server() -> FastMCP:
     -------
     FastMCP
         A fully configured server with all 68 tools and 6 resources registered.
+
+    Raises
+    ------
+    ValueError
+        When ``AUTOMEDIA_MCP_TRANSPORT`` selects HTTP without
+        ``AUTOMEDIA_MCP_AUTH_TOKEN`` — fail-closed, see
+        :mod:`automedia.mcp.transport`.
     """
     from mcp.server.fastmcp import FastMCP
+
+    from automedia.mcp.transport import fastmcp_transport_kwargs, resolve_transport_config
 
     mcp = FastMCP(
         name="AutoMedia",
         instructions="",
+        # stdio (default) ⇒ {} — zero change for every existing caller; HTTP ⇒
+        # host/port + Bearer-token auth (transport-layer authentication).
+        **fastmcp_transport_kwargs(resolve_transport_config()),
     )
 
     # Register all tools
@@ -1215,16 +1225,22 @@ def _shutdown_handler(signum: int, frame: object) -> None:  # signal handler fra
 
 
 def main() -> None:
-    """Run the AutoMedia MCP server (stdio transport)."""
+    """Run the AutoMedia MCP server (stdio by default; HTTP + auth on request)."""
     import argparse
     import signal
+
+    from automedia.mcp.transport import HTTP_TRANSPORT, resolve_transport_config
 
     signal.signal(signal.SIGTERM, _shutdown_handler)
     signal.signal(signal.SIGINT, _shutdown_handler)
 
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
-        description="AutoMedia MCP Server — stdio transport with 68 tools and 6 resources.",
+        description=(
+            "AutoMedia MCP Server — stdio transport by default (68 tools, 6 resources). "
+            "Set AUTOMEDIA_MCP_TRANSPORT=streamable-http together with "
+            "AUTOMEDIA_MCP_AUTH_TOKEN for an authenticated HTTP endpoint."
+        ),
     )
     parser.add_argument(
         "--show-tools",
@@ -1233,6 +1249,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    transport_config = resolve_transport_config()
     server = create_server()
 
     if args.show_tools:
@@ -1247,7 +1264,15 @@ def main() -> None:
             print(f"  - {uri}  (template)")
         return
 
-    server.run(transport="stdio")
+    if transport_config.transport == HTTP_TRANSPORT:
+        log.info(
+            "server.listen",
+            transport=transport_config.transport,
+            host=transport_config.host,
+            port=transport_config.port,
+            auth="bearer",
+        )
+    server.run(transport=transport_config.transport)
 
 
 if __name__ == "__main__":

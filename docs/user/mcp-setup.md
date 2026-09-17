@@ -15,7 +15,7 @@ pip install automedia-pipeline[mcp]
 
 ## Starting the Server
 
-The MCP server uses stdio transport, communicating with the MCP client through standard input/output:
+The MCP server uses stdio transport by default, communicating with the MCP client through standard input/output (see [HTTP Transport and Authentication](#http-transport-and-authentication) for the authenticated HTTP option):
 
 ```bash
 python -m automedia.mcp.server
@@ -249,12 +249,31 @@ MCP server file access is restricted by an allowlist. The config file is located
 ```
 
 The default allowlist (shipped at `automedia/mcp/mcp_allowlist.yaml`)
-only includes `/tmp/automedia/`. Additional paths must be uncommented or
-added as needed:
+enables five scoped directories:
 
 ```yaml
 allowed_directories:
   - /tmp/automedia/
+  - ./data/        # topic pool, config, runtime data
+  - ./output/      # generated pipeline output
+  - ./projects/    # project working directories
+  - ./scenarios/   # committed validation fixtures
+```
+
+The repository root (`./`) is deliberately **not** enabled — granting it would
+let the MCP server read and write every file in the checkout. Uncomment it in
+your copy only if you accept that, or point
+`AUTOMEDIA_MCP_ALLOWLIST_PATH` at a YAML file of your own. Additional paths
+must be uncommented or added as needed:
+
+```yaml
+allowed_directories:
+  - /tmp/automedia/
+  # - ./data/
+  # - ./output/
+  # - ./projects/
+  # - ./scenarios/  # committed validation fixtures
+  # - ./            # whole repository root — enable only if you accept it
   # - /app/data/
   # - /app/output/
   # - /app/projects/
@@ -275,6 +294,10 @@ The MCP server supports the following environment variables:
 | `AUTOMEDIA_LLM_MODEL` | Model identifier |
 | `AUTOMEDIA_PROJECTS_DIR` | Projects root directory override |
 | `AUTOMEDIA_MCP_ALLOWLIST_PATH` | Custom allowlist path override |
+| `AUTOMEDIA_MCP_TRANSPORT` | Transport: `stdio` (default) or `streamable-http` |
+| `AUTOMEDIA_MCP_AUTH_TOKEN` | Bearer token — required for HTTP, the server refuses to start without it |
+| `AUTOMEDIA_MCP_HOST` | HTTP bind address (default `127.0.0.1`) |
+| `AUTOMEDIA_MCP_PORT` | HTTP bind port (default `8000`) |
 | `AUTOMEDIA_MASTER_KEY` | Master key for credential encryption |
 | `AUTOMEDIA_LOG_LEVEL` | Log level (DEBUG, INFO, WARNING, ERROR) |
 | `AUTOMEDIA_FAKE_LLM` | Set to `1` to use deterministic mock LLM responses (no real API calls) |
@@ -282,11 +305,48 @@ The MCP server supports the following environment variables:
 | `WX_APPID` | WeChat Official Account AppID |
 | `WX_APPSECRET` | WeChat Official Account AppSecret |
 
+## HTTP Transport and Authentication
+
+By default the server speaks **stdio**, which is what editor and agent integrations
+expect. stdio carries no credential the server can verify (the `initialize` handshake
+contains only a self-reported client name), so **transport-layer authentication only
+exists on HTTP**. To expose the server over HTTP with Bearer-token authentication:
+
+```bash
+export AUTOMEDIA_MCP_TRANSPORT=streamable-http
+export AUTOMEDIA_MCP_AUTH_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+export AUTOMEDIA_MCP_HOST=127.0.0.1   # keep loopback unless a TLS proxy fronts it
+export AUTOMEDIA_MCP_PORT=8000
+python -m automedia.mcp.server
+```
+
+The endpoint is then served at `http://<host>:<port>/mcp`, and every request must carry:
+
+```
+Authorization: Bearer <token>
+```
+
+Requests without a valid token are answered with `401` (the comparison is constant-time
+and happens in-process).
+
+> **Fail-closed:** selecting `streamable-http` **without** setting
+> `AUTOMEDIA_MCP_AUTH_TOKEN` makes the server refuse to start. An unauthenticated HTTP
+> endpoint is reachable by anyone who can reach the port, so there is deliberately no
+> "silently run without auth" default.
+
+### Why stdio is not authenticated
+
+The MCP `initialize` handshake carries only `clientInfo` — a name the client supplies
+itself, with no signature or token to verify. Any check built on it is bypassable by a
+one-line change on the client side, so the server does not pretend to authenticate
+stdio. If you need authentication, use the HTTP transport above.
+
 ## Security Notes
 
 - The `archive_project` tool follows Red Line 8: archiving is only allowed when project status is `published` or `force=True`
 - The path allowlist prevents malicious agents from reading files outside the project directory
 - It is recommended to use dedicated API keys and environment variables for the MCP server
+- The HTTP transport requires `AUTOMEDIA_MCP_AUTH_TOKEN` (Bearer token, constant-time comparison) and the server refuses to start without it; stdio is unauthenticated by nature and is intended for local/agent use
 - All file operations are gated by the path allowlist — files outside allowed directories return `PermissionError`. Some tools (e.g. `archive_project`, `publish_content`, `format_output`) perform write operations within allowed directories.
 
 ## Example: Calling MCP Tools Directly in Python

@@ -27,6 +27,9 @@ log = get_logger(__name__)
 
 _ALLOWLIST_FILE = Path(__file__).parent / "mcp_allowlist.yaml"
 
+# Overrides the shipped allowlist path; documented in .env.example and deployments.
+_ALLOWLIST_PATH_ENV = "AUTOMEDIA_MCP_ALLOWLIST_PATH"
+
 # Strict allowlist for ``format_output`` target formats.  Anything not in this
 # set is rejected *before* any file I/O occurs, preventing path-traversal
 # attacks via crafted format strings (e.g. ``"../../etc/passwd"``).
@@ -55,6 +58,21 @@ _cached_allowlist: list[str] | None = None
 # ---------------------------------------------------------------------------
 
 
+def _resolve_allowlist_path(allowlist_path: Path | None = None) -> Path:
+    """The YAML file to read: explicit argument, else env var, else shipped default.
+
+    Honouring :data:`_ALLOWLIST_PATH_ENV` is what makes the escape hatch that
+    ``.env.example``, ``docs/user/mcp-setup.md`` and the systemd templates
+    advertise actually exist.
+    """
+    if allowlist_path is not None:
+        return allowlist_path
+    configured = os.environ.get(_ALLOWLIST_PATH_ENV, "").strip()
+    if configured:
+        return Path(os.path.expanduser(configured))
+    return _ALLOWLIST_FILE
+
+
 def _load_allowlist(*, allowlist_path: Path | None = None) -> list[str]:
     """Load and cache allowed directories from the YAML config.
 
@@ -62,7 +80,8 @@ def _load_allowlist(*, allowlist_path: Path | None = None) -> list[str]:
     ----------
     allowlist_path:
         Override path to the allowlist YAML file.  When *None* the
-        default ``mcp_allowlist.yaml`` next to this module is used.
+        ``AUTOMEDIA_MCP_ALLOWLIST_PATH`` env var is honoured, falling back to
+        the ``mcp_allowlist.yaml`` shipped next to this module.
 
     Returns
     -------
@@ -70,8 +89,13 @@ def _load_allowlist(*, allowlist_path: Path | None = None) -> list[str]:
         Resolved absolute directory paths.
     """
     global _cached_allowlist
-    path = allowlist_path if allowlist_path is not None else _ALLOWLIST_FILE
+    path = _resolve_allowlist_path(allowlist_path)
     if not path.exists():
+        # Fail closed (an empty allowlist denies every path).  A configured
+        # path that does not exist is a misconfiguration — substituting the
+        # shipped allowlist would silently grant a different, possibly wider
+        # set than the operator asked for.
+        log.warning("mcp.allowlist.missing", path=str(path))
         _cached_allowlist = []
         return []
     with open(path, encoding="utf-8") as fh:

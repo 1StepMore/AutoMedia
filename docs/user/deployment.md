@@ -31,7 +31,7 @@ For the MCP server, use Docker Compose. The `docker-compose.yml` file
 defines three services:
 
 - **app**. One-shot command runner.
-- **mcp-server**. Base MCP server using stdio transport.
+- **mcp-server**. Base MCP server using stdio transport (an authenticated HTTP transport is also available — see [MCP Setup](mcp-setup.md#http-transport-and-authentication)).
 - **mcp-full**. Full-featured MCP server with Bun, edge-tts, faster-whisper,
   and Chromium. Gated behind the `full` profile. Build and run with
   `docker compose --profile full build mcp-full` and

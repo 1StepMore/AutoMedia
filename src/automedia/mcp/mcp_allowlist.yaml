@@ -6,11 +6,17 @@
 # Usage: Uncomment lines matching your environment, or add your own.
 # Paths are resolved relative to the MCP server's working directory.
 #
+# NOTE — the repository root (``./``) is deliberately NOT enabled. Granting it
+# means the MCP server may read and write every file in the checkout. Enable it
+# only if you accept that; otherwise use one of the scoped directories below, or
+# point AUTOMEDIA_MCP_ALLOWLIST_PATH at a custom YAML file of your own.
+#
 # --- Development / Local ---
 # Uncomment these when running from the AutoMedia repo root:
 #   - ./data/                          # Topic pool, config, runtime data
 #   - ./output/                        # Generated pipeline output
 #   - ./projects/                      # Project working directories
+#   - ./scenarios/                     # Committed validation fixtures
 #   - /tmp/automedia/                  # Temporary test data (always safe)
 #
 # --- Production / Server ---
@@ -38,5 +44,8 @@ allowed_directories:
   - ./data/
   - ./output/
   - ./projects/
-  # Current workspace (resolves when MCP server runs from project root)
-  - ./
+  # Committed validation fixtures — the partial-pass scenarios extract
+  # scenarios/fixtures/sample-draft.md. Scoped to scenarios/, never the repo root.
+  - ./scenarios/
+  # NOTE: ``- ./`` (the whole repository root) is intentionally absent — see the
+  # file header. Uncomment it only if you accept repo-wide read/write access.
