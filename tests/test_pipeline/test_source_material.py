@@ -79,7 +79,7 @@ class TestResolveSourceMaterial:
         assert "error" not in result
         assert result["type"] == "md"
         assert "# Test Title" in result["content"]
-        assert md_source.resolve().as_posix() in str(result["path"])
+        assert Path(result["path"]) == md_source.resolve()
 
     def test_txt_file(self, txt_source: Path) -> None:
         """source_path with .txt file returns content and type='txt'."""

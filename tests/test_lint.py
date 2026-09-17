@@ -166,9 +166,18 @@ class TestV0ResultStructure:
         assert result["error"] == "oops"
 
     def test_missing_context_keys(self) -> None:
+        """Absent inputs mean nothing was produced → the gate reports skipped.
+
+        中文说明：在健康度整改（P0-1）之前，本用例断言「空上下文也照跑 3 个
+        检查」——那正是缺陷本身：对从未渲染的视频做判定。现在缺失输入必须
+        显式记为 ``skipped``，而不是给出一个关于空值的 verdict。
+        """
         result = V0Lint().execute({})
         assert result["gate"] == "V0"
-        assert len(result["checks"]) == 3
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "checks" not in result
+        assert "lint_result" in result["reason"]
 
     def test_mock_detail_propagated(self) -> None:
         mock = _all_pass_mock()

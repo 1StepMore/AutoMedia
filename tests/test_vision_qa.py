@@ -139,6 +139,14 @@ class TestV1ResultStructure:
             assert isinstance(check["detail"], str)
 
     def test_missing_context_keys(self) -> None:
+        """Absent inputs mean no frames were produced → the gate reports skipped.
+
+        中文说明：健康度整改（P0-1）之后，缺失输入必须显式记为 ``skipped``，
+        而不是对从未产出的视频给出一个关于空值的 verdict。
+        """
         result = V1VisionQA().execute({})
         assert result["gate"] == "V1"
-        assert len(result["checks"]) == 4
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "checks" not in result
+        assert "entries" in result["reason"]

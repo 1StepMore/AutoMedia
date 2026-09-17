@@ -189,10 +189,15 @@ def _failing_gate(
     error: str,
     gates_log: list[GateLogEntry] | None,
 ) -> str | None:
-    """Return the name of the first non-passed gate, or ``None``."""
+    """Return the name of the first failed/errored gate, or ``None``.
+
+    Only ``"failed"`` and ``"error"`` rows qualify.  A ``"skipped"`` row is
+    NOT a failure — the gate evaluated nothing (health-assessment P0-1), so
+    blaming it for a pipeline failure would misdirect the operator.
+    """
     if gates_log:
         for entry in gates_log:
-            if entry.status != "passed":
+            if entry.status in ("failed", "error"):
                 name = entry.gate_name
                 if error and name in error:
                     return name

@@ -139,6 +139,14 @@ class TestV6ResultStructure:
             assert key in result
 
     def test_missing_context_keys(self) -> None:
+        """Absent inputs mean no frames were rendered → the gate reports skipped.
+
+        中文说明：健康度整改（P0-1）之后，缺失输入必须显式记为 ``skipped``，
+        而不是对从未渲染的字幕帧给出一个关于空值的 verdict。
+        """
         result = V6SubtitleRender().execute({})
         assert result["gate"] == "V6"
-        assert len(result["checks"]) == 4
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "checks" not in result
+        assert "avg_brightness" in result["reason"]

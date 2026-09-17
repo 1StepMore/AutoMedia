@@ -24,7 +24,7 @@ from automedia.hooks.pipeline_history import _read_history
 from automedia.pipelines.dag import AUTO_GATE_DAG
 from automedia.pipelines.runner import _MODE_MAP
 
-GateStatus = Literal["passed", "failed", "pending"]
+GateStatus = Literal["passed", "failed", "pending", "skipped"]
 
 
 @dataclass
@@ -36,8 +36,11 @@ class GateState:
     gate:
         Gate name (e.g. ``"G0"``, ``"V1"``).
     status:
-        ``"passed"`` / ``"failed"`` / ``"pending"`` — derived from the
-        latest history row for the gate (see module docstring).
+        ``"passed"`` / ``"failed"`` / ``"pending"`` / ``"skipped"`` — derived
+        from the latest history row for the gate (see module docstring).
+        ``"skipped"`` means the gate reported that it deliberately evaluated
+        nothing (e.g. a V gate with HyperFrames absent); it is reported as
+        itself, never as ``"passed"`` (health-assessment P0-1).
     track:
         Static track from ``AUTO_GATE_DAG[gate].track``.
     md5:
@@ -75,7 +78,9 @@ def _status_for_gate(gate: str, rows: list[dict[str, object]]) -> GateStatus:
     """Derive the status of *gate* from history rows (ordered by id ASC).
 
     The LAST relevant row wins (latest-row-wins).  ``completed`` rows are
-    classified via their ``passed`` metadata (defaulting to true, matching
+    classified via their ``status`` metadata when present (the gate's own
+    report, so ``"skipped"`` survives), falling back to their ``passed``
+    metadata (defaulting to true, matching
     ``PipelineHistoryHook.after_gate``); a ``failed`` action row is always
     a failure.  Rows for other gates are ignored.
     """
@@ -91,7 +96,11 @@ def _status_for_gate(gate: str, rows: list[dict[str, object]]) -> GateStatus:
                 meta = json.loads(str(row.get("metadata_json") or "{}"))
             except ValueError:
                 meta = {}
-            status = "passed" if meta.get("passed") is not False else "failed"
+            reported = meta.get("status")
+            if reported == "skipped":
+                status = "skipped"
+            else:
+                status = "passed" if meta.get("passed") is not False else "failed"
         elif suffix == "failed":
             status = "failed"
     return status
@@ -114,11 +123,7 @@ def aggregate_pipeline_state(project_dir: str, mode: str = "auto") -> list[GateS
     rows: list[dict[str, object]] = []
     project_id = _read_project_id(project_dir)
     if project_id:
-        rows = [
-            row
-            for row in _read_history(project_dir)
-            if row.get("project_id") == project_id
-        ]
+        rows = [row for row in _read_history(project_dir) if row.get("project_id") == project_id]
 
     gates_md5: dict[str, dict[str, object]] = {}
     md5_data = get_pipeline_md5(project_dir)

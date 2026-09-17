@@ -17,6 +17,7 @@ from automedia.pipelines.runner import (
     _PLATFORM_CATEGORIES,
     _TEXT_ONLY_GATE_NAMES,
     _TEXT_WITH_COVER_GATE_NAMES,
+    _VIDEO_PRODUCING_MODES,
     _build_gates_from_names,
     _build_gates_log,
     _collect_assets,
@@ -380,6 +381,34 @@ class TestBuildGatesLog:
     def test_missing_gate_name(self) -> None:
         entries = _build_gates_log([{"passed": True}])
         assert entries[0].gate_name == "unknown"
+
+    def test_skipped_status_is_preserved(self) -> None:
+        """A gate that reports ``status="skipped"`` keeps that status in the log.
+
+        中文说明：这是健康度报告 P0-1 的根因——跳过曾被折成 ``passed``，于是
+        一条完全没有视频产出的流水线在报告和 CLI 里看起来全绿。
+        """
+        entries = _build_gates_log(
+            [
+                {
+                    "passed": True,
+                    "gate": "V0",
+                    "status": "skipped",
+                    "duration_s": 0.0,
+                }
+            ]
+        )
+        assert entries[0].status == "skipped"
+
+    def test_reported_status_overrides_passed_flag(self) -> None:
+        """An explicit ``status`` wins over the ``passed`` flag."""
+        entries = _build_gates_log([{"passed": True, "gate": "V1", "status": "error"}])
+        assert entries[0].status == "error"
+
+    def test_unknown_reported_status_falls_back_to_passed_flag(self) -> None:
+        """A bogus ``status`` value does not corrupt the log."""
+        entries = _build_gates_log([{"passed": True, "gate": "V1", "status": "weird"}])
+        assert entries[0].status == "passed"
 
 
 # =========================================================================
@@ -918,6 +947,184 @@ class TestFallbackContentGuard:
         # text_only mode should NOT have fallback — CW will set content
         content = captured["content"]
         assert content == "", f"text_only mode should start with empty content, got {content!r}"
+
+
+# =========================================================================
+# Video-mode honesty tests (health remediation P0-1)
+# =========================================================================
+
+
+class TestVideoModeStatusDowngrade:
+    """A video mode with no video artifact must not report ``success``.
+
+    中文说明：这些模式的门预设里含 V 门，而 V 门在没有产出视频时会显式记为
+    ``skipped``（``gates/_result.missing_input_result``）。整条视频轨都被跳过
+    的运行是**未完成**，不是成功——否则无人值守的运行会以退出码 0 收场，而
+    实际上没有交付任何视频。``auto`` 是刻意的例外：它是显式的混合兜底，文本
+    轨本身即合法交付物。
+    """
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_video_only_without_video_is_partial(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """video_only + no ``video_path`` in context → status ``partial``."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd01"
+        mock_proj.project_dir = str(tmp_path / "vd01")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="video_only")
+
+        assert result.status == "partial"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_short_video_without_video_is_partial(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """short-video + no ``video_path`` in context → status ``partial``."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd02"
+        mock_proj.project_dir = str(tmp_path / "vd02")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="short-video")
+
+        assert result.status == "partial"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_auto_without_video_stays_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """auto + no video → still ``success`` (mixed fallback, text track delivers)."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd03"
+        mock_proj.project_dir = str(tmp_path / "vd03")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="auto")
+
+        assert result.status == "success"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_text_only_without_video_stays_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """text_only has no V gates in its preset → never downgraded."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd04"
+        mock_proj.project_dir = str(tmp_path / "vd04")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="text_only")
+
+        assert result.status == "success"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_qa_only_without_video_stays_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """qa_only 预设含 V1/V6，但从不跑视频产出阶段 → 不得被降级。
+
+        中文说明：这是 §5 降级规则的边界。qa_only 的 V1/V6 在没有视频输入时
+        记为 ``skipped``，而该模式本身不产出视频——若把它也算作"欠一个视频"，
+        每次运行都会以 partial/退出码 1 收场，那是假失败。
+        """
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd05"
+        mock_proj.project_dir = str(tmp_path / "vd05")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="qa_only")
+
+        assert result.status == "success"
+
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_repurpose_without_video_stays_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """repurpose 预设含 V0-V7，但从不跑视频产出阶段 → 不得被降级。"""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd06"
+        mock_proj.project_dir = str(tmp_path / "vd06")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="repurpose")
+
+        assert result.status == "success"
+
+    def test_video_producing_modes_are_a_subset_of_v_gate_modes(self) -> None:
+        """不变量：欠视频的模式必然在预设里含 V 门。
+
+        中文说明：``_VIDEO_PRODUCING_MODES`` 与视频产出阶段共用同一集合，
+        这个断言防止将来编辑 ``_MODE_MAP`` 后两者悄悄脱钩。
+        """
+        assert _VIDEO_PRODUCING_MODES
+        for mode in _VIDEO_PRODUCING_MODES:
+            assert mode in _MODE_MAP, f"{mode} 不在 _MODE_MAP 中"
+            assert any(name.startswith("V") for name in _MODE_MAP[mode]), (
+                f"{mode} 被声明为欠视频的模式，但预设里没有 V 门"
+            )
+
+    def test_qa_only_and_repurpose_are_not_video_producing(self) -> None:
+        """边界：含 V 门但无视频产出阶段的模式不得进入欠视频集合。"""
+        assert "qa_only" not in _VIDEO_PRODUCING_MODES
+        assert "repurpose" not in _VIDEO_PRODUCING_MODES
+        assert "auto" not in _VIDEO_PRODUCING_MODES
 
 
 # =========================================================================

@@ -16,7 +16,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -128,6 +128,15 @@ class V6SubtitleRender(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # The pixel metrics come from the rendered video (PIL sampling).  Absent
+        # means nothing was rendered, so Red Line 5 is unverified — say so as a
+        # skip rather than failing a measurement that never happened.
+        skipped = missing_input_result(
+            "V6", gate_context, ("avg_brightness", "contrast", "opacity", "pixel_valid")
+        )
+        if skipped is not None:
+            return skipped
 
         avg_brightness: int = gate_context.get("avg_brightness", 0)
         contrast: int = gate_context.get("contrast", 0)

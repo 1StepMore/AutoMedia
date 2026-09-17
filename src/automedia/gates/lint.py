@@ -13,7 +13,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -105,6 +105,13 @@ class V0Lint(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # ``lint_result`` is produced by the video pipeline.  Absent means this
+        # run produced no video artifact to lint — report that honestly as a
+        # skip instead of judging an empty dict (health-assessment P0-1).
+        skipped = missing_input_result("V0", gate_context, ("lint_result",))
+        if skipped is not None:
+            return skipped
 
         lint_result: dict[str, Any] = gate_context.get("lint_result", {})
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")

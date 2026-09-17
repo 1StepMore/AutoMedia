@@ -163,6 +163,48 @@ class GateContext:
         "_mock_results": "mock_results",
     }
 
+    def __post_init__(self) -> None:
+        """初始化"显式写入登记表"。
+
+        中文说明：``_written_keys`` 刻意**不是** dataclass 字段——``keys()`` /
+        ``values()`` / ``items()`` / ``to_dict()`` 都遍历 ``fields(self)``，
+        所以挂在实例上的登记表不会污染 dict 兼容输出（hooks 会序列化
+        ``to_dict()``）。
+        """
+        object.__setattr__(self, "_written_keys", set())
+
+    def was_written(self, key: str) -> bool:
+        """Return whether *key* was explicitly written by a producer.
+
+        中文说明：``in``（即 :meth:`__contains__`）对任何**已声明字段**恒为
+        ``True``——因为所有字段都有声明时的默认值。这意味着它无法回答"这个
+        键到底有没有被上游产出过"。本方法只认 ``ctx[key] = value`` 这条显式
+        赋值路径（见 :meth:`__setitem__`），是
+        :func:`automedia.gates._result.missing_input_result` 判定"输入是否由
+        本流水线产出"的依据。
+
+        约定（刻意如此，而非接受构造参数）：生产者必须用下标赋值登记其产物，
+        这样"是否产出过"与"值为空/为 0"就是两个独立的问题——一个合法的全黑帧
+        （``avg_brightness=0``）不会被误判为"未产出"。
+
+        Args:
+            key: 上下文键名（支持别名，如 ``_gate_name``）。
+
+        Returns:
+            ``True`` 表示该键被显式写入过；``False`` 表示仍是声明默认值。
+
+        实现分两条路：**已声明字段**查显式写入登记表（字段的 ``__contains__``
+        恒为真，不可用）；**非字段键**（存在 ``extra`` 里）直接用成员测试——
+        它们不在声明集合中，``in`` 本就是准确判据。
+        """
+        key = self._resolve(key)
+        if not self._is_field(key):
+            return key in self.extra
+        written = getattr(self, "_written_keys", None)
+        if written is None:  # 绕过 __init__ 构造的实例：视为从未写入
+            return False
+        return key in written
+
     # ------------------------------------------------------------------
     # Dict-compatible protocol
     # ------------------------------------------------------------------
@@ -186,6 +228,8 @@ class GateContext:
         key = self._resolve(key)
         if self._is_field(key):
             object.__setattr__(self, key, value)
+            # 登记"这个键被生产者显式写出过"——was_written() 的唯一依据。
+            self.__dict__.setdefault("_written_keys", set()).add(key)
         else:
             self.extra[key] = value
 

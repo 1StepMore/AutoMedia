@@ -1,10 +1,15 @@
 """Exit-code contract for ``automedia run`` when a gate blocks the pipeline.
 
-A pipeline that stops at a gate returns ``status="partial"`` (runner.py:1482);
-a pipeline-level failure returns ``status="failed"`` (runner.py:1536).  Neither
+A pipeline that stops at a gate returns ``status="partial"`` (runner.py:1479);
+a pipeline-level failure returns ``status="failed"`` (runner.py:1554).  Neither
 may exit 0 — an unattended caller has to be able to tell the run was blocked.
 ``--allow-partial`` restores exit 0 for ``partial`` only; ``failed`` and raised
 exceptions stay non-zero.
+
+``partial`` has two producers: a gate that stopped the run, and a
+video-producing mode (video_only / short-video) that owes a video artifact and
+produced none — see ``runner._VIDEO_PRODUCING_MODES``.  Both exit 1 on purpose;
+neither is a narrower claim than the other.
 """
 
 from __future__ import annotations

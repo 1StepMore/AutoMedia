@@ -20,6 +20,17 @@ from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
 _MODEL_CONFIG_PATH = get_user_config_dir() / "model_config.yaml"
 
+#: Per-gate status marker for the post-run summary.  ``skipped`` gets its own
+#: marker instead of ✗ because a skipped gate did not fail — it evaluated
+#: nothing (health-assessment P0-1: an un-run V gate must not read as either a
+#: pass or a failure).
+_GATE_ICONS: dict[str, str] = {
+    "passed": "✓",
+    "failed": "✗",
+    "error": "✗",
+    "skipped": "⊘",
+}
+
 
 class CLIPipelineProgress(PipelineProgress):
     """Streams gate progress to the CLI terminal in real time."""
@@ -145,7 +156,10 @@ def run_cmd(
         help=(
             "Pipeline mode: auto, text_only, text_with_cover, "
             "video_only, qa_only, image-carousel, social-thread, "
-            "short-video."
+            "short-video, repurpose. video_only and short-video produce a "
+            "video: without a configured video engine (or with no image/audio "
+            "input to build it from) their V gates are reported as skipped and "
+            "the run is marked partial."
         ),
     ),
     decision_mode: str = typer.Option(
@@ -387,7 +401,7 @@ def run_cmd(
     if pipeline_result.gates_log:
         typer.echo(f"\n  Gates executed: {len(pipeline_result.gates_log)}")
         for entry in pipeline_result.gates_log:
-            icon = "✓" if entry.status == "passed" else "✗"
+            icon = _GATE_ICONS.get(entry.status, "")
             typer.echo(f"    {icon} {entry.gate_name} ({entry.duration_s:.2f}s)")
 
     if pipeline_result.affected_downstream:

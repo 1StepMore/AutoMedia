@@ -210,6 +210,14 @@ class TestV7ResultStructure:
         assert [c["name"] for c in result["checks"]] == _CHECK_NAMES
 
     def test_missing_context_keys(self) -> None:
+        """Absent inputs mean no deliverable files exist → the gate reports skipped.
+
+        中文说明：健康度整改（P0-1）之后，缺失输入必须显式记为 ``skipped``，
+        而不是对从未产出的交付文件给出一个关于空值的 verdict。
+        """
         result = V7SixStepHard().execute({})
         assert result["gate"] == "V7"
-        assert len(result["checks"]) == 6
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "checks" not in result
+        assert "required_files" in result["reason"]

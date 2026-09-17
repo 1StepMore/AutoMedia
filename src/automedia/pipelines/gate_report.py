@@ -6,9 +6,11 @@ Design constraints (productization-roadmap-20260902 todo 4 / roadmap P0-1):
   :class:`~automedia.pipelines.gate_engine.GateLogEntry` rows (the pipeline's
   own gates log) plus optional in-memory per-gate result dicts (the dicts
   produced by ``GateEngine._run`` / ``gates._result.build_gate_result``).
-- **Vocabulary mapping.**  Internal gate status ``passed|failed|error`` maps to
-  the report vocabulary ``pass|fail|review`` (``error`` → ``review``: a gate
-  that crashed needs human attention, it did not "fail" on content).
+- **Vocabulary mapping.**  Internal gate status ``passed|failed|error|skipped``
+  maps to the report vocabulary ``pass|fail|review|skip`` (``error`` →
+  ``review``: a gate that crashed needs human attention, it did not "fail" on
+  content; ``skipped`` → ``skip``: the gate deliberately did not evaluate the
+  artifact, so it must never be counted as a pass — health-assessment P0-1).
 - **H0 / HITL honesty.**  ``_hitl_approved`` lives only in transient result
   dicts — it is ABSENT from gates_log rows.  A live render (``gate_results``
   given) may mark H0 as reviewed based on that key; an offline render
@@ -52,6 +54,10 @@ _VERDICT_MAP: dict[str, str] = {
     "passed": "pass",
     "failed": "fail",
     "error": "review",
+    # A skipped gate is NOT a pass: it evaluated nothing (HyperFrames absent,
+    # H0 auto-passed under --skip-review, a V gate whose input is missing).
+    # Any status absent from this map still falls back to "review".
+    "skipped": "skip",
 }
 
 #: Per-check remediation keys produced by
@@ -64,8 +70,8 @@ class GateReportRow(TypedDict, total=False):
     """One per-gate row in the report (JSON-serializable)."""
 
     gate: str
-    status: str  # internal: passed|failed|error
-    verdict: str  # report vocabulary: pass|fail|review
+    status: str  # internal: passed|failed|error|skipped
+    verdict: str  # report vocabulary: pass|fail|review|skip
     verdict_source: str  # "log" (persisted) | "result" (live in-memory)
     reviewed: bool  # True only when HITL involvement is a fact, not a guess
     duration_s: float
@@ -228,7 +234,7 @@ def _render_markdown(report: GateReport) -> str:
     lines.append(
         f"- Gates: {summary['total']} "
         f"(pass {summary['passed']} / fail {summary['failed']} / "
-        f"review {summary['errored']})"
+        f"review {summary['errored']} / skip {summary['skipped']})"
     )
     if report["blocked_by_gate"]:
         lines.append(f"- **Blocked by**: {report['blocked_by']}")
@@ -308,6 +314,7 @@ def _render_html(report: GateReport) -> str:
         "th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top}",
         "th{background:#f2f2f2}",
         ".fail{color:#b00020;font-weight:600}.review{color:#a05a00}.pass{color:#1b5e20}",
+        ".skip{color:#5f6368;font-style:italic}",
         "</style>",
         "</head>",
         "<body>",
@@ -318,7 +325,7 @@ def _render_html(report: GateReport) -> str:
         (
             f"<li>Gates: {_esc(summary['total'])} "
             f"(pass {_esc(summary['passed'])} / fail {_esc(summary['failed'])} / "
-            f"review {_esc(summary['errored'])})</li>"
+            f"review {_esc(summary['errored'])} / skip {_esc(summary['skipped'])})</li>"
         ),
     ]
     if report["blocked_by_gate"]:
@@ -449,6 +456,7 @@ def render_gate_report(
         "passed": verdicts.count("pass"),
         "failed": verdicts.count("fail"),
         "errored": verdicts.count("review"),
+        "skipped": verdicts.count("skip"),
         "total_duration_s": total_duration,
     }
 

@@ -17,7 +17,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -134,6 +134,13 @@ class V5Mp3VsSrt(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # ``whisper_text`` + ``srt_text`` are produced by the transcription and
+        # subtitle stages.  Absent means there is no audio/subtitle pair to
+        # diff — reporting a diff failure here would be pure noise.
+        skipped = missing_input_result("V5", gate_context, ("whisper_text", "srt_text"))
+        if skipped is not None:
+            return skipped
 
         whisper_text: str = gate_context.get("whisper_text", "")
         srt_text: str = gate_context.get("srt_text", "")

@@ -13,7 +13,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -130,6 +130,13 @@ class V4TTSBrandAsset(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # ``voice_id`` + ``segments`` are produced by the TTS stage.  Absent
+        # means no narration was synthesized, so brand-voice consistency is
+        # not a checkable claim for this run.
+        skipped = missing_input_result("V4", gate_context, ("voice_id", "segments"))
+        if skipped is not None:
+            return skipped
 
         voice_id: str = gate_context.get("voice_id", "")
         expected_voice_id: str = gate_context.get("expected_voice_id", "")

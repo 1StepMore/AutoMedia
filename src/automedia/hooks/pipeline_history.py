@@ -167,21 +167,26 @@ class PipelineHistoryHook(GateObserver):
         """Record a ``started`` entry for *gate_name*."""
         self._write_entry(gate_name, "started", context)
 
-    def after_gate(
-        self, gate_name: str, context: dict[str, Any], result: dict[str, Any]
-    ) -> None:
-        """Record a ``completed`` entry with the gate result metadata."""
+    def after_gate(self, gate_name: str, context: dict[str, Any], result: dict[str, Any]) -> None:
+        """Record a ``completed`` entry with the gate result metadata.
+
+        ``status`` is recorded verbatim when the gate reported one, so a
+        deliberately skipped gate stays distinguishable from a pass in
+        ``history.db`` (health-assessment P0-1).  ``passed`` is kept for
+        backward compatibility with readers that predate the status key.
+        """
         extra = {
             "passed": result.get("passed", True),
         }
+        reported = result.get("status")
+        if isinstance(reported, str) and reported:
+            extra["status"] = reported
         error = result.get("error")
         if error is not None:
             extra["error"] = str(error)
         self._write_entry(gate_name, "completed", context, extra_meta=extra)
 
-    def on_gate_failed(
-        self, gate_name: str, context: dict[str, Any], error: Exception
-    ) -> None:
+    def on_gate_failed(self, gate_name: str, context: dict[str, Any], error: Exception) -> None:
         """Record a ``failed`` entry with exception details."""
         extra = {
             "error": str(error),

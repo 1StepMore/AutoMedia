@@ -17,7 +17,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -179,6 +179,15 @@ class V7SixStepHard(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # File inventory + digests are produced by the render stage.  Absent
+        # means no artifact set exists to verify — integrity checks over an
+        # empty list would fail for the wrong reason.
+        skipped = missing_input_result(
+            "V7", gate_context, ("required_files", "file_sizes", "md5_records")
+        )
+        if skipped is not None:
+            return skipped
 
         required_files: list[str] = gate_context.get("required_files", [])
         file_sizes: dict[str, int] = gate_context.get("file_sizes", {})

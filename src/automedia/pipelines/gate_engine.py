@@ -12,6 +12,7 @@ import threading
 import time
 import traceback
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -101,10 +102,21 @@ class AssetInfo:
 
 @dataclass
 class GateLogEntry:
-    """Log entry for a single gate execution."""
+    """Log entry for a single gate execution.
+
+    ``status`` is the gate's own reported status when it reported one,
+    otherwise a ``passed``/``failed`` derivation from its ``passed`` flag.
+
+    ``"skipped"`` means the gate deliberately did not evaluate anything —
+    e.g. a V gate when HyperFrames is absent, or H0 when ``skip_review`` is
+    set.  It is a *first-class* status, not a flavour of ``"passed"``: a
+    skipped gate makes no claim about the artifact, and collapsing it into
+    ``"passed"`` was health-assessment finding P0-1 (the report showed
+    "pass" for gates that never ran).
+    """
 
     gate_name: str
-    status: Literal["passed", "failed", "error"]
+    status: Literal["passed", "failed", "error", "skipped"]
     duration_s: float
     error: str | None = None
 
@@ -184,6 +196,7 @@ class GateEngine:
         max_quality_retries: int = 3,
         max_regenerations: int = 2,
         pause_on_approval: bool = False,
+        media_stage: Callable[[GateContext | dict[str, Any]], None] | None = None,
     ) -> None:
         """Initialize the gate engine with an ordered list of gates.
 
@@ -200,6 +213,15 @@ class GateEngine:
                 in their context will pause after execution and wait for an
                 external call to ``resume()``.  Default: ``False`` (backward
                 compatible).
+            media_stage: Optional callback invoked **once**, right before the
+                first ``V*`` gate runs, so video/audio gates inspect artifacts
+                this pipeline actually produced (TTS audio, transcription,
+                SRT, rendered video) rather than the declared field defaults.
+                ``None`` (default) disables it, leaving every existing caller
+                unchanged.  Exceptions raised by the callback are logged and
+                swallowed — an unavailable media engine must never crash the
+                gate loop; the affected gates then report ``skipped`` (see
+                ``gates/_result.missing_input_result``).
         """
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
@@ -208,6 +230,7 @@ class GateEngine:
         self._max_quality_retries = max_quality_retries
         self._max_regenerations = max_regenerations
         self._pause_on_approval = pause_on_approval
+        self._media_stage = media_stage
         # Per-gate approval coordination (thread-safe via lock + Event).
         self._approval_events: dict[str, threading.Event] = {}
         self._approval_results: dict[str, dict[str, Any]] = {}
@@ -222,6 +245,24 @@ class GateEngine:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _invoke_media_stage(self, gate_context: GateContext | dict[str, Any]) -> None:
+        """Run the media-production callback, swallowing any failure.
+
+        中文说明：媒体产出是"尽力而为"的阶段——外部命令（edge-tts / whisper /
+        ffmpeg）缺失、引擎不可用或渲染报错时，本阶段必须静默降级：依赖其产物的
+        V 门随后报 ``skipped``（见 ``gates/_result.missing_input_result``），而
+        不是让整个门循环崩溃。因此这里的异常只记告警。
+
+        Args:
+            gate_context: 门之间共享的上下文（回调就地写入产物路径）。
+        """
+        if self._media_stage is None:
+            return
+        try:
+            self._media_stage(gate_context)
+        except Exception as exc:
+            log.warning("gate_engine.media_stage_failed", error=str(exc))
 
     def _dispatch_before(self, gate_name: str, context: GateContext | dict[str, Any]) -> None:
         """Notify all registered hooks that *gate_name* is about to run."""
@@ -763,6 +804,9 @@ class GateEngine:
         total_gates = len(self._gates)
 
         _gate_loop_idx = 0
+        # The media stage fires at most once per run: one production pass, many
+        # V gates inspecting it.  Kept local so each _run() starts fresh.
+        _media_stage_done = False
         while _gate_loop_idx < len(self._gates):
             gate = self._gates[_gate_loop_idx]
             gate_idx = _gate_loop_idx + 1
@@ -789,6 +833,21 @@ class GateEngine:
             # NEW: Wait if paused (between gates, not during a gate)
             if progress and not progress.wait_if_paused():
                 break  # cancelled during pause
+
+            # Media production: a V gate inspects artifacts this pipeline must
+            # produce first (TTS audio, transcription, SRT, rendered video).
+            # The hook fires once, immediately before the *first* V gate, so
+            # those gates see real artifacts instead of declared field defaults.
+            # A run with no V gate never fires it — the runner's finalize step
+            # covers those modes.  Failure is non-fatal: see
+            # :meth:`_invoke_media_stage` (the gates then report ``skipped``).
+            if (
+                self._media_stage is not None
+                and not _media_stage_done
+                and gate_name.startswith("V")
+            ):
+                _media_stage_done = True
+                self._invoke_media_stage(gate_context)
 
             # Backward compatibility: accept "rewrite" → map to "retry"
             fm = gate.failure_mode

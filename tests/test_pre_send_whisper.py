@@ -162,6 +162,14 @@ class TestV2ResultStructure:
             assert key in result
 
     def test_missing_context_keys(self) -> None:
+        """Absent inputs mean no audio was transcribed → the gate reports skipped.
+
+        中文说明：健康度整改（P0-1）之后，缺失输入必须显式记为 ``skipped``，
+        而不是对从未产出的音频给出一个关于空值的 verdict。
+        """
         result = V2PreSendWhisper().execute({})
         assert result["gate"] == "V2"
-        assert len(result["checks"]) == 4
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "checks" not in result
+        assert "transcription" in result["reason"]

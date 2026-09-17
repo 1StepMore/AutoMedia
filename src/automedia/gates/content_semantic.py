@@ -13,7 +13,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -155,6 +155,14 @@ class V3ContentSemantic(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # Keyword sets + source texts are extracted by the video pipeline.
+        # Absent means there is nothing to compare the render against.
+        skipped = missing_input_result(
+            "V3", gate_context, ("source_keywords", "content_keywords", "source_texts")
+        )
+        if skipped is not None:
+            return skipped
 
         source_keywords: list[str] = gate_context.get("source_keywords", [])
         content_keywords: list[str] = gate_context.get("content_keywords", [])

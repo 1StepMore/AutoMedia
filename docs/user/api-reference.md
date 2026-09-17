@@ -415,9 +415,12 @@ result = get_pipeline_state(
 `{"project_id": ..., "mode": ..., "gates": [...]}` on success, or a
 structured `{"error": ...}` dict when the project is not found. Each entry in
 `gates` is a `GateState` dict with exactly the fields `gate`, `status`
-(`"passed"` / `"failed"` / `"pending"`), `track` (`copy` / `video` / `qa` /
-`lifecycle`), `md5` (asset checksum from `pipeline_md5.json`, or `None`), and
-`recorded_at`. Aggregates `history.db` and `pipeline_md5.json` via
+(`"passed"` / `"failed"` / `"pending"` / `"skipped"` — `"skipped"` means the
+gate reported that it deliberately evaluated nothing, e.g. a V gate with
+HyperFrames absent; it is never reported as `"passed"`), `track` (`copy` /
+`video` / `qa` / `lifecycle`), `md5` (asset checksum from
+`pipeline_md5.json`, or `None`), and `recorded_at`. Aggregates `history.db`
+and `pipeline_md5.json` via
 `automedia.pipelines.state_view.aggregate_pipeline_state` — nothing is
 written, and a project without history yields all-pending rows rather than an
 error.

@@ -16,7 +16,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.gates._context import GateContext
-from automedia.gates._result import CheckResult, build_gate_result
+from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
 
@@ -150,6 +150,12 @@ class V1VisionQA(BaseGate):
                 "status": "skipped",
                 "reason": "HyperFrames not installed — video QA skipped",
             }
+
+        # ``entries`` (per-scene frame paths + QA verdicts) is produced by the
+        # video pipeline.  Absent means there is no rendered scene to inspect.
+        skipped = missing_input_result("V1", gate_context, ("entries",))
+        if skipped is not None:
+            return skipped
 
         entries: list[dict[str, Any]] = gate_context.get("entries", [])
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")

@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.hooks.protocol import GateObserver
 from automedia.pipelines.gate_engine import (
@@ -702,3 +703,114 @@ class TestTracebackLogging:
         assert len(error_records) >= 1
         combined = "\n".join(r.getMessage() for r in error_records)
         assert "ConnectionError" in combined or "transient" in combined
+
+
+# ---------------------------------------------------------------------------
+# media_stage hook — health-assessment P0-1 wiring
+# ---------------------------------------------------------------------------
+
+
+class _MediaProbeGate(BaseGate):
+    """Pass-through gate that records execution order.
+
+    The gate name is per-instance (``G0`` / ``V1`` / ``V6`` …) so one class
+    covers the "immediately before the first V gate" positioning without
+    registering a new gate class per name.  ``gate_name`` is overridden as a
+    property, leaving the registry-visible ``_gate_name`` class attribute
+    untouched.
+    """
+
+    _gate_name = "V9"
+    _failure_mode = "stop"
+
+    def __init__(self, name: str, order: list[str]) -> None:
+        self._probe_name = name
+        self._order = order
+
+    @property
+    def gate_name(self) -> str:
+        return self._probe_name
+
+    @gate_name.setter
+    def gate_name(self, _value: str) -> None:
+        raise AttributeError("gate_name is read-only")
+
+    def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
+        self._order.append(f"gate:{self._probe_name}")
+        return {"passed": True, "gate": self._probe_name}
+
+
+class TestMediaStageHook:
+    """``media_stage`` fires exactly once, immediately before the first V gate.
+
+    中文说明：V 门校验的是媒体产物（音频/转写/SRT/视频），而产物必须由流水线
+    先产出。回调因此挂在"第一个 V 门之前"这一位置——它同时保证：文本轨门
+    （CW / G 门）已经跑完（内容已存在），且所有 V 门都能看到产物。默认 ``None``
+    使既有调用方行为完全不变。
+    """
+
+    def test_invoked_before_first_v_gate(self) -> None:
+        """回调在第一个 V 门之前、文本轨门之后触发。"""
+        order: list[str] = []
+
+        def _stage(_ctx: GateContext | dict[str, Any]) -> None:
+            order.append("media_stage")
+
+        engine = GateEngine(
+            [_MediaProbeGate("G0", order), _MediaProbeGate("V1", order)],
+            media_stage=_stage,
+        )
+        engine.run({})
+
+        assert order == ["gate:G0", "media_stage", "gate:V1"]
+
+    def test_invoked_only_once_for_multiple_v_gates(self) -> None:
+        """一次 run 内只触发一次（多次产出没有意义）。"""
+        calls: list[int] = []
+
+        def _stage(_ctx: GateContext | dict[str, Any]) -> None:
+            calls.append(1)
+
+        engine = GateEngine(
+            [_MediaProbeGate("V1", []), _MediaProbeGate("V6", [])],
+            media_stage=_stage,
+        )
+        engine.run({})
+
+        assert len(calls) == 1
+
+    def test_not_invoked_without_v_gate(self) -> None:
+        """无 V 门的模式不触发（那些模式的产出由 runner 的 finalize 兜底）。"""
+        calls: list[int] = []
+
+        def _stage(_ctx: GateContext | dict[str, Any]) -> None:
+            calls.append(1)
+
+        engine = GateEngine([_MediaProbeGate("G0", [])], media_stage=_stage)
+        engine.run({})
+
+        assert calls == []
+
+    def test_default_none_is_noop(self) -> None:
+        """默认 ``None`` ⇒ 行为与改动前一致（既有调用方零影响）。"""
+        engine = GateEngine([_MediaProbeGate("V1", [])])
+        success, results = engine.run({})
+
+        assert success is True
+        assert [r["gate"] for r in results] == ["V1"]
+
+    def test_callback_failure_does_not_crash_the_loop(self) -> None:
+        """回调抛异常时门循环继续（产出失败表现为门内部 skipped）。"""
+        order: list[str] = []
+
+        def _stage(_ctx: GateContext | dict[str, Any]) -> None:
+            raise RuntimeError("media engine missing")
+
+        engine = GateEngine(
+            [_MediaProbeGate("V1", order), _MediaProbeGate("G0", order)],
+            media_stage=_stage,
+        )
+        success, _results = engine.run({})
+
+        assert success is True
+        assert order == ["gate:V1", "gate:G0"]

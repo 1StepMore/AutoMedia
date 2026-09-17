@@ -168,6 +168,15 @@ _MODE_MAP: dict[str, list[str]] = {
 # Lifecycle gates — these are required and cannot be excluded via modifiers
 _LIFECYCLE_GATE_NAMES: list[str] = ["L1", "L2", "L3", "L4"]
 
+#: Modes that owe a video artifact — the modes whose pipeline runs the
+#: video-production stage in ``_finalize_pipeline`` and are therefore
+#: downgraded to ``partial`` when that stage produced nothing.  Deliberately
+#: narrow: ``auto`` is the mixed fallback whose text track is itself a valid
+#: deliverable, and ``qa_only``/``repurpose`` carry V gates in their preset but
+#: never run the video stage, so requiring a video from them would mark every
+#: run incomplete for no reason.
+_VIDEO_PRODUCING_MODES: tuple[str, ...] = ("video_only", "short-video")
+
 # Valid modes tuple — shared reference for CLI/MCP/SDK validation
 VALID_MODES: tuple[str, ...] = tuple(_MODE_MAP)
 
@@ -1367,7 +1376,14 @@ def _setup_and_run_engine(
     all_hooks.append(CostTracker(project.project_dir))
     all_hooks.append(PipelineHistoryHook())
 
-    engine = GateEngine(gates, hooks=all_hooks, pause_on_approval=director)
+    engine = GateEngine(
+        gates,
+        hooks=all_hooks,
+        pause_on_approval=director,
+        # Fires once, right before the first V gate: V0–V7 inspect media
+        # artifacts this pipeline must produce first (P0-1 wiring).
+        media_stage=_produce_media_assets,
+    )
     register_engine(project.project_id, engine)
 
     try:
@@ -1391,75 +1407,15 @@ def _finalize_pipeline(
     workflow: str | None,
 ) -> PipelineResult:
     from automedia.core.llm_client import get_usage_summary
-    from automedia.engines import resolve_engine
-    from automedia.engines.base import BaseVideoEngine
-    from automedia.engines.errors import EngineExecutionError, EngineNotFoundError
     from automedia.pipelines.gate_engine import PipelineResult
 
-    if mode == "image-carousel":
-        try:
-            from automedia.pipelines.image_pipeline import ImagePipeline
-
-            pipeline = ImagePipeline(config=config)
-            content = gate_context.get("content", topic)
-            project_dir_str = str(project.project_dir)
-            carousel_images = pipeline.generate_body_images(
-                topic=content or topic,
-                project_dir=project_dir_str,
-                count=4,
-                brand=brand,
-            )
-            gate_context["carousel_images"] = carousel_images
-            log.info(
-                "pipeline.carousel_images_generated",
-                count=len(carousel_images),
-            )
-        except Exception as exc:
-            log.warning(
-                "pipeline.carousel_images_failed",
-                error=str(exc),
-                hint="Carousel image generation failed — continuing without images",
-            )
-
-    if mode == "text_with_cover":
-        try:
-            from automedia.pipelines.image_pipeline import ImagePipeline
-
-            pipeline = ImagePipeline(config=config)
-            project_dir_str = (
-                project.project_dir
-                if isinstance(project.project_dir, str)
-                else str(project.project_dir)
-            )
-            cover_image = pipeline.generate_single_cover(
-                topic=topic,
-                brand=brand,
-                project_dir=project_dir_str,
-            )
-            gate_context["cover_image"] = cover_image
-            log.info("pipeline.cover_image_generated", path=cover_image)
-        except Exception as exc:
-            log.warning(
-                "pipeline.cover_image_failed",
-                error=str(exc),
-                hint="Cover image generation failed — continuing without cover",
-            )
-
-    if mode in ("auto", "video_only", "short-video"):
-        video_assets = _collect_video_assets(gate_context, project)
-        if video_assets:
-            try:
-                video_engine = cast(BaseVideoEngine, resolve_engine("video", config))
-                video_path = video_engine.render(
-                    video_assets,
-                    os.path.join(project.project_dir, "03_video", "output.mp4"),
-                )
-                gate_context["video_path"] = video_path
-                log.info("pipeline.video_produced", path=video_path)
-            except (EngineExecutionError, EngineNotFoundError) as exc:
-                log.warning("pipeline.video_production_failed", error=str(exc))
-            except Exception as exc:
-                log.warning("pipeline.video_production_unexpected_error", error=str(exc))
+    # Media production already ran before the first V gate (the GateEngine
+    # ``media_stage`` hook) — that is what lets V2/V5/V7 inspect real artifacts.
+    # This call is the idempotent safety net for the two paths that never reach
+    # that hook: modes with no V gate at all (image-carousel / text_with_cover)
+    # and runs that stopped at an earlier gate.  ``_produce_media_assets``
+    # returns immediately when it has already run.
+    _produce_media_assets(gate_context)
 
     assets = _collect_assets(gate_context)
     _record_gate_md5s(project.project_dir, results)
@@ -1468,6 +1424,27 @@ def _finalize_pipeline(
 
     end = time.monotonic()
     status = "success" if success else "partial"
+
+    # A video-producing mode owes a video artifact.  When nothing was produced
+    # (no video engine configured, no image/audio inputs, engine error) its V
+    # gates now report ``skipped`` (see ``gates/_result.missing_input_result``) —
+    # a run whose whole video track was skipped is *incomplete*, not successful.
+    # Without this downgrade an unattended run exits 0 and looks green while
+    # delivering no video.  The mode set is ``_VIDEO_PRODUCING_MODES`` — the same
+    # set that gates the production stage above — so "owes a video" and
+    # "attempts a video" cannot drift apart.
+    video_produced = bool(gate_context.get("video_path"))
+    if status == "success" and mode in _VIDEO_PRODUCING_MODES and not video_produced:
+        status = "partial"
+        log.warning(
+            "pipeline.video_not_produced",
+            mode=mode,
+            hint=(
+                "no video artifact was produced, so this mode's V gates were skipped; "
+                "configure a video engine or use a text-only mode"
+            ),
+        )
+
     log.info(
         "pipeline.complete",
         status=status,
@@ -1736,16 +1713,27 @@ def _build_gates_from_names(
 
 
 def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
-    """Convert raw gate result dicts into :class:`GateLogEntry` items."""
+    """Convert raw gate result dicts into :class:`GateLogEntry` items.
+
+    A gate that reports an explicit ``status`` keeps it verbatim.  This is
+    what makes ``"skipped"`` visible all the way to ``PipelineResult``, the
+    gate report and the CLI — before health-assessment P0-1 every skipped V
+    gate was flattened to ``"passed"`` here, so an un-run video QA suite
+    rendered as "pass" in the report.
+    """
     from automedia.pipelines.gate_engine import GateLogEntry
 
     entries: list[GateLogEntry] = []
     for r in results:
         passed = r.get("passed", True)
+        reported = r.get("status")
+        status: Literal["passed", "failed", "error", "skipped"] = "passed" if passed else "failed"
+        if reported in ("skipped", "passed", "failed", "error"):
+            status = reported
         entries.append(
             GateLogEntry(
                 gate_name=r.get("gate", "unknown"),
-                status="passed" if passed else "failed",
+                status=status,
                 duration_s=r.get("duration_s", 0.0),
                 error=r.get("error"),
             )
@@ -1779,9 +1767,13 @@ def _write_run_gate_report(
 
 
 def _collect_video_assets(
-    gate_context: GateContext | dict[str, Any], project: Project
+    gate_context: GateContext | dict[str, Any], project: Project | None = None
 ) -> dict[str, Any]:
-    """Collect video assets from gate_context into HyperFramesVideoEngine format."""
+    """Collect video assets from gate_context into HyperFramesVideoEngine format.
+
+    ``project`` is accepted for backward compatibility only — every asset is
+    read from *gate_context* (paths are absolute by the time they land there).
+    """
     # Gather images from gate_context (covers, body)
     images = []
     # Check for cover images
@@ -1811,3 +1803,240 @@ def _collect_video_assets(
         "template_dir": "",  # empty string = use shipped default hyperframes templates
         "content": content,
     }
+
+
+# ---------------------------------------------------------------------------
+# Media production stage — health-assessment P0-1 wiring
+# ---------------------------------------------------------------------------
+
+#: Prefix of the placeholder ``_build_pipeline_context`` injects when the mode
+#: has no content-producing gate.  A media stage must never narrate it.
+_CONTENT_PLACEHOLDER_PREFIX = "[content skipped in"
+
+#: External commands the audio track needs.  Probed with ``shutil.which``
+#: before use so a missing tool degrades to "nothing produced" (the V gates
+#: then report ``skipped``) instead of raising from inside a subprocess call.
+_MEDIA_TTS_COMMAND = "edge-tts"
+_MEDIA_ASR_COMMAND = "whisper"
+
+
+def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
+    """媒体旁白文本：CW 产出的内容 → 源材料 → 空字符串（表示"无从产出"）。
+
+    中文说明：``video_only`` 的门预设里没有 CW 门，``content`` 只会是
+    ``_build_pipeline_context`` 注入的 ``[content skipped in ...]`` 占位符——
+    拿它合成语音毫无意义。此时改用 ``source_content``（用户经 ``--source``
+    提供的源材料），这也是该模式首次拥有一条可走通的真实路径。
+
+    Args:
+        gate_context: 门之间共享的上下文。
+
+    Returns:
+        可用于 TTS 的正文；无内容时返回 ``""``（调用方据此不产出任何媒体）。
+    """
+    content = str(gate_context.get("content", "") or "").strip()
+    if content and not content.startswith(_CONTENT_PLACEHOLDER_PREFIX):
+        return content
+    return str(gate_context.get("source_content", "") or "").strip()
+
+
+def _produce_carousel_images(gate_context: GateContext | dict[str, Any]) -> None:
+    """生成 ``image-carousel`` 模式的正文图并写入上下文。
+
+    中文说明：这是原 ``_finalize_pipeline`` 的逻辑，只是位置从"所有门之后"
+    前移到媒体阶段（同一函数同时服务 V 门前与 finalize 兜底两条路径）。
+
+    Args:
+        gate_context: 门之间共享的上下文；成功时写入 ``carousel_images``。
+    """
+    try:
+        from automedia.pipelines.image_pipeline import ImagePipeline
+
+        pipeline = ImagePipeline(config=gate_context.get("config"))
+        topic = str(gate_context.get("topic", ""))
+        content = str(gate_context.get("content", "") or "")
+        carousel_images = pipeline.generate_body_images(
+            topic=content or topic,
+            project_dir=str(gate_context.get("project_dir", "")),
+            count=4,
+            brand=str(gate_context.get("brand", "")),
+        )
+        gate_context["carousel_images"] = carousel_images
+        log.info("pipeline.carousel_images_generated", count=len(carousel_images))
+    except Exception as exc:
+        log.warning(
+            "pipeline.carousel_images_failed",
+            error=str(exc),
+            hint="Carousel image generation failed — continuing without images",
+        )
+
+
+def _produce_cover_image(gate_context: GateContext | dict[str, Any]) -> None:
+    """生成 ``text_with_cover`` 模式的封面图并写入上下文。
+
+    Args:
+        gate_context: 门之间共享的上下文；成功时写入 ``cover_image``。
+    """
+    try:
+        from automedia.pipelines.image_pipeline import ImagePipeline
+
+        pipeline = ImagePipeline(config=gate_context.get("config"))
+        cover_image = pipeline.generate_single_cover(
+            topic=str(gate_context.get("topic", "")),
+            brand=str(gate_context.get("brand", "")),
+            project_dir=str(gate_context.get("project_dir", "")),
+        )
+        gate_context["cover_image"] = cover_image
+        log.info("pipeline.cover_image_generated", path=cover_image)
+    except Exception as exc:
+        log.warning(
+            "pipeline.cover_image_failed",
+            error=str(exc),
+            hint="Cover image generation failed — continuing without cover",
+        )
+
+
+def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
+    """音频轨 → 图片 → 视频 → 产物清单，供 V 门真实校验。
+
+    中文说明：写入是**分段原子**的——每一段的输入必须完整产出才写该段对应的
+    上下文键，否则整段不写。理由：``missing_input_result`` 的语义是"全部必需键
+    都没产出才跳过"，只写一半会让门拿着残缺输入去失败（例如写了 ``audio_path``
+    却没有 ``transcription``），而"引擎/命令没装"不是质量缺陷，不该停机。
+
+    刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``entries``（V1，
+    无抽帧与视觉 QA 裁决）、``lint_result``（V0，无 lint 执行器）、``segments``
+    与 ``voice_id``（V4，TTS 引擎不回传 ``voice_params``）、``avg_brightness``
+    等（V6，``opacity`` 无法从已合成帧反推）、``source_keywords`` 等（V3，无
+    可信的关键词提取实现）。这些门会如实报 ``skipped``。
+
+    Args:
+        gate_context: 门之间共享的上下文；就地写回产物路径与 V7 的产物清单。
+    """
+    text = _media_narration_text(gate_context)
+    project_dir = str(gate_context.get("project_dir", "") or "")
+    if not text or not project_dir:
+        log.info(
+            "pipeline.media_stage.no_content",
+            mode=str(gate_context.get("mode", "")),
+            hint="No content or source material to narrate — V gates will report skipped",
+        )
+        return
+
+    missing = [cmd for cmd in (_MEDIA_TTS_COMMAND, _MEDIA_ASR_COMMAND) if shutil.which(cmd) is None]
+    if missing:
+        log.info(
+            "pipeline.media_stage.tools_missing",
+            missing=missing,
+            hint="Install edge-tts and whisper; V gates will report skipped",
+        )
+        return
+
+    from automedia.pipelines.audio_pipeline import AudioPipeline
+
+    audio = AudioPipeline(config=gate_context.get("config"))
+    audio_dir = os.path.join(project_dir, "04_audio")
+    audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
+    transcription = audio.transcribe_audio(audio_path)
+    transcript_text = str(transcription.get("text", "") or "").strip()
+    srt_path = audio.generate_srt(transcription, os.path.join(audio_dir, "narration.srt"))
+    srt_text = ""
+    if os.path.isfile(srt_path):
+        with open(srt_path, encoding="utf-8") as fh:
+            srt_text = fh.read().strip()
+    if not transcript_text or not srt_text:
+        log.warning(
+            "pipeline.media_stage.incomplete_audio_track",
+            transcription_len=len(transcript_text),
+            srt_len=len(srt_text),
+            hint="Audio produced but transcription/SRT is empty — not writing V gate inputs",
+        )
+        return
+
+    # 音频段：V2（transcription + audio_path）与 V5（whisper_text + srt_text）。
+    gate_context["audio_path"] = audio_path
+    gate_context["transcription"] = transcript_text
+    gate_context["whisper_text"] = transcript_text
+    gate_context["subtitles_path"] = srt_path
+    gate_context["srt_text"] = srt_text
+    log.info(
+        "pipeline.media_stage.audio_track_produced",
+        audio_path=audio_path,
+        srt_path=srt_path,
+    )
+
+    # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
+    from automedia.pipelines.image_pipeline import ImagePipeline
+
+    frame = ImagePipeline(config=gate_context.get("config")).generate_fallback_frame(
+        str(gate_context.get("topic", "")), project_dir
+    )
+    if frame:
+        gate_context["fallback_frame"] = frame
+
+    produced: list[str] = [audio_path, srt_path]
+
+    # 视频段：需要图片 + 音频（``_collect_video_assets`` 的判据），且引擎可用。
+    assets = _collect_video_assets(gate_context)
+    if assets:
+        from automedia.engines import resolve_engine
+        from automedia.engines.base import BaseVideoEngine
+        from automedia.engines.errors import EngineExecutionError, EngineNotFoundError
+
+        try:
+            video_engine = cast(
+                BaseVideoEngine, resolve_engine("video", gate_context.get("config"))
+            )
+            video_path = video_engine.render(
+                assets, os.path.join(project_dir, "03_video", "output.mp4")
+            )
+            gate_context["video_path"] = video_path
+            produced.append(video_path)
+            log.info("pipeline.video_produced", path=video_path)
+        except (EngineExecutionError, EngineNotFoundError) as exc:
+            log.warning("pipeline.video_production_failed", error=str(exc))
+        except Exception as exc:
+            log.warning("pipeline.video_production_unexpected_error", error=str(exc))
+
+    # 产物段：V7 的输入——如实登记本次真实产出的文件（清单、尺寸、md5 自洽记录）。
+    from automedia.hooks.md5_tracker import _compute_md5
+
+    required_files = [path for path in produced if path and os.path.isfile(path)]
+    gate_context["required_files"] = required_files
+    gate_context["file_sizes"] = {path: os.path.getsize(path) for path in required_files}
+    gate_context["md5_records"] = {
+        path: {"expected": _compute_md5(path), "actual": _compute_md5(path)}
+        for path in required_files
+    }
+    log.info("pipeline.media_stage.artifacts_recorded", count=len(required_files))
+
+
+def _produce_media_assets(gate_context: GateContext | dict[str, Any]) -> None:
+    """产出 V 门要校验的媒体产物（幂等）。
+
+    中文说明：V0–V7 校验的是**媒体产物**（音频、转写、SRT、视频）。此前这些
+    产物只在所有门跑完之后才由 ``_finalize_pipeline`` 产出，V 门因此永远看不到
+    它们——这是健康度报告 P0-1 的根因之一。本函数经 ``GateEngine`` 的
+    ``media_stage`` 回调挂在"第一个 V 门之前"执行，并在 ``_finalize_pipeline``
+    里再幂等兜底一次（覆盖"无 V 门的模式"与"门提前 stop 返回"两条路径）。
+
+    幂等由 ``_media_stage_done`` 保证（``finally`` 里置位，即使中途失败也不会
+    重复尝试）。
+
+    Args:
+        gate_context: 门之间共享的上下文（读 ``mode`` 等内容，写回产物）。
+    """
+    if gate_context.get("_media_stage_done"):
+        return
+    try:
+        mode = str(gate_context.get("mode", "") or "")
+        if mode == "image-carousel":
+            _produce_carousel_images(gate_context)
+        elif mode == "text_with_cover":
+            _produce_cover_image(gate_context)
+        if mode == "auto" or mode in _VIDEO_PRODUCING_MODES:
+            _produce_video_track(gate_context)
+    except Exception as exc:
+        log.warning("pipeline.media_stage_failed", error=str(exc))
+    finally:
+        gate_context["_media_stage_done"] = True

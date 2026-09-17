@@ -64,6 +64,27 @@ class TestFailingGate:
         """H0 is found via fallback prefix matching in error string."""
         assert _failing_gate("H0 human review rejected", None) == "H0"
 
+    def test_ignores_skipped_entries(self) -> None:
+        """A ``skipped`` entry is not a failing gate.
+
+        中文说明：健康度整改（P0-1）之后 V 门在无输入时会记为 ``skipped``。
+        跳过意味着「这门没东西可查」，不是失败；若把它当作失败门，CLI 会
+        给出错误的 ``--resume-from`` 提示。
+        """
+        log = [
+            GateLogEntry("V0", "skipped", 0.0),
+            GateLogEntry("G0", "failed", 1.0, error="Brand CTA mismatch"),
+        ]
+        assert _failing_gate("Brand CTA mismatch", log) == "G0"
+
+    def test_all_skipped_entries_yield_none(self) -> None:
+        """When every entry was skipped, no failing gate is reported."""
+        log = [
+            GateLogEntry("V0", "skipped", 0.0),
+            GateLogEntry("V1", "skipped", 0.0),
+        ]
+        assert _failing_gate("no video artifact was produced", log) is None
+
 
 class TestGatePrefixCoverage:
     """Comprehensive coverage: every gate name used by the runner has a prefix."""
@@ -73,13 +94,10 @@ class TestGatePrefixCoverage:
         from automedia.cli.output_format import _GATE_PREFIXES
         from automedia.pipelines.runner import _MODE_MAP
 
-        all_runner_gates: set[str] = {
-            name for names in _MODE_MAP.values() for name in names
-        }
+        all_runner_gates: set[str] = {name for names in _MODE_MAP.values() for name in names}
         missing = all_runner_gates - set(_GATE_PREFIXES)
         assert not missing, (
-            f"Gate name(s) present in runner but missing from "
-            f"_GATE_PREFIXES: {sorted(missing)}"
+            f"Gate name(s) present in runner but missing from _GATE_PREFIXES: {sorted(missing)}"
         )
 
 

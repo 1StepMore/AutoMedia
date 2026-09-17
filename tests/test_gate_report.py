@@ -24,12 +24,12 @@ from automedia.pipelines.gate_report import render_gate_report, write_gate_repor
 
 def _entry(
     gate_name: str,
-    status: Literal["passed", "failed", "error"],
+    status: Literal["passed", "failed", "error", "skipped"],
     duration_s: float,
     error: str | None = None,
 ) -> GateLogEntry:
     """Build a GateLogEntry (status validated as in gate_engine)."""
-    if status not in ("passed", "failed", "error"):
+    if status not in ("passed", "failed", "error", "skipped"):
         pytest.fail(f"invalid test status {status!r}")
     return GateLogEntry(gate_name=gate_name, status=status, duration_s=duration_s, error=error)
 
@@ -301,3 +301,47 @@ class TestReportShape:
     def test_generated_at_is_utc_iso(self, project_dir: Path) -> None:
         report = render_gate_report(str(project_dir), [_entry("CW", "passed", 0.1)])
         assert report["generated_at"].endswith("+00:00")
+
+
+# ---------------------------------------------------------------------------
+# Case — skipped gates are a first-class verdict
+# ---------------------------------------------------------------------------
+
+
+class TestSkippedVerdict:
+    """A ``skipped`` gate is visible as ``skip`` and never counts as a failure.
+
+    中文说明：健康度整改（P0-1）的核心要求是「跳过必须可见」。V 门在无输入时
+    记为 ``skipped``；报告必须把它渲染成独立的 ``skip`` 结论，并在 summary 中
+    单独计数——而不是悄悄折成 pass 或 fail。
+    """
+
+    def test_skipped_status_maps_to_skip(self, project_dir: Path) -> None:
+        report = render_gate_report(str(project_dir), [_entry("V1", "skipped", 0.0)])
+        row = next(r for r in report["gates"] if r["gate"] == "V1")
+        assert row["verdict"] == "skip"
+
+    def test_skipped_is_not_counted_as_failure(self, project_dir: Path) -> None:
+        gates_log = [
+            _entry("CW", "passed", 1.0),
+            _entry("V0", "skipped", 0.0),
+            _entry("V1", "skipped", 0.0),
+        ]
+        report = render_gate_report(str(project_dir), gates_log)
+        s = report["summary"]
+        assert s["total"] == 3
+        assert s["passed"] == 1
+        assert s["failed"] == 0
+        assert s["errored"] == 0
+        assert s["skipped"] == 2
+        # No gate failed, so nothing is reported as blocking the pipeline
+        assert report["blocked_by_gate"] is None
+
+    def test_skip_verdict_appears_in_markdown(self, project_dir: Path) -> None:
+        report = render_gate_report(str(project_dir), [_entry("V0", "skipped", 0.0)])
+        assert "skip" in report["markdown"].lower()
+
+    def test_gate_log_entry_preserves_skipped_status(self) -> None:
+        """``GateLogEntry`` carries ``skipped`` verbatim (no silent coercion)."""
+        entry = GateLogEntry(gate_name="V0", status="skipped", duration_s=0.0)
+        assert entry.status == "skipped"
