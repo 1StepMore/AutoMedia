@@ -108,10 +108,15 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/automedia/.vulture_whitelist.py" = ["F821", "B018", "N999"]
-# ANN is deliberately off for tests: forcing a return/parameter annotation on
-# every test function and fixture produced ~860 findings of scaffolding noise
-# with no behavioral value. Product code (src/) keeps ANN enforced.
-"tests/**" = ["S101", "S105", "S106", "ANN"]
+# Two rulesets are deliberately off for tests:
+#   ANN - forcing an annotation on every test function/fixture was ~860 findings
+#         of scaffolding noise with no behavioral value.
+#   S   - bandit's rules flag test scaffolding by construction: hardcoded temp
+#         paths (S108), fixed passwords (S105/S107), random and md5 used to
+#         build fixtures (S311/S324), pytest asserts (S101). S101/S105/S106 were
+#         already ignored before this; the rest are the same category.
+# Product code (src/) enforces both rulesets.
+"tests/**" = ["S", "ANN"]
 
 [tool.mypy]
 python_version = "3.12"
