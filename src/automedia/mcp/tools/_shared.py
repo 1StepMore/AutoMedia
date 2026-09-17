@@ -8,14 +8,13 @@ that existing code (including tests) can continue to import from
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import json
 import os
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, NotRequired, TypedDict, cast
+from typing import IO, Any, NotRequired, TypedDict, cast
 
 import yaml
 from pydantic import ValidationError
@@ -59,6 +58,55 @@ from automedia.pipelines.gate_engine import (  # noqa: F401 — re-exported
     list_registered_engines,
 )
 from automedia.pipelines.runner import VALID_MODES  # noqa: F401 — re-exported
+
+# ---------------------------------------------------------------------------
+# Platform-conditional locking primitive
+# ---------------------------------------------------------------------------
+
+# ``fcntl`` is POSIX-only.  Importing it at module scope made this module —
+# and therefore the whole MCP tool layer — unimportable on Windows
+# (health-assessment P0-2).  ``None`` selects the no-op branch of
+# :func:`_file_lock`; see that function's docstring for why the no-op is
+# semantically equivalent rather than a degradation.
+_fcntl: Any
+try:
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover — POSIX-only module; Windows takes this branch
+    _fcntl = None
+
+
+@contextlib.contextmanager
+def _file_lock(fh: IO[str], *, exclusive: bool) -> Iterator[None]:
+    """Hold an advisory lock on *fh* for the duration of the ``with`` block.
+
+    中文说明：在 POSIX 上用 ``fcntl.flock`` 加共享/独占建议锁；在 Windows
+    上没有 ``fcntl``，退化为 no-op。
+
+    为什么 no-op 不是功能降级：``active_pipelines.json`` 的写入路径采用
+    「写临时文件 + ``os.replace(tmp, path)``」的原子替换（见
+    :func:`_write_active_pipelines`），读者在任何平台上都不可能看到半截
+    JSON；而此前的独占锁加在**临时文件**上，对并发写者本就不构成互斥。
+    因此该锁在两种平台上都不提供额外保证，Windows 分支只是如实对齐语义。
+    若将来需要真正的跨进程互斥，应改造写入协议（例如对最终路径加锁），
+    而不是依赖本函数。
+
+    Parameters
+    ----------
+    fh:
+        已打开的文件对象（文本模式）。
+    exclusive:
+        ``True`` 取独占锁（写），``False`` 取共享锁（读）。
+    """
+    if _fcntl is None:
+        yield
+        return
+
+    _fcntl.flock(fh, _fcntl.LOCK_EX if exclusive else _fcntl.LOCK_SH)
+    try:
+        yield
+    finally:
+        _fcntl.flock(fh, _fcntl.LOCK_UN)
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -255,13 +303,12 @@ def _pipeline_result_to_dict(result: PipelineResult) -> dict[str, Any]:
 
 
 def _read_active_pipelines() -> dict[str, dict[str, Any]]:
-    """Read active pipelines from the JSON file, using flock for safety."""
+    """Read active pipelines from the JSON file, using an advisory lock."""
     path = _get_active_pipelines_path()
     if not path.is_file():
         return {}
     try:
-        with open(path, encoding="utf-8") as fh:
-            fcntl.flock(fh, fcntl.LOCK_SH)
+        with open(path, encoding="utf-8") as fh, _file_lock(fh, exclusive=False):
             data: dict[str, dict[str, Any]] = json.load(fh)
     except (json.JSONDecodeError, OSError, ValueError):
         return {}
@@ -274,12 +321,15 @@ def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     try:
-        with open(tmp, "w", encoding="utf-8") as fh:
-            fcntl.flock(fh, fcntl.LOCK_EX)
+        with open(tmp, "w", encoding="utf-8") as fh, _file_lock(fh, exclusive=True):
             json.dump(data, fh, ensure_ascii=False, indent=2, default=str)
             fh.flush()
             os.fsync(fh.fileno())
-        tmp.rename(path)
+        # ``os.replace`` (not ``Path.rename``) — the latter maps to
+        # ``os.rename``, which raises FileExistsError on Windows whenever the
+        # destination already exists, i.e. on every write after the first.
+        # ``os.replace`` is the atomic overwrite primitive on both platforms.
+        os.replace(tmp, path)
     except OSError:
         with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
@@ -290,7 +340,7 @@ def _update_pipeline_entry(
     project_id: str,
     updates: dict[str, Any],
 ) -> None:
-    """Read-modify-write a single pipeline entry with flock protection."""
+    """Read-modify-write a single pipeline entry with advisory-lock protection."""
     try:
         data = _read_active_pipelines()
         entry = data.get(project_id, {})

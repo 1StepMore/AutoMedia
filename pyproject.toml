@@ -14,6 +14,9 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
@@ -45,7 +48,9 @@ Repository = "https://github.com/renanzai40/AutoMedia_BackUp"
 Documentation = "https://github.com/renanzai40/AutoMedia_BackUp/tree/main/docs"
 
 [project.optional-dependencies]
-openai = ["openai>=2.45.0"]
+# Upper bound matches litellm's own constraint (openai>=2.20.0,<3.0.0): an
+# unbounded specifier let pip resolve openai 3.x, which litellm rejects.
+openai = ["openai>=2.45.0,<3"]
 anthropic = ["anthropic>=0.116.0"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0,<2"]

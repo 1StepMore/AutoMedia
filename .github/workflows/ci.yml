@@ -177,6 +177,80 @@ jobs:
           )
           EOF
 
+  # Windows smoke (health-assessment P0-2). The repo advertises
+  # ``Operating System :: OS Independent`` while the Linux-only jobs above
+  # could never falsify that claim: ``mcp/tools/_shared.py`` imported the
+  # POSIX-only ``fcntl`` at module scope, so the entire MCP tool layer was
+  # unimportable on Windows and nothing in CI noticed. This job is the platform
+  # witness — an explicit import smoke plus a curated Windows-green subset.
+  #
+  # SCOPE, deliberately narrow: this is a smoke job, NOT the full suite. The
+  # Linux ``test`` job remains the authority for exhaustive coverage. Every
+  # exclusion below asserts a POSIX-only semantic that cannot hold on any
+  # Windows runner regardless of source health:
+  #   * ``chmod`` permission bits (0o600) — Windows only toggles the read-only
+  #     bit, so ``st_mode & 0o777`` is never 0o600
+  #     (tests/test_cli/test_init_cmd.py, tests/test_cli/test_security_config_perms.py)
+  #   * ``os.symlink`` without Developer Mode / SeCreateSymbolicLinkPrivilege —
+  #     raises WinError 1314 (two ``TestAllowlist`` nodes below)
+  #   * POSIX absolute paths and forward-slash containment assertions —
+  #     ``/nonexistent_parent_dir_42`` and ``.as_posix() in str(...)``
+  #     (tests/test_mcp/test_setup_tools.py, tests/test_mcp/test_allowlist_usability.py)
+  #   * ``validate run`` scenarios, which shell out to POSIX tooling
+  #     (tests/test_cli/test_validate.py)
+  # The curated subset was verified green on a real Windows 11 box before being
+  # pinned here; the deselect list is part of the contract, not a workaround.
+  test-windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-windows-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Import smoke — MCP tool layer
+        # The regression this job exists for: this import used to raise
+        # ModuleNotFoundError: No module named 'fcntl' on Windows.
+        run: python -c "import automedia.mcp.tools, automedia.mcp.server; print('MCP layer importable')"
+      - name: CLI smoke — help renders
+        run: python -c "from automedia.cli.app import app; from typer.main import get_command; from click.testing import CliRunner; r = CliRunner().invoke(get_command(app), ['--help']); assert r.exit_code == 0, r.output; print('CLI help OK')"
+      - name: Pytest (Windows-green subset)
+        run: >-
+          python -m pytest
+          tests/test_paths.py
+          tests/test_md5_tracker.py
+          tests/test_gate_engine.py
+          tests/test_gate_base.py
+          tests/test_gate_hooks.py
+          tests/test_gate_report.py
+          tests/test_gate_report_html.py
+          tests/test_gate_report_remediation.py
+          tests/test_gates
+          tests/test_pipeline
+          tests/test_runner
+          tests/test_runner.py
+          tests/test_core
+          tests/test_config_loader.py
+          tests/test_cli
+          --ignore=tests/test_cli/test_init_cmd.py
+          --ignore=tests/test_cli/test_security_config_perms.py
+          --ignore=tests/test_cli/test_validate.py
+          tests/test_mcp
+          --deselect=tests/test_mcp/test_allowlist_usability.py::TestAllowlistUsability::test_allowlist_yaml_parses_correctly
+          --deselect=tests/test_mcp/test_mcp_server.py::TestAllowlist::test_symlink_outside_blocked
+          --deselect=tests/test_mcp/test_mcp_server.py::TestAllowlist::test_symlink_to_allowed_works
+          --deselect=tests/test_mcp/test_setup_tools.py::TestInitConfig::test_error_on_invalid_path
+          --deselect=tests/test_mcp/test_topic_pool_persistence.py::TestCrossProcessPersistence::test_topic_added_in_one_process_is_listed_by_a_new_process
+          tests/test_pool_db.py
+          tests/test_media_production.py
+          -q --tb=short
+
   test-omni:
     runs-on: ubuntu-latest
     strategy:
