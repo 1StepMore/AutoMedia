@@ -43,7 +43,7 @@ class TestFailingGate:
     def test_fallback_to_error_string(self) -> None:
         assert _failing_gate("G3 brand CTA mismatch", None) == "G3"
 
-    def test_fallback_to_G_prefix(self) -> None:
+    def test_fallback_to_g_prefix(self) -> None:
         assert _failing_gate("V5 subtitle sync error", None) == "V5"
 
     def test_returns_none_for_unmatched(self) -> None:
@@ -52,7 +52,7 @@ class TestFailingGate:
     def test_returns_none_for_empty_error(self) -> None:
         assert _failing_gate("", None) is None
 
-    def test_recognizes_H0_from_log(self) -> None:
+    def test_recognizes_h0_from_log(self) -> None:
         """H0 gate (human review) is found from gate log entries."""
         log = [
             GateLogEntry("pre-gate", "passed", 0.5),
@@ -60,7 +60,7 @@ class TestFailingGate:
         ]
         assert _failing_gate("Human review rejected", log) == "H0"
 
-    def test_recognizes_H0_from_error_string(self) -> None:
+    def test_recognizes_h0_from_error_string(self) -> None:
         """H0 is found via fallback prefix matching in error string."""
         assert _failing_gate("H0 human review rejected", None) == "H0"
 
@@ -123,7 +123,7 @@ class TestOutputFormattedError:
             calls = [c for c in mock_secho.call_args_list if "G0" in str(c)]
             assert calls, "Expected gate name 'G0' in secho output"
 
-    def test_H0_gate_error_shows_gate_name(self) -> None:
+    def test_h0_gate_error_shows_gate_name(self) -> None:
         """H0 gate failure correctly shows H0 in error output."""
         log = [GateLogEntry("H0", "failed", 1.5, error="Human review rejected")]
 
@@ -284,13 +284,15 @@ class TestRunVerboseFlag:
         # Monkey-patch _MODEL_CONFIG_PATH to a temp file so the check passes
         cfg = tmp_path / "model_config.yaml"
         cfg.write_text("dummy")
-        with patch.object(run_mod, "_MODEL_CONFIG_PATH", cfg):
-            with patch.object(run_mod, "run_full_pipeline") as mock_runner:
-                mock_runner.side_effect = RuntimeError("kaboom")
-                result = runner.invoke(
-                    app,
-                    ["run", "--topic", "t", "--brand", "b", "--verbose"],
-                )
+        with (
+            patch.object(run_mod, "_MODEL_CONFIG_PATH", cfg),
+            patch.object(run_mod, "run_full_pipeline") as mock_runner,
+        ):
+            mock_runner.side_effect = RuntimeError("kaboom")
+            result = runner.invoke(
+                app,
+                ["run", "--topic", "t", "--brand", "b", "--verbose"],
+            )
         assert result.exit_code == 1
         # The error message should mention "kaboom" as part of the friendly message
         assert "kaboom" in result.output
@@ -306,13 +308,15 @@ class TestRunVerboseFlag:
 
         cfg = tmp_path / "model_config.yaml"
         cfg.write_text("dummy")
-        with patch.object(run_mod, "_MODEL_CONFIG_PATH", cfg):
-            with patch.object(run_mod, "run_full_pipeline") as mock_runner:
-                mock_runner.side_effect = RuntimeError("kaboom")
-                result = runner.invoke(
-                    app,
-                    ["run", "--topic", "t", "--brand", "b", "--verbose"],
-                )
+        with (
+            patch.object(run_mod, "_MODEL_CONFIG_PATH", cfg),
+            patch.object(run_mod, "run_full_pipeline") as mock_runner,
+        ):
+            mock_runner.side_effect = RuntimeError("kaboom")
+            result = runner.invoke(
+                app,
+                ["run", "--topic", "t", "--brand", "b", "--verbose"],
+            )
         assert result.exit_code == 1
         # The "verbose traceback" marker should be in stderr
         assert "verbose traceback" in result.output

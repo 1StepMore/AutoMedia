@@ -28,7 +28,8 @@ _CLIENT_CONFIGS: dict[str, dict[str, Any]] = {
         "name": "automedia",
         "type": "mcpServers",
         "config_wrap": {"mcpServers": {"automedia": _BASE_CONFIG}},
-        "description": "Claude Desktop / Claude Code — add to your claude_desktop_config.json or CLAUDE.md",
+        "description": "Claude Desktop / Claude Code — add to your claude_desktop_config.json "
+        "or CLAUDE.md",
     },
     "opencode": {
         "name": "AutoMedia",

@@ -223,14 +223,14 @@ def _fake_structured_response(response_format: type) -> BaseModel:
     Known gate result types receive realistic-looking data.  All others
     receive a minimal ``{"passed": True}`` (or the closest valid variant).
     """
-    _DISPATCH: dict[str, dict[str, object]] = {
+    _dispatch: dict[str, dict[str, object]] = {
         "G0CheckResult": {"passed": True, "confidence": 0.95},
         "G1CheckResult": {"passed": True, "score": 0.85, "humanized": True, "changes": []},
         "G2CheckResult": {"passed": True, "issues": [], "score": 0.9},
     }
     name = response_format.__name__
-    if name in _DISPATCH:
-        return response_format.model_validate(_DISPATCH[name])
+    if name in _dispatch:
+        return response_format.model_validate(_dispatch[name])
     try:
         return response_format.model_validate({"passed": True})
     except Exception:

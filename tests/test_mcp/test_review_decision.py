@@ -309,7 +309,7 @@ class TestReviewDecisionAuditLog:
         project_id = "rvw-auditap1"
         tmp = Path(str(_audit_dir)).parent
         _seed_project_with_diff_record(tmp, project_id)
-        _, _, thread, results = _pause_h0_pipeline(project_id)
+        _, _, thread, _results = _pause_h0_pipeline(project_id)
 
         review_decision(project_id=project_id, gate_name="H0", action="approve")
         thread.join(timeout=5.0)
@@ -329,7 +329,7 @@ class TestReviewDecisionAuditLog:
         project_id = "rvw-auditrj1"
         tmp = Path(str(_audit_dir)).parent
         _seed_project_with_diff_record(tmp, project_id)
-        _, _, thread, results = _pause_h0_pipeline(project_id)
+        _, _, thread, _results = _pause_h0_pipeline(project_id)
 
         review_decision(
             project_id=project_id,

@@ -33,7 +33,7 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
     class _MockImageEngine:
         """Stub engine that writes a minimal valid PNG for any generate call."""
 
-        def generate(  # noqa: PLR6301  # intentional stub
+        def generate(  # intentional stub
             self,
             prompt: str,
             width: int,
@@ -47,7 +47,7 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
             )
             return output_path
 
-    def _mock_resolve(modality: str, config: dict | None = None) -> _MockImageEngine:  # noqa: ARG001
+    def _mock_resolve(modality: str, config: dict | None = None) -> _MockImageEngine:
         if modality != "image":
             msg = f"Unexpected modality: {modality}"
             raise ValueError(msg)

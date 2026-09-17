@@ -157,7 +157,7 @@ def _build_mock_results() -> dict[str, dict[str, Any]]:
         "format_completeness",
         "metadata_integrity",
     ]
-    return {name: _p for name in all_checks}
+    return dict.fromkeys(all_checks, _p)
 
 
 def _build_full_context(

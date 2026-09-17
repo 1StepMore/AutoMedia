@@ -278,7 +278,7 @@ class TestImportIsolation:
             "assert 'automedia.pipelines.runner' not in sys.modules, "
             "'dag transitively imports runner'"
         )
-        proc = subprocess.run(  # noqa: S603 — fixed, trusted interpreter + literal code
+        proc = subprocess.run(
             [sys.executable, "-c", code],
             capture_output=True,
             text=True,

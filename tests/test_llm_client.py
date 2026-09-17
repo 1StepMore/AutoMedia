@@ -187,7 +187,7 @@ class TestGetRetryableErrors:
             pytest.skip("openai not installed")
         result = _get_retryable_errors()
         assert len(result) == 3
-        import openai as _openai  # noqa: F811
+        import openai as _openai
 
         assert _openai.RateLimitError in result
         assert _openai.APITimeoutError in result
@@ -322,7 +322,7 @@ class TestBuildClient:
         config = _make_llm_config()
         with (
             patch.dict(sys.modules, {"openai": None}),
-            pytest.raises(ImportError, match="openai.*extra"),
+            pytest.raises(ImportError, match=r"openai.*extra"),
         ):
             _build_client(config)
 
@@ -470,7 +470,7 @@ class TestLlmComplete:
         mock_build.return_value = MagicMock()
         mock_retry.side_effect = RuntimeError("API down")
         config = _make_llm_config()
-        with pytest.raises(LLMError, match="LLM completion failed.*API down"):
+        with pytest.raises(LLMError, match=r"LLM completion failed.*API down"):
             llm_complete("Hello", config=config)
 
     @patch("automedia.core.llm_client._build_client")
@@ -1156,9 +1156,9 @@ class TestProviderFallbackChain:
                 "automedia.core.llm_client._llm_chat_completion_with_retry",
                 side_effect=_side_effect,
             ),
+            pytest.raises(LLMError, match=r"primary-provider.*backup-provider.*last-provider"),
         ):
-            with pytest.raises(LLMError, match="primary-provider.*backup-provider.*last-provider"):
-                llm_complete("Hello", config=config)
+            llm_complete("Hello", config=config)
 
     @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
     @patch("automedia.core.llm_client._build_client")

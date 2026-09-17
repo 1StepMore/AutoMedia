@@ -527,7 +527,7 @@ class TestRepurposeMode:
         ctx["lint_result"] = {"errors": 0, "warnings": 0, "syntax_ok": True}
         ctx["entries"] = []
         ctx["transcription"] = "test"
-        ctx["audio_path"] = "/tmp/test.mp3"  # noqa: S108 — synthetic fixture path
+        ctx["audio_path"] = "/tmp/test.mp3"
         ctx["source_keywords"] = ["AI", "tech"]
         ctx["content_keywords"] = ["AI", "tech"]
         ctx["source_texts"] = ["Source text"]
@@ -560,13 +560,13 @@ class TestRepurposeMode:
         }
         ctx["archive_status"] = "published"
         ctx["force"] = True
-        ctx["archive_path"] = "/tmp/archive.zip"  # noqa: S108 — synthetic fixture path
+        ctx["archive_path"] = "/tmp/archive.zip"
         ctx["archive_metadata"] = {
             "title": "test",
             "platform": "wechat",
             "created_at": "2025-01-01",
         }
-        ctx["output_dir"] = "/tmp/output"  # noqa: S108 — synthetic fixture path
+        ctx["output_dir"] = "/tmp/output"
         ctx["platforms"] = ["wechat", "twitter"]
         ctx["expected_platforms"] = ["wechat", "twitter"]
         ctx["unified_content"] = "Content"

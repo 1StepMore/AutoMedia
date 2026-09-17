@@ -8,17 +8,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pytest
-
 from automedia.gates.distribution.d4_xiaohongshu import D4Gate
 from tests.test_distribution.test_d_gate_base import (
     DGateTestBase,
     patch_llm_complete,
-    patch_llm_failure,
 )
 
 if TYPE_CHECKING:
-    from unittest.mock import MagicMock
+    pass
 
 
 # Canned response: >200 chars with ## heading (satisfies emoji OR section)

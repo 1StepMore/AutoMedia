@@ -1,4 +1,5 @@
-"""Unit tests for :class:`~automedia.engines.implementations.video_hyperframes.HyperFramesVideoEngine`.
+"""Unit tests for
+:class:`~automedia.engines.implementations.video_hyperframes.HyperFramesVideoEngine`.
 
 Tests cover:
 

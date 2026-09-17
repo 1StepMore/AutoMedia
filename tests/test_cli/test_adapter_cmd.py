@@ -164,7 +164,7 @@ class TestAdapterListFilters:
 
 class TestAdapterListJson:
     def test_json_real_parses_and_matches(self) -> None:
-        real, stub = _snapshot()
+        real, _stub = _snapshot()
         result = _invoke("--json", "--real")
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -175,7 +175,7 @@ class TestAdapterListJson:
         assert all(a["is_stub"] is False for a in data["adapters"])
 
     def test_json_stub_parses_and_matches(self) -> None:
-        real, stub = _snapshot()
+        _real, stub = _snapshot()
         result = _invoke("--json", "--stub")
         assert result.exit_code == 0
         data = json.loads(result.output)

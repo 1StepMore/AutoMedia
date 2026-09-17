@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import stat
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 import yaml
@@ -245,7 +246,7 @@ class TestLoadModelConfig:
 class TestSaveModelConfig:
     """Unit tests for the merge-aware save_model_config writer."""
 
-    _FALLBACK = [
+    _FALLBACK: ClassVar[list[dict[str, str]]] = [
         {
             "provider": "agnes",
             "model": "glm-4",

@@ -436,7 +436,7 @@ class TestInitialisation:
         nested = temp_store_dir / "a" / "b" / "c"
         assert not nested.exists()
 
-        store = AccountStore(store_dir=str(nested), master_key="test-key")
+        AccountStore(store_dir=str(nested), master_key="test-key")
         assert nested.is_dir()
         # Cleanup
         import shutil

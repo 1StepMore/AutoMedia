@@ -40,7 +40,7 @@ from automedia.validation.schema import Scenario, Step
 _INJECT = "__inject_failure__"
 """Sentinel argument the injection dispatcher fails on (failure injection)."""
 
-_RECOVERY_TMP = "/tmp/automedia"  # noqa: S108 — synthetic isolated scratch (fake dispatcher)
+_RECOVERY_TMP = "/tmp/automedia"
 """Scratch root for the synthetic recovery arguments (never touched by the fake)."""
 
 

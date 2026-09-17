@@ -53,13 +53,19 @@ _RESOLUTIONS: dict[str, str] = {
     "BRAND_NOT_FOUND": "Create a brand with add_brand() or automedia init",
     "CONFIG_MISSING": "Run automedia init to create configuration, then retry",
     "PIPELINE_ERROR": "Check gate logs for failure details and retry or skip the failing gate",
-    "GATE_FAILURE": "Inspect the gate output, fix the underlying content or media issue, then retry",
-    "ENGINE_ERROR": "Check engine dependencies with health_engine() and ensure the engine is running",
+    "GATE_FAILURE": (
+        "Inspect the gate output, fix the underlying content or media issue, then retry"
+    ),
+    "ENGINE_ERROR": (
+        "Check engine dependencies with health_engine() and ensure the engine is running"
+    ),
     "LLM_ERROR": "Verify AUTOMEDIA_LLM_API_KEY is set and the provider is accessible",
     "IMPORT_ERROR": "Install missing dependencies with 'pip install automedia[EXTRA]'",
     "VALIDATION_ERROR": "Check the input data types and constraints; fix the reported fields",
     "SESSION_LOST": "The pipeline session expired or was cancelled. Start a new pipeline",
-    "ALLOWLIST_DENIED": "The requested path is not in the allowlist — verify the path or update mcp_allowlist.yaml",
+    "ALLOWLIST_DENIED": (
+        "The requested path is not in the allowlist — verify the path or update mcp_allowlist.yaml"
+    ),
     "UNKNOWN": "See documentation or contact support",
 }
 

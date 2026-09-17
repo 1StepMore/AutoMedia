@@ -549,12 +549,14 @@ class TestComfyUIImageEngineGenerateErrors:
                 raise ImportError("No module named 'httpx'")
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=_mock_import):
-            with pytest.raises(
+        with (
+            patch("builtins.__import__", side_effect=_mock_import),
+            pytest.raises(
                 EngineExecutionError,
                 match="httpx is required",
-            ):
-                engine.generate("test", 512, 512, str(tmp_path / "out.png"))
+            ),
+        ):
+            engine.generate("test", 512, 512, str(tmp_path / "out.png"))
 
     @patch("httpx.Client")
     def test_connection_error_raises(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:

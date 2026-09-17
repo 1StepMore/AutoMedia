@@ -38,7 +38,7 @@ def _listed_rows() -> list[tuple[str, str]]:
 def _tracked_paths() -> set[str]:
     git = shutil.which("git")
     assert git is not None, "git is required to verify the docs inventory"
-    out = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+    out = subprocess.run(
         [git, "-C", str(REPO_ROOT), "ls-files", "-z", "--", "docs", "AGENTS.md", "README.md"],
         capture_output=True,
         check=True,
@@ -58,7 +58,7 @@ def test_inventory_lists_only_tracked_paths() -> None:
 
 
 def test_check_mode_reports_no_drift() -> None:
-    proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+    proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--check"],
         capture_output=True,
         text=True,

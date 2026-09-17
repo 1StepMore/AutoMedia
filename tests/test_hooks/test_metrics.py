@@ -271,10 +271,12 @@ class TestMetricsHookWriteFailure:
         ctx = {"project_dir": str(tmp_path), "project_id": "p1"}
         hook.before_gate("g", ctx)
 
-        with patch("automedia.hooks.metrics.open", side_effect=OSError("disk full")):
-            with caplog.at_level(logging.ERROR, logger="automedia.hooks.metrics"):
-                # Should not raise
-                hook.after_gate("g", ctx, {"passed": True})
+        with (
+            patch("automedia.hooks.metrics.open", side_effect=OSError("disk full")),
+            caplog.at_level(logging.ERROR, logger="automedia.hooks.metrics"),
+        ):
+            # Should not raise
+            hook.after_gate("g", ctx, {"passed": True})
 
         assert "failed to write" in caplog.text
 
@@ -286,9 +288,11 @@ class TestMetricsHookWriteFailure:
         ctx = {"project_dir": str(tmp_path), "project_id": "p1"}
         hook.before_gate("g", ctx)
 
-        with patch("automedia.hooks.metrics.open", side_effect=OSError("read-only fs")):
-            with caplog.at_level(logging.ERROR, logger="automedia.hooks.metrics"):
-                hook.on_gate_failed("g", ctx, ValueError("oops"))
+        with (
+            patch("automedia.hooks.metrics.open", side_effect=OSError("read-only fs")),
+            caplog.at_level(logging.ERROR, logger="automedia.hooks.metrics"),
+        ):
+            hook.on_gate_failed("g", ctx, ValueError("oops"))
 
         assert "failed to write" in caplog.text
 

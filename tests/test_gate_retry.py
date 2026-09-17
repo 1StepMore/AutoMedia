@@ -443,7 +443,7 @@ def test_quality_retry_delegates_to_level2_handler() -> None:
     engine = GateEngine([cw_gate, gate], max_quality_retries=2, max_regenerations=0)
 
     ctx: dict[str, Any] = {"topic": "test", "_level2_handler": _level2_handler}
-    ok, results = engine.run(ctx)
+    ok, _results = engine.run(ctx)
 
     assert ok is False
     assert call_count["n"] == 3
@@ -552,7 +552,7 @@ def test_level2_regeneration_count_tracked_in_context() -> None:
     )
 
     ctx: dict[str, Any] = {"topic": "test"}
-    ok, results = engine.run(ctx)
+    ok, _results = engine.run(ctx)
 
     assert ok is False
     # CW: initial + 2 regenerations = 3
@@ -678,7 +678,7 @@ def test_level2_exhaustion_populates_escalated_gates() -> None:
     )
 
     ctx: dict[str, Any] = {"topic": "test"}
-    ok, results = engine.run(ctx)
+    ok, _results = engine.run(ctx)
 
     assert ok is False
     assert ctx.get("_level2_exhausted") is True

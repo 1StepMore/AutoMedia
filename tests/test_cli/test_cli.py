@@ -497,7 +497,7 @@ class TestCronCommand:
         mock_run: MagicMock,
         mock_schedules: MagicMock,
     ) -> None:
-        """cron run-pipeline exception should produce structured error with code/message/resolution."""
+        """cron run-pipeline exception should produce structured code/message/resolution."""
         mock_schedules.return_value = [{"name": "test-sched", "brand": "test", "mode": "auto"}]
         mock_run.side_effect = RuntimeError("cron kaboom")
         result = runner.invoke(app, ["--json", "cron", "run-pipeline"])

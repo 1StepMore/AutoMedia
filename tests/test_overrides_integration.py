@@ -147,7 +147,7 @@ class TestLayer4Rules:
 
     def test_empty_rules_dir_no_effect(self, tmp_path, monkeypatch):
         """An empty overrides/rules/ directory adds nothing to the config."""
-        home, rules, _ = _setup_override_dirs(tmp_path)
+        home, _rules, _ = _setup_override_dirs(tmp_path)
         # rules dir exists but is empty
         _patch_home(monkeypatch, home)
 
@@ -235,7 +235,7 @@ class TestLayer5Prompts:
 
     def test_empty_prompts_dir_no_prompts_key(self, tmp_path, monkeypatch):
         """An empty overrides/prompts/ directory produces no 'prompts' key."""
-        home, _, prompts = _setup_override_dirs(tmp_path)
+        home, _, _prompts = _setup_override_dirs(tmp_path)
         # prompts dir exists but is empty
         _patch_home(monkeypatch, home)
 
@@ -266,7 +266,7 @@ class TestLayers4And5Combined:
 
     def test_prompts_under_user_still_merged(self, tmp_path, monkeypatch):
         """User-level prompts dir (~/.automedia/prompts/ if any) also works."""
-        home, rules, prompts = _setup_override_dirs(tmp_path)
+        home, _rules, prompts = _setup_override_dirs(tmp_path)
         # Also create a user-level prompts dir (Layer 3 style)
         user_prompts = home / ".automedia" / "prompts"
         user_prompts.mkdir(exist_ok=True)
@@ -331,7 +331,7 @@ class TestOverridePriority:
 
     def test_layer4_overrides_layer2(self, tmp_path, monkeypatch):
         """Layer 4 (rules) wins over Layer 2 (project .automedia/)."""
-        home, project, user, rules, _ = self._setup_all_layers(tmp_path)
+        home, project, _user, rules, _ = self._setup_all_layers(tmp_path)
         (project / "settings.yaml").write_text("key: project_value")
         (rules / "override.yaml").write_text("key: rules_value")
         _patch_home(monkeypatch, home)

@@ -379,8 +379,8 @@ class TestTestCronSchedule:
 
         def _mock_import(
             name: str,
-            globals: dict[str, Any] | None = None,  # noqa: A002
-            locals: dict[str, Any] | None = None,  # noqa: A002
+            globals: dict[str, Any] | None = None,
+            locals: dict[str, Any] | None = None,
             fromlist: tuple[str, ...] | None = (),
             level: int = 0,
         ) -> object:

@@ -38,8 +38,6 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
-import pytest
-
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.distribution.d1_wechat import D1Gate
 
@@ -344,7 +342,8 @@ class DGateTestBase:
             import os
 
             assert os.path.isfile(output_path), f"Output file not found: {output_path}"
-            content = open(output_path, encoding="utf-8").read()
+            with open(output_path, encoding="utf-8") as f:
+                content = f.read()
             assert len(content) > 0, "Output file is empty"
 
     def test_output_file_contains_canned_response(self, d_gate_context: dict[str, Any]) -> None:
@@ -358,7 +357,8 @@ class DGateTestBase:
             import os
 
             assert os.path.isfile(output_path)
-            content = open(output_path, encoding="utf-8").read()
+            with open(output_path, encoding="utf-8") as f:
+                content = f.read()
             assert _CANNED_RESPONSE in content or content.startswith(_CANNED_RESPONSE[:50]), (
                 "Output file content does not match the canned response"
             )

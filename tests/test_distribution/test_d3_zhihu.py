@@ -9,8 +9,9 @@ D3 has a different pattern from D1/D2/D4/D6/D7:
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -221,5 +222,6 @@ class TestD3Zhihu:
         output_path = result.get("output_path", "")
         if output_path:
             assert os.path.isfile(output_path)
-            content = open(output_path, encoding="utf-8").read()
+            with open(output_path, encoding="utf-8") as f:
+                content = f.read()
             assert _D3_CANNED in content or content.startswith(_D3_CANNED[:50])

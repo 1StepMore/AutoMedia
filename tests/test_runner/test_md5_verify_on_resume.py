@@ -77,7 +77,7 @@ class TestVerifyResumeIntegrity:
     def test_verify_does_not_check_current_or_future_gates(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Gates at or after the resume point are NOT verified — they haven't run yet in this context."""
+        """Gates at or after the resume point are NOT verified — they have not run yet."""
         for name in ["CW", "G0"]:
             f = tmp_path / f"{name}_output.txt"
             f.write_text(f"content from {name}")

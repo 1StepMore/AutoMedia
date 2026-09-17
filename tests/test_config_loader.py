@@ -188,7 +188,7 @@ class TestEnvToConfig:
         assert result == {"llm": {"text_generation": {"api_key": "sk-test"}}}
 
     def test_ignores_non_prefix_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("HOME", "/tmp")  # noqa: S108
+        monkeypatch.setenv("HOME", "/tmp")
         monkeypatch.setenv("AUTOMEDIA_X", "1")
         result = _env_to_config()
         assert result == {"x": "1"}
@@ -279,7 +279,7 @@ class TestLoadConfig:
 
     def test_env_overrides_rules(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Layer 6a (env) > Layer 4 (rules)."""
-        project, home, user, rules, *_ = self._setup_dirs(tmp_path)
+        project, home, _user, rules, *_ = self._setup_dirs(tmp_path)
         (rules / "c.yaml").write_text("k: rules")
         monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
         monkeypatch.setenv("AUTOMEDIA_K", "env")

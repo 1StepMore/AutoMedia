@@ -118,7 +118,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     # cleanup can remove them instead of leaking into the real ~/.automedia
     # (which made connect-account-masterkey fail on repeat runs with
     # "Label already exists"). setdefault — an operator override wins.
-    os.environ.setdefault("AUTOMEDIA_CONFIG_DIR", "/tmp/automedia/am-validation-config")
+    os.environ.setdefault(
+        "AUTOMEDIA_CONFIG_DIR",
+        "/tmp/automedia/am-validation-config",  # noqa: S108 — test-scoped, see above
+    )
 
     if "AUTOMEDIA_LLM_API_KEY" in os.environ:
         print(

@@ -228,7 +228,7 @@ class TestGetServerCommands:
     def test_command_format(self) -> None:
         """Commands should be [python, -m, module]."""
         cmds = get_server_commands(mode="all")
-        for name, cmd in cmds.items():
+        for cmd in cmds.values():
             assert len(cmd) == 3
             assert cmd[1] == "-m"
             assert cmd[2] == "automedia.mcp.server"

@@ -526,24 +526,24 @@ class TestBackwardCompatImports:
 
     def test_import_gate_error_result_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import GateErrorResult works."""
-        from automedia.pipelines.gate_engine import GateErrorResult as GER
+        from automedia.pipelines import gate_engine
 
-        assert GER is GateErrorResult
+        assert gate_engine.GateErrorResult is GateErrorResult
 
     def test_import_progress_data_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import ProgressData works."""
-        from automedia.pipelines.gate_engine import ProgressData as PD
+        from automedia.pipelines import gate_engine
 
-        assert PD is ProgressData
+        assert gate_engine.ProgressData is ProgressData
 
     def test_import_gate_progress_event_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import GateProgressEvent works."""
-        from automedia.pipelines.gate_engine import GateProgressEvent as GPE
+        from automedia.pipelines import gate_engine
 
-        assert GPE is GateProgressEvent
+        assert gate_engine.GateProgressEvent is GateProgressEvent
 
     def test_import_pipeline_progress_from_gate_engine(self) -> None:
         """from automedia.pipelines.gate_engine import PipelineProgress works."""
-        from automedia.pipelines.gate_engine import PipelineProgress as PP
+        from automedia.pipelines import gate_engine
 
-        assert PP is PipelineProgress
+        assert gate_engine.PipelineProgress is PipelineProgress

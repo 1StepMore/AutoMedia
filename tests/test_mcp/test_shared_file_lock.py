@@ -57,7 +57,7 @@ class TestFcntlOptionalImport:
         )
         env = {**os.environ, "PYTHONPATH": str(_SRC_DIR)}
 
-        result = subprocess.run(  # noqa: S603 — fixed args, no untrusted input
+        result = subprocess.run(
             [sys.executable, "-c", code],
             capture_output=True,
             text=True,

@@ -12,8 +12,6 @@ from __future__ import annotations
 from structlog import get_logger
 
 from automedia.omni.allowlist import AllowlistConfig, is_read_only, load_allowlist, validate_path
-
-log = get_logger(__name__)
 from automedia.omni.base import BaseOmniAdapter
 from automedia.omni.config import OmniConfig, load_omni_config
 from automedia.omni.md5_integration import (
@@ -28,6 +26,8 @@ from automedia.omni.ol_adapter import OLAdapter, TranslationResult
 from automedia.omni.opp_adapter import ExtractionResult, OPPAdapter
 from automedia.omni.orf_adapter import ORFAdapter
 from automedia.omni.registry import OmniToolRegistry
+
+log = get_logger(__name__)
 
 
 def _register_builtins() -> None:

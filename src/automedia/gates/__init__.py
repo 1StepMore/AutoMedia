@@ -1,12 +1,11 @@
-"""Quality gates — all concrete gate implementations are imported here for auto-registration in GateRegistry.
+"""Quality gates — all concrete gate implementations are imported here for auto-registration in
+GateRegistry.
 
-Gate naming convention: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), D1-D9 (distribution),
-P1-P9 (repurpose sub-pipelines), CW (content writer), pre-gate.
+Gate naming convention: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle),
+D1-D9 (distribution), P1-P9 (repurpose sub-pipelines), CW (content writer), pre-gate.
 """
 
 from structlog import get_logger
-
-log = get_logger(__name__)
 
 # Sub-pipeline repurpose gates (P-series)
 # Text-track gates (G0-G5)
@@ -58,6 +57,8 @@ from automedia.gates.translation_quality import L4TranslationQuality
 from automedia.gates.tts_brand_asset import V4TTSBrandAsset
 from automedia.gates.vision_qa import V1VisionQA
 from automedia.gates.wechat_checklist import G4WechatChecklist
+
+log = get_logger(__name__)
 
 __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Sub-pipeline repurpose gates

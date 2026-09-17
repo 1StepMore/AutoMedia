@@ -67,7 +67,7 @@ class TestLogForceProvenance:
         log_force_provenance(topic="t1", brand="b1")
         log_force_provenance(topic="t2", brand="b2")
         content = _audit_log_path().read_text(encoding="utf-8")
-        lines = [l for l in content.strip().splitlines() if l.strip()]
+        lines = [line for line in content.strip().splitlines() if line.strip()]
         assert len(lines) == 2
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:

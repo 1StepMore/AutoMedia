@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 import yaml
@@ -201,7 +201,7 @@ class TestExceptionNarrowingGuards:
     (b) an *unlisted* exception is no longer swallowed (it propagates).
     """
 
-    _FALLBACK_PLATFORMS = {"wechat", "zhihu", "xiaohongshu", "feishu"}
+    _FALLBACK_PLATFORMS: ClassVar[set[str]] = {"wechat", "zhihu", "xiaohongshu", "feishu"}
 
     # -- _get_registered_platform_names (ex line 128) ----------------------
 

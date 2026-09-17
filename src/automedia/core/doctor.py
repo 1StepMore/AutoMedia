@@ -44,7 +44,8 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
     "python": {
         "Linux": "sudo apt install python3.11  # or: sudo dnf install python3.11",
         "Darwin": "brew install python@3.11  # or download from https://www.python.org/downloads/",
-        "Windows": "Download from https://www.python.org/downloads/  # or: winget install Python.Python.3.11",
+        "Windows": "Download from https://www.python.org/downloads/  "
+        "# or: winget install Python.Python.3.11",
     },
     "bun": {
         "Linux": "curl -fsSL https://bun.sh/install | bash",
@@ -67,9 +68,12 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
         "Windows": "pip install edge-tts",
     },
     "hyperframes": {
-        "Linux": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
-        "Darwin": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
-        "Windows": "npm install -g hyperframes  # or: bun install -g hyperframes\nRequired for auto/video_only pipeline modes (video production).",
+        "Linux": "npm install -g hyperframes  # or: bun install -g hyperframes\n"
+        "Required for auto/video_only pipeline modes (video production).",
+        "Darwin": "npm install -g hyperframes  # or: bun install -g hyperframes\n"
+        "Required for auto/video_only pipeline modes (video production).",
+        "Windows": "npm install -g hyperframes  # or: bun install -g hyperframes\n"
+        "Required for auto/video_only pipeline modes (video production).",
     },
     "chrome": {
         "Linux": "sudo apt install google-chrome-stable  # or: sudo apt install chromium-browser",

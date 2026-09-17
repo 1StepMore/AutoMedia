@@ -25,7 +25,8 @@ __all__ = [
 _PROMPT_METADATA: dict[str, dict[str, Any]] = {
     "brand_strategy": {
         "variables": ["brand_name", "industry", "target_audience", "context"],
-        "purpose": "Generate a brand positioning, audience analysis, and messaging strategy via LLM.",
+        "purpose": "Generate a brand positioning, audience analysis, and messaging "
+        "strategy via LLM.",
     },
     "content_quality": {
         "variables": ["content", "criteria", "brand"],

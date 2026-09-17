@@ -13,7 +13,7 @@ Scenarios
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -88,7 +88,7 @@ class TestAutomatedPreset:
     """
 
     # Simulated automated.yaml behaviour
-    AUTOMATED_MAP: dict[str, str] = {
+    AUTOMATED_MAP: ClassVar[dict[str, str]] = {
         "brand_questionnaire": "human",
         "build_scale_routing": "agent",
         "mode_confirmation": "agent",
@@ -139,7 +139,7 @@ class TestAutomatedPreset:
         executor = NodeExecutor(config)
         agent = _StubAgent(name="test")
 
-        for node_name, _exec_type in self.AUTOMATED_MAP.items():
+        for node_name in self.AUTOMATED_MAP:
             executor.execute(node_name, agent, {"idea": "test"})
 
         pending = executor.pending_nodes()
@@ -162,7 +162,7 @@ class TestSemiAutomatedPreset:
     """
 
     # Simulated semi-automated.yaml behaviour
-    SEMI_AUTOMATED_MAP: dict[str, str] = {
+    SEMI_AUTOMATED_MAP: ClassVar[dict[str, str]] = {
         # Decision nodes -> human
         "brand_questionnaire": "human",
         "build_scale_routing": "human",

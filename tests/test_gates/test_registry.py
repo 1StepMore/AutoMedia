@@ -10,6 +10,7 @@ See issue #17 — these tests exercise the thread-safety gap.
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
 from typing import Any
 
 import pytest
@@ -213,20 +214,15 @@ class TestGateRegistryConcurrency:
         gate_classes = [_make_test_gate(n) for n in _SAFE_NAMES]
 
         def _reg(cls: type[BaseGate]) -> None:
-            try:
+            with contextlib.suppress(KeyError, ValueError):
                 _registry.register(cls)
-            except (KeyError, ValueError):
-                pass
 
         def _clear() -> None:
             _registry._registry.clear()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
-            futures = []
-            for cls in gate_classes:
-                futures.append(ex.submit(_reg, cls))
-            for _ in range(5):
-                futures.append(ex.submit(_clear))
+            futures = [ex.submit(_reg, cls) for cls in gate_classes]
+            futures.extend(ex.submit(_clear) for _ in range(5))
             concurrent.futures.wait(futures)
 
         # --- assertions ---
@@ -254,7 +250,7 @@ class TestGateRegistryConcurrency:
         # Register a few baseline gates
         baseline_names = _SAFE_NAMES[:5]
         baseline_cls = {n: _make_test_gate(n) for n in baseline_names}
-        for n, cls in baseline_cls.items():
+        for cls in baseline_cls.values():
             _registry.register(cls)
 
         new_gates = [_make_test_gate(n) for n in _SAFE_NAMES[5:]]

@@ -8,17 +8,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pytest
-
 from automedia.gates.distribution.d2_twitter import D2Gate
 from tests.test_distribution.test_d_gate_base import (
     DGateTestBase,
     patch_llm_complete,
-    patch_llm_failure,
 )
 
 if TYPE_CHECKING:
-    from unittest.mock import MagicMock
+    pass
 
 
 # Canned response with 5 numbered tweets, each ≤ 280 chars

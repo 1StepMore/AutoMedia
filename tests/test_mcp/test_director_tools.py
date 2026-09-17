@@ -62,7 +62,7 @@ def _build_paused_engine(
     def _run() -> None:
         try:
             results["return_value"] = engine.run(context)
-        except Exception as exc:  # noqa: BLE001 — catch all for thread safety
+        except Exception as exc:
             results["error"] = exc
         finally:
             results["done"] = True
@@ -118,7 +118,7 @@ class TestApproveGate:
 
     def test_approve_gate_unknown_gate_returns_error(self) -> None:
         """approve_gate returns error when gate_name is not awaiting approval."""
-        engine, thread, results = _build_paused_engine()
+        engine, thread, _results = _build_paused_engine()
         register_engine("proj_wrong_gate", engine)
 
         try:
@@ -182,7 +182,7 @@ class TestRejectGate:
 
     def test_reject_gate_unknown_gate_returns_error(self) -> None:
         """reject_gate returns error when gate_name is not awaiting approval."""
-        engine, thread, results = _build_paused_engine()
+        engine, thread, _results = _build_paused_engine()
         register_engine("proj_reject_wrong", engine)
 
         try:
@@ -211,7 +211,7 @@ class TestGetPendingApprovals:
 
     def test_get_pending_approvals_with_project_filter(self) -> None:
         """get_pending_approvals returns pending gates for a specific project."""
-        engine, thread, results = _build_paused_engine()
+        engine, thread, _results = _build_paused_engine()
         register_engine("proj_pending_filter", engine)
 
         try:
@@ -232,8 +232,8 @@ class TestGetPendingApprovals:
 
     def test_get_pending_approvals_no_project_filter(self) -> None:
         """get_pending_approvals without project_id returns all pending gates."""
-        engine1, t1, r1 = _build_paused_engine("D95")
-        engine2, t2, r2 = _build_paused_engine("D95")
+        engine1, t1, _r1 = _build_paused_engine("D95")
+        engine2, t2, _r2 = _build_paused_engine("D95")
         register_engine("proj_all_1", engine1)
         register_engine("proj_all_2", engine2)
 

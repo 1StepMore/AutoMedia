@@ -25,7 +25,6 @@ class TestPipelineProgressPropagation:
         ``_pipeline_tracker`` never receives any events.
         """
 
-        events_captured: list[dict] = []
         captured_progress = None
 
         def _mock_run_full_pipeline(topic: str, brand: str, **kwargs):
@@ -81,7 +80,6 @@ class TestPipelineProgressPropagation:
 
     def test_progress_events_have_gate_names_and_statuses(self) -> None:
         """Progress events contain expected gate names and statuses."""
-        events_captured: list[dict] = []
 
         def _mock_run_full_pipeline(topic: str, brand: str, **kwargs):
             progress = kwargs.get("progress")

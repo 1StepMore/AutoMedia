@@ -62,6 +62,6 @@ class WeiboPublisher(BasePlatformAdapter):
         return {
             "status": "not_implemented",
             "platform": "weibo",
-            "reason": "Manual publish only — Weibo's API does not support automated video publishing. "
-            "A human must post via the Weibo web or mobile interface.",
+            "reason": "Manual publish only — Weibo's API does not support automated "
+            "video publishing. A human must post via the Weibo web or mobile interface.",
         }

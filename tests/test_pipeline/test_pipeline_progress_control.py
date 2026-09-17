@@ -323,7 +323,7 @@ class TestThreadSafety:
                     progress.resume()
                     progress.is_cancelled()
                     progress.is_paused()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     with lock:
                         errors.append(exc)
 
@@ -346,7 +346,7 @@ class TestThreadSafety:
                 try:
                     progress.mark_retry_gate(f"G{i % 10}")
                     progress.mark_skip_gate(f"V{i % 10}")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     with lock:
                         errors.append(exc)
 
@@ -355,7 +355,7 @@ class TestThreadSafety:
                 try:
                     progress.consume_retry_gate()
                     progress.consume_skip_gate()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     with lock:
                         errors.append(exc)
 

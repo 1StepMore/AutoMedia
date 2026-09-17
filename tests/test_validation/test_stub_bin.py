@@ -171,7 +171,7 @@ class TestCommittedStubFixture:
     def test_ffprobe_prints_a_duration(self) -> None:
         import subprocess
 
-        proc = subprocess.run(  # noqa: S603 — fixed committed stub path
+        proc = subprocess.run(
             [str(STUB_BIN / "ffprobe")], capture_output=True, text=True, check=False
         )
         assert proc.returncode == 0

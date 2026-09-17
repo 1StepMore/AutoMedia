@@ -47,7 +47,7 @@ def _hermetic_cwd_and_allowlist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
 def _run_in_new_process(code: str, cwd: Path) -> str:
     """Run *code* in a fresh Python interpreter rooted at *cwd*; return stdout."""
-    proc = subprocess.run(  # noqa: S603 — fixed interpreter, literal code
+    proc = subprocess.run(
         [sys.executable, "-c", code],
         cwd=str(cwd),
         capture_output=True,

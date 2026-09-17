@@ -81,7 +81,7 @@ def _run_engine_in_thread(
     def _run() -> None:
         try:
             results["return_value"] = engine.run(context)
-        except Exception as exc:  # noqa: BLE001 — catch all for thread safety
+        except Exception as exc:
             results["error"] = exc
         finally:
             results["done"] = True

@@ -65,7 +65,7 @@ class TestNonEmptyStr:
 
         # Invalid: empty string
         with pytest.raises(ValidationError, match="String should have at least 1 character"):
-            _ = _TestModel(value="")  # noqa: F841
+            _ = _TestModel(value="")
 
     def test_accepts_non_empty_string(self) -> None:
         """NonEmptyStr accepts any non-empty string via Pydantic."""
@@ -173,11 +173,11 @@ class TestCronExpression:
 
         # Invalid: too few fields
         with pytest.raises(ValidationError):
-            _ = _TestModel(value="0 6 * *")  # noqa: F841
+            _ = _TestModel(value="0 6 * *")
 
         # Invalid: empty
         with pytest.raises(ValidationError):
-            _ = _TestModel(value="")  # noqa: F841
+            _ = _TestModel(value="")
 
     def test_accepts_valid_expressions(self) -> None:
         """CronExpression accepts common valid cron expressions."""

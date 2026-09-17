@@ -57,11 +57,14 @@ class DouyinPublisher(BasePlatformAdapter):
         logger.info(
             "Douyin publish called — returning not_implemented",
             platform="douyin",
-            reason="No public API available for automated publishing without government/media qualification",
+            reason=(
+                "No public API available for automated publishing without government/media "
+                "qualification"
+            ),
         )
         return {
             "status": "not_implemented",
             "platform": "douyin",
-            "reason": "Manual publish only — Douyin has no publicly accessible API for automated publishing. "
-            "A human must post via the Douyin app or web creator portal.",
+            "reason": "Manual publish only — Douyin has no publicly accessible API "
+            "for automated publishing. A human must post via the Douyin app or web creator portal.",
         }

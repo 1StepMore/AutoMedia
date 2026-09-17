@@ -446,7 +446,7 @@ class TestAutomationLevelsWithAccountIds:
 class TestRealAdapters:
     def test_wechat_publisher_disabled_without_env(self, tmp_path: Any) -> None:
         """Without env vars, WechatPublisher.validate() returns False."""
-        from automedia.adapters.platforms.wechat_publisher import WechatPublisher  # noqa: PLC0415
+        from automedia.adapters.platforms.wechat_publisher import WechatPublisher
 
         os.environ.pop("WX_APPID", None)
         os.environ.pop("WX_APPSECRET", None)
@@ -464,7 +464,7 @@ class TestRealAdapters:
     def test_feishu_notifier_enabled_with_env(self, tmp_path: Any) -> None:
         from unittest.mock import MagicMock, patch
 
-        from automedia.adapters.platforms.feishu_notifier import FeishuNotifier  # noqa: PLC0415
+        from automedia.adapters.platforms.feishu_notifier import FeishuNotifier
 
         os.environ["FEISHU_WEBHOOK_URL"] = "https://example.com/hook"
         try:
@@ -647,7 +647,7 @@ class TestClassifyPublishError:
     def test_network_error_from_exception_name(self) -> None:
         from automedia.adapters.publish_engine import classify_publish_error
 
-        class ConnectTimeout(Exception): ...
+        class ConnectTimeout(Exception): ...  # noqa: N818 (exact name is under test)
 
         class RemoteProtocolError(Exception): ...
 

@@ -282,7 +282,7 @@ class TestQualityRetryCallsProgress:
             max_regenerations=0,
         )
 
-        ok, results = engine.run({}, progress=progress)
+        ok, _results = engine.run({}, progress=progress)
 
         assert ok is False  # Exhausted retries, gate still failing
 
@@ -599,7 +599,7 @@ class TestCancelFlagWithEngine:
             max_quality_retries=0,
         )
 
-        ok, results = engine.run({}, progress=progress)
+        _ok, results = engine.run({}, progress=progress)
 
         assert len(results) == 1  # Only first gate executed
 
@@ -643,7 +643,7 @@ class TestPauseFlagWithEngine:
             max_quality_retries=0,
         )
 
-        ok, results = engine.run({}, progress=progress)
+        _ok, results = engine.run({}, progress=progress)
 
         assert len(results) == 0  # Cancelled before any gate
 

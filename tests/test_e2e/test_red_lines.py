@@ -130,9 +130,11 @@ class TestRedLine3WechatAdapter:
                     raise ImportError("Simulated: wechat adapter deleted")
                 return original_import(name, *args, **kwargs)
 
-            with patch.object(builtins, "__import__", side_effect=_block_wechat):
-                with pytest.raises(ImportError, match="wechat adapter deleted"):
-                    importlib.import_module("automedia.adapters")
+            with (
+                patch.object(builtins, "__import__", side_effect=_block_wechat),
+                pytest.raises(ImportError, match="wechat adapter deleted"),
+            ):
+                importlib.import_module("automedia.adapters")
         finally:
             # Restore all saved modules
             sys.modules.update(saved_modules)
@@ -244,16 +246,15 @@ class TestRedLine6FullQa:
         gate = V1VisionQA()
 
         # 10 entries total, but only first 3 have checked=True
-        entries = []
-        for i in range(10):
-            entries.append(
-                {
-                    "mid_frame_path": f"{tmp_path}/frame_{i}.png",
-                    "end_silence_frame_path": f"{tmp_path}/end_{i}.png",
-                    "qa_passed": True,
-                    "checked": i < 3,  # only first 3 checked — Red Line 6 violation
-                }
-            )
+        entries = [
+            {
+                "mid_frame_path": f"{tmp_path}/frame_{i}.png",
+                "end_silence_frame_path": f"{tmp_path}/end_{i}.png",
+                "qa_passed": True,
+                "checked": i < 3,  # only first 3 checked — Red Line 6 violation
+            }
+            for i in range(10)
+        ]
 
         ctx: dict[str, Any] = {"entries": entries}
         result = gate.execute(ctx)

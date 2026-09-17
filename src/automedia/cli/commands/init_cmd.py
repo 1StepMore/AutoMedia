@@ -249,7 +249,8 @@ def init_cmd(
     elif template is None:
         if get_output_mode() == OutputMode.JSON:
             output_error(
-                "Interactive init not supported in --json mode. Use --template minimal or --template full."
+                "Interactive init not supported in --json mode. Use --template minimal "
+                "or --template full."
             )
         _init_interactive()
     else:
@@ -320,7 +321,8 @@ def _init_minimal() -> None:
     }
     _write_model_config(data)
     output_text(
-        'Minimal configuration written. Run `automedia doctor` to verify, then `automedia run --topic "..." --brand my-brand` to start.',
+        "Minimal configuration written. Run `automedia doctor` to verify, then "
+        '`automedia run --topic "..." --brand my-brand` to start.',
         data={"status": "ok", "path": str(_MODEL_CONFIG_FILE)},
     )
 

@@ -101,17 +101,15 @@ def _build_all_pass_mock_results() -> dict[str, dict[str, Any]]:
     focus the test on brand-profile propagation through the pipeline.
     """
     _p = {"passed": True, "detail": "mock-pass"}
-    return {
-        name: _p
-        for name in [
-            "brand_name_present",
-            "cta_present",
-            "brand_identity",
-            "blocked_words_absent",
-            "cta_direction_sync",
-            "bridge_sentence",
-        ]
-    }
+    _g3_checks = [
+        "brand_name_present",
+        "cta_present",
+        "brand_identity",
+        "blocked_words_absent",
+        "cta_direction_sync",
+        "bridge_sentence",
+    ]
+    return dict.fromkeys(_g3_checks, _p)
 
 
 def _build_pipeline_context(

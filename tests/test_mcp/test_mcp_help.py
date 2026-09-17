@@ -184,7 +184,7 @@ class TestMcpHelp:
         with patch("automedia.mcp.server._tool_registry", test_registry):
             result = mcp_help()
 
-        for category, tools in result["categories"].items():
+        for tools in result["categories"].values():
             for tool in tools:
                 if tool["name"] == "run_pipeline":
                     assert tool["description"] == "Custom description"

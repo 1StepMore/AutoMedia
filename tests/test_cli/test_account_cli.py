@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
@@ -20,7 +20,7 @@ runner = CliRunner()
 class TestAccountList:
     """Tests for ``automedia account list``."""
 
-    MOCK_ACCOUNTS: list[dict[str, Any]] = [
+    MOCK_ACCOUNTS: ClassVar[list[dict[str, Any]]] = [
         {
             "account_id": "acc_wechat_a1b2c3d4",
             "platform": "wechat",

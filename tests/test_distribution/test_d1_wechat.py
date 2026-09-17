@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pytest
-
 from automedia.gates.distribution.d1_wechat import D1Gate
 from tests.test_distribution.test_d_gate_base import (
     DGateTestBase,
@@ -17,7 +15,7 @@ from tests.test_distribution.test_d_gate_base import (
 )
 
 if TYPE_CHECKING:
-    from unittest.mock import MagicMock
+    pass
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ Covers:
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -265,15 +266,17 @@ class TestBrandProfilePlatformValidation:
         bp_file = tmp_path / "brand_profiles.yaml"
         with open(bp_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh)
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
-        ):
-            with patch(
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            patch(
                 "automedia.manifests.brand_profile_schema._get_registered_platform_names",
                 return_value={"wechat", "zhihu"},
-            ):
-                profiles = load_brand_profiles()
+            ),
+        ):
+            profiles = load_brand_profiles()
         assert "acme" in profiles
         # No warnings should be emitted for valid platforms
         platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
@@ -285,16 +288,18 @@ class TestBrandProfilePlatformValidation:
         bp_file = tmp_path / "brand_profiles.yaml"
         with open(bp_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh)
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
-        ):
-            with patch(
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            patch(
                 "automedia.manifests.brand_profile_schema._get_registered_platform_names",
                 return_value={"wechat", "zhihu"},
-            ):
-                with pytest.warns(UserWarning, match="not a registered adapter") as record:
-                    profiles = load_brand_profiles()
+            ),
+            pytest.warns(UserWarning, match="not a registered adapter") as record,
+        ):
+            profiles = load_brand_profiles()
         assert "acme" in profiles
         assert len(record) == 1
         assert "unknown_platform" in str(record[0].message)
@@ -309,15 +314,17 @@ class TestBrandProfilePlatformValidation:
         bp_file = tmp_path / "brand_profiles.yaml"
         with open(bp_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh)
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
-        ):
-            with patch(
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            patch(
                 "automedia.manifests.brand_profile_schema._get_registered_platform_names",
                 return_value={"wechat"},
-            ):
-                profiles = load_brand_profiles()
+            ),
+        ):
+            profiles = load_brand_profiles()
         assert "acme" in profiles
         platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
         assert len(platform_warnings) == 0
@@ -332,15 +339,17 @@ class TestBrandProfilePlatformValidation:
         bp_file = tmp_path / "brand_profiles.yaml"
         with open(bp_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh)
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
-        ):
-            with patch(
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            patch(
                 "automedia.manifests.brand_profile_schema._get_registered_platform_names",
                 return_value=set(),
-            ):
-                profiles = load_brand_profiles()
+            ),
+        ):
+            profiles = load_brand_profiles()
         assert "acme" in profiles
         platform_warnings = [w for w in recwarn if "not a registered adapter" in str(w.message)]
         assert len(platform_warnings) == 0
@@ -397,12 +406,14 @@ class TestSaveBrandProfile:
     def test_raises_on_invalid_data(self, tmp_path: Any) -> None:
         """Saving invalid data raises ValueError."""
         bp_file = tmp_path / "brand_profiles.yaml"
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            pytest.raises(ValueError, match="validation failed"),
         ):
-            with pytest.raises(ValueError, match="validation failed"):
-                save_brand_profile("bad", {"aliases": ["NoName"]})
+            save_brand_profile("bad", {"aliases": ["NoName"]})
 
     def test_atomic_write_does_not_corrupt_on_failure(self, tmp_path: Any) -> None:
         """If yaml.dump fails mid-write, original file is preserved."""
@@ -414,16 +425,18 @@ class TestSaveBrandProfile:
         original_content = bp_file.read_text()
 
         # Mock safe_dump to raise — the file should remain intact
-        with patch(
-            "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
-            bp_file,
-        ):
-            with patch(
+        with (
+            patch(
+                "automedia.manifests.brand_profile_schema._BRAND_PROFILES_PATH",
+                bp_file,
+            ),
+            patch(
                 "automedia.manifests.brand_profile_schema.yaml.safe_dump",
                 side_effect=RuntimeError("dump failed"),
-            ):
-                with pytest.raises(RuntimeError):
-                    save_brand_profile("acme", _profile_data("Acme"))
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            save_brand_profile("acme", _profile_data("Acme"))
 
         assert bp_file.read_text() == original_content
 
@@ -547,10 +560,8 @@ class TestFallbackCompat:
             mock_load_single.assert_not_called()
         finally:
             # Clean up registry to avoid polluting other tests
-            try:
+            with contextlib.suppress(KeyError):
                 del _registry._registry["G55"]
-            except KeyError:
-                pass
 
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
@@ -609,10 +620,8 @@ class TestFallbackCompat:
 
             mock_load_single.assert_called_once()
         finally:
-            try:
+            with contextlib.suppress(KeyError):
                 del _registry._registry["G56"]
-            except KeyError:
-                pass
 
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
@@ -659,10 +668,8 @@ class TestFallbackCompat:
             # Both sources missing → None
             assert captured["brand_profile"] is None
         finally:
-            try:
+            with contextlib.suppress(KeyError):
                 del _registry._registry["G57"]
-            except KeyError:
-                pass
 
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
@@ -719,10 +726,8 @@ class TestFallbackCompat:
             bp = captured["brand_profile"]
             assert bp is not None
         finally:
-            try:
+            with contextlib.suppress(KeyError):
                 del _registry._registry["G86"]
-            except KeyError:
-                pass
         if isinstance(bp, dict):
             assert bp.get("brand_name") == "ExistingBrand"
             assert "Legacy CTA" in bp.get("cta_principles", [])

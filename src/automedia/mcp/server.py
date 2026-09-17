@@ -40,8 +40,6 @@ from automedia._version import __version__ as _automedia_version
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
-log = get_logger(__name__)
-
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
 # ---------------------------------------------------------------------------
@@ -138,6 +136,8 @@ from automedia.validation.mcp_tools import (
     validation_coverage_audit,
     validation_matrix,
 )
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Public API — backward-compatible re-exports

@@ -61,6 +61,6 @@ class BilibiliPublisher(BasePlatformAdapter):
         return {
             "status": "not_implemented",
             "platform": "bilibili",
-            "reason": "Manual publish only — Bilibili requires enterprise registration for API access. "
-            "A human must post via the Bilibili web uploader.",
+            "reason": "Manual publish only — Bilibili requires enterprise registration "
+            "for API access. A human must post via the Bilibili web uploader.",
         }

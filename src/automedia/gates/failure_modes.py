@@ -162,8 +162,10 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "Rewrite flagged passages to match the brand's defined tone and voice",
             "Ensure consistent tone throughout the entire piece, not just the opening",
             "Replace off-brand vocabulary with brand-approved alternatives",
-            "Adjust emotional register to align with brand personality (calm, excited, authoritative)",
-            "Reference the brand's tone_guidelines field in the brand profile for precise correction",
+            "Adjust emotional register to align with brand personality "
+            "(calm, excited, authoritative)",
+            "Reference the brand's tone_guidelines field in the brand profile "
+            "for precise correction",
         ],
         "docstring_ref": "gates/g6_tone_check.py",
     },
