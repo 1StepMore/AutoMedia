@@ -4,6 +4,8 @@
 #   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
 #   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
 #   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
+#   env:  AUTOMEDIA_VALIDATION_EXPECT_VIDEO_ENGINE=1  (scenario gates to
+#         unconfigured without it — see the exit-code note below)
 #   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
 #                                     scenarios_dir="scenarios", runs_root="validation-runs")
 # Project dirs are created under AUTOMEDIA_PROJECTS_DIR (verified: runner.py:883
@@ -31,11 +33,25 @@
 #     not JSON) — list-shaped gate records do not exist on the shipped
 #     surface, so gate_records_pass would be a permanently failing assertion.
 #   - The run step asserts exit_code 0 + the "Pipeline finished:" marker, NOT
-#     "Pipeline finished: success": a completed run prints "Pipeline
-#     finished: partial" (exit 0) when a stop gate fails and "success" when
-#     all gates pass — both exit 0 (run.py:334-336,366-367: only status
-#     "failed" raises Exit(1)). exit 0 + marker = the pipeline ran to
-#     completion through the short-video gate list.
+#     "Pipeline finished: success": "success" (all gates pass) and "partial"
+#     (a gate stopped the run) are both completed runs, and the marker alone
+#     proves the CLI reached its summary.  The exit code is NOT 0 for both:
+#     run.py:_is_failure_status maps "failed" AND "partial" to exit 1, and only
+#     --allow-partial lets a "partial" run exit 0.
+#   - Why the scenario-only flag AUTOMEDIA_VALIDATION_EXPECT_VIDEO_ENGINE is in
+#     requires_env: short-video is a video-PRODUCING mode, so a run that
+#     produced no video artifact is incomplete and _finalize_pipeline downgrades
+#     it to "partial" — exit 1, so the exit_code 0 assertion below cannot hold.
+#     The downgrade is deliberate (health-assessment P0-1: a video mode must not
+#     report success while delivering no video), and it is the honest outcome on
+#     a machine without a working video track.  The flag is the env contract
+#     that this machine DOES have one — video engine installed plus the
+#     image/audio inputs _collect_video_assets requires — so the run terminates
+#     with a real artifact, the V0-V7 rows below are really evaluated (not
+#     "skipped"), and exit 0 is the correct expectation.  Without the flag the
+#     scenario reports "unconfigured", which is honest.  Adding --allow-partial
+#     to the command instead would be the dishonest fix: it would keep counting
+#     V0-V7 as "proved" by a run whose whole video track was skipped.
 #   - Draft path is dynamic (<ts>_draft.md in 01_content/drafts/, written by
 #     the CW gate — short-video mode includes CW), so the draft check is a
 #     cli find step (find globs its own pattern without shell; CLIAdapter
@@ -54,6 +70,7 @@ category: journey
 user_level: L1
 requires_env:
   - AUTOMEDIA_LLM_API_KEY
+  - AUTOMEDIA_VALIDATION_EXPECT_VIDEO_ENGINE
 proves_gates:
   - pre-gate
   - CW

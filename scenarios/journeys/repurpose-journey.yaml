@@ -30,13 +30,21 @@
 #     not JSON) — list-shaped gate records do not exist on the shipped
 #     surface, so gate_records_pass would be a permanently failing assertion.
 #   - The run step asserts exit_code 0 + the "Pipeline finished:" marker, NOT
-#     "Pipeline finished: success": a completed run prints "Pipeline
-#     finished: partial" (exit 0) when a stop gate fails and "success" when
-#     all gates pass — both exit 0 (run.py:334-336,366-367: only status
-#     "failed" raises Exit(1)). exit 0 + marker = the pipeline ran to
-#     completion through the repurpose gate list, P1-P4 included (they run as
-#     sub-pipelines at the end of repurpose mode; a P-gate failure still
-#     finishes the run with a partial status, exit 0).
+#     "Pipeline finished: success": "success" (all gates pass) and "partial"
+#     (a gate stopped the run) are both completed runs, and the marker alone
+#     proves the CLI reached its summary.  The exit code is NOT 0 for both:
+#     run.py:_is_failure_status maps "failed" AND "partial" to exit 1, and only
+#     --allow-partial lets a "partial" run exit 0.  This scenario expects 0
+#     because a "success" run of a gate list whose gates all pass is what it
+#     asserts; if a stop gate ever fires here the exit code must go non-zero and
+#     the assertion SHOULD fail, which is the point.
+#   - No AUTOMEDIA_VALIDATION_EXPECT_VIDEO_ENGINE flag is needed, unlike the
+#     video_only/short-video journeys: repurpose carries V0-V7 in its preset but
+#     never runs the video-production stage, so it does not owe a video artifact
+#     and _finalize_pipeline never downgrades it to "partial" for missing one
+#     (runner._VIDEO_PRODUCING_MODES).  Those V rows report "skipped" when their
+#     inputs are absent — visible in the gate report, and a skipped row does not
+#     fail a run.
 #   - Draft path is dynamic (<ts>_draft.md in 01_content/drafts/, written by
 #     the CW gate — repurpose mode includes CW), so the draft check is a cli
 #     find step (find globs its own pattern without shell; CLIAdapter runs
