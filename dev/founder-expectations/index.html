@@ -1639,7 +1639,7 @@
   <a href="#f15-trending-topic-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        F15 — Trending Topic Discovery ✅
+        F15 — Trending Topic Discovery 🔄
       
     </span>
   </a>
@@ -3782,7 +3782,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Cron collection</strong></td>
-<td>External crond calls <code>automedia cron run</code> → runs <code>research_topics</code> → auto-adds results to pool</td>
+<td>External crond calls <code>automedia cron run --due</code>; the <code>pool-collect</code> job runs <code>HotCollector</code> and persists deduped topics to <code>.automedia/pool.db</code>; the MCP <code>research_topics</code> tool persists its own output.</td>
 </tr>
 <tr>
 <td><strong>Pool isolation</strong></td>
@@ -3790,7 +3790,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="f15-trending-topic-discovery">F15 — Trending Topic Discovery ✅<a class="headerlink" href="#f15-trending-topic-discovery" title="Permanent link">&para;</a></h4>
+<h4 id="f15-trending-topic-discovery">F15 — Trending Topic Discovery 🔄<a class="headerlink" href="#f15-trending-topic-discovery" title="Permanent link">&para;</a></h4>
 <p><em>The system can discover what topics are currently hot.</em></p>
 <table>
 <thead>
@@ -3806,7 +3806,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Trigger — human</strong></td>
-<td><code>automedia pool add --trending --category tech</code> (one-shot trend fetch + add to pool)</td>
+<td>Not implemented — no CLI trend-fetch flag exists; use the MCP <code>research_topics</code> tool.</td>
 </tr>
 <tr>
 <td><strong>Output</strong></td>
@@ -3814,7 +3814,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Sources</strong></td>
-<td>Multi-platform trend aggregation (social media, news, search trends). Exact sources configured by brand/integration.</td>
+<td>Tavily (only when <code>AUTOMEDIA_TAVILY_API_KEY</code> is set) + LLM generation; multi-platform trend aggregation (social/news/search) is NOT implemented.</td>
 </tr>
 <tr>
 <td><strong>LLM enrichment</strong></td>
@@ -3826,7 +3826,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Implementation status</strong></td>
-<td>✅ Full implementation. <code>research_topics</code> MCP tool uses LLM with optional <code>trending_data</code> parameter. Results can flow through topic pool: <code>research_topics</code> → <code>add_pool_topic</code> → <code>select_topic</code> → <code>run_pipeline</code>.</td>
+<td>🔄 Partial — <code>research_topics</code> (LLM + optional Tavily) persists to the pool; the <code>--trending</code> CLI flag and multi-platform aggregation are not implemented.</td>
 </tr>
 <tr>
 <td><strong>Human review point</strong></td>

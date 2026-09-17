@@ -2495,7 +2495,7 @@ cat<span class="w"> </span>20260707_*/pipeline_md5.json
     - [subtitle] 03_subtitle/subtitle.srt
     - [audio] 03_video/tts_audio.mp3
     - [report] 04_review/qa_report.json
-    - [log] 05_publish/publish_log.json
+    - [log] 06_publish/publish_log.json
 </code></pre></div>
 <h3 id="failure-handling">Failure Handling<a class="headerlink" href="#failure-handling" title="Permanent link">&para;</a></h3>
 <p>If the Pipeline shows <code>status="partial"</code> or <code>status="failed"</code>:</p>
@@ -2538,7 +2538,7 @@ file<span class="w"> </span>20260707_*/02_images/cover/*.png
 <p>Publishing is done automatically or manually through platform adapters. If
 auto-publish is configured:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Check publish log</span>
-cat<span class="w"> </span>20260707_*/05_publish/publish_log.json
+cat<span class="w"> </span>20260707_*/06_publish/publish_log.json
 </code></pre></div>
 <h3 id="4-distribute-to-platforms">4. Distribute to Platforms<a class="headerlink" href="#4-distribute-to-platforms" title="Permanent link">&para;</a></h3>
 <p>After the pipeline completes, use the distribute command to rewrite content for specific platforms via D1-D7 distribution gates:</p>
