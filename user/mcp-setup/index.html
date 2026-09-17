@@ -1045,6 +1045,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#http-transport-and-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Transport and Authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTTP Transport and Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-stdio-is-not-authenticated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why stdio is not authenticated
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2335,7 +2363,7 @@
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>automedia-pipeline<span class="o">[</span>mcp<span class="o">]</span>
 </code></pre></div>
 <h2 id="starting-the-server">Starting the Server<a class="headerlink" href="#starting-the-server" title="Permanent link">&para;</a></h2>
-<p>The MCP server uses stdio transport, communicating with the MCP client through standard input/output:</p>
+<p>The MCP server uses stdio transport by default, communicating with the MCP client through standard input/output (see <a href="#http-transport-and-authentication">HTTP Transport and Authentication</a> for the authenticated HTTP option):</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
 </code></pre></div>
 <p>View registered tools:</p>
@@ -2750,10 +2778,26 @@
 <div class="highlight"><pre><span></span><code>~/.automedia/mcp_allowlist.yaml
 </code></pre></div>
 <p>The default allowlist (shipped at <code>automedia/mcp/mcp_allowlist.yaml</code>)
-only includes <code>/tmp/automedia/</code>. Additional paths must be uncommented or
-added as needed:</p>
+enables five scoped directories:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">allowed_directories</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/automedia/</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./data/</span><span class="w">        </span><span class="c1"># topic pool, config, runtime data</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./output/</span><span class="w">      </span><span class="c1"># generated pipeline output</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./projects/</span><span class="w">    </span><span class="c1"># project working directories</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./scenarios/</span><span class="w">   </span><span class="c1"># committed validation fixtures</span>
+</code></pre></div>
+<p>The repository root (<code>./</code>) is deliberately <strong>not</strong> enabled — granting it would
+let the MCP server read and write every file in the checkout. Uncomment it in
+your copy only if you accept that, or point
+<code>AUTOMEDIA_MCP_ALLOWLIST_PATH</code> at a YAML file of your own. Additional paths
+must be uncommented or added as needed:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">allowed_directories</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/automedia/</span>
+<span class="w">  </span><span class="c1"># - ./data/</span>
+<span class="w">  </span><span class="c1"># - ./output/</span>
+<span class="w">  </span><span class="c1"># - ./projects/</span>
+<span class="w">  </span><span class="c1"># - ./scenarios/  # committed validation fixtures</span>
+<span class="w">  </span><span class="c1"># - ./            # whole repository root — enable only if you accept it</span>
 <span class="w">  </span><span class="c1"># - /app/data/</span>
 <span class="w">  </span><span class="c1"># - /app/output/</span>
 <span class="w">  </span><span class="c1"># - /app/projects/</span>
@@ -2795,6 +2839,22 @@ added as needed:</p>
 <td>Custom allowlist path override</td>
 </tr>
 <tr>
+<td><code>AUTOMEDIA_MCP_TRANSPORT</code></td>
+<td>Transport: <code>stdio</code> (default) or <code>streamable-http</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MCP_AUTH_TOKEN</code></td>
+<td>Bearer token — required for HTTP, the server refuses to start without it</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MCP_HOST</code></td>
+<td>HTTP bind address (default <code>127.0.0.1</code>)</td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_MCP_PORT</code></td>
+<td>HTTP bind port (default <code>8000</code>)</td>
+</tr>
+<tr>
 <td><code>AUTOMEDIA_MASTER_KEY</code></td>
 <td>Master key for credential encryption</td>
 </tr>
@@ -2820,11 +2880,39 @@ added as needed:</p>
 </tr>
 </tbody>
 </table>
+<h2 id="http-transport-and-authentication">HTTP Transport and Authentication<a class="headerlink" href="#http-transport-and-authentication" title="Permanent link">&para;</a></h2>
+<p>By default the server speaks <strong>stdio</strong>, which is what editor and agent integrations
+expect. stdio carries no credential the server can verify (the <code>initialize</code> handshake
+contains only a self-reported client name), so <strong>transport-layer authentication only
+exists on HTTP</strong>. To expose the server over HTTP with Bearer-token authentication:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_MCP_TRANSPORT</span><span class="o">=</span>streamable-http
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_MCP_AUTH_TOKEN</span><span class="o">=</span><span class="k">$(</span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import secrets; print(secrets.token_urlsafe(32))"</span><span class="k">)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_MCP_HOST</span><span class="o">=</span><span class="m">127</span>.0.0.1<span class="w">   </span><span class="c1"># keep loopback unless a TLS proxy fronts it</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_MCP_PORT</span><span class="o">=</span><span class="m">8000</span>
+python<span class="w"> </span>-m<span class="w"> </span>automedia.mcp.server
+</code></pre></div>
+<p>The endpoint is then served at <code>http://&lt;host&gt;:&lt;port&gt;/mcp</code>, and every request must carry:</p>
+<div class="highlight"><pre><span></span><code>Authorization: Bearer &lt;token&gt;
+</code></pre></div>
+<p>Requests without a valid token are answered with <code>401</code> (the comparison is constant-time
+and happens in-process).</p>
+<blockquote>
+<p><strong>Fail-closed:</strong> selecting <code>streamable-http</code> <strong>without</strong> setting
+<code>AUTOMEDIA_MCP_AUTH_TOKEN</code> makes the server refuse to start. An unauthenticated HTTP
+endpoint is reachable by anyone who can reach the port, so there is deliberately no
+"silently run without auth" default.</p>
+</blockquote>
+<h3 id="why-stdio-is-not-authenticated">Why stdio is not authenticated<a class="headerlink" href="#why-stdio-is-not-authenticated" title="Permanent link">&para;</a></h3>
+<p>The MCP <code>initialize</code> handshake carries only <code>clientInfo</code> — a name the client supplies
+itself, with no signature or token to verify. Any check built on it is bypassable by a
+one-line change on the client side, so the server does not pretend to authenticate
+stdio. If you need authentication, use the HTTP transport above.</p>
 <h2 id="security-notes">Security Notes<a class="headerlink" href="#security-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The <code>archive_project</code> tool follows Red Line 8: archiving is only allowed when project status is <code>published</code> or <code>force=True</code></li>
 <li>The path allowlist prevents malicious agents from reading files outside the project directory</li>
 <li>It is recommended to use dedicated API keys and environment variables for the MCP server</li>
+<li>The HTTP transport requires <code>AUTOMEDIA_MCP_AUTH_TOKEN</code> (Bearer token, constant-time comparison) and the server refuses to start without it; stdio is unauthenticated by nature and is intended for local/agent use</li>
 <li>All file operations are gated by the path allowlist — files outside allowed directories return <code>PermissionError</code>. Some tools (e.g. <code>archive_project</code>, <code>publish_content</code>, <code>format_output</code>) perform write operations within allowed directories.</li>
 </ul>
 <h2 id="example-calling-mcp-tools-directly-in-python">Example: Calling MCP Tools Directly in Python<a class="headerlink" href="#example-calling-mcp-tools-directly-in-python" title="Permanent link">&para;</a></h2>

@@ -2870,9 +2870,12 @@
 <p><code>{"project_id": ..., "mode": ..., "gates": [...]}</code> on success, or a
 structured <code>{"error": ...}</code> dict when the project is not found. Each entry in
 <code>gates</code> is a <code>GateState</code> dict with exactly the fields <code>gate</code>, <code>status</code>
-(<code>"passed"</code> / <code>"failed"</code> / <code>"pending"</code>), <code>track</code> (<code>copy</code> / <code>video</code> / <code>qa</code> /
-<code>lifecycle</code>), <code>md5</code> (asset checksum from <code>pipeline_md5.json</code>, or <code>None</code>), and
-<code>recorded_at</code>. Aggregates <code>history.db</code> and <code>pipeline_md5.json</code> via
+(<code>"passed"</code> / <code>"failed"</code> / <code>"pending"</code> / <code>"skipped"</code> — <code>"skipped"</code> means the
+gate reported that it deliberately evaluated nothing, e.g. a V gate with
+HyperFrames absent; it is never reported as <code>"passed"</code>), <code>track</code> (<code>copy</code> /
+<code>video</code> / <code>qa</code> / <code>lifecycle</code>), <code>md5</code> (asset checksum from
+<code>pipeline_md5.json</code>, or <code>None</code>), and <code>recorded_at</code>. Aggregates <code>history.db</code>
+and <code>pipeline_md5.json</code> via
 <code>automedia.pipelines.state_view.aggregate_pipeline_state</code> — nothing is
 written, and a project without history yields all-pending rows rather than an
 error.</p>
