@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import TYPE_CHECKING, Any
 
 from automedia.core.registry import BaseRegistry
@@ -71,7 +72,7 @@ class AdapterRegistry(BaseRegistry):
         """Return sorted list of registered platform names."""
         return sorted(cls._registry)
 
-    def list_publishable_platforms(self) -> list[dict[str, Any]]:
+    def list_publishable_platforms(self) -> builtins.list[dict[str, Any]]:
         """Return all registered platforms with ``is_stub`` metadata.
 
         Returns:

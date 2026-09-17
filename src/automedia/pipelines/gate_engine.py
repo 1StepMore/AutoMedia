@@ -294,7 +294,9 @@ class GateEngine:
         for hook in self._hooks:
             hook.on_gate_failed(gate_name, ctx, error)
 
-    def _gate_requires_approval(self, gate_name: str, gate_context: dict[str, Any]) -> bool:
+    def _gate_requires_approval(
+        self, gate_name: str, gate_context: GateContext | dict[str, Any]
+    ) -> bool:
         """Check whether *gate_name* needs approval before continuing.
 
         Returns ``True`` only when ``pause_on_approval`` is enabled AND

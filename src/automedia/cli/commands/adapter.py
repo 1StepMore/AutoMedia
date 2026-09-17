@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -16,6 +17,9 @@ from automedia.cli.output import (
     output_error,
     output_text,
 )
+
+if TYPE_CHECKING:
+    from typing import Any
 
 try:
     # mirrors automedia.cli.output's context import — mode detection must agree
@@ -83,7 +87,7 @@ def adapter_list(
 
         warn_missing_optional("adapters", feature="platform adapter registration")
 
-    platforms = AdapterRegistry().list_publishable_platforms()
+    platforms: list[dict[str, Any]] = AdapterRegistry().list_publishable_platforms()
     if real:
         platforms = [p for p in platforms if not p["is_stub"]]
     if stub:

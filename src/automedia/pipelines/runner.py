@@ -1590,8 +1590,8 @@ def _resolve_source_material(
             with urllib.request.urlopen(  # noqa: S310  # nosec B310 — scheme restricted to http(s) above
                 source_url, timeout=30
             ) as resp:
-                content = resp.read().decode("utf-8")
-            contents.append(content)
+                url_content = resp.read().decode("utf-8")
+            contents.append(url_content)
             if not result_type:
                 result_type = "url"
             if not result_path:

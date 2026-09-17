@@ -8,7 +8,7 @@ modules.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
 from structlog import get_logger
 
@@ -23,12 +23,18 @@ class CheckResult(TypedDict):
 
     Every gate check returns at minimum ``name``, ``passed``, and ``detail``.
     Additional keys (e.g. ``method``, ``confidence``) may be present when
-    the check was performed by an LLM.
+    the check was performed by an LLM.  Failing checks are enriched in-place
+    by :func:`_enrich_failing_checks` with ``check_name``, ``actual_value``,
+    ``threshold``, and ``suggestion``.
     """
 
     name: str
     passed: bool
     detail: str
+    check_name: NotRequired[str]
+    actual_value: NotRequired[str]
+    threshold: NotRequired[str]
+    suggestion: NotRequired[str]
 
 
 class ExpectedVsActual(TypedDict):

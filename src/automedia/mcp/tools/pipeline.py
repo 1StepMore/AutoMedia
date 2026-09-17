@@ -383,7 +383,7 @@ def get_pipeline_progress(
             f"No active pipeline found for project_id {project_id!r}",
             "Check project_id or start a pipeline first",
         )
-    data = dict(progress.get_progress())
+    data: dict[str, Any] = dict(progress.get_progress())
     if since_index > 0:
         data["events"] = data.get("events", [])[since_index:]
     return success_response(data)

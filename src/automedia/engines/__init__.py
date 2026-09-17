@@ -140,7 +140,7 @@ def resolve_engine(
 
     # Step 6: Verify availability -------------------------------------------
     try:
-        available, message = engine.check_available()
+        is_available, message = engine.check_available()
     except Exception as e:
         raise EngineExecutionError(
             engine_name=engine_name,
@@ -148,7 +148,7 @@ def resolve_engine(
             cause=e,
         ) from e
 
-    if not available:
+    if not is_available:
         raise EngineUnavailableError(
             engine_name=engine_name,
             reason=message or "check_available() returned (False, ...)",

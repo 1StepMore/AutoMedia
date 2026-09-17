@@ -16,6 +16,17 @@ repos:
         # (e.g. PyYAML) as `import-untyped`, which --ignore-missing-imports
         # does not silence — disable that code explicitly.
         args: [--ignore-missing-imports, --disable-error-code=import-untyped]
+        # Product code only. mypy cannot name the six conftest.py files
+        # unambiguously (tests/ has no __init__.py), so it aborts with
+        # "Duplicate module named conftest" before checking anything; and the
+        # tests carry ~404 findings that are test-scaffolding noise - the same
+        # category the ANN and S rulesets are already relaxed for in
+        # pyproject.toml. src/ keeps full checking.
+        files: ^src/
+        # .vulture_whitelist.py exists to name intentionally-undefined symbols -
+        # that is how vulture whitelists work - so mypy can never accept it.
+        # ruff already exempts this file via per-file-ignores in pyproject.toml.
+        exclude: ^src/automedia/\.vulture_whitelist\.py$
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.22.0

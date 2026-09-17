@@ -148,7 +148,7 @@ def run_cmd(
         callback=_validate_brand,
         help="Brand identifier.",
     ),
-    mode: str = typer.Option(
+    mode: str = typer.Option(  # type: ignore[call-overload]  # external click.Choice vs typer's vendored click ParamType
         "auto",
         "--mode",
         "-m",

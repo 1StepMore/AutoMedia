@@ -165,7 +165,7 @@ def _load_exemptions(path: Path, today: date) -> tuple[set[str], dict[str, Any]]
             "expires": expires,
         }
         meta["active" if unexpired else "expired"].append(row)
-        if unexpired:
+        if unexpired and isinstance(name, str):
             active.add(name)
     return active, meta
 

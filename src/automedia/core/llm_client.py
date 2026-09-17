@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
 from tenacity import (
@@ -25,6 +25,10 @@ from automedia.exceptions import AutoMediaError
 if TYPE_CHECKING:
     from openai import OpenAI
     from openai.types.chat import ChatCompletion, ParsedChatCompletion
+
+
+# Pydantic schema type bound for the structured-completion helpers.
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +221,7 @@ def _warn_fake_once() -> None:
         _fake_llm_warned = True
 
 
-def _fake_structured_response(response_format: type) -> BaseModel:
+def _fake_structured_response(response_format: type[_ModelT]) -> _ModelT:
     """Return a deterministic canned instance of *response_format*.
 
     Known gate result types receive realistic-looking data.  All others
@@ -601,14 +605,14 @@ def _strip_markdown_fence(raw_text: str) -> str:
 def _structured_completion_with_fallback(
     prompt: str,
     *,
-    response_format: type,
+    response_format: type[_ModelT],
     config: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> BaseModel:
+) -> _ModelT:
     """Try structured completion; fall back to manual JSON parse.
 
     Attempts the OpenAI ``beta.chat.completions.parse`` endpoint first.
@@ -696,7 +700,7 @@ def _structured_completion_with_fallback(
                         max_tokens=resolved_max,
                     )
                     try:
-                        return cast(BaseModel, response.choices[0].message.parsed)
+                        return cast(_ModelT, response.choices[0].message.parsed)
                     except ValidationError:
                         # Lazy-parse SDKs raise here.  Fall through to the manual
                         # parse path, which reuses the response content and strips
@@ -769,7 +773,7 @@ def _structured_completion_with_fallback(
             raw_text: str = response.choices[0].message.content or ""
 
             try:
-                return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+                return response_format.model_validate_json(_strip_markdown_fence(raw_text))
             except Exception as exc:
                 raise LLMError(
                     f"Failed to parse LLM response as {response_format.__name__}: {exc}"
@@ -794,14 +798,14 @@ def _structured_completion_with_fallback(
 def llm_complete_structured_safe(
     prompt: str,
     *,
-    response_format: type,
+    response_format: type[_ModelT],
     config: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> BaseModel:
+) -> _ModelT:
     """Send a structured completion request with automatic fallback.
 
     Wraps :func:`_structured_completion_with_fallback` to provide a
@@ -995,14 +999,14 @@ def llm_complete(
 def llm_complete_structured(
     prompt: str,
     *,
-    response_format: type,
+    response_format: type[_ModelT],
     config: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
     task_type: str = "text_generation",
-) -> BaseModel:
+) -> _ModelT:
     """Send a chat-completion request with structured output (JSON schema).
 
     Uses OpenAI's ``response_format`` parameter with ``json_schema`` type.
@@ -1092,13 +1096,13 @@ def llm_complete_structured(
                 raise LLMError(f"LLM structured completion failed: {exc}") from exc
 
             try:
-                return cast(BaseModel, response.choices[0].message.parsed)
+                return cast(_ModelT, response.choices[0].message.parsed)
             except ValidationError:
                 # Provider returned 200 OK but ignored the schema (e.g. fenced JSON) —
                 # retry against the raw content with fence stripping.
                 raw_text: str = response.choices[0].message.content or ""
                 try:
-                    return response_format.model_validate_json(_strip_markdown_fence(raw_text))  # type: ignore[attr-defined]  # response_format is type; mypy cannot know it's a Pydantic model with model_validate_json
+                    return response_format.model_validate_json(_strip_markdown_fence(raw_text))
                 except Exception as exc:
                     raise LLMError(
                         f"Failed to parse LLM response as {response_format.__name__}: {exc}"

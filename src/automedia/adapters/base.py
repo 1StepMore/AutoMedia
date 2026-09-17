@@ -24,11 +24,17 @@ class PublishResult(TypedDict, total=False):
     platform: str
     article_id: str
     draft_id: str
-    draft_url: str
+    draft_url: str | None
     publish_id: str
     message_id: str
     access_token: str
     video_id: str
+    post_id: str
+    author_id: str
+    tweet_id: str
+    tweet_ids: list[str]
+    draft_text: str
+    message_preview: str
 
 
 class AuthResult(TypedDict, total=False):

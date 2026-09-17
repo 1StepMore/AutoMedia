@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import json
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from structlog import get_logger
 from structlog.contextvars import bind_contextvars, clear_contextvars, get_contextvars
@@ -39,6 +39,8 @@ from automedia._version import __version__ as _automedia_version
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+    from automedia.mcp.server_types import PipelineMode
 
 # ---------------------------------------------------------------------------
 # Tool handler imports (from tools.py)
@@ -367,7 +369,7 @@ def run_batch(
     """Execute pipelines for multiple topics sequentially."""
     from automedia.mcp.tools import run_batch as _impl
 
-    return _impl(topics=topics, brand=brand, mode=mode)
+    return _impl(topics=topics, brand=brand, mode=cast("PipelineMode", mode))
 
 
 def health_engine() -> dict[str, Any]:
@@ -382,7 +384,7 @@ def health_engine() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _restamp_text_blocks(blocks: object, structured: dict[str, Any]) -> object:
+def _restamp_text_blocks(blocks: list[Any], structured: dict[str, Any]) -> list[Any]:
     """Rewrite JSON text blocks so unstructured content matches *structured*.
 
     FastMCP renders the tool's return dict into text blocks before the

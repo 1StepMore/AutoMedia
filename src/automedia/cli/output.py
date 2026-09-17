@@ -21,7 +21,7 @@ try:
 except ImportError:
     # typer < 0.12 — click is an external dependency; context stack is
     # shared between typer and the externally installed click package.
-    from click import get_current_context
+    from click import get_current_context  # type: ignore[no-redef]
 
 logger = structlog.get_logger()
 

@@ -74,7 +74,7 @@ class LazyTyperGroup(TyperGroup):
         app = getattr(mod, entry[1])
         cmd = _typer_get_command(app)
         self.add_command(cmd, name=cmd_name)
-        return cmd
+        return cmd  # type: ignore[return-value]  # typer's vendored click Command vs external click.Command
 
     def _resolve_fn(self, cmd_name: str) -> click.Command | None:
         entry = self._lazy_fns.get(cmd_name)
@@ -95,39 +95,39 @@ class LazyTyperGroup(TyperGroup):
             rich_markup_mode=None,
         )
         self.add_command(cmd, name=cmd_name)
-        return cmd
+        return cmd  # type: ignore[return-value]  # typer's vendored click Command vs external click.Command
 
     # ------------------------------------------------------------------
     # Click overrides
     # ------------------------------------------------------------------
 
-    def get_command(
+    def get_command(  # type: ignore[override]  # vendored typer click vs external click stubs
         self,
-        ctx: click.Context,
+        ctx: click.Context,  # type: ignore[override]  # vendored typer click Context vs external click Context
         cmd_name: str,
     ) -> click.Command | None:
         # Already-resolved commands take priority.
-        cmd = super().get_command(ctx, cmd_name)
+        cmd = super().get_command(ctx, cmd_name)  # type: ignore[arg-type]  # vendored typer click Context
+        if cmd is not None:
+            return cmd  # type: ignore[return-value]  # vendored typer click Command
+        cmd = self._resolve_sub_app(cmd_name)  # type: ignore[assignment]  # vendored typer click Command
         if cmd is not None:
             return cmd
-        cmd = self._resolve_sub_app(cmd_name)
-        if cmd is not None:
-            return cmd
-        cmd = self._resolve_fn(cmd_name)
+        cmd = self._resolve_fn(cmd_name)  # type: ignore[assignment]  # vendored typer click Command
         if cmd is not None:
             return cmd
         return None
 
-    def list_commands(self, ctx: click.Context) -> list[str]:
+    def list_commands(self, ctx: click.Context) -> list[str]:  # type: ignore[override]  # vendored typer click Context
         resolved = set(self.commands.keys())
         lazy_apps = [n for n in self._lazy_sub_apps if n not in resolved]
         lazy_fns = [n for n in self._lazy_fns if n not in resolved]
-        return lazy_apps + lazy_fns + super().list_commands(ctx)
+        return lazy_apps + lazy_fns + super().list_commands(ctx)  # type: ignore[arg-type]  # vendored typer click Context
 
-    def format_commands(
+    def format_commands(  # type: ignore[override]  # vendored typer click vs external click stubs
         self,
-        ctx: click.Context,
-        formatter: click.HelpFormatter,
+        ctx: click.Context,  # type: ignore[override]  # vendored typer click Context
+        formatter: click.HelpFormatter,  # type: ignore[override]  # vendored typer click HelpFormatter
     ) -> None:
         """Format commands without importing lazy modules."""
         rows: list[tuple[str, str]] = []

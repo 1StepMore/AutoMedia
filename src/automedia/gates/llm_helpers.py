@@ -22,7 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, Field
 from structlog import get_logger
@@ -119,7 +119,9 @@ class DeepCheckResult(BaseModel):
 # Result type mapping
 # ---------------------------------------------------------------------------
 
-_RESULT_MODELS: dict[str, type[BaseModel]] = {
+_CheckModel = G0CheckResult | G1CheckResult | G2CheckResult | G6ToneCheckResult | DeepCheckResult
+
+_RESULT_MODELS: dict[str, type[_CheckModel]] = {
     "fact_check": G0CheckResult,
     "copy_review": G2CheckResult,
     "humanizer": G1CheckResult,
@@ -203,11 +205,9 @@ def llm_check_with_fallback(
         # Run LLM call in a thread with timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
-                llm_complete_structured_safe,
-                prompt,
-                response_format=result_model,
+                lambda: llm_complete_structured_safe(prompt, response_format=result_model)
             )
-            result = future.result(timeout=timeout)
+            result = cast("_CheckModel", future.result(timeout=timeout))
 
         # Build success response
         response: LLMCheckResult = {
