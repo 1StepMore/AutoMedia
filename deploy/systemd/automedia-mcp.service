@@ -11,7 +11,7 @@
 
 [Unit]
 Description=AutoMedia MCP Server — Model Context Protocol stdio server
-Documentation=https://github.com/renanzai40/AutoMedia_BackUp
+Documentation=https://github.com/1StepMore/AutoMedia
 After=network.target network-online.target
 Requires=network-online.target
 

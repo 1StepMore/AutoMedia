@@ -5,7 +5,7 @@
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
 | AGENTS.md | 14268 | file |
-| README.md | 30954 | file |
+| README.md | 30906 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -28,7 +28,7 @@
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
 | docs/dev/deep-module-rfc-001.md | 12981 | file |
-| docs/dev/developer-guide.md | 25737 | file |
+| docs/dev/developer-guide.md | 25319 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |
 | docs/dev/founder-expectations.md | 111745 | file |
@@ -36,12 +36,12 @@
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
-| docs/dev/project-validation-framework.md | 12572 | file |
+| docs/dev/project-validation-framework.md | 12564 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
 | docs/dev/validation-loop-log.md | 10012 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
-| docs/glossary.md | 12648 | file |
-| docs/index.md | 4889 | file |
+| docs/glossary.md | 12640 | file |
+| docs/index.md | 4873 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5042 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
@@ -57,4 +57,4 @@
 | docs/user/omni-integration.md | 13082 | file |
 | docs/user/production-workflow.md | 9543 | file |
 | docs/user/user-introduction.md | 8446 | file |
-| docs/user/windows-deployment.md | 13969 | file |
+| docs/user/windows-deployment.md | 13939 | file |

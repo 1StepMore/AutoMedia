@@ -70,7 +70,7 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
 | [Architecture Decision Records](adr/README.md) | ADR-001..ADR-006 index + template, canonical source in docs/adr/ |
 | [Agent Reference](dev/agent-reference.md) | On-demand deep reference split out of AGENTS.md (layout, task patterns, validation contract) |
-| [Validation Schema Authority](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/scenarios/STANDARDS.md) | `scenarios/STANDARDS.md` — the single schema authority for validation `standard:` keys |
+| [Validation Schema Authority](https://github.com/1StepMore/AutoMedia/blob/main/scenarios/STANDARDS.md) | `scenarios/STANDARDS.md` — the single schema authority for validation `standard:` keys |
 
 ---
 
@@ -114,4 +114,4 @@ See [MCP Setup](user/mcp-setup.md) for client configuration examples (Claude Des
 
 ## License
 
-MIT License. See [LICENSE](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/LICENSE) for details.
+MIT License. See [LICENSE](https://github.com/1StepMore/AutoMedia/blob/main/LICENSE) for details.

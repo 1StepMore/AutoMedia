@@ -43,9 +43,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/renanzai40/AutoMedia_BackUp"
-Repository = "https://github.com/renanzai40/AutoMedia_BackUp"
-Documentation = "https://github.com/renanzai40/AutoMedia_BackUp/tree/main/docs"
+Homepage = "https://github.com/1StepMore/AutoMedia"
+Repository = "https://github.com/1StepMore/AutoMedia"
+Documentation = "https://github.com/1StepMore/AutoMedia/tree/main/docs"
 
 [project.optional-dependencies]
 # Upper bound matches litellm's own constraint (openai>=2.20.0,<3.0.0): an

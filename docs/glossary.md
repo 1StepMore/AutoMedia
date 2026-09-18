@@ -1,6 +1,6 @@
 # AutoMedia Glossary
 
-Plain-language definitions of AutoMedia terms for AI coding agents. Each entry points to the file or module that implements the concept. For the full codebase map, see [AGENTS.md](https://github.com/renanzai40/AutoMedia_BackUp/blob/main/AGENTS.md).
+Plain-language definitions of AutoMedia terms for AI coding agents. Each entry points to the file or module that implements the concept. For the full codebase map, see [AGENTS.md](https://github.com/1StepMore/AutoMedia/blob/main/AGENTS.md).
 
 ## G0-G6 (copy gates)
 

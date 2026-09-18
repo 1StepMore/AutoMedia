@@ -72,8 +72,8 @@ pip install edge-tts
 pip install faster-whisper
 
 # Clone AutoMedia
-git clone https://github.com/renanzai40/AutoMedia_BackUp.git
-cd AutoMedia_BackUp
+git clone https://github.com/1StepMore/AutoMedia.git
+cd AutoMedia
 
 # Run setup script
 bash scripts/setup.sh
@@ -246,8 +246,8 @@ winget install Google.Chrome
 ### 5. Clone and Setup AutoMedia
 
 ```powershell
-git clone https://github.com/renanzai40/AutoMedia_BackUp.git
-cd AutoMedia_BackUp
+git clone https://github.com/1StepMore/AutoMedia.git
+cd AutoMedia
 ```
 
 Create a virtual environment and install:

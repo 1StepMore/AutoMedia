@@ -12,7 +12,7 @@
 
 [Unit]
 Description=AutoMedia Cron Job
-Documentation=https://github.com/renanzai40/AutoMedia_BackUp
+Documentation=https://github.com/1StepMore/AutoMedia
 After=network-online.target automedia-mcp.service
 Wants=network-online.target
 Requires=automedia-mcp.service

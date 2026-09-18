@@ -274,7 +274,7 @@ app = typer.Typer(
     no_args_is_help=True,
     epilog=(
         f"AutoMedia v{__version__} — automated media production pipeline. "
-        "Documentation: https://github.com/renanzai40/AutoMedia_BackUp"
+        "Documentation: https://github.com/1StepMore/AutoMedia"
     ),
 )
 
