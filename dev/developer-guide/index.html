@@ -897,10 +897,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#repository-ownership-publishing-canonical-renanzai40automedia_backup" class="md-nav__link">
+  <a href="#repository-ownership-publishing-canonical-1stepmoreautomedia" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Repository Ownership &amp; Publishing (canonical = renanzai40/AutoMedia_BackUp)
+        Repository Ownership &amp; Publishing (canonical = 1StepMore/AutoMedia)
       
     </span>
   </a>
@@ -2866,35 +2866,31 @@ pytest<span class="w"> </span>tests/test_e2e/<span class="w"> </span>-v
 <li><strong>Archive red line</strong>: Only user <code>--force</code> can archive, agent must not archive (Red Line 8)</li>
 <li><strong>External scheduling</strong>: External crond calls <code>automedia cron run</code>, no built-in scheduler</li>
 </ul>
-<h2 id="repository-ownership-publishing-canonical-renanzai40automedia_backup">Repository Ownership &amp; Publishing (canonical = renanzai40/AutoMedia_BackUp)<a class="headerlink" href="#repository-ownership-publishing-canonical-renanzai40automedia_backup" title="Permanent link">&para;</a></h2>
-<p>The original owner account (1StepMore) was suspended; per the 2026-09 productization
-decision, the backup repository <strong><code>renanzai40/AutoMedia_BackUp</code></strong> is the canonical
-distribution point. This section records what moved automatically and what remains
-bound to the old account and needs a one-time user-manual action.</p>
+<h2 id="repository-ownership-publishing-canonical-1stepmoreautomedia">Repository Ownership &amp; Publishing (canonical = 1StepMore/AutoMedia)<a class="headerlink" href="#repository-ownership-publishing-canonical-1stepmoreautomedia" title="Permanent link">&para;</a></h2>
+<p><code>1StepMore/AutoMedia</code> is the canonical repository. During the 2026-09 account
+suspension the mirror <code>renanzai40/AutoMedia_BackUp</code> was used as the distribution
+point; that suspension has since been lifted and the canonical repo is restored.</p>
 <ul>
 <li><strong>Git remotes (local environment state, not tracked):</strong> local <code>origin</code> points at
-  <code>git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git</code> (the SSH host alias for
-  the renanzai40 account); the original 1StepMore remote is preserved unchanged as
-  <code>upstream-1stepmore</code> (<code>git@github.com:1StepMore/AutoMedia.git</code>) so history and
-  branch-tracking references stay intact. The 1StepMore remote is NOT deleted.</li>
-<li><strong>Canonical integration status:</strong> <code>renanzai40/AutoMedia_BackUp</code> <code>main</code> is fully
-  integrated with all productization work through <code>eab6dfe</code> (21 commits, fast-forward,
-  zero divergence). Local branches track <code>origin/*</code>; <code>upstream-1stepmore/*</code> is kept only
-  as an immutable history reference (the suspended account's repo is unreachable for
-  fetch/push).</li>
-<li><strong>CI badge / CI runs:</strong> the README CI badge points at the canonical repo
-  (<code>renanzai40/AutoMedia_BackUp</code>). GitHub Actions run per-repo — CI must be enabled on
-  that repository for the badge to go green.</li>
-<li><strong>PyPI publishing (OIDC) is bound to the OLD account — user-manual:</strong> <code>publish.yml</code>
-  uses PyPI Trusted Publishing (OIDC). The publisher is registered on the PyPI project
-  <code>automedia-pipeline</code> (https://pypi.org/manage/project/automedia-pipeline/settings/)
-  with Owner <code>1StepMore</code> / Repository <code>AutoMedia</code> / Workflow <code>publish.yml</code> /
-  Environment <code>pypi</code>. A pending release pushed from <code>renanzai40/AutoMedia_BackUp</code> will
-  be <strong>rejected by PyPI</strong> until the user re-adds the trusted publisher under the
-  renanzai40 namespace (PyPI project settings → Publishing → add publisher with Owner
-  <code>renanzai40</code>), plus the matching GitHub environment <code>pypi</code> in the new repo's
-  Settings → Environments. This <strong>cannot be done from code alone</strong> — it requires the
-  PyPI project owner and GitHub repo admin, both human actions.</li>
+  the canonical repo — SSH for fetch (<code>git@github.com:1StepMore/AutoMedia.git</code>) and
+  HTTPS for push (<code>https://github.com/1StepMore/AutoMedia.git</code>, authenticated by the
+  <code>gh</code> CLI). The <code>github.com</code> SSH alias is a read-only deploy key, so HTTPS/<code>gh</code> is
+  the write path. The <code>backup</code> remote
+  (<code>git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git</code>) is retained as an
+  archive mirror.</li>
+<li><strong>Canonical integration status:</strong> <code>origin/main</code> carries the full history. During
+  the outage the local lineage was rewritten with a fresh root, so it shares no
+  common ancestor with the pre-outage 1StepMore lineage; the repo was force-pushed
+  to <code>origin</code> and the old tip is preserved on the <code>rescue/main-20260822</code> branch.</li>
+<li><strong>CI badge / CI runs:</strong> the README CI, license, and agent-ready badges point at
+  <code>1StepMore/AutoMedia</code>. GitHub Actions run per-repo — CI must be enabled on that
+  repository for the badge to go green.</li>
+<li><strong>PyPI publishing (OIDC):</strong> <code>publish.yml</code> uses PyPI Trusted Publishing (OIDC). The
+  publisher is registered on the PyPI project <code>automedia-pipeline</code>
+  (https://pypi.org/manage/project/automedia-pipeline/settings/) with Owner
+  <code>1StepMore</code> / Repository <code>AutoMedia</code> / Workflow <code>publish.yml</code> / Environment
+  <code>pypi</code> — which matches the canonical repo. Publishing works provided the <code>pypi</code>
+  GitHub Environment exists in the repository's Settings → Environments.</li>
 <li><strong>Docker image namespace <code>kevinzhow/automedia-pipeline</code> is separate from the repo
   owner:</strong> it lives in a personal Docker Hub namespace unrelated to either GitHub
   account. Its continued publication is unverified (network-restricted environment at
