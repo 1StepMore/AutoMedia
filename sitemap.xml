@@ -1,199 +1,199 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/doc-inventory/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/doc-inventory/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/glossary/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/glossary/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-001-singleton-registry-unification/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-001-singleton-registry-unification/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-002-hitl-decision-layer-decoupling/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-002-hitl-decision-layer-decoupling/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-003-platform-rename-stdlib-conflict/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-003-platform-rename-stdlib-conflict/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-004-mcp-server-decomposition/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-004-mcp-server-decomposition/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-005-issue-driven-commits/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-005-issue-driven-commits/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/ADR-006-graph-engineering-dag/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/ADR-006-graph-engineering-dag/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/adr/TEMPLATE/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/adr/TEMPLATE/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/2026-08-30-AutoMedia-GraphEngineering%E8%90%BD%E5%9C%B0%E5%AE%9E%E6%96%BD%E6%96%B9%E6%A1%88-%E4%BF%AE%E6%AD%A3%E7%89%88/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/2026-08-30-AutoMedia-GraphEngineering%E8%90%BD%E5%9C%B0%E5%AE%9E%E6%96%BD%E6%96%B9%E6%A1%88-%E4%BF%AE%E6%AD%A3%E7%89%88/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/2026-08-30-graph-engineering-%E8%B0%83%E7%A0%94%E4%B8%8E%E4%B8%89%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0-%E4%BF%AE%E6%AD%A3%E7%89%88/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/2026-08-30-graph-engineering-%E8%B0%83%E7%A0%94%E4%B8%8E%E4%B8%89%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0-%E4%BF%AE%E6%AD%A3%E7%89%88/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/AutoMedia%E5%BC%80%E5%8F%91%E7%AE%80%E6%8A%A5/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/AutoMedia%E5%BC%80%E5%8F%91%E7%AE%80%E6%8A%A5/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/agent-reference/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/agent-reference/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/agent-troubleshooting/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/agent-troubleshooting/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/api-gotchas/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/api-gotchas/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/automedia-business-validation-20260902/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/automedia-business-validation-20260902/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/automedia-dev-roadmap-20260902/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/automedia-dev-roadmap-20260902/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/capability-gap-assessment-20260915/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/capability-gap-assessment-20260915/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/competitive-landscape-20260915/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/competitive-landscape-20260915/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/cron-troubleshooting/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/cron-troubleshooting/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/deep-module-rfc-001/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/deep-module-rfc-001/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/developer-guide/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/developer-guide/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/evaluation-matrix-principles/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/evaluation-matrix-principles/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/forward-compat/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/forward-compat/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/founder-expectations/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/founder-expectations/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/gate-failure-modes/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/gate-failure-modes/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/override-reference/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/override-reference/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/project-evaluation-2026-09-06/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/project-evaluation-2026-09-06/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/project-health-assessment-20260917/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/project-health-assessment-20260917/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/project-validation-framework/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/project-validation-framework/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/remediation-report-20260917/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/remediation-report-20260917/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/validation-loop-log/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/validation-loop-log/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/skills/batch-workflow/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/skills/batch-workflow/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/skills/brand-strategy/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/skills/brand-strategy/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/skills/distribution-workflow/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/skills/distribution-workflow/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/skills/pipeline-workflow/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/skills/pipeline-workflow/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/api-reference/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/api-reference/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/asset-library/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/asset-library/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/cli-reference/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/cli-reference/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/deployment/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/deployment/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/hitl-framework/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/hitl-framework/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/mcp-setup/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/mcp-setup/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/omni-integration/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/omni-integration/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/production-workflow/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/production-workflow/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/user-introduction/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/user-introduction/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
     <url>
-         <loc>https://renanzai40.github.io/AutoMedia_BackUp/user/windows-deployment/</loc>
+         <loc>https://1stepmore.github.io/AutoMedia/user/windows-deployment/</loc>
          <lastmod>2026-09-18</lastmod>
     </url>
 </urlset>
