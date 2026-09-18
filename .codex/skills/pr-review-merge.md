@@ -30,25 +30,30 @@ Example scenarios that trigger this skill:
 Verified facts about `1StepMore/AutoMedia` — rely on these, do not re-derive them:
 
 - **Two remotes.** `origin` = `git@github.com:1StepMore/AutoMedia.git` (the canonical
-  GitHub repo). `backup` = `git@github.com:renanzai40/AutoMedia_BackUp.git` (a
-  push-only mirror owned by the `renanzai40` account).
-- **Origin is currently SUSPENDED.** While suspended, `git push origin` fails and
-  the canonical repo cannot receive new work. All push operations go to `backup`.
-  Push with the `renanzai40` SSH key (the default key auths as `1StepMore`):
+  GitHub repo; fetch over SSH, push over HTTPS via `gh`). `backup` =
+  `git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git` (an archive mirror
+  owned by the `renanzai40` account).
+- **Origin is canonical and writable.** The 2026-09 1StepMore suspension has been
+  lifted; push new work to `origin`. The `github.com` SSH alias is a read-only
+  deploy key, so the write path is HTTPS authenticated by `gh` (token scopes
+  `repo` + `workflow`):
+  ```bash
+  git push origin main
+  ```
+  If you also keep the `backup` mirror, fast-forward it with the `renanzai40` key:
   ```bash
   GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git push backup main
   ```
-  `~/.ssh/config` already defines `github.com-renanzai40` (same key, port 443) if
-  you prefer `git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git`.
-- **Backup may diverge.** Commits can land on `backup/main` that are not in the
-  local clone (e.g. a direct push from another machine). Before relying on
-  `backup/main`, fetch it and check for surprise commits:
+  `~/.ssh/config` already defines `github.com-renanzai40` (same key, port 443).
+- **Backup may diverge.** A direct push from another machine can land commits on
+  `backup/main` that are not in the local clone. Fetch before relying on it:
   ```bash
   GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git fetch backup main
   git log --oneline HEAD..backup/main   # unexpected commits on backup
   ```
-  A stray backup-only commit is a real change to review, verify, and if wrong,
-  fix with a corrective commit — do not assume `backup/main == origin/main`.
+  `origin/main` is the source of truth; treat a stray backup-only commit as a real
+  change to review, and reconcile toward `origin` — do not assume
+  `backup/main == origin/main`.
 - **Merge style is MERGE COMMITS.** History shows `Merge pull request #N from <branch>` commits. Do NOT squash or rebase-merge. Use `gh pr merge N --merge`.
 - **Branch protection is NOT enabled.** No required status checks, no required reviews on `main`. Never assume CI protection or a human reviewer will catch a problem — the agent is the gate.
 - **CI checks on PRs** (ci.yml + conventional-commits.yml + labeler + DCO):
@@ -196,15 +201,18 @@ Run through this in order; any "no" stops the merge:
 ## Post-Merge
 
 - Confirm the merge landed on `main` as a merge commit (`Merge pull request #N from <branch>`).
-- **Push the updated `main` to `backup`** (origin is suspended — backup is the
-  only place new work reaches the remote):
+- **Push the updated `main` to `origin`** (canonical; HTTPS via `gh`):
+  ```bash
+  git push origin main
+  ```
+  If you also keep the `backup` mirror, fast-forward it with the `renanzai40` key:
   ```bash
   GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git push backup main
   ```
   Verify the push landed and no local commits are stranded:
   ```bash
-  GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git fetch backup main
-  git rev-list --count backup/main..HEAD   # 0 = fully synced
+  git fetch origin main
+  git rev-list --count origin/main..HEAD   # 0 = fully synced
   ```
 - Verify the linked issue closed if a Fixes/Closes keyword was present; otherwise close it with a comment referencing the merge (per issue-triage Step 5).
 - Do not hand-run releases. release-please handles version bumps, CHANGELOG, and the GitHub release automatically. If a release is expected and did not happen, note it but do not attempt a manual release.

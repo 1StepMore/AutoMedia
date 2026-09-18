@@ -18,16 +18,19 @@ When any of these triggers fire, run the full workflow below. Do not cherry-pick
 
 - **Repo:** `1StepMore/AutoMedia`. Issues are BILINGUAL — read the body and comment in the language the issue uses (Chinese or English; real issues like #62 are written in Chinese). Never default to English when the reporter wrote in Chinese, and never assume a language from the title alone; the body decides.
 - **Remotes & push target:** `origin` = `git@github.com:1StepMore/AutoMedia.git`
-  (canonical, **currently SUSPENDED** — pushes to it fail), `backup` =
-  `git@github.com:renanzai40/AutoMedia_BackUp.git` (push-only mirror, the
-  destination for all pushed work). Push with the `renanzai40` SSH key (default
-  key auths as `1StepMore`):
+  (canonical; fetch over SSH, push over HTTPS authenticated by the `gh` CLI — the
+  `github.com` SSH alias is a read-only deploy key). `backup` =
+  `git@github.com-renanzai40:renanzai40/AutoMedia_BackUp.git` (an archive mirror
+  owned by `renanzai40`). Push new work to `origin`:
+  ```bash
+  git push origin main
+  ```
+  `~/.ssh/config` also defines `github.com-renanzai40` (the backup account's key,
+  port 443) if you sync the mirror:
   ```bash
   GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git push backup main
   ```
-  `~/.ssh/config` also defines `github.com-renanzai40` (same key, port 443).
-  Commit-verification steps below (Step 4) check `main` — on a suspended-origin
-  repo, verify against `backup/main` too, since work may land there first.
+  Commit-verification steps below (Step 4) check `origin/main`, the canonical branch.
 - **Issue templates** (`.github/ISSUE_TEMPLATE/`): `bug_report.yml` auto-labels `bug` and REQUIRES a "Regression scenario" field; `feature_request.yml` auto-labels `enhancement`. There is NO `.github/config.yml` and no issue-labeling automation. Labels only arrive from templates, humans, or manual action.
 - **Labels in use:** `bug`, `enhancement`, `human-gated`, `stale`, `pinned`, `security`, `dependencies`, plus path labels (core, gates, adapters, cli, mcp, omni, decision, hitl, pool, tests, docs, ci, docker, build, tooling, deploy). These are the only labels you should expect; anything else is a signal something changed.
 - **Stale bot** (`.github/workflows/stale.yml`): issues stale after 60d, closed after 14 more; exempt labels `pinned`, `security`, `enhancement`. Let the bot handle pure age-closures — never close an issue on age alone unless it is ALSO already dealt with.
@@ -97,14 +100,12 @@ Ordering the sweep's actions: process every KEEP OPEN issue first (comment and m
 2. Implement per ADR-005: ONE atomic commit per issue, conventional subject + `(#N)`. One issue, one commit, one change. Never bundle unrelated edits into the same commit, and never stage with `git add -A`; stage exact paths with `git add <path>`.
 3. Open a PR with `Fixes #N` / `Closes #N` in the body. Do NOT close the issue — the merge closes it (auto via the keyword, or manually post-merge per the pr-review-merge skill). The issue closes when the work lands, not when the PR is drafted. Closing it early would violate the open-PR rule the moment the PR is opened, and would break the one-issue-one-commit trail.
 4. Run pre-commit before committing. A RED commit never lands, and the way to keep commits RED-free is the pre-commit hook, not post-hoc fixes.
-5. **Push to `backup`, not `origin`** (origin is suspended). After committing,
-   publish the branch with the `renanzai40` key:
+5. **Push the branch to `origin`** (canonical; HTTPS via `gh`):
    ```bash
-   GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_renanzai40" git push backup <branch>
+   git push origin <branch>
    ```
-   If the repo's PR workflow is unavailable while origin is suspended, push the
-   branch to `backup` and note in the issue that the fix is on backup pending
-   origin's return.
+   Then open the PR as usual. If you also keep the `backup` mirror, sync `main`
+   with the `renanzai40` key after the merge (see the pr-review-merge skill).
 
 If two issues in the same sweep both qualify as valid and un-addressed, address them as separate commits and separate PRs. Never fold issue A into issue B's PR to save a round trip; that is exactly the discipline ADR-005 exists to prevent.
 
