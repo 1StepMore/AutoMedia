@@ -94,8 +94,15 @@ include = ["automedia", "automedia.*"]
 automedia = ["**/*.yaml", "**/*.j2", "**/*.html", "**/*.json"]
 
 [tool.uv]
+# The lock covers exactly the environment the uv-driven jobs (nightly) run:
+# Linux + Python >= 3.13 — the one platform/version the `[all]` extra's
+# torch/omni wheels support. Without a platform bound, uv must also solve for
+# win32/macOS forks that cannot be satisfied, and since 0.12.14 that fails the
+# whole resolution ("No solution found ... python_full_version >= '3.15' and
+# sys_platform == 'win32'"). pip installs of the base package keep working on
+# 3.11/3.12 and on Windows/macOS; only `uv sync --locked` is Linux-scoped.
 environments = [
-    "python_version >= '3.13'",
+    "python_version >= '3.13' and sys_platform == 'linux'",
 ]
 
 [tool.ruff]
