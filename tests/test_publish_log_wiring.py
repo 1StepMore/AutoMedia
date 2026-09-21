@@ -220,6 +220,43 @@ class TestPublishContentL1Wiring:
         assert entry["content"].strip()
         assert any("cover.png" in p for p in entry["media_paths"])
 
+    def test_no_declared_platforms_gates_only_the_requested_platform(
+        self,
+        tmp_path: Path,
+        brand_profiles_path: Path,
+        publish_spy: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A brand with no declared platforms narrows the L1 target to the
+        requested platform; the log must not fan out to all 19 targets."""
+        _write_brand_profiles(brand_profiles_path, {_BRAND: {"brand_name": _BRAND}})
+        proj_dir = _make_project(tmp_path, project_id="pub123abc456", media=True)
+
+        result = self._call(tmp_path, "pub123abc456", "zhihu", monkeypatch)
+
+        assert result["success"] is True
+        assert [entry["platform"] for entry in _read_publish_log(proj_dir)] == ["zhihu"]
+
+    def test_l1_failure_names_the_requested_platform(
+        self,
+        tmp_path: Path,
+        brand_profiles_path: Path,
+        publish_spy: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An L1 failure on a single-platform publish names that platform; the
+        pre-fix code gated all 19 and blamed the tuple's first entry."""
+        _write_brand_profiles(brand_profiles_path, {_BRAND: {"brand_name": _BRAND}})
+        _make_project(tmp_path, project_id="pub123abc456", draft_body="")
+
+        result = self._call(tmp_path, "pub123abc456", "xiaohongshu", monkeypatch)
+
+        assert result["success"] is False
+        assert publish_spy == []
+        message = result["error"]["message"]
+        assert "xiaohongshu" in message
+        assert "wechat" not in message
+
     def test_missing_platform_aborts_before_publish(
         self,
         tmp_path: Path,
