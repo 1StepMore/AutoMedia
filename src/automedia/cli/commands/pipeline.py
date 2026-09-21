@@ -174,7 +174,7 @@ def _render_dot(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-@app.callback()  # type: ignore[misc]  # typer's decorator is untyped
+@app.callback()  # type: ignore[misc, unused-ignore]  # typer's decorator is untyped
 def pipeline_root() -> None:
     """Pipeline DAG export and state inspection commands.
 
@@ -219,7 +219,7 @@ def _overlay_history_gates(project: str | None) -> set[str]:
     return {str(row.get("action", "")).split(":", 1)[0] for row in rows if row.get("action")}
 
 
-@app.command("export-dag")  # type: ignore[misc]  # typer's decorator is untyped
+@app.command("export-dag")  # type: ignore[misc, unused-ignore]  # typer's decorator is untyped
 def export_dag(
     mode: str | None = typer.Option(
         None,
@@ -296,7 +296,7 @@ def _render_state_table(rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines).rstrip()
 
 
-@app.command("state")  # type: ignore[misc]  # typer's decorator is untyped
+@app.command("state")  # type: ignore[misc, unused-ignore]  # typer's decorator is untyped
 def pipeline_state(
     project_id: str = typer.Argument(..., help="Project ID (12-char hex)."),
     base_dir: str = typer.Option(
