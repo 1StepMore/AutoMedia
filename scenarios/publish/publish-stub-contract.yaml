@@ -26,10 +26,10 @@ requires_env: []
 steps:
   - name: create the synthetic project
     kind: cli
-    check: "a python3 one-liner writes a synthetic 00_project_info.json (project.py schema: project_id, topic, brand, tenant_id, created_at, status) under /tmp/automedia/w3t5-stub-projects/ for the publish probes."
+    check: "a python3 one-liner writes a synthetic 00_project_info.json (project.py schema: project_id, topic, brand, tenant_id, created_at, status) and a minimal 01_content/drafts/draft.md under /tmp/automedia/w3t5-stub-projects/. The draft is required: the L1 publish-log gate checks content_present before any publish, so without it the gate blocks the stub envelope the next step asserts."
     standard: founder-expectations.F01
     command: |-
-      python3 -c 'import json, pathlib; p = pathlib.Path("/tmp/automedia/w3t5-stub-projects/w3t5-stub/00_project_info.json"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps({"project_id": "w3t5stub000001", "topic": "synthetic stub probe", "brand": "w3t5-synthetic-brand", "tenant_id": "w3t5", "created_at": "2026-08-14T00:00:00Z", "status": "published"}))'
+      python3 -c 'import json, pathlib; root = pathlib.Path("/tmp/automedia/w3t5-stub-projects/w3t5-stub"); drafts = root / "01_content" / "drafts"; drafts.mkdir(parents=True, exist_ok=True); (drafts / "draft.md").write_text("# synthetic stub probe\n\nBody for the L1 publish-log gate.\n", encoding="utf-8"); (root / "00_project_info.json").write_text(json.dumps({"project_id": "w3t5stub000001", "topic": "synthetic stub probe", "brand": "w3t5-synthetic-brand", "tenant_id": "w3t5", "created_at": "2026-08-14T00:00:00Z", "status": "published"}))'
     expect:
       exit_code: 0
   - name: publish_content on a stub platform never posts

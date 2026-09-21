@@ -99,6 +99,15 @@ def publish_content(
                 automation = {}
             automation[platform] = "auto"
 
+        # This path publishes a single platform, so the L1 log must gate on that
+        # platform only — narrowed to the brand's declarations when it has any.
+        # Gating on the full 19-platform set validates (and names the failure
+        # of) platforms the caller never asked for.
+        if declared_platforms is None:
+            gate_platforms = [platform]
+        else:
+            gate_platforms = [name for name in declared_platforms if name == platform]
+
         from automedia.gates.publish_log_wiring import (
             PublishLogGateError,
             prepare_publish_log,
@@ -108,7 +117,7 @@ def publish_content(
             prepare_publish_log(
                 artifact_dir=artifact_dir,
                 topic=str(proj.get("topic", "")),
-                declared_platforms=declared_platforms,
+                declared_platforms=gate_platforms,
             )
         except PublishLogGateError as exc:
             return {
