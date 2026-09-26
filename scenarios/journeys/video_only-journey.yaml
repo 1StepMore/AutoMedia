@@ -21,11 +21,11 @@
 #     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
 #     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
 #     itself only loads the library and regenerates the static audit.
-#   - proves_gates is derived EXACTLY from _MODE_MAP["video_only"] in
-#     src/automedia/pipelines/runner.py (V0-V7, L1-L4 — 12 gates; NO CW, NO
-#     G-gates, NO H0: video_only never writes a draft — runner.py:1201-1205
-#     substitutes a "[content skipped in video_only mode]" placeholder when
-#     CW is absent — verified by eye and enforced by the coverage audit).
+#   - proves_gates equals _MODE_MAP["video_only"] in
+#     src/automedia/pipelines/runner.py (V0-V7 — 8 gates; NO CW, NO G-gates,
+#     NO H0, and L1-L4 are in NO preset: video_only never writes a draft —
+#     runner.py:1201-1205 substitutes a "[content skipped in video_only mode]"
+#     placeholder when CW is absent). Bound by the #99 reachability guard.
 #     proves_modes names the mode.
 #   - ARTIFACT STEP IS DIFFERENT BY DESIGN: because video_only runs no CW,
 #     no *_draft.md is written; the honest artifact proof of the real run is
@@ -85,10 +85,6 @@ proves_gates:
   - V5
   - V6
   - V7
-  - L1
-  - L2
-  - L3
-  - L4
 proves_modes:
   - video_only
 steps:

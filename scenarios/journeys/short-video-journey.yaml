@@ -21,11 +21,12 @@
 #     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
 #     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
 #     itself only loads the library and regenerates the static audit.
-#   - proves_gates is derived EXACTLY from _MODE_MAP["short-video"] in
-#     src/automedia/pipelines/runner.py (pre-gate, CW, G0-G6, V0-V7, H0,
-#     L1-L4 — the same 22 gates as auto: short-video is the full pipeline
-#     with a short_video content format (runner.py:1210-1212) — verified by
-#     eye and enforced by the coverage audit). proves_modes names the mode.
+#   - proves_gates equals _MODE_MAP["short-video"] in
+#     src/automedia/pipelines/runner.py (pre-gate, CW, G0-G3, G6, V0-V7, H0 —
+#     16 gates, the same set as auto; G4/G5 and L1-L4 are in NO preset):
+#     short-video is the full pipeline with a short_video content format
+#     (runner.py:1210-1212). Bound by the #99 reachability guard.
+#     proves_modes names the mode.
 #   - gate_records_pass is NOT asserted, for the same reason as
 #     text_only-journey.yaml: the only gate-record JSON the product writes is
 #     pipeline_md5.json whose top-level "gates" key is a DICT (md5_tracker.py
@@ -78,8 +79,6 @@ proves_gates:
   - G1
   - G2
   - G3
-  - G4
-  - G5
   - G6
   - V0
   - V1
@@ -90,10 +89,6 @@ proves_gates:
   - V6
   - V7
   - H0
-  - L1
-  - L2
-  - L3
-  - L4
 proves_modes:
   - short-video
 steps:

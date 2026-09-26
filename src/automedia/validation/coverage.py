@@ -48,7 +48,11 @@ is supplied.
   when any non-boundary scenario proves it; boundary-only proves are the
   third class below).
 * derived sets — ``covered`` = declared ∩ used, ``missing`` = declared −
-  covered, ``phantom`` = used − declared.
+  covered − unreachable, ``phantom`` = used − declared.  ``unreachable``
+  (issue #99) = declared − preset-reachable (the union of ``_MODE_MAP``) −
+  command-path-reachable (``COMMAND_PATH_REACHABLE_GATES``); it is G4/G5
+  today, reported via ``unreachable_gates`` and never a permanent missing
+  failure.
 
 Two policy classes shape the output (both pinned in the plan):
 
@@ -128,6 +132,64 @@ rejected as a malformed scenario.
 
 SURFACES: tuple[str, ...] = ("mcp", "cli", "gates", "modes")
 """The four declared surfaces the evidence half reports on."""
+
+COMMAND_PATH_REACHABLE_GATES: frozenset[str] = frozenset(
+    {
+        # D1-D7 are standalone distribution gates dispatched by
+        # ``automedia distribute`` (cli/commands/distribute.py:530; the
+        # platform→gate mapping is distribute.py:37-45).
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        # L1 (publish log schema) is executed inside ``prepare_publish_log``
+        # (gates/publish_log_wiring.py:101), reached by the publish flow:
+        # cron/runner.py:139-142, mcp/tools/publishing.py:111, and
+        # adapters/distribution.py:183.
+        "L1",
+        # L2 (archive validation) runs in ``run_l2_archive_gate``
+        # (cli/commands/archive.py:47-53), invoked by ``automedia archive``
+        # (archive.py:113) and MCP ``archive_project`` (mcp/tools/projects.py:175).
+        "L2",
+        # L3 (platform integrity) runs in ``run_l3_distribution_gate``
+        # (cli/commands/distribute.py:160-168), invoked by ``automedia
+        # distribute`` (distribute.py:530).
+        "L3",
+        # L4 (translation quality) runs on the localize path
+        # (cli/commands/omni.py:213; advisory MCP localize at
+        # mcp/tools/omni.py:258).
+        "L4",
+    }
+)
+"""Gates a shipped standalone command executes, outside every pipeline preset.
+
+WHY this constant exists (do not delete as redundant): ``declared_gates`` is a
+recursive static scan, so a registered gate that no preset AND no command can
+reach would otherwise be a permanent ``missing`` hard failure (the issue #101
+false-alarm disease).  Reachability lets the audit report the residual truth —
+reachable gates no scenario proves — instead of either over-reporting coverage
+or failing forever on G4/G5, which no code path executes.  Preset reachability
+is read live from ``_MODE_MAP``; this constant is the command-path half only.
+Each entry cites the file:line of its execution surface; extend it when a new
+standalone surface ships."""
+
+
+def _preset_reachable_gates(runner_path: str | Path | None) -> set[str]:
+    """Union of every mode preset's gate list (preset reachability).
+
+    Read from the live ``_MODE_MAP`` in ``runner.py`` — never hardcoded — so a
+    preset change propagates without editing this module.  The complement
+    ``declared_gates - preset_reachable - COMMAND_PATH_REACHABLE_GATES`` is
+    exactly the registered-but-unreachable set (G4/G5 today).
+    """
+    runner_src = _read_declared_source(runner_path, "src/automedia/pipelines/runner.py")
+    reachable: set[str] = set()
+    for gate_names in _parse_mode_map(runner_src).values():
+        reachable.update(gate_names)
+    return reachable
 
 
 def coverage_audit(
@@ -221,9 +283,20 @@ def coverage_audit(
     covered_cli = sorted(declared_cli_set & used_cli - boundary_cli)
     covered_gates = sorted(declared_gates_set & used_gates - boundary_gates)
     covered_modes = sorted(declared_modes_set & used_modes - boundary_modes)
+    # Issue #99: classify declared gates by what can actually execute them.
+    # Preset reachability is read live from _MODE_MAP; the command-path half is
+    # the cited constant.  The complement is the registered-but-unreachable set
+    # (G4/G5 today) — excluded from ``missing`` so an unexecutable gate is
+    # reported via ``unreachable_gates``, not a permanent hard failure.
+    unreachable_gates_set = (
+        declared_gates_set - _preset_reachable_gates(runner_path) - COMMAND_PATH_REACHABLE_GATES
+    )
+    unreachable_gates = sorted(unreachable_gates_set)
     missing_mcp = sorted(declared_mcp_set - set(covered_mcp) - boundary_mcp)
     missing_cli = sorted(declared_cli_set - set(covered_cli) - boundary_cli)
-    missing_gates = sorted(declared_gates_set - set(covered_gates) - boundary_gates)
+    missing_gates = sorted(
+        declared_gates_set - set(covered_gates) - boundary_gates - unreachable_gates_set
+    )
     missing_modes = sorted(declared_modes_set - set(covered_modes) - boundary_modes)
     phantom_mcp = sorted(used_mcp - declared_mcp_set - deprecated_mcp_set)
     phantom_cli = sorted(used_cli - declared_cli_set)
@@ -254,6 +327,8 @@ def coverage_audit(
         "phantom_cli": phantom_cli,
         "phantom_gates": phantom_gates,
         "phantom_modes": phantom_modes,
+        "unreachable_gates": unreachable_gates,
+        "unreachable_note": _unreachable_note(unreachable_gates),
         "boundary_only_mcp": sorted(boundary_mcp),
         "boundary_only_cli": sorted(boundary_cli),
         "boundary_only_gates": sorted(boundary_gates),
@@ -281,6 +356,7 @@ def coverage_audit(
             "gates_covered": len(covered_gates),
             "gates_missing": len(missing_gates),
             "gates_phantom": len(phantom_gates),
+            "gates_unreachable": len(unreachable_gates),
             "gates_boundary_only": len(boundary_gates),
             "modes_declared": len(declared_modes),
             "modes_used": len(used_modes),
@@ -306,6 +382,7 @@ def coverage_audit(
                 "gates": used_gates,
                 "modes": used_modes,
             },
+            unreachable_gates=unreachable_gates_set,
             runs_root=None if runs_root is None else Path(runs_root),
             allowlist_path=allowlist_path,
             default_allowlist=root / ALLOWLIST_FILENAME,
@@ -513,6 +590,7 @@ def _evidence_coverage(
     file_map: dict[str, str],
     declared: dict[str, set[str]],
     used: dict[str, set[str]],
+    unreachable_gates: set[str],
     runs_root: Path | None,
     allowlist_path: str | Path | None,
     default_allowlist: Path,
@@ -524,6 +602,16 @@ def _evidence_coverage(
     newest persisted suite run (gap T-01).  ``unproven`` = referenced but not
     proven (and not allowlisted); ``missing`` = declared but referenced by no
     scenario (Absent).  Only real-confidence proofs count.
+
+    ``missing_count`` totals every absent surface and is the honest full
+    picture.  ``missing_hard_count`` is the subset that indicates a BROKEN
+    INVARIANT rather than a tracked backlog item, and is what the build gate
+    fails on: a *preset*-reachable gate with no scenario is a hole in pipeline
+    coverage and counts, while a *command-path*-reachable gate with no scenario
+    (L1-L4, which run via ``automedia archive``/``distribute``/``omni`` and the
+    publish flow but have no scenario yet) is fully visible in ``missing`` and
+    ``missing_count`` without failing every build.  Gates that nothing can
+    execute are excluded from both (issue #99 — see ``unreachable_gates``).
     """
     library = {scenario.name: scenario for scenario in scenarios}
     reached: dict[str, set[str]] = {surface: set() for surface in SURFACES}
@@ -542,10 +630,21 @@ def _evidence_coverage(
     unproven: dict[str, list[str]] = {}
     missing: dict[str, list[str]] = {}
     allowlisted: dict[str, list[str]] = {}
+    missing_hard_count = 0
     for surface in SURFACES:
         decl = declared[surface]
         proven = decl & reached[surface]
         absent = decl - used[surface]
+        if surface == "gates":
+            # Issue #99: a gate nothing can execute is never "absent" evidence —
+            # it is reported separately as unreachable, not a permanent failure.
+            absent -= unreachable_gates
+            # A command-path-reachable gate with no scenario is a tracked
+            # backlog item, not a broken invariant, so it stays fully visible
+            # in ``missing``/``missing_count`` without failing the build.
+            missing_hard_count += len(absent - COMMAND_PATH_REACHABLE_GATES)
+        else:
+            missing_hard_count += len(absent)
         waived = decl & allow[surface]
         unproven[surface] = sorted((used[surface] & decl) - proven - waived)
         covered[surface] = sorted(proven)
@@ -561,6 +660,7 @@ def _evidence_coverage(
         "covered_count": sum(len(names) for names in covered.values()),
         "unproven_count": sum(len(names) for names in unproven.values()),
         "missing_count": sum(len(names) for names in missing.values()),
+        "missing_hard_count": missing_hard_count,
         "allowlist": allowlist_meta,
     }
 
@@ -749,6 +849,19 @@ def _director_waiver_note(boundary_mcp: list[str]) -> str:
         "'∅ excluding boundary-only (listed)'. Director waiver required for "
         "this classification (guide §5.1: error-boundary probes are never "
         "silently counted as coverage)."
+    )
+
+
+def _unreachable_note(unreachable_gates: list[str]) -> str:
+    """Loud note for the registered-but-unreachable class (issue #99)."""
+    names = ", ".join(unreachable_gates) if unreachable_gates else "(none)"
+    return (
+        "Unreachable gates (registered, in NO preset and on NO command path): "
+        f"{names}. Preset reachability is the union of _MODE_MAP; command-path "
+        "reachability is COMMAND_PATH_REACHABLE_GATES. These are excluded from "
+        "missing_* and from the evidence-half missing/missing_count so an "
+        "unexecutable gate is reported here instead of failing the audit "
+        "forever (the issue #101 false-alarm class)."
     )
 
 

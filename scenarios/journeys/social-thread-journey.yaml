@@ -19,11 +19,11 @@
 #     audit complete (issue #78 A3/A4). It is schema- and standards-valid and
 #     is intended to be run by Wave-3's real-run validation; the A3/A4 wave
 #     itself only loads the library and regenerates the static audit.
-#   - proves_gates is derived EXACTLY from _MODE_MAP["social-thread"] in
-#     src/automedia/pipelines/runner.py (CW, G0-G6, L1-L4 — 13 gates; NO H0:
-#     the thread mode has no human-review gate, and NO V-gates — verified by
-#     eye and enforced by the coverage audit). proves_modes names the mode.
-#     social-thread also sets gate_context content_format=social_thread
+#   - proves_gates equals _MODE_MAP["social-thread"] in
+#     src/automedia/pipelines/runner.py (CW, G0-G3, G6 — 6 gates; NO H0: the
+#     thread mode has no human-review gate, NO V-gates, and G4/G5/L1-L4 are in
+#     NO preset). Bound by the #99 reachability guard. proves_modes names the
+#     mode. social-thread also sets gate_context content_format=social_thread
 #     (runner.py:1207-1209) — the format flows into the CW prompt, not an
 #     extra gate.
 #   - gate_records_pass is NOT asserted, for the same reason as
@@ -69,13 +69,7 @@ proves_gates:
   - G1
   - G2
   - G3
-  - G4
-  - G5
   - G6
-  - L1
-  - L2
-  - L3
-  - L4
 proves_modes:
   - social-thread
 steps:

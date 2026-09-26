@@ -601,6 +601,7 @@ def validate_coverage(
     missing_cli = list(audit.get("missing_cli", []))
     missing_gates = list(audit.get("missing_gates", []))
     missing_modes = list(audit.get("missing_modes", []))
+    unreachable_gates = list(audit.get("unreachable_gates", []))
     unproven = audit.get("unproven", {})
     unproven_count = int(audit.get("unproven_count", 0))
     missing_count = int(audit.get("missing_count", 0))
@@ -671,6 +672,11 @@ def validate_coverage(
             typer.echo(f"  Missing gates (declared, not covered): {', '.join(missing_gates)}")
         if missing_modes:
             typer.echo(f"  Missing modes (declared, not covered): {', '.join(missing_modes)}")
+        if unreachable_gates:
+            typer.echo(
+                "  Unreachable gates (registered, in NO preset and on NO command path): "
+                f"{', '.join(unreachable_gates)}"
+            )
         if not (missing_mcp or missing_cli or missing_gates or missing_modes):
             typer.echo("  missing = 0 (excluding boundary-only, listed above)")
 
