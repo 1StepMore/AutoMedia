@@ -15,7 +15,9 @@ guards):
    parenthesised short SHA ``([0-9a-f]{7,40})`` and the issue reference
    ``(#N)``, then collapses whitespace.
 3. Every ``commit/<40-hex>`` reference resolves to a commit in git history.
-   Skipped cleanly when git is unavailable or the tree is not a git repo.
+   Skipped when git is unavailable, the tree is not a git repo, or the clone is
+   shallow (CI uses ``fetch-depth: 1``, where these commits are absent by
+   design rather than missing from history).
 4. Duplicate groups never mix a merge-commit bullet with a normal one.  The
    defect this guards against is release-please listing both the merge wrapper
    of a unit of work and the squashed/real commit behind it under the same
@@ -101,6 +103,30 @@ def _git_available() -> bool:
     return probe.returncode == 0
 
 
+def _is_shallow() -> bool:
+    """True when the clone lacks the history these assertions need.
+
+    CI checks out with ``fetch-depth: 1``, so most of the SHAs referenced by
+    CHANGELOG.md are simply not present. Asserting they resolve there would fail
+    for a reason that has nothing to do with the changelog, so the git-backed
+    tests skip instead.
+    """
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def _skip_unless_full_history() -> None:
+    if not _git_available():
+        pytest.skip("git is unavailable or this is not a git repository")
+    if _is_shallow():
+        pytest.skip("shallow clone: referenced commits are not present locally")
+
+
 def _commit_exists(sha: str) -> bool:
     result = subprocess.run(
         ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
@@ -146,8 +172,7 @@ def test_released_sections_have_no_duplicate_bullets() -> None:
 
 
 def test_commit_references_resolve() -> None:
-    if not _git_available():
-        pytest.skip("git is unavailable or this is not a git repository")
+    _skip_unless_full_history()
     text = _read()
     shas = sorted(set(COMMIT_SHA_RE.findall(text)))
     unresolved = [sha for sha in shas if not _commit_exists(sha)]
@@ -155,8 +180,7 @@ def test_commit_references_resolve() -> None:
 
 
 def test_duplicate_groups_do_not_mix_merge_and_normal_commits() -> None:
-    if not _git_available():
-        pytest.skip("git is unavailable or this is not a git repository")
+    _skip_unless_full_history()
     text = _read()
     violations: dict[str, object] = {}
     for version, body in released_sections(text).items():
