@@ -1,0 +1,20 @@
+name: regression-100-journey-scenarios-skip-review
+description: Every journey scenario that runs `automedia run` passes --skip-review, so an unattended journey never blocks on the H0 human-review gate's 24-hour timeout.
+intent: Pin issue #100. The nine journey scenarios invoke `automedia run` non-interactively, so without --skip-review the H0 gate blocks the calling thread for up to 86400s (runner.py hardcodes hitl_config["timeout_s"] = 86400 and no config key or CLI flag overrides it) and the only approval channel is the MCP `review_decision` tool, which resolves the wait in-process and is unreachable from a separate CLI process. Each run step therefore always exhausted its 1500s timeout_seconds and failed. The scenarios stayed invisible because `requires_env: AUTOMEDIA_LLM_API_KEY` and nightly.yml runs the suite with `env -u AUTOMEDIA_LLM_API_KEY` and no AUTOMEDIA_FAKE_LLM, so the env gate short-circuited them to `unconfigured` before dispatch. This scenario locks the invariant so a new or edited journey cannot silently reintroduce the hang.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#100"
+requires_env: []
+steps:
+  - name: every journey automedia run command passes --skip-review
+    kind: cli
+    check: "Runs the committed regression-100 helper, which parses every scenarios/journeys/*.yaml file, finds each CLI step whose command invokes `automedia run`, and exits non-zero unless every one includes --skip-review. It also exits non-zero when it finds no such command, so the check cannot pass vacuously."
+    standard: tool.contract
+    command: python3 scripts/regression_100_check.py
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+      stdout_has:
+        - REG100_JOURNEY_SKIP_REVIEW_INVARIANT_HOLDS

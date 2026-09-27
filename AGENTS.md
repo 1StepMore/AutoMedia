@@ -183,7 +183,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 ## 11. Validation Layer
 AutoMedia is agent-oriented, so agents are the testers and humans are the director. The single
 schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md` is the onboarding guide.
-- Scenario library: 142 scenarios; `scenarios/baseline/` holds the committed pre-flight baseline.
+- Scenario library: 143 scenarios; `scenarios/baseline/` holds the committed pre-flight baseline.
 - CLI: `automedia validate list|run|report|diff|coverage|matrix|sign`
 - MCP: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`
 - The validation-driving surface is the CLI and MCP server only; the SDK is a product entry point, explicitly out of validation scope.

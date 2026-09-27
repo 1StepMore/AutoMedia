@@ -1,8 +1,10 @@
 """H0 Human Review Gate — pauses pipeline for human content review.
 
 When this gate executes it returns ``awaiting_hitl`` status, which signals
-the GateEngine to pause and wait for human approval or rejection via
-CLI ``automedia hitl approve/reject`` or MCP HITL tools.
+the GateEngine to pause and wait for human approval or rejection. The only
+approval channel is the MCP ``review_decision`` tool, which resolves the
+paused gate in the running process (same-process only). Unattended runs
+should pass ``automedia run --skip-review`` rather than wait for review.
 
 Behaviour
 ---------

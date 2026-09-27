@@ -651,7 +651,7 @@
       "L5"
     ],
     "distribution": {
-      "L0": 106,
+      "L0": 107,
       "L1": 23,
       "L2": 8,
       "L3": 3,
@@ -724,7 +724,7 @@
         "L5": 0
       },
       "regression": {
-        "L0": 1,
+        "L0": 2,
         "L1": 0,
         "L2": 0,
         "L3": 0,
@@ -748,7 +748,7 @@
         "L5": 0
       }
     },
-    "total": 142
+    "total": 143
   },
   "meta_scenarios": [
     "account-cli-surface",
@@ -766,6 +766,7 @@
     "onboard-cli-surface",
     "pool-cli-surface",
     "projects-cli-surface",
+    "regression-100-journey-scenarios-skip-review",
     "regression-83-configure-llm-preserves-fallback",
     "rollback-cli-surface",
     "run-cli-surface",
@@ -896,7 +897,7 @@
     "update-engine-config-positive",
     "video-only-journey"
   ],
-  "meta_scenario_count": 27,
+  "meta_scenario_count": 28,
   "surface_scenario_count": 115,
   "surface_by_level": {
     "levels": [
@@ -991,6 +992,6 @@
     },
     "total": 115
   },
-  "generated_at": "2026-09-26T20:15:26.619755+00:00",
-  "scenario_count": 142
+  "generated_at": "2026-09-26T20:36:40.890876+00:00",
+  "scenario_count": 143
 }

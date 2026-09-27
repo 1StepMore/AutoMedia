@@ -82,7 +82,8 @@ steps:
     kind: cli
     check: "A real qa_only pipeline run for a fixed topic and brand completes and prints the completion marker (T3 of the True Test: topic to output in one sitting, no docs)."
     standard: founder-expectations.true-test
-    command: automedia run --topic "QA discipline for AI-generated media" --brand my-brand --mode qa_only
+    # Issue #100: unattended run — H0 would block its 86400s timeout with no CLI approval path, so skip review.
+    command: automedia run --topic "QA discipline for AI-generated media" --brand my-brand --mode qa_only --skip-review
     timeout_seconds: 1500
     expect:
       exit_code: 0
