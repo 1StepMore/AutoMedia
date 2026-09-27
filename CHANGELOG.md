@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.0...automedia-v1.7.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **cli:** judge doctor fallback completeness the way the runtime resolves keys ([#101](https://github.com/1StepMore/AutoMedia/issues/101)) ([3d881bb](https://github.com/1StepMore/AutoMedia/commit/3d881bb66ea5013a86f83f4a07c743e2587f63ee))
+* **cli:** judge doctor fallback completeness the way the runtime resolves keys ([#101](https://github.com/1StepMore/AutoMedia/issues/101)) ([fa26731](https://github.com/1StepMore/AutoMedia/commit/fa26731c33e2004ac8eeda396ef443bf7976e863))
+* **hitl:** make an H0 review pause resolvable, bounded, and fail-closed ([#105](https://github.com/1StepMore/AutoMedia/issues/105)) ([7dae1a4](https://github.com/1StepMore/AutoMedia/commit/7dae1a448aeaa5d194868cb1f79ea30e01187567))
+* **scenarios:** skip H0 review in the 9 journey runs and correct the H0 docstring ([#100](https://github.com/1StepMore/AutoMedia/issues/100)) ([f6e2033](https://github.com/1StepMore/AutoMedia/commit/f6e20332c297ef8a12944af0788707f7747e53a2))
+* **scenarios:** skip H0 review in the 9 journey runs and correct the H0 docstring ([#100](https://github.com/1StepMore/AutoMedia/issues/100)) ([30c3da0](https://github.com/1StepMore/AutoMedia/commit/30c3da09a6ad1a7830cec2a20f602262eb08f082))
+* **validation:** correct phantom gate declarations and teach the audit reachability ([#99](https://github.com/1StepMore/AutoMedia/issues/99)) ([fbc7631](https://github.com/1StepMore/AutoMedia/commit/fbc7631c4bb2f8da91ca333ca7214303ecf583ae))
+* **validation:** correct phantom gate declarations and teach the audit reachability ([#99](https://github.com/1StepMore/AutoMedia/issues/99)) ([e60f53f](https://github.com/1StepMore/AutoMedia/commit/e60f53f7ef7e342c4bd6aceec112836e93df413f))
+
 ## [1.7.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.6.0...automedia-v1.7.0) (2026-09-21)
 
 
