@@ -15,6 +15,7 @@ from automedia.cli.output import OutputMode, get_output_mode, output_error, outp
 from automedia.cli.output_format import output_formatted_error, output_pipeline_error
 from automedia.core.logging import bind_correlation_id
 from automedia.core.paths import get_user_config_dir
+from automedia.core.project import Project, find_project_dir
 from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
 from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
@@ -24,6 +25,11 @@ _MODEL_CONFIG_PATH = get_user_config_dir() / "model_config.yaml"
 #: marker instead of ✗ because a skipped gate did not fail — it evaluated
 #: nothing (health-assessment P0-1: an un-run V gate must not read as either a
 #: pass or a failure).
+#: Process exit codes for ``automedia run``: 0 success, 1 failure, 2 is the
+#: typer/click usage error, 3 = awaiting human review (the run parked at a
+#: HITL gate — neither success nor failure).
+EXIT_AWAITING_REVIEW = 3
+
 _GATE_ICONS: dict[str, str] = {
     "passed": "✓",
     "failed": "✗",
@@ -116,10 +122,30 @@ class CLIPipelineProgress(PipelineProgress):
 
 
 def _validate_brand(value: str) -> str:
-    """Validate brand identifier is non-empty."""
-    if not value or not value.strip():
+    """Validate brand identifier is non-empty.
+
+    An empty value means "not supplied": it is filled in from the parked
+    project when ``--project-id`` is given, and rejected with a clear message
+    afterwards if there is no project to take it from.
+    """
+    if not value:
+        return value
+    if not value.strip():
         raise typer.BadParameter("Brand identifier must not be empty")
     return value
+
+
+def _resolve_resume_identity(project_id: str) -> tuple[str, str] | None:
+    """Return ``(topic, brand)`` recorded on the parked *project_id*.
+
+    ``None`` when the project cannot be found, so the caller can emit its own
+    "no such project" error rather than a confusing missing-option one.
+    """
+    project_dir = find_project_dir(project_id)
+    if project_dir is None:
+        return None
+    project = Project.load(project_dir)
+    return project.topic, project.brand
 
 
 def _is_failure_status(status: str, allow_partial: bool) -> bool:
@@ -127,10 +153,14 @@ def _is_failure_status(status: str, allow_partial: bool) -> bool:
 
     ``failed`` (pipeline-level error) always fails.  ``partial`` (a gate
     stopped the run) fails unless the caller explicitly opted in with
-    ``--allow-partial``.
+    ``--allow-partial``.  ``awaiting_review`` is neither success nor
+    failure — it exits with its own code (3), so it never reads as a
+    failure here.
     """
     if status == "failed":
         return True
+    if status == "awaiting_review":
+        return False
     return status == "partial" and not allow_partial
 
 
@@ -142,11 +172,11 @@ def run_cmd(
         help="Comma-separated topics for batch mode (overrides --topic).",
     ),
     brand: str = typer.Option(
-        ...,
+        "",
         "--brand",
         "-b",
         callback=_validate_brand,
-        help="Brand identifier.",
+        help="Brand identifier. Optional when --project-id is given; taken from the project.",
     ),
     mode: str = typer.Option(  # type: ignore[call-overload]  # external click.Choice vs typer's vendored click ParamType
         "auto",
@@ -202,6 +232,22 @@ def run_cmd(
             "`automedia hitl approve|reject <project_id>` instead."
         ),
     ),
+    hitl_block: bool = typer.Option(
+        False,
+        "--hitl-block",
+        help=(
+            "Block at H0 even when stdin is not a TTY; for a human watching "
+            "logs who will decide out-of-band."
+        ),
+    ),
+    project_id: str | None = typer.Option(
+        None,
+        "--project-id",
+        help=(
+            "Resume an existing (parked) project by id, consuming a decision "
+            "delivered by `automedia hitl approve`."
+        ),
+    ),
     hitl_timeout: float = typer.Option(
         None,
         "--hitl-timeout",
@@ -240,6 +286,12 @@ def run_cmd(
 
     Use --topic for a single topic or --topics for batch production
     (comma-separated, sequential execution with per-topic reporting).
+
+    A run parked at the H0 human-review gate reports status
+    "awaiting_review" and exits with code 3 — neither success (0) nor
+    failure (1).  Decide out-of-band with `automedia hitl pending` /
+    `automedia hitl approve <id>`, then resume the same project by
+    passing `--project-id <id>`.
     """
 
     if not _MODEL_CONFIG_PATH.is_file():
@@ -293,6 +345,8 @@ def run_cmd(
                     progress=cli_progress,
                     source_path=source_path,
                     source_url=source_url,
+                    block_on_hitl=(True if hitl_block else None),
+                    resume_project_id=project_id,
                 )
                 batch_results.append(
                     {
@@ -324,20 +378,40 @@ def run_cmd(
 
         # Batch summary
         passed = sum(1 for r in batch_results if r["status"] == "success")
-        failed = len(batch_results) - passed
+        awaiting = sum(1 for r in batch_results if r["status"] == "awaiting_review")
+        failed = len(batch_results) - passed - awaiting
 
         if get_output_mode() == OutputMode.JSON:
-            output_text(None, data={"results": batch_results, "passed": passed, "failed": failed})
+            output_text(
+                None,
+                data={
+                    "results": batch_results,
+                    "passed": passed,
+                    "awaiting": awaiting,
+                    "failed": failed,
+                },
+            )
         else:
-            icon = typer.colors.GREEN if failed == 0 else typer.colors.YELLOW
+            if failed:
+                icon = typer.colors.YELLOW
+            elif awaiting:
+                icon = typer.colors.CYAN
+            else:
+                icon = typer.colors.GREEN
             typer.secho(
                 f"\n{'=' * 60}\n"
-                f"Batch complete — {passed}/{len(batch_results)} passed, {failed} failed",
+                f"Batch complete — {passed}/{len(batch_results)} passed, "
+                f"{awaiting} awaiting, {failed} failed",
                 fg=icon,
                 bold=True,
             )
             for r in batch_results:
-                status_icon = "✓" if r["status"] == "success" else "✗"
+                if r["status"] == "success":
+                    status_icon = "✓"
+                elif r["status"] == "awaiting_review":
+                    status_icon = "⊘"
+                else:
+                    status_icon = "✗"
                 pid = r["project_id"] or "(none)"
                 typer.echo(f"  {status_icon} {r['topic']!r} → {r['status']}  [{pid}]")
                 if r["error"]:
@@ -345,19 +419,38 @@ def run_cmd(
 
         if failed:
             raise typer.Exit(code=1)
+        if awaiting:
+            raise typer.Exit(code=EXIT_AWAITING_REVIEW)
         return
 
     # ------------------------------------------------------------------
     # Single topic mode (--topic)
     # ------------------------------------------------------------------
     if not topic:
-        output_error("Either --topic or --topics is required.")
+        if project_id:
+            # A parked project already knows its own topic/brand, so resuming it
+            # must not force the operator to retype them (#108).
+            resolved = _resolve_resume_identity(project_id)
+            if resolved is not None:
+                topic, brand = topic or resolved[0], brand or resolved[1]
+        if not topic:
+            output_error("Either --topic or --topics is required.")
+            raise typer.Exit(code=1)
+    if not brand:
+        output_error("--brand is required unless --project-id supplies it.")
         raise typer.Exit(code=1)
 
     if skip_review and wait_for_review:
         output_error(
             "--skip-review and --wait-for-review are mutually exclusive: the "
             "first removes the pause, the second waits for it."
+        )
+        raise typer.Exit(code=1)
+
+    if skip_review and hitl_block:
+        output_error(
+            "--skip-review and --hitl-block are mutually exclusive: the "
+            "first removes the pause, the second forces the run to wait at it."
         )
         raise typer.Exit(code=1)
 
@@ -406,6 +499,8 @@ def run_cmd(
             progress=cli_progress,
             source_path=source_path,
             source_url=source_url,
+            block_on_hitl=(True if hitl_block else None),
+            resume_project_id=project_id,
         )
     except Exception as exc:
         output_formatted_error(
@@ -431,12 +526,19 @@ def run_cmd(
         data["error"] = pipeline_result.error
 
     if output_text(None, data=data):
+        if pipeline_result.status == "awaiting_review":
+            raise typer.Exit(code=EXIT_AWAITING_REVIEW)
         if _is_failure_status(pipeline_result.status, allow_partial):
             raise typer.Exit(code=1)
         return
 
     # Print summary
-    colour = typer.colors.GREEN if pipeline_result.status == "success" else typer.colors.YELLOW
+    if pipeline_result.status == "success":
+        colour = typer.colors.GREEN
+    elif pipeline_result.status == "awaiting_review":
+        colour = typer.colors.CYAN
+    else:
+        colour = typer.colors.YELLOW
     typer.secho(f"\nPipeline finished: {pipeline_result.status}", fg=colour, bold=True)
 
     if pipeline_result.project_id:
@@ -468,6 +570,23 @@ def run_cmd(
             gates_log=pipeline_result.gates_log,
             verbose=verbose,
         )
+
+    if pipeline_result.status == "awaiting_review":
+        parked_id = pipeline_result.project_id or "<project_id>"
+        typer.secho(
+            "\n⚠ Project is parked awaiting human review (H0).",
+            fg=typer.colors.CYAN,
+            bold=True,
+        )
+        typer.echo(
+            "  Decide out-of-band: `automedia hitl pending` / "
+            f"`automedia hitl approve {parked_id}`."
+        )
+        typer.echo(
+            f"  Then resume it: `automedia run --topic {topic!r} --brand {brand!r} "
+            f"--project-id {parked_id}`."
+        )
+        raise typer.Exit(code=EXIT_AWAITING_REVIEW)
 
     if _is_failure_status(pipeline_result.status, allow_partial):
         raise typer.Exit(code=1)

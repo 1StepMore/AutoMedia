@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.8.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.1...automedia-v1.8.0) (2026-09-28)
+
+
+### Features
+
+* **cli:** report `awaiting_review` with exit code 3 when a run parks at H0 ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+* **cli:** park non-TTY H0 runs by default instead of blocking for the review budget ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+* **cli:** add `--hitl-block` to force blocking at H0 when stdin is not a TTY ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+* **cli:** add `--project-id` to resume a parked project by id ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+* **mcp:** never block at H0 in `run_pipeline` / `run_batch`; return `awaiting_review` ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+* **cron:** never block at H0 in scheduled pipeline runs; return `awaiting_review` ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+
+
+### Bug Fixes
+
+* **cli:** `automedia run --json` exits 3 for a parked run instead of reporting success ([#108](https://github.com/1StepMore/AutoMedia/issues/108))
+
+
+### Breaking Changes
+
+* `automedia run` now exits 3 for a run parked at H0. A script that treated any non-zero exit as "failed" must distinguish code 3, which means "awaiting human review", not failure.
+* A script that retries failed runs now retries fast instead of after the H0 timeout. Usually better, but call it out.
+* MCP `run_pipeline` no longer live-pauses at H0, so the `review_decision` tool does not apply to MCP-started runs. Use park, then `hitl approve`, then `run_pipeline(project_id=...)`.
+* Cron and CI jobs that previously failed after an hour now park immediately and may sit awaiting review indefinitely.
+
 ## [1.7.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.0...automedia-v1.7.1) (2026-09-27)
 
 

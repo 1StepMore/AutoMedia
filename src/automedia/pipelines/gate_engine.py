@@ -32,6 +32,7 @@ from automedia.pipelines.gate_types import (
     ProgressData,  # noqa: F401 — re-exported for backward compatibility
     _hitl_lock,  # noqa: F401 — re-exported for backward compatibility
     _hitl_waiters,  # noqa: F401 — re-exported for backward compatibility
+    consume_hitl_decision_file,
 )
 
 log = get_logger(__name__)
@@ -138,6 +139,9 @@ class GateLogEntry:
 class PipelineResult:
     """Result of a full pipeline execution.
 
+    ``status`` is ``"awaiting_review"`` when the run parked at a HITL gate
+    with ``wait_for_hitl=False``: the gates that ran passed, but a human
+    decision is still outstanding, so the run is neither success nor failure.
     ``affected_downstream`` is failure-localization metadata: when a gate
     fails, the runner fills it with the gates downstream of the first
     failed gate (restricted to the mode's gate list) — the gates that did
@@ -145,7 +149,7 @@ class PipelineResult:
     set for pipeline-level (unexpected) errors, never for gate failures.
     """
 
-    status: Literal["success", "failed", "partial"] = "success"
+    status: Literal["success", "failed", "partial", "awaiting_review"] = "success"
     project_id: str = ""
     project_dir: str = ""
     topic: str = ""
@@ -198,6 +202,13 @@ class GateEngine:
         regeneration re-runs the CW (content writer) gate with failure
         feedback and executes all gates from CW onward.  Default: 2.
         Set to 0 to disable level 2 regeneration.
+    wait_for_hitl:
+        When ``True`` (default), a gate returning ``awaiting_hitl`` blocks
+        the run until a human approves or rejects — the pre-existing
+        behaviour, so every current caller and test is unchanged.  When
+        ``False`` the engine never blocks: it consumes an already-delivered
+        decision if present, otherwise parks the run (``hitl_awaiting``)
+        for an external reviewer.
     """
 
     def __init__(
@@ -210,6 +221,7 @@ class GateEngine:
         max_regenerations: int = 2,
         pause_on_approval: bool = False,
         media_stage: Callable[[GateContext | dict[str, Any]], None] | None = None,
+        wait_for_hitl: bool = True,
     ) -> None:
         """Initialize the gate engine with an ordered list of gates.
 
@@ -235,6 +247,9 @@ class GateEngine:
                 swallowed — an unavailable media engine must never crash the
                 gate loop; the affected gates then report ``skipped`` (see
                 ``gates/_result.missing_input_result``).
+            wait_for_hitl: When ``True`` (default), block at a gate returning
+                ``awaiting_hitl`` until a human decides.  When ``False``, never
+                block — consume a delivered decision or park the run.
         """
         self._gates = list(gates)
         self._hooks: list[GateHook] = list(hooks) if hooks else []
@@ -244,6 +259,7 @@ class GateEngine:
         self._max_regenerations = max_regenerations
         self._pause_on_approval = pause_on_approval
         self._media_stage = media_stage
+        self._wait_for_hitl = wait_for_hitl
         # Per-gate approval coordination (thread-safe via lock + Event).
         self._approval_events: dict[str, threading.Event] = {}
         self._approval_results: dict[str, dict[str, Any]] = {}
@@ -254,6 +270,15 @@ class GateEngine:
         # Sub-engines created by level-2 regeneration inherit this flag so
         # the outer engine can tell reject-halts from mere retry exhaustion.
         self._hitl_rejected_halt = False
+        # Set when this run parked at a HITL gate instead of blocking
+        # (wait_for_hitl=False).  The runner reads it to report status
+        # "awaiting_review".
+        self._hitl_awaiting = False
+
+    @property
+    def hitl_awaiting(self) -> bool:
+        """Whether the run parked at a HITL gate awaiting a human decision."""
+        return self._hitl_awaiting
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -276,6 +301,58 @@ class GateEngine:
             self._media_stage(gate_context)
         except Exception as exc:
             log.warning("gate_engine.media_stage_failed", error=str(exc))
+
+    def _resolve_awaiting_hitl(
+        self,
+        result: dict[str, Any],
+        gate_name: str,
+        gate_context: GateContext | dict[str, Any],
+        duration: float,
+        progress: PipelineProgress | None,
+    ) -> Literal["approved", "rejected", "parked"]:
+        """Resolve a gate that reported ``awaiting_hitl``.
+
+        Returns ``"parked"`` when the engine is configured not to block and no
+        decision has been delivered yet: the caller stops the run and the runner
+        reports ``status="awaiting_review"``.  Returns ``"approved"`` or
+        ``"rejected"`` once a decision is known — from the blocking wait, or,
+        when blocking is disabled, from a single non-blocking poll.  A rejection
+        also flips *result* to the stop-failure shape and sets
+        ``_hitl_rejected_halt`` so the pipeline halts exactly like a failed
+        ``stop`` gate.
+        """
+        if progress:
+            progress.on_gate_awaiting_hitl(gate_name)
+
+        project_dir = _hitl_project_dir(gate_context)
+
+        if self._wait_for_hitl and progress is not None:
+            hitl_ok = progress.wait_for_hitl(
+                project_dir=project_dir,
+                timeout=result.get("timeout_s", 3600),
+                on_timeout=str(result.get("on_timeout", "approve")),
+            )
+        else:
+            delivered = (
+                progress.poll_hitl_decision(project_dir)
+                if progress
+                else consume_hitl_decision_file(project_dir)
+            )
+            if delivered is None:
+                self._hitl_awaiting = True
+                result["_hitl_awaiting"] = True
+                if progress:
+                    progress.on_gate_end(gate_name, True, duration, detail="awaiting human review")
+                return "parked"
+            hitl_ok = delivered
+
+        result["_hitl_approved"] = hitl_ok
+        if not hitl_ok:
+            result["passed"] = False
+            result["error"] = result.get("error") or f"gate {gate_name} rejected by human review"
+            self._hitl_rejected_halt = True
+            return "rejected"
+        return "approved"
 
     def _dispatch_before(self, gate_name: str, context: GateContext | dict[str, Any]) -> None:
         """Notify all registered hooks that *gate_name* is about to run."""
@@ -788,16 +865,20 @@ class GateEngine:
             retry_delay=self._retry_delay,
             max_quality_retries=self._max_quality_retries,
             max_regenerations=_local_max_regen,
+            wait_for_hitl=self._wait_for_hitl,
         )
         sub_ok, sub_results = sub_engine._run(
             gate_context,
             early_stop=True,
             progress=progress,
         )
-        # Propagate a human rejection out of the sub-run: a rejected HITL
-        # gate is a director decision, not a recoverable quality failure.
+        # Propagate a human rejection (or a park) out of the sub-run: a
+        # rejected HITL gate is a director decision, not a recoverable
+        # quality failure, and a parked gate must park the whole pipeline.
         if sub_engine._hitl_rejected_halt:
             self._hitl_rejected_halt = True
+        if sub_engine._hitl_awaiting:
+            self._hitl_awaiting = True
 
         return sub_ok, sub_results  # type: ignore[return-value]  # sub_engine._run() returns union; cannot narrow on early_stop param
 
@@ -902,24 +983,14 @@ class GateEngine:
                 results.append(result)
 
                 # HITL: when gate returns awaiting_hitl, pause for human review
-                if result.get("status") == "awaiting_hitl" and progress:
-                    timeout_s = result.get("timeout_s", 3600)
-                    progress.on_gate_awaiting_hitl(gate_name)
-                    hitl_ok = progress.wait_for_hitl(
-                        project_dir=_hitl_project_dir(gate_context),
-                        timeout=timeout_s,
-                        on_timeout=str(result.get("on_timeout", "approve")),
+                if result.get("status") == "awaiting_hitl":
+                    hitl_outcome = self._resolve_awaiting_hitl(
+                        result, gate_name, gate_context, duration, progress
                     )
-                    result["_hitl_approved"] = hitl_ok
-                    if not hitl_ok:
-                        # Human rejected: convert to a stop-failure outcome so
-                        # the pipeline halts exactly like a failed "stop" gate
-                        # (h0_human_review docstring contract).
-                        result["passed"] = False
-                        result["error"] = (
-                            result.get("error") or f"gate {gate_name} rejected by human review"
-                        )
-                        self._hitl_rejected_halt = True
+                    if hitl_outcome == "parked":
+                        if early_stop:
+                            return all_ok, results
+                        return results
 
                 passed = result.get("passed", True)
                 if progress:
@@ -998,22 +1069,14 @@ class GateEngine:
                             result["quality_retry_count"] = _quality_attempt
                             results[-1] = result
 
-                            if result.get("status") == "awaiting_hitl" and progress:
-                                timeout_s = result.get("timeout_s", 3600)
-                                progress.on_gate_awaiting_hitl(gate_name)
-                                hitl_ok = progress.wait_for_hitl(
-                                    project_dir=_hitl_project_dir(gate_context),
-                                    timeout=timeout_s,
-                                    on_timeout=str(result.get("on_timeout", "approve")),
+                            if result.get("status") == "awaiting_hitl":
+                                hitl_outcome = self._resolve_awaiting_hitl(
+                                    result, gate_name, gate_context, duration, progress
                                 )
-                                result["_hitl_approved"] = hitl_ok
-                                if not hitl_ok:
-                                    result["passed"] = False
-                                    result["error"] = (
-                                        result.get("error")
-                                        or f"gate {gate_name} rejected by human review"
-                                    )
-                                    self._hitl_rejected_halt = True
+                                if hitl_outcome == "parked":
+                                    if early_stop:
+                                        return all_ok, results
+                                    return results
 
                             passed = result.get("passed", True)
                             if progress:

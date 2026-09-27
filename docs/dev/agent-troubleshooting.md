@@ -26,13 +26,13 @@ The `run_full_pipeline()` function returns a `PipelineResult` dataclass:
 
 | Field | Type | Meaning |
 |-------|------|---------|
-| `status` | `"success"`, `"failed"`, `"partial"` | Overall pipeline outcome |
+| `status` | `"success"`, `"failed"`, `"partial"`, `"awaiting_review"` | Overall pipeline outcome |
 | `gates_log` | `list[GateLogEntry]` | Per-gate pass/fail with duration and error |
 | `error` | `str \| None` | Top-level error message (only for unexpected exceptions) |
 | `assets` | `list[AssetInfo]` | Produced asset metadata (type, path, md5) |
 | `affected_downstream` | `list[str]` | Gates blocked by the first gate failure (DAG downstream ∩ mode gates, in canonical order); empty when all gates passed or the pipeline aborted before any gate ran |
 
-A `status="partial"` means some gates passed but a `failure_mode="stop"` gate failed or a `failure_mode="retry"` gate failed and the pipeline continued.
+A `status="partial"` means some gates passed but a `failure_mode="stop"` gate failed or a `failure_mode="retry"` gate failed and the pipeline continued. A `status="awaiting_review"` means the run parked at a HITL gate (H0) with no human decision delivered yet; it is neither success nor failure, and the CLI exits 3 for it.
 
 **Step 3: Interpret gate failure modes**
 
@@ -71,7 +71,7 @@ Or from the CLI:
 # Resume from the last passed gate (reads history.db)
 automedia run --topic "AI tools" --brand my-brand --auto-resume
 
-# Inspect per-gate passed/failed/pending + md5 before resuming
+# Inspect per-gate passed/failed/pending/awaiting_review + md5 before resuming
 automedia pipeline state <project_id> --base-dir ./projects
 ```
 
@@ -84,6 +84,7 @@ The `resume_from` value must match a gate name in the current mode's gate list (
 | `"success"` | All gates passed | Pipeline complete, assets ready |
 | `"partial"` | Some gates failed, pipeline continued | Check `gates_log` for failures, retry specific gates |
 | `"failed"` | Unexpected exception before or during execution | Check `error` field for stack trace |
+| `"awaiting_review"` | The run parked at the H0 review gate; a human decision is still outstanding | Run `automedia hitl pending`, then `automedia hitl approve <project_id>` or `reject`; resume with `automedia run --project-id <project_id> --resume-from H0`. CLI exit code is 3 (neither success nor failure), so do not retry it as a failure |
 ---
 
 ## 2. Configuration Issues
@@ -439,7 +440,7 @@ From the CLI:
 # Resume from the last passed gate (reads history.db)
 automedia run --topic "AI tools" --brand my-brand --auto-resume
 
-# Audit per-gate state (passed/failed/pending + md5) first
+# Audit per-gate state (passed/failed/pending/awaiting_review + md5) first
 automedia pipeline state <project_id> --base-dir ./projects
 ```
 

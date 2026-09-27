@@ -71,20 +71,41 @@ Beyond the MCP tools, a paused H0 review can be resolved through two more
 channels:
 
 - **Interactive prompt**: `automedia run ... --wait-for-review` prompts on
-  stdin when H0 pauses (`[a]pprove` / `[r]eject`). It is a no-op when stdin is
-  not a TTY, so unattended runs fall through to the timeout policy.
-- **Cross-process CLI**: `automedia hitl pending` lists pipelines parked
-  waiting for a decision, and `automedia hitl approve <project_id>` /
+  stdin when H0 pauses (`[a]pprove` / `[r]eject`). It forces the run to block
+  even when stdin is not a TTY, where the prompt cannot run and the decision
+  must arrive out-of-band.
+- **Cross-process CLI**: `automedia hitl pending` lists projects awaiting a
+  decision, and `automedia hitl approve <project_id>` /
   `automedia hitl reject <project_id>` write the decision into the project
-  directory for the parked run to pick up. Both accept `--base-dir`.
+  directory. Both accept `--base-dir`.
 
-An undecided pause waits `gate_engine.hitl_timeout_s` seconds (default `3600`,
-one hour) before `gate_engine.hitl_on_timeout` applies. The default policy is
-`reject`, so the pipeline fails rather than shipping unreviewed content. Set
+On an interactive terminal an undecided pause waits
+`gate_engine.hitl_timeout_s` seconds (default `3600`, one hour) before
+`gate_engine.hitl_on_timeout` applies. The default policy is `reject`, so the
+pipeline fails rather than shipping unreviewed content. Set
 `gate_engine.hitl_on_timeout: approve` (or pass `automedia run
 --hitl-on-timeout approve`) to auto-approve at timeout. `automedia run
---hitl-timeout SECONDS` overrides the budget for a single run; `--skip-review`
-and `--wait-for-review` are mutually exclusive.
+--hitl-timeout SECONDS` overrides the budget for a single run.
+
+When stdin is not a TTY and neither `--wait-for-review` nor `--hitl-block` is
+given, the run does not block at all: it parks immediately, returns
+`status="awaiting_review"`, and exits 3 in seconds rather than waiting out the
+review budget. `--hitl-block` opts back into the blocking behaviour for a human
+tailing the logs. `--skip-review` and `--wait-for-review` are mutually
+exclusive; `--skip-review` and `--hitl-block` are too.
+
+A parked run is resumed by passing its project id, which preserves the decision
+already delivered to the project directory:
+
+```bash
+automedia run --topic "..." --brand my-brand          # non-interactive: parks, exits 3
+automedia hitl pending                                # see what is waiting
+automedia hitl approve <project_id>                   # a human decides later
+automedia run --project-id <project_id> --resume-from H0
+```
+
+`--resume-from H0` requires `--project-id`; without a project id the runner
+starts a brand-new project instead of the parked one.
 
 The director preset defines 8 review nodes for gate-level oversight:
 

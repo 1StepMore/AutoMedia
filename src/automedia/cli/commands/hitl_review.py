@@ -3,10 +3,17 @@
 Split out of ``hitl.py`` so the preset/configuration surface and the review
 delivery surface can each be read on their own.
 
-A run parked at the H0 human-review gate blocks in the process that started it,
-so an in-process approval is unreachable from a second shell. These commands
-bridge that gap: they confirm the run really is parked (via the project's
-``history.db``) and write ``.hitl_state.json``, which the waiting run polls.
+A decision is delivered through the project's ``.hitl_state.json``, so it
+reaches the run no matter where that run is. A process actively blocked at the
+H0 human-review gate picks the file up on its next poll, and a process that has
+already exited — a *parked* run that chose to return ``awaiting_review`` instead
+of waiting — leaves the decision behind for the next run against that project to
+consume.
+
+These commands therefore only need the project's ``history.db`` to confirm a
+gate is still awaiting a decision; they never require a live process. An
+in-process approval from a second shell is unreachable, which is the gap this
+module bridges.
 """
 
 from __future__ import annotations
@@ -42,8 +49,9 @@ def _awaiting_gate(project_dir: str) -> str | None:
 
     A paused run has a ``<gate>:started`` history row with no terminal row for
     the same gate, because ``after_gate`` only fires once the decision resolves.
-    That makes ``history.db`` a reliable cross-process "is it waiting?" signal —
-    the waiting process itself only holds in-memory state.
+    That makes ``history.db`` a reliable cross-process "is a decision pending?"
+    signal — an in-flight run holds the pause only in memory, and a parked run
+    that has already exited holds nothing at all.
     """
     from automedia.hooks.pipeline_history import _read_history
 
@@ -78,17 +86,18 @@ def _deliver(decision: str, project_id: str, base_dir: str | None) -> None:
     gate = _awaiting_gate(project_dir)
     if gate is None:
         output_error(
-            f"Project {project_id!r} is not waiting for a human decision, so "
-            f"there is nothing to {decision}. Run `automedia hitl pending` to see "
-            "which projects are paused."
+            f"Project {project_id!r} has no gate awaiting a decision, so there "
+            f"is nothing to {decision}. Check the project id is right, then run "
+            "`automedia hitl pending` to see which projects are paused."
         )
         raise typer.Exit(code=1)
 
     state_file = Path(project_dir) / ".hitl_state.json"
     if state_file.is_file():
-        # The waiter has not consumed the previous decision yet. Overwriting it
-        # would silently turn an approve into a reject (or vice versa) depending
-        # on which poll lands last.
+        # The previous decision has not been consumed yet (by the blocked run,
+        # or by the next run for a parked project). Overwriting it would
+        # silently turn an approve into a reject (or vice versa) depending on
+        # which consumer lands last.
         output_error(
             f"A decision for project {project_id!r} was already delivered and has "
             "not been consumed yet. Wait for the run to pick it up before "
@@ -166,7 +175,7 @@ def hitl_approve(
         None, "--base-dir", help="Directory to scan for the project."
     ),
 ) -> None:
-    """Approve a pipeline that another process has paused for review."""
+    """Approve a pipeline paused at a review gate."""
     _deliver("approve", project_id, base_dir)
 
 
@@ -177,5 +186,5 @@ def hitl_reject(
         None, "--base-dir", help="Directory to scan for the project."
     ),
 ) -> None:
-    """Reject a pipeline that another process has paused for review."""
+    """Reject a pipeline paused at a review gate."""
     _deliver("reject", project_id, base_dir)

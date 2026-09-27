@@ -195,7 +195,8 @@ def run_scheduled_pipeline(
     dict
         Result dict with keys:
 
-        * ``status`` — ``"success"``, ``"partial"``, or ``"failed"``
+        * ``status`` — ``"success"``, ``"partial"``, ``"awaiting_review"``,
+          or ``"failed"``
         * ``topic`` — the selected topic title
         * ``project_id`` — project identifier (when pipeline ran)
         * ``mode`` — the pipeline mode used
@@ -247,6 +248,10 @@ def run_scheduled_pipeline(
             topic=topic,
             brand=brand,
             mode=mode,
+            # Unattended: never block on H0.  A run that reaches the review
+            # gate parks immediately (``awaiting_review``) instead of holding
+            # the whole scheduled run open with nobody there to answer.
+            block_on_hitl=False,
         )
     except Exception as exc:
         msg = f"Pipeline execution failed: {exc}"
@@ -261,6 +266,14 @@ def run_scheduled_pipeline(
         "platform": platform,
         "brand": brand,
     }
+
+    if result.status == "awaiting_review":
+        log.info(
+            "cron.runner.awaiting_review",
+            name=name,
+            project_id=result.project_id,
+            topic=topic,
+        )
 
     # ------------------------------------------------------------------
     # 3. Publish (if pipeline produced output)

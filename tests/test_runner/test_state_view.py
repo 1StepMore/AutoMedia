@@ -24,8 +24,11 @@ Status determination (best-effort, READ-ONLY — Metis G3/G8):
     ``"{gate}:completed"`` AND ``metadata_json.passed == true``
   * **failed**: the latest history row for that gate is ``"{gate}:completed"``
     with ``passed: false``, OR ``"{gate}:failed"``
+  * **awaiting_review**: the LAST relevant row for a parkable gate (H0) is
+    ``"{gate}:started"`` with no later ``completed``/``failed`` row — the run
+    parked awaiting a human decision (#108)
   * **pending**: no ``completed``/``failed`` row for that gate (only
-    ``started`` or nothing at all)
+    ``started``, or nothing at all)
   * **"latest row per gate wins"**: if a gate has multiple ``completed`` rows,
     the LAST (highest id) determines status.
 * ``md5``/``recorded_at``: from ``get_pipeline_md5(project_dir)["gates"][gate]``
@@ -266,6 +269,82 @@ class TestLatestRowWins:
 
         g0 = next(row for row in result if row.gate == "G0")
         assert g0.status == "passed"
+
+
+class TestAwaitingReview:
+    """A gate that started but never settled reports ``awaiting_review`` (#108)."""
+
+    def test_started_unsettled_gate_reports_awaiting_review(self, tmp_path: Path) -> None:
+        project_dir = _create_project_with_history(
+            tmp_path / "20260707_test-topic",
+            PROJECT_ID,
+            [("H0:started", None)],
+        )
+
+        result = aggregate_pipeline_state(project_dir, "auto")
+
+        h0 = next(row for row in result if row.gate == "H0")
+        assert h0.status == "awaiting_review"
+
+    def test_crashed_non_hitl_gate_stays_pending(self, tmp_path: Path) -> None:
+        """A lone ``started`` row only means "parked" for a parkable gate.
+
+        A run that died mid-gate leaves the same history shape as one that
+        parked at H0, but nothing is waiting for a human, so it must not be
+        reported as ``awaiting_review``.
+        """
+        project_dir = _create_project_with_history(
+            tmp_path / "20260707_test-topic",
+            PROJECT_ID,
+            [("V1:started", None)],
+        )
+
+        result = aggregate_pipeline_state(project_dir, "auto")
+
+        v1 = next(row for row in result if row.gate == "V1")
+        assert v1.status == "pending"
+
+    def test_settled_gate_is_unchanged(self, tmp_path: Path) -> None:
+        passed_dir = _create_project_with_history(
+            tmp_path / "20260707_passed",
+            PROJECT_ID,
+            [("H0:started", None), _completed("H0")],
+        )
+        failed_dir = _create_project_with_history(
+            tmp_path / "20260707_failed",
+            PROJECT_ID,
+            [("H0:started", None), ("H0:failed", None)],
+        )
+
+        passed = aggregate_pipeline_state(passed_dir, "auto")
+        failed = aggregate_pipeline_state(failed_dir, "auto")
+
+        assert next(row for row in passed if row.gate == "H0").status == "passed"
+        assert next(row for row in failed if row.gate == "H0").status == "failed"
+
+    def test_gate_with_no_rows_is_pending(self, tmp_path: Path) -> None:
+        project_dir = _create_project_with_history(
+            tmp_path / "20260707_test-topic",
+            PROJECT_ID,
+            [_completed("G0")],
+        )
+
+        result = aggregate_pipeline_state(project_dir, "auto")
+
+        h0 = next(row for row in result if row.gate == "H0")
+        assert h0.status == "pending"
+
+    def test_later_started_wins_over_earlier_completed(self, tmp_path: Path) -> None:
+        project_dir = _create_project_with_history(
+            tmp_path / "20260707_test-topic",
+            PROJECT_ID,
+            [_completed("H0"), ("H0:started", None)],
+        )
+
+        result = aggregate_pipeline_state(project_dir, "auto")
+
+        h0 = next(row for row in result if row.gate == "H0")
+        assert h0.status == "awaiting_review"
 
 
 class TestEmptyProject:

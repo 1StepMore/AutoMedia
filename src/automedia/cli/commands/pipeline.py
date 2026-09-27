@@ -304,7 +304,7 @@ def pipeline_state(
     ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Show the per-gate state (passed/failed/pending + md5) for a project."""
+    """Show the per-gate state (passed/failed/pending/awaiting_review + md5) for a project."""
     project_dir = _resolve_project_dir(project_id, base_dir)
     rows = [asdict(r) for r in aggregate_pipeline_state(project_dir, "auto")]
 

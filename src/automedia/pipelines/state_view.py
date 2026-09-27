@@ -24,7 +24,14 @@ from automedia.hooks.pipeline_history import _read_history
 from automedia.pipelines.dag import AUTO_GATE_DAG
 from automedia.pipelines.runner import _MODE_MAP
 
-GateStatus = Literal["passed", "failed", "pending", "skipped"]
+GateStatus = Literal["passed", "failed", "pending", "skipped", "awaiting_review"]
+
+#: Gates that can leave a run parked awaiting a human decision (#108).  A lone
+#: ``"{gate}:started"`` row means "parked" for these, but "the run died mid-gate"
+#: for every other gate, which stays ``"pending"`` — calling that
+#: ``awaiting_review`` would send an operator to approve something nobody asked.
+#: Only ``gates/h0_human_review.py`` emits the ``awaiting_hitl`` that parks.
+_PARKABLE_GATES: frozenset[str] = frozenset({"H0"})
 
 
 @dataclass
@@ -36,11 +43,15 @@ class GateState:
     gate:
         Gate name (e.g. ``"G0"``, ``"V1"``).
     status:
-        ``"passed"`` / ``"failed"`` / ``"pending"`` / ``"skipped"`` — derived
-        from the latest history row for the gate (see module docstring).
-        ``"skipped"`` means the gate reported that it deliberately evaluated
-        nothing (e.g. a V gate with HyperFrames absent); it is reported as
-        itself, never as ``"passed"`` (health-assessment P0-1).
+        ``"passed"`` / ``"failed"`` / ``"pending"`` / ``"skipped"`` /
+        ``"awaiting_review"`` — derived from the latest history row for the
+        gate (see module docstring).  ``"skipped"`` means the gate reported
+        that it deliberately evaluated nothing (e.g. a V gate with HyperFrames
+        absent); it is reported as itself, never as ``"passed"``
+        (health-assessment P0-1).  ``"awaiting_review"`` means the gate's last
+        row was ``started`` with no later ``completed``/``failed`` row — the
+        run parked after starting the gate (e.g. H0 off-TTY, #108); it is
+        distinct from ``"pending"`` (the gate has not run at all).
     track:
         Static track from ``AUTO_GATE_DAG[gate].track``.
     md5:
@@ -82,15 +93,22 @@ def _status_for_gate(gate: str, rows: list[dict[str, object]]) -> GateStatus:
     report, so ``"skipped"`` survives), falling back to their ``passed``
     metadata (defaulting to true, matching
     ``PipelineHistoryHook.after_gate``); a ``failed`` action row is always
-    a failure.  Rows for other gates are ignored.
+    a failure.  If the last relevant row is ``started`` with no later
+    ``completed``/``failed`` row *and* the gate is in ``_PARKABLE_GATES``, the
+    gate is ``"awaiting_review"`` (the run parked, e.g. H0 off-TTY, #108);
+    otherwise that same shape means the run died mid-gate and the gate stays
+    ``"pending"``.  A gate with no rows is always ``"pending"``.  Rows for
+    other gates are ignored.
     """
     status: GateStatus = "pending"
+    last_suffix = ""
     prefix = f"{gate}:"
     for row in rows:
         action = str(row.get("action", ""))
         if not action.startswith(prefix):
             continue
         suffix = action[len(prefix) :]
+        last_suffix = suffix
         if suffix == "completed":
             try:
                 meta = json.loads(str(row.get("metadata_json") or "{}"))
@@ -103,6 +121,8 @@ def _status_for_gate(gate: str, rows: list[dict[str, object]]) -> GateStatus:
                 status = "passed" if meta.get("passed") is not False else "failed"
         elif suffix == "failed":
             status = "failed"
+    if last_suffix == "started" and gate in _PARKABLE_GATES:
+        return "awaiting_review"
     return status
 
 

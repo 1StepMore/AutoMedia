@@ -278,7 +278,9 @@ class TestPoolToPipelineBridge:
 
         assert result["status"] == "success"
         assert result["topic"] == "High score topic"
-        run_mock.assert_called_once_with(topic="High score topic", brand="brand", mode="auto")
+        run_mock.assert_called_once_with(
+            topic="High score topic", brand="brand", mode="auto", block_on_hitl=False
+        )
 
         db = PoolDB(db_path)
         selected = db.list_topics(status="selected")

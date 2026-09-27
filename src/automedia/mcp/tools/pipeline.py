@@ -69,12 +69,15 @@ def run_pipeline(
     workflow: str = "",
     director: bool = False,
     platforms: str = "",
+    project_id: str = "",
 ) -> dict[str, Any]:
     """Execute the full AutoMedia production pipeline in a background thread.
 
     Launches the pipeline asynchronously and returns immediately with a
     ``project_id`` that can be used with ``get_pipeline_progress`` to
-    poll execution status.
+    poll execution status.  The run never blocks on a human: a run that
+    reaches the H0 review gate parks (``"awaiting_review"``) and the
+    background thread ends, so the caller can hand off to a reviewer.
 
     Parameters
     ----------
@@ -117,6 +120,12 @@ def run_pipeline(
         Comma-separated list of target platform names (e.g. ``"xiaohongshu,zhihu"``).
         When provided, only gates relevant to those platforms are applied.
         Empty string (default) applies all gates for the brand profile's platforms.
+    project_id:
+        Existing project id to resume.  When set, the parked project is
+        loaded and the run continues from its persisted state — pass the
+        id of a run previously reported as ``"awaiting_review"`` once the
+        human decision has been recorded.  Empty string (default) starts
+        a fresh project.
 
     Returns
     -------
@@ -124,6 +133,12 @@ def run_pipeline(
         ``{"project_id": str, "status": "started"}`` on success, or
         ``{"status": "failed", "error": {"code": ..., "message": ..., "resolution": ...}}``
         on immediate failure.
+
+        The returned ``project_id`` is the async run handle used with
+        ``get_pipeline_progress``.  A run that parks at the H0 review gate
+        is non-blocking: this call returns immediately and the background
+        run ends with status ``"awaiting_review"`` (surfaced by
+        ``list_active_pipelines``) rather than implying completion.
     """
     # Parse platforms string into list for downstream consumers
     parsed_platforms: list[str] = (
@@ -179,16 +194,16 @@ def run_pipeline(
             ),
         }
 
-    project_id = str(uuid.uuid4())[:12]
-    progress = PipelineProgress(project_id=project_id)
+    run_id = str(uuid.uuid4())[:12]
+    progress = PipelineProgress(project_id=run_id)
     with _lock:
-        _pipeline_tracker[project_id] = progress
+        _pipeline_tracker[run_id] = progress
 
     # --- JSON session tracker (Part B) ---
     _update_pipeline_entry(
-        project_id,
+        run_id,
         {
-            "project_id": project_id,
+            "project_id": run_id,
             "status": "running",
             "started_at": datetime.now(UTC).isoformat(),
             "mode": mode,
@@ -220,8 +235,15 @@ def run_pipeline(
                 director=director,
                 progress=progress,
                 platforms=parsed_platforms,
+                # MCP is agent-driven: never block on a human.  A run that
+                # reaches H0 parks so the agent gets "awaiting_review" back
+                # and can hand off instead of waiting out the review budget.
+                block_on_hitl=False,
+                resume_project_id=project_id or None,
             )
             progress.project_id = result.project_id
+            if result.status == "awaiting_review":
+                final_status = "awaiting_review"
             # Store token usage and estimated cost for get_pipeline_progress
             if result.usage:
                 progress.token_usage = {
@@ -240,7 +262,7 @@ def run_pipeline(
             # Always persist the final status to the JSON tracker.
             sem.release()
             _update_pipeline_entry(
-                project_id,
+                run_id,
                 {
                     "status": final_status,
                     "ended_at": datetime.now(UTC).isoformat(),
@@ -251,7 +273,7 @@ def run_pipeline(
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
 
-    return success_response({"project_id": project_id, "status": "started"})
+    return success_response({"project_id": run_id, "status": "started"})
 
 
 def run_batch(
@@ -281,9 +303,12 @@ def run_batch(
     Returns
     -------
     dict
-        ``{"results": [...], "total": int, "passed": int, "failed": int}``
-        where each result entry is ``{"topic": str, "status": str,
-        "project_id": str, "error": dict | None}``.
+        ``{"results": [...], "total": int, "passed": int, "awaiting": int,
+        "failed": int}`` where each result entry is ``{"topic": str,
+        "status": str, "project_id": str, "error": dict | None}``.
+        ``awaiting`` counts topics that parked at the H0 review gate
+        (``status == "awaiting_review"``); such topics are neither passed
+        nor failed.
     """
     from automedia.pipelines.runner import run_full_pipeline
 
@@ -296,6 +321,7 @@ def run_batch(
                 topic=topic,
                 brand=brand,
                 mode=mode,
+                block_on_hitl=False,
             )
             results.append(
                 {
@@ -317,12 +343,14 @@ def run_batch(
             )
 
     passed = sum(1 for r in results if r["status"] == "success")
-    failed = len(results) - passed
+    awaiting = sum(1 for r in results if r["status"] == "awaiting_review")
+    failed = len(results) - passed - awaiting
     return success_response(
         {
             "results": results,
             "total": len(results),
             "passed": passed,
+            "awaiting": awaiting,
             "failed": failed,
         }
     )
@@ -524,7 +552,7 @@ def get_pipeline_state(
     base_dir: str = ".",
     mode: str = "auto",
 ) -> dict[str, Any]:
-    """Return per-gate pipeline state (passed/failed/pending + md5) for a project.
+    """Return per-gate pipeline state (passed/failed/pending/awaiting_review + md5) for a project.
 
     Aggregates the project's history.db and pipeline_md5.json via
     :func:`automedia.pipelines.state_view.aggregate_pipeline_state` — a

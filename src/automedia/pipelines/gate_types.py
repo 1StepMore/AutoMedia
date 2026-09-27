@@ -326,6 +326,30 @@ class PipelineProgress:
         with _hitl_lock:
             _hitl_waiters.pop(self.project_id, None)
 
+    def poll_hitl_decision(self, project_dir: str = "") -> bool | None:
+        """Return a delivered HITL decision without blocking, else ``None``.
+
+        Non-blocking counterpart of :meth:`wait_for_hitl`, used when the caller
+        does not want to wait (``GateEngine(wait_for_hitl=False)``).  Both
+        delivery channels are checked once: the in-memory decision first (how
+        the MCP ``review_decision`` tool resolves a same-process pause), then
+        the durable ``project_dir/.hitl_state.json`` file (how a separate
+        ``automedia hitl approve`` process delivers).  The file is single-use,
+        exactly as :meth:`wait_for_hitl` consumes it.
+
+        Returns
+        -------
+        bool | None
+            ``True`` to approve, ``False`` to reject, ``None`` when no
+            decision has been delivered yet.
+        """
+        decided = self._in_memory_decision()
+        if decided is not None:
+            return decided
+        if not project_dir:
+            return None
+        return self._consume_hitl_state_file(Path(project_dir) / ".hitl_state.json")
+
     @staticmethod
     def _consume_hitl_state_file(state_file: Path) -> bool | None:
         """Read and delete a delivered decision, or ``None`` if not ready yet.
@@ -464,3 +488,16 @@ class PipelineProgress:
             val = self._skip_gate
             self._skip_gate = None
             return val
+
+
+def consume_hitl_decision_file(project_dir: str) -> bool | None:
+    """Read and consume a delivered ``.hitl_state.json`` decision, else ``None``.
+
+    Module-level equivalent of :meth:`PipelineProgress.poll_hitl_decision` for
+    callers that hold no ``PipelineProgress`` (e.g. a non-TTY run that still
+    wants to honour a decision already written by another process).  The file is
+    single-use, exactly as :meth:`PipelineProgress.wait_for_hitl` consumes it.
+    """
+    if not project_dir:
+        return None
+    return PipelineProgress._consume_hitl_state_file(Path(project_dir) / ".hitl_state.json")

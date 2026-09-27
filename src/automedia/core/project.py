@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
+
+# Project identity file — one JSON blob per project directory.  ``_discover``
+# globs one level deep (project dirs are direct children of the base dir).
+_INFO_FILENAME = "00_project_info.json"
+_PROJECT_INFO_GLOB = f"*/{_INFO_FILENAME}"
 
 # ---------------------------------------------------------------------------
 # Slug / path utilities
@@ -194,3 +202,65 @@ class Project:
             tenant_id=tenant_id,
             created_at=created_at,
         )
+
+    @classmethod
+    def load(cls, project_dir: str) -> Project:
+        """Load an existing project from *project_dir*'s info file.
+
+        Unlike :meth:`init` this never mints a new ``project_id``; it restores
+        the persisted identity so a parked project can be resumed.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``00_project_info.json`` is absent.
+        ValueError
+            If the info file is unreadable/corrupt or lacks ``project_id``.
+        """
+        info_path = Path(project_dir) / _INFO_FILENAME
+        if not info_path.is_file():
+            raise FileNotFoundError(f"No project info file: {info_path}")
+        try:
+            with open(info_path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except OSError as exc:
+            raise ValueError(f"Unreadable project info: {info_path}") from exc
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Corrupt project info: {info_path}") from exc
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Project info is not an object: {info_path}")
+        project_id = data.get("project_id")
+        if not project_id:
+            raise ValueError(f"Project info is missing 'project_id': {info_path}")
+
+        return cls(
+            project_id=str(project_id),
+            project_dir=str(Path(project_dir).resolve()),
+            topic=str(data.get("topic", "")),
+            brand=str(data.get("brand", "")),
+            tenant_id=str(data.get("tenant_id", "default")),
+            created_at=str(data.get("created_at", "")),
+        )
+
+
+def find_project_dir(project_id: str, base_dir: str | None = None) -> str | None:
+    """Return the directory of the project whose id is *project_id*, or ``None``.
+
+    Scans the base directory (``base_dir``, else ``AUTOMEDIA_PROJECTS_DIR``, else
+    the cwd) one level deep for a matching ``00_project_info.json``.
+    """
+    root = base_dir or os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
+    base = Path(sanitize_path(root))
+    for info_file in sorted(base.glob(_PROJECT_INFO_GLOB)):
+        try:
+            with open(info_file, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (json.JSONDecodeError, OSError) as exc:
+            # A corrupt/removed candidate must not abort the search; it simply
+            # is not the target. Narrowed to parse/IO so real bugs still surface.
+            _log.debug("Skipping unreadable project info %s: %s", info_file, exc)
+            continue
+        if isinstance(data, dict) and data.get("project_id") == project_id:
+            return str(info_file.parent)
+    return None

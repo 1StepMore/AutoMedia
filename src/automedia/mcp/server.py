@@ -543,7 +543,14 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Execute the full AutoMedia production pipeline. Returns PipelineResult as JSON. "
+            "Execute the full AutoMedia production pipeline asynchronously. "
+            "Returns {'project_id', 'status': 'started'} immediately — poll "
+            "get_pipeline_progress for gate-by-gate progress. The run never "
+            "blocks on a human: if it parks at the H0 review gate the "
+            "background run ends with status 'awaiting_review' (visible via "
+            "list_active_pipelines) and the caller should hand off to a "
+            "reviewer. Pass an existing project_id to resume a parked run "
+            "after the human decision. "
             "Modes: auto, text_only, text_with_cover, video_only, qa_only, "
             "image-carousel, social-thread, short-video. "
             "Accepts optional workflow name to apply workflow-level config overrides."
@@ -577,7 +584,7 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Return per-gate pipeline state (passed/failed/pending + md5) "
+            "Return per-gate pipeline state (passed/failed/pending/awaiting_review + md5) "
             "for a project. Read-only aggregation of the project's history "
             "and md5 records; a project without history yields all-pending "
             "rows. Takes project_id, optional base_dir, and optional mode "
