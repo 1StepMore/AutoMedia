@@ -48,7 +48,7 @@
 若配置了 `auto_publish=True` 则自动跳过。
 
 - **位置：** `automedia/gates/h0_human_review.py`
-- **CLI：** `automedia hitl approve <project_id> H0`
+- **CLI：** `automedia hitl pending` 列出待审项目；`automedia hitl approve <project_id>` / `automedia hitl reject <project_id>` 跨进程交付决定
 - **绕过方式：** `--skip-review` 标志或 `auto_publish=True` 配置
 
 ### Red Lines（纪律约束，非自动化）

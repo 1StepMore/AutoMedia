@@ -5,6 +5,14 @@ Subcommands
 preset --list            List available HITL presets
 preset --set <name>      Activate a named preset
 config                   Print the current HITL configuration summary
+pending                  List pipelines parked waiting for a human decision
+approve <project_id>     Approve a pipeline paused by another process
+reject <project_id>      Reject a pipeline paused by another process
+
+A pipeline pauses at the H0 human-review gate. Resolve the pause either in the
+same terminal (``automedia run --wait-for-review``), from another shell with
+``pending``/``approve``/``reject`` here, or from an MCP client with
+``review_decision``.
 """
 
 from __future__ import annotations
@@ -236,3 +244,17 @@ def config_cmd() -> None:
         ntype = n.get("type", "?")
         executor = n.get("autoset", "agent")
         typer.echo(f"  {name:<28} {ntype:<15} {executor:<10}")
+
+
+def _register_review_commands() -> None:
+    """Bind the review-delivery subcommands onto this app.
+
+    They live in a sibling module for readability but must register on *this*
+    app, which the lazy loader resolves as the ``hitl`` sub-app. The import is
+    function-local so it happens after ``app`` exists and needs no
+    module-level-import waiver.
+    """
+    from automedia.cli.commands import hitl_review  # noqa: F401
+
+
+_register_review_commands()

@@ -67,6 +67,25 @@ review points. A human operator inspects the output and **approves** or
 | `review_decision` | **The LIVE approval path for H0 pauses**: approve or reject a pipeline paused at a HITL review gate. Approve resumes; reject converts the H0 result to a stop-failure and the pipeline halts. `show_diff=True` attaches a unified diff from the latest `.automedia/gate_diffs/` record. Same-process only: pipelines started via MCP (`run_pipeline` daemon threads); CLI-started pipelines run in a separate process and cannot be resumed here (fast structured error, no deadlock) |
 | `get_pending_approvals` | List all gates currently awaiting human approval |
 
+Beyond the MCP tools, a paused H0 review can be resolved through two more
+channels:
+
+- **Interactive prompt**: `automedia run ... --wait-for-review` prompts on
+  stdin when H0 pauses (`[a]pprove` / `[r]eject`). It is a no-op when stdin is
+  not a TTY, so unattended runs fall through to the timeout policy.
+- **Cross-process CLI**: `automedia hitl pending` lists pipelines parked
+  waiting for a decision, and `automedia hitl approve <project_id>` /
+  `automedia hitl reject <project_id>` write the decision into the project
+  directory for the parked run to pick up. Both accept `--base-dir`.
+
+An undecided pause waits `gate_engine.hitl_timeout_s` seconds (default `3600`,
+one hour) before `gate_engine.hitl_on_timeout` applies. The default policy is
+`reject`, so the pipeline fails rather than shipping unreviewed content. Set
+`gate_engine.hitl_on_timeout: approve` (or pass `automedia run
+--hitl-on-timeout approve`) to auto-approve at timeout. `automedia run
+--hitl-timeout SECONDS` overrides the budget for a single run; `--skip-review`
+and `--wait-for-review` are mutually exclusive.
+
 The director preset defines 8 review nodes for gate-level oversight:
 
 | Review Node | Gate | What's Reviewed |
@@ -85,6 +104,9 @@ The director preset defines 8 review nodes for gate-level oversight:
 ```bash
 # Run pipeline in director mode (CLI)
 automedia run --topic "..." --brand my-brand --director
+
+# Decide the H0 pause interactively in this terminal
+automedia run --topic "..." --brand my-brand --director --wait-for-review
 
 # Or via MCP
 # Call run_pipeline with director=true, then poll get_pending_approvals
@@ -174,6 +196,13 @@ automedia hitl preset --set semi-automated
 
 # Show current HITL configuration summary
 automedia hitl config
+
+# List pipelines parked waiting for a human decision
+automedia hitl pending
+
+# Deliver a decision to a pipeline parked in another process
+automedia hitl approve <project_id>
+automedia hitl reject <project_id>
 
 # Record human approval for a node
 # (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)

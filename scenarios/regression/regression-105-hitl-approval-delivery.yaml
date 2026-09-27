@@ -1,0 +1,75 @@
+name: regression-105-hitl-approval-delivery
+description: A pipeline paused at the H0 human-review gate can be approved or rejected from another process via `automedia hitl`, and an undecided pause fails closed within a bounded budget instead of hanging for 24 hours and auto-approving.
+intent: "Pin issue #105. Before this change the only approval channel was the in-process `_hitl_waiters` registry and the engine passed `project_dir=\"\"` to `wait_for_hitl`, leaving the `.hitl_state.json` branch unreachable, so a decision could never be delivered to a CLI-started run. On top of that the pause budget was a hardcoded 86400s (24h) and a timeout auto-approved, meaning an unattended `automedia run` hung for a day and then exited 0 with unreviewed content. Steps 2-6 drive the real `automedia hitl pending|approve|reject` leaves so the cross-process path is proven through the shipped CLI, not only inside a helper."
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#105"
+requires_env: []
+steps:
+  - name: the pause is bounded and fails closed
+    kind: cli
+    check: "Runs the committed regression-105 helper. It asserts the H0 pause budget defaults to 3600s (not the old 86400) with on_timeout=reject, that a timed-out pause rejects rather than auto-approves, that the new `automedia run` flags exist, and that a stale decision file is cleared at run start. It then seeds two parked projects for the delivery steps below."
+    standard: tool.contract
+    command: python3 scripts/regression_105_check.py
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - REG105_HITL_DELIVERY_OK
+  - name: a parked pipeline is listed by automedia hitl pending
+    kind: cli
+    check: "`automedia hitl pending` scans the seeded fixture directory and reports both projects parked at H0, driven by a real `history.db` `:started`-without-`:completed` row."
+    standard: tool.contract
+    command: automedia hitl pending --base-dir validation-runs/regression-105-fixture
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - reg105ok
+        - reg105no
+  - name: automedia hitl approve delivers a decision to the waiting run
+    kind: cli
+    check: "`automedia hitl approve` writes `.hitl_state.json` for a project it has confirmed is parked, and refuses with exit 1 for one that is not."
+    standard: tool.contract
+    command: automedia hitl approve reg105ok --base-dir validation-runs/regression-105-fixture
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: the delivered approval reaches a gate paused inside the engine
+    kind: cli
+    check: "Drives a real GateEngine gate that pauses, in a separate process from the one that wrote the decision, and asserts the pause ended by delivery rather than by timeout and that the decision file was consumed. Going through GateEngine rather than PipelineProgress directly is deliberate: the original bug was the engine's project_dir wiring, so a check that skipped the engine would pass against the broken code."
+    standard: tool.contract
+    command: python3 scripts/regression_105_check.py --consume=reg105ok
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - REG105_HITL_DELIVERY_OK
+  - name: automedia hitl reject delivers a decision to the waiting run
+    kind: cli
+    check: "`automedia hitl reject` delivers a rejection for the second seeded project."
+    standard: tool.contract
+    command: automedia hitl reject reg105no --base-dir validation-runs/regression-105-fixture
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: the delivered rejection halts a gate paused inside the engine
+    kind: cli
+    check: "Drives a real GateEngine gate that pauses and asserts the delivered rejection was honoured, the run did not continue, and the decision file was consumed."
+    standard: tool.contract
+    command: python3 scripts/regression_105_check.py --consume=reg105no
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - REG105_HITL_DELIVERY_OK
+cleanup_steps:
+  - name: remove the seeded fixture projects
+    kind: cli
+    check: "Best-effort removal of the deterministic fixture directory the helper seeded. The suite writes under validation-runs/ which is gitignored, so this is hygiene rather than correctness."
+    standard: founder-expectations.F01
+    command: rm -rf validation-runs/regression-105-fixture
+    expect:
+      exit_code: 0

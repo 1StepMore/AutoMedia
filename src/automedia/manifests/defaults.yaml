@@ -70,6 +70,14 @@ pool:
 gate_engine:
   max_retries: 3
   retry_delay: 1.0
+  # H0 human-review pause budget, in seconds. Was a hardcoded 86400 (24h) in
+  # runner.py, which made a non-interactive `automedia run` hang for a day and
+  # then silently auto-approve. Override per run with `--hitl-timeout`.
+  hitl_timeout_s: 3600
+  # What a timed-out H0 pause does. "reject" fails the pipeline instead of
+  # shipping unreviewed content; "approve" restores the old fail-open
+  # behaviour. Override per run with `--hitl-on-timeout`.
+  hitl_on_timeout: reject
 
 engines:
   tts:

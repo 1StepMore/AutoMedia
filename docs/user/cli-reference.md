@@ -158,6 +158,12 @@ automedia run --topic "..." --brand my-brand --allow-partial
 # Unattended run — auto-pass the H0 human-review gate
 automedia run --topic "..." --brand my-brand --skip-review
 
+# Pause at H0 and decide interactively in this terminal
+automedia run --topic "..." --brand my-brand --wait-for-review
+
+# Override the H0 pause budget and timeout policy for this run
+automedia run --topic "..." --brand my-brand --hitl-timeout 600 --hitl-on-timeout reject
+
 ```
 
 ### Flags
@@ -171,7 +177,10 @@ automedia run --topic "..." --brand my-brand --skip-review
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate (skip preceding gates) |
 | `--auto-resume` | | `bool` | `False` | Resume from the last passed gate (reads history.db) |
 | `--allow-partial` | | `bool` | `False` | Exit 0 when the pipeline stops at a gate (`partial`). A `failed` pipeline still exits non-zero |
-| `--skip-review` | | `bool` | `False` | Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval |
+| `--skip-review` | | `bool` | `False` | Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with `--wait-for-review` |
+| `--wait-for-review` | | `bool` | `False` | Prompt on stdin when H0 pauses (`[a]pprove` / `[r]eject`). No-op when stdin is not a TTY; use `automedia hitl approve\|reject <project_id>` instead. Mutually exclusive with `--skip-review` |
+| `--hitl-timeout` | | `float \| None` | `None` | Seconds to wait for an H0 decision before the timeout policy applies. Overrides `gate_engine.hitl_timeout_s` (default `3600`) |
+| `--hitl-on-timeout` | | `str \| None` | `None` | Timeout policy for an undecided H0 pause: `reject` (default) or `approve`. Overrides `gate_engine.hitl_on_timeout` |
 | `--decision-mode` | | `str` | `build` | (DEPRECATED) Decision mode for pipeline execution — no longer functional |
 | `--verbose` | `-v` | `bool` | `False` | Show full error traceback for debugging |
 | `--source-path` | | `str \| None` | `None` | Path to a source document (`.md`, `.txt`, `.pdf`). Content is loaded into the pipeline |
@@ -592,7 +601,42 @@ automedia hitl config
 
 # List presets
 automedia hitl preset --list
+
+# List pipelines parked waiting for a human decision
+automedia hitl pending
+
+# Deliver a decision to a pipeline parked in another process
+automedia hitl approve <project_id>
+automedia hitl reject <project_id>
 ```
+
+### Subcommands
+
+| Subcommand | Description |
+|--------|------|
+| `config` | Show the current HITL configuration summary |
+| `preset` | List presets with `--list` or activate one with `--set <name>` |
+| `pending` | List pipelines parked waiting for a human decision |
+| `approve` | Approve a pipeline parked at a review gate, cross-process |
+| `reject` | Reject a pipeline parked at a review gate, cross-process |
+
+### hitl pending Flags
+
+| Flag | Type | Default | Description |
+|------|------|--------|------|
+| `--base-dir` | `str \| None` | `None` | Directory to scan for projects |
+
+### hitl approve / hitl reject Arguments and Flags
+
+| Argument / Flag | Type | Description |
+|------|------|-------------|
+| `project_id` | `str` | Project ID parked at a review gate (required) |
+| `--base-dir` | `str \| None` | Directory to scan for the project |
+
+`approve` and `reject` write `.hitl_state.json` into the project directory so a
+run parked in another process picks up the decision. They exit 1 when the
+project is not parked, or when a previous decision has been delivered but not
+yet consumed.
 
 ## `automedia onboard`
 

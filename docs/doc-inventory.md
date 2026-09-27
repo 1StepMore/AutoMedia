@@ -31,12 +31,12 @@
 | docs/dev/developer-guide.md | 25319 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |
-| docs/dev/founder-expectations.md | 111745 | file |
-| docs/dev/gate-failure-modes.md | 21304 | file |
+| docs/dev/founder-expectations.md | 112193 | file |
+| docs/dev/gate-failure-modes.md | 21860 | file |
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
-| docs/dev/project-validation-framework.md | 12564 | file |
+| docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
 | docs/dev/validation-loop-log.md | 10012 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
@@ -50,9 +50,9 @@
 | docs/user | — | dir |
 | docs/user/api-reference.md | 13812 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 22754 | file |
+| docs/user/cli-reference.md | 24964 | file |
 | docs/user/deployment.md | 8345 | file |
-| docs/user/hitl-framework.md | 6928 | file |
+| docs/user/hitl-framework.md | 8357 | file |
 | docs/user/mcp-setup.md | 26748 | file |
 | docs/user/omni-integration.md | 13082 | file |
 | docs/user/production-workflow.md | 9543 | file |

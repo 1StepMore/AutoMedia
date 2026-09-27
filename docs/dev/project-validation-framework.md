@@ -149,7 +149,7 @@ impact_map:
       - "F28 (human content review before publish — H0 gate)"
     steps:
       - "检查 HITL 框架与 pipeline 的集成"
-      - "cli: automedia hitl approve/reject 仍需工作"
+      - "cli: automedia hitl pending/approve/reject 工作正常"
 
   # ─── Hooks ────────────────────────────────────
   - pattern: "hooks/**/*.py"

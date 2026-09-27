@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.overrides import OverridesLoader
+from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 if TYPE_CHECKING:
     from automedia.core.project import Project
@@ -836,6 +837,9 @@ def run_full_pipeline(
     force_provenance: bool = False,
     director: bool = False,
     skip_review: bool = False,
+    hitl_timeout_s: float | None = None,
+    hitl_on_timeout: str | None = None,
+    wait_for_review: bool = False,
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
@@ -934,6 +938,9 @@ def run_full_pipeline(
         force_provenance=force_provenance,
         director=director,
         skip_review=skip_review,
+        hitl_timeout_s=hitl_timeout_s,
+        hitl_on_timeout=hitl_on_timeout,
+        wait_for_review=wait_for_review,
         progress=progress,
         source_path=source_path,
         source_url=source_url,
@@ -957,6 +964,9 @@ def _run_pipeline(
     force_provenance: bool = False,
     director: bool = False,
     skip_review: bool = False,
+    hitl_timeout_s: float | None = None,
+    hitl_on_timeout: str | None = None,
+    wait_for_review: bool = False,
     progress: PipelineProgress | None = None,
     source_path: str = "",
     source_url: str = "",
@@ -983,6 +993,7 @@ def _run_pipeline(
         config = load_config(config_dir=config_dir)
         projects_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or None
         project = Project.init(topic, brand, base_dir=projects_dir, tenant_id=tenant_id)
+        clear_stale_hitl_state(project.project_dir)
 
         brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
             mode,
@@ -1021,7 +1032,22 @@ def _run_pipeline(
             correlation_id,
             gate_names,
             skip_review,
+            hitl_timeout_s,
+            hitl_on_timeout,
         )
+
+        if wait_for_review:
+            if progress is None:
+                # The prompt resolves the pause through the very object the
+                # engine waits on, so both must share one. Without this the flag
+                # was silently ignored for any caller that passed no progress
+                # (the CLI always passes one, which is why tests missed it).
+                from automedia.pipelines.gate_types import PipelineProgress
+
+                progress = PipelineProgress(project_id=project.project_id)
+            # Best-effort and a no-op unless stdin is a terminal: the helper owns
+            # that policy so the runner never has to reason about TTYs.
+            start_interactive_review_prompt(progress, "H0", project.project_id)
 
         success, results = _setup_and_run_engine(
             gates,
@@ -1218,6 +1244,27 @@ def _select_gates(
     return gate_names, gates
 
 
+def clear_stale_hitl_state(project_dir: str) -> None:
+    """Delete a leftover HITL decision so it cannot decide a later run.
+
+    ``.hitl_state.json`` is written by ``automedia hitl approve`` and consumed
+    (and deleted) by the waiting run.  If a run dies between those two steps the
+    file survives, and the *next* run over the same project would read it and
+    auto-approve its own review without a human ever deciding.  Clearing at run
+    start makes the file single-use in practice as well as in the reader.
+
+    Best-effort: a missing directory, a missing file, or a filesystem error must
+    never stop a pipeline from starting.
+    """
+    if not project_dir:
+        return
+    state_file = Path(project_dir) / ".hitl_state.json"
+    try:
+        state_file.unlink(missing_ok=True)
+    except OSError:
+        log.warning("pipeline.hitl_state_clear_failed", path=str(state_file))
+
+
 def _build_pipeline_context(
     topic: str,
     brand: str,
@@ -1234,6 +1281,8 @@ def _build_pipeline_context(
     correlation_id: str,
     gate_names: list[str],
     skip_review: bool = False,
+    hitl_timeout_s: float | None = None,
+    hitl_on_timeout: str | None = None,
 ) -> GateContext:
     from automedia.engines import resolve_engine
     from automedia.engines.errors import (
@@ -1250,12 +1299,20 @@ def _build_pipeline_context(
         default_lang=default_lang,
     )
 
+    engine_gate_config: dict[str, Any] = {}
+    if isinstance(config, dict):
+        raw_gate_config = config.get("gate_engine")
+        if isinstance(raw_gate_config, dict):
+            engine_gate_config = raw_gate_config
+    hitl_timeout_s = (
+        hitl_timeout_s if hitl_timeout_s is not None else engine_gate_config.get("hitl_timeout_s")
+    )
+
     try:
         hitl_cfg = HITLConfig(preset_name="director" if director else "automated")
-        hitl_config = {
+        hitl_config: dict[str, Any] = {
             "enabled_nodes": [n for n in hitl_cfg.list_nodes() if n.get("autoset") == "human"],
             "default_executor": "agent",
-            "timeout_s": 86400,
         }
     except Exception:
         log.warning(
@@ -1264,8 +1321,19 @@ def _build_pipeline_context(
         hitl_config = {
             "enabled_nodes": [],
             "default_executor": "agent",
-            "timeout_s": 86400,
         }
+    # Only forward an explicitly resolved value. Leaving the key absent lets H0
+    # apply its own default, which keeps the pause budget defined in exactly one
+    # place instead of being duplicated here.
+    if hitl_timeout_s is not None:
+        hitl_config["timeout_s"] = hitl_timeout_s
+    resolved_on_timeout = (
+        hitl_on_timeout
+        if hitl_on_timeout is not None
+        else engine_gate_config.get("hitl_on_timeout")
+    )
+    if resolved_on_timeout is not None:
+        hitl_config["on_timeout"] = resolved_on_timeout
 
     gate_context = GateContext(
         topic=topic,

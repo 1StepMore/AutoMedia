@@ -193,6 +193,32 @@ def run_cmd(
             "Default pauses for human approval."
         ),
     ),
+    wait_for_review: bool = typer.Option(
+        False,
+        "--wait-for-review",
+        help=(
+            "Prompt on stdin when the H0 gate pauses, so a human can approve or "
+            "reject in this terminal. No-op when stdin is not a terminal; use "
+            "`automedia hitl approve|reject <project_id>` instead."
+        ),
+    ),
+    hitl_timeout: float = typer.Option(
+        None,
+        "--hitl-timeout",
+        help=(
+            "Seconds to wait for an H0 decision before applying the timeout "
+            "policy. Overrides gate_engine.hitl_timeout_s (default 3600)."
+        ),
+    ),
+    hitl_on_timeout: str = typer.Option(
+        None,
+        "--hitl-on-timeout",
+        help=(
+            "What an undecided H0 pause does when the timeout expires: 'reject' "
+            "fails the pipeline (default), 'approve' ships unreviewed content. "
+            "Overrides gate_engine.hitl_on_timeout."
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -261,6 +287,9 @@ def run_cmd(
                     resume_from=resume_from,
                     auto_resume=auto_resume,
                     skip_review=skip_review,
+                    hitl_timeout_s=hitl_timeout,
+                    hitl_on_timeout=hitl_on_timeout,
+                    wait_for_review=wait_for_review,
                     progress=cli_progress,
                     source_path=source_path,
                     source_url=source_url,
@@ -325,6 +354,21 @@ def run_cmd(
         output_error("Either --topic or --topics is required.")
         raise typer.Exit(code=1)
 
+    if skip_review and wait_for_review:
+        output_error(
+            "--skip-review and --wait-for-review are mutually exclusive: the "
+            "first removes the pause, the second waits for it."
+        )
+        raise typer.Exit(code=1)
+
+    if hitl_on_timeout is not None and hitl_on_timeout not in ("approve", "reject"):
+        output_error(f"--hitl-on-timeout must be 'approve' or 'reject', got {hitl_on_timeout!r}.")
+        raise typer.Exit(code=1)
+
+    if hitl_timeout is not None and hitl_timeout <= 0:
+        output_error("--hitl-timeout must be a positive number of seconds.")
+        raise typer.Exit(code=1)
+
     if get_output_mode() == OutputMode.TEXT:
         typer.echo(f"Starting pipeline: topic={topic!r}  brand={brand!r}  mode={mode}")
         if resume_from:
@@ -356,6 +400,9 @@ def run_cmd(
             resume_from=resume_from,
             auto_resume=auto_resume,
             skip_review=skip_review,
+            hitl_timeout_s=hitl_timeout,
+            hitl_on_timeout=hitl_on_timeout,
+            wait_for_review=wait_for_review,
             progress=cli_progress,
             source_path=source_path,
             source_url=source_url,

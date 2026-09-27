@@ -226,6 +226,8 @@ _SCALAR_RULES: tuple[tuple[tuple[str, ...], str, Callable[[object], bool]], ...]
     (("content", "min_title_length"), "int", _is_int),
     (("content", "max_title_length"), "int", _is_int),
     (("project", "name"), "str", _is_str),
+    (("gate_engine", "hitl_timeout_s"), "int or float", _is_number),
+    (("gate_engine", "hitl_on_timeout"), "str", _is_str),
 )
 
 
