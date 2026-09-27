@@ -125,7 +125,7 @@ class TestFlagThreading:
 class TestFlagConflictMatrix:
     """``--skip-review`` contradicts any human-consulting flag; blockers combine."""
 
-    def test_skip_review_and_hitl_block_conflict(self) -> None:
+    def test_skip_review_and_hitl_block_conflict(self, _model_config_present: None) -> None:
         result = runner.invoke(
             app, ["run", "--topic", "t", "--brand", "b", "--skip-review", "--hitl-block"]
         )
@@ -133,7 +133,7 @@ class TestFlagConflictMatrix:
         assert "--skip-review" in result.output, result.output
         assert "--hitl-block" in result.output, result.output
 
-    def test_skip_review_and_wait_for_review_conflict(self) -> None:
+    def test_skip_review_and_wait_for_review_conflict(self, _model_config_present: None) -> None:
         """Regression guard for the pre-existing mutual exclusion."""
         result = runner.invoke(
             app, ["run", "--topic", "t", "--brand", "b", "--skip-review", "--wait-for-review"]
