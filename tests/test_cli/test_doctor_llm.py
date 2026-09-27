@@ -94,7 +94,53 @@ class TestDoctorLlmJson:
     def test_json_warns_incomplete_fallback_entry(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Fallback entry missing base_url -> incomplete-entry warning."""
+        """Fallback entry with no resolvable api_key -> incomplete-entry warning."""
+        _write_model_config(
+            tmp_path,
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: deepseek\n"
+            "    model: deepseek-chat\n"
+            "    base_url: https://api.deepseek.com/v1\n"
+            "    fallback:\n"
+            "      - provider: provider-with-no-key-abc\n"
+            "        model: some-model\n"
+            "        base_url: https://example.invalid/v1\n",
+        )
+        data = _invoke_json(monkeypatch, tmp_path)
+
+        assert data["status"] == "ok"
+        assert any(
+            "fallback entry 1" in warning and "usable api_key" in warning
+            for warning in data["llm"]["warnings"]
+        )
+
+    def test_json_no_warning_when_fallback_key_resolvable_via_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reported bug: key kept in the environment must not warn as incomplete."""
+        monkeypatch.setenv("AUTOMEDIA_OPENAI", "sk-from-env")
+        _write_model_config(
+            tmp_path,
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: deepseek\n"
+            "    model: deepseek-chat\n"
+            "    base_url: https://api.deepseek.com/v1\n"
+            "    fallback:\n"
+            "      - provider: openai\n"
+            "        model: gpt-4o\n"
+            "        base_url: https://api.openai.com/v1\n",
+        )
+        data = _invoke_json(monkeypatch, tmp_path)
+
+        assert data["status"] == "ok"
+        assert not any("fallback entry 1" in warning for warning in data["llm"]["warnings"])
+
+    def test_json_no_warning_when_fallback_inherits_base_url(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A fallback without base_url inherits the primary's -> no warning."""
         _write_model_config(
             tmp_path,
             "llm:\n"
@@ -110,9 +156,79 @@ class TestDoctorLlmJson:
         data = _invoke_json(monkeypatch, tmp_path)
 
         assert data["status"] == "ok"
-        assert (
-            "fallback entry 1 is incomplete (missing provider, api_key, or base_url)."
-            in data["llm"]["warnings"]
+        assert not any("fallback entry 1" in warning for warning in data["llm"]["warnings"])
+
+    def test_json_warns_when_fallback_key_unresolvable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A key that resolves nowhere (env, config, store) -> warning."""
+        _write_model_config(
+            tmp_path,
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: deepseek\n"
+            "    model: deepseek-chat\n"
+            "    base_url: https://api.deepseek.com/v1\n"
+            "    fallback:\n"
+            "      - provider: no-such-provider-xyz\n"
+            "        model: some-model\n"
+            "        base_url: https://example.invalid/v1\n",
+        )
+        data = _invoke_json(monkeypatch, tmp_path)
+
+        assert data["status"] == "ok"
+        assert any(
+            "fallback entry 1" in warning and "usable api_key" in warning
+            for warning in data["llm"]["warnings"]
+        )
+
+    def test_json_warns_on_unexpanded_api_key_placeholder(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A literal ${VAR} api_key is not expanded by the loader -> warning."""
+        _write_model_config(
+            tmp_path,
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: deepseek\n"
+            "    model: deepseek-chat\n"
+            "    base_url: https://api.deepseek.com/v1\n"
+            "    fallback:\n"
+            "      - provider: openai\n"
+            "        model: gpt-4o\n"
+            '        api_key: "${OPENAI_API_KEY}"\n'
+            "        base_url: https://api.openai.com/v1\n",
+        )
+        data = _invoke_json(monkeypatch, tmp_path)
+
+        assert data["status"] == "ok"
+        assert any(
+            "fallback entry 1" in warning and "unexpanded" in warning
+            for warning in data["llm"]["warnings"]
+        )
+
+    def test_json_warns_fallback_entry_without_provider(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An entry without provider is skipped by the runtime -> warning."""
+        _write_model_config(
+            tmp_path,
+            "llm:\n"
+            "  text_generation:\n"
+            "    provider: deepseek\n"
+            "    model: deepseek-chat\n"
+            "    base_url: https://api.deepseek.com/v1\n"
+            "    fallback:\n"
+            "      - model: gpt-4o\n"
+            "        api_key: sk-test\n"
+            "        base_url: https://api.openai.com/v1\n",
+        )
+        data = _invoke_json(monkeypatch, tmp_path)
+
+        assert data["status"] == "ok"
+        assert any(
+            "fallback entry 1" in warning and "skipped" in warning
+            for warning in data["llm"]["warnings"]
         )
 
     def test_json_warns_model_base_url_mismatch(
