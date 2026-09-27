@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.1...automedia-v1.7.2) (2026-09-27)
+
+
+### Documentation
+
+* **changelog:** normalize release sections to canonical links and drop merge duplicates ([#109](https://github.com/1StepMore/AutoMedia/issues/109)) ([a295cf6](https://github.com/1StepMore/AutoMedia/commit/a295cf645865082570bce9df92e841b823e0aec0))
+
 ## [1.7.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.0...automedia-v1.7.1) (2026-09-27)
 
 
