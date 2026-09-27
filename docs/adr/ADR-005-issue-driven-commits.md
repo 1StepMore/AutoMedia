@@ -5,7 +5,7 @@ Proposed · records the discipline this repository's work plans already follow
 
 ### Context
 
-The repository's git history is issue-driven. Commits are organized around discrete issues, tasks, and waves rather than long-running feature branches with squash-merges. Conventional commit prefixes carry the intent of each entry, and subjects frequently reference issue and PR numbers. Recent history shows the pattern clearly:
+The repository's git history is issue-driven. Each unit of work lands on `main` as one atomic conventional commit: a short-lived branch is squash-merged, so `main` stays a sequence of discrete issues, tasks, and waves rather than long-running feature branches. Squashing also removes the redundant merge wrapper that a merge commit added for the same unit of work, which is why it serves this ADR's one-commit-per-issue rule more faithfully than merging did. Conventional commit prefixes carry the intent of each entry, and subjects frequently reference issue and PR numbers. Recent history shows the pattern clearly:
 
 | Commit | Subject |
 |--------|---------|

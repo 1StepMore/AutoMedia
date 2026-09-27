@@ -11,7 +11,7 @@
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
 | docs/adr/ADR-003-platform-rename-stdlib-conflict.md | 3443 | file |
 | docs/adr/ADR-004-mcp-server-decomposition.md | 5808 | file |
-| docs/adr/ADR-005-issue-driven-commits.md | 4012 | file |
+| docs/adr/ADR-005-issue-driven-commits.md | 4300 | file |
 | docs/adr/ADR-006-graph-engineering-dag.md | 8823 | file |
 | docs/adr/README.md | 1966 | file |
 | docs/adr/TEMPLATE.md | 2267 | file |
