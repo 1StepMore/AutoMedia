@@ -2147,6 +2147,24 @@ review points. A human operator inspects the output and <strong>approves</strong
 </tr>
 </tbody>
 </table>
+<p>Beyond the MCP tools, a paused H0 review can be resolved through two more
+channels:</p>
+<ul>
+<li><strong>Interactive prompt</strong>: <code>automedia run ... --wait-for-review</code> prompts on
+  stdin when H0 pauses (<code>[a]pprove</code> / <code>[r]eject</code>). It is a no-op when stdin is
+  not a TTY, so unattended runs fall through to the timeout policy.</li>
+<li><strong>Cross-process CLI</strong>: <code>automedia hitl pending</code> lists pipelines parked
+  waiting for a decision, and <code>automedia hitl approve &lt;project_id&gt;</code> /
+  <code>automedia hitl reject &lt;project_id&gt;</code> write the decision into the project
+  directory for the parked run to pick up. Both accept <code>--base-dir</code>.</li>
+</ul>
+<p>An undecided pause waits <code>gate_engine.hitl_timeout_s</code> seconds (default <code>3600</code>,
+one hour) before <code>gate_engine.hitl_on_timeout</code> applies. The default policy is
+<code>reject</code>, so the pipeline fails rather than shipping unreviewed content. Set
+<code>gate_engine.hitl_on_timeout: approve</code> (or pass <code>automedia run
+--hitl-on-timeout approve</code>) to auto-approve at timeout. <code>automedia run
+--hitl-timeout SECONDS</code> overrides the budget for a single run; <code>--skip-review</code>
+and <code>--wait-for-review</code> are mutually exclusive.</p>
 <p>The director preset defines 8 review nodes for gate-level oversight:</p>
 <table>
 <thead>
@@ -2202,6 +2220,9 @@ review points. A human operator inspects the output and <strong>approves</strong
 <h3 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run pipeline in director mode (CLI)</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--director
+
+<span class="c1"># Decide the H0 pause interactively in this terminal</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--director<span class="w"> </span>--wait-for-review
 
 <span class="c1"># Or via MCP</span>
 <span class="c1"># Call run_pipeline with director=true, then poll get_pending_approvals</span>
@@ -2275,6 +2296,13 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>preset<span class="
 
 <span class="c1"># Show current HITL configuration summary</span>
 automedia<span class="w"> </span>hitl<span class="w"> </span>config
+
+<span class="c1"># List pipelines parked waiting for a human decision</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>pending
+
+<span class="c1"># Deliver a decision to a pipeline parked in another process</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;
+automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="w"> </span>&lt;project_id&gt;
 
 <span class="c1"># Record human approval for a node</span>
 <span class="c1"># (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)</span>

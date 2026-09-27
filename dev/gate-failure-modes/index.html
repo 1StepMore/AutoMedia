@@ -2812,18 +2812,19 @@ cat<span class="w"> </span>&lt;project-dir&gt;/00_project_info.json<span class="
 <ul>
 <li>Human has not reviewed the content yet (pipeline paused, awaiting HITL approval)</li>
 <li>Content quality deemed insufficient by human reviewer (intentional rejection — since the todo-9 fix, a rejection converts the H0 result to a stop-failure and the pipeline halts; downstream gates do not run)</li>
-<li>No review decision issued within the configured HITL timeout (default 24h; timeout auto-approves)</li>
+<li>No review decision issued within the configured HITL timeout (default <code>gate_engine.hitl_timeout_s</code>, 3600s; the default <code>gate_engine.hitl_on_timeout</code> policy is <code>reject</code>, so an undecided pause fails the pipeline rather than auto-approving)</li>
 </ul>
 <p><strong>Remediation:</strong></p>
 <ul>
-<li>Check whether the pipeline is paused: <code>get_pipeline_progress(project_id)</code> (status <code>awaiting_hitl</code>) or <code>automedia hitl list</code></li>
+<li>Check whether the pipeline is paused: <code>get_pipeline_progress(project_id)</code> (status <code>awaiting_hitl</code>) or <code>automedia hitl pending</code> (add <code>--base-dir</code> when the project lives outside the current projects directory)</li>
+<li>Approve/reject cross-process (CLI): <code>automedia hitl approve &lt;project_id&gt;</code> or <code>automedia hitl reject &lt;project_id&gt;</code> writes a decision the parked run picks up. This is the path for CLI-started pipelines; both accept <code>--base-dir</code></li>
 <li>Approve (MCP, live H0 path): <code>review_decision(project_id, "H0", action="approve")</code></li>
-<li>Reject and halt (MCP): <code>review_decision(project_id, "H0", action="reject", reason="...")</code> — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided in its own terminal (the call fails fast with a structured error, never a deadlock)</li>
+<li>Reject and halt (MCP): <code>review_decision(project_id, "H0", action="reject", reason="...")</code> — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided through its own terminal (the interactive <code>--wait-for-review</code> prompt) or the cross-process <code>automedia hitl approve|reject</code> commands above (the call fails fast with a structured error, never a deadlock)</li>
 <li>To skip HITL entirely, pass <code>auto_publish=True</code> (or <code>skip_review</code>) to the run</li>
 </ul>
 <p><strong>Quick diagnosis:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Check if pipeline is waiting for human review</span>
-automedia<span class="w"> </span>hitl<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+automedia<span class="w"> </span>hitl<span class="w"> </span>pending
 </code></pre></div>
 
 

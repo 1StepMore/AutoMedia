@@ -4287,7 +4287,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Implementation status</strong></td>
-<td>✅ Documented and implemented. H0 (human review gate) pauses pipeline with <code>awaiting_hitl</code> status. GateEngine supports full HITL lifecycle: <code>on_gate_awaiting_hitl</code>, <code>approve_hitl</code>, <code>reject_hitl</code>. CLI/MCP tools: <code>automedia hitl approve &lt;project_id&gt; &lt;gate_name&gt;</code>.</td>
+<td>✅ Documented and implemented. H0 (human review gate) pauses pipeline with <code>awaiting_hitl</code> status. GateEngine supports full HITL lifecycle: <code>on_gate_awaiting_hitl</code>, <code>approve_hitl</code>, <code>reject_hitl</code>. A paused run is resolved through three channels: the interactive <code>automedia run --wait-for-review</code> prompt (<code>[a]pprove</code>/<code>[r]eject</code>), the cross-process <code>automedia hitl approve/reject &lt;project_id&gt;</code> (see <code>automedia hitl pending</code>), and the MCP <code>review_decision</code> tool (same-process only).</td>
 </tr>
 <tr>
 <td><strong>Skip review</strong></td>
@@ -5662,7 +5662,7 @@ Reality:  HITL framework integrated into pipeline gate execution
 <tr>
 <td><strong>Promise fulfilled</strong>: HITL framework integrated into pipeline execution</td>
 <td>✅</td>
-<td>H0 gate operational with CLI (<code>automedia hitl approve/reject</code>) and MCP support</td>
+<td>H0 gate operational with cross-process CLI (<code>automedia hitl pending</code> + <code>automedia hitl approve/reject &lt;project_id&gt;</code>), interactive <code>automedia run --wait-for-review</code>, and MCP <code>review_decision</code></td>
 </tr>
 </tbody>
 </table>
@@ -5903,7 +5903,7 @@ automedia run --topic "AI视频工具对比2026" --brand my-brand --mode text_on
 <tr>
 <td>HITL in pipeline gates</td>
 <td>✅ Integrated</td>
-<td>H0 gate pauses with <code>awaiting_hitl</code> status; GateEngine approve/reject lifecycle; CLI <code>automedia hitl approve/reject</code></td>
+<td>H0 gate pauses with <code>awaiting_hitl</code> status; GateEngine approve/reject lifecycle; cross-process CLI (<code>automedia hitl pending</code> / <code>approve</code> / <code>reject &lt;project_id&gt;</code>), interactive <code>automedia run --wait-for-review</code>, and MCP <code>review_decision</code></td>
 </tr>
 <tr>
 <td>Pipeline recovery</td>

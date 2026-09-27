@@ -1565,6 +1565,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="automedia hitl">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subcommands_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hitl-pending-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hitl pending Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hitl-approve-hitl-reject-arguments-and-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hitl approve / hitl reject Arguments and Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1647,7 +1686,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#subcommands_4" class="md-nav__link">
+  <a href="#subcommands_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Subcommands
@@ -2999,6 +3038,12 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 
 <span class="c1"># Unattended run — auto-pass the H0 human-review gate</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--skip-review
+
+<span class="c1"># Pause at H0 and decide interactively in this terminal</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--wait-for-review
+
+<span class="c1"># Override the H0 pause budget and timeout policy for this run</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--hitl-timeout<span class="w"> </span><span class="m">600</span><span class="w"> </span>--hitl-on-timeout<span class="w"> </span>reject
 </code></pre></div>
 <h3 id="flags">Flags<a class="headerlink" href="#flags" title="Permanent link">&para;</a></h3>
 <table>
@@ -3066,7 +3111,28 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <td></td>
 <td><code>bool</code></td>
 <td><code>False</code></td>
-<td>Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval</td>
+<td>Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with <code>--wait-for-review</code></td>
+</tr>
+<tr>
+<td><code>--wait-for-review</code></td>
+<td></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Prompt on stdin when H0 pauses (<code>[a]pprove</code> / <code>[r]eject</code>). No-op when stdin is not a TTY; use <code>automedia hitl approve\|reject &lt;project_id&gt;</code> instead. Mutually exclusive with <code>--skip-review</code></td>
+</tr>
+<tr>
+<td><code>--hitl-timeout</code></td>
+<td></td>
+<td><code>float \| None</code></td>
+<td><code>None</code></td>
+<td>Seconds to wait for an H0 decision before the timeout policy applies. Overrides <code>gate_engine.hitl_timeout_s</code> (default <code>3600</code>)</td>
+</tr>
+<tr>
+<td><code>--hitl-on-timeout</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Timeout policy for an undecided H0 pause: <code>reject</code> (default) or <code>approve</code>. Overrides <code>gate_engine.hitl_on_timeout</code></td>
 </tr>
 <tr>
 <td><code>--decision-mode</code></td>
@@ -3873,7 +3939,90 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>config
 
 <span class="c1"># List presets</span>
 automedia<span class="w"> </span>hitl<span class="w"> </span>preset<span class="w"> </span>--list
+
+<span class="c1"># List pipelines parked waiting for a human decision</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>pending
+
+<span class="c1"># Deliver a decision to a pipeline parked in another process</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;
+automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="w"> </span>&lt;project_id&gt;
 </code></pre></div>
+<h3 id="subcommands_4">Subcommands<a class="headerlink" href="#subcommands_4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config</code></td>
+<td>Show the current HITL configuration summary</td>
+</tr>
+<tr>
+<td><code>preset</code></td>
+<td>List presets with <code>--list</code> or activate one with <code>--set &lt;name&gt;</code></td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td>List pipelines parked waiting for a human decision</td>
+</tr>
+<tr>
+<td><code>approve</code></td>
+<td>Approve a pipeline parked at a review gate, cross-process</td>
+</tr>
+<tr>
+<td><code>reject</code></td>
+<td>Reject a pipeline parked at a review gate, cross-process</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hitl-pending-flags">hitl pending Flags<a class="headerlink" href="#hitl-pending-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--base-dir</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Directory to scan for projects</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hitl-approve-hitl-reject-arguments-and-flags">hitl approve / hitl reject Arguments and Flags<a class="headerlink" href="#hitl-approve-hitl-reject-arguments-and-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument / Flag</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID parked at a review gate (required)</td>
+</tr>
+<tr>
+<td><code>--base-dir</code></td>
+<td><code>str \| None</code></td>
+<td>Directory to scan for the project</td>
+</tr>
+</tbody>
+</table>
+<p><code>approve</code> and <code>reject</code> write <code>.hitl_state.json</code> into the project directory so a
+run parked in another process picks up the decision. They exit 1 when the
+project is not parked, or when a previous decision has been delivered but not
+yet consumed.</p>
 <h2 id="automedia-onboard"><code>automedia onboard</code><a class="headerlink" href="#automedia-onboard" title="Permanent link">&para;</a></h2>
 <p>Guided configuration wizard.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Launch configuration wizard</span>
@@ -3967,7 +4116,7 @@ automedia<span class="w"> </span>validate<span class="w"> </span>coverage
 <span class="c1"># Per-scenario surface coverage + status matrix</span>
 automedia<span class="w"> </span>validate<span class="w"> </span>matrix
 </code></pre></div>
-<h3 id="subcommands_4">Subcommands<a class="headerlink" href="#subcommands_4" title="Permanent link">&para;</a></h3>
+<h3 id="subcommands_5">Subcommands<a class="headerlink" href="#subcommands_5" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
