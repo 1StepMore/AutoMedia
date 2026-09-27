@@ -246,7 +246,15 @@ def config_cmd() -> None:
         typer.echo(f"  {name:<28} {ntype:<15} {executor:<10}")
 
 
-# The review-delivery subcommands (pending/approve/reject) live in a sibling
-# module for readability but must register on *this* app, which the lazy loader
-# resolves as the ``hitl`` sub-app. Imported last so ``app`` already exists.
-from automedia.cli.commands import hitl_review as _hitl_review  # noqa: E402,F401
+def _register_review_commands() -> None:
+    """Bind the review-delivery subcommands onto this app.
+
+    They live in a sibling module for readability but must register on *this*
+    app, which the lazy loader resolves as the ``hitl`` sub-app. The import is
+    function-local so it happens after ``app`` exists and needs no
+    module-level-import waiver.
+    """
+    from automedia.cli.commands import hitl_review  # noqa: F401
+
+
+_register_review_commands()
