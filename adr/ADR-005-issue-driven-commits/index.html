@@ -1982,7 +1982,7 @@
 <h3 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h3>
 <p>Proposed · records the discipline this repository's work plans already follow</p>
 <h3 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h3>
-<p>The repository's git history is issue-driven. Commits are organized around discrete issues, tasks, and waves rather than long-running feature branches with squash-merges. Conventional commit prefixes carry the intent of each entry, and subjects frequently reference issue and PR numbers. Recent history shows the pattern clearly:</p>
+<p>The repository's git history is issue-driven. Each unit of work lands on <code>main</code> as one atomic conventional commit: a short-lived branch is squash-merged, so <code>main</code> stays a sequence of discrete issues, tasks, and waves rather than long-running feature branches. Squashing also removes the redundant merge wrapper that a merge commit added for the same unit of work, which is why it serves this ADR's one-commit-per-issue rule more faithfully than merging did. Conventional commit prefixes carry the intent of each entry, and subjects frequently reference issue and PR numbers. Recent history shows the pattern clearly:</p>
 <table>
 <thead>
 <tr>
