@@ -469,7 +469,7 @@ Expectations are grouped by journey phase.
 | **Pre-publish HITL only** | HITL is a single review gate before publish, not integrated into every pipeline gate. The only review point is **content quality before publishing**. All gate-level failures are handled by auto-recovery inside GateEngine. |
 | **Agent after approval** | Human says "发" or "publish" → agent calls `publish_content` or `automedia run --publish`. |
 | **Human requests changes** | Human can ask for edits: "把第二段改得更口语化" → agent regenerates content and re-runs gates. |
-| **Implementation status** | ✅ Documented and implemented. H0 (human review gate) pauses pipeline with `awaiting_hitl` status. GateEngine supports full HITL lifecycle: `on_gate_awaiting_hitl`, `approve_hitl`, `reject_hitl`. CLI/MCP tools: `automedia hitl approve <project_id> <gate_name>`. |
+| **Implementation status** | ✅ Documented and implemented. H0 (human review gate) pauses pipeline with `awaiting_hitl` status. GateEngine supports full HITL lifecycle: `on_gate_awaiting_hitl`, `approve_hitl`, `reject_hitl`. A paused run is resolved through three channels: the interactive `automedia run --wait-for-review` prompt (`[a]pprove`/`[r]eject`), the cross-process `automedia hitl approve/reject <project_id>` (see `automedia hitl pending`), and the MCP `review_decision` tool (same-process only). |
 | **Skip review** | Human can pre-authorize: "不用审了，直接发" — agent publishes without waiting for content review. |
 
 ### 3.5 Phase 5: Publish
@@ -977,7 +977,7 @@ Reality:  HITL framework integrated into pipeline gate execution
 | HITL config exists | ✅ Works | Presets (automated/semi/skip) |
 | HITL executor works | ✅ Works | Approve/skip nodes |
 | HITL in pipeline gates | ✅ **Integrated** | H0 gate pauses pipeline with `awaiting_hitl` status; GateEngine HITL lifecycle (`on_gate_awaiting_hitl`, `approve_hitl`, `reject_hitl`); HITL config injected into gate context |
-| **Promise fulfilled**: HITL framework integrated into pipeline execution | ✅ | H0 gate operational with CLI (`automedia hitl approve/reject`) and MCP support |
+| **Promise fulfilled**: HITL framework integrated into pipeline execution | ✅ | H0 gate operational with cross-process CLI (`automedia hitl pending` + `automedia hitl approve/reject <project_id>`), interactive `automedia run --wait-for-review`, and MCP `review_decision` |
 
 ---
 
@@ -1107,7 +1107,7 @@ This flow works. It's the project's strongest path.
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| HITL in pipeline gates | ✅ Integrated | H0 gate pauses with `awaiting_hitl` status; GateEngine approve/reject lifecycle; CLI `automedia hitl approve/reject` |
+| HITL in pipeline gates | ✅ Integrated | H0 gate pauses with `awaiting_hitl` status; GateEngine approve/reject lifecycle; cross-process CLI (`automedia hitl pending` / `approve` / `reject <project_id>`), interactive `automedia run --wait-for-review`, and MCP `review_decision` |
 | Pipeline recovery | ✅ Operational | GateEngine: exponential backoff retry (tenacity), `max_quality_retries` for quality feedback, HITL pause-and-wait |
 | Source path input | ✅ Implemented | `source_path` (local file/directory) + `source_url` (URL fetch) in `run_pipeline` |
 | Omni Triad processing | ✅ Implemented | OPP (extract), OL (localize), ORF (convert) — all with MCP tools |

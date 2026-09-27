@@ -17,6 +17,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
+from structlog import get_logger
+
+log = get_logger(__name__)
+
+_HITL_POLL_INTERVAL_S: float = 0.2
+"""How often a pause re-checks for a delivered decision file.
+
+Short enough that an operator does not notice the lag after running
+``automedia hitl approve``, long enough that a multi-hour wait is not a busy
+loop.
+"""
+
 # ---------------------------------------------------------------------------
 # HITL (Human-in-the-Loop) coordination state.
 # ---------------------------------------------------------------------------
@@ -25,17 +37,14 @@ _hitl_lock = threading.Lock()
 """Lock protecting ``_hitl_waiters``."""
 
 _hitl_waiters: dict[str, Any] = {}
-"""Maps ``gate_name`` to a dict with ``event``, ``status``, and ``detail``.
+"""Maps ``project_id`` to the :class:`PipelineProgress` awaiting a decision.
 
-Structure::
-
-    {
-        gate_name: {
-            "event": threading.Event(),
-            "status": "awaiting" | "approved" | "rejected",
-            "detail": str,
-        }
-    }
+Registered by ``on_gate_awaiting_hitl`` and consumed by the MCP
+``review_decision`` tool, which resolves a pause made by a pipeline this
+process is running.  Entries are removed on decision, so the registry only ever
+holds currently-paused pipelines.  It is process-local: a decision for a
+pipeline started by another process must arrive through ``.hitl_state.json``
+(see :meth:`PipelineProgress.wait_for_hitl`).
 """
 
 
@@ -267,6 +276,18 @@ class PipelineProgress:
         with _hitl_lock:
             _hitl_waiters[self.project_id] = self
 
+    def _in_memory_decision(self) -> bool | None:
+        """Return the in-process decision, or ``None`` while still undecided.
+
+        The decision is deliberately NOT cleared once read.  The quality-retry
+        loop re-executes a gate that returned ``awaiting_hitl`` and waits again;
+        that re-wait must keep seeing the same answer, otherwise the retry burns
+        its whole timeout and then falls through to the timeout policy — which
+        silently turned a human rejection into an approval.
+        """
+        with _hitl_lock:
+            return self._hitl_decision
+
     def approve_hitl(self, project_dir: str = "") -> None:
         """Approve an awaiting HITL gate.
 
@@ -279,8 +300,9 @@ class PipelineProgress:
             state_file = Path(project_dir) / ".hitl_state.json"
             state_file.write_text(json.dumps({"decision": "approve"}), encoding="utf-8")
         else:
-            self._hitl_decision = True
-            self._hitl_event.set()
+            with _hitl_lock:
+                self._hitl_decision = True
+                self._hitl_event.set()
 
         with _hitl_lock:
             _hitl_waiters.pop(self.project_id, None)
@@ -297,48 +319,94 @@ class PipelineProgress:
             state_file = Path(project_dir) / ".hitl_state.json"
             state_file.write_text(json.dumps({"decision": "reject"}), encoding="utf-8")
         else:
-            self._hitl_decision = False
-            self._hitl_event.set()
+            with _hitl_lock:
+                self._hitl_decision = False
+                self._hitl_event.set()
 
         with _hitl_lock:
             _hitl_waiters.pop(self.project_id, None)
 
-    def wait_for_hitl(self, project_dir: str = "", timeout: float = 86400.0) -> bool:
-        """Block the calling thread until HITL decision or *timeout*.
+    @staticmethod
+    def _consume_hitl_state_file(state_file: Path) -> bool | None:
+        """Read and delete a delivered decision, or ``None`` if not ready yet.
 
-        *In-memory mode* (no *project_dir*): waits on an internal
-        :class:`threading.Event` signalled by ``approve_hitl()`` /
-        ``reject_hitl()``.
+        The file is single-use on purpose: a decision left on disk would be
+        re-read by the next pause and silently approve it.  A partially written
+        or absent file yields ``None`` so the caller keeps polling.
+        """
+        try:
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+        decision = data.get("decision") if isinstance(data, dict) else None
+        if decision not in ("approve", "reject"):
+            return None
+        try:
+            state_file.unlink(missing_ok=True)
+        except OSError:
+            log.debug("hitl.state_file_unlink_failed", path=str(state_file))
+        return decision == "approve"
 
-        *File mode* (*project_dir* given): polls
-        ``project_dir/.hitl_state.json`` for a decision.
+    def wait_for_hitl(
+        self,
+        project_dir: str = "",
+        timeout: float = 3600.0,
+        on_timeout: str = "approve",
+    ) -> bool:
+        """Block the calling thread until a HITL decision arrives or *timeout*.
 
-        On timeout the gate auto-approves (returns ``True``).
+        Both channels are honoured at once: the in-memory event (set by
+        ``approve_hitl`` / ``reject_hitl``, which is how the MCP
+        ``review_decision`` tool resolves a pause in the same process) and the
+        durable ``project_dir/.hitl_state.json`` file (how a *separate*
+        ``automedia hitl approve`` process delivers a decision).  Whichever
+        arrives first wins; a decision already recorded is returned immediately.
+
+        Parameters
+        ----------
+        project_dir:
+            When given, also poll ``.hitl_state.json`` in this directory.
+        timeout:
+            Seconds to wait before applying *on_timeout*.
+        on_timeout:
+            ``"approve"`` fails open, ``"reject"`` fails closed.  Anything else
+            is treated as ``"reject"`` — an unrecognised policy must never
+            silently ship unreviewed content.
 
         Returns
         -------
         bool
             ``True`` for approve, ``False`` for reject.
         """
-        if project_dir:
-            state_file = Path(project_dir) / ".hitl_state.json"
-            deadline = time.monotonic() + timeout
-            while time.monotonic() < deadline:
-                if state_file.is_file():
-                    try:
-                        data = json.loads(state_file.read_text(encoding="utf-8"))
-                        return data.get("decision") == "approve"
-                    except (json.JSONDecodeError, OSError):
-                        pass
-                time.sleep(0.5)
-            return True  # Timeout = auto-approve
+        timeout_approves = on_timeout == "approve"
+        state_file = Path(project_dir) / ".hitl_state.json" if project_dir else None
 
-        triggered = self._hitl_event.wait(timeout=timeout)
+        decided = self._in_memory_decision()
+        if decided is not None:
+            return decided
 
-        if not triggered:
-            return True  # Timeout = auto-approve
+        deadline = time.monotonic() + timeout
 
-        return bool(self._hitl_decision)
+        if state_file is None:
+            if self._hitl_event.wait(timeout=max(0.0, deadline - time.monotonic())):
+                decided = self._in_memory_decision()
+                return timeout_approves if decided is None else decided
+            return timeout_approves
+
+        while True:
+            decided = self._in_memory_decision()
+            if decided is not None:
+                return decided
+            delivered = self._consume_hitl_state_file(state_file)
+            if delivered is not None:
+                return delivered
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return timeout_approves
+            if self._hitl_event.wait(timeout=min(_HITL_POLL_INTERVAL_S, remaining)):
+                decided = self._in_memory_decision()
+                if decided is not None:
+                    return decided
 
     # -- Cancel / Pause / Retry / Skip control ------------------------------
 

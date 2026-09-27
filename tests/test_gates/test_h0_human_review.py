@@ -41,8 +41,28 @@ class TestH0Gate:
         assert result["passed"] is True
         assert result["gate"] == "H0"
         assert result["status"] == "awaiting_hitl"
-        assert result["timeout_s"] == 86400
+        # One hour, not the 24h this used to hardcode: a non-interactive run
+        # would hang for a day and then auto-approve. See issue #105.
+        assert result["timeout_s"] == 3600
         assert "escalated_gates" in result
+
+    def test_timeout_outcome_defaults_to_reject(self) -> None:
+        """An undecided pause must not silently approve (issue #105)."""
+        gate = _registry.get("H0")()
+        result = gate.execute({"topic": "test"})
+        assert result["on_timeout"] == "reject"
+
+    def test_timeout_outcome_honours_hitl_config(self) -> None:
+        """An operator can opt back into the legacy fail-open behaviour."""
+        gate = _registry.get("H0")()
+        result = gate.execute({"topic": "test", "hitl_config": {"on_timeout": "approve"}})
+        assert result["on_timeout"] == "approve"
+
+    def test_unknown_timeout_outcome_falls_back_to_reject(self) -> None:
+        """A typo in config must fail closed, never open."""
+        gate = _registry.get("H0")()
+        result = gate.execute({"topic": "test", "hitl_config": {"on_timeout": "aprove"}})
+        assert result["on_timeout"] == "reject"
 
     def test_skip_review_bypasses(self) -> None:
         """With skip_review=True, gate should auto-pass as skipped."""

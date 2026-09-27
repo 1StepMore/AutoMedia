@@ -627,18 +627,19 @@ Pre-publish human-in-the-loop review gate. Pauses the pipeline and waits for hum
 
 - Human has not reviewed the content yet (pipeline paused, awaiting HITL approval)
 - Content quality deemed insufficient by human reviewer (intentional rejection — since the todo-9 fix, a rejection converts the H0 result to a stop-failure and the pipeline halts; downstream gates do not run)
-- No review decision issued within the configured HITL timeout (default 24h; timeout auto-approves)
+- No review decision issued within the configured HITL timeout (default `gate_engine.hitl_timeout_s`, 3600s; the default `gate_engine.hitl_on_timeout` policy is `reject`, so an undecided pause fails the pipeline rather than auto-approving)
 
 **Remediation:**
 
-- Check whether the pipeline is paused: `get_pipeline_progress(project_id)` (status `awaiting_hitl`) or `automedia hitl list`
+- Check whether the pipeline is paused: `get_pipeline_progress(project_id)` (status `awaiting_hitl`) or `automedia hitl pending` (add `--base-dir` when the project lives outside the current projects directory)
+- Approve/reject cross-process (CLI): `automedia hitl approve <project_id>` or `automedia hitl reject <project_id>` writes a decision the parked run picks up. This is the path for CLI-started pipelines; both accept `--base-dir`
 - Approve (MCP, live H0 path): `review_decision(project_id, "H0", action="approve")`
-- Reject and halt (MCP): `review_decision(project_id, "H0", action="reject", reason="...")` — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided in its own terminal (the call fails fast with a structured error, never a deadlock)
+- Reject and halt (MCP): `review_decision(project_id, "H0", action="reject", reason="...")` — same-process only: the tool reaches pipelines started by the MCP server itself; a CLI-started pipeline must be decided through its own terminal (the interactive `--wait-for-review` prompt) or the cross-process `automedia hitl approve|reject` commands above (the call fails fast with a structured error, never a deadlock)
 - To skip HITL entirely, pass `auto_publish=True` (or `skip_review`) to the run
 
 **Quick diagnosis:**
 
 ```bash
 # Check if pipeline is waiting for human review
-automedia hitl list --status pending
+automedia hitl pending
 ```

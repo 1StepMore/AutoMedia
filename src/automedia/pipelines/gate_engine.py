@@ -36,6 +36,19 @@ from automedia.pipelines.gate_types import (
 
 log = get_logger(__name__)
 
+
+def _hitl_project_dir(gate_context: GateContext | dict[str, Any]) -> str:
+    """Return the project directory a HITL decision may be delivered to.
+
+    Both ``wait_for_hitl`` call sites used to hardcode ``project_dir=""``,
+    which forced the in-memory branch and left the ``.hitl_state.json`` branch
+    unreachable — so a decision could only ever arrive from inside this process.
+    Passing the real project dir is what makes ``automedia hitl approve`` (a
+    separate process) able to resolve the pause.
+    """
+    return str(gate_context.get("project_dir", "") or "")
+
+
 # Exception categorization for gate error handling.
 _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError, GateError)
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
@@ -890,11 +903,12 @@ class GateEngine:
 
                 # HITL: when gate returns awaiting_hitl, pause for human review
                 if result.get("status") == "awaiting_hitl" and progress:
-                    timeout_s = result.get("timeout_s", 86400)
+                    timeout_s = result.get("timeout_s", 3600)
                     progress.on_gate_awaiting_hitl(gate_name)
                     hitl_ok = progress.wait_for_hitl(
-                        project_dir="",
+                        project_dir=_hitl_project_dir(gate_context),
                         timeout=timeout_s,
+                        on_timeout=str(result.get("on_timeout", "approve")),
                     )
                     result["_hitl_approved"] = hitl_ok
                     if not hitl_ok:
@@ -985,11 +999,12 @@ class GateEngine:
                             results[-1] = result
 
                             if result.get("status") == "awaiting_hitl" and progress:
-                                timeout_s = result.get("timeout_s", 86400)
+                                timeout_s = result.get("timeout_s", 3600)
                                 progress.on_gate_awaiting_hitl(gate_name)
                                 hitl_ok = progress.wait_for_hitl(
-                                    project_dir="",
+                                    project_dir=_hitl_project_dir(gate_context),
                                     timeout=timeout_s,
+                                    on_timeout=str(result.get("on_timeout", "approve")),
                                 )
                                 result["_hitl_approved"] = hitl_ok
                                 if not hitl_ok:

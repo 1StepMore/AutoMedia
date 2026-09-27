@@ -24,9 +24,9 @@ one worked example). This skill is the loadable procedure.
   the recursive glob auto-loads them — no registration).
 - **Acceptance run** → run the suite, persist the record, write the evidence.
 
-## Scenario library (143)
+## Scenario library (144)
 
-`scenarios/` holds 143 declarative YAML scripts across `cli/`, `journeys/`,
+`scenarios/` holds 144 declarative YAML scripts across `cli/`, `journeys/`,
 `publish/`, `quality/`, `regression/`, `surface/`, `meta/`, `fixtures/`,
 `baseline/`. Every step is one **real** MCP/CLI/file call graded against an
 `expect` block. Authority: `scenarios/STANDARDS.md`.

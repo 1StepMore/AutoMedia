@@ -738,11 +738,101 @@ class TestRunFullPipeline:
         hc = captured["hitl_config"]
         assert "enabled_nodes" in hc, f"hitl_config missing enabled_nodes, got keys: {list(hc)}"
         assert "default_executor" in hc
-        assert "timeout_s" in hc
         assert {"name": "brand_questionnaire", "autoset": "human"} in hc["enabled_nodes"]
         assert {"name": "build_scale_routing", "autoset": "agent"} not in hc["enabled_nodes"]
         assert hc["default_executor"] == "agent"
-        assert hc["timeout_s"] == 86400
+        # With no gate_engine config, the pause budget is deliberately left unset
+        # so H0 applies its own default — one source of truth, not two. The old
+        # hardcoded 86400 lived here and made an unattended run hang for a day
+        # before auto-approving. See issue #105.
+        assert "timeout_s" not in hc
+        assert "on_timeout" not in hc
+
+    @patch("automedia.hitl.config.HITLConfig")
+    @patch("automedia.core.config_loader.load_config")
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_hitl_config_carries_configured_timeout_and_on_timeout(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_hitl: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """gate_engine.hitl_* config reaches gate_context (issue #105)."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "hitl-cfg"
+        mock_project.init.return_value = mock_proj
+
+        mock_cfg = MagicMock()
+        mock_cfg.list_nodes.return_value = []
+        mock_hitl.return_value = mock_cfg
+
+        captured: dict[str, Any] = {}
+
+        class _CaptureGate:
+            gate_name = "H98"
+            failure_mode = "stop"
+
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                captured["hitl_config"] = gate_context.get("hitl_config", {})
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureGate()]
+        mock_config.return_value = {
+            "gate_engine": {"hitl_timeout_s": 120, "hitl_on_timeout": "approve"}
+        }
+
+        result = run_full_pipeline("HITL cfg topic", "testbrand", mode="auto")
+
+        assert result.status == "success"
+        hc = captured["hitl_config"]
+        assert hc["timeout_s"] == 120
+        assert hc["on_timeout"] == "approve"
+
+    @patch("automedia.hitl.config.HITLConfig")
+    @patch("automedia.core.config_loader.load_config")
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_hitl_timeout_argument_overrides_config(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_hitl: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """The explicit --hitl-timeout argument wins over configured value."""
+        mock_proj = MagicMock()
+        mock_proj.project_id = "hitl-arg"
+        mock_project.init.return_value = mock_proj
+
+        mock_cfg = MagicMock()
+        mock_cfg.list_nodes.return_value = []
+        mock_hitl.return_value = mock_cfg
+
+        captured: dict[str, Any] = {}
+
+        class _CaptureGate:
+            gate_name = "H97"
+            failure_mode = "stop"
+
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                captured["hitl_config"] = gate_context.get("hitl_config", {})
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_CaptureGate()]
+        mock_config.return_value = {"gate_engine": {"hitl_timeout_s": 120}}
+
+        result = run_full_pipeline("HITL arg topic", "testbrand", mode="auto", hitl_timeout_s=45)
+
+        assert result.status == "success"
+        assert captured["hitl_config"]["timeout_s"] == 45
 
     # ------------------------------------------------------------------
     # text_with_cover mode — cover image generation
