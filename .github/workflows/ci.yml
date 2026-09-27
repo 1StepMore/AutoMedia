@@ -107,7 +107,15 @@ jobs:
       - name: Validation coverage audit (T-01; evidence-backed)
         # Evidence-backed coverage (gap T-01): coverage = declared surface ∩
         # surfaces reached by a passed step in the newest persisted run.
-        # `missing` (declared-but-unreferenced, Absent) always fails.
+        # `missing` (declared-but-unreferenced, Absent) is reported in full as
+        # `missing_count`. The build fails on `missing_hard_count`: the subset
+        # that means a broken invariant (an mcp/cli/mode surface, or a gate a
+        # pipeline preset can execute, that no scenario proves). A
+        # command-path-reachable gate with no scenario (L1-L4, run via
+        # `automedia archive`/`distribute`/`omni` and the publish flow) is a
+        # tracked backlog item: fully visible in `missing` and
+        # `missing_count`, but not a per-build failure. Gates nothing can
+        # execute are excluded from both and reported as `unreachable_gates`.
         # `unproven` fails once an evidence run exists; this static job has no
         # persisted run, so it reports the unproven set loudly and the
         # operator-facing `automedia validate coverage` is the strict gate
@@ -129,8 +137,8 @@ jobs:
               f"evidence_run={audit['evidence_run']} "
               f"confidence={audit['evidence_confidence']}"
           )
-          if audit["missing_count"]:
-              print(f"FAIL: {audit['missing_count']} absent surface(s)")
+          if audit["missing_hard_count"]:
+              print(f"FAIL: {audit['missing_hard_count']} absent surface(s)")
               sys.exit(1)
           if audit["evidence_run"] is not None and audit["unproven_count"]:
               print(

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from automedia.validation.coverage import coverage_audit
+from automedia.validation.coverage import COMMAND_PATH_REACHABLE_GATES, coverage_audit
 
 SERVER_SNIPPET = """\
 # Synthetic server snippet (fixture — never the real server.py).
@@ -509,7 +509,10 @@ class TestGateModeSurfaces:
         assert "V1" in result["covered_gates"]
         assert "G0" not in result["missing_gates"]
         assert result["covered_modes"] == ["text_only"]
-        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G0", "V1"})
+        # Issue #99: missing excludes the registered-but-unreachable gates.
+        assert result["missing_gates"] == sorted(
+            set(result["declared_gates"]) - {"G0", "V1"} - set(result["unreachable_gates"])
+        )
         assert result["missing_modes"] == sorted(set(result["declared_modes"]) - {"text_only"})
         assert result["phantom_gates"] == []
         assert result["phantom_modes"] == []
@@ -531,7 +534,10 @@ class TestGateModeSurfaces:
         assert "H0" not in result["missing_gates"]
         assert "auto" not in result["covered_modes"]
         assert "auto" not in result["missing_modes"]
-        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"H0"})
+        # Issue #99: missing excludes the registered-but-unreachable gates.
+        assert result["missing_gates"] == sorted(
+            set(result["declared_gates"]) - {"H0"} - set(result["unreachable_gates"])
+        )
         assert result["missing_modes"] == sorted(set(result["declared_modes"]) - {"auto"})
 
     def test_undeclared_proves_are_phantom(self, tmp_path: Path) -> None:
@@ -550,9 +556,10 @@ class TestGateModeSurfaces:
     def test_declared_counts_from_recursive_static_scan(self, tmp_path: Path) -> None:
         """33 gates / 9 modes from the REAL runner.py + recursive
         ``gates/**/*.py`` static scan (empty synthetic library: used = ∅,
-        everything missing).  The scan is import-free — it must not consult
-        the process-global GateRegistry (collection-time test gates would
-        inflate it)."""
+        everything reachable missing).  The scan is import-free — it must not
+        consult the process-global GateRegistry (collection-time test gates
+        would inflate it).  Issue #99: G4/G5 are registered but unreachable, so
+        they are reported as unreachable, not missing."""
         result = _audit(tmp_path, {})
         summary = result["summary"]
         assert summary["gates_declared"] == 33
@@ -561,9 +568,11 @@ class TestGateModeSurfaces:
         assert len(result["declared_modes"]) == 9
         assert summary["gates_used"] == 0
         assert summary["modes_used"] == 0
-        assert summary["gates_missing"] == 33
+        assert result["unreachable_gates"] == ["G4", "G5"]
+        assert summary["gates_unreachable"] == 2
+        assert summary["gates_missing"] == 31
         assert summary["modes_missing"] == 9
-        assert result["missing_gates"] == result["declared_gates"]
+        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G4", "G5"})
         assert result["missing_modes"] == result["declared_modes"]
         for key in (
             "declared_gates",
@@ -576,6 +585,7 @@ class TestGateModeSurfaces:
             "missing_modes",
             "phantom_gates",
             "phantom_modes",
+            "unreachable_gates",
             "boundary_only_gates",
             "boundary_only_modes",
         ):
@@ -586,6 +596,7 @@ class TestGateModeSurfaces:
             "gates_covered",
             "gates_missing",
             "gates_phantom",
+            "gates_unreachable",
             "gates_boundary_only",
             "modes_declared",
             "modes_used",
@@ -595,3 +606,40 @@ class TestGateModeSurfaces:
             "modes_boundary_only",
         ):
             assert key in summary, f"summary missing key {key!r}"
+
+
+class TestReachabilityClassification:
+    """Issue #99: declared gates are classified by what can actually execute.
+
+    The registered-but-unreachable gates (G4/G5 today) are neither
+    preset-reachable nor command-path-reachable, so they are excluded from
+    ``missing`` — a gate nothing can execute must not be a permanent hard
+    failure — and surfaced loudly as ``unreachable_gates`` instead.
+    """
+
+    def test_unreachable_gates_classified_and_excluded_from_missing(self, tmp_path: Path) -> None:
+        result = _audit(tmp_path, {})
+        assert result["unreachable_gates"] == ["G4", "G5"]
+        assert result["summary"]["gates_unreachable"] == 2
+        assert "G4" not in result["missing_gates"]
+        assert "G5" not in result["missing_gates"]
+        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G4", "G5"})
+        # The evidence-half missing bucket (which feeds missing_count) excludes
+        # the same unreachable gates.
+        assert "G4" not in result["missing"]["gates"]
+        assert "G5" not in result["missing"]["gates"]
+        assert result["missing"]["gates"] == result["missing_gates"]
+
+    def test_classification_partitions_declared_gates(self, tmp_path: Path) -> None:
+        result = _audit(tmp_path, {})
+        declared = set(result["declared_gates"])
+        unreachable = set(result["unreachable_gates"])
+        command_path = set(COMMAND_PATH_REACHABLE_GATES)
+        preset = declared - command_path - unreachable
+        # Every declared gate lands in exactly one bucket; the 20 preset gates
+        # are non-empty and the command-path constant is a declared subset.
+        assert unreachable | command_path | preset == declared
+        assert len(preset) == 20
+        assert command_path <= declared
+        assert unreachable == {"G4", "G5"}
+        assert not (unreachable & command_path)
