@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.overrides import OverridesLoader
+from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 if TYPE_CHECKING:
     from automedia.core.project import Project
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from automedia.manifests.brand_profile_schema import BrandProfile
     from automedia.pipelines.gate_engine import AssetInfo, GateLogEntry, PipelineResult
     from automedia.pipelines.gate_types import PipelineProgress
-    from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 log = get_logger(__name__)
 
@@ -1036,7 +1036,15 @@ def _run_pipeline(
             hitl_on_timeout,
         )
 
-        if wait_for_review and progress is not None:
+        if wait_for_review:
+            if progress is None:
+                # The prompt resolves the pause through the very object the
+                # engine waits on, so both must share one. Without this the flag
+                # was silently ignored for any caller that passed no progress
+                # (the CLI always passes one, which is why tests missed it).
+                from automedia.pipelines.gate_types import PipelineProgress
+
+                progress = PipelineProgress(project_id=project.project_id)
             # Best-effort and a no-op unless stdin is a terminal: the helper owns
             # that policy so the runner never has to reason about TTYs.
             start_interactive_review_prompt(progress, "H0", project.project_id)

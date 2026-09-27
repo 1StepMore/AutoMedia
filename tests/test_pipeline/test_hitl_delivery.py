@@ -251,6 +251,25 @@ def test_stale_decision_file_is_cleared_at_run_start(tmp_path: Path) -> None:
     assert not (tmp_path / ".hitl_state.json").exists()
 
 
+def test_runner_resolves_the_review_prompt_at_runtime() -> None:
+    """The runner must import the prompt helper for real, not only for typing.
+
+    Regression guard for a shipped bug: the helper was imported inside
+    ``if TYPE_CHECKING:``, so ``automedia run --wait-for-review`` died with
+    ``NameError: name 'start_interactive_review_prompt' is not defined`` on
+    every invocation.  Mypy, the full suite, CI and the regression scenario
+    all passed, because every test called the helper directly and nothing
+    exercised the runner's own call site.  A TYPE_CHECKING-only import still
+    type-checks perfectly, so the only reliable guard is to resolve the name.
+    """
+    from automedia.pipelines import runner
+
+    assert callable(getattr(runner, "start_interactive_review_prompt", None)), (
+        "runner.start_interactive_review_prompt is not a runtime attribute — "
+        "it is probably only imported under TYPE_CHECKING"
+    )
+
+
 def test_clear_stale_hitl_state_is_safe_when_absent(tmp_path: Path) -> None:
     """Clearing a directory with no decision file is a no-op, not an error."""
     from automedia.pipelines.runner import clear_stale_hitl_state

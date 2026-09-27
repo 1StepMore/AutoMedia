@@ -793,6 +793,52 @@ class TestRunFullPipeline:
         assert hc["timeout_s"] == 120
         assert hc["on_timeout"] == "approve"
 
+    @patch("automedia.pipelines.runner.start_interactive_review_prompt")
+    @patch("automedia.hitl.config.HITLConfig")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_wait_for_review_starts_the_interactive_prompt(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_hitl: MagicMock,
+        mock_prompt: MagicMock,
+    ) -> None:
+        """--wait-for-review must actually reach the prompt helper (issue #105).
+
+        Regression guard: the flag was accepted and threaded all the way into
+        the runner, but the helper was imported under ``TYPE_CHECKING`` only, so
+        the real code raised ``NameError``. Asserting the call site keeps the
+        flag and the behaviour tied together.
+        """
+        mock_proj = MagicMock()
+        mock_proj.project_id = "hitl-prompt"
+        mock_project.init.return_value = mock_proj
+
+        mock_cfg = MagicMock()
+        mock_cfg.list_nodes.return_value = []
+        mock_hitl.return_value = mock_cfg
+
+        class _NoopGate:
+            gate_name = "H96"
+            failure_mode = "stop"
+
+            def execute(self, gate_context: dict[str, Any]) -> dict[str, Any]:
+                return {"passed": True, "gate": self.gate_name}
+
+        mock_build.return_value = [_NoopGate()]
+
+        result = run_full_pipeline(
+            "HITL prompt topic", "testbrand", mode="auto", wait_for_review=True
+        )
+
+        assert result.status == "success"
+        assert mock_prompt.called, "wait_for_review=True never started the review prompt"
+
     @patch("automedia.hitl.config.HITLConfig")
     @patch("automedia.core.config_loader.load_config")
     @patch("automedia.core.project.Project")
