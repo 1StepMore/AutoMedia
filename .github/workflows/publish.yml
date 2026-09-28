@@ -24,6 +24,13 @@ on:
     tags: ["v*", "automedia-v*"]
   workflow_dispatch:
 
+# A release-please release fires both `release: published` and the tag push, so
+# without this the artifacts upload twice and the second run fails with
+# `400 File already exists` — a red check on a release that succeeded.
+concurrency:
+  group: publish-pypi-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
