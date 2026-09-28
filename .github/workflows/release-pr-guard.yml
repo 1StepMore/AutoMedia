@@ -115,6 +115,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          gh pr comment "$PR_NUMBER" --body "This release contains only internal maintenance changes (no user-visible paths), so it is frozen. release-please will unfreeze and re-propose it automatically once the release contains a user-visible change. Rule: issue #122."
+          gh pr comment "$PR_NUMBER" --body "This release contains only internal maintenance changes (no user-visible paths), so it is frozen via the autorelease: snooze label. Once the release contains a user-visible change, release-please clears that label and updates this branch -- reopen this PR to proceed. Rule: issue #122."
           gh pr edit "$PR_NUMBER" --add-label "autorelease: snooze"
           gh pr close "$PR_NUMBER"
