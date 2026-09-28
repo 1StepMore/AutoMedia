@@ -10,6 +10,28 @@
           "path": "src/automedia/_version.py"
         }
       ],
+      "changelog-sections": {
+        "ci": {
+          "type": "ci",
+          "hidden": true
+        },
+        "chore": {
+          "type": "chore",
+          "hidden": true
+        },
+        "test": {
+          "type": "test",
+          "hidden": true
+        },
+        "style": {
+          "type": "style",
+          "hidden": true
+        },
+        "refactor": {
+          "type": "refactor",
+          "hidden": true
+        }
+      },
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,
