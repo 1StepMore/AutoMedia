@@ -1338,6 +1338,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#awaiting_review-is-a-fourth-status-not-a-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        awaiting_review is a fourth status, not a failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resume_from-uses-gate-names-not-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2356,6 +2367,19 @@ with status set to <code>"failed"</code>. This is by design, so callers check
 </code></pre></div>
 <p><strong>Gotcha:</strong> If you forget to check <code>result.status</code>, you might mistakenly
 assume the Pipeline completed successfully.</p>
+<h3 id="awaiting_review-is-a-fourth-status-not-a-failure"><code>awaiting_review</code> is a fourth status, not a failure<a class="headerlink" href="#awaiting_review-is-a-fourth-status-not-a-failure" title="Permanent link">&para;</a></h3>
+<p>A non-interactive run (no TTY, and neither <code>--wait-for-review</code> nor
+<code>--hitl-block</code>) parks at H0 instead of blocking, and <code>run_full_pipeline()</code>
+returns <code>status="awaiting_review"</code>. It is neither <code>"success"</code> nor <code>"failed"</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"awaiting_review"</span><span class="p">:</span>
+    <span class="c1"># A human must decide; resume later with resume_project_id + resume_from="H0".</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Gotcha:</strong> Code that treats "not success" as failure will misread a parked run,
+and <code>passed</code> plus <code>failed</code> no longer totals a batch: the MCP <code>run_batch</code> and CLI
+<code>--topics</code> summaries add a separate <code>awaiting</code> count. Handle all four statuses
+explicitly.</p>
 <h3 id="resume_from-uses-gate-names-not-numbers"><code>resume_from</code> uses Gate names, not numbers<a class="headerlink" href="#resume_from-uses-gate-names-not-numbers" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Correct</span>
 <span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">brand</span><span class="p">,</span> <span class="n">resume_from</span><span class="o">=</span><span class="s2">"G3"</span><span class="p">)</span>

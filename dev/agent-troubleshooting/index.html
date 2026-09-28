@@ -2614,7 +2614,7 @@
 <tbody>
 <tr>
 <td><code>status</code></td>
-<td><code>"success"</code>, <code>"failed"</code>, <code>"partial"</code></td>
+<td><code>"success"</code>, <code>"failed"</code>, <code>"partial"</code>, <code>"awaiting_review"</code></td>
 <td>Overall pipeline outcome</td>
 </tr>
 <tr>
@@ -2639,7 +2639,7 @@
 </tr>
 </tbody>
 </table>
-<p>A <code>status="partial"</code> means some gates passed but a <code>failure_mode="stop"</code> gate failed or a <code>failure_mode="retry"</code> gate failed and the pipeline continued.</p>
+<p>A <code>status="partial"</code> means some gates passed but a <code>failure_mode="stop"</code> gate failed or a <code>failure_mode="retry"</code> gate failed and the pipeline continued. A <code>status="awaiting_review"</code> means the run parked at a HITL gate (H0) with no human decision delivered yet; it is neither success nor failure, and the CLI exits 3 for it.</p>
 <p><strong>Step 3: Interpret gate failure modes</strong></p>
 <p>Each gate has a <code>failure_mode</code> defined at the class level:</p>
 <ul>
@@ -2664,7 +2664,7 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># Resume from the last passed gate (reads history.db)</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI tools"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--auto-resume
 
-<span class="c1"># Inspect per-gate passed/failed/pending + md5 before resuming</span>
+<span class="c1"># Inspect per-gate passed/failed/pending/awaiting_review + md5 before resuming</span>
 automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
 </code></pre></div>
 <p>The <code>resume_from</code> value must match a gate name in the current mode's gate list (<code>_AUTO_GATE_NAMES</code>, <code>_TEXT_ONLY_GATE_NAMES</code>, etc. in <code>automedia/pipelines/runner.py</code>). If the name is not found, a <code>ValueError</code> is raised. <code>--auto-resume</code> ignores the requested gate and instead reads the latest completed+passed gate from <code>history.db</code>; explicit <code>--resume-from</code> always takes precedence.</p>
@@ -2692,6 +2692,11 @@ automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span clas
 <td><code>"failed"</code></td>
 <td>Unexpected exception before or during execution</td>
 <td>Check <code>error</code> field for stack trace</td>
+</tr>
+<tr>
+<td><code>"awaiting_review"</code></td>
+<td>The run parked at the H0 review gate; a human decision is still outstanding</td>
+<td>Run <code>automedia hitl pending</code>, then <code>automedia hitl approve &lt;project_id&gt;</code> or <code>reject</code>; resume with <code>automedia run --project-id &lt;project_id&gt; --resume-from H0</code>. CLI exit code is 3 (neither success nor failure), so do not retry it as a failure</td>
 </tr>
 <tr>
 <td>---</td>
@@ -3041,7 +3046,7 @@ ffmpeg<span class="w"> </span>-encoders<span class="w"> </span><span class="p">|
 <div class="highlight"><pre><span></span><code><span class="c1"># Resume from the last passed gate (reads history.db)</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"AI tools"</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--auto-resume
 
-<span class="c1"># Audit per-gate state (passed/failed/pending + md5) first</span>
+<span class="c1"># Audit per-gate state (passed/failed/pending/awaiting_review + md5) first</span>
 automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
 </code></pre></div>
 <p>The pipeline reads <code>pipeline_md5.json</code> from the project directory to verify previous gate outputs before resuming.</p>

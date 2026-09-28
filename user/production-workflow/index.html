@@ -1309,6 +1309,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#awaiting-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Awaiting Review
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#failure-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2393,6 +2404,10 @@ curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Project directory: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">project_dir</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">assets</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  [</span><span class="si">{</span><span class="n">asset</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">asset</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"awaiting_review"</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Parked awaiting review: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">project_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"  Decide: automedia hitl approve|reject &lt;project_id&gt;"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Resume: automedia run --project-id </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> --resume-from H0"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">log</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">gates_log</span><span class="p">:</span>
@@ -2425,6 +2440,11 @@ platform, and optional cron expression:</p>
 <p>Or run a specific schedule:
 <div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>cron<span class="w"> </span>run-pipeline<span class="w"> </span>--name<span class="w"> </span>daily-wechat
 </code></pre></div></p>
+<p>Cron is unattended, so it never blocks at H0: a schedule that reaches the
+review gate returns <code>status="awaiting_review"</code> immediately and stays parked
+until a human approves it and resumes the project. Such a run is neither passed
+nor failed, so counting only <code>passed</code> results no longer totals a scheduled
+batch; count <code>awaiting_review</code> separately.</p>
 <h3 id="method-e-workflow-sdk-mcp">Method E: Workflow (SDK / MCP)<a class="headerlink" href="#method-e-workflow-sdk-mcp" title="Permanent link">&para;</a></h3>
 <p>Define reusable workflows in <code>workflows.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># workflows.yaml</span>
@@ -2497,6 +2517,16 @@ cat<span class="w"> </span>20260707_*/pipeline_md5.json
     - [report] 04_review/qa_report.json
     - [log] 06_publish/publish_log.json
 </code></pre></div>
+<h3 id="awaiting-review">Awaiting Review<a class="headerlink" href="#awaiting-review" title="Permanent link">&para;</a></h3>
+<p>A run that shows <code>status="awaiting_review"</code> is parked at the H0 review gate,
+not failed. The CLI prints <code>Pipeline finished: awaiting_review</code> and exits 3.</p>
+<ol>
+<li>List what is waiting: <code>automedia hitl pending</code></li>
+<li>Deliver the decision: <code>automedia hitl approve &lt;project_id&gt;</code> or <code>automedia hitl reject &lt;project_id&gt;</code></li>
+<li>Resume the same project: <code>automedia run --project-id &lt;project_id&gt; --resume-from H0</code></li>
+</ol>
+<p>Because a parked run is neither passed nor failed, a <code>passed</code>-only count does
+not total a batch: count <code>awaiting_review</code> as its own bucket.</p>
 <h3 id="failure-handling">Failure Handling<a class="headerlink" href="#failure-handling" title="Permanent link">&para;</a></h3>
 <p>If the Pipeline shows <code>status="partial"</code> or <code>status="failed"</code>:</p>
 <ol>
@@ -2516,8 +2546,8 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--resume-from<span class="w"> </span>G3
 </code></pre></div>
 <p>To audit per-gate state before resuming, use <code>automedia pipeline state</code> (CLI)
-or the <code>get_pipeline_state</code> MCP tool — both show a passed/failed/pending view
-with asset md5 per gate.</p>
+or the <code>get_pipeline_state</code> MCP tool: both show a
+passed/failed/pending/awaiting_review view with asset md5 per gate.</p>
 <h2 id="post-production-operations">Post-Production Operations<a class="headerlink" href="#post-production-operations" title="Permanent link">&para;</a></h2>
 <h3 id="1-review-output">1. Review Output<a class="headerlink" href="#1-review-output" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Check directories</span>

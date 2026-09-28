@@ -2503,7 +2503,7 @@
 </tr>
 <tr>
 <td><code>review_decision</code></td>
-<td>Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only — MCP-started pipelines; CLI-started ones return a structured error)</td>
+<td>Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only). MCP-started pipelines park at H0 instead of live-pausing, so they return a structured error — decide those out of band with <code>automedia hitl approve</code></td>
 </tr>
 <tr>
 <td><code>get_pipeline_progress</code></td>
@@ -2511,7 +2511,7 @@
 </tr>
 <tr>
 <td><code>get_pipeline_state</code></td>
-<td>Per-gate state view for a project (passed/failed/pending + md5)</td>
+<td>Per-gate state view for a project (passed/failed/pending/skipped/awaiting_review + md5)</td>
 </tr>
 <tr>
 <td><code>get_gate_report</code></td>

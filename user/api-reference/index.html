@@ -2473,7 +2473,7 @@
 <h2 id="pipelineresult">PipelineResult<a class="headerlink" href="#pipelineresult" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PipelineResult</span><span class="p">:</span>
-    <span class="n">status</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"success"</span><span class="p">,</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"partial"</span><span class="p">]</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"success"</span><span class="p">,</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"partial"</span><span class="p">,</span> <span class="s2">"awaiting_review"</span><span class="p">]</span>
     <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">project_dir</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
@@ -2499,7 +2499,7 @@
 <tr>
 <td><code>status</code></td>
 <td><code>str</code></td>
-<td><code>"success"</code> all passed, <code>"partial"</code> partial failure but not blocking, <code>"failed"</code> abnormal termination</td>
+<td><code>"success"</code> all passed, <code>"partial"</code> partial failure but not blocking, <code>"failed"</code> abnormal termination, <code>"awaiting_review"</code> the run parked at a HITL gate (e.g. H0) with the human decision still outstanding (neither success nor failure)</td>
 </tr>
 <tr>
 <td><code>project_id</code></td>
@@ -2870,11 +2870,14 @@
 <p><code>{"project_id": ..., "mode": ..., "gates": [...]}</code> on success, or a
 structured <code>{"error": ...}</code> dict when the project is not found. Each entry in
 <code>gates</code> is a <code>GateState</code> dict with exactly the fields <code>gate</code>, <code>status</code>
-(<code>"passed"</code> / <code>"failed"</code> / <code>"pending"</code> / <code>"skipped"</code> — <code>"skipped"</code> means the
-gate reported that it deliberately evaluated nothing, e.g. a V gate with
-HyperFrames absent; it is never reported as <code>"passed"</code>), <code>track</code> (<code>copy</code> /
-<code>video</code> / <code>qa</code> / <code>lifecycle</code>), <code>md5</code> (asset checksum from
-<code>pipeline_md5.json</code>, or <code>None</code>), and <code>recorded_at</code>. Aggregates <code>history.db</code>
+(<code>"passed"</code> / <code>"failed"</code> / <code>"pending"</code> / <code>"skipped"</code> / <code>"awaiting_review"</code>;
+<code>"skipped"</code> means the gate reported that it deliberately evaluated nothing,
+e.g. a V gate with HyperFrames absent; it is never reported as <code>"passed"</code>;
+<code>"awaiting_review"</code> means the gate started and the run parked with the human
+decision still outstanding, and applies to H0 only; every other unfinished
+gate stays <code>"pending"</code>), <code>track</code> (<code>copy</code> / <code>video</code> / <code>qa</code> / <code>lifecycle</code>),
+<code>md5</code> (asset checksum from <code>pipeline_md5.json</code>, or <code>None</code>), and
+<code>recorded_at</code>. Aggregates <code>history.db</code>
 and <code>pipeline_md5.json</code> via
 <code>automedia.pipelines.state_view.aggregate_pipeline_state</code> — nothing is
 written, and a project without history yields all-pending rows rather than an

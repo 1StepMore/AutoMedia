@@ -2054,10 +2054,16 @@
     ],
     "total": 3,
     "passed": 2,
+    "awaiting": 0,
     "failed": 1
 }
 </code></pre></div>
-<p>Each result entry has the topic, its final pipeline status, the <code>project_id</code> for successful runs (empty on failure), and the error when it failed. <code>passed</code> counts <code>status == "success"</code> results; <code>failed</code> is the rest.</p>
+<p>Each result entry has the topic, its final pipeline status, the <code>project_id</code> for
+successful runs (empty on failure), and the error when it failed. <code>passed</code>
+counts <code>status == "success"</code> results, <code>awaiting</code> counts <code>status ==
+"awaiting_review"</code> results, and <code>failed</code> is the rest. A topic parked at H0
+(<code>awaiting_review</code>) is neither passed nor failed, so <code>passed</code> plus <code>failed</code> does
+not total the batch when anything is parked; read <code>awaiting</code> too.</p>
 <h2 id="per-project-progress-and-cancellation">Per-Project Progress and Cancellation<a class="headerlink" href="#per-project-progress-and-cancellation" title="Permanent link">&para;</a></h2>
 <p><code>run_batch</code> blocks until it finishes, so you cannot poll inside the call. Track the individual projects after the batch returns:</p>
 <table>
@@ -2102,6 +2108,7 @@
 <li><strong>Unknown mode</strong>: The mode is validated against the shared mode list. Use one of the nine modes above.</li>
 <li><strong>Missing brand</strong>: The batch fails per-topic if the brand is not configured. Configure the brand first.</li>
 <li><strong>One topic fails</strong>: Read that topic's <code>error</code> field. The others still completed, so report the failed topic separately and fix it with a single <code>run_pipeline</code> run using <code>resume_from</code> if needed.</li>
+<li><strong>A topic is parked</strong>: A result with <code>status == "awaiting_review"</code> is not a failure. Report the parked <code>project_id</code> to the user, hand off the decision (<code>hitl approve</code> / <code>hitl reject</code>), and resume it with <code>run_pipeline(project_id=...)</code>. Do not count it as failed.</li>
 <li><strong>Long-running batch</strong>: Since the call is sequential, a heavy batch (especially in video modes) can take a long time. Warn the user before starting, and prefer <code>text_only</code> or <code>text_with_cover</code> for large batches.</li>
 <li><strong>Allowlist rejection</strong>: Project directory reads via <code>get_project_assets</code> and <code>get_pipeline_status</code> require paths inside the MCP allowlist.</li>
 </ul>

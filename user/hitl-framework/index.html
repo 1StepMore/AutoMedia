@@ -2151,20 +2151,36 @@ review points. A human operator inspects the output and <strong>approves</strong
 channels:</p>
 <ul>
 <li><strong>Interactive prompt</strong>: <code>automedia run ... --wait-for-review</code> prompts on
-  stdin when H0 pauses (<code>[a]pprove</code> / <code>[r]eject</code>). It is a no-op when stdin is
-  not a TTY, so unattended runs fall through to the timeout policy.</li>
-<li><strong>Cross-process CLI</strong>: <code>automedia hitl pending</code> lists pipelines parked
-  waiting for a decision, and <code>automedia hitl approve &lt;project_id&gt;</code> /
+  stdin when H0 pauses (<code>[a]pprove</code> / <code>[r]eject</code>). It forces the run to block
+  even when stdin is not a TTY, where the prompt cannot run and the decision
+  must arrive out-of-band.</li>
+<li><strong>Cross-process CLI</strong>: <code>automedia hitl pending</code> lists projects awaiting a
+  decision, and <code>automedia hitl approve &lt;project_id&gt;</code> /
   <code>automedia hitl reject &lt;project_id&gt;</code> write the decision into the project
-  directory for the parked run to pick up. Both accept <code>--base-dir</code>.</li>
+  directory. Both accept <code>--base-dir</code>.</li>
 </ul>
-<p>An undecided pause waits <code>gate_engine.hitl_timeout_s</code> seconds (default <code>3600</code>,
-one hour) before <code>gate_engine.hitl_on_timeout</code> applies. The default policy is
-<code>reject</code>, so the pipeline fails rather than shipping unreviewed content. Set
+<p>On an interactive terminal an undecided pause waits
+<code>gate_engine.hitl_timeout_s</code> seconds (default <code>3600</code>, one hour) before
+<code>gate_engine.hitl_on_timeout</code> applies. The default policy is <code>reject</code>, so the
+pipeline fails rather than shipping unreviewed content. Set
 <code>gate_engine.hitl_on_timeout: approve</code> (or pass <code>automedia run
 --hitl-on-timeout approve</code>) to auto-approve at timeout. <code>automedia run
---hitl-timeout SECONDS</code> overrides the budget for a single run; <code>--skip-review</code>
-and <code>--wait-for-review</code> are mutually exclusive.</p>
+--hitl-timeout SECONDS</code> overrides the budget for a single run.</p>
+<p>When stdin is not a TTY and neither <code>--wait-for-review</code> nor <code>--hitl-block</code> is
+given, the run does not block at all: it parks immediately, returns
+<code>status="awaiting_review"</code>, and exits 3 in seconds rather than waiting out the
+review budget. <code>--hitl-block</code> opts back into the blocking behaviour for a human
+tailing the logs. <code>--skip-review</code> and <code>--wait-for-review</code> are mutually
+exclusive; <code>--skip-review</code> and <code>--hitl-block</code> are too.</p>
+<p>A parked run is resumed by passing its project id, which preserves the decision
+already delivered to the project directory:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w">          </span><span class="c1"># non-interactive: parks, exits 3</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>pending<span class="w">                                </span><span class="c1"># see what is waiting</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;<span class="w">                   </span><span class="c1"># a human decides later</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--project-id<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--resume-from<span class="w"> </span>H0
+</code></pre></div>
+<p><code>--resume-from H0</code> requires <code>--project-id</code>; without a project id the runner
+starts a brand-new project instead of the parked one.</p>
 <p>The director preset defines 8 review nodes for gate-level oversight:</p>
 <table>
 <thead>

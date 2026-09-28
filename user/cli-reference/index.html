@@ -1061,6 +1061,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#park-decide-resume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Park, decide, resume
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3042,8 +3064,17 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <span class="c1"># Pause at H0 and decide interactively in this terminal</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--wait-for-review
 
+<span class="c1"># Non-interactive run (agent, cron, CI): park at H0 immediately and exit 3</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand
+
+<span class="c1"># Force the pre-1.8.0 blocking behaviour even when stdin is not a TTY</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--hitl-block
+
 <span class="c1"># Override the H0 pause budget and timeout policy for this run</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--hitl-timeout<span class="w"> </span><span class="m">600</span><span class="w"> </span>--hitl-on-timeout<span class="w"> </span>reject
+
+<span class="c1"># Resume a parked project by id, consuming the decision written by `hitl approve`</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--project-id<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--resume-from<span class="w"> </span>H0
 </code></pre></div>
 <h3 id="flags">Flags<a class="headerlink" href="#flags" title="Permanent link">&para;</a></h3>
 <table>
@@ -3075,8 +3106,8 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <td><code>--brand</code></td>
 <td><code>-b</code></td>
 <td><code>str</code></td>
-<td>required</td>
-<td>Brand identifier</td>
+<td><code>""</code></td>
+<td>Brand identifier. Optional when <code>--project-id</code> is given — taken from the parked project</td>
 </tr>
 <tr>
 <td><code>--mode</code></td>
@@ -3100,25 +3131,39 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <td>Resume from the last passed gate (reads history.db)</td>
 </tr>
 <tr>
+<td><code>--project-id</code></td>
+<td></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Resume an existing (parked) project by id instead of starting a fresh one. Loads the project's persisted identity so a decision delivered to <code>.hitl_state.json</code> is preserved</td>
+</tr>
+<tr>
 <td><code>--allow-partial</code></td>
 <td></td>
 <td><code>bool</code></td>
 <td><code>False</code></td>
-<td>Exit 0 when the pipeline stops at a gate (<code>partial</code>). A <code>failed</code> pipeline still exits non-zero</td>
+<td>Exit 0 when the pipeline stops at a gate (<code>partial</code>). A <code>failed</code> pipeline still exits non-zero. Does not change <code>awaiting_review</code>, which always exits 3</td>
 </tr>
 <tr>
 <td><code>--skip-review</code></td>
 <td></td>
 <td><code>bool</code></td>
 <td><code>False</code></td>
-<td>Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with <code>--wait-for-review</code></td>
+<td>Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with <code>--wait-for-review</code> and <code>--hitl-block</code></td>
 </tr>
 <tr>
 <td><code>--wait-for-review</code></td>
 <td></td>
 <td><code>bool</code></td>
 <td><code>False</code></td>
-<td>Prompt on stdin when H0 pauses (<code>[a]pprove</code> / <code>[r]eject</code>). No-op when stdin is not a TTY; use <code>automedia hitl approve\|reject &lt;project_id&gt;</code> instead. Mutually exclusive with <code>--skip-review</code></td>
+<td>Force the run to block at H0 even when stdin is not a TTY. On a TTY it prompts (<code>[a]pprove</code> / <code>[r]eject</code>); off a TTY it waits for an out-of-band <code>automedia hitl approve\|reject &lt;project_id&gt;</code> under <code>--hitl-timeout</code>. Mutually exclusive with <code>--skip-review</code></td>
+</tr>
+<tr>
+<td><code>--hitl-block</code></td>
+<td></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Explicit opt-in to the pre-1.8.0 blocking behaviour: wait at H0 when stdin is not a TTY instead of parking. Mutually exclusive with <code>--skip-review</code>; may be combined with <code>--wait-for-review</code>, in which case both force blocking and the prompt additionally runs</td>
 </tr>
 <tr>
 <td><code>--hitl-timeout</code></td>
@@ -3164,6 +3209,48 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 </tr>
 </tbody>
 </table>
+<h3 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success: every gate passed</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Failure: a stop-mode gate failed (<code>partial</code>, unless <code>--allow-partial</code>), a pipeline error (<code>failed</code>), or a <code>run</code>-level usage error</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Usage error raised by typer/click itself (unknown flag, missing required option)</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>awaiting_review</code>: the run parked at H0 awaiting a human decision; neither success nor failure</td>
+</tr>
+</tbody>
+</table>
+<p><code>awaiting_review</code> never exits <code>0</code> or <code>1</code>. In batch mode (<code>--topics</code>) the exit
+code follows the worst result: any <code>failed</code> topic exits 1, else any
+<code>awaiting_review</code> topic exits 3, else 0.</p>
+<h3 id="park-decide-resume">Park, decide, resume<a class="headerlink" href="#park-decide-resume" title="Permanent link">&para;</a></h3>
+<p>Outside an interactive terminal the run parks at H0 in seconds instead of
+waiting out <code>gate_engine.hitl_timeout_s</code>, and exits 3:</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w">          </span><span class="c1"># parks at H0, exits 3</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>pending<span class="w">                                </span><span class="c1"># list projects awaiting a decision</span>
+automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;<span class="w">                   </span><span class="c1"># a human decides later</span>
+automedia<span class="w"> </span>run<span class="w"> </span>--project-id<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--resume-from<span class="w"> </span>H0
+</code></pre></div>
+<p>The final command consumes the delivered decision and continues. <code>--resume-from
+H0</code> requires <code>--project-id</code>: without a project id the runner mints a brand-new
+project instead of resuming the parked one. <code>--topic</code> and <code>--brand</code> remain
+required CLI options on resume.</p>
 <h2 id="automedia-pool"><code>automedia pool</code><a class="headerlink" href="#automedia-pool" title="Permanent link">&para;</a></h2>
 <p>Manage the topic pool.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># List topics (filterable by status)</span>
@@ -3899,10 +3986,13 @@ automedia<span class="w"> </span>pipeline<span class="w"> </span>export-dag<span
 </tbody>
 </table>
 <h3 id="pipeline-state">pipeline state<a class="headerlink" href="#pipeline-state" title="Permanent link">&para;</a></h3>
-<p>Show the per-gate state (passed/failed/pending + asset md5) for a project,
-aggregated from its <code>history.db</code> and <code>pipeline_md5.json</code>. Rows are grouped by
-track (copy, video, qa, lifecycle). A project without history prints an
-all-pending note instead of an error.</p>
+<p>Show the per-gate state (passed/failed/pending/awaiting_review + asset md5) for
+a project, aggregated from its <code>history.db</code> and <code>pipeline_md5.json</code>. Rows are
+grouped by track (copy, video, qa, lifecycle). A stop-mode gate whose last
+history row is <code>started</code> with no terminal row is normally <code>pending</code>; for H0,
+the one parkable gate, that same shape renders <code>awaiting_review</code> (the run
+parked rather than died). A project without history prints an all-pending note
+instead of an error.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Plain-text track-grouped table</span>
 automedia<span class="w"> </span>pipeline<span class="w"> </span>state<span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects
 
@@ -3943,7 +4033,7 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>preset<span class="
 <span class="c1"># List pipelines parked waiting for a human decision</span>
 automedia<span class="w"> </span>hitl<span class="w"> </span>pending
 
-<span class="c1"># Deliver a decision to a pipeline parked in another process</span>
+<span class="c1"># Deliver a decision to a project awaiting review (still blocked, or already exited)</span>
 automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;
 automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="w"> </span>&lt;project_id&gt;
 </code></pre></div>
@@ -3970,11 +4060,11 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="
 </tr>
 <tr>
 <td><code>approve</code></td>
-<td>Approve a pipeline parked at a review gate, cross-process</td>
+<td>Approve a project whose review gate is awaiting a decision (live or already parked)</td>
 </tr>
 <tr>
 <td><code>reject</code></td>
-<td>Reject a pipeline parked at a review gate, cross-process</td>
+<td>Reject a project whose review gate is awaiting a decision (live or already parked)</td>
 </tr>
 </tbody>
 </table>
@@ -4019,10 +4109,13 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="
 </tr>
 </tbody>
 </table>
-<p><code>approve</code> and <code>reject</code> write <code>.hitl_state.json</code> into the project directory so a
-run parked in another process picks up the decision. They exit 1 when the
-project is not parked, or when a previous decision has been delivered but not
-yet consumed.</p>
+<p><code>approve</code> and <code>reject</code> write <code>.hitl_state.json</code> into the project directory, so
+the decision is not tied to a live process. A run still blocked at H0 in
+another process consumes the file on its next poll; a run that has already
+exited (parked with exit code 3) leaves the decision for the next run against
+that project to consume; resume it with <code>--project-id &lt;project_id&gt;</code>. Both
+commands exit 1 when no gate on the project is awaiting a decision, or when a
+previous decision has been delivered but not yet consumed.</p>
 <h2 id="automedia-onboard"><code>automedia onboard</code><a class="headerlink" href="#automedia-onboard" title="Permanent link">&para;</a></h2>
 <p>Guided configuration wizard.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Launch configuration wizard</span>
