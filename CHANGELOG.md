@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.0...automedia-v1.8.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **ci:** stop the publish workflow racing itself on every release ([#114](https://github.com/1StepMore/AutoMedia/issues/114)) ([b04f58f](https://github.com/1StepMore/AutoMedia/commit/b04f58f0be430d0d6f559ca039ea6711fd06bb3a))
+
 ## [1.8.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.1...automedia-v1.8.0) (2026-09-28)
 
 
