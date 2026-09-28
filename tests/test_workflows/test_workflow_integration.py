@@ -440,6 +440,9 @@ class TestPipelineWithoutWorkflow:
         mock_load_brand_profiles.return_value = {}
         mock_engine = mock_gate_engine.return_value
         mock_engine.run.return_value = (True, [])
+        # A bare Mock attribute is truthy, so without this the runner reads the
+        # engine as parked at H0 and reports awaiting_review (#108).
+        mock_engine.hitl_awaiting = False
         # Prevent WorkflowLoader from being called
         mock_workflow_loader.return_value.load.side_effect = RuntimeError(
             "WorkflowLoader should not be called"

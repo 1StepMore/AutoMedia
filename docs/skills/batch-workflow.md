@@ -58,11 +58,17 @@ MCP call: run_batch(
     ],
     "total": 3,
     "passed": 2,
+    "awaiting": 0,
     "failed": 1
 }
 ```
 
-Each result entry has the topic, its final pipeline status, the `project_id` for successful runs (empty on failure), and the error when it failed. `passed` counts `status == "success"` results; `failed` is the rest.
+Each result entry has the topic, its final pipeline status, the `project_id` for
+successful runs (empty on failure), and the error when it failed. `passed`
+counts `status == "success"` results, `awaiting` counts `status ==
+"awaiting_review"` results, and `failed` is the rest. A topic parked at H0
+(`awaiting_review`) is neither passed nor failed, so `passed` plus `failed` does
+not total the batch when anything is parked; read `awaiting` too.
 
 ## Per-Project Progress and Cancellation
 
@@ -83,6 +89,7 @@ Each result entry has the topic, its final pipeline status, the `project_id` for
 - **Unknown mode**: The mode is validated against the shared mode list. Use one of the nine modes above.
 - **Missing brand**: The batch fails per-topic if the brand is not configured. Configure the brand first.
 - **One topic fails**: Read that topic's `error` field. The others still completed, so report the failed topic separately and fix it with a single `run_pipeline` run using `resume_from` if needed.
+- **A topic is parked**: A result with `status == "awaiting_review"` is not a failure. Report the parked `project_id` to the user, hand off the decision (`hitl approve` / `hitl reject`), and resume it with `run_pipeline(project_id=...)`. Do not count it as failed.
 - **Long-running batch**: Since the call is sequential, a heavy batch (especially in video modes) can take a long time. Warn the user before starting, and prefer `text_only` or `text_with_cover` for large batches.
 - **Allowlist rejection**: Project directory reads via `get_project_assets` and `get_pipeline_status` require paths inside the MCP allowlist.
 

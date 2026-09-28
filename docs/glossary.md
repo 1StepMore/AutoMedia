@@ -70,7 +70,7 @@ The canonical gate dependency graph defined in `automedia/pipelines/dag.py`: 26 
 
 ## automedia pipeline state
 
-A read-only per-gate audit view for a project. It aggregates `history.db` and `pipeline_md5.json` into a passed/failed/pending status per gate (with asset md5 and recorded timestamp), grouped by track (copy, video, qa, lifecycle). Also exposed as the MCP `get_pipeline_state` tool.
+A read-only per-gate audit view for a project. It aggregates `history.db` and `pipeline_md5.json` into a passed/failed/pending/skipped/awaiting_review status per gate (with asset md5 and recorded timestamp), grouped by track (copy, video, qa, lifecycle). `awaiting_review` means the run parked at the H0 human-review gate and is waiting for a decision; every other unfinished gate stays `pending`. Also exposed as the MCP `get_pipeline_state` tool.
 
 **See:** `automedia/cli/commands/pipeline.py`, `automedia/pipelines/state_view.py`
 

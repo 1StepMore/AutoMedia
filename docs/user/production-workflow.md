@@ -78,6 +78,10 @@ if result.status == "success":
     print(f"Project directory: {result.project_dir}")
     for asset in result.assets:
         print(f"  [{asset.type}] {asset.path}")
+elif result.status == "awaiting_review":
+    print(f"Parked awaiting review: {result.project_id}")
+    print("  Decide: automedia hitl approve|reject <project_id>")
+    print(f"  Resume: automedia run --project-id {result.project_id} --resume-from H0")
 else:
     print(f"Failed: {result.error}")
     for log in result.gates_log:
@@ -120,6 +124,12 @@ Or run a specific schedule:
 ```bash
 automedia cron run-pipeline --name daily-wechat
 ```
+
+Cron is unattended, so it never blocks at H0: a schedule that reaches the
+review gate returns `status="awaiting_review"` immediately and stays parked
+until a human approves it and resumes the project. Such a run is neither passed
+nor failed, so counting only `passed` results no longer totals a scheduled
+batch; count `awaiting_review` separately.
 
 ### Method E: Workflow (SDK / MCP)
 
@@ -208,6 +218,18 @@ Pipeline finished: success
     - [log] 06_publish/publish_log.json
 ```
 
+### Awaiting Review
+
+A run that shows `status="awaiting_review"` is parked at the H0 review gate,
+not failed. The CLI prints `Pipeline finished: awaiting_review` and exits 3.
+
+1. List what is waiting: `automedia hitl pending`
+2. Deliver the decision: `automedia hitl approve <project_id>` or `automedia hitl reject <project_id>`
+3. Resume the same project: `automedia run --project-id <project_id> --resume-from H0`
+
+Because a parked run is neither passed nor failed, a `passed`-only count does
+not total a batch: count `awaiting_review` as its own bucket.
+
 ### Failure Handling
 
 If the Pipeline shows `status="partial"` or `status="failed"`:
@@ -230,8 +252,8 @@ automedia run --topic "..." --brand my-brand --resume-from G3
 ```
 
 To audit per-gate state before resuming, use `automedia pipeline state` (CLI)
-or the `get_pipeline_state` MCP tool — both show a passed/failed/pending view
-with asset md5 per gate.
+or the `get_pipeline_state` MCP tool: both show a
+passed/failed/pending/awaiting_review view with asset md5 per gate.
 
 ## Post-Production Operations
 

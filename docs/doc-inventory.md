@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 14268 | file |
-| README.md | 30906 | file |
+| AGENTS.md | 14292 | file |
+| README.md | 30930 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -20,8 +20,8 @@
 | docs/dev/2026-08-30-graph-engineering-调研与三项目落地-修正版.md | 15409 | file |
 | docs/dev/AutoMedia开发简报.md | 4640 | file |
 | docs/dev/agent-reference.md | 12520 | file |
-| docs/dev/agent-troubleshooting.md | 26478 | file |
-| docs/dev/api-gotchas.md | 8626 | file |
+| docs/dev/agent-troubleshooting.md | 27046 | file |
+| docs/dev/api-gotchas.md | 9365 | file |
 | docs/dev/automedia-business-validation-20260902.md | 19417 | file |
 | docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -40,21 +40,21 @@
 | docs/dev/remediation-report-20260917.md | 11999 | file |
 | docs/dev/validation-loop-log.md | 10012 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
-| docs/glossary.md | 12640 | file |
+| docs/glossary.md | 12807 | file |
 | docs/index.md | 4873 | file |
 | docs/skills | — | dir |
-| docs/skills/batch-workflow.md | 5042 | file |
+| docs/skills/batch-workflow.md | 5555 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
 | docs/skills/distribution-workflow.md | 6248 | file |
 | docs/skills/pipeline-workflow.md | 7760 | file |
 | docs/user | — | dir |
-| docs/user/api-reference.md | 13812 | file |
+| docs/user/api-reference.md | 14159 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 24964 | file |
+| docs/user/cli-reference.md | 28007 | file |
 | docs/user/deployment.md | 8345 | file |
-| docs/user/hitl-framework.md | 8357 | file |
-| docs/user/mcp-setup.md | 26748 | file |
+| docs/user/hitl-framework.md | 9314 | file |
+| docs/user/mcp-setup.md | 26854 | file |
 | docs/user/omni-integration.md | 13082 | file |
-| docs/user/production-workflow.md | 9543 | file |
+| docs/user/production-workflow.md | 10716 | file |
 | docs/user/user-introduction.md | 8446 | file |
 | docs/user/windows-deployment.md | 13939 | file |

@@ -161,8 +161,17 @@ automedia run --topic "..." --brand my-brand --skip-review
 # Pause at H0 and decide interactively in this terminal
 automedia run --topic "..." --brand my-brand --wait-for-review
 
+# Non-interactive run (agent, cron, CI): park at H0 immediately and exit 3
+automedia run --topic "..." --brand my-brand
+
+# Force the pre-1.8.0 blocking behaviour even when stdin is not a TTY
+automedia run --topic "..." --brand my-brand --hitl-block
+
 # Override the H0 pause budget and timeout policy for this run
 automedia run --topic "..." --brand my-brand --hitl-timeout 600 --hitl-on-timeout reject
+
+# Resume a parked project by id, consuming the decision written by `hitl approve`
+automedia run --project-id <project_id> --resume-from H0
 
 ```
 
@@ -172,19 +181,51 @@ automedia run --topic "..." --brand my-brand --hitl-timeout 600 --hitl-on-timeou
 |------|------|------|--------|------|
 | `--topic` | `-t` | `str` | required | Content topic |
 | `--topics` | | `str` | `None` | Comma-separated topics for batch mode (overrides `--topic`) |
-| `--brand` | `-b` | `str` | required | Brand identifier |
+| `--brand` | `-b` | `str` | `""` | Brand identifier. Optional when `--project-id` is given — taken from the parked project |
 | `--mode` | `-m` | `str` | `auto` | Mode: auto, text_only, text_with_cover, video_only, qa_only, image-carousel, social-thread, short-video, repurpose |
 | `--resume-from` | | `str \| None` | `None` | Resume from a specific Gate (skip preceding gates) |
 | `--auto-resume` | | `bool` | `False` | Resume from the last passed gate (reads history.db) |
-| `--allow-partial` | | `bool` | `False` | Exit 0 when the pipeline stops at a gate (`partial`). A `failed` pipeline still exits non-zero |
-| `--skip-review` | | `bool` | `False` | Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with `--wait-for-review` |
-| `--wait-for-review` | | `bool` | `False` | Prompt on stdin when H0 pauses (`[a]pprove` / `[r]eject`). No-op when stdin is not a TTY; use `automedia hitl approve\|reject <project_id>` instead. Mutually exclusive with `--skip-review` |
+| `--project-id` | | `str \| None` | `None` | Resume an existing (parked) project by id instead of starting a fresh one. Loads the project's persisted identity so a decision delivered to `.hitl_state.json` is preserved |
+| `--allow-partial` | | `bool` | `False` | Exit 0 when the pipeline stops at a gate (`partial`). A `failed` pipeline still exits non-zero. Does not change `awaiting_review`, which always exits 3 |
+| `--skip-review` | | `bool` | `False` | Auto-pass the H0 human-review gate for unattended runs. Default pauses for human approval. Mutually exclusive with `--wait-for-review` and `--hitl-block` |
+| `--wait-for-review` | | `bool` | `False` | Force the run to block at H0 even when stdin is not a TTY. On a TTY it prompts (`[a]pprove` / `[r]eject`); off a TTY it waits for an out-of-band `automedia hitl approve\|reject <project_id>` under `--hitl-timeout`. Mutually exclusive with `--skip-review` |
+| `--hitl-block` | | `bool` | `False` | Explicit opt-in to the pre-1.8.0 blocking behaviour: wait at H0 when stdin is not a TTY instead of parking. Mutually exclusive with `--skip-review`; may be combined with `--wait-for-review`, in which case both force blocking and the prompt additionally runs |
 | `--hitl-timeout` | | `float \| None` | `None` | Seconds to wait for an H0 decision before the timeout policy applies. Overrides `gate_engine.hitl_timeout_s` (default `3600`) |
 | `--hitl-on-timeout` | | `str \| None` | `None` | Timeout policy for an undecided H0 pause: `reject` (default) or `approve`. Overrides `gate_engine.hitl_on_timeout` |
 | `--decision-mode` | | `str` | `build` | (DEPRECATED) Decision mode for pipeline execution — no longer functional |
 | `--verbose` | `-v` | `bool` | `False` | Show full error traceback for debugging |
 | `--source-path` | | `str \| None` | `None` | Path to a source document (`.md`, `.txt`, `.pdf`). Content is loaded into the pipeline |
 | `--source-url` | | `str \| None` | `None` | URL to fetch source content from. Content is loaded into the pipeline |
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success: every gate passed |
+| `1` | Failure: a stop-mode gate failed (`partial`, unless `--allow-partial`), a pipeline error (`failed`), or a `run`-level usage error |
+| `2` | Usage error raised by typer/click itself (unknown flag, missing required option) |
+| `3` | `awaiting_review`: the run parked at H0 awaiting a human decision; neither success nor failure |
+
+`awaiting_review` never exits `0` or `1`. In batch mode (`--topics`) the exit
+code follows the worst result: any `failed` topic exits 1, else any
+`awaiting_review` topic exits 3, else 0.
+
+### Park, decide, resume
+
+Outside an interactive terminal the run parks at H0 in seconds instead of
+waiting out `gate_engine.hitl_timeout_s`, and exits 3:
+
+```bash
+automedia run --topic "..." --brand my-brand          # parks at H0, exits 3
+automedia hitl pending                                # list projects awaiting a decision
+automedia hitl approve <project_id>                   # a human decides later
+automedia run --project-id <project_id> --resume-from H0
+```
+
+The final command consumes the delivered decision and continues. `--resume-from
+H0` requires `--project-id`: without a project id the runner mints a brand-new
+project instead of resuming the parked one. `--topic` and `--brand` remain
+required CLI options on resume.
 
 ## `automedia pool`
 
@@ -570,10 +611,13 @@ automedia pipeline export-dag --mode auto --project ./projects/<id> --out ./dag
 
 ### pipeline state
 
-Show the per-gate state (passed/failed/pending + asset md5) for a project,
-aggregated from its `history.db` and `pipeline_md5.json`. Rows are grouped by
-track (copy, video, qa, lifecycle). A project without history prints an
-all-pending note instead of an error.
+Show the per-gate state (passed/failed/pending/awaiting_review + asset md5) for
+a project, aggregated from its `history.db` and `pipeline_md5.json`. Rows are
+grouped by track (copy, video, qa, lifecycle). A stop-mode gate whose last
+history row is `started` with no terminal row is normally `pending`; for H0,
+the one parkable gate, that same shape renders `awaiting_review` (the run
+parked rather than died). A project without history prints an all-pending note
+instead of an error.
 
 ```bash
 # Plain-text track-grouped table
@@ -605,7 +649,7 @@ automedia hitl preset --list
 # List pipelines parked waiting for a human decision
 automedia hitl pending
 
-# Deliver a decision to a pipeline parked in another process
+# Deliver a decision to a project awaiting review (still blocked, or already exited)
 automedia hitl approve <project_id>
 automedia hitl reject <project_id>
 ```
@@ -617,8 +661,8 @@ automedia hitl reject <project_id>
 | `config` | Show the current HITL configuration summary |
 | `preset` | List presets with `--list` or activate one with `--set <name>` |
 | `pending` | List pipelines parked waiting for a human decision |
-| `approve` | Approve a pipeline parked at a review gate, cross-process |
-| `reject` | Reject a pipeline parked at a review gate, cross-process |
+| `approve` | Approve a project whose review gate is awaiting a decision (live or already parked) |
+| `reject` | Reject a project whose review gate is awaiting a decision (live or already parked) |
 
 ### hitl pending Flags
 
@@ -633,10 +677,13 @@ automedia hitl reject <project_id>
 | `project_id` | `str` | Project ID parked at a review gate (required) |
 | `--base-dir` | `str \| None` | Directory to scan for the project |
 
-`approve` and `reject` write `.hitl_state.json` into the project directory so a
-run parked in another process picks up the decision. They exit 1 when the
-project is not parked, or when a previous decision has been delivered but not
-yet consumed.
+`approve` and `reject` write `.hitl_state.json` into the project directory, so
+the decision is not tied to a live process. A run still blocked at H0 in
+another process consumes the file on its next poll; a run that has already
+exited (parked with exit code 3) leaves the decision for the next run against
+that project to consume; resume it with `--project-id <project_id>`. Both
+commands exit 1 when no gate on the project is awaiting a decision, or when a
+previous decision has been delivered but not yet consumed.
 
 ## `automedia onboard`
 

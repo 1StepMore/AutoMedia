@@ -222,6 +222,7 @@ def run_pipeline_from_strategy(
             brand=brand,
             mode=mode,
             workflow=workflow or None,
+            block_on_hitl=False,
         )
 
         return success_response(

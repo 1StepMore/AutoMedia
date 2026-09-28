@@ -348,7 +348,7 @@ python -m automedia.mcp.server
 | `run_pipeline` | Execute full production pipeline (background, async) |
 | `run_pipeline_from_strategy` | Generate content strategy via LLM then execute pipeline |
 | `get_pipeline_progress` | Poll a running pipeline's gate-by-gate progress (returns gates_done, gates_remaining, total_gates) |
-| `get_pipeline_state` | Per-gate pipeline state view for a project (passed/failed/pending + asset md5) |
+| `get_pipeline_state` | Per-gate pipeline state view for a project (passed/failed/pending/skipped/awaiting_review + asset md5) |
 | `get_gate_report` | Return the latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_active_pipelines` | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |

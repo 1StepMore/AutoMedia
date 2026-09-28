@@ -66,7 +66,7 @@ Returns a `PipelineResult` object.
 ```python
 @dataclass
 class PipelineResult:
-    status: Literal["success", "failed", "partial"]
+    status: Literal["success", "failed", "partial", "awaiting_review"]
     project_id: str
     project_dir: str
     topic: str
@@ -84,7 +84,7 @@ class PipelineResult:
 
 | Field | Type | Description |
 |------|------|------|
-| `status` | `str` | `"success"` all passed, `"partial"` partial failure but not blocking, `"failed"` abnormal termination |
+| `status` | `str` | `"success"` all passed, `"partial"` partial failure but not blocking, `"failed"` abnormal termination, `"awaiting_review"` the run parked at a HITL gate (e.g. H0) with the human decision still outstanding (neither success nor failure) |
 | `project_id` | `str` | 12-character hex unique ID |
 | `project_dir` | `str` | Absolute path to project root directory |
 | `assets` | `list[AssetInfo]` | List of output assets |
@@ -415,11 +415,14 @@ result = get_pipeline_state(
 `{"project_id": ..., "mode": ..., "gates": [...]}` on success, or a
 structured `{"error": ...}` dict when the project is not found. Each entry in
 `gates` is a `GateState` dict with exactly the fields `gate`, `status`
-(`"passed"` / `"failed"` / `"pending"` / `"skipped"` — `"skipped"` means the
-gate reported that it deliberately evaluated nothing, e.g. a V gate with
-HyperFrames absent; it is never reported as `"passed"`), `track` (`copy` /
-`video` / `qa` / `lifecycle`), `md5` (asset checksum from
-`pipeline_md5.json`, or `None`), and `recorded_at`. Aggregates `history.db`
+(`"passed"` / `"failed"` / `"pending"` / `"skipped"` / `"awaiting_review"`;
+`"skipped"` means the gate reported that it deliberately evaluated nothing,
+e.g. a V gate with HyperFrames absent; it is never reported as `"passed"`;
+`"awaiting_review"` means the gate started and the run parked with the human
+decision still outstanding, and applies to H0 only; every other unfinished
+gate stays `"pending"`), `track` (`copy` / `video` / `qa` / `lifecycle`),
+`md5` (asset checksum from `pipeline_md5.json`, or `None`), and
+`recorded_at`. Aggregates `history.db`
 and `pipeline_md5.json` via
 `automedia.pipelines.state_view.aggregate_pipeline_state` — nothing is
 written, and a project without history yields all-pending rows rather than an

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sys
 import time
 import warnings
 from dataclasses import asdict
@@ -821,6 +822,18 @@ def _merge_workflow_config(workflow: Workflow, brand_profile: dict[str, Any]) ->
 # ---------------------------------------------------------------------------
 
 
+def _stdin_is_interactive() -> bool:
+    """Whether stdin is an interactive terminal, safe when stdin is absent.
+
+    ``sys.stdin`` is ``None`` under interpreters launched without a console
+    (``pythonw``, daemons, some embedded runtimes), where a bare
+    ``sys.stdin.isatty()`` raises ``AttributeError``.  Guarding here keeps the
+    blocking policy total: a missing stdin is simply not interactive.
+    """
+    stdin = sys.stdin
+    return bool(stdin is not None and stdin.isatty())
+
+
 def run_full_pipeline(
     topic: str,
     brand: str,
@@ -844,6 +857,8 @@ def run_full_pipeline(
     source_path: str = "",
     source_url: str = "",
     platforms: list[str] | None = None,
+    block_on_hitl: bool | None = None,
+    resume_project_id: str | None = None,
 ) -> PipelineResult:
     """Execute the full AutoMedia production pipeline.
 
@@ -915,6 +930,20 @@ def run_full_pipeline(
         Optional list of target platform names (e.g. ``["xiaohongshu", "zhihu"]``).
         When provided, only gates relevant to those platforms are applied.
         ``None`` (default) applies all gates for the brand profile's platforms.
+    block_on_hitl:
+        Whether a gate that parks for human review (``awaiting_hitl``) blocks
+        the run.  ``None`` (default) resolves to ``wait_for_review`` on an
+        interactive terminal, and to non-blocking everywhere else — a
+        non-interactive run parks (``status="awaiting_review"``) instead of
+        waiting out the review budget.  ``True`` always blocks; ``False`` never
+        does (it consumes a delivered decision or parks).
+    resume_project_id:
+        Resume a previously parked project by its persisted ``project_id``.
+        When set, the existing project directory is loaded
+        (:meth:`Project.load`) instead of minting a new project, so the parked
+        run's identity — and any ``.hitl_state.json`` decision — is preserved.
+        Unknown ids fail the run with an actionable error.  ``None`` (default)
+        starts a fresh project.
 
     Returns
     -------
@@ -945,6 +974,8 @@ def run_full_pipeline(
         source_path=source_path,
         source_url=source_url,
         platforms=platforms,
+        block_on_hitl=block_on_hitl,
+        resume_project_id=resume_project_id,
     )
 
 
@@ -971,6 +1002,8 @@ def _run_pipeline(
     source_path: str = "",
     source_url: str = "",
     platforms: list[str] | None = None,
+    block_on_hitl: bool | None = None,
+    resume_project_id: str | None = None,
 ) -> PipelineResult:
     from automedia.core.config_loader import load_config
     from automedia.core.llm_client import reset_usage_tracking
@@ -992,8 +1025,27 @@ def _run_pipeline(
     try:
         config = load_config(config_dir=config_dir)
         projects_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or None
-        project = Project.init(topic, brand, base_dir=projects_dir, tenant_id=tenant_id)
-        clear_stale_hitl_state(project.project_dir)
+        if resume_project_id is not None:
+            from automedia.core.project import find_project_dir
+
+            resumed_dir = find_project_dir(resume_project_id, base_dir=projects_dir)
+            if resumed_dir is None:
+                raise ValueError(
+                    f"cannot resume project {resume_project_id!r}: no project with "
+                    f"that id exists under {projects_dir or os.getcwd()!r}; pass a "
+                    "valid project id (12 hex chars) or omit resume_project_id"
+                )
+            project = Project.load(resumed_dir)
+        else:
+            project = Project.init(topic, brand, base_dir=projects_dir, tenant_id=tenant_id)
+        # Only a fresh run may clear the delivered-decision file.  A resume exists
+        # precisely because a human decided while the previous run was parked;
+        # unlinking .hitl_state.json here would silently discard that decision and
+        # the resumed H0 would park again forever.  Do NOT "tidy" this back into an
+        # unconditional call — that is the resume-breaking regression this guard
+        # (and test_resume_preserves_a_delivered_decision) exists to prevent.
+        if resume_project_id is None and resume_from is None:
+            clear_stale_hitl_state(project.project_dir)
 
         brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
             mode,
@@ -1036,6 +1088,11 @@ def _run_pipeline(
             hitl_on_timeout,
         )
 
+        if block_on_hitl is None:
+            # Default policy: an explicit --wait-for-review always blocks; a
+            # headless run parks instead of waiting out the review budget.
+            block_on_hitl = wait_for_review or (not skip_review and _stdin_is_interactive())
+
         if wait_for_review:
             if progress is None:
                 # The prompt resolves the pause through the very object the
@@ -1049,13 +1106,14 @@ def _run_pipeline(
             # that policy so the runner never has to reason about TTYs.
             start_interactive_review_prompt(progress, "H0", project.project_id)
 
-        success, results = _setup_and_run_engine(
+        success, results, awaiting_review = _setup_and_run_engine(
             gates,
             hooks,
             director,
             project,
             gate_context,
             progress,
+            block_on_hitl,
         )
 
         return _finalize_pipeline(
@@ -1069,6 +1127,7 @@ def _run_pipeline(
             topic,
             start,
             workflow,
+            awaiting_review=awaiting_review,
         )
 
     except Exception as exc:
@@ -1435,7 +1494,8 @@ def _setup_and_run_engine(
     project: Project,
     gate_context: GateContext | dict[str, Any],
     progress: PipelineProgress | None,
-) -> tuple[bool, list[dict[str, Any]]]:
+    wait_for_hitl: bool,
+) -> tuple[bool, list[dict[str, Any]], bool]:
     from automedia.hooks.cost_tracker import CostTracker
     from automedia.hooks.pipeline_history import PipelineHistoryHook
     from automedia.pipelines.gate_engine import GateEngine, register_engine, unregister_engine
@@ -1451,15 +1511,20 @@ def _setup_and_run_engine(
         # Fires once, right before the first V gate: V0–V7 inspect media
         # artifacts this pipeline must produce first (P0-1 wiring).
         media_stage=_produce_media_assets,
+        wait_for_hitl=wait_for_hitl,
     )
     register_engine(project.project_id, engine)
 
     try:
         success, results = engine.run(gate_context, progress=progress)
+        # Read the park flag while the engine is still alive: this is what lets
+        # _finalize_pipeline report "awaiting_review" instead of folding the run
+        # into success/partial.  Must happen before unregister_engine() below.
+        hitl_awaiting = engine.hitl_awaiting
     finally:
         unregister_engine(project.project_id)
 
-    return success, results
+    return success, results, hitl_awaiting
 
 
 def _finalize_pipeline(
@@ -1473,6 +1538,7 @@ def _finalize_pipeline(
     topic: str,
     start: float,
     workflow: str | None,
+    awaiting_review: bool = False,
 ) -> PipelineResult:
     from automedia.core.llm_client import get_usage_summary
     from automedia.pipelines.gate_engine import PipelineResult
@@ -1491,7 +1557,11 @@ def _finalize_pipeline(
     _write_run_gate_report(project.project_dir, gates_log, results)
 
     end = time.monotonic()
-    status = "success" if success else "partial"
+    # The parked state is checked FIRST and short-circuits the success/partial
+    # trichotomy: a run that stopped at a review gate has not finished, so it
+    # must never be reported as "partial" (nor downgraded by the video check
+    # below, whose ``status == "success"`` guard this value no longer matches).
+    status = "awaiting_review" if awaiting_review else ("success" if success else "partial")
 
     # A video-producing mode owes a video artifact.  When nothing was produced
     # (no video engine configured, no image/audio inputs, engine error) its V
@@ -1530,7 +1600,7 @@ def _finalize_pipeline(
     affected_downstream = _compute_affected_downstream(mode_gates, failed_gate)
 
     return PipelineResult(
-        status=cast(Literal["success", "failed", "partial"], status),
+        status=cast(Literal["success", "failed", "partial", "awaiting_review"], status),
         project_id=project.project_id,
         project_dir=project.project_dir,
         topic=topic,
@@ -1788,6 +1858,11 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     gate report and the CLI — before health-assessment P0-1 every skipped V
     gate was flattened to ``"passed"`` here, so an un-run video QA suite
     rendered as "pass" in the report.
+
+    A parked HITL gate (``_hitl_awaiting``) has no pass/fail verdict yet, so it
+    keeps its own status instead of being flattened to ``"passed"``: the report
+    maps a status it does not recognise to its ``"review"`` verdict, which keeps
+    the outstanding decision visible.
     """
     from automedia.pipelines.gate_engine import GateLogEntry
 
@@ -1798,6 +1873,8 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
         status: Literal["passed", "failed", "error", "skipped"] = "passed" if passed else "failed"
         if reported in ("skipped", "passed", "failed", "error"):
             status = reported
+        elif r.get("_hitl_awaiting") is True:
+            status = cast(Literal["passed", "failed", "error", "skipped"], "awaiting_hitl")
         entries.append(
             GateLogEntry(
                 gate_name=r.get("gate", "unknown"),

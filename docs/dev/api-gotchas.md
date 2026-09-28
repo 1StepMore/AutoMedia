@@ -102,6 +102,24 @@ if result.status == "failed":
 **Gotcha:** If you forget to check `result.status`, you might mistakenly
 assume the Pipeline completed successfully.
 
+### `awaiting_review` is a fourth status, not a failure
+
+A non-interactive run (no TTY, and neither `--wait-for-review` nor
+`--hitl-block`) parks at H0 instead of blocking, and `run_full_pipeline()`
+returns `status="awaiting_review"`. It is neither `"success"` nor `"failed"`:
+
+```python
+result = run_full_pipeline(topic, brand)
+if result.status == "awaiting_review":
+    # A human must decide; resume later with resume_project_id + resume_from="H0".
+    print(result.project_id)
+```
+
+**Gotcha:** Code that treats "not success" as failure will misread a parked run,
+and `passed` plus `failed` no longer totals a batch: the MCP `run_batch` and CLI
+`--topics` summaries add a separate `awaiting` count. Handle all four statuses
+explicitly.
+
 ### `resume_from` uses Gate names, not numbers
 
 ```python

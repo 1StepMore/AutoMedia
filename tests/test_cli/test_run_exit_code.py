@@ -38,7 +38,9 @@ def _model_config_present(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(run_mod, "_MODEL_CONFIG_PATH", cfg_file)
 
 
-def _result(status: Literal["success", "failed", "partial"]) -> PipelineResult:
+def _result(
+    status: Literal["success", "failed", "partial", "awaiting_review"],
+) -> PipelineResult:
     return PipelineResult(
         status=status,
         project_id="proj123",
