@@ -6,7 +6,9 @@ permissions:
 
 on:
   pull_request:
-    types: [opened, synchronize, edited]
+    # `labeled`/`unlabeled` re-run the gate when an override label is added or
+    # removed (release:user-visible / release:skip).
+    types: [opened, synchronize, edited, labeled, unlabeled]
 
 jobs:
   check-pr-title:
@@ -33,3 +35,28 @@ jobs:
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"
             doesn't match the configured pattern. The subject must not start with an uppercase letter.
+
+  # release-please decides visibility from the commit TYPE only, so
+  # internal-only maintenance typed as a visible type (fix/feat/perf/docs/
+  # revert) forces a public release.  This gate makes the type match the
+  # changed paths' real release scope, with release:user-visible /
+  # release:skip as the explicit override labels.
+  release-scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Check changed paths against the PR's release scope
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" --labels "$LABELS"
