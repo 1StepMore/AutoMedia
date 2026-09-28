@@ -52,11 +52,19 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+      # No `--depth=1` fetch here: checkout already provides origin/<base> with
+      # full history, and a shallow ref can break the merge-base computation the
+      # three-dot diff below needs (fatal: no merge base, or a wrong range).
       - name: Check changed paths against the PR's release scope
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: |
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+          set -euo pipefail
+          BASE_REF="${{ github.base_ref }}"
+          if ! git rev-parse --verify --quiet "origin/$BASE_REF" >/dev/null; then
+            git fetch origin "$BASE_REF"
+          fi
+          git rev-parse --verify "origin/$BASE_REF^{commit}"
+          git diff --name-only "origin/$BASE_REF...HEAD" \
             | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" --labels "$LABELS"
