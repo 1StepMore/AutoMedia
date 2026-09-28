@@ -118,9 +118,9 @@ Registered MCP tools:
 | `resume_pipeline` | Resume a paused pipeline |
 | `retry_gate` | Mark a specific gate for retry in a running pipeline |
 | `skip_gate` | Mark a specific gate for skipping in a running pipeline |
-| `review_decision` | Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only — MCP-started pipelines; CLI-started ones return a structured error) |
+| `review_decision` | Approve/reject a pipeline paused at a HITL review gate (live H0 path; same-process only). MCP-started pipelines park at H0 instead of live-pausing, so they return a structured error — decide those out of band with `automedia hitl approve` |
 | `get_pipeline_progress` | Poll gate-by-gate progress of a running pipeline |
-| `get_pipeline_state` | Per-gate state view for a project (passed/failed/pending + md5) |
+| `get_pipeline_state` | Per-gate state view for a project (passed/failed/pending/skipped/awaiting_review + md5) |
 | `get_gate_report` | Latest gate-report JSON for a project (from 05_review/gate-report/; base_dir must be allowlisted) |
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects, optionally filtered by status |

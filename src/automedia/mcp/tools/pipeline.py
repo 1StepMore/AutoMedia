@@ -552,7 +552,9 @@ def get_pipeline_state(
     base_dir: str = ".",
     mode: str = "auto",
 ) -> dict[str, Any]:
-    """Return per-gate pipeline state (passed/failed/pending/awaiting_review + md5) for a project.
+    """Return per-gate pipeline state for a project, with md5.
+
+    Statuses: passed/failed/pending/skipped/awaiting_review.
 
     Aggregates the project's history.db and pipeline_md5.json via
     :func:`automedia.pipelines.state_view.aggregate_pipeline_state` — a

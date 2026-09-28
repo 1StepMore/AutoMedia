@@ -584,7 +584,7 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Return per-gate pipeline state (passed/failed/pending/awaiting_review + md5) "
+            "Return per-gate pipeline state (passed/failed/pending/skipped/awaiting_review + md5) "
             "for a project. Read-only aggregation of the project's history "
             "and md5 records; a project without history yields all-pending "
             "rows. Takes project_id, optional base_dir, and optional mode "

@@ -94,7 +94,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `run_pipeline` | topic, brand, mode, tenant_id, resume_from | Run full pipeline, async |
 | `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | Strategy via LLM, then pipeline |
 | `get_pipeline_progress` | project_id | Poll gate-by-gate progress |
-| `get_pipeline_state` | project_id, base_dir, mode | Per-gate state view (passed/failed/pending + md5) |
+| `get_pipeline_state` | project_id, base_dir, mode | Per-gate state view (passed/failed/pending/skipped/awaiting_review + md5) |
 | `get_gate_report` | project_id, base_dir, latest | Latest gate-report JSON from 05_review/gate-report/ (base_dir must be allowlisted) |
 | `get_pipeline_status` | project_id, base_dir | Query project status |
 | `list_active_pipelines` | — | List active / recent pipelines |
