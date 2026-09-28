@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.8.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.1...automedia-v1.8.0) (2026-09-28)
+
+
+### Features
+
+* **hitl:** return awaiting_review and exit 3 instead of blocking off-TTY ([#108](https://github.com/1StepMore/AutoMedia/issues/108)) ([#111](https://github.com/1StepMore/AutoMedia/issues/111)) ([8b8c8ec](https://github.com/1StepMore/AutoMedia/commit/8b8c8ecb9094b4b516869ce1ab60bf05c5fbeabb))
+
+
+### Bug Fixes
+
+* **changelog:** drop the hand-written [1.8.0] section before release ([#113](https://github.com/1StepMore/AutoMedia/issues/113)) ([895f5af](https://github.com/1StepMore/AutoMedia/commit/895f5af5399520d338a90e943dabb754dd12acb7))
+
+
+### Documentation
+
+* **changelog:** normalize release sections to canonical links and drop merge duplicates ([#109](https://github.com/1StepMore/AutoMedia/issues/109)) ([a295cf6](https://github.com/1StepMore/AutoMedia/commit/a295cf645865082570bce9df92e841b823e0aec0))
+
 ## [1.7.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.0...automedia-v1.7.1) (2026-09-27)
 
 
