@@ -12,6 +12,12 @@ name: Release PR guard
 #
 # Because the gate imports the trusted guard script, we check out trusted `main`
 # first (never the PR head) and never run PR-supplied code.
+
+# Top-level default is read-only; the guard job escalates only the scopes it
+# needs (CKV2_GHA_1).
+permissions:
+  contents: read
+
 on:
   pull_request:
     # `reopened`/`synchronize` re-evaluate after an unfreeze by release-please.
@@ -46,7 +52,9 @@ jobs:
           PR_STATE: ${{ github.event.pull_request.state }}
         run: |
           set -euo pipefail
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          # A missing guard module must degrade to "no action taken", never to a
+          # red job on unrelated PRs.
+          if ! python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import importlib.util
           import os
           from pathlib import Path
@@ -67,6 +75,11 @@ jobs:
           print(f"act={'true' if act else 'false'}")
           print("snooze=false")
           PY
+          then
+            echo "::warning::release PR guard could not evaluate (guard script unavailable); leaving the release untouched"
+            echo "act=false" >> "$GITHUB_OUTPUT"
+            echo "snooze=false" >> "$GITHUB_OUTPUT"
+          fi
 
       # Fail-safe: without a resolvable last release tag the range is
       # meaningless, so warn and leave the release alone.
