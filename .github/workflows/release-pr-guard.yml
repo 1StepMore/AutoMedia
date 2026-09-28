@@ -1,0 +1,120 @@
+name: Release PR guard
+
+# Backstop for issue #122.  A release PR created by release-please carries
+# exactly ONE commit (`chore(main): release automedia <ver>`) touching only the
+# plumbing files (CHANGELOG.md, src/automedia/_version.py,
+# .github/.release-please-manifest.json).  The commits a release is actually
+# "about" are already on main, so analysing the release PR's own commit list
+# would freeze EVERY release.  This guard instead measures the non-plumbing diff
+# between the last release tag and `main` -- the changes the proposed version
+# would actually publish -- and freezes the proposal only when that set is
+# entirely internal maintenance.
+#
+# Because the gate imports the trusted guard script, we check out trusted `main`
+# first (never the PR head) and never run PR-supplied code.
+on:
+  pull_request:
+    # `reopened`/`synchronize` re-evaluate after an unfreeze by release-please.
+    types: [opened, synchronize, reopened]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      # Trusted `main` only -- never the PR head.  fetch-depth: 0 is required:
+      # the tag/range comparison below needs full history and tags.  This also
+      # makes the trusted guard script importable by the security gate.
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # Security gate: only an open, bot-authored release-please proposal is
+      # ever touched.  Everything else (including unreadable/failed state) emits
+      # act=false and the later steps are skipped, leaving the PR alone.
+      - name: Security gate
+        id: gate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import importlib.util
+          import os
+          from pathlib import Path
+
+          spec = importlib.util.spec_from_file_location(
+              "check_release_pr_guard",
+              Path("scripts/check_release_pr_guard.py"),
+          )
+          guard = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(guard)
+
+          act, reason = guard.should_act(
+              os.environ["HEAD_REF"],
+              os.environ["PR_AUTHOR"],
+              os.environ["PR_TITLE"],
+              os.environ["PR_STATE"],
+          )
+          print(f"act={'true' if act else 'false'}")
+          print("snooze=false")
+          PY
+
+      # Fail-safe: without a resolvable last release tag the range is
+      # meaningless, so warn and leave the release alone.
+      - name: Resolve the last release tag
+        id: tag
+        if: steps.gate.outputs.act == 'true'
+        run: |
+          set -euo pipefail
+          VERSION=$(python3 -c "import json;print(json.load(open('.github/.release-please-manifest.json'))['.'])")
+          LAST_TAG="automedia-v$VERSION"
+          echo "LAST_TAG=$LAST_TAG" >> "$GITHUB_OUTPUT"
+          if git rev-parse --verify "refs/tags/$LAST_TAG"; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::last release tag $LAST_TAG not found; leaving the release proposal alone"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "snooze=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Judge the changes the proposed version would actually publish.
+      - name: Decide
+        id: decide
+        if: steps.gate.outputs.act == 'true' && steps.tag.outputs.found == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+        run: |
+          set -euo pipefail
+          git diff --name-only "${{ steps.tag.outputs.LAST_TAG }}..origin/main" > "${{ runner.temp }}/files.txt"
+          python3 scripts/check_release_pr_guard.py \
+            --files-file "${{ runner.temp }}/files.txt" \
+            --pr-title "$PR_TITLE" \
+            --pr-author "$PR_AUTHOR" \
+            --head-ref "$HEAD_REF" \
+            --pr-state "$PR_STATE" \
+            --github-output "$GITHUB_OUTPUT"
+
+      # Freeze = close + label + explain.  release-please unfreezes and
+      # re-proposes automatically once the release content changes.
+      - name: Freeze the release proposal
+        if: steps.decide.outputs.snooze == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr comment "$PR_NUMBER" --body "This release contains only internal maintenance changes (no user-visible paths), so it is frozen. release-please will unfreeze and re-propose it automatically once the release contains a user-visible change. Rule: issue #122."
+          gh pr edit "$PR_NUMBER" --add-label "autorelease: snooze"
+          gh pr close "$PR_NUMBER"
