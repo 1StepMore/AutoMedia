@@ -27,9 +27,15 @@ docs/production-e2e-test-design.md
 .trae/
 /.hermes/
 
-# Local-agent-only maintainer skills (not for AutoMedia users)
+# Local-agent-only maintainer skills (not for AutoMedia users).
+# The canonical copies live in .opencode/skills/; the per-agent synced copies must be
+# ignored too, or every local edit lands in the repo and ships to users.
 .opencode/skills/issue-triage.md
 .opencode/skills/pr-review-merge.md
+.claude/skills/issue-triage.md
+.claude/skills/pr-review-merge.md
+.codex/skills/issue-triage.md
+.codex/skills/pr-review-merge.md
 
 # ===== Credentials & Secrets =====
 .env
