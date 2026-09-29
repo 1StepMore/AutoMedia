@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.8.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.0...automedia-v1.8.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* **ci:** stop the publish workflow racing itself on every release ([#114](https://github.com/1StepMore/AutoMedia/issues/114)) ([b04f58f](https://github.com/1StepMore/AutoMedia/commit/b04f58f0be430d0d6f559ca039ea6711fd06bb3a))
+* **release:** parse changelog-sections as the array release-please requires ([#118](https://github.com/1StepMore/AutoMedia/issues/118)) ([28b6f1e](https://github.com/1StepMore/AutoMedia/commit/28b6f1e0c0e04f426449b4031399f81e0310367e)), closes [#117](https://github.com/1StepMore/AutoMedia/issues/117)
+* **release:** stop internal-only commits forcing public PyPI releases ([#116](https://github.com/1StepMore/AutoMedia/issues/116)) ([2d0d5f4](https://github.com/1StepMore/AutoMedia/commit/2d0d5f4890dbf86a14a87c0d29ea85ea97e34456))
+
+
+### Documentation
+
+* **skills:** document the maintainer-only skill exception ([#128](https://github.com/1StepMore/AutoMedia/issues/128)) ([64b66f7](https://github.com/1StepMore/AutoMedia/commit/64b66f7f7fb8cafa1c5591902f53c1a7ffae6b3f))
+* **skills:** keep local-only maintainer skills out of the repo ([#127](https://github.com/1StepMore/AutoMedia/issues/127)) ([f03802b](https://github.com/1StepMore/AutoMedia/commit/f03802b5036ef4282279b18056165e7ae8d3fd25))
+
 ## [1.8.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.7.1...automedia-v1.8.0) (2026-09-28)
 
 
