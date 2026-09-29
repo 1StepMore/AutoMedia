@@ -26,4 +26,18 @@ available.
 - Cline — references this directory directly (no dedicated directory)
 
 To add or update a skill: edit the `.md` file here, then sync the same
-file to `.claude/skills/` and `.codex/skills/`.
+file to `.claude/skills/` and `.codex/skills/`. That applies to the skills
+listed above.
+
+## Maintainer-only skills
+
+`pr-review-merge.md` and `issue-triage.md` may exist in this directory on a
+maintainer's own checkout. They act on **this repository's** issue tracker and
+branch, so they are useless to AutoMedia's users — whose agents drive the
+content pipeline over MCP and have no pull request here — and to outside
+contributors. They are therefore deliberately **unlisted above, unsynced, and
+uncommitted**; the matching `.gitignore` entries are what keep them out of the
+repository. Do not create per-agent copies of them and do not commit them.
+
+If you are cloning rather than maintaining: nothing is missing. The two files
+simply do not ship.
