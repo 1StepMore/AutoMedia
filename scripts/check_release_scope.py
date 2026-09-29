@@ -26,8 +26,25 @@ HIDDEN_TYPES = frozenset({"chore", "ci", "test", "refactor", "build", "style"})
 
 USER_VISIBLE_LABEL = "release:user-visible"
 SKIP_LABEL = "release:skip"
+# The freeze in release-pr-guard.yml applies the release-please snooze label, not
+# SKIP_LABEL. Accepting both keeps the two gates satisfiable by the same action: a
+# guard-driven freeze must not leave this gate red. See issue #122.
+SKIP_LABELS = frozenset({SKIP_LABEL, "autorelease: snooze"})
 
-INTERNAL_PREFIXES = (".github/", "tests/", "scripts/", "docs/dev/")
+INTERNAL_PREFIXES = (
+    ".github/",
+    "tests/",
+    "scripts/",
+    "docs/dev/",
+    # Agent-client configuration ships in the repo but never enters the wheel.
+    # Without these, a PR that only touches agent config reads as user-visible and
+    # forces a public release whose only real change is the version string.
+    ".claude/",
+    ".codex/",
+    ".opencode/",
+    ".cursor/",
+    ".trae/",
+)
 INTERNAL_EXACT = frozenset(
     {
         "AGENTS.md",
@@ -132,11 +149,12 @@ def assess_release_scope(
         )
 
     if not all_internal and title_type in HIDDEN_TYPES:
-        if SKIP_LABEL in label_set:
+        applied = sorted(label_set & SKIP_LABELS)
+        if applied:
             return Result(
                 True,
                 f"User-visible paths changed under a hidden '{title_type}' "
-                f"type, but the '{SKIP_LABEL}' label confirms the release "
+                f"type, but the '{applied[0]}' label confirms the release "
                 f"should be skipped.",
                 "",
             )
