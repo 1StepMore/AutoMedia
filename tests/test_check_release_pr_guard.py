@@ -270,3 +270,36 @@ def test_cli_reads_stdin(
     )
     assert code == 0
     assert "verdict: snooze" in capsys.readouterr().out
+
+
+# --- Regression: an agent-config-only release diff must be frozen (issue #126) ---
+#
+# PRs #127 and #128 changed only skill READMEs under .claude/ .codex/ and
+# .opencode/. Those directories ship in the repo but never enter the wheel, and
+# they were missing from INTERNAL_PREFIXES, so the guard read the candidate
+# release as user-visible and left it alone. Release proposal #126 (1.8.1, whose
+# only real diff was the version string) slipped through on exactly that path.
+# Reproduce the measured `automedia-v1.8.0..main` set that defeated the guard.
+
+REAL_PATHS_WITH_AGENT_CONFIG = [
+    *REAL_PATHS,
+    ".claude/skills/README.md",
+    ".claude/skills/issue-triage.md",
+    ".claude/skills/pr-review-merge.md",
+    ".codex/skills/README.md",
+    ".codex/skills/issue-triage.md",
+    ".codex/skills/pr-review-merge.md",
+    ".opencode/skills/README.md",
+]
+
+
+def test_agent_config_release_diff_is_frozen(guard: ModuleType) -> None:
+    decision = guard.assess_candidate(REAL_PATHS_WITH_AGENT_CONFIG)
+    assert decision.snooze is True, decision.reason
+
+
+def test_real_source_change_still_blocks_the_freeze(guard: ModuleType) -> None:
+    """Widening the internal prefixes must not start freezing real releases."""
+    decision = guard.assess_candidate([*REAL_PATHS_WITH_AGENT_CONFIG, "src/automedia/x.py"])
+    assert decision.snooze is False
+    assert "src/automedia/x.py" in decision.reason

@@ -95,9 +95,7 @@ def test_user_visible_paths(scope: ModuleType, path: str) -> None:
 
 
 def test_all_internal_visible_fails(scope: ModuleType) -> None:
-    result = scope.assess_release_scope(
-        [".github/workflows/ci.yml"], "fix", []
-    )
+    result = scope.assess_release_scope([".github/workflows/ci.yml"], "fix", [])
     assert result.passed is False
     assert "release:user-visible" in result.remediation
 
@@ -123,9 +121,7 @@ def test_user_visible_hidden_fails(scope: ModuleType) -> None:
 
 
 def test_user_visible_hidden_with_override_passes(scope: ModuleType) -> None:
-    result = scope.assess_release_scope(
-        ["src/automedia/x.py"], "chore", ["release:skip"]
-    )
+    result = scope.assess_release_scope(["src/automedia/x.py"], "chore", ["release:skip"])
     assert result.passed is True
 
 
@@ -140,9 +136,7 @@ def test_all_visible_types_are_visible(scope: ModuleType, title_type: str) -> No
     assert scope.assess_release_scope([".github/x.yml"], title_type, []).passed is False
 
 
-@pytest.mark.parametrize(
-    "title_type", ["chore", "ci", "test", "refactor", "build", "style"]
-)
+@pytest.mark.parametrize("title_type", ["chore", "ci", "test", "refactor", "build", "style"])
 def test_all_hidden_types_are_hidden(scope: ModuleType, title_type: str) -> None:
     assert scope.assess_release_scope([".github/x.yml"], title_type, []).passed is True
     assert scope.assess_release_scope(["src/a.py"], title_type, []).passed is False
@@ -156,9 +150,7 @@ def test_all_hidden_types_are_hidden(scope: ModuleType, title_type: str) -> None
 def test_historical_false_case(scope: ModuleType) -> None:
     """The #118 PR: an internal release-config fix forced release 1.8.1."""
     title = "fix(release): parse changelog-sections as the array release-please requires (#118)"
-    result = scope.assess_release_scope(
-        [".github/release-please-config.json"], "fix", []
-    )
+    result = scope.assess_release_scope([".github/release-please-config.json"], "fix", [])
     assert result.passed is False
     assert "release:user-visible" in result.remediation
     assert ".github/release-please-config.json" in result.reason
@@ -225,9 +217,7 @@ def test_parse_title_type(scope: ModuleType, title: str | None, expected: str | 
 def test_cli_exit_codes(scope: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     import io
 
-    monkeypatch.setattr(
-        sys, "stdin", io.StringIO(".github/release-please-config.json\n")
-    )
+    monkeypatch.setattr(sys, "stdin", io.StringIO(".github/release-please-config.json\n"))
     assert (
         scope.main(
             [
@@ -243,11 +233,68 @@ def test_cli_exit_codes(scope: ModuleType, monkeypatch: pytest.MonkeyPatch) -> N
     )
 
     monkeypatch.setattr(sys, "stdin", io.StringIO("src/automedia/x.py\n"))
-    assert (
-        scope.main(["--files", "-", "--title", "fix: correct a bug", "--labels", ""])
-        == 0
-    )
+    assert scope.main(["--files", "-", "--title", "fix: correct a bug", "--labels", ""]) == 0
 
     with pytest.raises(SystemExit) as excinfo:
         scope.main(["--title", "fix: x"])
     assert excinfo.value.code == 2
+
+
+# --- Regression: agent-client config is internal (issue: #126 slipped through) ---
+#
+# PR #127/#128 changed only .claude/ .codex/ and .opencode/ skill files. Those
+# directories ship in the repo but never enter the wheel, and they were not in
+# INTERNAL_PREFIXES, so a release proposal whose only real diff was agent config
+# read as user-visible and was left alone instead of frozen.
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".claude/skills/README.md",
+        ".claude/rules.md",
+        ".claude/settings.json",
+        ".codex/skills/deep-modules.md",
+        ".opencode/skills/validation-runner.md",
+        ".cursor/mcp.json",
+    ],
+)
+def test_agent_config_paths_are_internal(scope: ModuleType, path: str) -> None:
+    assert scope.is_internal_path(path) is True
+
+
+def test_agent_config_only_diff_is_internal(scope: ModuleType) -> None:
+    result = scope.assess_release_scope(
+        [".claude/skills/README.md", ".opencode/skills/README.md"], "chore", []
+    )
+    assert result.passed is True
+
+
+def test_source_paths_stay_user_visible(scope: ModuleType) -> None:
+    """The new prefixes must not swallow real package code."""
+    for path in ("src/automedia/core/project.py", "docs/index.md", "README.md"):
+        assert scope.is_internal_path(path) is False
+
+
+# --- Regression: the guard's freeze label must satisfy this gate ---
+#
+# release-pr-guard.yml freezes a release proposal by applying the
+# "autorelease: snooze" label, but this gate only recognised "release:skip",
+# so an automatic freeze left release-scope red.
+
+
+def test_guard_freeze_label_passes_scope(scope: ModuleType) -> None:
+    result = scope.assess_release_scope(["src/automedia/x.py"], "chore", ["autorelease: snooze"])
+    assert result.passed is True
+    assert "autorelease: snooze" in result.reason
+
+
+def test_both_skip_labels_are_accepted(scope: ModuleType) -> None:
+    expected = frozenset({"release:skip", "autorelease: snooze"})
+    assert expected == scope.SKIP_LABELS
+    assert scope.SKIP_LABEL in scope.SKIP_LABELS
+
+
+def test_unrelated_label_does_not_pass(scope: ModuleType) -> None:
+    result = scope.assess_release_scope(["src/automedia/x.py"], "chore", ["bug"])
+    assert result.passed is False
