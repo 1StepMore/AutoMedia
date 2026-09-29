@@ -765,6 +765,7 @@ class TestRunFullPipeline:
         """gate_engine.hitl_* config reaches gate_context (issue #105)."""
         mock_proj = MagicMock()
         mock_proj.project_id = "hitl-cfg"
+        mock_proj.project_dir = str(tmp_path / "hitl-cfg")
         mock_project.init.return_value = mock_proj
 
         mock_cfg = MagicMock()
@@ -807,6 +808,7 @@ class TestRunFullPipeline:
         mock_config: MagicMock,
         mock_hitl: MagicMock,
         mock_prompt: MagicMock,
+        tmp_path: Path,
     ) -> None:
         """--wait-for-review must actually reach the prompt helper (issue #105).
 
@@ -817,6 +819,7 @@ class TestRunFullPipeline:
         """
         mock_proj = MagicMock()
         mock_proj.project_id = "hitl-prompt"
+        mock_proj.project_dir = str(tmp_path / "hitl-prompt")
         mock_project.init.return_value = mock_proj
 
         mock_cfg = MagicMock()
@@ -856,6 +859,7 @@ class TestRunFullPipeline:
         """The explicit --hitl-timeout argument wins over configured value."""
         mock_proj = MagicMock()
         mock_proj.project_id = "hitl-arg"
+        mock_proj.project_dir = str(tmp_path / "hitl-arg")
         mock_project.init.return_value = mock_proj
 
         mock_cfg = MagicMock()

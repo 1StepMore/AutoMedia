@@ -263,6 +263,50 @@ def _correlation_id_isolation() -> Generator[None, None, None]:
     structlog.contextvars.bind_contextvars(**saved)
 
 
+@pytest.fixture(autouse=True)
+def _no_mock_paths_in_cwd() -> Generator[None, None, None]:
+    """Fail any test that leaves a ``MagicMock``-repr path in the CWD.
+
+    Why
+    ---
+    ``run_full_pipeline`` hands ``project.project_dir`` to the gate-report
+    writer and to ``PipelineHistoryHook``, and both build real filesystem paths
+    from it. A test that patches :class:`Project` but forgets to set
+    ``project_dir`` leaves a ``MagicMock`` there. ``str()`` of that mock is its
+    ``repr``, which contains no ``/``, so it becomes a *relative* path and the
+    writes land in the current working directory instead of a temp dir.
+
+    The damage is invisible to ``git status``: ``.gitignore`` swallows the
+    leaves — ``.automedia/`` matches the history db and the bare ``0[1-6]_*/``
+    rule matches ``05_review/`` at any depth — so repeated suite runs silently
+    accumulated 109 stray directories in the repository root.
+
+    Scope
+    -----
+    Only ``MagicMock``-repr names are rejected. A test that legitimately creates
+    a real directory in the CWD is unaffected, so this cannot be used to launder
+    arbitrary filesystem side effects; it pins exactly the mock-as-path defect.
+
+    Fix the test, not the guard: set ``project_dir`` to a real path (the
+    ``tmp_path`` fixture is already a parameter in most such tests).
+    """
+    before = set(os.listdir("."))
+    yield
+    created = set(os.listdir(".")) - before
+    leaked = sorted(
+        name for name in created if name == "MagicMock" or name.startswith("<MagicMock")
+    )
+    if leaked:
+        pytest.fail(
+            "Test wrote MagicMock-repr paths into the CWD: "
+            + ", ".join(repr(name) for name in leaked)
+            + ". A patched Project left project_dir as a MagicMock, so str() of "
+            "its repr became a relative path. Set "
+            "mock_proj.project_dir = str(tmp_path / ...) in the test.",
+            pytrace=False,
+        )
+
+
 @pytest.fixture()
 def tmp_project_dir(tmp_path: Path) -> Path:
     """Create a temporary project directory with basic structure.
