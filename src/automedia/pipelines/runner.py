@@ -1382,8 +1382,11 @@ def _build_pipeline_context(
             "default_executor": "agent",
         }
     # Only forward an explicitly resolved value. Leaving the key absent lets H0
-    # apply its own default, which keeps the pause budget defined in exactly one
-    # place instead of being duplicated here.
+    # apply the canonical default from ``automedia.hitl.constants`` — the same
+    # constant the gate engine and ``wait_for_hitl`` fall back to — so the pause
+    # budget has exactly one Python owner rather than being restated here.  The
+    # YAML config default ``gate_engine.hitl_timeout_s`` mirrors that constant
+    # (YAML cannot import Python); a drift test pins the two together.
     if hitl_timeout_s is not None:
         hitl_config["timeout_s"] = hitl_timeout_s
     resolved_on_timeout = (

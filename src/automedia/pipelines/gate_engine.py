@@ -24,6 +24,7 @@ from structlog import get_logger
 from automedia.exceptions import GateError
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+from automedia.hitl.constants import HITL_DEFAULT_TIMEOUT_S
 from automedia.hooks.protocol import GateHook
 from automedia.pipelines.gate_types import (
     GateErrorResult,  # noqa: F401 — re-exported for backward compatibility
@@ -329,7 +330,7 @@ class GateEngine:
         if self._wait_for_hitl and progress is not None:
             hitl_ok = progress.wait_for_hitl(
                 project_dir=project_dir,
-                timeout=result.get("timeout_s", 3600),
+                timeout=result.get("timeout_s", HITL_DEFAULT_TIMEOUT_S),
                 on_timeout=str(result.get("on_timeout", "approve")),
             )
         else:
