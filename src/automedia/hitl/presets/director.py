@@ -2,8 +2,8 @@
 
 The DirectorPreset defines 8 review nodes that map to pipeline gates
 where a human director should review and approve before the pipeline
-proceeds.  Each node has ``requires_approval=True`` and a 1-hour
-timeout.
+proceeds.  Each node has ``requires_approval=True``; the one-hour pause
+budget comes from the shared HITL default rather than per-node config.
 """
 
 from __future__ import annotations
@@ -19,56 +19,48 @@ DIRECTOR_NODES: list[dict[str, Any]] = [
         "name": "topic_selection",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Review topic selection before content generation",
     },
     {
         "name": "cw_output",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject content writer draft",
     },
     {
         "name": "g2_copy_review",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject copy review results",
     },
     {
         "name": "v0_lint",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject HTML lint output",
     },
     {
         "name": "v1_vision_qa",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject vision quality assurance",
     },
     {
         "name": "v2_subtitle",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject subtitle rendering",
     },
     {
         "name": "l2_archive",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject archive validation",
     },
     {
         "name": "l3_publish",
         "autoset": "human",
         "requires_approval": True,
-        "timeout": 3600,
         "description": "Approve/reject publish per platform",
     },
 ]
