@@ -66,6 +66,12 @@ jobs:
       # ── Lint & type checks ──
 
       - name: Ruff
+        # Run even if an earlier step failed: the blocking security scans
+        # above (pip-audit / bandit) must not suppress lint evidence — a red
+        # scan would otherwise skip every later step. The job still goes red
+        # overall when a scan fails, so security remains blocking for the
+        # workflow. Issue #130.
+        if: '!cancelled()'
         run: uv run ruff check src/automedia/ --ignore E501,E402,N806,E741
 
       - name: Mypy (advisory — parity with PR CI)
@@ -75,11 +81,22 @@ jobs:
       - name: Mypy (strict — hardened modules)
         # Blocking, matching the PR CI strict gate. The 7 hardened modules are
         # strict-clean; do NOT add continue-on-error here.
+        # Run even if an earlier step failed: the blocking security scans
+        # above (pip-audit / bandit) must not suppress type-check evidence.
+        # The job still goes red overall when a scan fails, so security
+        # remains blocking for the workflow. Issue #130.
+        if: '!cancelled()'
         run: uv run mypy --strict src/automedia/asset_library/vector_store.py src/automedia/asset_library/migrate.py src/automedia/manifests/brand_profile_schema.py src/automedia/pool/collector.py src/automedia/cli/commands/history_cmd.py src/automedia/cli/commands/pipeline.py src/automedia/core/config_loader.py --ignore-missing-imports
 
       # ── Full test suite ──
 
       - name: Pytest (full suite)
+        # Run even if an earlier step failed: the blocking security scans
+        # above (pip-audit / bandit) must not suppress the full test suite —
+        # this is the exact silence that caused the #91 incident. The job
+        # still goes red overall when a scan fails, so security remains
+        # blocking for the workflow. Issue #130.
+        if: '!cancelled()'
         run: |
           uv run python3 -m pytest \
             --cov=src/automedia \

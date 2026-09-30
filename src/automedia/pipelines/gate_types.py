@@ -19,7 +19,11 @@ from typing import Any, Literal, TypedDict
 
 from structlog import get_logger
 
+from automedia.hitl.constants import HITL_DEFAULT_TIMEOUT_S
+
 log = get_logger(__name__)
+
+_HITL_DEFAULT_TIMEOUT_S_FLOAT: float = float(HITL_DEFAULT_TIMEOUT_S)
 
 _HITL_POLL_INTERVAL_S: float = 0.2
 """How often a pause re-checks for a delivered decision file.
@@ -374,7 +378,7 @@ class PipelineProgress:
     def wait_for_hitl(
         self,
         project_dir: str = "",
-        timeout: float = 3600.0,
+        timeout: float = _HITL_DEFAULT_TIMEOUT_S_FLOAT,
         on_timeout: str = "approve",
     ) -> bool:
         """Block the calling thread until a HITL decision arrives or *timeout*.
