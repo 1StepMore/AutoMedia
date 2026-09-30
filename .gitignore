@@ -104,3 +104,6 @@ tests/fixtures/synth/**/api_key*
 site/
 *.cover
 validation-runs/
+
+# 不眠计划运行期产物（差距矩阵/断言证据），不入库
+nightly/
