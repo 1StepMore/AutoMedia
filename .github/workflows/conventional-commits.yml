@@ -59,6 +59,12 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          # A release-please proposal's type is bot-fixed and its diff spans the
+          # whole release interval, so the type-vs-scope table cannot judge it
+          # (issue #134). Author + head ref are what identify one; the script
+          # requires all three signals, so a human PR cannot claim the exemption.
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           BASE_REF="${{ github.base_ref }}"
@@ -67,4 +73,5 @@ jobs:
           fi
           git rev-parse --verify "origin/$BASE_REF^{commit}"
           git diff --name-only "origin/$BASE_REF...HEAD" \
-            | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" --labels "$LABELS"
+            | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" \
+                --labels "$LABELS" --pr-author "$PR_AUTHOR" --head-ref "$HEAD_REF"
