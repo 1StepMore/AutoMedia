@@ -68,6 +68,21 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+      # Static guard over .github/workflows/*.yml: a workflow defect is silent
+      # by construction — CI still goes green while coverage vanishes — so no
+      # test run can catch it. Two live instances motivated this (issue #91):
+      # a blocking pip-audit step in nightly.yml skipped the entire Pytest full
+      # suite for a night, and ci.yml's test-omni carried a stranded
+      # `continue-on-error: ${{ matrix.python-version != '3.11' }}` after its
+      # matrix narrowed to ["3.13"], permanently advisory-ing 133 Omni tests.
+      # Blocking (no continue-on-error / no `|| true` escape): exits 1 on any
+      # finding, so the class cannot silently recur.
+      - id: check-workflow-semantics
+        name: check-workflow-semantics
+        entry: python3 scripts/check-workflow-semantics.py
+        language: system
+        always_run: true
+        pass_filenames: false
 
 ci:
   autofix_prs: true

@@ -42,6 +42,15 @@ jobs:
         # --check regenerates in memory and fails on any byte difference, so a
         # stale committed inventory can never merge.
         run: python3 scripts/doc_inventory.py --check
+      - name: Workflow semantics (static gate/coverage invariants)
+        # Blocking: static guard over .github/workflows/*.yml. Workflow
+        # defects are silent by construction — CI stays green while test
+        # coverage disappears — so no test run can catch them. This is the
+        # class behind issue #91 (a blocking pip-audit step skipped the
+        # night's entire Pytest full suite) and the stranded test-omni
+        # `continue-on-error` conditional that permanently advisory-ed 133
+        # Omni tests. Do NOT add continue-on-error here.
+        run: python3 scripts/check-workflow-semantics.py
       - name: Docstring coverage (interrogate)
         continue-on-error: true
         run: interrogate src/automedia/
@@ -281,7 +290,14 @@ jobs:
       - name: Verify Omni packages are importable
         run: python -c "import opp; import ol_mcp; import orf; print('All Omni packages OK')"
       - name: Run Omni adapter tests
-        continue-on-error: ${{ matrix.python-version != '3.11' }}
+        # Blocking: this job's ONLY matrix entry is "3.13" (omni packages
+        # require >=3.13), so the old
+        # `continue-on-error: ${{ matrix.python-version != '3.11' }}` was
+        # permanently true and silently made the whole Omni suite advisory.
+        # Root cause: commit dadf421 (2026-07-18) narrowed the matrix from
+        # ["3.11","3.12","3.13"] to ["3.13"] but left the conditional behind.
+        # Do NOT re-add continue-on-error here — re-keying the expression to
+        # `!= '3.13'` would re-create the same stranded-conditional bug class.
         run: python3 -m pytest tests/test_omni/ -v --tb=short
 
   gitleaks:

@@ -16,6 +16,7 @@ from automedia.cli.output_format import output_formatted_error, output_pipeline_
 from automedia.core.logging import bind_correlation_id
 from automedia.core.paths import get_user_config_dir
 from automedia.core.project import Project, find_project_dir
+from automedia.hitl.constants import HITL_DEFAULT_TIMEOUT_S
 from automedia.pipelines.gate_engine import PipelineProgress, PipelineResult
 from automedia.pipelines.runner import VALID_MODES, run_full_pipeline
 
@@ -253,7 +254,7 @@ def run_cmd(
         "--hitl-timeout",
         help=(
             "Seconds to wait for an H0 decision before applying the timeout "
-            "policy. Overrides gate_engine.hitl_timeout_s (default 3600)."
+            f"policy. Overrides gate_engine.hitl_timeout_s (default {HITL_DEFAULT_TIMEOUT_S})."
         ),
     ),
     hitl_on_timeout: str = typer.Option(

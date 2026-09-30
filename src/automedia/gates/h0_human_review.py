@@ -39,13 +39,16 @@ from structlog import get_logger
 
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+from automedia.hitl.constants import HITL_DEFAULT_TIMEOUT_S
 
 log = get_logger(__name__)
 
 # Default HITL pause budget, in seconds. This was a hardcoded 86400 (24 hours),
 # which made a non-interactive `automedia run` hang for a day and then quietly
 # auto-approve.  Override with `gate_engine.hitl_timeout_s` or `--hitl-timeout`.
-_DEFAULT_HITL_TIMEOUT_S: int = 3600
+# The value lives in `automedia.hitl.constants` so this gate, the gate engine,
+# and `wait_for_hitl` cannot drift apart; the alias keeps the gate's own name.
+_DEFAULT_HITL_TIMEOUT_S: int = HITL_DEFAULT_TIMEOUT_S
 
 # What a pause does when nobody decides. "reject" fails the pipeline so
 # unreviewed content cannot ship; "approve" restores the legacy fail-open
@@ -72,7 +75,9 @@ class H0HumanReviewGate(BaseGate):
         gate_context:
             Pipeline context.  When ``skip_review`` is ``True`` the gate
             auto-passes.  ``hitl_timeout`` can be set to override the
-            default 24-hour timeout.
+            default one-hour pause budget
+            (``HITL_DEFAULT_TIMEOUT_S`` in :mod:`automedia.hitl.constants`,
+            mirrored by ``gate_engine.hitl_timeout_s``).
 
         Returns
         -------
