@@ -298,3 +298,155 @@ def test_both_skip_labels_are_accepted(scope: ModuleType) -> None:
 def test_unrelated_label_does_not_pass(scope: ModuleType) -> None:
     result = scope.assess_release_scope(["src/automedia/x.py"], "chore", ["bug"])
     assert result.passed is False
+
+
+# ---------------------------------------------------------------------------
+# release-please proposals are exempt from the type-vs-scope rule (issue #134)
+# ---------------------------------------------------------------------------
+#
+# A release-please proposal's title type is fixed by the bot (``chore(main):
+# release <version>``) and its diff is by construction every path since the last
+# tag. So whenever a release interval contains any ``src/**`` change, the
+# "hidden type + user-visible path" row rejected the proposal with no way out:
+# the type cannot be retyped and the diff cannot be narrowed. That froze #133
+# (and #119/#126 were closed by hand for the same reason).
+#
+# Exempting proposals is safe because the "internal-only changes must not force
+# a public release" protection is not this gate's job for a proposal -- it is
+# release-pr-guard's (scripts/check_release_pr_guard.py, issue #122), which
+# auto-freezes internal-only proposals. Measured on the real #133 paths:
+# internal-only -> freeze=True; with a src/ change -> freeze=False (left alone
+# deliberately). Every condition must match, mirroring that guard's
+# ``should_act``; a human PR must never be exempt.
+
+RELEASE_BRANCH = "release-please--branches--main--components--automedia"
+RELEASE_TITLE = "chore(main): release automedia 1.8.1"
+USER_VISIBLE_PATH = "src/automedia/hitl/constants.py"
+
+
+def test_release_proposal_is_exempt(scope: ModuleType) -> None:
+    """The deadlock case: proposal + a src/ change in the interval."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="github-actions[bot]",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is True
+    assert "release-please" in result.reason.lower()
+    assert result.remediation == ""
+
+
+def test_human_pr_with_release_shaped_title_is_not_exempt(scope: ModuleType) -> None:
+    """A human must not buy the exemption by copying the title."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="1StepMore",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
+    assert "release-please" not in result.reason.lower()
+
+
+def test_untrusted_bot_author_is_not_exempt(scope: ModuleType) -> None:
+    """Right branch and title, wrong author -> still judged."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="dependabot[bot]",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
+
+
+def test_non_release_head_ref_is_not_exempt(scope: ModuleType) -> None:
+    """Author and title match but the branch is not release-please's."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="github-actions[bot]",
+        head_ref="fix/ci-coverage-swallowed",
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
+
+
+def test_non_release_title_is_not_exempt(scope: ModuleType) -> None:
+    """Author and branch match but the title is not a release proposal."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH],
+        scope.parse_title_type("chore(main): internal-only tidy-up"),
+        [],
+        author="github-actions[bot]",
+        head_ref=RELEASE_BRANCH,
+        title="chore(main): internal-only tidy-up",
+    )
+    assert result.passed is False
+
+
+def test_absent_author_keeps_the_strict_pre_exemption_verdict(scope: ModuleType) -> None:
+    """Fail-safe default: no author supplied -> no exemption, pre-existing behaviour."""
+    result = scope.assess_release_scope(
+        [USER_VISIBLE_PATH], scope.parse_title_type(RELEASE_TITLE), []
+    )
+    assert result.passed is False
+
+
+def test_exemption_does_not_mask_the_all_internal_visible_type_row(scope: ModuleType) -> None:
+    """A proposal is exempt, but the gate's original rows keep working for humans."""
+    human = scope.assess_release_scope(
+        [".github/workflows/ci.yml"], scope.parse_title_type("fix: a bug"), []
+    )
+    assert human.passed is False
+
+    # ...and the visible-type + user-visible row is untouched by the exemption.
+    ok = scope.assess_release_scope(
+        [USER_VISIBLE_PATH], scope.parse_title_type("fix: a real bug"), []
+    )
+    assert ok.passed is True
+
+
+def test_is_release_proposal_predicate(scope: ModuleType) -> None:
+    assert scope.is_release_proposal("github-actions[bot]", RELEASE_BRANCH, RELEASE_TITLE)
+    assert scope.is_release_proposal("app/github-actions", RELEASE_BRANCH, RELEASE_TITLE)
+    assert not scope.is_release_proposal("1StepMore", RELEASE_BRANCH, RELEASE_TITLE)
+    assert not scope.is_release_proposal("github-actions[bot]", "main", RELEASE_TITLE)
+    assert not scope.is_release_proposal("github-actions[bot]", RELEASE_BRANCH, "chore(main): x")
+    assert not scope.is_release_proposal("", "", "")
+
+
+def test_cli_accepts_author_and_head_ref(
+    scope: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO(f"{USER_VISIBLE_PATH}\n"))
+    assert (
+        scope.main(
+            [
+                "--files",
+                "-",
+                "--title",
+                RELEASE_TITLE,
+                "--labels",
+                "",
+                "--pr-author",
+                "github-actions[bot]",
+                "--head-ref",
+                RELEASE_BRANCH,
+            ]
+        )
+        == 0
+    )
+    # Same input without the author keeps failing (fail-safe default).
+    # stdin is a one-shot StringIO, so it must be re-armed before the second call.
+    monkeypatch.setattr(sys, "stdin", io.StringIO(f"{USER_VISIBLE_PATH}\n"))
+    assert scope.main(["--files", "-", "--title", RELEASE_TITLE, "--labels", ""]) == 1
