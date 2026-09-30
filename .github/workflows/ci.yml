@@ -42,6 +42,15 @@ jobs:
         # --check regenerates in memory and fails on any byte difference, so a
         # stale committed inventory can never merge.
         run: python3 scripts/doc_inventory.py --check
+      - name: Workflow semantics (static gate/coverage invariants)
+        # Blocking: static guard over .github/workflows/*.yml. Workflow
+        # defects are silent by construction — CI stays green while test
+        # coverage disappears — so no test run can catch them. This is the
+        # class behind issue #91 (a blocking pip-audit step skipped the
+        # night's entire Pytest full suite) and the stranded test-omni
+        # `continue-on-error` conditional that permanently advisory-ed 133
+        # Omni tests. Do NOT add continue-on-error here.
+        run: python3 scripts/check-workflow-semantics.py
       - name: Docstring coverage (interrogate)
         continue-on-error: true
         run: interrogate src/automedia/
