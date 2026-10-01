@@ -217,7 +217,25 @@ but genuinely user-facing) and `release:skip` (user-visible paths, but the
 release should be held). Reach for them rarely, and say why in the PR.
 
 A release-please proposal is exempt from this check: its type is bot-fixed and
-its diff spans a whole release interval, so the rule has nothing to judge.
+its diff spans a whole release interval, so the rule has nothing to judge. The
+exemption is identified by content — a `release-please--` head branch, a
+`chore(main): release ` title, and the release plumbing files in the diff — not
+by the author, so a human PR cannot claim it.
+
+### Signed-off-by and squash merges
+
+The `DCO` check requires a `Signed-off-by` trailer, and it runs on **PR commits**
+— that is where the signoff has to be, and where it is enforced.
+
+[ADR-005](docs/adr/ADR-005-issue-driven-commits.md) squash-merges to `main`, and
+GitHub's squash does not carry the trailer onto the resulting `main` commit. So a
+squash-merged commit on `main` normally has no `Signed-off-by`. **That is expected,
+not a defect.**
+
+Do not amend `main` to add it. On a release commit the tag has usually already
+been cut and published, and moving a published tag to change a commit message
+breaks release immutability for anyone who already installed from it. The tree
+and artifacts are unaffected by the message, so there is nothing to gain.
 
 ## Branch Naming
 
