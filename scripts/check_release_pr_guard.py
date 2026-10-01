@@ -56,6 +56,12 @@ PLUMBING_PATHS = frozenset(
 
 RELEASE_HEAD_PREFIX = "release-please--"
 RELEASE_TITLE_PREFIX = "chore(main): release "
+# The author is NOT a usable signal here. release-please opens its PR with the
+# repo's own credentials, so user.login is the account owner (measured on the
+# real #137: "1StepMore"), not github-actions[bot] -- it changes with whichever
+# token release-please runs under. An earlier TRUSTED_AUTHORS allowlist therefore
+# never matched, which is why #129 recorded that this guard "never fired". Kept
+# as documentation of the value that was wrong, not as a live check.
 TRUSTED_AUTHORS = frozenset({"github-actions[bot]", "app/github-actions"})
 
 MAX_LISTED_PATHS = 10
@@ -115,19 +121,27 @@ def assess_candidate(files: list[str]) -> Decision:
 
 
 def should_act(head_ref: str, author: str, title: str, state: str) -> tuple[bool, str]:
-    """Security gate: true only for an open, bot-authored release proposal.
+    """Security gate: true only for an open release-please proposal.
 
     Every condition must hold.  On any mismatch the release is left untouched.
+
+    ``author`` is reported but not enforced.  It was once enforced against
+    ``TRUSTED_AUTHORS``, which made this guard inert: release-please authenticates
+    with the repo's own credentials, so the proposal's ``user.login`` is the
+    account owner, never ``github-actions[bot]``.  Enforcing an identity that the
+    real actor does not have is what let #119 / #126 / #133 be closed by hand
+    while the machinery stood idle.  The stable signals are the branch and title
+    prefixes; the caller additionally requires the release plumbing, so a spoof
+    has to rewrite the changelog and version file rather than just rename a
+    branch.
     """
     if state != "open":
         return False, f"PR state is '{state}', not 'open'; leaving it alone."
     if not head_ref.startswith(RELEASE_HEAD_PREFIX):
         return False, (f"Head ref '{head_ref}' is not a release-please branch; leaving it alone.")
-    if author not in TRUSTED_AUTHORS:
-        return False, (f"Author '{author}' is not the release-please bot; leaving it alone.")
     if not title.startswith(RELEASE_TITLE_PREFIX):
         return False, (f"Title '{title}' is not a release-please title; leaving it alone.")
-    return True, "Open release-please PR from a trusted author."
+    return True, f"Open release-please proposal (author '{author}')."
 
 
 def decide(
