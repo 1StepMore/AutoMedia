@@ -9,6 +9,7 @@ from automedia.gates.base import BaseGate, _registry
 from automedia.gates.brand_cta import (
     _CHECK_NAMES,
     G3BrandCTA,
+    _check_brand_identity,
     _check_brand_name_present,
 )
 
@@ -249,8 +250,8 @@ class TestG3RealBrandIdentity:
     """Real brand identity check without mocks."""
 
     def test_identity_ai_content_production(self) -> None:
-        """Content contains 'AI内容生产' → pass."""
-        ctx = _make_context(content="壹目贯维是AI内容生产领域的先行者。立即咨询。")
+        """Content contains the declared identity 'AI内容生产公司' → pass."""
+        ctx = _make_context(content="壹目贯维是AI内容生产公司，深耕AI内容生产领域。立即咨询。")
         result = G3BrandCTA().execute(ctx)
         bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
         assert bi["passed"] is True
@@ -272,6 +273,36 @@ class TestG3RealBrandIdentity:
         result = G3BrandCTA().execute(ctx)
         bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
         assert bi["passed"] is False
+
+
+class TestG3DeclaredBrandIdentity:
+    """brand_identity 判定以档案声明值为准（#146 契约）。"""
+
+    def test_declared_identity_in_content_passes(self) -> None:
+        """档案声明「菲律宾外卖平台」且正文如实包含 → pass."""
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": "菲律宾外卖平台"}
+        result = _check_brand_identity(
+            "本平台是菲律宾外卖平台，覆盖全境即时配送。立即咨询。",
+            profile,
+        )
+        assert result["passed"] is True
+        assert "菲律宾外卖平台" in result["detail"]
+
+    def test_declared_identity_absent_from_content_fails(self) -> None:
+        """同一档案但正文写的是别的身份（含默认短语）→ fail."""
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": "菲律宾外卖平台"}
+        result = _check_brand_identity(
+            "这是一家专注AI内容创作的公司。立即咨询。",
+            profile,
+        )
+        assert result["passed"] is False
+        assert "菲律宾外卖平台" in result["detail"]
+
+    def test_undeclared_identity_falls_back_to_default_phrases(self) -> None:
+        """档案没有 brand_identity 字段 → 默认短语路径不回归."""
+        profile = {"brand_name": "壹目贯维", "aliases": ["1StepMore"]}
+        result = _check_brand_identity("我们专注AI内容创作。立即咨询。", profile)
+        assert result["passed"] is True
 
 
 class TestG3RealBlockedWords:
