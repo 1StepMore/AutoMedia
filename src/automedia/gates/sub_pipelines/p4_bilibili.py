@@ -179,9 +179,9 @@ class P4BilibiliRepurpose(BaseGate):
 
         rewrite_user = f"Topic: {topic}\nBrand: {brand}\n\nDraft content:\n\n{draft_content}"
         if brand_profile:
-            voice = brand_profile.get("voice", "")
+            voice = brand_profile.get("tone_guidelines", "") or brand_profile.get("voice", "")
             if voice:
-                rewrite_user += f"\n\nBrand voice: {voice}"
+                rewrite_user += f"\n\nBrand tone/voice: {voice}"
 
         try:
             rewritten_content: str = llm_complete(
