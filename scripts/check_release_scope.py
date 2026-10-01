@@ -98,6 +98,19 @@ INTERNAL_EXACT = frozenset(
 
 MAX_LISTED_PATHS = 10
 
+# Source-generated files that are not user-visible content. Admission requires all
+# three: produced by a checked-in generator, byte-diff-gated in CI so it cannot
+# drift from that generator, and containing no human-authored prose.
+#
+# `docs/doc-inventory.md` qualifies: scripts/doc_inventory.py generates it, ci.yml
+# gates it byte-for-byte ("Doc inventory drift check (T-13)"), and ADR-005 requires
+# it to land in the same commit as whatever made it stale. Without this entry, any
+# change that adds a doc drags the regenerated index into the diff and reads as
+# user-visible, so internal-only work has to carry a `release:skip` label to say
+# "I changed nothing a user would notice". Hand-written docs (docs/user/**,
+# docs/index.md, README.md) are deliberately NOT listed.
+GENERATED_ARTIFACTS = frozenset({"docs/doc-inventory.md"})
+
 
 class Result(NamedTuple):
     """Verdict for one PR: ``passed`` plus a human ``reason``/``remediation``."""
@@ -116,7 +129,7 @@ def is_internal_path(path: str) -> bool:
     normalized = path.strip()
     while normalized.startswith("./"):
         normalized = normalized[2:]
-    if normalized in INTERNAL_EXACT:
+    if normalized in INTERNAL_EXACT or normalized in GENERATED_ARTIFACTS:
         return True
     return normalized.startswith(INTERNAL_PREFIXES)
 
