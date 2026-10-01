@@ -25,12 +25,24 @@ the type cannot be retyped and the diff cannot be narrowed. That is what froze
 
 The protection this gate exists to provide is NOT lost, because for a proposal
 it belongs to ``scripts/check_release_pr_guard.py`` (issue #122), which
-auto-freezes internal-only proposals. Measured on the real #133 paths:
-internal-only -> frozen; containing a ``src/`` change -> deliberately left
-alone. :func:`is_release_proposal` therefore mirrors that guard's ``should_act``
-exactly -- head ref, author and the full title prefix must all match -- so a
-human PR can never buy the exemption by copying a bot title. A missing author
-or head ref simply fails to match, preserving the strict pre-exemption verdict.
+auto-freezes internal-only proposals.  That is only true because #122's guard
+recognises proposals too, which it could not do until the author check was
+replaced there as well.
+
+IDENTITY IS NOT A SIGNAL (the #137 lesson)
+-------------------------------------------
+The first version of this exemption required ``author`` to be a release-please
+bot, copied from #122's guard.  It never fired.  Measured on the real #137
+proposal: release-please opens its PR with the repo's own credentials, so
+``github.event.pull_request.user.login`` is the account owner (``1StepMore``),
+not ``github-actions[bot]``.  The author changes with whichever token
+release-please runs under, so no hard-coded allowlist can be correct.
+
+The same wrong assumption made #122's auto-freeze inert, which is the real
+reason behind #129's complaint that "the guard ... never fired".  Both gates now
+key on content: the branch prefix, the title prefix, and the release plumbing a
+genuine proposal rewrites.  Spoofing then requires editing ``CHANGELOG.md`` and
+the version file, which is deliberate and obvious rather than a branch rename.
 """
 
 from __future__ import annotations
@@ -46,11 +58,12 @@ HIDDEN_TYPES = frozenset({"chore", "ci", "test", "refactor", "build", "style"})
 USER_VISIBLE_LABEL = "release:user-visible"
 SKIP_LABEL = "release:skip"
 
-# Mirrors check_release_pr_guard.py so both gates recognise a release-please
-# proposal by the same three signals; see is_release_proposal below.
 RELEASE_HEAD_PREFIX = "release-please--"
 RELEASE_TITLE_PREFIX = "chore(main): release "
-TRUSTED_AUTHORS = frozenset({"github-actions[bot]", "app/github-actions"})
+# A real release-please proposal always rewrites the changelog and the version
+# file. Requiring both is what makes the exemption content-based rather than
+# identity-based; see is_release_proposal.
+REQUIRED_RELEASE_PLUMBING = ("CHANGELOG.md", "src/automedia/_version.py")
 # The freeze in release-pr-guard.yml applies the release-please snooze label, not
 # SKIP_LABEL. Accepting both keeps the two gates satisfiable by the same action: a
 # guard-driven freeze must not leave this gate red. See issue #122.
@@ -130,19 +143,27 @@ def _format_paths(paths: list[str]) -> str:
     return shown
 
 
-def is_release_proposal(author: str, head_ref: str, title: str) -> bool:
-    """True only for a release-please proposal: bot author, bot branch, bot title.
+def is_release_proposal(head_ref: str, title: str, paths: list[str]) -> bool:
+    """True only for a real release-please proposal: bot branch, bot title, real plumbing.
 
-    Every condition must hold, mirroring ``should_act`` in
-    ``check_release_pr_guard.py``.  Requiring all three is what stops a human PR
-    from claiming the exemption by copying the title; an empty or missing value
-    simply fails to match, so the strict verdict is the default.
+    The author is deliberately NOT a signal.  release-please creates its PR with
+    the repo's own credentials, so ``user.login`` is the account owner
+    (``1StepMore`` here), not ``github-actions[bot]``; it changes with whichever
+    token release-please runs under.  An earlier version keyed on the author and
+    therefore never fired -- see the module docstring.
+
+    The three stable signals are the branch prefix, the title prefix, and the
+    release plumbing.  Requiring the plumbing matters more here than in
+    check_release_pr_guard.py: a false positive in THIS gate unblocks a release,
+    so a spoof must also rewrite ``CHANGELOG.md`` and the version file, which is
+    conspicuous and self-incriminating rather than a one-line branch rename.
     """
-    return (
-        head_ref.startswith(RELEASE_HEAD_PREFIX)
-        and author in TRUSTED_AUTHORS
-        and title.startswith(RELEASE_TITLE_PREFIX)
-    )
+    if not head_ref.startswith(RELEASE_HEAD_PREFIX):
+        return False
+    if not title.startswith(RELEASE_TITLE_PREFIX):
+        return False
+    changed = set(paths)
+    return all(p in changed for p in REQUIRED_RELEASE_PLUMBING)
 
 
 def assess_release_scope(
@@ -160,19 +181,23 @@ def assess_release_scope(
     fixed by the bot and its diff spans the whole release interval, so the table
     has no verdict to give.  See :func:`is_release_proposal` and the module
     docstring for why that does not weaken the internal-only protection.
+
+    ``author`` is accepted but NOT used for the decision -- see
+    :func:`is_release_proposal`.  It stays in the signature so existing callers
+    and the workflow keep working.
     """
     label_set = {label.strip() for label in labels if label and label.strip()}
 
     if not paths:
         return Result(True, "No changed files to judge.", "")
 
-    if is_release_proposal(author, head_ref, title):
+    if is_release_proposal(head_ref, title, paths):
         return Result(
             True,
-            f"release-please proposal from '{author}' (branch '{head_ref}'): its "
-            "type is bot-fixed and its diff spans the whole release interval, so "
-            "the type-vs-scope table does not apply. Internal-only proposals are "
-            "auto-frozen by check_release_pr_guard.py (issue #122).",
+            f"release-please proposal (branch '{head_ref}'): its type is bot-fixed "
+            "and its diff spans the whole release interval, so the type-vs-scope "
+            "table does not apply. Internal-only proposals are auto-frozen by "
+            "check_release_pr_guard.py (issue #122).",
             "",
         )
 

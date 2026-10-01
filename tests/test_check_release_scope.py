@@ -324,8 +324,13 @@ RELEASE_TITLE = "chore(main): release automedia 1.8.1"
 USER_VISIBLE_PATH = "src/automedia/hitl/constants.py"
 
 
-def test_release_proposal_is_exempt(scope: ModuleType) -> None:
-    """The deadlock case: proposal + a src/ change in the interval."""
+def test_exemption_requires_plumbing_not_just_identity(scope: ModuleType) -> None:
+    """Superseded the author-keyed test; kept as its regression lock.
+
+    This shape -- release branch, release title, but only a src/ path -- used to
+    pass because the author matched. It must now be judged normally, which is
+    precisely what makes the exemption content-based.
+    """
     result = scope.assess_release_scope(
         [USER_VISIBLE_PATH],
         scope.parse_title_type(RELEASE_TITLE),
@@ -334,9 +339,9 @@ def test_release_proposal_is_exempt(scope: ModuleType) -> None:
         head_ref=RELEASE_BRANCH,
         title=RELEASE_TITLE,
     )
-    assert result.passed is True
-    assert "release-please" in result.reason.lower()
-    assert result.remediation == ""
+    assert result.passed is False
+    assert "release-please" not in result.reason.lower()
+    assert result.remediation
 
 
 def test_human_pr_with_release_shaped_title_is_not_exempt(scope: ModuleType) -> None:
@@ -354,7 +359,9 @@ def test_human_pr_with_release_shaped_title_is_not_exempt(scope: ModuleType) -> 
 
 
 def test_untrusted_bot_author_is_not_exempt(scope: ModuleType) -> None:
-    """Right branch and title, wrong author -> still judged."""
+    """Kept from the author-keyed era. The author is no longer a lever at all --
+    this passes because the path list carries no release plumbing, not because
+    the author was rejected."""
     result = scope.assess_release_scope(
         [USER_VISIBLE_PATH],
         scope.parse_title_type(RELEASE_TITLE),
@@ -414,13 +421,14 @@ def test_exemption_does_not_mask_the_all_internal_visible_type_row(scope: Module
     assert ok.passed is True
 
 
-def test_is_release_proposal_predicate(scope: ModuleType) -> None:
-    assert scope.is_release_proposal("github-actions[bot]", RELEASE_BRANCH, RELEASE_TITLE)
-    assert scope.is_release_proposal("app/github-actions", RELEASE_BRANCH, RELEASE_TITLE)
-    assert not scope.is_release_proposal("1StepMore", RELEASE_BRANCH, RELEASE_TITLE)
-    assert not scope.is_release_proposal("github-actions[bot]", "main", RELEASE_TITLE)
-    assert not scope.is_release_proposal("github-actions[bot]", RELEASE_BRANCH, "chore(main): x")
-    assert not scope.is_release_proposal("", "", "")
+def test_is_release_proposal_needs_branch_title_and_plumbing(scope: ModuleType) -> None:
+    """Superseded the author-keyed predicate; author is no longer a parameter."""
+    assert scope.is_release_proposal(RELEASE_BRANCH, RELEASE_TITLE, PLUMBING)
+    assert not scope.is_release_proposal(RELEASE_BRANCH, RELEASE_TITLE, [USER_VISIBLE_PATH])
+    assert not scope.is_release_proposal(RELEASE_BRANCH, RELEASE_TITLE, [PLUMBING[0]])
+    assert not scope.is_release_proposal("main", RELEASE_TITLE, PLUMBING)
+    assert not scope.is_release_proposal(RELEASE_BRANCH, "chore(main): x", PLUMBING)
+    assert not scope.is_release_proposal("", "", [])
 
 
 def test_cli_accepts_author_and_head_ref(
@@ -428,7 +436,9 @@ def test_cli_accepts_author_and_head_ref(
 ) -> None:
     import io
 
-    monkeypatch.setattr(sys, "stdin", io.StringIO(f"{USER_VISIBLE_PATH}\n"))
+    # A real proposal: the path list carries the release plumbing, and the author
+    # is the repo owner (release-please uses the repo's credentials).
+    monkeypatch.setattr(sys, "stdin", io.StringIO("\n".join(REAL_PROPOSAL_PATHS) + "\n"))
     assert (
         scope.main(
             [
@@ -439,14 +449,112 @@ def test_cli_accepts_author_and_head_ref(
                 "--labels",
                 "",
                 "--pr-author",
-                "github-actions[bot]",
+                "1StepMore",
                 "--head-ref",
                 RELEASE_BRANCH,
             ]
         )
         == 0
     )
-    # Same input without the author keeps failing (fail-safe default).
+    # Without the release branch the same paths are judged normally (fail-safe).
     # stdin is a one-shot StringIO, so it must be re-armed before the second call.
-    monkeypatch.setattr(sys, "stdin", io.StringIO(f"{USER_VISIBLE_PATH}\n"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO("\n".join(REAL_PROPOSAL_PATHS) + "\n"))
     assert scope.main(["--files", "-", "--title", RELEASE_TITLE, "--labels", ""]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Content-based proposal detection (issue #134 follow-up: the author is not a
+# usable signal)
+# ---------------------------------------------------------------------------
+#
+# #135 keyed the exemption on `author in {github-actions[bot],
+# app/github-actions}`, copied from check_release_pr_guard.py. Measured against
+# the real #137 proposal that never fires: release-please runs with the repo's
+# own credentials, so `github.event.pull_request.user.login` is the account
+# owner (`1StepMore`), not a bot. The exemption was therefore inert, and -- worse
+# -- the internal-only backstop it claimed to rely on (#122's auto-freeze) was
+# inert for the same reason, so nothing was stopping an internal-only proposal
+# from releasing.
+#
+# The author is not a usable discriminator at all: it changes with whichever
+# token release-please runs under. The stable, documented signals are the branch
+# prefix, the title prefix, and the release plumbing a real proposal rewrites.
+# Because a false positive here UNBLOCKS a release, the criterion is deliberately
+# stricter than the author check it replaces: a spoof must also edit CHANGELOG.md
+# and the version file, which is conspicuous and self-incriminating.
+
+RELEASE_BRANCH = "release-please--branches--main--components--automedia"
+RELEASE_TITLE = "chore(main): release automedia 1.8.1"
+PLUMBING = ["CHANGELOG.md", "src/automedia/_version.py"]
+# What #137 actually carries: 38 paths, of which these are the release plumbing.
+REAL_PROPOSAL_PATHS = [
+    *PLUMBING,
+    ".github/.release-please-manifest.json",
+    "src/automedia/hitl/constants.py",
+    "docs/doc-inventory.md",
+]
+
+
+def test_real_proposal_passes_with_the_repo_owner_as_author(scope: ModuleType) -> None:
+    """The #137 shape. Author is the owner, and the diff carries the plumbing."""
+    result = scope.assess_release_scope(
+        REAL_PROPOSAL_PATHS,
+        scope.parse_title_type(RELEASE_TITLE),
+        ["ci", "core"],
+        author="1StepMore",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is True
+    assert "release-please" in result.reason.lower()
+
+
+def test_release_shaped_branch_and_title_without_plumbing_is_still_judged(
+    scope: ModuleType,
+) -> None:
+    """Anti-spoof: the branch+title prefix alone must not buy the exemption."""
+    result = scope.assess_release_scope(
+        ["src/automedia/hitl/constants.py"],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="1StepMore",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
+    assert "release-please" not in result.reason.lower()
+
+
+def test_plumbing_without_the_branch_and_title_is_still_judged(scope: ModuleType) -> None:
+    """A human PR that happens to touch the changelog gets no exemption."""
+    result = scope.assess_release_scope(
+        [*PLUMBING, "src/automedia/hitl/constants.py"],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="1StepMore",
+        head_ref="fix/ci-something",
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
+
+
+def test_is_release_proposal_uses_content_not_author(scope: ModuleType) -> None:
+    assert scope.is_release_proposal(RELEASE_BRANCH, RELEASE_TITLE, REAL_PROPOSAL_PATHS)
+    # author is deliberately not a parameter any more
+    assert not scope.is_release_proposal(RELEASE_BRANCH, RELEASE_TITLE, ["src/a.py"])
+    assert not scope.is_release_proposal("main", RELEASE_TITLE, REAL_PROPOSAL_PATHS)
+    assert not scope.is_release_proposal(RELEASE_BRANCH, "chore(main): x", REAL_PROPOSAL_PATHS)
+    assert not scope.is_release_proposal("", "", [])
+
+
+def test_author_alone_never_exempts(scope: ModuleType) -> None:
+    """Regression lock for the #135 bug: a trusted bot name is not enough."""
+    result = scope.assess_release_scope(
+        ["src/automedia/hitl/constants.py"],
+        scope.parse_title_type(RELEASE_TITLE),
+        [],
+        author="github-actions[bot]",
+        head_ref=RELEASE_BRANCH,
+        title=RELEASE_TITLE,
+    )
+    assert result.passed is False
