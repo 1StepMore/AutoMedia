@@ -77,3 +77,10 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # The concurrency group above covers the two events landing together;
+          # skip-existing covers them landing apart -- a manual tag push, or a
+          # partial recovery after the tagging step failed. Without it the second
+          # upload dies on "400 File already exists" and paints a red check on a
+          # release that actually shipped.
+          skip-existing: true
