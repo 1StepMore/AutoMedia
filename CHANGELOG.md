@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.1...automedia-v1.8.2) (2026-10-01)
+
+
+### Documentation
+
+* **scenarios:** record the repo-infra exemption from the regression flywheel ([9050510](https://github.com/1StepMore/AutoMedia/commit/905051098d9ada1c98161543067945646f6f8e00))
+
 ## [1.8.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.0...automedia-v1.8.1) (2026-10-01)
 
 
