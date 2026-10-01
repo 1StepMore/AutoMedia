@@ -111,6 +111,13 @@ jobs:
         run: |
           set -euo pipefail
           git diff --name-only "${{ steps.tag.outputs.LAST_TAG }}..origin/main" > "${{ runner.temp }}/files.txt"
+          # An empty diff must fail. check_release_pr_guard.py reads "no files" as
+          # nothing to judge and exits 0 with snooze=false, so without this a stale
+          # LAST_TAG or truncated fetch silently stops the freeze from ever firing.
+          if [ ! -s "${{ runner.temp }}/files.txt" ]; then
+            echo "::error::empty diff for $LAST_TAG..origin/main; refusing to report a freeze verdict that judged no files"
+            exit 1
+          fi
           python3 scripts/check_release_pr_guard.py \
             --files-file "${{ runner.temp }}/files.txt" \
             --pr-title "$PR_TITLE" \
