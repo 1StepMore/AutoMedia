@@ -387,3 +387,20 @@ name, so a bug cannot be filed without committing to its lock. The
 discipline. The `standard:` keys every step cites are defined in
 `scenarios/STANDARDS.md`; `scenarios/regression/README.md` covers the
 regression-flywheel lifecycle for authors and reviewers.
+
+### Repo-infrastructure bugs are pinned by a gate, not a scenario
+
+`scenarios/` exercises the PRODUCT surface through CLI/MCP. A bug in the
+repo's own machinery — a CI workflow, a release gate, a pre-commit hook — is
+therefore **not** scenario material, and `check-workflow-semantics.py` records
+that as a pinned layering decision ("do NOT 'fix' by adding a scenario"): such
+an invariant belongs in a repo gate wired into pre-commit and CI, which is
+where it is enforced on every change.
+
+The bug template has no escape for this — its `regression-scenario` field is
+`required: true` unconditionally and offers no N/A path — so the two rules
+cannot both be satisfied for an infra bug. Until that is reconciled, put the
+**enforcing gate** in the template field for an infra bug (for example
+`check-workflow-semantics.py`), so the field still names the lock that keeps
+the bug fixed, and open the template reconciliation as its own task rather
+than writing a scenario that would violate the layering decision.
