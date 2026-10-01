@@ -46,15 +46,17 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Trusted `main` only -- never the PR head: a PR must not supply the script
+      # that judges it, and a branch that never pushes again (release-please holds
+      # its proposal branch frozen for the life of the release) would otherwise be
+      # judged forever by the gate as it stood when the PR was opened (#137).
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      # No `--depth=1` fetch here: checkout already provides origin/<base> with
-      # full history, and a shallow ref can break the merge-base computation the
-      # three-dot diff below needs (fatal: no merge base, or a wrong range).
       - name: Check changed paths against the PR's release scope
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -65,13 +67,26 @@ jobs:
           # requires all three signals, so a human PR cannot claim the exemption.
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          BASE_REF="${{ github.base_ref }}"
-          if ! git rev-parse --verify --quiet "origin/$BASE_REF" >/dev/null; then
-            git fetch origin "$BASE_REF"
-          fi
+          # fetch-depth:0 above yields full main history, so the three-dot diff still
+          # finds a merge base even though the head branch forked before the latest
+          # main. Do NOT narrow this to a shallow fetch: a truncated main breaks the
+          # merge-base computation (fatal: no merge base, or a wrong range).
           git rev-parse --verify "origin/$BASE_REF^{commit}"
-          git diff --name-only "origin/$BASE_REF...HEAD" \
+          # refs/pull/N/head exists for same-repo and fork PRs alike, and unlike the
+          # synthetic refs/pull/N/merge it is not a cached snapshot of a past base.
+          git fetch --no-tags origin "+refs/pull/$PR_NUMBER/head:refs/remotes/pr/$PR_NUMBER"
+          # An empty diff must FAIL. check_release_scope.py treats "no files" as
+          # nothing to judge and exits 0, so without this guard a bad ref or a
+          # truncated fetch would silently pass every PR instead of judging nothing.
+          FILES="$(git diff --name-only "origin/$BASE_REF...refs/remotes/pr/$PR_NUMBER")"
+          if [ -z "$FILES" ]; then
+            echo "::error::empty diff for origin/$BASE_REF...refs/pull/$PR_NUMBER/head; refusing to report a scope check that judged no files"
+            exit 1
+          fi
+          printf '%s\n' "$FILES" \
             | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" \
                 --labels "$LABELS" --pr-author "$PR_AUTHOR" --head-ref "$HEAD_REF"
