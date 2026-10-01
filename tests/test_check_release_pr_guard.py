@@ -125,9 +125,21 @@ def test_gate_accepts_a_real_release_pr(guard: ModuleType) -> None:
     assert reason
 
 
-def test_gate_rejects_foreign_author(guard: ModuleType) -> None:
-    act, _ = guard.should_act(ACT_HEAD_REF, "1StepMore", ACT_TITLE, "open")
-    assert act is False
+def test_gate_accepts_the_repo_owner_as_author(guard: ModuleType) -> None:
+    """release-please runs with the repo's own credentials, so the proposal's
+    ``user.login`` is the account owner, NOT ``github-actions[bot]``.
+
+    This test used to assert the opposite -- that ``1StepMore`` must NOT act --
+    which pinned the bug in place: #129 recorded that "the guard that exists to
+    freeze such proposals automatically never fired", and #134's exemption
+    inherited the same wrong assumption, so the auto-freeze backstop was
+    inactive in both places.  The author is not a usable discriminator because
+    it changes with whichever token release-please runs under; the branch and
+    title prefixes are the stable signals.
+    """
+    act, reason = guard.should_act(ACT_HEAD_REF, "1StepMore", ACT_TITLE, "open")
+    assert act is True
+    assert "1StepMore" in reason
 
 
 def test_gate_rejects_non_release_branch(guard: ModuleType) -> None:
@@ -156,8 +168,19 @@ def test_gate_accepts_app_author(guard: ModuleType) -> None:
 
 
 def test_decide_gate_failure_never_snoozes(guard: ModuleType) -> None:
-    decision = guard.decide(REAL_PATHS, ACT_HEAD_REF, "1StepMore", ACT_TITLE, "open")
-    assert decision.snooze is False
+    """A closed PR, or one on a non-release branch, is never touched.
+
+    This used to trigger the gate failure with author="1StepMore", asserting that
+    the same call which froze as ACT_AUTHOR must not freeze as the owner. That
+    made the author the ONLY difference between "freeze" and "do not freeze" --
+    i.e. the bug itself was the contract. The author is no longer a gate lever
+    (release-please authenticates as the owner), so the intent is now pinned on a
+    lever that still exists.
+    """
+    assert guard.decide(REAL_PATHS, ACT_HEAD_REF, ACT_AUTHOR, ACT_TITLE, "open").snooze is True
+    assert guard.decide(REAL_PATHS, "fix/whatever", ACT_AUTHOR, ACT_TITLE, "open").snooze is False
+    assert guard.decide(REAL_PATHS, ACT_HEAD_REF, ACT_AUTHOR, ACT_TITLE, "closed").snooze is False
+    assert guard.decide(REAL_PATHS, ACT_HEAD_REF, ACT_AUTHOR, "feat: x", "open").snooze is False
 
 
 def test_decide_freezes_internal_release(guard: ModuleType) -> None:
