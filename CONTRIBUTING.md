@@ -180,6 +180,45 @@ feat(pool): add deduplication by MD5 checksum
 fix(gates): resolve V4 failure on missing brand asset
 ```
 
+### Choosing the type by release scope
+
+release-please decides whether to cut a public release from the commit **type
+alone** — the scope in parentheses plays no part. So `fix(ci):` is a `fix`, and
+it will force a public release even when the change is pure repo maintenance.
+That produces a version bump whose only observable difference is the version
+string, which is a release nobody asked for.
+
+**Rule: if the change touches no user-visible path, use a hidden type.**
+
+| Hidden (no release) | Visible (cuts a release) |
+|---------------------|-------------------------|
+| `chore:` `ci:` `test:` `refactor:` `style:` `build:` | `feat:` `fix:` `perf:` `docs:` `revert:` |
+
+Internal paths are `.github/`, `tests/`, `scripts/`, `docs/dev/`, the
+agent-client directories (`.claude/` `.codex/` `.opencode/` `.cursor/`
+`.trae/`), `AGENTS.md`, `CONTRIBUTING.md`, `Makefile`,
+`.pre-commit-config.yaml`, `.gitignore`, and source-generated artifacts such as
+`docs/doc-inventory.md`. Everything else — including `src/**` and hand-written
+docs under `docs/user/**` — is user-visible.
+
+```
+chore(ci): pin uv so the lock cannot drift        # internal  -> no release
+fix(ci): stop the publish workflow racing itself  # internal  -> WRONG, forces one
+```
+
+Note that `docs:` is a **visible** type. A change that only adds documents under
+`docs/dev/` is internal, so it wants `chore(docs):` or `refactor(docs):`, not
+`docs:`.
+
+The `release-scope` CI job enforces the visible-type half of this: an
+internal-only change typed as `feat`/`fix`/etc. fails and asks you to retype it.
+Two labels exist as explicit overrides — `release:user-visible` (internal paths,
+but genuinely user-facing) and `release:skip` (user-visible paths, but the
+release should be held). Reach for them rarely, and say why in the PR.
+
+A release-please proposal is exempt from this check: its type is bot-fixed and
+its diff spans a whole release interval, so the rule has nothing to judge.
+
 ## Branch Naming
 
 Branches must follow a naming convention that mirrors commit types:

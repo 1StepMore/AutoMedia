@@ -69,6 +69,8 @@ mypy src/automedia/ --ignore-missing-imports   # type check
 pre-commit run --all-files   # pre-commit
 ```
 
+**Commit type:** release-please cuts a release from the type alone, so `fix(ci):` forces one; internal-only changes use a hidden type. Rule: [CONTRIBUTING.md](CONTRIBUTING.md#choosing-the-type-by-release-scope).
+
 ## 7. Test Conventions
 - **Markers:** `e2e`, `redline`, `slow`, registered in `tests/conftest.py`
 - **Fixtures:** Shared fixtures in `tests/conftest.py` use `tmp_path` for isolation; synthetic data only
