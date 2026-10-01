@@ -48,6 +48,23 @@ later step in the same job runs tests AND that later step lacks
 finding while the scan stays blocking; the job still fails overall on a red
 scan.
 
+Rule 4 — trusted-base file list that fails open when empty.  Within a SINGLE
+job that checks out a PINNED base ref (not the default merge ref, and not the
+PR's own head), a step that builds a changed-file list via ``git diff
+--name-only`` must make an EMPTY list fatal before the list reaches a checker.
+``set -e`` already covers a diff that FAILS; this covers the quieter case where
+the diff SUCCEEDS with nothing in it, so the checker is handed an empty list.
+Both repo checkers treat empty as "nothing to judge" and exit 0
+(``check_release_scope.py``: "No changed files to judge";
+``check_release_pr_guard.py``: "cannot judge, leaving it alone",
+``snooze=false``), so an empty list turns a gate into a no-op that reports
+success.  Real instances: ``conventional-commits.yml`` job ``release-scope``
+(issue #137) and ``release-pr-guard.yml`` job ``guard``, whose freeze silently
+stops firing when the tag range comes back empty.
+
+A gate that fails CLOSED is noisy and safe; one that fails OPEN is silent and
+is the more dangerous defect, which is why this rule exists.
+
 PREDICATES (explicit, documented, not fuzzy):
 
 * "is a security/vulnerability scan step" — the step ``name:`` matches
@@ -396,6 +413,78 @@ def _step_name(step: Mapping[str, object]) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Rule 4 predicates (see the module docstring for the contract)
+# --------------------------------------------------------------------------- #
+
+# A checkout ref that points at the PR's own head is NOT the hazard: HEAD then
+# *is* the PR, so diffing against the base yields the real PR file list.
+_PR_REF_MARKERS = ("refs/pull", "github.event.pull_request.head", "github.head_ref")
+
+
+def _pins_trusted_base(step: Mapping[str, object]) -> bool:
+    """True when a checkout pins an explicit ref that is not the PR's own head.
+
+    Pinning a base ref is what makes Rule 4's hazard possible: once the
+    workspace is a known base, the diff's far endpoint no longer follows the
+    PR, so the computed file list can come back empty for reasons that have
+    nothing to do with the PR having no changes.
+    """
+    uses = _text(step.get("uses"))
+    if uses is None or "actions/checkout" not in uses:
+        return False
+    options = _mapping(step.get("with"))
+    if options is None:
+        return False
+    ref = _text(options.get("ref"))
+    if ref is None:
+        return False  # default resolves to the merge ref; HEAD is the PR
+    return not any(marker in _strip_expression(ref) for marker in _PR_REF_MARKERS)
+
+
+def _builds_file_list(run: str) -> bool:
+    return "git diff" in run and ("--name-only" in run or "--name-status" in run)
+
+
+def _exit_status(token: str) -> int | None:
+    """Exit code an ``exit <token>`` will produce, or None if not statically known."""
+    cleaned = token.strip("\"';)")
+    if cleaned.isdigit():
+        return int(cleaned)
+    return None
+
+
+def _empty_list_is_fatal(run: str) -> bool:
+    """True when the run makes an empty ``$FILES`` abort before the checker runs.
+
+    Two accepted idioms, both required to be provably fatal:
+    an emptiness test (``-z``/``test -z``) followed by a non-zero ``exit``, or a
+    ``|| exit <non-zero>`` chained onto the assignment that captured the list.
+    """
+    for assign in re.finditer(r"\|\|\s*exit\s+(\S+)", run):
+        status = _exit_status(assign.group(1))
+        if status is not None and status != 0:
+            return True
+    for test in re.finditer(r"(?:^|[\s\[(])-{1,2}z\b|\btest\s+-z\b", run):
+        for exit_match in re.finditer(r"\bexit\s+(\S+)", run[test.end() :]):
+            status = _exit_status(exit_match.group(1))
+            if status is not None and status != 0:
+                return True
+    return False
+
+
+def _guards_empty_list(run: str) -> bool:
+    """True when the run proves an empty list cannot reach the checker.
+
+    The diff failing outright is already covered by ``set -e``; this covers the
+    quieter case where the diff SUCCEEDS with nothing in it.
+    """
+    if _empty_list_is_fatal(run):
+        return True
+    # ``[ -s file ] && exit 1`` — rejects an empty captured file by size.
+    return bool(re.search(r"!\s*-s\b|-s\b[^\n]*&&\s*exit\s+[^0\s]", run))
+
+
+# --------------------------------------------------------------------------- #
 # Detectors (pure: parsed data in, Analysis out — no filesystem, no subprocess)
 # --------------------------------------------------------------------------- #
 
@@ -514,6 +603,38 @@ def _check_rule3(
             break
 
 
+def _check_rule4(
+    steps: Sequence[object],
+    line_of: Callable[[int], int],
+    filename: str,
+    findings: list[Finding],
+) -> None:
+    if not any(
+        _pins_trusted_base(step)
+        for step in (_mapping(value) for value in steps)
+        if step is not None
+    ):
+        return
+    for index, step_value in enumerate(steps):
+        step = _mapping(step_value)
+        if step is None:
+            continue
+        run = _text(step.get("run"))
+        if run is None or not _builds_file_list(run) or _guards_empty_list(run):
+            continue
+        findings.append(
+            Finding(
+                filename,
+                line_of(index),
+                "R4",
+                f"step '{_step_name(step)}' builds a changed-file list with git diff in a "
+                "job that checks out a pinned base ref, but never fails when that list is "
+                "empty; an empty diff (stale tag, bad ref, truncated fetch) reaches the "
+                "checker, which reports 'nothing to judge' and exits 0 — the gate fails open",
+            )
+        )
+
+
 def _step_line(parsed: ParsedWorkflow, job_name: object, index: int) -> int:
     return _line(parsed, ("jobs", job_name, "steps", index))
 
@@ -540,6 +661,7 @@ def analyze_workflow(parsed: ParsedWorkflow, filename: str) -> Analysis:
             _check_rule1(step, matrix, line, filename, findings, unverifiable)
             _check_rule2(step, matrix, line, filename, findings)
         _check_rule3(steps, line_of, filename, findings)
+        _check_rule4(steps, line_of, filename, findings)
     return Analysis(tuple(findings), tuple(unverifiable))
 
 

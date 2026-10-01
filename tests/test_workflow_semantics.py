@@ -221,6 +221,145 @@ jobs:
         uses: some-org/pytest-action@v1
 """
 
+# --------------------------------------------------------------------------- #
+# Rule 4 fixtures — trusted-base file list that fails open when empty
+# --------------------------------------------------------------------------- #
+
+_TRUSTED_BASE_UNGUARDED = """
+name: trusted-base-unguarded
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Decide
+        run: |
+          set -euo pipefail
+          git diff --name-only "$LAST_TAG..origin/main" > files.txt
+          python3 scripts/check_release_pr_guard.py --files-file files.txt
+"""
+
+# Same shape, guarded by a size test on the captured file — the real idiom used
+# in release-pr-guard.yml after the fix.
+_TRUSTED_BASE_GUARDED_SIZE = """
+name: trusted-base-guarded-size
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Decide
+        run: |
+          set -euo pipefail
+          git diff --name-only "$LAST_TAG..origin/main" > files.txt
+          if [ ! -s files.txt ]; then
+            echo "::error::empty diff"
+            exit 1
+          fi
+          python3 scripts/check_release_pr_guard.py --files-file files.txt
+"""
+
+_TRUSTED_BASE_GUARDED_Z = """
+name: trusted-base-guarded-z
+on: [pull_request]
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Check changed paths
+        run: |
+          set -euo pipefail
+          FILES="$(git diff --name-only origin/main...refs/remotes/pr/1)"
+          if [ -z "$FILES" ]; then
+            echo "::error::empty diff"
+            exit 1
+          fi
+          printf '%s\\n' "$FILES" | python3 scripts/check_release_scope.py --files -
+"""
+
+_TRUSTED_BASE_GUARDED_OR_EXIT = """
+name: trusted-base-guarded-or-exit
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Decide
+        run: |
+          set -euo pipefail
+          FILES="$(git diff --name-only origin/main...refs/remotes/pr/1)" || exit 1
+          python3 scripts/check_release_scope.py --files "$FILES"
+"""
+
+# The PR's own head: HEAD *is* the PR, so the list cannot come back empty for
+# reasons unrelated to the PR. Not the hazard.
+_PR_HEAD_CHECKOUT = """
+name: pr-head-checkout
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Decide
+        run: |
+          set -euo pipefail
+          git diff --name-only origin/main...HEAD > files.txt
+          python3 scripts/check_release_pr_guard.py --files-file files.txt
+"""
+
+# Default checkout + HEAD endpoint — the ci.yml validation-affected shape. The
+# merge ref makes an empty diff mean "no changes", which is semantically fine
+# for scenario selection, so it must not be reported.
+_DEFAULT_CHECKOUT_HEAD_DIFF = """
+name: default-checkout-head-diff
+on: [pull_request]
+jobs:
+  validation-affected:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Affected-area validation run
+        run: |
+          changed=$(git diff --name-only origin/main...HEAD || true)
+          python3 scripts/validation_affected.py $changed
+"""
+
+# A pinned-base job with no diff-built list at all (e.g. the docs build).
+_PINNED_BASE_NO_DIFF = """
+name: pinned-base-no-diff
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Build docs
+        run: make docs
+"""
+
 
 def _analyze(text: str, name: str = "fixture.yml") -> object:
     return _WF.analyze_text(text, name)
@@ -330,6 +469,72 @@ def test_uses_step_is_never_a_test_step() -> None:
     analysis = _analyze(_USES_STEP_NAMED_TESTS)
 
     assert len(analysis.findings) == 0
+
+
+# --------------------------------------------------------------------------- #
+# Rule 4 — trusted-base file list that fails open when empty
+# --------------------------------------------------------------------------- #
+
+
+def test_trusted_base_empty_diff_is_one_finding() -> None:
+    analysis = _analyze(_TRUSTED_BASE_UNGUARDED)
+
+    assert len(analysis.findings) == 1
+    assert analysis.findings[0].rule == "R4"
+
+
+def test_set_e_is_not_a_substitute_for_an_empty_guard() -> None:
+    # The subtle case. `set -e` aborts when the diff FAILS, but the hazard is a
+    # diff that SUCCEEDS with nothing in it -- so `set -euo pipefail` alone must
+    # still be reported. The fixture already carries `set -euo pipefail`.
+    analysis = _analyze(_TRUSTED_BASE_UNGUARDED)
+
+    assert [f.rule for f in analysis.findings] == ["R4"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [_TRUSTED_BASE_GUARDED_SIZE, _TRUSTED_BASE_GUARDED_Z, _TRUSTED_BASE_GUARDED_OR_EXIT],
+    ids=["size-test", "empty-string-test", "or-exit"],
+)
+def test_guarded_empty_diff_is_clean(text: str) -> None:
+    # All three accepted idioms make an empty list fatal before the checker.
+    analysis = _analyze(text)
+
+    assert len(analysis.findings) == 0
+
+
+def test_pr_head_checkout_is_clean() -> None:
+    # HEAD is the PR itself, so an empty diff genuinely means "no changes".
+    analysis = _analyze(_PR_HEAD_CHECKOUT)
+
+    assert len(analysis.findings) == 0
+
+
+def test_default_checkout_head_diff_is_clean() -> None:
+    # Locks the ci.yml validation-affected shape: scenario selection where an
+    # empty diff is semantically fine must not be reported.
+    analysis = _analyze(_DEFAULT_CHECKOUT_HEAD_DIFF)
+
+    assert len(analysis.findings) == 0
+
+
+def test_pinned_base_without_a_diff_built_list_is_clean() -> None:
+    analysis = _analyze(_PINNED_BASE_NO_DIFF)
+
+    assert len(analysis.findings) == 0
+
+
+def test_release_pr_guard_workflow_is_not_failing_open() -> None:
+    # REGRESSION LOCK for the live instance Rule 4 found: the guard job builds
+    # its file list from a pinned-base checkout, so it must keep the empty-diff
+    # exit. Reading the real workflow is the point -- a fixture cannot catch a
+    # regression that deletes the guard.
+    workflow = _REPO_ROOT / ".github" / "workflows" / "release-pr-guard.yml"
+
+    analysis = _WF.analyze_text(workflow.read_text(encoding="utf-8"), "release-pr-guard.yml")
+
+    assert [f.rule for f in analysis.findings] == []
 
 
 # --------------------------------------------------------------------------- #
