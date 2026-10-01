@@ -1261,7 +1261,23 @@ class TestVideoModeStatusDowngrade:
             )
 
     def test_qa_only_and_repurpose_are_not_video_producing(self) -> None:
-        """边界：含 V 门但无视频产出阶段的模式不得进入欠视频集合。"""
+        """边界：``qa_only`` / ``repurpose`` 从不跑视频阶段，故不得欠视频。
+
+        中文说明：这两个模式的预设含 V 门，但从不进入 ``_produce_video_track``
+        （runner.py 的媒体阶段只对 ``mode == "auto"`` 或
+        ``_VIDEO_PRODUCING_MODES`` 调用它），所以要求它们产出视频会把每次运行
+        都误判为 incomplete。
+
+        ``auto`` 被排除是**另一个**理由，不能与上面两条混为一谈：``auto``
+        确实会跑视频阶段。排除它是因为 ``auto`` 同时是「用户没有指定模式」的默认值
+        和「平台含视频优先/混合社交时自动推导出的模式」，仅凭模式字符串无法区分
+        「这次欠视频」与「这次没要求视频」——12 个纯文本平台（微信/知乎/推特等）
+        走的是 ``text_only``，而自动推导到 ``auto`` 的 8 个平台（YouTube/抖音/
+        小红书等）是欠视频的。把 ``auto`` 加进集合会让纯文本用户的运行变成退出码 1。
+
+        加它之前先解决「是否欠视频」这个独立信号；本断言记录的是当前契约，不是
+        对 ``auto`` 缺乏视频阶段的描述。
+        """
         assert "qa_only" not in _VIDEO_PRODUCING_MODES
         assert "repurpose" not in _VIDEO_PRODUCING_MODES
         assert "auto" not in _VIDEO_PRODUCING_MODES
