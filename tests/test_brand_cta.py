@@ -256,8 +256,15 @@ class TestG3RealBrandIdentity:
         bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
         assert bi["passed"] is True
 
-    def test_identity_wrong_in_profile_fails(self) -> None:
-        """brand_profile declares wrong identity → fail."""
+    def test_identity_industry_wordlist_does_not_gate(self) -> None:
+        """A brand declaring an investment identity passes on consistency (#157).
+
+        中文说明：正文体现了档案声明的身份就该 pass。此��把投资/金融词当「恒错
+        身份」写死在gate 里，使正当投资品牌即使档案与正文完全一致也被判失败，
+        且失败信息建议它改成「AI内容生产」——对这类账号是错误引导。禁止词由
+        per-brand 的 ``blocked_words`` 负责（见 ``blocked_words_absent``），
+        身份检查只管一致性。
+        """
         profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": "投资情报分析"}
         ctx = _make_context(
             content="壹目贯维提供投资情报分析服务。立即咨询。",
@@ -265,7 +272,38 @@ class TestG3RealBrandIdentity:
         )
         result = G3BrandCTA().execute(ctx)
         bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
+        assert bi["passed"] is True
+
+    def test_identity_inconsistent_with_profile_still_fails(self) -> None:
+        """Consistency is still enforced — the other direction (#157).
+
+        中文说明：删掉行业词表不等于把门放松。档案声明身份但正文体现的是另一
+        个身份时，仍必须 fail——这才是本检查该守的不变量。
+        """
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": "菲律宾外卖平台"}
+        ctx = _make_context(
+            content="壹目贯维是AI内容生产公司，深耕AI内容生产领域。立即咨询。",
+            brand_profile=profile,
+        )
+        result = G3BrandCTA().execute(ctx)
+        bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
         assert bi["passed"] is False
+
+    def test_blocked_words_still_block_the_brand_that_declares_them(self) -> None:
+        """The industry concern survives where it belongs: per-brand (#157).
+
+        中文说明：默认档案的 ``blocked_words`` 已经含「投资情报」等词，所以
+        真正想拦投资话术的品牌仍有机制可用——只是由用户自己的档案声明，
+        而不是所有品牌共享一份硬编码。
+        """
+        assert "投资情报" in _DEFAULT_BRAND_PROFILE["blocked_words"]
+        ctx = _make_context(
+            content="我们提供投资情报分析服务。立即咨询。",
+            brand_profile=_DEFAULT_BRAND_PROFILE,
+        )
+        result = G3BrandCTA().execute(ctx)
+        bw = next(c for c in result["checks"] if c["name"] == "blocked_words_absent")
+        assert bw["passed"] is False
 
     def test_identity_missing_in_content_fails(self) -> None:
         """Content has no identity phrase → fail."""

@@ -176,41 +176,22 @@ def _check_brand_identity(
     品牌档案声明了 ``brand_identity`` 时，以声明值为准：正文归一化后包含
     该声明值即 pass，否则 fail。未声明时回退到默认身份短语匹配（保持历史
     行为不变）。
+
+    中文说明：本检查只回答一个问题——**正文是否体现了档案声明的身份**。
+    它不回答「这个身份是否被允许」：那属于 per-brand 的约束，归属
+    ``blocked_words``（见 :func:`_check_blocked_words`）。此前这里硬编码了一份
+    投资/金融行业词表，把特定行业判为「恒错身份」，导致正当投资品牌即便档案与
+    正文完全一致也被判失败，且失败信息会建议它改成「AI内容生产」——对这类账号
+    是错误的引导。定位守卫若仍需要，应放在产品级配置或本产品自己的示例档案
+    的 ``blocked_words`` 里，而不是施加给每一个跑门禁的品牌（#157）。
     """
     name = "brand_identity"
 
     # Also check brand_profile for explicit identity field
     declared_identity: str = brand_profile.get("brand_identity", "")
-    expected_identities = [
-        "AI内容生产",
-        "AI内容生产公司",
-        "AI内容创作",
-    ]
-
-    # Check if declared identity is valid
-    identity_declared_ok = (
-        any(expected in declared_identity for expected in expected_identities)
-        if declared_identity
-        else None
-    )
-
-    # If brand_profile declares an incorrect identity, always fail
-    if declared_identity and not identity_declared_ok:
-        # Check if it's a clearly wrong identity
-        wrong_identities = ["投资情报", "投资分析", "金融分析", "股票", "理财"]
-        for wrong in wrong_identities:
-            if wrong in declared_identity:
-                return {
-                    "name": name,
-                    "passed": False,
-                    "detail": (
-                        f"brand identity mismatch: declared '{declared_identity}', "
-                        f"expected 'AI内容生产' or similar"
-                    ),
-                }
 
     # Declared identity drives the check when present (#146)
-    expected = (brand_profile.get("brand_identity") or "").strip()
+    expected = declared_identity.strip()
     if expected:
         if _normalize_identity(expected) in _normalize_identity(content):
             return {
