@@ -5,7 +5,7 @@ Red Line 4 强制工序最后一道 gate.  Any single check failure → pipeline
 Checks:
     1. brand_name_present   — 主品牌名或别名列表出现
     2. cta_present          — CTA（行动号召）存在
-    3. brand_identity       — 品牌身份定位正确（"AI内容生产" / "AI内容生产公司"）
+    3. brand_identity       — 品牌身份定位与档案声明一致（未声明时回退默认短语）
     4. blocked_words_absent — 禁止词未出现
     5. cta_direction_sync   — 视频 + 文章 CTA 方向同步（可选）
     6. bridge_sentence      — CTA 前存在过渡句
@@ -72,7 +72,12 @@ _BRAND_IDENTITY_PHRASES: list[str] = [
 _EXPECTED_MAP: dict[str, str] = {
     "brand_name_present": "Brand name appears in content",
     "cta_present": "Call-to-action is present in content",
-    "brand_identity": "Brand identity 'AI内容生产' is present in content",
+    # Fallback wording for the *undeclared* path; when brand_profile declares
+    # ``brand_identity`` the gate injects the actual declared value instead
+    # (see G3BrandCTA.execute).
+    "brand_identity": (
+        "Brand identity matches one of the default identity phrases (e.g. 'AI内容生产')"
+    ),
     "blocked_words_absent": "No blocked/forbidden words appear in content",
     "cta_direction_sync": "Video and article CTA directions are synchronized",
     "bridge_sentence": "Bridge/transition sentence appears before CTA",
@@ -157,11 +162,21 @@ def _check_cta_present(content: str) -> CheckResult:
     }
 
 
+def _normalize_identity(text: str) -> str:
+    """归一化身份文本：折叠内部空白、去首尾空白、大小写不敏感。"""
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
 def _check_brand_identity(
     content: str,
     brand_profile: dict[str, Any],
 ) -> CheckResult:
-    """Check 3: 品牌身份定位是否正确 — 必须是"AI内容生产"方向。"""
+    """Check 3: 品牌身份定位是否正确。
+
+    品牌档案声明了 ``brand_identity`` 时，以声明值为准：正文归一化后包含
+    该声明值即 pass，否则 fail。未声明时回退到默认身份短语匹配（保持历史
+    行为不变）。
+    """
     name = "brand_identity"
 
     # Also check brand_profile for explicit identity field
@@ -179,9 +194,6 @@ def _check_brand_identity(
         else None
     )
 
-    # Check content for identity phrases
-    content_has_identity = any(phrase in content for phrase in _BRAND_IDENTITY_PHRASES)
-
     # If brand_profile declares an incorrect identity, always fail
     if declared_identity and not identity_declared_ok:
         # Check if it's a clearly wrong identity
@@ -197,7 +209,23 @@ def _check_brand_identity(
                     ),
                 }
 
-    # Content must contain at least one identity phrase
+    # Declared identity drives the check when present (#146)
+    expected = (brand_profile.get("brand_identity") or "").strip()
+    if expected:
+        if _normalize_identity(expected) in _normalize_identity(content):
+            return {
+                "name": name,
+                "passed": True,
+                "detail": f"brand identity confirmed: {expected}",
+            }
+        return {
+            "name": name,
+            "passed": False,
+            "detail": f"declared brand identity '{expected}' not found in content",
+        }
+
+    # No declared identity → fall back to default identity phrases
+    content_has_identity = any(phrase in content for phrase in _BRAND_IDENTITY_PHRASES)
     if content_has_identity:
         found = [p for p in _BRAND_IDENTITY_PHRASES if p in content]
         return {
@@ -429,6 +457,14 @@ class G3BrandCTA(BaseGate):
 
         checks = apply_mock_overrides(check_fns, mock_results)
 
-        result = build_gate_result(checks, gate="G3", expected_map=_EXPECTED_MAP)
+        # expected 文案跟随档案声明值动态拼接；未声明时保持默认描述。
+        expected_map = dict(_EXPECTED_MAP)
+        declared_expected = (brand_profile.get("brand_identity") or "").strip()
+        if declared_expected:
+            expected_map["brand_identity"] = (
+                f"Brand identity '{declared_expected}' is present in content"
+            )
+
+        result = build_gate_result(checks, gate="G3", expected_map=expected_map)
 
         return result
