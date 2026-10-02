@@ -217,7 +217,7 @@ class TestExecute:
 
         assert result["passed"] is True, f"Expected passed=True, got: {result}"
         user_msg = mock_llm.call_args_list[0][0][0]
-        assert "Brand voice: warm" in user_msg
+        assert "Brand tone/voice: warm" in user_msg
         assert "CTA principles" not in user_msg
 
     def test_cta_principles_tolerates_yaml_mapping_entries(self, tmp_path: Path) -> None:
@@ -397,3 +397,101 @@ class TestExecute:
         assert _call_system_prompt == custom_prompt, (
             f"Expected system_prompt={custom_prompt!r}, got {_call_system_prompt!r}"
         )
+
+
+# =========================================================================
+# Brand profile field injection (schema field names) — #149
+# =========================================================================
+
+_CTA_FORMS: tuple[str, ...] = (
+    "立即注册",
+    "立即体验",
+    "免费试用",
+    "免费领取",
+    "扫码…了解更多",
+    "点击…注册",
+    "联系我们",
+    "了解更多详情",
+    "sign up",
+    "learn more",
+    "get started",
+)
+
+
+class TestBrandProfileFieldInjection:
+    """CW must read brand fields by their schema names (#149).
+
+    中文说明：``brand_profile`` 到达门里时是 ``asdict(BrandProfile)``，键名等于
+    schema 字段名（``tone_guidelines`` / ``brand_identity``）。生成侧此前读的是
+    不存在的 ``voice``，导致语气指引静默失效、``brand_identity`` 从未注入。
+    """
+
+    def _build_user_message(self, tmp_path: Path, brand_profile: dict[str, Any]) -> str:
+        """Run CW with a mocked LLM and return the user message it was given."""
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            brand_profile=brand_profile,
+        )
+        gate = ContentWriterGate()
+
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=MOCK_ARTICLE,
+        ) as mock_llm:
+            result = gate.execute(ctx)
+
+        assert result["passed"] is True, f"Expected passed=True, got: {result}"
+        return str(mock_llm.call_args_list[0][0][0])
+
+    def test_schema_tone_and_identity_are_injected(self, tmp_path: Path) -> None:
+        """``tone_guidelines`` and ``brand_identity`` reach the writer prompt."""
+        user_msg = self._build_user_message(
+            tmp_path,
+            {
+                "brand_name": "TestBrand",
+                "tone_guidelines": "友好、口语化",
+                "brand_identity": "菲律宾外卖平台",
+            },
+        )
+
+        assert "友好、口语化" in user_msg
+        assert "菲律宾外卖平台" in user_msg
+        assert "Brand tone/voice: 友好、口语化" in user_msg
+        assert "菲律宾外卖平台" in user_msg.split("Brand identity", 1)[-1]
+
+    def test_legacy_voice_key_is_still_honoured(self, tmp_path: Path) -> None:
+        """A profile without ``tone_guidelines`` falls back to legacy ``voice``."""
+        user_msg = self._build_user_message(
+            tmp_path,
+            {"brand_name": "TestBrand", "voice": "老风格"},
+        )
+
+        assert "老风格" in user_msg
+        assert "Brand tone/voice: 老风格" in user_msg
+
+    def test_empty_fields_produce_no_empty_injection(self, tmp_path: Path) -> None:
+        """Empty ``tone_guidelines`` / ``brand_identity`` inject nothing, no crash."""
+        user_msg = self._build_user_message(
+            tmp_path,
+            {
+                "brand_name": "TestBrand",
+                "tone_guidelines": "",
+                "brand_identity": "",
+                "voice": "",
+            },
+        )
+
+        assert "Brand tone" not in user_msg
+        assert "Brand identity" not in user_msg
+        for line in user_msg.splitlines():
+            if line.startswith(("Brand tone", "Brand identity")):
+                value = line.split(": ", 1)[-1] if ": " in line else ""
+                assert value.strip(), f"empty brand field injected: {line!r}"
+
+    def test_cta_forms_are_listed_verbatim(self, tmp_path: Path) -> None:
+        """The accepted CTA forms are spelled out as literal prompt examples."""
+        user_msg = self._build_user_message(tmp_path, {"brand_name": "TestBrand"})
+
+        for form in _CTA_FORMS:
+            assert form in user_msg, f"CTA form {form!r} missing from writer prompt"

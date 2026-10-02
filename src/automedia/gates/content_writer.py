@@ -233,9 +233,15 @@ class ContentWriterGate(BaseGate):
         # Build user message with topic + brand context
         user_message = f"Topic: {topic}\nBrand: {brand}"
         if brand_profile:
-            voice = brand_profile.get("voice", "")
+            voice = brand_profile.get("tone_guidelines", "") or brand_profile.get("voice", "")
             if voice:
-                user_message += f"\nBrand voice: {voice}"
+                user_message += f"\nBrand tone/voice: {voice}"
+            identity = brand_profile.get("brand_identity", "")
+            if identity:
+                user_message += (
+                    "\nBrand identity (the content must reflect this positioning "
+                    f"naturally, do not keyword-stuff): {identity}"
+                )
             # Inject CTA principles — this is what they are for: guidance on how
             # the call-to-action should be written.  Feeding them into the prompt
             # is deterministic (they take effect as soon as they are present) and
@@ -259,6 +265,12 @@ class ContentWriterGate(BaseGate):
                     "\nBrand CTA principles (follow when writing the call-to-action): "
                     + "; ".join(rendered)
                 )
+            user_message += (
+                "\nCTA requirement: the closing call-to-action MUST include at least "
+                "one of these forms — 立即注册 / 立即体验 / 免费试用 / 免费领取 / "
+                "扫码…了解更多 / 点击…注册 / 联系我们 / 了解更多详情 / "
+                "sign up / learn more / get started."
+            )
 
         # Inject format hint for social-thread mode
         content_format = gate_context.get("content_format", "")

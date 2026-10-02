@@ -153,9 +153,9 @@ class D3ZhihuRewrite(BaseGate):
 
         user_message = f"Topic: {topic}\nBrand: {brand}\n\nDraft content:\n\n{draft_content}"
         if brand_profile:
-            voice = brand_profile.get("voice", "")
+            voice = brand_profile.get("tone_guidelines", "") or brand_profile.get("voice", "")
             if voice:
-                user_message += f"\n\nBrand voice: {voice}"
+                user_message += f"\n\nBrand tone/voice: {voice}"
 
         try:
             zhihu_content: str = llm_complete(
