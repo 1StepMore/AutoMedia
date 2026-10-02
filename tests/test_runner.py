@@ -1282,6 +1282,44 @@ class TestVideoModeStatusDowngrade:
         assert "repurpose" not in _VIDEO_PRODUCING_MODES
         assert "auto" not in _VIDEO_PRODUCING_MODES
 
+    def test_owes_video_covers_auto_only_when_derived_from_multimedia(self) -> None:
+        """The four cases that decide the success -> partial downgrade (#152).
+
+        中文说明：``mode`` 字符串本身回答不了「这次是否欠视频」——``auto`` 既是
+        媒体阶段的执行条件，也是未指定模式时的默认值。``owes_video`` 因此改用
+        「``auto`` 是否由多媒体平台推导而来」来判断，判据复用
+        ``_derive_mode_from_platforms``，与实际推导逻辑不会脱钩。
+        """
+        cases = [
+            # (mode, platforms, owes_video, why)
+            ("video_only", [], True, "video-producing mode owes a video outright"),
+            ("short-video", [], True, "video-producing mode owes a video outright"),
+            ("auto", ["youtube"], True, "auto derived from a video-first platform"),
+            ("auto", ["xiaohongshu"], True, "auto derived from a mixed-social platform"),
+            ("auto", ["wechat", "zhihu"], False, "auto over text-first targets owes nothing"),
+            ("auto", [], False, "no platforms -> intent ambiguous, do not downgrade"),
+        ]
+        for mode, platforms, expected, why in cases:
+            owes = mode in _VIDEO_PRODUCING_MODES or (
+                mode == "auto"
+                and bool(platforms)
+                and _derive_mode_from_platforms(platforms) == "auto"
+            )
+            assert owes is expected, f"{mode} + {platforms}: {why}"
+
+    def test_attempts_video_is_a_superset_of_owes_video(self) -> None:
+        """The media stage attempts video for a superset of the owing modes.
+
+        中文说明：``_produce_video_track`` 对 ``auto`` 与整个
+        ``_VIDEO_PRODUCING_MODES`` 都会调用，所以「尝试产出」多于「欠视频」。
+        正因为这个超集存在，才不能把降级条件写成模式集合成员判定——那会让
+        「尝试了但本不欠视频」的 ``auto`` 运行（纯文本目标）被误降级。
+        """
+        attempts = {"auto", *_VIDEO_PRODUCING_MODES}
+        owes = set(_VIDEO_PRODUCING_MODES)
+        assert attempts > owes, "expected the attempt-set to strictly exceed the owing-set"
+        assert "auto" in attempts and "auto" not in owes
+
 
 # =========================================================================
 # Platform-based mode auto-derivation tests

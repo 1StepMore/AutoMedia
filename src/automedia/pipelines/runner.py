@@ -1116,6 +1116,21 @@ def _run_pipeline(
             block_on_hitl,
         )
 
+        # Does THIS RUN owe a video, as opposed to merely attempting one?  The
+        # media stage runs for ``auto`` as well as for every entry in
+        # ``_VIDEO_PRODUCING_MODES``, but ``auto`` is also the default when the
+        # caller names no mode, so the mode string alone cannot answer it.  Ask
+        # instead whether ``auto`` here was derived from a multimedia target —
+        # ``_derive_mode_from_platforms`` is the same function that derivation
+        # used, so the two cannot drift.  A run targeting only text-first
+        # platforms still owes nothing and must not be downgraded.
+        owes_video = mode in _VIDEO_PRODUCING_MODES or (
+            mode == "auto"
+            and platforms is not None
+            and len(platforms) > 0
+            and _derive_mode_from_platforms(platforms) == "auto"
+        )
+
         return _finalize_pipeline(
             success,
             results,
@@ -1128,6 +1143,7 @@ def _run_pipeline(
             start,
             workflow,
             awaiting_review=awaiting_review,
+            owes_video=owes_video,
         )
 
     except Exception as exc:
@@ -1542,6 +1558,7 @@ def _finalize_pipeline(
     start: float,
     workflow: str | None,
     awaiting_review: bool = False,
+    owes_video: bool = False,
 ) -> PipelineResult:
     from automedia.core.llm_client import get_usage_summary
     from automedia.pipelines.gate_engine import PipelineResult
@@ -1566,16 +1583,21 @@ def _finalize_pipeline(
     # below, whose ``status == "success"`` guard this value no longer matches).
     status = "awaiting_review" if awaiting_review else ("success" if success else "partial")
 
-    # A video-producing mode owes a video artifact.  When nothing was produced
-    # (no video engine configured, no image/audio inputs, engine error) its V
-    # gates now report ``skipped`` (see ``gates/_result.missing_input_result``) —
-    # a run whose whole video track was skipped is *incomplete*, not successful.
-    # Without this downgrade an unattended run exits 0 and looks green while
-    # delivering no video.  The mode set is ``_VIDEO_PRODUCING_MODES`` — the same
-    # set that gates the production stage above — so "owes a video" and
-    # "attempts a video" cannot drift apart.
+    # A run that owes a video artifact must produce one.  When nothing was
+    # produced (no video engine configured, no image/audio inputs, engine error)
+    # its V gates report ``skipped`` (see ``gates/_result.missing_input_result``)
+    # — a run whose whole video track was skipped is *incomplete*, not
+    # successful.  Without this downgrade an unattended run exits 0 and looks
+    # green while delivering no video.
+    #
+    # ``owes_video`` is computed by the caller, not re-derived from ``mode``
+    # here: ``auto`` both ATTEMPTS a video (the media stage runs for it) and is
+    # the default when no mode is named, so the mode string cannot say whether
+    # this particular run owes one.  "Attempts a video" is therefore a superset
+    # of "owes a video", and keying this on the mode set alone left every
+    # ``auto`` run that genuinely owed a video reporting success.
     video_produced = bool(gate_context.get("video_path"))
-    if status == "success" and mode in _VIDEO_PRODUCING_MODES and not video_produced:
+    if status == "success" and owes_video and not video_produced:
         status = "partial"
         log.warning(
             "pipeline.video_not_produced",
