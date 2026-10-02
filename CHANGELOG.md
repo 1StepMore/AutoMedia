@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.2...automedia-v1.8.3) (2026-10-02)
+
+
+### Bug Fixes
+
+* **cw:** 品牌语气/身份注入改用 schema 字段名 + CTA 口径对齐 ([#149](https://github.com/1StepMore/AutoMedia/issues/149)) ([a0cbd15](https://github.com/1StepMore/AutoMedia/commit/a0cbd1565f2a8c2bbb69dff313c893a73d5c93c4))
+* **g3:** 品牌身份判定改用档案声明值，未声明时回退默认短语 ([#146](https://github.com/1StepMore/AutoMedia/issues/146)) ([8caae26](https://github.com/1StepMore/AutoMedia/commit/8caae26545f7aa593f3800dae53ccfd15f65a5d3))
+* **pipeline:** downgrade an auto run that owes a video but produced none ([e536ffa](https://github.com/1StepMore/AutoMedia/commit/e536ffa98341eac0fb4a513237884fd0bcf70fd6))
+
+
+### Documentation
+
+* **issues:** let the bug template name any lock, not only a scenario ([952dc54](https://github.com/1StepMore/AutoMedia/commit/952dc54de69002d8c1a58a0e2edbbfdabc264082))
+
 ## [1.8.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.1...automedia-v1.8.2) (2026-10-01)
 
 
