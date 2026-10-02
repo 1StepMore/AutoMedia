@@ -37,9 +37,17 @@ body:
       label: Environment
       placeholder: "Python version, OS, LLM provider..."
   - type: input
-    id: regression-scenario
+    id: regression-lock
     attributes:
-      label: Regression scenario
-      description: Name of the validation scenario that pins this bug (from scenarios/regression/ or the library). Required — the fix must make it GREEN.
+      label: What locks this fix against regressing?
+      description: >-
+        Either the validation scenario that pins this bug (from
+        scenarios/regression/ or the library), or — for a repo-infrastructure
+        bug such as a CI workflow, a release gate, or a pre-commit hook — the
+        repo gate that enforces it. Repo infrastructure is deliberately NOT
+        validation-scenario material: `scenarios/` exercises the product
+        surface through CLI/MCP, so that invariant belongs in a repo gate
+        (see the layering decision in scripts/check-workflow-semantics.py).
+        Required either way — name the lock, and make it GREEN.
     validations:
       required: true

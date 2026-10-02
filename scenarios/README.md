@@ -397,10 +397,15 @@ that as a pinned layering decision ("do NOT 'fix' by adding a scenario"): such
 an invariant belongs in a repo gate wired into pre-commit and CI, which is
 where it is enforced on every change.
 
-The bug template has no escape for this — its `regression-scenario` field is
-`required: true` unconditionally and offers no N/A path — so the two rules
-cannot both be satisfied for an infra bug. Until that is reconciled, put the
-**enforcing gate** in the template field for an infra bug (for example
-`check-workflow-semantics.py`), so the field still names the lock that keeps
-the bug fixed, and open the template reconciliation as its own task rather
-than writing a scenario that would violate the layering decision.
+The bug template used to have no escape for this: its `regression-scenario`
+field was `required: true` unconditionally and accepted only a scenario name, so
+an infra bug was required by one rule to carry a validation scenario and
+forbidden by another from having one.
+
+The field is now `regression-lock` and asks a different question — **what locks
+this fix against regressing?** It still requires an answer, but accepts either
+kind of lock: a validation scenario for a product-surface bug, or the repo gate
+that enforces it for a repo-infrastructure bug (a CI workflow, a release gate, a
+pre-commit hook). That satisfies both rules without weakening either — the
+field still demands a lock, and the layering decision above is untouched. It is
+a reframing, not an escape hatch: there is no way to leave it blank.
