@@ -2246,6 +2246,13 @@ scheduled jobs.</p>
   registered tool count</li>
 <li>The MCP <code>health_engine</code> tool checks TTS, ASR, image, and video
   engine status individually</li>
+<li>ComfyUI image generation requires an ESRGAN upscale model
+  (<code>RealESRGAN_x4plus.pth</code>) in <code>&lt;ComfyUI&gt;/models/upscale_models/</code>. There is no
+  silent fallback, so a missing model fails the pipeline at generation time.
+  Set <code>engines.image.comfyui.comfyui_models_path</code> in <code>.automedia/config.yaml</code>
+  to let <code>automedia doctor</code> verify it; without that key the model is reported as
+  <em>unverifiable</em> rather than missing, which is the correct state when ComfyUI
+  runs remotely or in Docker. </li>
 </ul>
 <h3 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h3>
 <ul>
