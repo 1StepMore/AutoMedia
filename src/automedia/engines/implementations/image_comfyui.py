@@ -144,7 +144,7 @@ def native_latent_dims(width: int, height: int, base_size: int = 512) -> tuple[i
     scale = base_size / long_side
 
     def _align8(value: float) -> int:
-        return max(8, int(round(value / 8)) * 8)
+        return max(8, round(value / 8) * 8)
 
     return _align8(width * scale), _align8(height * scale)
 
