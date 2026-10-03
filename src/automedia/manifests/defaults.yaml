@@ -95,8 +95,10 @@ engines:
       host: 127.0.0.1
       port: 8188
       protocol: http
-      timeout: 300
+      timeout: 900
       negative_prompt: blurry, low quality, distorted
+      base_size: 512
+      upscale_model: RealESRGAN_x4plus.pth
       workflow_path: null
   video:
     default: hyperframes
@@ -115,7 +117,7 @@ pipeline:
       host: 127.0.0.1
       port: 8188
       protocol: http
-      timeout: 300
+      timeout: 900
   text:
     enabled: true
 

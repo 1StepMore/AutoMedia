@@ -332,9 +332,16 @@ class TestComfyUIImageEngineGenerate:
         assert isinstance(workflow, dict)
         assert "6" in workflow  # CLIPTextEncode node
         assert workflow["6"]["inputs"]["text"] == "my prompt"
+        # New contract: SD1.5 renders at native resolution (long edge =
+        # base_size 512, aspect preserved) — NOT at the requested 800x600.
+        # 800x600 -> scale 512/800 = 0.64 -> 512x384.
         assert "5" in workflow  # EmptyLatentImage node
-        assert workflow["5"]["inputs"]["width"] == 800
-        assert workflow["5"]["inputs"]["height"] == 600
+        assert workflow["5"]["inputs"]["width"] == 512
+        assert workflow["5"]["inputs"]["height"] == 384
+        # The requested 800x600 is honoured by the final ImageScale node.
+        assert "12" in workflow  # ImageScale node
+        assert workflow["12"]["inputs"]["width"] == 800
+        assert workflow["12"]["inputs"]["height"] == 600
 
     @patch("httpx.Client")
     def test_negative_prompt_from_config(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
@@ -690,3 +697,190 @@ class TestComfyUIImageEngineGenerateErrors:
             match="did not complete",
         ):
             engine.generate("test", 512, 512, str(tmp_path / "out.png"))
+
+
+# =========================================================================
+# generate() — native-resolution render + ESRGAN upscale contract
+# =========================================================================
+
+
+def _mock_generate_flow(
+    mock_client_cls: MagicMock,
+    tmp_path: Any,
+    engine: ComfyUIImageEngine,
+    prompt: str,
+    width: int,
+    height: int,
+    prompt_id: str = "native-test",
+) -> dict[str, Any]:
+    """Run generate() with mocked httpx; return the POSTed workflow dict."""
+    mock_client = MagicMock()
+    mock_client_cls.return_value.__enter__.return_value = mock_client
+
+    post_resp = MagicMock()
+    post_resp.json.return_value = {"prompt_id": prompt_id}
+    mock_client.post.return_value = post_resp
+
+    history_resp = MagicMock()
+    history_resp.json.return_value = {
+        prompt_id: {
+            "status": {"completed": True},
+            "outputs": {"1": {"images": [{"filename": "out.png"}]}},
+        },
+    }
+    download_resp = MagicMock()
+    download_resp.content = b"abc"
+    mock_client.get.side_effect = [history_resp, history_resp, download_resp]
+
+    engine.generate(prompt, width, height, str(tmp_path / "out.png"))
+    return mock_client.post.call_args[1]["json"]["prompt"]
+
+
+class TestComfyUIImageEngineNativeUpscale:
+    """Built-in workflow renders at native res, upscales to requested size."""
+
+    def teardown_method(self) -> None:
+        EngineRegistry().clear()
+        EngineRegistry().register("comfyui", ComfyUIImageEngine, modality="image")
+
+    @patch("httpx.Client")
+    def test_square_1080_renders_at_512(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
+        """1080x1080 request → EmptyLatentImage long edge = base_size (512)."""
+        workflow = _mock_generate_flow(
+            mock_client_cls, tmp_path, ComfyUIImageEngine(), "p", 1080, 1080
+        )
+        latent = workflow["5"]["inputs"]
+        assert latent["width"] == 512
+        assert latent["height"] == 512
+        assert max(latent["width"], latent["height"]) == 512
+
+    @patch("httpx.Client")
+    def test_upscale_chain_present_and_scaled_to_request(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """UpscaleModelLoader + ImageUpscaleWithModel exist; ImageScale = request."""
+        workflow = _mock_generate_flow(
+            mock_client_cls, tmp_path, ComfyUIImageEngine(), "p", 1080, 1080
+        )
+        loaders = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "UpscaleModelLoader"
+        ]
+        assert len(loaders) == 1
+        assert workflow[loaders[0]]["inputs"]["model_name"] == "RealESRGAN_x4plus.pth"
+
+        upscalers = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "ImageUpscaleWithModel"
+        ]
+        assert len(upscalers) == 1
+        assert workflow[upscalers[0]]["inputs"]["upscale_model"] == [loaders[0], 0]
+
+        scalers = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "ImageScale"
+        ]
+        assert len(scalers) == 1
+        scale_inputs = workflow[scalers[0]]["inputs"]
+        assert scale_inputs["width"] == 1080
+        assert scale_inputs["height"] == 1080
+        assert scale_inputs["upscale_method"] == "lanczos"
+        assert scale_inputs["crop"] == "disabled"
+        # ImageScale consumes the ESRGAN output, SaveImage consumes ImageScale.
+        assert scale_inputs["image"] == [upscalers[0], 0]
+        assert workflow["9"]["inputs"]["images"] == [scalers[0], 0]
+
+    @patch("httpx.Client")
+    def test_landscape_1920x1080_keeps_aspect(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """1920x1080 request → 512x288 latent; ImageScale back to 1920x1080."""
+        workflow = _mock_generate_flow(
+            mock_client_cls, tmp_path, ComfyUIImageEngine(), "p", 1920, 1080
+        )
+        latent = workflow["5"]["inputs"]
+        assert (latent["width"], latent["height"]) == (512, 288)
+        # Aspect preserved: 1920/1080 == 512/288.
+        assert latent["width"] / latent["height"] == pytest.approx(1920 / 1080)
+        assert latent["width"] % 8 == 0
+        assert latent["height"] % 8 == 0
+
+        scalers = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "ImageScale"
+        ]
+        assert len(scalers) == 1
+        assert workflow[scalers[0]]["inputs"]["width"] == 1920
+        assert workflow[scalers[0]]["inputs"]["height"] == 1080
+
+    @patch("httpx.Client")
+    def test_base_size_config_takes_effect(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """base_size=256 → 1080x1080 request renders at 256x256."""
+        engine = ComfyUIImageEngine(engine_config={"base_size": 256})
+        workflow = _mock_generate_flow(mock_client_cls, tmp_path, engine, "p", 1080, 1080)
+        latent = workflow["5"]["inputs"]
+        assert (latent["width"], latent["height"]) == (256, 256)
+        # Target dims still exact.
+        scalers = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "ImageScale"
+        ]
+        assert workflow[scalers[0]]["inputs"]["width"] == 1080
+        assert workflow[scalers[0]]["inputs"]["height"] == 1080
+
+    @patch("httpx.Client")
+    def test_upscale_model_config_takes_effect(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """upscale_model config flows to the UpscaleModelLoader node."""
+        engine = ComfyUIImageEngine(engine_config={"upscale_model": "RealESRGAN_x2plus.pth"})
+        workflow = _mock_generate_flow(mock_client_cls, tmp_path, engine, "p", 1080, 1080)
+        loaders = [
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("class_type") == "UpscaleModelLoader"
+        ]
+        assert len(loaders) == 1
+        assert workflow[loaders[0]]["inputs"]["model_name"] == "RealESRGAN_x2plus.pth"
+
+    def test_native_latent_dims_helper(self) -> None:
+        """native_latent_dims: long edge = base_size, sides aligned to 8."""
+        from automedia.engines.implementations.image_comfyui import native_latent_dims
+
+        assert native_latent_dims(1080, 1080) == (512, 512)
+        assert native_latent_dims(1920, 1080) == (512, 288)
+        assert native_latent_dims(1080, 1920) == (288, 512)
+        assert native_latent_dims(1080, 1080, 256) == (256, 256)
+        # Odd ratio still aligns to 8 and keeps aspect approximately.
+        w, h = native_latent_dims(1000, 700)
+        assert max(w, h) == 512
+        assert w % 8 == 0 and h % 8 == 0
+        assert w / h == pytest.approx(1000 / 700, rel=0.02)
+
+    @patch("httpx.Client")
+    def test_custom_workflow_path_keeps_request_dims(
+        self, mock_client_cls: MagicMock, tmp_path: Any
+    ) -> None:
+        """workflow_path override still receives the raw requested dims."""
+        import json
+
+        custom_workflow = (
+            '{"5": {"class_type": "EmptyLatentImage", '
+            '"inputs": {"width": __WIDTH__, "height": __HEIGHT__, "batch_size": 1}}}'
+        )
+        workflow_file = tmp_path / "raw_dims.json"
+        workflow_file.write_text(custom_workflow)
+
+        engine = ComfyUIImageEngine(engine_config={"workflow_path": str(workflow_file)})
+        workflow = _mock_generate_flow(
+            mock_client_cls, tmp_path, engine, "p", 1080, 1080, prompt_id="raw-dims"
+        )
+        assert workflow["5"]["inputs"]["width"] == 1080
+        assert workflow["5"]["inputs"]["height"] == 1080
