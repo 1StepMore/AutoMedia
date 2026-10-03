@@ -6,7 +6,10 @@ Tests cover:
 * Engine metadata (``engine_name``, ``modality``, ABC hierarchy)
 * Auto-registration in :class:`EngineRegistry` with ``video`` modality
 * :meth:`check_available` — hyperframes found, ffmpeg fallback, neither
+* CLI resolution — ``cli_command`` > ``cli_path`` > ``PATH`` priority
 * :meth:`render` — successful hyperframes CLI path
+  (``<cli> render -q <quality> -o <output> <project_dir>`` — positional
+  project dir, no ``--assets`` flag)
 * :meth:`render` — asset copying and temp directory creation
 * :meth:`render` — FFmpeg fallback when hyperframes fails
 * :meth:`render` — ``EngineExecutionError`` when both paths fail
@@ -248,13 +251,13 @@ class TestCheckAvailable:
 
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
     def test_hyperframes_found(self, mock_which: MagicMock) -> None:
-        """> ``hyperframes`` on ``PATH`` → ``(True, "hyperframes found at ...")``."""
+        """> ``hyperframes`` on ``PATH`` → ``(True, "hyperframes found ...")``."""
         mock_which.side_effect = self._which_side_effect(
             {"hyperframes": "/usr/bin/hyperframes"},
         )
         ok, msg = HyperFramesVideoEngine().check_available()
         assert ok is True
-        assert "hyperframes found at" in msg
+        assert "hyperframes found" in msg
         assert "/usr/bin/hyperframes" in msg
 
     @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
@@ -278,6 +281,148 @@ class TestCheckAvailable:
         assert "Neither" in msg
         assert "hyperframes" in msg
         assert "ffmpeg" in msg
+
+
+# ===================================================================
+# CLI resolution — cli_command > cli_path > PATH
+# ===================================================================
+
+
+class TestCliResolution:
+    """``_resolve_cli_base`` priority and ``check_available`` integration."""
+
+    def test_cli_command_takes_precedence_over_cli_path_and_path(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """> ``cli_command`` wins even when ``cli_path`` and PATH exist."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        engine = HyperFramesVideoEngine(
+            engine_config={
+                "cli_command": ["npx", "hyperframes"],
+                "cli_path": "/opt/hyperframes/dist/cli.js",
+            },
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        cmd = mock_all["run"].call_args[0][0]
+        assert cmd[:3] == ["npx", "hyperframes", "render"]
+
+    def test_cli_path_used_when_no_cli_command(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """> ``cli_path`` (plain executable) is used when PATH has nothing."""
+        mock_all["which"].return_value = None
+        mock_all["isfile"].return_value = True
+
+        engine = HyperFramesVideoEngine(
+            engine_config={"cli_path": "/usr/local/bin/hyperframes"},
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        cmd = mock_all["run"].call_args[0][0]
+        assert cmd[:2] == ["/usr/local/bin/hyperframes", "render"]
+        assert "--assets" not in cmd
+        assert cmd[-1] == "/tmp/hyperframes_test"
+
+    def test_cli_path_js_file_invoked_via_node(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """> A ``cli_path`` ending in ``.js`` is invoked via ``node``."""
+        mock_all["which"].return_value = None
+        mock_all["isfile"].return_value = True
+
+        engine = HyperFramesVideoEngine(
+            engine_config={"cli_path": "/opt/hf/node_modules/hyperframes/dist/cli.js"},
+        )
+        output = str(tmp_path / "output.mp4")
+        engine.render(sample_assets, output)
+
+        cmd = mock_all["run"].call_args[0][0]
+        assert cmd[:3] == [
+            "node",
+            "/opt/hf/node_modules/hyperframes/dist/cli.js",
+            "render",
+        ]
+
+    def test_path_fallback_when_no_config(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """> Without config, the PATH binary is used as the CLI prefix."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        output = str(tmp_path / "output.mp4")
+        HyperFramesVideoEngine().render(sample_assets, output)
+
+        cmd = mock_all["run"].call_args[0][0]
+        assert cmd[0] == "/usr/bin/hyperframes"
+
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
+    def test_check_available_with_only_cli_path(
+        self,
+        mock_isfile: MagicMock,
+        mock_which: MagicMock,
+    ) -> None:
+        """> Only ``cli_path`` configured (nothing on PATH) → available."""
+        mock_which.return_value = None
+        mock_isfile.return_value = True
+
+        engine = HyperFramesVideoEngine(
+            engine_config={"cli_path": "/opt/hf/dist/cli.js"},
+        )
+        ok, msg = engine.check_available()
+        assert ok is True
+        assert "hyperframes found" in msg
+
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    @patch("automedia.engines.implementations.video_hyperframes.os.path.isfile")
+    def test_check_available_with_only_cli_command(
+        self,
+        mock_isfile: MagicMock,
+        mock_which: MagicMock,
+    ) -> None:
+        """> Only ``cli_command`` configured (nothing on PATH) → available."""
+        mock_which.return_value = None
+
+        engine = HyperFramesVideoEngine(
+            engine_config={"cli_command": ["npx", "hyperframes"]},
+        )
+        ok, msg = engine.check_available()
+        assert ok is True
+        assert "npx" in msg
+        mock_isfile.assert_not_called()
+
+    @patch("automedia.engines.implementations.video_hyperframes.shutil.which")
+    def test_check_available_error_mentions_both_install_shapes(
+        self,
+        mock_which: MagicMock,
+    ) -> None:
+        """> The not-found message points at both install shapes."""
+        mock_which.return_value = None
+        ok, msg = HyperFramesVideoEngine().check_available()
+        assert ok is False
+        assert "cli_path" in msg
+        assert "cli_command" in msg
+        assert "npx" in msg
 
 
 # ===================================================================
@@ -314,7 +459,12 @@ class TestRenderHyperFrames:
         sample_assets: dict[str, Any],
         tmp_path: Any,
     ) -> None:
-        """The subprocess is invoked with the expected CLI arguments."""
+        """The subprocess is invoked with the expected CLI arguments.
+
+        Real CLI interface (``hyperframes render --help``, v0.7.x):
+        ``hyperframes render [OPTIONS] [DIR]`` — the project directory is
+        a positional argument; there is no ``--assets`` option.
+        """
         mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
@@ -324,20 +474,46 @@ class TestRenderHyperFrames:
 
         mock_all["run"].assert_called_once_with(
             [
-                "hyperframes",
+                "/usr/bin/hyperframes",
                 "render",
-                "--quality",
+                "-q",
                 "high",
-                "--assets",
-                "/tmp/hyperframes_test",
-                "--output",
+                "-o",
                 output,
+                "/tmp/hyperframes_test",
             ],
             capture_output=True,
             text=True,
             timeout=300,
             env=ANY,
         )
+
+    def test_render_command_has_no_assets_flag_and_positional_project_dir(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> None:
+        """The CLI shape uses a positional project dir and no ``--assets``."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        output = str(tmp_path / "output.mp4")
+        HyperFramesVideoEngine().render(sample_assets, output)
+
+        cmd = mock_all["run"].call_args[0][0]
+        assert "--assets" not in cmd
+        assert "--quality" not in cmd
+        assert "--output" not in cmd
+        # `<cli> render -q <quality> -o <output> <project_dir>`
+        assert cmd[:2] == ["/usr/bin/hyperframes", "render"]
+        assert cmd[2] == "-q"
+        assert cmd[3] == "high"
+        assert cmd[4] == "-o"
+        assert cmd[5] == output
+        assert cmd[6] == "/tmp/hyperframes_test"
+        assert len(cmd) == 7
 
     def test_render_copies_images_and_assets(
         self,
@@ -778,14 +954,13 @@ class TestRenderConfiguration:
 
         mock_all["run"].assert_called_once_with(
             [
-                "hyperframes",
+                "/usr/bin/hyperframes",
                 "render",
-                "--quality",
+                "-q",
                 "low",
-                "--assets",
-                "/tmp/hyperframes_test",
-                "--output",
+                "-o",
                 output,
+                "/tmp/hyperframes_test",
             ],
             capture_output=True,
             text=True,
