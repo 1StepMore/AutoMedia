@@ -95,8 +95,15 @@ engines:
       host: 127.0.0.1
       port: 8188
       protocol: http
-      timeout: 300
+      timeout: 900
       negative_prompt: blurry, low quality, distorted
+      base_size: 512
+      upscale_model: RealESRGAN_x4plus.pth
+      # Absolute path to the ComfyUI `models/` directory. Only read by
+      # `automedia doctor` so it can verify the upscale model exists; the
+      # engine lets ComfyUI resolve the file itself. Leave null when
+      # ComfyUI runs remotely or in Docker.
+      comfyui_models_path: null
       workflow_path: null
   video:
     default: hyperframes
@@ -115,7 +122,7 @@ pipeline:
       host: 127.0.0.1
       port: 8188
       protocol: http
-      timeout: 300
+      timeout: 900
   text:
     enabled: true
 

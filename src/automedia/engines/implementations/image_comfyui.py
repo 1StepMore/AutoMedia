@@ -25,14 +25,20 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Default SD1.5 workflow template — used when no ``workflow_path`` is set.
 # Stored as a JSON string so the file is importable without triggering a
-# ``NameError`` on the placeholder tokens (``__PROMPT__``, ``__WIDTH__``,
+# ``NameError`` on the placeholder tokens (``__PROMPT__``, ``__BASE_WIDTH__``,
 # etc. — not valid Python names).
 #
+# Strategy: render at SD1.5 native resolution (long edge = ``base_size``,
+# default 512) to avoid high-resolution artefacts, then upscale with
+# RealESRGAN and resample to the exact requested dimensions with lanczos.
+#
 # Placeholders:
-#   __PROMPT__          — positive text prompt
-#   __NEGATIVE_PROMPT__ — negative text prompt
-#   __WIDTH__ / __HEIGHT__ — output dimensions (int)
-#   __SEED__            — replaced with random.randint(0, 2**31-1)
+#   __PROMPT__              — positive text prompt
+#   __NEGATIVE_PROMPT__     — negative text prompt
+#   __BASE_WIDTH__ / __BASE_HEIGHT__     — native render dims (int)
+#   __TARGET_WIDTH__ / __TARGET_HEIGHT__ — requested output dims (int)
+#   __UPSCALE_MODEL__       — upscale model file name (JSON-quoted downstream)
+#   __SEED__                — replaced with random.randint(0, 2**31-1)
 # ---------------------------------------------------------------------------
 _DEFAULT_WORKFLOW_JSON: str = r"""{
   "3": {
@@ -59,8 +65,8 @@ _DEFAULT_WORKFLOW_JSON: str = r"""{
   "5": {
     "class_type": "EmptyLatentImage",
     "inputs": {
-      "width": __WIDTH__,
-      "height": __HEIGHT__,
+      "width": __BASE_WIDTH__,
+      "height": __BASE_HEIGHT__,
       "batch_size": 1
     }
   },
@@ -85,14 +91,62 @@ _DEFAULT_WORKFLOW_JSON: str = r"""{
       "vae": ["4", 2]
     }
   },
+  "10": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "__UPSCALE_MODEL__"
+    }
+  },
+  "11": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": ["10", 0],
+      "image": ["8", 0]
+    }
+  },
+  "12": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": __TARGET_WIDTH__,
+      "height": __TARGET_HEIGHT__,
+      "crop": "disabled",
+      "image": ["11", 0]
+    }
+  },
   "9": {
     "class_type": "SaveImage",
     "inputs": {
       "filename_prefix": "automedia_",
-      "images": ["8", 0]
+      "images": ["12", 0]
     }
   }
 }"""
+
+
+def native_latent_dims(width: int, height: int, base_size: int = 512) -> tuple[int, int]:
+    """Scale requested dims down so the long edge equals *base_size*.
+
+    Keeps the requested aspect ratio; each side is aligned down/up to the
+    nearest multiple of 8 (SD latents require /8 dimensions).
+
+    Args:
+        width: Requested image width in pixels.
+        height: Requested image height in pixels.
+        base_size: Target pixel count for the long edge.
+
+    Returns:
+        ``(base_width, base_height)`` for ``EmptyLatentImage``.
+    """
+    long_side = max(width, height)
+    if long_side <= 0:
+        raise ValueError(f"Invalid dimensions: {width}x{height}")
+    scale = base_size / long_side
+
+    def _align8(value: float) -> int:
+        return max(8, round(value / 8) * 8)
+
+    return _align8(width * scale), _align8(height * scale)
 
 
 def _materialise_workflow(
@@ -107,6 +161,9 @@ def _materialise_workflow(
 
     Placeholders understood: ``__PROMPT__``, ``__NEGATIVE_PROMPT__``,
     ``__WIDTH__``, ``__HEIGHT__``, ``__SEED__``.
+
+    Used for custom ``workflow_path`` templates, which receive the requested
+    dimensions verbatim.
     """
     seed = random.randint(0, 2**31 - 1)  # noqa: S311  # seed for image generation, not crypto
     raw = template_json
@@ -114,6 +171,35 @@ def _materialise_workflow(
     raw = raw.replace("__NEGATIVE_PROMPT__", json.dumps(negative_prompt)[1:-1])
     raw = raw.replace("__WIDTH__", str(width))
     raw = raw.replace("__HEIGHT__", str(height))
+    raw = raw.replace("__SEED__", str(seed))
+    return json.loads(raw)
+
+
+def _materialise_builtin_workflow(
+    template_json: str,
+    *,
+    prompt: str,
+    negative_prompt: str,
+    base_width: int,
+    base_height: int,
+    target_width: int,
+    target_height: int,
+    upscale_model: str,
+) -> dict[str, Any]:
+    """Materialise the built-in native-resolution + ESRGAN workflow.
+
+    ``EmptyLatentImage`` gets the native (*base_*) dims; the final
+    ``ImageScale`` gets the requested (*target_*) dims.
+    """
+    seed = random.randint(0, 2**31 - 1)  # noqa: S311  # seed for image generation, not crypto
+    raw = template_json
+    raw = raw.replace("__PROMPT__", json.dumps(prompt)[1:-1])
+    raw = raw.replace("__NEGATIVE_PROMPT__", json.dumps(negative_prompt)[1:-1])
+    raw = raw.replace("__BASE_WIDTH__", str(base_width))
+    raw = raw.replace("__BASE_HEIGHT__", str(base_height))
+    raw = raw.replace("__TARGET_WIDTH__", str(target_width))
+    raw = raw.replace("__TARGET_HEIGHT__", str(target_height))
+    raw = raw.replace("__UPSCALE_MODEL__", json.dumps(upscale_model)[1:-1])
     raw = raw.replace("__SEED__", str(seed))
     return json.loads(raw)
 
@@ -132,6 +218,13 @@ class ComfyUIImageEngine(BaseImageEngine):
     * ``protocol`` (default ``"http"``)
     * ``timeout`` (default ``300``)
     * ``negative_prompt`` (default ``"blurry, low quality, distorted"``)
+    * ``base_size`` (default ``512``) — long edge, in pixels, rendered at
+      SD1.5 native resolution by ``EmptyLatentImage``. The requested aspect
+      ratio is preserved; each side is aligned to a multiple of 8.
+    * ``upscale_model`` (default ``"RealESRGAN_x4plus.pth"``) — upscale
+      model file loaded by ``UpscaleModelLoader``. A missing model is NOT
+      silently degraded: ComfyUI errors and the engine raises
+      :class:`EngineExecutionError`.
     * ``workflow_path`` — optional path to a JSON workflow template file.
       The file must contain the same placeholders (``__PROMPT__``,
       ``__WIDTH__``, etc.).  When unset the built-in SD1.5 workflow is used.
@@ -285,23 +378,49 @@ class ComfyUIImageEngine(BaseImageEngine):
         The workflow is a valid ComfyUI node graph — a dict whose keys are
         node IDs and values are ``{"class_type": …, "inputs": …}``.
 
+        Built-in workflow: renders at SD1.5 native resolution (long edge =
+        ``base_size``, default 512, aspect preserved, sides aligned to 8),
+        then upscales with ``upscale_model`` (default RealESRGAN_x4plus) and
+        resamples to the exact requested dimensions via ``ImageScale``.
+
+        Custom ``workflow_path`` templates keep the legacy contract: they
+        receive the requested dimensions verbatim via ``__WIDTH__`` /
+        ``__HEIGHT__``.
+
         Subclasses may override to customise the node graph structure, or
         point ``workflow_path`` config to a custom JSON template.
 
         Returns:
             A ComfyUI ``/prompt``-compatible workflow dict.
         """
-        template_json = self._resolve_workflow_json()
         negative = self._config.get(
             "negative_prompt",
             "blurry, low quality, distorted",
         )
-        return _materialise_workflow(
-            template_json,
+        workflow_path: str | None = self._config.get("workflow_path")
+        if workflow_path:
+            template_json = self._resolve_workflow_json()
+            return _materialise_workflow(
+                template_json,
+                prompt=prompt,
+                negative_prompt=negative,
+                width=width,
+                height=height,
+            )
+        base_size = int(self._config.get("base_size", 512))
+        upscale_model = str(
+            self._config.get("upscale_model", "RealESRGAN_x4plus.pth")
+        )
+        base_width, base_height = native_latent_dims(width, height, base_size)
+        return _materialise_builtin_workflow(
+            _DEFAULT_WORKFLOW_JSON,
             prompt=prompt,
             negative_prompt=negative,
-            width=width,
-            height=height,
+            base_width=base_width,
+            base_height=base_height,
+            target_width=width,
+            target_height=height,
+            upscale_model=upscale_model,
         )
 
     def _resolve_workflow_json(self) -> str:

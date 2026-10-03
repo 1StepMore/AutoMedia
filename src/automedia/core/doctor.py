@@ -9,6 +9,7 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -25,6 +26,11 @@ _DEPENDENCIES: list[dict[str, Any]] = [
     {"name": "edge-tts", "check_cmd": ["edge-tts", "--help"], "version_flag": None},
     {"name": "hyperframes", "check_cmd": ["hyperframes", "--version"], "version_flag": "--version"},
     {"name": "comfyui", "check_cmd": None, "version_flag": None},  # HTTP service check
+    {
+        "name": "comfyui_upscale_model",
+        "check_cmd": None,
+        "version_flag": None,
+    },  # model file presence (informational)
     {"name": "chrome", "check_cmd": None, "version_flag": None},  # detected via shutil
     {"name": "llm_api", "check_cmd": None, "version_flag": None},  # API connectivity test
 ]
@@ -84,6 +90,29 @@ _INSTALL_INSTRUCTIONS: dict[str, dict[str, str]] = {
         "Linux": "See https://github.com/comfyanonymous/ComfyUI#installing",
         "Darwin": "See https://github.com/comfyanonymous/ComfyUI#installing",
         "Windows": "See https://github.com/comfyanonymous/ComfyUI#installing",
+    },
+    "comfyui_upscale_model": {
+        "Linux": (
+            "Download RealESRGAN_x4plus.pth from\n"
+            "  https://github.com/xinntao/Real-ESRGAN/releases\n"
+            "and place it in <ComfyUI>/models/upscale_models/.\n"
+            "Then set image.comfyui.comfyui_models_path in .automedia/config.yaml\n"
+            "so 'automedia doctor' can verify it."
+        ),
+        "Darwin": (
+            "Download RealESRGAN_x4plus.pth from\n"
+            "  https://github.com/xinntao/Real-ESRGAN/releases\n"
+            "and place it in <ComfyUI>/models/upscale_models/.\n"
+            "Then set image.comfyui.comfyui_models_path in .automedia/config.yaml\n"
+            "so 'automedia doctor' can verify it."
+        ),
+        "Windows": (
+            "Download RealESRGAN_x4plus.pth from\n"
+            "  https://github.com/xinntao/Real-ESRGAN/releases\n"
+            "and place it in <ComfyUI>\\models\\upscale_models\\.\n"
+            "Then set image.comfyui.comfyui_models_path in .automedia/config.yaml\n"
+            "so 'automedia doctor' can verify it."
+        ),
     },
 }
 
@@ -191,6 +220,57 @@ class Doctor:
         except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as exc:
             logger.warning("ComfyUI not reachable (%s)", exc)
             return False, None
+
+    @staticmethod
+    def _check_comfyui_upscale_model() -> tuple[bool | None, str | None]:
+        """Check whether the ComfyUI upscale model file is present on disk.
+
+        The built-in SD1.5 workflow generates at the model's native resolution
+        and then upscales with an ESRGAN model (``image.comfyui.upscale_model``,
+        default ``RealESRGAN_x4plus.pth``). A missing model is **not** silently
+        degraded by the engine — ComfyUI errors and the pipeline raises
+        ``EngineExecutionError``. This check surfaces that requirement up front.
+
+        Returns ``(ok, message)`` where *ok* is tri-state:
+
+        - ``True``  — the configured models path is set and the file exists.
+        - ``False`` — the path is set but the file is missing (actionable).
+        - ``None``  — ``comfyui_models_path`` is not configured, so presence
+          cannot be determined. This is deliberately *not* reported as a
+          failure: ComfyUI may run remotely, in Docker, or on another host, and
+          guessing a filesystem location would produce false alarms.
+
+        To make this check meaningful, set the models path::
+
+            engines:
+              image:
+                comfyui:
+                  comfyui_models_path: /opt/ComfyUI/models
+        """
+        from automedia.core.config_loader import load_config
+
+        try:
+            config = load_config()
+        except Exception:
+            return None, "config unavailable; cannot verify upscale model"
+
+        comfyui_cfg = ((config.get("engines") or {}).get("image") or {}).get("comfyui") or {}
+        model_name = str(comfyui_cfg.get("upscale_model") or "RealESRGAN_x4plus.pth")
+        models_path = comfyui_cfg.get("comfyui_models_path")
+
+        if not models_path:
+            return None, (
+                f"cannot verify {model_name}: set engines.image.comfyui.comfyui_models_path "
+                "to your ComfyUI models directory"
+            )
+
+        candidate = Path(str(models_path)) / "upscale_models" / model_name
+        if candidate.is_file():
+            return True, f"upscale model present: {candidate}"
+        return False, (
+            f"upscale model missing: {candidate} — the ComfyUI image pipeline "
+            "will fail at generation time until this file exists"
+        )
 
     @staticmethod
     def _check_llm_api() -> tuple[bool, str | None]:
@@ -325,6 +405,24 @@ class Doctor:
                         "installed": installed,
                         "version": version,
                         "path": None,
+                    }
+                )
+                continue
+
+            # --- ComfyUI upscale model presence (informational) -----------
+            if name == "comfyui_upscale_model":
+                ok, message = self._check_comfyui_upscale_model()
+                results.append(
+                    {
+                        "name": name,
+                        # ``ok`` is tri-state. Never report an unverifiable
+                        # model as installed=False: ComfyUI may be remote or in
+                        # Docker, so a guess here would raise false alarms.
+                        "installed": ok is not False,
+                        "version": None,
+                        "path": None,
+                        "model_present": ok,
+                        "model_message": message,
                     }
                 )
                 continue

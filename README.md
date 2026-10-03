@@ -209,7 +209,33 @@ pip install -r requirements.txt
 
 See the [ComfyUI repository](https://github.com/comfyanonymous/ComfyUI) for full setup.
 
-Verify: Start the server (`python main.py`) and check `http://localhost:8188` is reachable.
+**Upscale model (required for image generation).** The built-in SD1.5 workflow
+generates at the model's native resolution and then upscales the result, so an
+ESRGAN model must be present or image generation will fail at runtime:
+
+```bash
+# Download RealESRGAN_x4plus.pth from
+#   https://github.com/xinntao/Real-ESRGAN/releases
+# Place it in <ComfyUI>/models/upscale_models/
+```
+
+This is not optional and there is no silent fallback — a missing model raises
+`EngineExecutionError`. To confirm it is in place, set the models path so
+`automedia doctor` can verify it:
+
+```yaml
+# .automedia/config.yaml
+engines:
+  image:
+    comfyui:
+      comfyui_models_path: /opt/ComfyUI/models
+```
+
+Without that key `doctor` reports the model as *unverifiable* rather than
+missing, since ComfyUI may be running remotely or in Docker. Use a different
+model by setting `image.comfyui.upscale_model`.
+
+Verify: Start the server (`python main.py`), check `http://localhost:8188` is reachable, and run `automedia doctor`.
 
 > **Docker alternative:** All external dependencies are pre-installed in the Docker image. See [Quick start with Docker](#quick-start-with-docker).
 

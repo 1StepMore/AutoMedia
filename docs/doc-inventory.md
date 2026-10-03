@@ -5,7 +5,7 @@
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
 | AGENTS.md | 14505 | file |
-| README.md | 30930 | file |
+| README.md | 31840 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -53,7 +53,7 @@
 | docs/user/api-reference.md | 14159 | file |
 | docs/user/asset-library.md | 11894 | file |
 | docs/user/cli-reference.md | 28007 | file |
-| docs/user/deployment.md | 8345 | file |
+| docs/user/deployment.md | 8829 | file |
 | docs/user/hitl-framework.md | 9314 | file |
 | docs/user/mcp-setup.md | 26854 | file |
 | docs/user/omni-integration.md | 13082 | file |
