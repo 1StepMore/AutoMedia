@@ -397,7 +397,7 @@ class ComfyUIImageEngine(BaseImageEngine):
             "negative_prompt",
             "blurry, low quality, distorted",
         )
-        workflow_path: str | None = self._config.get("workflow_path")
+        workflow_path: str | None = self._config.get("workflow_path", None)
         if workflow_path:
             template_json = self._resolve_workflow_json()
             return _materialise_workflow(
@@ -408,9 +408,7 @@ class ComfyUIImageEngine(BaseImageEngine):
                 height=height,
             )
         base_size = int(self._config.get("base_size", 512))
-        upscale_model = str(
-            self._config.get("upscale_model", "RealESRGAN_x4plus.pth")
-        )
+        upscale_model = str(self._config.get("upscale_model", "RealESRGAN_x4plus.pth"))
         base_width, base_height = native_latent_dims(width, height, base_size)
         return _materialise_builtin_workflow(
             _DEFAULT_WORKFLOW_JSON,
@@ -430,7 +428,7 @@ class ComfyUIImageEngine(BaseImageEngine):
         1. ``workflow_path`` config — load from file on every call (cheap).
         2. Built-in :data:`_DEFAULT_WORKFLOW_JSON`.
         """
-        workflow_path: str | None = self._config.get("workflow_path")
+        workflow_path: str | None = self._config.get("workflow_path", None)
         if workflow_path:
             path = Path(workflow_path)
             if not path.exists():

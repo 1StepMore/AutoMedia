@@ -127,11 +127,6 @@ pipeline:
     enabled: true
   image:
     enabled: true
-    comfyui:
-      host: 127.0.0.1
-      port: 8188
-      protocol: http
-      timeout: 900
   text:
     enabled: true
 
