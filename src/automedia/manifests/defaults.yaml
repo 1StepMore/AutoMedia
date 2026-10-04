@@ -109,6 +109,15 @@ engines:
     default: hyperframes
     hyperframes:
       quality: high
+      # Absolute path to the hyperframes executable (e.g. /usr/local/bin/hyperframes)
+      # or to a per-project install's dist/cli.js (invoked via node). Unset by default.
+      cli_path: null
+      # Explicit command array for per-project installs, e.g. ["npx", "hyperframes"]
+      # or ["node", "/abs/path/to/dist/cli.js"]. Takes precedence over cli_path.
+      cli_command: null
+      # Must be a Linux Chrome/Chromium binary (e.g. Playwright's chrome-linux64/chrome).
+      # A Windows Chrome binary will fail (puppeteer reports "Invalid argument").
+      # Injected as HYPERFRAMES_BROWSER_PATH.
       chrome_path: null
 
 pipeline:

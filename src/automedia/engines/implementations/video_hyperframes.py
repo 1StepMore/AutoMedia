@@ -36,10 +36,17 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     **Primary path** — ``hyperframes`` CLI:
 
     1. Copy all assets into a temporary working directory.
-    2. Invoke ``hyperframes render --quality <quality> --assets <dir> --output <path>``.
+    2. Invoke ``<cli...> render -q <quality> -o <output> <project_dir>``
+       (project directory as positional argument, per ``hyperframes
+       render --help`` — there is no ``--assets`` option).
     3. On success return ``output_path``.
     4. On failure, if ``ffmpeg`` is available, fall back to the FFmpeg
        slideshow path.
+
+    The CLI itself is resolved via :meth:`_resolve_cli_base` with the
+    priority ``cli_command`` > ``cli_path`` > ``PATH`` lookup, so both
+    a global install and a per-project npm install (``npx hyperframes``
+    or ``node <abs>/dist/cli.js``) are supported.
 
     **Fallback path** — ``ffmpeg`` slideshow:
 
@@ -75,8 +82,54 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Dependency check
     # ------------------------------------------------------------------
 
+    def _resolve_cli_base(self) -> list[str] | None:
+        """Resolve the ``hyperframes`` CLI invocation prefix.
+
+        Priority: ``cli_command`` > ``cli_path`` > ``shutil.which(...)``.
+
+        - ``cli_command``: explicit command array, e.g.
+          ``["npx", "hyperframes"]`` or
+          ``["node", "/abs/path/to/dist/cli.js"]`` (per-project npm install).
+        - ``cli_path``: absolute path to an executable, e.g.
+          ``/usr/local/bin/hyperframes`` or a ``dist/cli.js`` file
+          (``.js`` files are invoked via ``node``).
+        - Fallback: ``shutil.which("hyperframes")`` (global install on ``PATH``).
+
+        Returns
+        -------
+        list[str] | None
+            The CLI prefix (e.g. ``["hyperframes"]``), or ``None`` when no
+            usable CLI was found.
+        """
+        cli_command: Any = self._config.get("cli_command")
+        if cli_command:
+            return [str(part) for part in cli_command]
+
+        cli_path: Any = self._config.get("cli_path")
+        if cli_path:
+            cli_path_str: str = str(cli_path)
+            if os.path.isfile(cli_path_str):
+                if cli_path_str.endswith(".js"):
+                    return ["node", cli_path_str]
+                return [cli_path_str]
+            logger.warning(
+                "Configured hyperframes cli_path does not exist: %s; "
+                "falling back to PATH lookup.",
+                cli_path_str,
+            )
+
+        hyperframes_path: str | None = shutil.which("hyperframes")
+        if hyperframes_path:
+            return [hyperframes_path]
+        return None
+
     def check_available(self) -> tuple[bool, str]:
-        """Verify that at least one of ``hyperframes`` or ``ffmpeg`` is on ``PATH``.
+        """Verify that at least one of ``hyperframes`` or ``ffmpeg`` is usable.
+
+        The ``hyperframes`` CLI is resolved with the same logic as rendering:
+        ``cli_command`` config > ``cli_path`` config > ``PATH`` lookup, so a
+        per-project npm install (``npx hyperframes`` or ``node .../dist/cli.js``)
+        counts as available even when no global ``hyperframes`` is on ``PATH``.
 
         Returns
         -------
@@ -84,19 +137,24 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             ``(True, ...)`` if either tool is found; ``(False, ...)`` only
             when neither is available.
         """
-        hyperframes_path: str | None = shutil.which("hyperframes")
+        cli_base: list[str] | None = self._resolve_cli_base()
         ffmpeg_path: str | None = shutil.which("ffmpeg")
 
-        if hyperframes_path:
-            return (True, f"hyperframes found at {hyperframes_path}")
+        if cli_base:
+            return (True, f"hyperframes found: {' '.join(cli_base)}")
 
         if ffmpeg_path:
             return (True, f"hyperframes not found; ffmpeg fallback at {ffmpeg_path}")
 
         return (
             False,
-            "Neither 'hyperframes' nor 'ffmpeg' found on PATH. "
-            "Install hyperframes (npm/pip) or ffmpeg to use this engine.",
+            "Neither 'hyperframes' nor 'ffmpeg' found. "
+            "hyperframes may be a global executable on PATH, or a per-project "
+            "npm install configured via 'cli_path' (absolute path to the "
+            "hyperframes executable or dist/cli.js) or 'cli_command' "
+            "(e.g. ['npx', 'hyperframes'] or ['node', '/abs/dist/cli.js']). "
+            "Install hyperframes (npm/pip), configure one of these keys, "
+            "or install ffmpeg for fallback rendering.",
         )
 
     # ------------------------------------------------------------------
@@ -146,10 +204,10 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             )
 
         # Try the primary path first
-        hyperframes_path: str | None = shutil.which("hyperframes")
-        if hyperframes_path:
+        cli_base: list[str] | None = self._resolve_cli_base()
+        if cli_base:
             try:
-                return self._render_with_hyperframes(assets, output_path)
+                return self._render_with_hyperframes(assets, output_path, cli_base)
             except EngineExecutionError:
                 logger.warning("hyperframes render failed; checking for ffmpeg fallback.")
 
@@ -172,8 +230,13 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Primary path — HyperFrames CLI
     # ------------------------------------------------------------------
 
-    def _render_with_hyperframes(self, assets: dict[str, Any], output_path: str) -> str:
-        """Render via ``hyperframes`` CLI using a temporary asset directory.
+    def _render_with_hyperframes(
+        self,
+        assets: dict[str, Any],
+        output_path: str,
+        cli_base: list[str] | None = None,
+    ) -> str:
+        """Render via ``hyperframes`` CLI using a temporary project directory.
 
         Parameters
         ----------
@@ -181,6 +244,9 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             Asset dictionary (see :meth:`render`).
         output_path:
             Final output path for the rendered video.
+        cli_base:
+            Resolved CLI prefix (see :meth:`_resolve_cli_base`).  Resolved
+            from config when omitted.
 
         Returns
         -------
@@ -192,6 +258,15 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         EngineExecutionError
             If the ``hyperframes`` subprocess fails or times out.
         """
+        resolved_base: list[str] | None = cli_base or self._resolve_cli_base()
+        if not resolved_base:
+            raise EngineExecutionError(
+                engine_name=self.engine_name,
+                details=(
+                    "hyperframes CLI not found. Provide a global 'hyperframes' "
+                    "on PATH or configure 'cli_path' / 'cli_command'."
+                ),
+            )
         temp_dir: str | None = None
         timeout: int = self._config.get("timeout", 300)
         try:
@@ -227,22 +302,24 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             if subs_path and os.path.isfile(subs_path):
                 shutil.copy2(subs_path, temp_dir)
 
-            # Build the command
+            # Build the command — real CLI interface (v0.7.x):
+            #   hyperframes render [OPTIONS] [DIR]
+            # where DIR (the project directory) is a positional argument;
+            # there is no --assets option.
             quality: str = self._config.get("quality", "high")
 
             cmd: list[str] = [
-                "hyperframes",
+                *resolved_base,
                 "render",
-                "--quality",
+                "-q",
                 quality,
-                "--assets",
-                temp_dir,
-                "--output",
+                "-o",
                 output_path,
+                temp_dir,
             ]
 
             logger.info(
-                "Running hyperframes render (quality=%s, output=%s, assets=%s)",
+                "Running hyperframes render (quality=%s, output=%s, project=%s)",
                 quality,
                 output_path,
                 temp_dir,
