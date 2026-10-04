@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 import pytest
@@ -514,3 +515,81 @@ class TestMergedConfigValidation:
     ) -> None:
         with pytest.raises(ConfigError):
             self._load(tmp_path, monkeypatch, {"platforms": {"wechat": {"enabled": "yes"}}})
+
+
+class TestComfyuiLegacyPathMigration:
+    """``pipeline.image.comfyui.*`` → ``engines.image.comfyui.*`` (issue #164).
+
+    ``defaults.yaml`` used to ship a 4-key ``pipeline.image.comfyui`` block, so
+    the migration shim fired on *every* load and replaced the 9-key
+    ``engines`` block with those 4 keys. The five newer keys then never reached
+    the engine; it silently fell back to its in-code defaults instead of the
+    declared ones. The stale block is gone, so migration must now fire **only**
+    when a project/user config actually sets the legacy path — and even then it
+    must merge rather than replace.
+    """
+
+    def test_default_install_keeps_all_engine_keys(self, tmp_path: Path):
+        """No user config: the engines block must survive intact."""
+        config = load_config(config_dir=str(tmp_path))
+        comfyui = config["engines"]["image"]["comfyui"]
+
+        assert comfyui["base_size"] == 512
+        assert comfyui["upscale_model"] == "RealESRGAN_x4plus.pth"
+        assert comfyui["negative_prompt"]
+        assert "comfyui_models_path" in comfyui
+        assert "workflow_path" in comfyui
+
+    def test_defaults_yaml_has_no_legacy_block(self):
+        """The stale block must not creep back into the shipped defaults."""
+        defaults = config_loader._load_yaml_file(
+            Path(config_loader.__file__).parent.parent / "manifests" / "defaults.yaml"
+        )
+        assert "comfyui" not in defaults.get("pipeline", {}).get("image", {})
+
+    def test_pipeline_image_enabled_still_present(self, tmp_path: Path):
+        """``onboard`` reads ``pipeline.image.enabled`` — it must not be dropped."""
+        config = load_config(config_dir=str(tmp_path))
+        assert config["pipeline"]["image"]["enabled"] is True
+
+    def test_legacy_user_config_is_migrated(self, tmp_path: Path):
+        """A legacy user value still reaches the engine."""
+        (tmp_path / "config.yaml").write_text(
+            "pipeline:\n  image:\n    comfyui:\n      port: 9999\n",
+            encoding="utf-8",
+        )
+        config = load_config(config_dir=str(tmp_path))
+        assert config["engines"]["image"]["comfyui"]["port"] == 9999
+
+    def test_legacy_migration_does_not_drop_new_keys(self, tmp_path: Path):
+        """Regression: migration must merge, not replace.
+
+        Replacing dropped every key added to ``engines.image.comfyui`` since
+        the legacy path was deprecated.
+        """
+        (tmp_path / "config.yaml").write_text(
+            "pipeline:\n  image:\n    comfyui:\n      port: 9999\n",
+            encoding="utf-8",
+        )
+        comfyui = load_config(config_dir=str(tmp_path))["engines"]["image"]["comfyui"]
+
+        assert comfyui["port"] == 9999
+        assert comfyui["base_size"] == 512
+        assert comfyui["upscale_model"] == "RealESRGAN_x4plus.pth"
+        assert "workflow_path" in comfyui
+
+    def test_new_path_user_config_wins(self, tmp_path: Path):
+        """Explicit ``engines`` config must not be overwritten by migration.
+
+        The shim's identity check treats a configured ``engines`` block as
+        "already migrated", so it neither migrates nor warns.
+        """
+        (tmp_path / "config.yaml").write_text(
+            "pipeline:\n  image:\n    comfyui:\n      port: 9999\n"
+            "engines:\n  image:\n    comfyui:\n      port: 7777\n",
+            encoding="utf-8",
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            config = load_config(config_dir=str(tmp_path))
+        assert config["engines"]["image"]["comfyui"]["port"] == 7777

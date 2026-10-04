@@ -371,6 +371,10 @@ def load_config(
     # explicitly configured the new path.  Users should update their
     # project config (~/.automedia/ or .automedia/) to use the new keys.
     #
+    # ``defaults.yaml`` no longer ships a ``pipeline.image.comfyui`` block,
+    # so on a default install ``old_comfyui`` is None and this is a no-op.
+    # It fires only when a project/user config still sets the legacy path.
+    #
     # Deprecated since: engine-abstraction-layer (July 2026)
     # Removal target: engine-abstraction-layer+3 months
     # ------------------------------------------------------------------
@@ -386,7 +390,14 @@ def load_config(
                 DeprecationWarning,
                 stacklevel=2,
             )
-            config["engines"]["image"]["comfyui"] = dict(old_comfyui)
+            # Merge rather than replace: the legacy block carries only the keys
+            # that existed when the path was deprecated. Replacing wholesale
+            # would drop every key added to ``engines.image.comfyui`` since
+            # (e.g. base_size, upscale_model), leaving the engine to fall back
+            # to its in-code defaults instead of the declared ones.
+            config["engines"]["image"]["comfyui"] = deep_merge(
+                dict(default_comfyui or {}), dict(old_comfyui)
+            )
 
     validate_config(config)
     return config
