@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.8.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.3...automedia-v1.8.4) (2026-10-04)
+
+
+### Bug Fixes
+
+* **engines:** comfyui 出图改走原生分辨率 + ESRGAN 放大（修图文轨崩坏与超时） ([#161](https://github.com/1StepMore/AutoMedia/issues/161)) ([dcc145a](https://github.com/1StepMore/AutoMedia/commit/dcc145abf823b744a32b9cb0a225558b60c5eef6))
+* **engines:** hyperframes 引擎按真实 CLI 接口调用（位置参数 + cli_path/npx 解析） ([#162](https://github.com/1StepMore/AutoMedia/issues/162)) ([#163](https://github.com/1StepMore/AutoMedia/issues/163)) ([8c433ad](https://github.com/1StepMore/AutoMedia/commit/8c433ad0b53e41a042025a59d301aa0cdfb2e163))
+* **g3:** drop the industry wordlist that gated brand identity ([5e82e59](https://github.com/1StepMore/AutoMedia/commit/5e82e5942963d1a307d14d61c289b70b527929f2))
+
 ## [1.8.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.2...automedia-v1.8.3) (2026-10-02)
 
 
