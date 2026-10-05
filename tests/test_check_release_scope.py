@@ -603,3 +603,221 @@ def test_internal_doc_addition_passes_without_a_skip_label(scope: ModuleType) ->
 def test_generated_artifact_set_is_pinned(scope: ModuleType) -> None:
     """Pinned so widening the exemption is always a visible diff, never a drive-by."""
     assert frozenset({"docs/doc-inventory.md"}) == scope.GENERATED_ARTIFACTS
+
+
+# ---------------------------------------------------------------------------
+# Dependabot lockfile refresh is exempt (issues #167-#170)
+# ---------------------------------------------------------------------------
+#
+# Dependabot titles its pip PRs `chore(deps): bump X from A to B` -- a HIDDEN type
+# it cannot retype -- and the uv manager's diff is `uv.lock` alone, which this
+# gate must keep calling user-visible (pinned by test_user_visible_paths). The
+# "hidden type + user-visible path" row therefore hard-failed with no way out,
+# and `git log --author=dependabot` shows no pip bump has ever landed.
+#
+# The exemption is deliberately narrower than is_release_proposal: same-repo head
+# (a structural fact, not a credential, so it bounds the fork spoof the #137
+# lesson warns about), the `dependabot/` prefix rather than an ecosystem segment
+# (both uv and pip are in live use), lockfile-and-nothing-else, and a hidden
+# title type checked at the call site.
+
+BASE_REPO = "1StepMore/AutoMedia"
+DEPENDABOT_UV = "chore(deps): bump pyjwt from 2.13.0 to 2.15.0"
+DEPENDABOT_PYPROJECT = "chore(deps-dev): update openai requirement"
+
+
+def test_lockfile_only_dependabot_pr_passes(scope: ModuleType) -> None:
+    """The #167/#168/#169/#170 shape: uv.lock alone, chore, uv manager."""
+    result = scope.assess_release_scope(
+        ["uv.lock"],
+        scope.parse_title_type(DEPENDABOT_UV),
+        ["dependencies"],
+        head_ref="dependabot/uv/pyjwt-2.15.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is True
+    assert "Dependabot lockfile refresh" in result.reason
+    assert result.remediation == ""
+
+
+@pytest.mark.parametrize(
+    "head_ref",
+    [
+        "dependabot/uv/pyjwt-2.15.0",
+        "dependabot/pip/virtualenv-20.27.1",
+    ],
+)
+def test_both_manager_segments_qualify(scope: ModuleType, head_ref: str) -> None:
+    """The prefix is the signal, not an ecosystem segment: uv AND pip are live."""
+    assert scope.is_lockfile_refresh(head_ref, BASE_REPO, BASE_REPO, ["uv.lock"]) is True
+
+
+def test_pyproject_toml_bump_is_still_judged(scope: ModuleType) -> None:
+    """The #172 lock-in. The manifest is the install contract and ships in the
+    sdist, so a manifest bump must be retyped by a human, never exempted."""
+    result = scope.assess_release_scope(
+        ["pyproject.toml"],
+        scope.parse_title_type(DEPENDABOT_PYPROJECT),
+        [],
+        head_ref="dependabot/pip/openai-2.45.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is False
+    assert "release:skip" in result.remediation
+
+
+def test_pyproject_toml_retyped_visible_passes(scope: ModuleType) -> None:
+    """#172 with the human retyping it needs: visible type + user-visible path."""
+    result = scope.assess_release_scope(
+        ["pyproject.toml"],
+        scope.parse_title_type("fix(deps): update the openai extra's upper bound"),
+        [],
+        head_ref="dependabot/pip/openai-2.45.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is True
+
+
+def test_dependabot_pr_touching_source_is_judged(scope: ModuleType) -> None:
+    """Lockfile INCLUDED is not lockfile ONLY: a src/** diff still fails."""
+    result = scope.assess_release_scope(
+        ["uv.lock", "src/automedia/core/project.py"],
+        scope.parse_title_type(DEPENDABOT_UV),
+        [],
+        head_ref="dependabot/uv/pyjwt-2.15.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is False
+    assert "release:skip" in result.remediation
+
+
+def test_fork_named_dependabot_is_not_exempt(scope: ModuleType) -> None:
+    """Anti-spoof: the branch name is cheap, the repo the ref lives in is not."""
+    result = scope.assess_release_scope(
+        ["uv.lock"],
+        scope.parse_title_type(DEPENDABOT_UV),
+        [],
+        head_ref="dependabot/uv/pyjwt-2.15.0",
+        head_repo="attacker/AutoMedia",
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is False
+    assert "release:skip" in result.remediation
+
+
+def test_human_branch_touching_only_the_lockfile_is_judged(scope: ModuleType) -> None:
+    """No branch prefix, no exemption -- even in the base repo."""
+    result = scope.assess_release_scope(
+        ["uv.lock"],
+        scope.parse_title_type(DEPENDABOT_UV),
+        [],
+        head_ref="fix/my-thing",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is False
+
+
+def test_visible_type_still_goes_through_the_table(scope: ModuleType) -> None:
+    """A lock-only PR typed fix(deps) passes -- user-visible path, visible type.
+
+    It must reach that verdict through the normal table, NOT through the
+    exemption: the exemption's reason text claims "a hidden type is correct",
+    which would be false here. So the assertion is on the reason, not the
+    verdict.
+    """
+    result = scope.assess_release_scope(
+        ["uv.lock"],
+        scope.parse_title_type("fix(deps): bump pyjwt from 2.13.0 to 2.15.0"),
+        [],
+        head_ref="dependabot/uv/pyjwt-2.15.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is True  # user-visible path + visible type agree
+    assert "lockfile refresh" not in result.reason
+
+
+def test_absent_head_repo_keeps_the_strict_pre_fix_verdict(scope: ModuleType) -> None:
+    """Fail-safe default: flags omitted -> no exemption, pre-existing behaviour."""
+    result = scope.assess_release_scope(
+        ["uv.lock"],
+        scope.parse_title_type(DEPENDABOT_UV),
+        [],
+        head_ref="dependabot/uv/pyjwt-2.15.0",
+    )
+    assert result.passed is False
+    assert not scope.is_lockfile_refresh("dependabot/uv/x", "", BASE_REPO, ["uv.lock"])
+
+
+def test_lock_only_path_set_is_pinned(scope: ModuleType) -> None:
+    """Pinned so adding pyproject.toml here is always a visible, argued diff."""
+    assert frozenset({"uv.lock"}) == scope.DEPENDABOT_LOCK_ONLY_PATHS
+
+
+def test_github_actions_dependabot_pr_is_unaffected(scope: ModuleType) -> None:
+    """The #171 control: .github/workflows/ci.yml is internal, so it passed
+    before this change and must keep passing -- via the normal table, not the
+    lockfile exemption, because it is not on the lock-only allowlist."""
+    result = scope.assess_release_scope(
+        [".github/workflows/ci.yml"],
+        scope.parse_title_type("chore(deps): bump bridgecrewio/checkov-action"),
+        ["dependencies"],
+        head_ref="dependabot/github_actions/checkov-action-3.23.0",
+        head_repo=BASE_REPO,
+        base_repo=BASE_REPO,
+    )
+    assert result.passed is True
+    assert "lockfile refresh" not in result.reason
+
+
+def test_is_lockfile_refresh_requires_all_four_conditions(scope: ModuleType) -> None:
+    assert scope.is_lockfile_refresh("dependabot/uv/x", BASE_REPO, BASE_REPO, ["uv.lock"])
+    # not the base repo
+    assert not scope.is_lockfile_refresh("dependabot/uv/x", "a/b", BASE_REPO, ["uv.lock"])
+    # empty head repo (deleted fork, or the flag omitted)
+    assert not scope.is_lockfile_refresh("dependabot/uv/x", "", BASE_REPO, ["uv.lock"])
+    # not the dependabot prefix
+    assert not scope.is_lockfile_refresh("fix/x", BASE_REPO, BASE_REPO, ["uv.lock"])
+    # not lockfile-only
+    assert not scope.is_lockfile_refresh(
+        "dependabot/uv/x", BASE_REPO, BASE_REPO, ["uv.lock", "pyproject.toml"]
+    )
+    # nothing to exempt
+    assert not scope.is_lockfile_refresh("dependabot/uv/x", BASE_REPO, BASE_REPO, [])
+
+
+def test_lockfile_path_normalization_cannot_smuggle_a_second_path(scope: ModuleType) -> None:
+    """`./uv.lock` normalizes, but it cannot smuggle a second, non-allowlisted path."""
+    assert scope.is_lockfile_refresh("dependabot/uv/x", BASE_REPO, BASE_REPO, ["./uv.lock"])
+    assert not scope.is_lockfile_refresh(
+        "dependabot/uv/x", BASE_REPO, BASE_REPO, ["./uv.lock", "./pyproject.toml"]
+    )
+
+
+def test_cli_passes_head_and_base_repo(scope: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+
+    def _call(extra: list[str]) -> int:
+        monkeypatch.setattr(sys, "stdin", io.StringIO("uv.lock\n"))
+        return scope.main(
+            [
+                "--files",
+                "-",
+                "--title",
+                DEPENDABOT_UV,
+                "--labels",
+                "dependencies",
+                "--head-ref",
+                "dependabot/uv/pyjwt-2.15.0",
+                *extra,
+            ]
+        )
+
+    assert _call(["--head-repo", BASE_REPO, "--base-repo", BASE_REPO]) == 0
+    # Omitting them keeps the strict verdict (fail-safe).
+    assert _call([]) == 1
