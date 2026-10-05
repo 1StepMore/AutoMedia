@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.7](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.6...automedia-v1.8.7) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** correct the openai extra bound rationale in pyproject.toml ([#177](https://github.com/1StepMore/AutoMedia/issues/177)) ([fe56e70](https://github.com/1StepMore/AutoMedia/commit/fe56e706cc1801169d20ca9143eccbda76d78c6f))
+
 ## [1.8.6](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.5...automedia-v1.8.6) (2026-10-05)
 
 
