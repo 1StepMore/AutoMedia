@@ -1,3 +1,7 @@
+# NOTE (2026-10-05): the renanzai40/*_BackUp mirrors must NOT carry this file.
+# They are dormant snapshots of this repo; Dependabot running there only produced
+# noise (stale bound-widening PRs), so the file was removed from the mirrors on
+# 2026-10-05. Keep it out of any future "sync CI config from origin" pass.
 version: 2
 updates:
   - package-ecosystem: "pip"
