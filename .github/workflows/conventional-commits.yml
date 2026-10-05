@@ -67,6 +67,12 @@ jobs:
           # requires all three signals, so a human PR cannot claim the exemption.
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          # A Dependabot pip PR is typed chore(deps) and touches only the generated
+          # lockfile, so it needs the lockfile exemption (issues #167-#170). The script
+          # admits it only when the head branch lives in the BASE repo, which a fork PR
+          # named dependabot/... cannot fake; an omitted (empty) value denies it.
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.base_ref }}
         run: |
@@ -89,4 +95,5 @@ jobs:
           fi
           printf '%s\n' "$FILES" \
             | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" \
-                --labels "$LABELS" --pr-author "$PR_AUTHOR" --head-ref "$HEAD_REF"
+                --labels "$LABELS" --pr-author "$PR_AUTHOR" --head-ref "$HEAD_REF" \
+                --head-repo "$HEAD_REPO" --base-repo "$BASE_REPO"
