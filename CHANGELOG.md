@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.6](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.5...automedia-v1.8.6) (2026-10-05)
+
+
+### Dependencies
+
+* **deps:** bump soupsieve from 2.8.4 to 2.9 ([#176](https://github.com/1StepMore/AutoMedia/issues/176)) ([42b24ff](https://github.com/1StepMore/AutoMedia/commit/42b24ffcac2f715b1596e464e25b19935a4b1a8d))
+
 ## [1.8.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.4...automedia-v1.8.5) (2026-10-05)
 
 
