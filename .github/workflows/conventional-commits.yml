@@ -97,3 +97,46 @@ jobs:
             | python3 scripts/check_release_scope.py --files - --title "$PR_TITLE" \
                 --labels "$LABELS" --pr-author "$PR_AUTHOR" --head-ref "$HEAD_REF" \
                 --head-repo "$HEAD_REPO" --base-repo "$BASE_REPO"
+      # release-please decides whether to cut a release from the commit message that
+      # lands on `main` -- and a squash merge lands the HEAD COMMIT's subject there,
+      # not the PR title. A title that disagrees with the head commit is therefore a
+      # gate that judged one string while the release reads another: that is how
+      # #172 shipped a user-visible manifest change under a hidden type with no
+      # changelog entry, even though `release-scope` was green. Catch it before the
+      # merge instead of after the release.
+      - name: PR title type agrees with the squashed commit subject type
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Mirrors check_release_scope.parse_title_type: the text before the first
+          # "(", then before the first ":", with "!" stripped, trimmed, lowercased.
+          # Both sides go through the identical function so only a real divergence is
+          # reported, never a formatting difference.
+          conventional_type() {
+            local text="$1" head
+            head="${text%%:*}"
+            head="${head%%(*}"
+            head="${head%!}"
+            printf '%s' "$head" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+              | tr '[:upper:]' '[:lower:]'
+          }
+          # The ref fetched by the previous step persists in this job's workspace.
+          SUBJECT="$(git log -1 --format=%s "refs/remotes/pr/$PR_NUMBER")"
+          TITLE_TYPE="$(conventional_type "$PR_TITLE")"
+          SUBJECT_TYPE="$(conventional_type "$SUBJECT")"
+          echo "PR title:         $PR_TITLE"
+          echo "head commit:      $SUBJECT"
+          # A conventional-commit type is what release-please can act on, so an empty
+          # reading on either side leaves nothing to compare. check-pr-title owns PR
+          # title format separately.
+          if [ -z "$TITLE_TYPE" ] || [ -z "$SUBJECT_TYPE" ]; then
+            echo "::notice::could not read a conventional type from both sides; skipping the comparison"
+            exit 0
+          fi
+          if [ "$TITLE_TYPE" != "$SUBJECT_TYPE" ]; then
+            echo "::error::PR title type '$TITLE_TYPE' differs from head commit subject type '$SUBJECT_TYPE'. A squash merge lands the head commit's subject on main, and release-please reads THAT to decide whether to cut a release and what the changelog says -- so this PR was judged as '$TITLE_TYPE' but would be released as '$SUBJECT_TYPE'. Make them agree: retitle the PR to match the head commit, or amend the head commit to match the PR."
+            exit 1
+          fi
+          echo "both sides read '$TITLE_TYPE'"
