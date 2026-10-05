@@ -222,6 +222,21 @@ exemption is identified by content — a `release-please--` head branch, a
 `chore(main): release ` title, and the release plumbing files in the diff — not
 by the author, so a human PR cannot claim it.
 
+A Dependabot pip PR is exempt too, and for the same reason: it is titled
+`chore(deps):`, it cannot retype itself, and its diff is the generated lockfile.
+The exemption requires **all four** conditions: the head branch must live in this
+repository (`head.repo.full_name` equals the base repo), the head branch must
+carry the `dependabot/` prefix (both `dependabot/uv/…` and `dependabot/pip/…` are
+in live use), *every* changed path must be `uv.lock`, and the title type must be
+hidden. So a fork PR named `dependabot/…`, a Dependabot PR that also touches
+`src/**`, and a lockfile-only PR retyped `fix(deps)` are all still judged
+normally.
+
+`pyproject.toml` is **not** exempt. It is the install contract and it ships in
+the sdist, so a manifest bump really is user-visible: it must be retyped with a
+visible type (e.g. `fix(deps):`) by a human. That is the difference between the
+lockfile and the manifest, and it is why only `uv.lock` is on the allowlist.
+
 ### Signed-off-by and squash merges
 
 The `DCO` check requires a `Signed-off-by` trailer, and it runs on **PR commits**

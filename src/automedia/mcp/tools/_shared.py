@@ -11,6 +11,7 @@ import contextlib
 import json
 import os
 import threading
+import time
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -85,10 +86,11 @@ def _file_lock(fh: IO[str], *, exclusive: bool) -> Iterator[None]:
     为什么 no-op 不是功能降级：``active_pipelines.json`` 的写入路径采用
     「写临时文件 + ``os.replace(tmp, path)``」的原子替换（见
     :func:`_write_active_pipelines`），读者在任何平台上都不可能看到半截
-    JSON；而此前的独占锁加在**临时文件**上，对并发写者本就不构成互斥。
-    因此该锁在两种平台上都不提供额外保证，Windows 分支只是如实对齐语义。
-    若将来需要真正的跨进程互斥，应改造写入协议（例如对最终路径加锁），
-    而不是依赖本函数。
+    JSON；而此处加锁的文件是**临时文件**，对并发写者本就不构成互斥——
+    写者互斥由 :data:`_tracker_file_lock` 这个进程内互斥锁提供（见
+    :func:`_update_pipeline_entry`）。因此本函数在两种平台上都不提供额外
+    保证，Windows 分支只是如实对齐语义。若将来需要真正的**跨进程**互斥，
+    应改造写入协议（例如对最终路径加锁），而不是依赖本函数。
 
     Parameters
     ----------
@@ -301,6 +303,18 @@ def _pipeline_result_to_dict(result: PipelineResult) -> dict[str, Any]:
 # JSON session tracker helpers
 # ---------------------------------------------------------------------------
 
+# Mutex for the tracker read-modify-write.  ``run_pipeline`` admits
+# ``_max_concurrent_pipelines`` daemon threads plus the MCP request thread, and
+# every one of them finishes in ``_update_pipeline_entry``; without this the
+# interleaved read/merge/replace loses whole entries.  Taken by the two
+# read-modify-write *callers* only, so ``_write_active_pipelines`` stays
+# callable directly and lock-free.  A plain ``Lock`` is never re-entered.
+_tracker_file_lock = threading.Lock()
+
+# ``os.replace`` retry budget for the Windows sharing violation (see below).
+_REPLACE_ATTEMPTS = 5
+_REPLACE_RETRY_S = 0.02
+
 
 def _read_active_pipelines() -> dict[str, dict[str, Any]]:
     """Read active pipelines from the JSON file, using an advisory lock."""
@@ -319,7 +333,10 @@ def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
     """Atomically write active pipelines dict to the JSON file."""
     path = _get_active_pipelines_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    # Per-writer temp name: a shared one lets one writer's replace move the file
+    # out from under another's, raising FileNotFoundError and letting the
+    # cleanup below delete a third writer's fresh temp.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
     try:
         with open(tmp, "w", encoding="utf-8") as fh, _file_lock(fh, exclusive=True):
             json.dump(data, fh, ensure_ascii=False, indent=2, default=str)
@@ -329,7 +346,19 @@ def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
         # ``os.rename``, which raises FileExistsError on Windows whenever the
         # destination already exists, i.e. on every write after the first.
         # ``os.replace`` is the atomic overwrite primitive on both platforms.
-        os.replace(tmp, path)
+        # On Windows it is ``MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)`` and
+        # raises PermissionError while a reader holds the destination open
+        # (CPython opens without FILE_SHARE_DELETE), so retry a bounded number of
+        # times; POSIX ``rename()`` is immune.  The last attempt still raises, so
+        # the caller's handler still logs the loss.
+        for attempt in range(_REPLACE_ATTEMPTS):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == _REPLACE_ATTEMPTS - 1:
+                    raise
+                time.sleep(_REPLACE_RETRY_S)
     except OSError:
         with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
@@ -340,13 +369,14 @@ def _update_pipeline_entry(
     project_id: str,
     updates: dict[str, Any],
 ) -> None:
-    """Read-modify-write a single pipeline entry with advisory-lock protection."""
+    """Read-modify-write a single pipeline entry under the writer mutex."""
     try:
-        data = _read_active_pipelines()
-        entry = data.get(project_id, {})
-        entry.update(updates)
-        data[project_id] = entry
-        _write_active_pipelines(data)
+        with _tracker_file_lock:
+            data = _read_active_pipelines()
+            entry = data.get(project_id, {})
+            entry.update(updates)
+            data[project_id] = entry
+            _write_active_pipelines(data)
     except OSError:
         log.warning(
             "Failed to update active_pipelines.json",
@@ -360,26 +390,27 @@ def _mark_lost_entries() -> None:
     if not path.is_file():
         return
     try:
-        data = _read_active_pipelines()
-        now = datetime.now(UTC)
-        changed = False
-        for entry in data.values():
-            status = entry.get("status", "")
-            if status != "running":
-                continue
-            started_raw = entry.get("started_at")
-            if not started_raw:
-                continue
-            try:
-                started = datetime.fromisoformat(started_raw)
-            except (ValueError, TypeError):
-                continue
-            if now - started > timedelta(hours=24):
-                entry["status"] = "lost"
-                entry["ended_at"] = now.isoformat()
-                changed = True
-        if changed:
-            _write_active_pipelines(data)
+        with _tracker_file_lock:
+            data = _read_active_pipelines()
+            now = datetime.now(UTC)
+            changed = False
+            for entry in data.values():
+                status = entry.get("status", "")
+                if status != "running":
+                    continue
+                started_raw = entry.get("started_at")
+                if not started_raw:
+                    continue
+                try:
+                    started = datetime.fromisoformat(started_raw)
+                except (ValueError, TypeError):
+                    continue
+                if now - started > timedelta(hours=24):
+                    entry["status"] = "lost"
+                    entry["ended_at"] = now.isoformat()
+                    changed = True
+            if changed:
+                _write_active_pipelines(data)
     except OSError:
         log.warning("Failed to mark lost entries in active_pipelines.json")
 
