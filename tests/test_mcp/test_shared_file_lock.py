@@ -4,13 +4,17 @@ Covers health-assessment **P0-2**: ``_shared.py`` used to ``import fcntl`` at
 module scope, which made the entire MCP tool layer unimportable on Windows
 (``fcntl`` is POSIX-only) while ``pyproject.toml`` claimed ``OS Independent``.
 
-Two properties are locked here:
+Properties locked here:
 
 1. **Import-level**: the module must import successfully when ``fcntl`` is
    unavailable (``_fcntl is None``), instead of raising ``ImportError``.
 2. **Behavioural**: the Windows (no-op) branch still round-trips
    ``active_pipelines.json`` correctly — the no-op is semantically equivalent
    because the write path is an atomic ``os.replace(tmp, path)`` replacement.
+3. **Concurrency**: the tracker file is read-modify-written under a real
+   writer mutex with a per-writer temp name, so concurrent
+   ``_update_pipeline_entry`` calls neither clobber each other nor trip over
+   each other's temp file, and a hammering reader cannot break a writer.
 """
 
 from __future__ import annotations
@@ -20,6 +24,8 @@ import json
 import os
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -141,7 +147,10 @@ class TestActivePipelinesRoundTripOnNoOpBranch:
         _shared._write_active_pipelines({"proj123abc456": {"status": "completed"}})
 
         assert _shared._read_active_pipelines() == {"proj123abc456": {"status": "completed"}}
-        assert not active_pipelines_path.with_suffix(".tmp").exists(), "临时文件必须已被替换"
+        # Temp name is per-writer (``<name>.<pid>.<tid>.tmp``); glob catches any writer's leak.
+        assert not list(active_pipelines_path.parent.glob(f"{active_pipelines_path.name}.*.tmp")), (
+            "临时文件必须已被替换"
+        )
 
     def test_update_pipeline_entry_merges_under_noop_lock(
         self,
@@ -157,3 +166,107 @@ class TestActivePipelinesRoundTripOnNoOpBranch:
         entry = _shared._read_active_pipelines()["proj123abc456"]
         assert entry["status"] == "running"
         assert entry["topic"] == "后续主题"
+
+
+_WRITERS = 8
+_WRITES_PER_WRITER = 8
+_TERMINAL_TIMEOUT_S = 30.0
+
+
+class TestConcurrentWritersDoNotLoseEntries:
+    """Concurrent read-modify-write must not clobber a concurrent writer's entry.
+
+    ``run_pipeline`` admits ``_max_concurrent_pipelines`` daemon threads plus
+    the MCP request thread, and every one of them ends in
+    :func:`_update_pipeline_entry`. Without a writer mutex the read-modify-write
+    interleaves and whole entries vanish — the lost write that left the Windows
+    smoke job polling a ``running`` snapshot forever.
+    """
+
+    def test_all_concurrent_writers_survive(
+        self,
+        active_pipelines_path: Path,
+    ) -> None:
+        """Given N writers racing, When each updates its own id, Then no id is lost.
+
+        Exactly one write per writer: every writer reads the *same* empty file
+        from the barrier, so an unserialised read-modify-write leaves only the
+        last replacer's single entry on disk. Any repeated write would let an
+        entry re-acquire itself and mask the race.
+        """
+        barrier = threading.Barrier(_WRITERS)
+        errors: list[BaseException] = []
+
+        def _writer(index: int) -> None:
+            project_id = f"pid{index}"
+            try:
+                barrier.wait(timeout=_TERMINAL_TIMEOUT_S)
+                _shared._update_pipeline_entry(project_id, {"status": "running"})
+            except BaseException as exc:
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=_writer, args=(i,), daemon=True) for i in range(_WRITERS)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=_TERMINAL_TIMEOUT_S)
+
+        assert not [t.name for t in threads if t.is_alive()], "a writer thread hung"
+        assert errors == [], f"writer raised: {errors!r}"
+
+        data = _shared._read_active_pipelines()
+        missing = sorted({f"pid{i}" for i in range(_WRITERS)} - set(data))
+        assert not missing, f"lost writes: {len(missing)}/{_WRITERS} entries missing ({missing})"
+        assert active_pipelines_path.is_file()
+
+
+class TestConcurrentReaderDoesNotBreakWriter:
+    """A reader holding the destination open must not break a writer.
+
+    On Windows ``os.replace`` is ``MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)``
+    and CPython opens files without ``FILE_SHARE_DELETE``, so a concurrent
+    reader makes the replace fail with a sharing violation. POSIX ``rename()``
+    ignores open handles, so this assertion is trivially true on Linux — it is
+    the assertion the ``windows-latest`` job exists to hold.
+    """
+
+    def test_reader_hammering_never_loses_the_terminal_status(
+        self,
+        active_pipelines_path: Path,
+    ) -> None:
+        """Given a reader in a tight loop, When a writer finishes, Then the terminal status lands.
+
+        Mirrors ``TestRunPipelineParks``: the daemon thread writes progress
+        snapshots then a terminal status, while the poller re-reads the file
+        continuously. The reader must never observe a stale non-terminal entry
+        as the writer's *last word*.
+        """
+        project_id = "pid1e685822a69"
+        errors: list[BaseException] = []
+
+        def _writer() -> None:
+            try:
+                _shared._update_pipeline_entry(project_id, {"status": "running"})
+                for gate in range(_WRITES_PER_WRITER):
+                    _shared._update_pipeline_entry(project_id, {"current_gate": gate})
+                _shared._update_pipeline_entry(project_id, {"status": "awaiting_review"})
+            except BaseException as exc:
+                errors.append(exc)
+
+        thread = threading.Thread(target=_writer, daemon=True)
+        thread.start()
+
+        deadline = time.monotonic() + _TERMINAL_TIMEOUT_S
+        status = ""
+        while time.monotonic() < deadline:
+            entry = _shared._read_active_pipelines().get(project_id, {})
+            status = str(entry.get("status", ""))
+            if status == "awaiting_review":
+                break
+        thread.join(timeout=_TERMINAL_TIMEOUT_S)
+
+        assert not errors, f"writer raised: {errors!r}"
+        assert not thread.is_alive(), "writer thread hung"
+        assert status == "awaiting_review", f"terminal status never landed, last seen {status!r}"
