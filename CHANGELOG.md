@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.4...automedia-v1.8.5) (2026-10-05)
+
+
+### Bug Fixes
+
+* **config:** stop the stale pipeline.image.comfyui block masking engines ([#164](https://github.com/1StepMore/AutoMedia/issues/164)) ([#165](https://github.com/1StepMore/AutoMedia/issues/165)) ([2ba0254](https://github.com/1StepMore/AutoMedia/commit/2ba02549e2bfa038bb09c10a122e035cc43bb709))
+* **mcp:** make the os.replace retry deadline-bounded, not a fixed attempt count ([#179](https://github.com/1StepMore/AutoMedia/issues/179)) ([acabf86](https://github.com/1StepMore/AutoMedia/commit/acabf862a2b4a4f701b2be269e0f3e5a0abbdb3b))
+* **mcp:** stop losing active_pipelines entries to a writer race ([#173](https://github.com/1StepMore/AutoMedia/issues/173)) ([6c48355](https://github.com/1StepMore/AutoMedia/commit/6c483555e965f76878203467c10394bd4dc544d4))
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#171](https://github.com/1StepMore/AutoMedia/issues/171)) ([3539112](https://github.com/1StepMore/AutoMedia/commit/353911263a92226f8e72326edaca12f6ccd4b5cc))
+* **deps:** bump litellm from 1.91.1 to 1.91.5 ([#170](https://github.com/1StepMore/AutoMedia/issues/170)) ([0f0057d](https://github.com/1StepMore/AutoMedia/commit/0f0057d9b2b973065ae0fb745fefa53ffb1b3f46))
+* **deps:** bump pyjwt from 2.13.0 to 2.15.0 ([#167](https://github.com/1StepMore/AutoMedia/issues/167)) ([b906dea](https://github.com/1StepMore/AutoMedia/commit/b906dea934388f4fca37c0f962e4e11a8222f1eb))
+* **deps:** bump urllib3 from 2.7.0 to 2.8.0 ([#169](https://github.com/1StepMore/AutoMedia/issues/169)) ([18d17e6](https://github.com/1StepMore/AutoMedia/commit/18d17e698411f43039276b2f1fc4815d743a8992))
+* **deps:** bump virtualenv from 21.6.0 to 21.7.13 ([#168](https://github.com/1StepMore/AutoMedia/issues/168)) ([81d119d](https://github.com/1StepMore/AutoMedia/commit/81d119d7eef54e5b0b872d0ce96a590b18fe5d23))
+
 ## [1.8.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.3...automedia-v1.8.4) (2026-10-04)
 
 
