@@ -50,7 +50,7 @@ Documentation = "https://github.com/1StepMore/AutoMedia/tree/main/docs"
 [project.optional-dependencies]
 # Upper bound matches litellm's own constraint (openai>=2.20.0,<3.0.0): an
 # unbounded specifier let pip resolve openai 3.x, which litellm rejects.
-openai = ["openai>=2.45.0,<3"]
+openai = ["openai>=2.45.0,<4"]
 anthropic = ["anthropic>=0.116.0"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0,<2"]
