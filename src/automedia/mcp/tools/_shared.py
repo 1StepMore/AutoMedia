@@ -312,8 +312,14 @@ def _pipeline_result_to_dict(result: PipelineResult) -> dict[str, Any]:
 _tracker_file_lock = threading.Lock()
 
 # ``os.replace`` retry budget for the Windows sharing violation (see below).
-_REPLACE_ATTEMPTS = 5
-_REPLACE_RETRY_S = 0.02
+# Deadline-bounded, not a fixed attempt count: a reader that holds the
+# destination open for an unbounded stretch starves any fixed count, and losing
+# the write is the defect being fixed. The exponential backoff matters as much as
+# the budget -- a fixed retry interval can be sampled in lockstep against a
+# reader that opens and closes on a period, and never land in a gap.
+_REPLACE_RETRY_DEADLINE_S = 2.0
+_REPLACE_RETRY_MIN_S = 0.01
+_REPLACE_RETRY_MAX_S = 0.1
 
 
 def _read_active_pipelines() -> dict[str, dict[str, Any]]:
@@ -348,17 +354,20 @@ def _write_active_pipelines(data: dict[str, dict[str, Any]]) -> None:
         # ``os.replace`` is the atomic overwrite primitive on both platforms.
         # On Windows it is ``MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)`` and
         # raises PermissionError while a reader holds the destination open
-        # (CPython opens without FILE_SHARE_DELETE), so retry a bounded number of
-        # times; POSIX ``rename()`` is immune.  The last attempt still raises, so
-        # the caller's handler still logs the loss.
-        for attempt in range(_REPLACE_ATTEMPTS):
+        # (CPython opens without FILE_SHARE_DELETE), so retry until the deadline;
+        # POSIX ``rename()`` is immune. The final failure still raises, so the
+        # caller's handler still logs the loss.
+        replace_deadline = time.monotonic() + _REPLACE_RETRY_DEADLINE_S
+        replace_delay = _REPLACE_RETRY_MIN_S
+        while True:
             try:
                 os.replace(tmp, path)
                 break
             except PermissionError:
-                if attempt == _REPLACE_ATTEMPTS - 1:
+                if time.monotonic() >= replace_deadline:
                     raise
-                time.sleep(_REPLACE_RETRY_S)
+                time.sleep(replace_delay)
+                replace_delay = min(replace_delay * 2, _REPLACE_RETRY_MAX_S)
     except OSError:
         with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
