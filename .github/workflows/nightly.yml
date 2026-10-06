@@ -136,6 +136,38 @@ jobs:
   # record under validation-runs/ (scenarios.json + latest.txt) and uploads
   # it as a build artifact; the meta scenario's own validation-runs/ scratch
   # is still self-cleaned by its cleanup step.
+  # uv.lock is the reproducibility record for every install, yet until this job
+  # existed nothing verified it still matched pyproject.toml. A manifest bump
+  # that skipped the lockfile left the two disagreeing, and every `uv sync` in
+  # this file silently re-resolved instead of failing — so the drift was
+  # invisible. It surfaced only by accident (a Dependabot PR regenerated the
+  # lock and produced a 4382-line diff nobody had asked for).
+  #
+  # Non-blocking on purpose: this runs nightly, not per-PR, and a red PR gate
+  # over lock metadata would block every dependency bump. Run it here, where it
+  # reports without gating merges; promote it to a PR check once the lockfile
+  # has a byte-diff gate of its own.
+  lockfile-drift:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          # Same pin as every other job here (see the #91 note in full-test).
+          version: "0.12.15"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Assert uv.lock matches pyproject.toml
+        run: |
+          # Canonical index, and no user config: a runner whose uv config points
+          # at a regional mirror rewrites every URL in the lockfile, which reads
+          # as drift when the resolution is actually identical.
+          UV_NO_CONFIG=1 UV_INDEX_URL=https://pypi.org/simple \
+            uv lock --check
+
   validation-full-suite:
     runs-on: ubuntu-latest
     steps:
