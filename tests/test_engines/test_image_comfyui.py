@@ -779,9 +779,7 @@ class TestComfyUIImageEngineNativeUpscale:
         assert workflow[upscalers[0]]["inputs"]["upscale_model"] == [loaders[0], 0]
 
         scalers = [
-            node_id
-            for node_id, node in workflow.items()
-            if node.get("class_type") == "ImageScale"
+            node_id for node_id, node in workflow.items() if node.get("class_type") == "ImageScale"
         ]
         assert len(scalers) == 1
         scale_inputs = workflow[scalers[0]]["inputs"]
@@ -809,18 +807,14 @@ class TestComfyUIImageEngineNativeUpscale:
         assert latent["height"] % 8 == 0
 
         scalers = [
-            node_id
-            for node_id, node in workflow.items()
-            if node.get("class_type") == "ImageScale"
+            node_id for node_id, node in workflow.items() if node.get("class_type") == "ImageScale"
         ]
         assert len(scalers) == 1
         assert workflow[scalers[0]]["inputs"]["width"] == 1920
         assert workflow[scalers[0]]["inputs"]["height"] == 1080
 
     @patch("httpx.Client")
-    def test_base_size_config_takes_effect(
-        self, mock_client_cls: MagicMock, tmp_path: Any
-    ) -> None:
+    def test_base_size_config_takes_effect(self, mock_client_cls: MagicMock, tmp_path: Any) -> None:
         """base_size=256 → 1080x1080 request renders at 256x256."""
         engine = ComfyUIImageEngine(engine_config={"base_size": 256})
         workflow = _mock_generate_flow(mock_client_cls, tmp_path, engine, "p", 1080, 1080)
@@ -828,9 +822,7 @@ class TestComfyUIImageEngineNativeUpscale:
         assert (latent["width"], latent["height"]) == (256, 256)
         # Target dims still exact.
         scalers = [
-            node_id
-            for node_id, node in workflow.items()
-            if node.get("class_type") == "ImageScale"
+            node_id for node_id, node in workflow.items() if node.get("class_type") == "ImageScale"
         ]
         assert workflow[scalers[0]]["inputs"]["width"] == 1080
         assert workflow[scalers[0]]["inputs"]["height"] == 1080
@@ -869,8 +861,6 @@ class TestComfyUIImageEngineNativeUpscale:
         self, mock_client_cls: MagicMock, tmp_path: Any
     ) -> None:
         """workflow_path override still receives the raw requested dims."""
-        import json
-
         custom_workflow = (
             '{"5": {"class_type": "EmptyLatentImage", '
             '"inputs": {"width": __WIDTH__, "height": __HEIGHT__, "batch_size": 1}}}'
