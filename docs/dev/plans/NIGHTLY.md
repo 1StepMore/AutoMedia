@@ -120,3 +120,4 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 
 | 日期 | 目标条款 | 理由 + 证据 | 裁定 |
 |:---|:---|:---|:---|
+| 2026-10-06 | 视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 `scripts/nightly_gap.py:72` | 判据只看文件大小——`"video_ok": vid_max >= MIN_VIDEO_BYTES`，不读任何 gate 判定——因此一个 **V 门全部 skipped** 的项目，只要 `03_video/` 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 `20261003_turning-blog-posts-into-video-essays`，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。**诚实标注两点**：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故**这不是正在发生的误判**。(2) L1 总纲在仓库外（`Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md`），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。**真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」**，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。 | |

@@ -35,7 +35,7 @@
 | docs/dev/gate-failure-modes.md | 21860 | file |
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 6131 | file |
+| docs/dev/plans/NIGHTLY.md | 7464 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
