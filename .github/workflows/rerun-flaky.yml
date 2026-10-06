@@ -15,6 +15,13 @@ name: Re-run flaky checks
 #
 # So: re-run a cancelled pull-request check once. Only `cancelled` -- never
 # `failure`. A genuine failure is information and must stay red.
+#
+# Two situations are NOT flakes and must not consume a re-run:
+#   - the branch has moved on, so the run is stale (checked via the PR's head SHA)
+#   - an operator deliberately cancelled, signalled with the `no-rerun` label.
+#     A label rather than a heuristic, because intent is not inferrable: without
+#     it the one case this gets wrong is a release-please proposal branch, which
+#     is frozen for the life of the release and expensive to re-run.
 
 on:
   workflow_run:
@@ -64,16 +71,27 @@ jobs:
           if [ -z "$PR_NUMBER" ]; then
             echo "::notice::no PR number on this run; cannot check for supersession"
             echo "superseded=false" >> "$GITHUB_OUTPUT"
+            echo "opt_out=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          current="$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" \
-            --jq '.head.sha')"
-          if [ "$current" != "$HEAD_SHA" ]; then
+          pr="$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER")"
+          current="$(jq -r '.head.sha' <<<"$pr")"
+          # The workflow_run payload's pull_requests[] entry carries only
+          # {url,id,number,head,base} -- no labels -- so the opt-out has to be
+          # read from the API rather than from the event context.
+          opted_out="$(jq -r '[.labels[].name] | index("no-rerun") != null' <<<"$pr")"
+          if [ "$opted_out" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER carries the no-rerun label; operator opted out"
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+            echo "opt_out=true" >> "$GITHUB_OUTPUT"
+          elif [ "$current" != "$HEAD_SHA" ]; then
             echo "::notice::branch moved to $current; run $HEAD_SHA is superseded, not flaky"
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+            echo "opt_out=false" >> "$GITHUB_OUTPUT"
           else
             echo "PR #$PR_NUMBER still at $HEAD_SHA; treating cancellation as flaky"
             echo "superseded=false" >> "$GITHUB_OUTPUT"
+            echo "opt_out=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Re-run the cancelled run
@@ -82,6 +100,7 @@ jobs:
           && github.event.workflow_run.run_attempt == 1
           && github.event.workflow_run.event == 'pull_request'
           && steps.superseded.outputs.superseded == 'false'
+          && steps.superseded.outputs.opt_out == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
