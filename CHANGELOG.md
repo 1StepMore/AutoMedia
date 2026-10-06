@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.8](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.7...automedia-v1.8.8) (2026-10-06)
+
+
+### Dependencies
+
+* **deps:** bump multidict from 6.7.1 to 6.9.1 ([#189](https://github.com/1StepMore/AutoMedia/issues/189)) ([fc62f89](https://github.com/1StepMore/AutoMedia/commit/fc62f89d07fc885a6eed31287a93c5f95b66726d))
+
 ## [1.8.7](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.6...automedia-v1.8.7) (2026-10-05)
 
 
