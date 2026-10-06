@@ -1,0 +1,92 @@
+name: Re-run flaky checks
+
+# This repo's GitHub Actions runners cancel jobs non-deterministically. Observed
+# repeatedly on 2026-10-05: the same commit passed every check under one head SHA
+# and had a rotating, unrelated subset of jobs report `cancelled` under another --
+# never the same subset twice, and never with a failure message. `checkov`,
+# `guard`, `lint-typecheck`, `test (3.11)` and `validation-affected` each got
+# cancelled on one attempt and succeeded on the next with no code change.
+#
+# The cost is not the wasted runner-minutes. It is that a cancelled check is
+# indistinguishable from a real one at a glance, so "the gate is red" stops
+# meaning anything. That is the same erosion that let `release-scope` block 100%
+# of Dependabot PRs for a month without anyone noticing (#174): a CI signal that
+# is routinely wrong stops being read.
+#
+# So: re-run a cancelled pull-request check once. Only `cancelled` -- never
+# `failure`. A genuine failure is information and must stay red.
+
+on:
+  workflow_run:
+    workflows: ["CI", "Conventional Commits", "Release PR guard", "Labeler"]
+    types: [completed]
+
+permissions:
+  actions: write   # required to re-run a workflow
+  contents: read
+
+jobs:
+  rerun-cancelled:
+    runs-on: ubuntu-latest
+    # Only the trigger-side check needs to be fast; the re-run is fire-and-forget.
+    timeout-minutes: 5
+    steps:
+      # Loop guard. Re-running bumps `run_attempt`, which fires this workflow
+      # again; without the attempt check, one cancellation would re-trigger
+      # itself forever. Attempt 1 is the original run, so it is the only one
+      # eligible.
+      - name: Skip unless this was a first-attempt cancellation on a PR
+        if: >-
+          github.event.workflow_run.conclusion == 'cancelled'
+          && github.event.workflow_run.run_attempt == 1
+          && github.event.workflow_run.event == 'pull_request'
+        run: echo "eligible for re-run"
+
+      # A run cancelled because a newer push superseded it is not flaky -- it is
+      # stale, and re-running it burns minutes on code nobody will merge. The
+      # test is whether the branch has since moved: the PR's current head SHA is
+      # compared against this run's. (Comparing runs on the SAME SHA would not
+      # work -- a superseding push produces a NEW SHA, so a stale run has no
+      # sibling on its own SHA and would look like a lone flake.)
+      - name: Skip superseded runs
+        if: >-
+          github.event.workflow_run.conclusion == 'cancelled'
+          && github.event.workflow_run.run_attempt == 1
+          && github.event.workflow_run.event == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+          # No PR number (some events omit it) -> cannot prove staleness, so treat
+          # it as eligible rather than silently dropping the re-run.
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::notice::no PR number on this run; cannot check for supersession"
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          current="$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            --jq '.head.sha')"
+          if [ "$current" != "$HEAD_SHA" ]; then
+            echo "::notice::branch moved to $current; run $HEAD_SHA is superseded, not flaky"
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PR #$PR_NUMBER still at $HEAD_SHA; treating cancellation as flaky"
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Re-run the cancelled run
+        if: >-
+          github.event.workflow_run.conclusion == 'cancelled'
+          && github.event.workflow_run.run_attempt == 1
+          && github.event.workflow_run.event == 'pull_request'
+          && steps.superseded.outputs.superseded == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/${{ github.repository }}/actions/runs/$RUN_ID/rerun" \
+            -f enable_debug_logging=false
+          echo "re-queued run $RUN_ID"
