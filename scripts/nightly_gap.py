@@ -10,7 +10,9 @@ DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 �
 三轨判定（全部机械化，尽量少主观）：
   文本轨   01_content/drafts/ 里有 ≥1 个 ≥500B 的 md，且 cost_log.jsonl 非空
   图文轨   02_images/ 里有 ≥1 个 ≥1KB 的图片
-  视频轨   03_video/ 里有 ≥1 个 ≥10KB 的视频
+  视频轨   03_video/ 里有 ≥1 个 ≥10KB 的视频，且该项目有可解析 gate-report：
+          有诚实生产者的 V2/V5/V7 必须真跑且 pass；
+          V0/V1/V3/V4/V6 计为已登记能力债（#193），任何新增 skip 判红
 
 用法：python3 scripts/nightly_gap.py [--json-out F] [--md-out F]
 退出码：0 = 三轨全达标 / 1 = 仍有差距 / 2 = 用法或环境错误
@@ -30,6 +32,10 @@ PROJECT_RE = re.compile(r"^\d{8}_.+")
 MIN_DRAFT_BYTES = 500
 MIN_IMAGE_BYTES = 1024
 MIN_VIDEO_BYTES = 10 * 1024
+VIDEO_GATES_MUST_RUN = ("V2", "V5", "V7")                    # 有诚实生产者：必须真跑且 pass
+VIDEO_GATES_CAPABILITY_DEBT = ("V0", "V1", "V3", "V4", "V6")  # 无诚实生产者：允许 skip，但须登记
+VIDEO_GATE_DEBT_ISSUE = "#193"
+GATE_REPORT_GLOB = "05_review/gate-report/gate-report-*.json"
 IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 VID_EXT = {".mp4", ".mov", ".webm", ".mkv"}
 
@@ -43,9 +49,87 @@ def _biggest(files: list[Path], exts: set[str] | None = None) -> int:
     return max((f.stat().st_size for f in cand), default=0)
 
 
-def scan_projects() -> list[dict]:
+def _read_gate_report(path: Path) -> dict | None:
+    """解析单份 gate-report；失败返回 None（这一份跳过，不致命）。"""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def video_gate_evidence(project_dir: Path) -> dict:
+    """读该项目最新的 gate-report，给出视频轨 V 门证据（#181：只看文件大小会假绿）。
+
+    判据（owner 2026-10-07 裁定「带能力债的达标」）：
+      - 有诚实生产者的 V2/V5/V7 必须真跑且 pass；
+      - 无诚实生产者的 V0/V1/V3/V4/V6 允许 skip，但只允许这五门（能力债登记 #193）。
+    """
+    all_v = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
+    buckets: dict[str, list[str]] = {"passed": [], "skipped": [], "failed": [],
+                                     "errored": [], "other": []}
+    out: dict = {"ok": False, "reason": "", "report": "",
+                 "passed": [], "skipped": [], "failed": [], "errored": [],
+                 "other": [], "missing": [], "debt_skipped": []}
+
+    files = sorted(project_dir.glob(GATE_REPORT_GLOB))
+    if not files:
+        out["reason"] = "no gate-report"
+        return out
+
+    best: tuple[str, Path, dict] | None = None  # (generated_at, 路径, 解析结果)
+    for f in files:
+        data = _read_gate_report(f)
+        if data is None:
+            continue  # 某份 JSON 解析失败就跳过该份
+        ts = str(data.get("generated_at") or "")
+        if best is None or ts > best[0]:
+            best = (ts, f, data)
+    if best is None:
+        out["reason"] = "gate-report unreadable"
+        return out
+
+    out["report"] = best[1].relative_to(project_dir).as_posix()
+    seen: set[str] = set()
+    entries = best[2].get("gates")
+    for item in entries if isinstance(entries, list) else []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("gate") or "").strip()
+        status = str(item.get("status") or "").strip()
+        if name not in all_v or name in seen:
+            continue
+        seen.add(name)
+        buckets[status if status in buckets else "other"].append(name)
+    for key, val in buckets.items():
+        buckets[key] = sorted(set(val))
+    out.update(buckets)
+    out["missing"] = sorted(set(all_v) - seen)
+    out["debt_skipped"] = sorted(set(buckets["skipped"]) & set(VIDEO_GATES_CAPABILITY_DEBT))
+
+    # ok 当且仅当五条全满足；reason 取第一条不满足的
+    if out["missing"]:
+        out["reason"] = "gates missing from report: " + ",".join(out["missing"])
+    elif buckets["failed"] or buckets["errored"] or buckets["other"]:
+        first = sorted(set(buckets["failed"]) | set(buckets["errored"])
+                       | set(buckets["other"]))[0]
+        out["reason"] = f"gate failed: {first}"
+    elif not set(VIDEO_GATES_MUST_RUN) <= set(buckets["passed"]):
+        first = sorted(set(VIDEO_GATES_MUST_RUN) - set(buckets["passed"]))[0]
+        out["reason"] = f"must-run gate not passed: {first}"
+    elif not set(buckets["skipped"]) <= set(VIDEO_GATES_CAPABILITY_DEBT):
+        first = sorted(set(buckets["skipped"]) - set(VIDEO_GATES_CAPABILITY_DEBT))[0]
+        out["reason"] = f"unregistered skip: {first}"
+    else:
+        out["ok"] = True
+        out["reason"] = ""
+    return out
+
+
+def scan_projects(root: Path | None = None) -> list[dict]:
+    root = root or REPO
     out: list[dict] = []
-    for d in sorted(REPO.iterdir()):
+    for d in sorted(root.iterdir()):
         if not d.is_dir() or not PROJECT_RE.match(d.name):
             continue
         drafts = _files(d / "01_content" / "drafts")
@@ -59,6 +143,7 @@ def scan_projects() -> list[dict]:
         draft_max = _biggest(drafts, {".md"})
         img_max = _biggest(images, IMG_EXT)
         vid_max = _biggest(videos, VID_EXT)
+        ev = video_gate_evidence(d)
         out.append({
             "project": d.name,
             "cost_log_lines": cost_lines,
@@ -69,7 +154,8 @@ def scan_projects() -> list[dict]:
             "has_pipeline_md5": (d / "pipeline_md5.json").is_file(),
             "text_ok": cost_lines > 0 and draft_max >= MIN_DRAFT_BYTES,
             "image_ok": img_max >= MIN_IMAGE_BYTES,
-            "video_ok": vid_max >= MIN_VIDEO_BYTES,
+            "video_ok": vid_max >= MIN_VIDEO_BYTES and ev["ok"],
+            "video_gates": ev,
         })
     return out
 
@@ -111,6 +197,22 @@ def validate_summary(python: str) -> dict:
     }
 
 
+def _video_track_note(projects: list[dict], track: dict) -> str:
+    """视频轨那一行下面的附注：达标 → 登记的能力债；未达标 → 前 5 个判红原因。"""
+    if track["ok"]:
+        return (f"  - 能力债（登记，不计入达标）："
+                f"{'/'.join(VIDEO_GATES_CAPABILITY_DEBT)}（无诚实生产者，{VIDEO_GATE_DEBT_ISSUE}）")
+    bad = []
+    for p in projects:
+        if p["video_ok"]:
+            continue
+        why = p["video_gates"]["reason"] or f"视频文件 <{MIN_VIDEO_BYTES}B"
+        bad.append(f"{p['project']}: {why}")
+        if len(bad) == 5:
+            break
+    return "  - 判红原因（前 5 个）：" + ("；".join(bad) if bad else "无项目")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
@@ -141,6 +243,13 @@ def main(argv: list[str] | None = None) -> int:
         "tracks": tracks,
         "projects": projects,
         "validate": vs,
+        "capability_debt": {"视频轨": {
+            "registered_gates": list(VIDEO_GATES_CAPABILITY_DEBT),
+            "skipped_in_evidence": sorted({g for p in projects if p["video_ok"]
+                                           for g in p["video_gates"]["debt_skipped"]}),
+            "reason": "五门无诚实生产者（见 .trae/documents/video-track-remediation-plan.md §一）",
+            "tracked_by": VIDEO_GATE_DEBT_ISSUE,
+        }},
     }
     if gap:
         result["exit_reason"] = f"{len(gap)} / 3 条轨未达标"
@@ -159,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
         mark = "✅" if v["ok"] else "❌"
         ev = "、".join(v["evidence"]) if v["evidence"] else "无"
         md.append(f"- {mark} **{name}**：{v['count']} 个达标；证据：{ev}")
+        if name == "视频轨":
+            md.append(_video_track_note(projects, v))
     if vs and "error" not in vs:
         md += ["", "## 验证矩阵（自动生成，复用 automedia 自带）",
                f"- 场景 {vs['scenarios_total']} 条：{vs['scenario_status']}",
