@@ -1889,7 +1889,7 @@
 <tr>
 <td style="text-align: left;"><strong>视频轨</strong></td>
 <td style="text-align: left;"><code>video_only</code> / <code>short-video</code></td>
-<td style="text-align: left;">同上 <strong>+</strong> <code>03_video/</code> 有 ≥1 个 <strong>≥10KB</strong> 的真视频</td>
+<td style="text-align: left;">同上 <strong>+</strong> <code>03_video/</code> 有 ≥1 个 <strong>≥10KB</strong> 的真视频 <strong>+</strong> 该项目存在 gate-report 且 <code>failed=0 / errored=0</code> <strong>+</strong> 有诚实生产者的门（<strong>V2/V5/V7</strong>）必须真跑且 <code>pass</code> <strong>+</strong> 所有 <code>skipped</code> 必须落在已登记能力债集合（<strong>V0/V1/V3/V4/V6</strong>，登记见 #193）内 → 任何<strong>新增 skip</strong>（不在这五门内）＝退步，判 ❌</td>
 </tr>
 </tbody>
 </table>
@@ -1899,6 +1899,10 @@
 <li><strong>HITL 不许阻塞</strong>：非交互运行必须返回 <code>awaiting_hitl</code> + 专用退出码，<strong>不许无限等待人工</strong>。理由：不眠计划跑在没人看着的夜里，阻塞 = 当晚白跑。</li>
 </ol>
 <p><strong>⚠️ 抗作弊</strong>：<code>cost_log.jsonl</code> 非空是「真模型」的唯一机械凭据——<strong>没有它就不算真跑</strong>，无论正文写得多好。理由：假产出是本计划要修的痼疾（AutoInfo 曾在零语料域照样落盘 101–113 字节空壳并计入"已产出"）。</p>
+<blockquote>
+<p><strong>视频轨口径（2026-10-07 owner 裁定，采纳「带能力债的达标」）</strong>：见 issue #181（分歧）与 #193（能力债登记）。
+核心：判据必须能区分「门跑了并 pass」与「门被 skip」——只看文件大小的判据会造成假绿；同时不得为「让门不 skip」而造数据，故五门以登记能力债的形式明面挂着。</p>
+</blockquote>
 <h3 id="_1">「完成」的裁决是人工保留行<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
 <p><code>nightly_gap.py</code> 退出 0 <strong>只代表「机器可判的差距归零」，不等于项目完成</strong>。</p>
 <p>本仓已有同源机制：<code>automedia validate sign</code> —— <strong>"Record the director's sign-off on a run"</strong>，
@@ -2035,8 +2039,8 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <tr>
 <td style="text-align: left;">2026-10-06</td>
 <td style="text-align: left;">视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 <code>scripts/nightly_gap.py:72</code></td>
-<td style="text-align: left;">判据只看文件大小——<code>"video_ok": vid_max &gt;= MIN_VIDEO_BYTES</code>，不读任何 gate 判定——因此一个 <strong>V 门全部 skipped</strong> 的项目，只要 <code>03_video/</code> 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 <code>20261003_turning-blog-posts-into-video-essays</code>，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。<strong>诚实标注两点</strong>：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故<strong>这不是正在发生的误判</strong>。(2) L1 总纲在仓库外（<code>Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md</code>），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。<strong>真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」</strong>，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。</td>
-<td style="text-align: left;"></td>
+<td style="text-align: left;">判据只看文件大小——<code>"video_ok": vid_max &gt;= MIN_VIDEO_BYTES</code>，不读任何 gate 判定——因此一个 <strong>V 门全部 skipped</strong> 的项目，只要 <code>03_video/</code> 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 <code>20261003_turning-blog-posts-into-video-essays</code>，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。<strong>诚实标注两点</strong>：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故<strong>这不是正在发生的误判</strong>。(2) L1 总纲在仓库外（<code>Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md</code>），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。<strong>真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」</strong>，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。<strong>（2026-10-07 更正两处：(1) 该证据项目目录</strong>存在<strong>且已复核——<code>03_video/output.mp4</code> = 5,117,183 B、gate-report 为 V2/V5/V7 <code>pass</code> / V0/V1/V3/V4/V6 <code>skip</code>，「目录现已不存在」一句有误；(2) L1 §2.2 原文已在仓库外文件读取并同步修订。）</strong></td>
+<td style="text-align: left;"><strong>已裁定（owner 2026-10-07）：采纳「带能力债的达标」</strong>——冻结区判据已改为「文件 + gate 证据（V2/V5/V7 必须 pass；V0/V1/V3/V4/V6 计为登记能力债，登记见 #193）」；实现见本仓 <code>scripts/nightly_gap.py</code>（分支 <code>fix/181-video-gate-evidence</code>）</td>
 </tr>
 </tbody>
 </table>
