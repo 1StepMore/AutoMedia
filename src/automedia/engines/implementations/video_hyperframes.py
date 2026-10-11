@@ -113,8 +113,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                     return ["node", cli_path_str]
                 return [cli_path_str]
             logger.warning(
-                "Configured hyperframes cli_path does not exist: %s; "
-                "falling back to PATH lookup.",
+                "Configured hyperframes cli_path does not exist: %s; falling back to PATH lookup.",
                 cli_path_str,
             )
 
