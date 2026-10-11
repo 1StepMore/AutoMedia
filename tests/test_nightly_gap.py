@@ -60,10 +60,30 @@ def _project(
     name: str = "20260101_demo-topic",
     video_bytes: int = 10 * 1024,
     reports: list[tuple[str, dict]] | None = None,
+    draft_bytes: int = 800,
+    cost_lines: int = 1,
+    image_bytes: int = 0,
 ) -> Path:
-    """Build one synthetic project; ``reports`` is a list of (timestamp, doc)."""
+    """Build one synthetic project; ``reports`` is a list of (timestamp, doc).
+
+    ``draft_bytes`` / ``cost_lines`` default to a project that HAS text-track
+    evidence, which is what a real run leaves behind. Pass 0 to model a stage
+    directory that skipped the text track (issue #195).
+    """
     proj = root / name
     proj.mkdir(parents=True, exist_ok=True)
+    if draft_bytes:
+        d_dir = proj / "01_content" / "drafts"
+        d_dir.mkdir(parents=True, exist_ok=True)
+        (d_dir / "draft.md").write_bytes(b"0" * draft_bytes)
+    if cost_lines:
+        (proj / "cost_log.jsonl").write_text(
+            "".join(f'{{"call": {i}}}\n' for i in range(cost_lines)), encoding="utf-8"
+        )
+    if image_bytes:
+        i_dir = proj / "02_images"
+        i_dir.mkdir(parents=True, exist_ok=True)
+        (i_dir / "cover.png").write_bytes(b"0" * image_bytes)
     if video_bytes:
         video_dir = proj / "03_video"
         video_dir.mkdir(parents=True, exist_ok=True)
@@ -101,7 +121,57 @@ def test_video_ok_with_debt_skips(tmp_path: Path) -> None:
     assert gates["report"] == ("05_review/gate-report/gate-report-2026-01-01T00:00:00+0000.json")
 
 
-# ── 判红 ─────────────────────────────────────────────────────────────────────
+# ── 「同上」继承：图文/视频轨共用文本轨证据子句（issue #195）────────────────
+
+
+def test_image_ok_with_full_evidence(tmp_path: Path) -> None:
+    _project(tmp_path, image_bytes=2 * 1024)
+    p = _one(tmp_path)
+    assert p["text_evidence_ok"] is True
+    assert p["image_ok"] is True
+
+
+def test_image_red_when_cost_log_empty(tmp_path: Path) -> None:
+    """一张图 + 零真模型记录曾被判达标——正是 #195 记的假绿口子。"""
+    _project(tmp_path, image_bytes=2 * 1024, cost_lines=0)
+    p = _one(tmp_path)
+    assert p["text_evidence_ok"] is False
+    assert p["image_max_bytes"] == 2 * 1024
+    assert p["image_ok"] is False
+
+
+def test_image_red_when_draft_too_small(tmp_path: Path) -> None:
+    _project(tmp_path, image_bytes=2 * 1024, draft_bytes=100)
+    p = _one(tmp_path)
+    assert p["text_evidence_ok"] is False
+    assert p["image_ok"] is False
+
+
+def test_video_red_when_cost_log_empty(tmp_path: Path) -> None:
+    """video_gates ok 而 video_ok 假，说明拦下它的是文本证据子句而非门证据。"""
+    _project(
+        tmp_path,
+        cost_lines=0,
+        reports=[("2026-01-01T00:00:00+0000", _report(list(MUST_RUN), []))],
+    )
+    p = _one(tmp_path)
+    assert p["video_gates"]["ok"] is True
+    assert p["text_evidence_ok"] is False
+    assert p["video_ok"] is False
+
+
+def test_image_red_when_no_image(tmp_path: Path) -> None:
+    _project(tmp_path, image_bytes=0)
+    p = _one(tmp_path)
+    assert p["text_evidence_ok"] is True
+    assert p["image_ok"] is False
+
+
+def test_image_ok_implies_text_ok(tmp_path: Path) -> None:
+    _project(tmp_path, image_bytes=2 * 1024)
+    p = _one(tmp_path)
+    assert p["image_ok"] is True
+    assert p["text_ok"] is True
 
 
 def test_video_red_when_all_gates_skipped(tmp_path: Path) -> None:

@@ -16,8 +16,10 @@
 | 轨 | 覆盖模式 | 达标判据（机械化） |
 |:---|:---|:---|
 | **文本轨** | `text_only`（+ `text_with_cover`） | `01_content/drafts/` 有 ≥1 个 **≥500B** 的 md，且 `cost_log.jsonl` **非空**（真模型调用记录） |
-| **图文轨** | `image-carousel`（+ `social-thread`） | 同上 **+** `02_images/` 有 ≥1 个 **≥1KB** 的真图片 |
-| **视频轨** | `video_only` / `short-video` | 同上 **+** `03_video/` 有 ≥1 个 **≥10KB** 的真视频 **+** 该项目存在 gate-report 且 `failed=0 / errored=0` **+** 有诚实生产者的门（**V2/V5/V7**）必须真跑且 `pass` **+** 所有 `skipped` 必须落在已登记能力债集合（**V0/V1/V3/V4/V6**，登记见 #193）内 → 任何**新增 skip**（不在这五门内）＝退步，判 ❌ |
+| **图文轨** | `image-carousel`（+ `social-thread`） | `01_content/drafts/` 有 ≥1 个 **≥500B** 的 md **且** `cost_log.jsonl` **非空**（继承文本轨两条）**+** `02_images/` 有 ≥1 个 **≥1KB** 的真图片 |
+| **视频轨** | `video_only` / `short-video` | `01_content/drafts/` 有 ≥1 个 **≥500B** 的 md **且** `cost_log.jsonl` **非空**（继承文本轨两条）**+** `03_video/` 有 ≥1 个 **≥10KB** 的真视频 **+** 该项目存在 gate-report 且 `failed=0 / errored=0` **+** 有诚实生产者的门（**V2/V5/V7**）必须真跑且 `pass` **+** 所有 `skipped` 必须落在已登记能力债集合（**V0/V1/V3/V4/V6**，登记见 #193）内 → 任何**新增 skip**（不在这五门内）＝退步，判 ❌ |
+
+> **为何把「同上」逐字展开**（2026-10-12，issue #195 的根因）：判据表用「同上 +」表达继承，实现却从未继承——`image_ok` / `video_ok` 各自只判自己的产物大小，`cost_log.jsonl` 非空与 md ≥500B 这两条**两轨都没有**。于是「没有真模型记录、只有一张图」的阶段目录会被判「图文轨达标」，与 §抗作弊 那条「没有它就不算真跑」直接冲突。**「同上」是文档承诺，不是实现约束**，所以此处逐字展开；实现侧另由 `scripts/nightly_gap.py::_text_evidence_ok()` 单点收敛，两轨不可能再各漏一半。
 
 **两条附加硬要求**（都是踩出来的，不是猜的）：
 

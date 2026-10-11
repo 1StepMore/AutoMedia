@@ -8,9 +8,10 @@ DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 �
 且产物落在**持久目录**（repo 内，非 /tmp）。
 
 三轨判定（全部机械化，尽量少主观）：
-  文本轨   01_content/drafts/ 里有 ≥1 个 ≥500B 的 md，且 cost_log.jsonl 非空
-  图文轨   02_images/ 里有 ≥1 个 ≥1KB 的图片
-  视频轨   03_video/ 里有 ≥1 个 ≥10KB 的视频，且该项目有可解析 gate-report：
+  文本轨   cost_log.jsonl 非空，且 01_content/drafts/ 里有 ≥1 个 ≥500B 的 md
+  图文轨   文本轨两条（同上）+ 02_images/ 里有 ≥1 个 ≥1KB 的图片
+  视频轨   文本轨两条（同上）+ 03_video/ 里有 ≥1 个 ≥10KB 的视频，
+          且该项目有可解析 gate-report：
           有诚实生产者的 V2/V5/V7 必须真跑且 pass；
           V0/V1/V3/V4/V6 计为已登记能力债（#193），任何新增 skip 判红
 
@@ -140,6 +141,17 @@ def video_gate_evidence(project_dir: Path) -> dict:
     return out
 
 
+def _text_evidence_ok(cost_lines: int, draft_max: int) -> bool:
+    """文本轨证据子句——DoD 里「同上」二字所指的正是它（issue #195）。
+
+    图文轨/视频轨在 DoD 表里以「同上 **+**」开头，故完整继承本子句两条条件：
+    `cost_log.jsonl` 非空（真模型调用记录）且 有 ≥500B 的 md 正文。收敛到唯一
+    出口是为了让「继承」成为结构事实：此前 `image_ok` / `video_ok` 各判各的产物
+    大小，静默漏掉这两条，一个无真模型记录、只有一张图的阶段目录会被判达标。
+    """
+    return cost_lines > 0 and draft_max >= MIN_DRAFT_BYTES
+
+
 def scan_projects(root: Path | None = None) -> list[dict]:
     root = root or REPO
     out: list[dict] = []
@@ -157,6 +169,8 @@ def scan_projects(root: Path | None = None) -> list[dict]:
         img_max = _biggest(images, IMG_EXT)
         vid_max = _biggest(videos, VID_EXT)
         ev = video_gate_evidence(d)
+        # DoD 表里图文轨/视频轨均以「同上 +」开头，故继承文本轨这两条（#195）。
+        text_evidence = _text_evidence_ok(cost_lines, draft_max)
         out.append(
             {
                 "project": d.name,
@@ -166,9 +180,10 @@ def scan_projects(root: Path | None = None) -> list[dict]:
                 "image_max_bytes": img_max,
                 "video_max_bytes": vid_max,
                 "has_pipeline_md5": (d / "pipeline_md5.json").is_file(),
-                "text_ok": cost_lines > 0 and draft_max >= MIN_DRAFT_BYTES,
-                "image_ok": img_max >= MIN_IMAGE_BYTES,
-                "video_ok": vid_max >= MIN_VIDEO_BYTES and ev["ok"],
+                "text_ok": text_evidence,
+                "image_ok": text_evidence and img_max >= MIN_IMAGE_BYTES,
+                "video_ok": text_evidence and vid_max >= MIN_VIDEO_BYTES and ev["ok"],
+                "text_evidence_ok": text_evidence,
                 "video_gates": ev,
             }
         )
