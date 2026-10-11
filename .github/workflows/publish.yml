@@ -20,13 +20,16 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  push:
-    tags: ["v*", "automedia-v*"]
   workflow_dispatch:
 
-# A release-please release fires both `release: published` and the tag push, so
-# without this the artifacts upload twice and the second run fails with
-# `400 File already exists` — a red check on a release that succeeded.
+# Publishing is driven ONLY by `release: published`, never by a bare tag push
+# (removed 2026-10-12). A tag is not evidence that a release was intended:
+# `automedia-v1.6.0` was tagged locally but never got a GitHub Release — the only
+# tag in the sequence without one — so `release: published` correctly never fired
+# and 1.6.0 silently never shipped. Pushing that leftover tag later hit the old
+# `tags: ["v*", "automedia-v*"]` trigger and published 1.6.0 to PyPI from nowhere.
+# Release-object presence is the discriminating signal; do NOT restore the tag
+# trigger to "fix" the apparently-missing trigger.
 concurrency:
   group: publish-pypi-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: true
@@ -78,9 +81,7 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # The concurrency group above covers the two events landing together;
-          # skip-existing covers them landing apart -- a manual tag push, or a
-          # partial recovery after the tagging step failed. Without it the second
-          # upload dies on "400 File already exists" and paints a red check on a
-          # release that actually shipped.
+          # Recovery net only, since the tag trigger is gone: a re-run after a
+          # partial publish would otherwise die on "400 File already exists" and
+          # paint a red check on a release that already shipped.
           skip-existing: true
