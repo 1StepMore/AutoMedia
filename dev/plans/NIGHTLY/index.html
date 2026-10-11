@@ -1884,15 +1884,18 @@
 <tr>
 <td style="text-align: left;"><strong>图文轨</strong></td>
 <td style="text-align: left;"><code>image-carousel</code>（+ <code>social-thread</code>）</td>
-<td style="text-align: left;">同上 <strong>+</strong> <code>02_images/</code> 有 ≥1 个 <strong>≥1KB</strong> 的真图片</td>
+<td style="text-align: left;"><code>01_content/drafts/</code> 有 ≥1 个 <strong>≥500B</strong> 的 md <strong>且</strong> <code>cost_log.jsonl</code> <strong>非空</strong>（继承文本轨两条）<strong>+</strong> <code>02_images/</code> 有 ≥1 个 <strong>≥1KB</strong> 的真图片</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>视频轨</strong></td>
 <td style="text-align: left;"><code>video_only</code> / <code>short-video</code></td>
-<td style="text-align: left;">同上 <strong>+</strong> <code>03_video/</code> 有 ≥1 个 <strong>≥10KB</strong> 的真视频 <strong>+</strong> 该项目存在 gate-report 且 <code>failed=0 / errored=0</code> <strong>+</strong> 有诚实生产者的门（<strong>V2/V5/V7</strong>）必须真跑且 <code>pass</code> <strong>+</strong> 所有 <code>skipped</code> 必须落在已登记能力债集合（<strong>V0/V1/V3/V4/V6</strong>，登记见 #193）内 → 任何<strong>新增 skip</strong>（不在这五门内）＝退步，判 ❌</td>
+<td style="text-align: left;"><code>01_content/drafts/</code> 有 ≥1 个 <strong>≥500B</strong> 的 md <strong>且</strong> <code>cost_log.jsonl</code> <strong>非空</strong>（继承文本轨两条）<strong>+</strong> <code>03_video/</code> 有 ≥1 个 <strong>≥10KB</strong> 的真视频 <strong>+</strong> 该项目存在 gate-report 且 <code>failed=0 / errored=0</code> <strong>+</strong> 有诚实生产者的门（<strong>V2/V5/V7</strong>）必须真跑且 <code>pass</code> <strong>+</strong> 所有 <code>skipped</code> 必须落在已登记能力债集合（<strong>V0/V1/V3/V4/V6</strong>，登记见 #193）内 → 任何<strong>新增 skip</strong>（不在这五门内）＝退步，判 ❌</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>为何把「同上」逐字展开</strong>（2026-10-12，issue #195 的根因）：判据表用「同上 +」表达继承，实现却从未继承——<code>image_ok</code> / <code>video_ok</code> 各自只判自己的产物大小，<code>cost_log.jsonl</code> 非空与 md ≥500B 这两条<strong>两轨都没有</strong>。于是「没有真模型记录、只有一张图」的阶段目录会被判「图文轨达标」，与 §抗作弊 那条「没有它就不算真跑」直接冲突。<strong>「同上」是文档承诺，不是实现约束</strong>，所以此处逐字展开；实现侧另由 <code>scripts/nightly_gap.py::_text_evidence_ok()</code> 单点收敛，两轨不可能再各漏一半。</p>
+</blockquote>
 <p><strong>两条附加硬要求</strong>（都是踩出来的，不是猜的）：</p>
 <ol>
 <li><strong>产物必须落在持久目录</strong>（repo 内的项目目录），<strong>不许落在 <code>/tmp</code></strong>。理由：唯一一次真跑（journey）产物就落在 <code>/tmp/automedia/journey-projects/</code>，重启即失——那不是产出，是临时文件。</li>
