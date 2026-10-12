@@ -94,6 +94,12 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 **读法**：文本轨是真的，图文/视频轨是空的。`unconfigured 31` 主要是缺 LLM 密钥的真模型场景——
 按 owner 决定（缺密钥先不配），这批**不计入本轮 DoD**，只记账。
 
+### 2026-10-13 夜间复跑（在 main 481ad18 上）
+
+- 批跑基线是 `e310ebb`（旧判据）→ 报「三轨全达标」；同步到 `481ad18` 后重跑 `scripts/nightly_gap.py` → **exit 1**、`gap = ["视频轨"]`、视频轨 `count=0`（`tracks.视频轨.ok=false`、`evidence=[]`）；图文轨证据数同时由 2 降到 1。
+- 差异来源：#195/PR#196 的「继承文本证据子句」未进入批跑工作树 ⇒ 缺陷已立案 e2e-test-suite#166（修复在途）。
+- ⚠️ **口径提醒：该晚的「三轨全达标记」不可引用**；本小节为重跑后的真实结论。
+
 ---
 
 ## 【活区】下一步队列
@@ -104,8 +110,11 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 2. **打穿视频轨**：`video_only`/`short-video` 走一次真跑，让 `03_video/` 出真视频，**并让 V 门（V0–V7）真执行给出结论**（当前 V0/V1/V3/V4/V6 显式 `skipped`）。
 3. **持久落盘体检**：确认跑出来的项目落在 repo 内的项目目录，**不是 `/tmp`**。
 4. **HITL 不阻塞**：验证非交互运行返回 `awaiting_hitl` + 专用退出码。
+5. **（当前唯一未达标轨）打穿视频轨（复跑口径）**：视频轨需要**一次带真模型 cost_log 的 `video_only`（或 `short-video`）端到端跑**，达标需同时满足：`cost_log.jsonl` 非空 + `01_content/drafts/` 有 ≥500B 的 md + `03_video/` 有 ≥10KB 视频 + 该项目 gate-report `failed=0/errored=0` + V2/V5/V7 真跑且 pass（V0/V1/V3/V4/V6 允许 skip 但属已登记能力债 #193）。现有唯一候选 `20261003_turning-blog-posts-into-video-essays` 因缺 `cost_log`/draft 不达标。
 
 ### 已完成（agent 追加）
+
+- 2026-10-13：复跑口径更正 —— 视频轨当前为 ❌（见上「2026-10-13 夜间复跑」小节）。
 
 ---
 
@@ -116,6 +125,8 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 | 日期 | 发现 | 是否挡住 DoD | 处置 |
 |:---|:---|:---|:---|
 | 2026-09-30 | 门 `L1–L4` missing、`G4/G5` unreachable（已提 issue #130/#131） | 否 | 记账 |
+| 2026-10-13 | 夜跑跑批不同步 main ⇒ 本仓矩阵测于过期判据（当晚「三轨全达标」系假绿） | 是（判据静默失效） | 已立案 e2e-test-suite#166（修复在途）；本仓不改跑批脚本 |
+| 2026-10-13 | 本仓同时存在两份冻结区文档：docs/NIGHTLY.md 与 docs/NIGHTLY.html 未入库，与已入库的 docs/dev/plans/NIGHTLY.md 内容分歧 | 否（但会误导读文档的人） | 已立案本仓 #199，等 owner 裁定；本轮不动 |
 
 ---
 
