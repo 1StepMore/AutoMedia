@@ -107,3 +107,7 @@ validation-runs/
 
 # 不眠计划运行期产物（差距矩阵/断言证据），不入库
 nightly/
+
+# 文档的渲染副本（.md 是源，.html 由渲染器生成）—— 其它仓同样只跟踪 .md
+/docs/*.html
+/docs/**/*.html
