@@ -1992,7 +1992,7 @@
 <h3 id="p0-runner-gate-dagtask-organization">P0：把 runner 的"线性 Gate 列表"升级为"显式 DAG"（Task Organization 落地）<a class="headerlink" href="#p0-runner-gate-dagtask-organization" title="Permanent link">&para;</a></h3>
 <p><strong>现状</strong>：<code>runner.py</code> 用 <code>_AUTO_GATE_NAMES: list[str]</code>（线性顺序，22 项）。<strong>这是"链表"，不是"图"</strong>。全 Auto 模式虽然两 Track 概念上并行，但代码层面 Gate 是纯顺序执行。</p>
 <p><strong>改动</strong>（改 <code>pipelines/runner.py</code> + <code>pipelines/gate_engine.py</code>）：
-1. 把 Gate 列表从"list"改为<strong>"DAG 结构"</strong>（<code>dataclass</code>，不引外部库）：
+1. 把 Gate 列表从"list"改为**"DAG 结构"<strong>（<code>dataclass</code>，不引外部库）：
    <div class="highlight"><pre><span></span><code><span class="c1"># pipelines/dag.py (新增，或直接放 runner)</span>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">GateNode</span><span class="p">:</span>
@@ -2002,7 +2002,7 @@
     <span class="n">failure_mode</span><span class="p">:</span> <span class="nb">str</span>     <span class="c1"># existing: STOP / continue</span>
     <span class="n">async_parallel</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># 是否可与其它 track 并行</span>
 </code></pre></div>
-2. <code>_AUTO_GATE_NAMES</code> → 重构为 <code>AUTO_GATE_DAG</code>：表达<strong>文案分支（CW→G0-G6）与视频分支（V0-V7）是并行根</strong>，生命周期 L1-L4 是汇合点。<code>gate_engine</code> 按 DAG 拓扑遍历（也可先保持顺序执行，但<strong>结构上显式表达并行分支</strong>）。
+2. <code>_AUTO_GATE_NAMES</code> → 重构为 <code>AUTO_GATE_DAG</code>：表达</strong>文案分支（CW→G0-G6）与视频分支（V0-V7）是并行根**，生命周期 L1-L4 是汇合点。<code>gate_engine</code> 按 DAG 拓扑遍历（也可先保持顺序执行，但<strong>结构上显式表达并行分支</strong>）。
 3. <strong>导出可视化</strong>：加 <code>runner.py --export-dag</code> → 输出 <code>pipeline_graph.md/.dot</code>（含每次 production 实际走的 Gate 路径）。<strong>这是对外讲"壹目贯维=多 Track 并行、22 Gate 质量门控系统"的图</strong>（product 卖点直接受益）。</p>
 <p><strong>改动文件</strong>：<code>pipelines/runner.py</code>（Gate 列表→DAG）、<code>pipelines/dag.py</code>（新）、<code>pipelines/gate_engine.py</code>（拓扑遍历）
 <strong>验收</strong>：<code>--export-dag</code> 产出可读 DAG，copy/video 分支明确标并行；跑通 <code>scenarios/journeys/*.yaml</code> 全部回归（QA 不降级）。</p>
@@ -2063,7 +2063,7 @@
 </ol>
 <hr />
 <p><em>本方案所有文件路径均已实测核对 <code>renanzai40/AutoMedia_BackUp@main</code>（commit <code>e584b39</code>）。实施前对照 <code>automedia-production-guard</code> skill（content profile 工作流约定）与 <code>src/automedia/</code> 代码。</em>
-<em>修正记录（2026-08-30）：Gate 数统一为实测 </em><em>22 个</em><em>（<code>_AUTO_GATE_NAMES</code> 22 项，backup/main 实测）；标注 backup/main 现 commit <code>e584b39</code>。P1 重新定界：</em><em>Gate 粒度续跑已实现</em><em>（<code>--resume-from</code> 贯通 runner/CLI/MCP + <code>_verify_resume_integrity</code> + <code>PipelineHistoryHook</code> 逐 Gate 写 <code>history.db</code>），P1 实际缺口 =「自动发现最后 passed Gate 并续跑 + 失败反查下游」，而非"补续跑能力"；改动量较原 P1 缩水约 70%。方案其余部分与实测高度吻合。</em></p>
+<em>修正记录（2026-08-30）：Gate 数统一为实测 <strong>22 个</strong>（<code>_AUTO_GATE_NAMES</code> 22 项，backup/main 实测）；标注 backup/main 现 commit <code>e584b39</code>。P1 重新定界：<strong>Gate 粒度续跑已实现</strong>（<code>--resume-from</code> 贯通 runner/CLI/MCP + <code>_verify_resume_integrity</code> + <code>PipelineHistoryHook</code> 逐 Gate 写 <code>history.db</code>），P1 实际缺口 =「自动发现最后 passed Gate 并续跑 + 失败反查下游」，而非"补续跑能力"；改动量较原 P1 缩水约 70%。方案其余部分与实测高度吻合。</em></p>
 
 
 
