@@ -6,7 +6,6 @@
 |------|-------------:|------|
 | AGENTS.md | 14505 | file |
 | README.md | 31840 | file |
-| docs/NIGHTLY.md | 4773 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -36,7 +35,7 @@
 | docs/dev/gate-failure-modes.md | 21860 | file |
 | docs/dev/override-reference.md | 9343 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 16855 | file |
+| docs/dev/plans/NIGHTLY.md | 17093 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
