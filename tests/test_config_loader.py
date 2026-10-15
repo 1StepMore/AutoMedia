@@ -17,6 +17,7 @@ from automedia.core.config_loader import (
     deep_merge,
     load_config,
 )
+from automedia.core.env_overlay import reset_dotenv_overlay_cache
 from automedia.exceptions import ConfigError
 
 
@@ -210,6 +211,49 @@ class TestEnvToConfig:
         monkeypatch.setenv("AUTOMEDIA_NUM", "42")
         result = _env_to_config()
         assert result["num"] == "42"  # env vars are always strings
+
+    # -- .env overlay (issue #207) -----------------------------------------
+
+    def test_dotenv_overlay_supplies_config_keys(self, monkeypatch, tmp_path):
+        """A ``.env`` value becomes a config key with no ``os.environ`` write."""
+        reset_dotenv_overlay_cache()
+        monkeypatch.setenv(
+            "AUTOMEDIA_DOTENV_PATH",
+            str(tmp_path / "overlay.env"),
+        )
+        (tmp_path / "overlay.env").write_text("AUTOMEDIA_FOO_BAR=from_dotenv\n")
+
+        result = _env_to_config()
+        assert result["foo"] == {"bar": "from_dotenv"}
+        assert "AUTOMEDIA_FOO_BAR" not in os.environ
+        reset_dotenv_overlay_cache()
+
+    def test_real_env_beats_dotenv_for_same_key(self, monkeypatch, tmp_path):
+        """A real env var wins over the ``.env`` overlay per key."""
+        reset_dotenv_overlay_cache()
+        monkeypatch.setenv(
+            "AUTOMEDIA_DOTENV_PATH",
+            str(tmp_path / "overlay.env"),
+        )
+        (tmp_path / "overlay.env").write_text(
+            "AUTOMEDIA_LLM_API_KEY=from_dotenv\nAUTOMEDIA_TIER=dotenv\n"
+        )
+        monkeypatch.setenv("AUTOMEDIA_LLM_API_KEY", "from_env")
+
+        result = _env_to_config()
+        assert result["llm"]["text_generation"]["api_key"] == "from_env"
+        assert result["tier"] == "dotenv"
+        reset_dotenv_overlay_cache()
+
+    def test_dotenv_overlay_absent_is_noop(self, monkeypatch, tmp_path):
+        """A missing ``.env`` file leaves the env-derived config unchanged."""
+        reset_dotenv_overlay_cache()
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(tmp_path / "absent.env"))
+        monkeypatch.setenv("AUTOMEDIA_FOO", "bar")
+
+        result = _env_to_config()
+        assert result.get("foo") == "bar"
+        reset_dotenv_overlay_cache()
 
 
 # ---------------------------------------------------------------------------

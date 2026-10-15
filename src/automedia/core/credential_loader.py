@@ -5,43 +5,25 @@ Public API
 - ``load_credential(key_name, *, provider=None)``
 - ``resolve_api_key(provider_name, role='default')``
 
-On import, this module automatically loads ``.env`` from ``~/.automedia/.env``
-(default) or from the path specified by the ``AUTOMEDIA_DOTENV_PATH``
-environment variable (override).
+``.env`` support is lazy: nothing is written to ``os.environ`` when this module
+is imported.  Values from ``~/.automedia/.env`` (default) or from the path named
+by ``AUTOMEDIA_DOTENV_PATH`` are resolved on demand through
+:func:`automedia.core.env_overlay.env_lookup`, which always prefers a real
+environment variable over the ``.env`` file.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import warnings
 from pathlib import Path
 
 import yaml
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.paths import get_user_config_dir
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Load .env on import — makes AUTOMEDIA_* vars available immediately
-# ---------------------------------------------------------------------------
-
-try:
-    from dotenv import load_dotenv
-
-    _dotenv_path = os.environ.get("AUTOMEDIA_DOTENV_PATH")
-    _env_path = Path(_dotenv_path) if _dotenv_path else get_user_config_dir() / ".env"
-    if _env_path.is_file():
-        load_dotenv(_env_path, override=False)
-except ImportError:
-    from automedia.core._import_helpers import warn_missing_optional
-
-    warn_missing_optional(
-        "python-dotenv",
-        install_command="pip install automedia-pipeline",
-        feature=".env file will not be loaded",
-    )
 
 # ---------------------------------------------------------------------------
 # Optional dependency: keyring
@@ -103,7 +85,9 @@ def load_credential(key_name: str, *, provider: str | None = None) -> str | None
     Sources, in priority order (highest first):
 
     1. Environment variable ``AUTOMEDIA_<KEY>`` (also tries
-       ``AUTOMEDIA_<KEY>_KEY`` for convenience).
+       ``AUTOMEDIA_<KEY>_KEY`` for convenience).  The ``.env`` overlay
+       (``~/.automedia/.env`` / ``AUTOMEDIA_DOTENV_PATH``) is consulted as
+       part of these lookups, but only after the real environment.
     2. System keyring via the ``keyring`` package (optional dependency —
        silently skipped when not installed or when it raises).
     3. ``~/.automedia/oscreds.yaml``
@@ -127,12 +111,12 @@ def load_credential(key_name: str, *, provider: str | None = None) -> str | None
     # Layer 1 — Environment variable
     # ------------------------------------------------------------------
     env_key = _env_var_name(key_name)
-    value = os.environ.get(env_key)
+    value = env_lookup(env_key)
     if value is not None:
         return value
 
     # Also check AUTOMEDIA_<KEY>_KEY (e.g. AUTOMEDIA_OPENAI_KEY)
-    value = os.environ.get(f"{env_key}_KEY")
+    value = env_lookup(f"{env_key}_KEY")
     if value is not None:
         return value
 
@@ -174,7 +158,8 @@ def load_credential_or_env(legacy_env_var: str, key_name: str) -> str | None:
 
     1. :func:`load_credential` — checks ``AUTOMEDIA_<KEY>`` env var,
        ``AUTOMEDIA_<KEY>_KEY`` suffix, system keyring, and YAML files.
-    2. Legacy environment variable (e.g. ``WX_APPID``, ``XHS_COOKIE``).
+    2. Legacy environment variable (e.g. ``WX_APPID``, ``XHS_COOKIE``),
+       resolved through the ``.env`` overlay.
 
     Parameters
     ----------
@@ -193,7 +178,7 @@ def load_credential_or_env(legacy_env_var: str, key_name: str) -> str | None:
     value = load_credential(key_name)
     if value is not None:
         return value
-    return os.environ.get(legacy_env_var)
+    return env_lookup(legacy_env_var)
 
 
 def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
@@ -201,7 +186,8 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
 
     Priority
     --------
-    1. Environment variable ``AUTOMEDIA_{PROVIDER_NAME}``
+    1. Environment variable ``AUTOMEDIA_{PROVIDER_NAME}`` (resolved through the
+       ``.env`` overlay, which loses to a real env var).
     2. ``~/.automedia/model_config.yaml`` → ``providers.{provider_name}.api_key``
     3. :func:`load_credential(provider_name)``
 
@@ -218,7 +204,7 @@ def resolve_api_key(provider_name: str, role: str = "default") -> str | None:
         The resolved API key, or ``None`` if not found (never raises).
     """
     # Highest priority: environment variable (e.g. AUTOMEDIA_OPENAI)
-    env_value = os.environ.get(_env_var_name(provider_name))
+    env_value = env_lookup(_env_var_name(provider_name))
     if env_value:
         return env_value
 

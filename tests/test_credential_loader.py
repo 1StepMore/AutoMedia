@@ -6,6 +6,7 @@ import importlib
 import os
 from pathlib import Path
 
+import pytest
 import yaml
 
 import automedia.core.credential_loader as cl
@@ -13,6 +14,11 @@ from automedia.core.credential_loader import (
     load_credential,
     load_credential_or_env,
     resolve_api_key,
+)
+from automedia.core.env_overlay import (
+    dotenv_overlay,
+    env_lookup,
+    reset_dotenv_overlay_cache,
 )
 
 # ---------------------------------------------------------------------------
@@ -319,34 +325,40 @@ class TestResolveApiKey:
 
 
 class TestDotenvLoading:
-    """Verify that .env is NOT auto-loaded from CWD.
+    """Verify that ``.env`` is read lazily and never written to ``os.environ``.
 
-    The module should load .env from ``~/.automedia/.env`` (default) or from
-    the path specified by ``AUTOMEDIA_DOTENV_PATH`` (override).  A ``.env`` in
-    the current working directory must never be auto-loaded — that is a
-    security risk (malicious .env injection).
+    The overlay is parsed from ``~/.automedia/.env`` (default) or from the path
+    named by ``AUTOMEDIA_DOTENV_PATH`` (override).  A ``.env`` in the current
+    working directory is never consulted — that is a security risk (malicious
+    ``.env`` injection).  Importing this module, or resolving a credential from
+    ``.env``, must never mutate ``os.environ``: that import-time write used to
+    leak ``AUTOMEDIA_*`` values into every test of a session (issue #207).
     """
 
+    @pytest.fixture(autouse=True)
+    def _reset_dotenv_overlay(self):
+        """Drop the cached overlay before and after each case."""
+        reset_dotenv_overlay_cache()
+        yield
+        reset_dotenv_overlay_cache()
+
     def test_cwd_dotenv_not_loaded(self, monkeypatch, tmp_path):
-        """A .env file in CWD must NOT be auto-loaded at import time."""
-        # Create a .env in a temp directory with a unique test key
+        """A .env file in CWD must NOT be consulted."""
         cwd_dir = tmp_path / "cwd"
         cwd_dir.mkdir()
         (cwd_dir / ".env").write_text("SECURITY_TEST_CWD_VAR=injected\n")
 
-        # Chdir to that directory; ensure no ~/.automedia/.env exists
         monkeypatch.chdir(cwd_dir)
         monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.delenv("AUTOMEDIA_DOTENV_PATH", raising=False)
 
-        # Reload the module to re-trigger import-time .env loading
         importlib.reload(cl)
 
-        # The CWD .env must NOT have been loaded
-        assert os.environ.get("SECURITY_TEST_CWD_VAR") is None
+        assert env_lookup("SECURITY_TEST_CWD_VAR") is None
+        assert "SECURITY_TEST_CWD_VAR" not in os.environ
 
     def test_automedia_dotenv_loaded(self, monkeypatch, tmp_path):
-        """~/.automedia/.env is loaded when it exists (default location)."""
-        # Set up fake home with ~/.automedia/.env
+        """~/.automedia/.env is read (default location) without touching os.environ."""
         fake_home = tmp_path / "fake_home"
         automedia_dir = fake_home / ".automedia"
         automedia_dir.mkdir(parents=True)
@@ -360,18 +372,18 @@ class TestDotenvLoading:
 
         importlib.reload(cl)
 
-        assert os.environ.get("SECURITY_TEST_HOME_VAR") == "loaded_from_automedia"
+        assert env_lookup("SECURITY_TEST_HOME_VAR") == "loaded_from_automedia"
+        # The old behaviour — writing the value into os.environ at import
+        # time — is the bug this class now pins against.
+        assert "SECURITY_TEST_HOME_VAR" not in os.environ
 
     def test_dotenv_path_override(self, monkeypatch, tmp_path):
         """AUTOMEDIA_DOTENV_PATH overrides the default .env location."""
-        # Create a .env at a custom non-standard path
         custom_path = tmp_path / "custom" / "my.env"
         custom_path.parent.mkdir(parents=True)
         custom_path.write_text("SECURITY_TEST_CUSTOM_VAR=from_custom_path\n")
 
         monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(custom_path))
-
-        # Ensure ~/.automedia/.env does not exist to avoid ambiguity
         monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
         empty_cwd = tmp_path / "empty_cwd"
         empty_cwd.mkdir()
@@ -379,7 +391,99 @@ class TestDotenvLoading:
 
         importlib.reload(cl)
 
-        assert os.environ.get("SECURITY_TEST_CUSTOM_VAR") == "from_custom_path"
+        assert env_lookup("SECURITY_TEST_CUSTOM_VAR") == "from_custom_path"
+        assert "SECURITY_TEST_CUSTOM_VAR" not in os.environ
+
+    def test_real_env_var_wins_over_dotenv(self, monkeypatch, tmp_path):
+        """A real environment variable beats the .env value for the same key."""
+        dotenv_path = tmp_path / "envs.env"
+        dotenv_path.write_text("SECURITY_TEST_PRIORITY=from_dotenv\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.setenv("SECURITY_TEST_PRIORITY", "from_real_env")
+
+        assert env_lookup("SECURITY_TEST_PRIORITY") == "from_real_env"
+
+    def test_empty_real_env_var_wins_over_dotenv(self, monkeypatch, tmp_path):
+        """A present-but-empty env var still wins (override=False semantics)."""
+        dotenv_path = tmp_path / "envs.env"
+        dotenv_path.write_text("SECURITY_TEST_PRIORITY=from_dotenv\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.setenv("SECURITY_TEST_PRIORITY", "")
+
+        assert env_lookup("SECURITY_TEST_PRIORITY") == ""
+
+    def test_dotenv_path_override_is_read_lazily(self, monkeypatch, tmp_path):
+        """Swapping AUTOMEDIA_DOTENV_PATH re-resolves after a cache reset."""
+        first_path = tmp_path / "first.env"
+        first_path.write_text("SECURITY_TEST_SWAP=first\n")
+        second_path = tmp_path / "second.env"
+        second_path.write_text("SECURITY_TEST_SWAP=second\n")
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(first_path))
+        assert env_lookup("SECURITY_TEST_SWAP") == "first"
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(second_path))
+        reset_dotenv_overlay_cache()
+        assert env_lookup("SECURITY_TEST_SWAP") == "second"
+
+        assert dotenv_overlay() == {"SECURITY_TEST_SWAP": "second"}
+
+    def test_missing_dotenv_file_yields_empty_overlay(self, monkeypatch, tmp_path):
+        """A non-existent .env path is an empty overlay, never an error."""
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(tmp_path / "absent" / "nope.env"))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+
+        assert dotenv_overlay() == {}
+        assert env_lookup("SECURITY_TEST_HOME_VAR", "fallback") == "fallback"
+
+    def test_import_does_not_mutate_os_environ(self, monkeypatch, tmp_path):
+        """Reloading the loader with a .env present leaves os.environ untouched."""
+        fake_home = tmp_path / "fake_home"
+        automedia_dir = fake_home / ".automedia"
+        automedia_dir.mkdir(parents=True)
+        (automedia_dir / ".env").write_text(
+            "AUTOMEDIA_LLM_API_KEY=rc-reg207\nAUTOMEDIA_FAKE_LLM=1\n"
+        )
+
+        monkeypatch.setattr(Path, "home", lambda: fake_home)
+        monkeypatch.delenv("AUTOMEDIA_DOTENV_PATH", raising=False)
+        monkeypatch.delenv("AUTOMEDIA_LLM_API_KEY", raising=False)
+        monkeypatch.delenv("AUTOMEDIA_FAKE_LLM", raising=False)
+
+        importlib.reload(cl)
+
+        assert "AUTOMEDIA_LLM_API_KEY" not in os.environ
+        assert "AUTOMEDIA_FAKE_LLM" not in os.environ
+
+    def test_load_credential_resolves_from_dotenv_without_env_mutation(self, monkeypatch, tmp_path):
+        """load_credential reads the overlay without writing to os.environ."""
+        dotenv_path = tmp_path / "creds.env"
+        dotenv_path.write_text("AUTOMEDIA_LLM_API_KEY=rc-from-dotenv\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.delenv("AUTOMEDIA_LLM_API_KEY", raising=False)
+
+        assert load_credential("llm_api_key") == "rc-from-dotenv"
+        assert "AUTOMEDIA_LLM_API_KEY" not in os.environ
+
+    def test_load_credential_or_env_reads_legacy_var_from_dotenv(self, monkeypatch, tmp_path):
+        """Legacy vendor vars (WX_APPID) keep resolving from the .env overlay."""
+        dotenv_path = tmp_path / "creds.env"
+        dotenv_path.write_text("WX_APPID=wx-from-dotenv\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.delenv("WX_APPID", raising=False)
+
+        assert load_credential_or_env("WX_APPID", "wechat_appid") == "wx-from-dotenv"
+        assert "WX_APPID" not in os.environ
 
 
 # ---------------------------------------------------------------------------

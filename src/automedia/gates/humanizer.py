@@ -33,10 +33,10 @@ result shape when disabled.
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Any
 
+from automedia.core.env_overlay import env_lookup
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
@@ -319,7 +319,7 @@ def _resolve_verify_loop_config(config: dict[str, Any] | None) -> tuple[bool, in
     vloop = vloop_cfg if isinstance(vloop_cfg, dict) else {}
 
     enabled = bool(vloop.get("enabled", False))
-    env_flag = os.environ.get(_VERIFY_LOOP_ENV, "")
+    env_flag = env_lookup(_VERIFY_LOOP_ENV, "")
     if env_flag.strip() not in ("", "0"):
         enabled = True
 

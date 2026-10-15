@@ -27,9 +27,9 @@ pure read, no writes).
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.paths import get_user_config_dir
 
 __all__ = [
@@ -167,11 +167,12 @@ _TIER_RANK: dict[str, int] = {"core": 0, "pro": 1, "enterprise": 2}
 def _resolve_override_tier() -> str | None:
     """Resolve the optional tier override, or None when unrestricted.
 
-    Priority: ``AUTOMEDIA_FEATURE_TIER`` env var > ``features.yaml`` in the
-    user config dir. Invalid values are ignored (treated as no override) so a
-    typo never locks a deployment out of its gates.
+    Priority: ``AUTOMEDIA_FEATURE_TIER`` env var (or the ``.env`` overlay) >
+    ``features.yaml`` in the user config dir. Invalid values are ignored
+    (treated as no override) so a typo never locks a deployment out of its
+    gates.
     """
-    env_value = os.environ.get("AUTOMEDIA_FEATURE_TIER", "").strip()
+    env_value = env_lookup("AUTOMEDIA_FEATURE_TIER", "").strip()
     if env_value:
         return env_value if env_value in _TIER_RANK else None
 

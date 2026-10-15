@@ -27,6 +27,7 @@ import typer
 
 from automedia.cli.commands.hitl import app
 from automedia.cli.output import output_error, output_text
+from automedia.core.env_overlay import env_lookup
 
 # ---------------------------------------------------------------------------
 # hitl pending / approve / reject  (cross-process delivery, issue #105)
@@ -37,7 +38,7 @@ def _resolve_project_dir(project_id: str, base_dir: str | None) -> str | None:
     """Return the directory of *project_id* under *base_dir*, or ``None``."""
     from automedia.cli.commands.projects import _discover_projects
 
-    root = base_dir or os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
+    root = base_dir or env_lookup("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
     for project in _discover_projects(root):
         if project.get("project_id") == project_id:
             return project.get("_dir")
@@ -140,7 +141,7 @@ def hitl_pending(
     """List pipelines currently parked waiting for a human decision."""
     from automedia.cli.commands.projects import _discover_projects
 
-    root = base_dir or os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
+    root = base_dir or env_lookup("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
     waiting: list[dict[str, str]] = []
     for project in _discover_projects(root):
         project_dir = project.get("_dir")

@@ -7,7 +7,6 @@ Config is read from the merged AutoMedia config dict at call time.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
@@ -20,6 +19,7 @@ from tenacity import (
 )
 
 from automedia.core.credential_loader import resolve_api_key
+from automedia.core.env_overlay import env_lookup
 from automedia.exceptions import AutoMediaError
 
 if TYPE_CHECKING:
@@ -201,12 +201,13 @@ def _is_fake_mode(config: dict[str, Any] | None = None) -> bool:
 
     Priority
     --------
-    1. ``AUTOMEDIA_FAKE_LLM`` environment variable (fast, primary mechanism).
+    1. ``AUTOMEDIA_FAKE_LLM`` environment variable (fast, primary mechanism);
+       a ``.env`` value is honoured here too, but never above a real env var.
     2. ``llm.fake_mode: true`` in the merged config file (fallback for
        environments where env vars are not practical, e.g. compound shell
        commands, container entrypoints, or systemd services).
     """
-    if os.environ.get("AUTOMEDIA_FAKE_LLM", "").lower() in {"1", "true", "yes"}:
+    if env_lookup("AUTOMEDIA_FAKE_LLM", "").lower() in {"1", "true", "yes"}:
         return True
     if config is not None:
         return bool(config.get("llm", {}).get("fake_mode", False))

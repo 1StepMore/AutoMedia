@@ -12,10 +12,10 @@ is a runtime property of each detector via ``available()``.
 
 from __future__ import annotations
 
-import os
 import warnings
 from typing import TYPE_CHECKING
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.registry import BaseRegistry
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class DetectorRegistry(BaseRegistry):
             raise KeyError(f"Detector '{key}' is already registered by {self._registry[key]}")
 
         env_required: str = value._env_required
-        if env_required and not os.environ.get(env_required):
+        if env_required and not env_lookup(env_required):
             warnings.warn(
                 f"Detector '{key}' requires env var '{env_required}' which is "
                 f"unset; it registers anyway but available() will report False "

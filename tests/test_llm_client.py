@@ -18,6 +18,7 @@ import os
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -1305,3 +1306,46 @@ class TestProviderSpecMergeEmptyValues:
         assert specs[1]["base_url"] == "https://primary.test/v1"
         assert specs[1]["temperature"] == 0.5
         assert specs[1]["api_key"] == "sk-primary"
+
+
+# ---------------------------------------------------------------------------
+# Fake-mode resolution from the lazy .env overlay (issue #207)
+# ---------------------------------------------------------------------------
+
+
+class TestFakeModeDotenvOverlay:
+    """``AUTOMEDIA_FAKE_LLM`` resolves from the ``.env`` overlay without an env write."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_overlay(self):
+        from automedia.core.env_overlay import reset_dotenv_overlay_cache
+
+        reset_dotenv_overlay_cache()
+        yield
+        reset_dotenv_overlay_cache()
+
+    def test_fake_mode_read_from_dotenv(self, monkeypatch, tmp_path):
+        """A ``.env`` value enables fake mode without touching os.environ."""
+        from automedia.core.llm_client import _is_fake_mode
+
+        dotenv_path = tmp_path / "llm.env"
+        dotenv_path.write_text("AUTOMEDIA_FAKE_LLM=1\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+
+        assert _is_fake_mode() is True
+        assert "AUTOMEDIA_FAKE_LLM" not in os.environ
+
+    def test_real_env_var_beats_dotenv(self, monkeypatch, tmp_path):
+        """The real environment wins over the ``.env`` overlay for fake mode."""
+        from automedia.core.llm_client import _is_fake_mode
+
+        dotenv_path = tmp_path / "llm.env"
+        dotenv_path.write_text("AUTOMEDIA_FAKE_LLM=1\n")
+
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(dotenv_path))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "empty_home")
+        monkeypatch.setenv("AUTOMEDIA_FAKE_LLM", "0")
+
+        assert _is_fake_mode() is False

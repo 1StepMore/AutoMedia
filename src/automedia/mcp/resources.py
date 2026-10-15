@@ -7,12 +7,12 @@ Refactored from closures to module-level functions.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.env_overlay import env_lookup
 from automedia.mcp._state import _lock, _pipeline_tracker
 from automedia.mcp.tools import _discover_projects, _resolve_projects_dir
 
@@ -62,7 +62,7 @@ def topic_pool_resource() -> str:
 
     Registered as ``automedia://pool``.
     """
-    pool_db_path = os.environ.get("AUTOMEDIA_POOL_DB", "")
+    pool_db_path = env_lookup("AUTOMEDIA_POOL_DB", "")
     if not pool_db_path:
         pool_db_path = str(Path.cwd() / ".automedia" / "data" / "pool.db")
     db_file = Path(pool_db_path)
@@ -166,7 +166,7 @@ def getting_started_resource() -> str:
 
     # Step 1: LLM configured?
     model_cfg = user_cfg_dir / "model_config.yaml"
-    llm_configured = bool(os.environ.get("AUTOMEDIA_LLM_API_KEY")) or (
+    llm_configured = bool(env_lookup("AUTOMEDIA_LLM_API_KEY")) or (
         model_cfg.exists() and model_cfg.stat().st_size > 0
     )
 

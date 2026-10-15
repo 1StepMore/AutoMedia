@@ -24,10 +24,10 @@ the heading is parsed; keys are trimmed, deduped and non-empty.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
+from automedia.core.env_overlay import env_lookup
 from automedia.validation.expects import IMPLEMENTED_CHECK_TYPES
 
 STANDARDS_HANDBOOK_NAME = "STANDARDS.md"
@@ -48,9 +48,10 @@ class StandardsError(ValueError):
 
 
 def _resolve_scenarios_dir() -> Path:
-    """The scenarios directory: ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` if
-    set, else the repo-root ``scenarios/`` (wheel-install-safe default)."""
-    env = os.environ.get(_SCENARIOS_DIR_ENV)
+    """The scenarios directory: ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR`` (env or
+    ``.env`` overlay) if set, else the repo-root ``scenarios/``
+    (wheel-install-safe default)."""
+    env = env_lookup(_SCENARIOS_DIR_ENV)
     if env:
         return Path(env)
     return Path(__file__).resolve().parents[3] / "scenarios"
