@@ -77,6 +77,17 @@ cd <repo>
 ---
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
+### 2026-10-15 夜间复跑（在最新 main `d179702` 上）
+
+- 批跑（02:00，systemd）：`nightly_gap.py` **exit 1** —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / **视频轨 ❌ 0**（项目目录 45 个，`cost_log` 非空 28 个）；场景 144 → `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；hard 10 全过；门 `missing=4 unreachable=2`。
+- **本轮按 L1 §4「执行」真跑视频轨**（`--mode short-video`，真模型 AMD `DeepSeek-V4.1-Flash`，产物落 repo 内持久目录，品牌 `w3t1-validation-brand`）：**3 跑**，门序列三跑一致 —— `pre-gate ✓ / CW ✓ / G0 ✓ / G1 ✓ / G2 ✓ / **G3 ✗**` → `status=partial`，**下游 `G6/H0/V0–V7` 未执行**。
+- **复跑差距（05:10，把本轮真跑计入）：文本轨 27 / 图文轨 4 / 视频轨 0**，`exit 1`。图文轨 3 → 4 就是本项目：真 draft 5,953B + `cost_log.jsonl` 8 行 + 2,117,596B 真图（ComfyUI）+ 556,992B 配音 + 7,807,842B 真视频（hyperframes）。
+- **本轮闭合的环境缺口（两处，环境层，产品代码未动）**：
+  - `whisper` 不在 PATH（产品按 `runner.py:1990` 的 `shutil.which` 解析）→ 媒体阶段 `pipeline.media_stage.tools_missing missing=['whisper']`，音频/视频/V 门输入**全不产**。修：`~/bin/whisper` → `~/mamba/envs/whisper/bin/whisper`（`~/bin` 在 PATH 且先于各 venv 的 bin）。
+  - 修好 `whisper` 后媒体阶段走到 TTS 并失败（`edge-tts … returned non-zero exit status 1`）：经 PATH 解析到的是 hermes venv **7.2.7** → 直接跑 `WSServerHandshakeError: 403`（0 字节）；本仓 `.venv` 的 **7.3.1** 同一文本合成出 **26,064B** mp3。修：`~/bin/edge-tts` → 本仓 `.venv/bin/edge-tts`。
+  - **修好后媒体链路端到端真出片（实测日志）**：`pipeline.media_stage.audio_track_produced`（`narration.mp3` 556,992B + `narration.srt` 2,668B）→ ComfyUI 出图 2,117,596B → `hyperframes render succeeded` → `pipeline.video_produced`（`03_video/output.mp4` **7,807,842B**，用时约 60s）。
+- **唯一剩余结构性卡点 = G3 品牌身份门**：`brand_identity ✗ declared brand identity 'AI内容生产' not found in content`（其余 5 项全 pass）。根因与三选一方案见 **#202**（本轮补第 3、4 次复现 + 正面对照：**G0 不是恒拦**，本轮用过程类题目两跑均 pass）。**修 G3 属判据语义变更，交 owner 裁定**；本轮未改判据/提示词、未改冻结区。
+- **口径提醒**：视频轨 DoD 要求 gate-report 里 **V2/V5/V7 真跑且 `pass`**，而 V 门排在 G3 之后 ⇒ **G3 恒拦时该判据结构性不可达**（#202 §影响）。本文件的 ❌ 属**已知阻塞**，不是新增退步。
 
 **2 / 3 条轨未达标。**
 
@@ -108,6 +119,7 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 
 1. **打穿图文轨**：`image-carousel` 走一次真跑，让 `02_images/` 出现真图片。它是三轨里离文本轨最近的一条（复用已有正文链路，只多一步出图）。
 2. **打穿视频轨**：`video_only`/`short-video` 走一次真跑，让 `03_video/` 出真视频，**并让 V 门（V0–V7）真执行给出结论**（当前 V0/V1/V3/V4/V6 显式 `skipped`）。
+→ **2026-10-15 状态：环境侧已打通（`whisper`/`edge-tts` 修好，实测真出片 7,807,842B），结构性卡点只剩 G3 品牌身份门（#202，等 owner 裁定）；V 门排在 G3 之后 ⇒ G3 不裁定则本条不可达。**
 3. **持久落盘体检**：确认跑出来的项目落在 repo 内的项目目录，**不是 `/tmp`**。
 4. **HITL 不阻塞**：验证非交互运行返回 `awaiting_hitl` + 专用退出码。
 5. **（当前唯一未达标轨）打穿视频轨（复跑口径）**：视频轨需要**一次带真模型 cost_log 的 `video_only`（或 `short-video`）端到端跑**，达标需同时满足：`cost_log.jsonl` 非空 + `01_content/drafts/` 有 ≥500B 的 md + `03_video/` 有 ≥10KB 视频 + 该项目 gate-report `failed=0/errored=0` + V2/V5/V7 真跑且 pass（V0/V1/V3/V4/V6 允许 skip 但属已登记能力债 #193）。现有唯一候选 `20261003_turning-blog-posts-into-video-essays` 因缺 `cost_log`/draft 不达标。
@@ -115,6 +127,8 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 ### 已完成（agent 追加）
 
 - 2026-10-13：复跑口径更正 —— 视频轨当前为 ❌（见上「2026-10-13 夜间复跑」小节）。
+- 2026-10-15：**图文轨 3 → 4**（`20261014_a-practical-guide-to-weekly-content-reviews-for-small-teams`：真 draft 5,953B + cost_log 8 行 + 2.12MB 真图）→ 队列第 1 项（打穿图文轨）闭合。
+- 2026-10-15：**队列第 3 项（持久落盘体检）复核闭合** —— 本轮 3 次真跑的 `00_project_info.json` / `01_content/drafts/` / `03_video/output.mp4` 全落在 **repo 内项目目录**（非 `/tmp`）；产品侧 hyperframes 的临时工程目录仍在 `/tmp/hyperframes_*`，但出片产物落项目目录，符合 DoD 附加硬要求 1。
 
 ---
 
@@ -128,6 +142,10 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 | 2026-10-13 | 夜跑跑批不同步 main ⇒ 本仓矩阵测于过期判据（当晚「三轨全达标」系假绿） | 是（判据静默失效） | 已立案 e2e-test-suite#166（修复在途）；本仓不改跑批脚本 |
 | 2026-10-13 | 本仓同时存在两份冻结区文档：docs/NIGHTLY.md 与 docs/NIGHTLY.html 未入库，与已入库的 docs/dev/plans/NIGHTLY.md 内容分歧 | 否（但会误导读文档的人） | 已立案本仓 #199，等 owner 裁定；本轮不动 |
 | 2026-10-13 | 【活区】下一步队列第 2 项仍是 2026-10-07 修订前的措辞（「打穿视频轨…并让 V 门（V0–V7）真执行给出结论（当前 V0/V1/V3/V4/V6 显式 skipped）」），与 owner 2026-10-07 裁定的「允许 skip + 登记能力债」相冲突 | 否 | 本轮不改（L1 §5 摩擦预算=0）；已由本轮新增的队列第 5 项取代，待 owner / 下轮清理 |
+| 2026-10-15 | 视频轨 `short-video` 三跑同型卡在 **G3**（`brand_identity`：declared `AI内容生产` not found in content），下游 G6/H0/V 门永不执行 ⇒ 视频轨 DoD 结构性不可达 | **是**（挡视频轨） | 已提 **#202**（10-13）；本轮补两跑复现 + G0 正面对照；**判据语义三选一交 owner 裁定，未自行改判据/提示词** |
+| 2026-10-15 | `whisper` 不在 PATH（产品按 `runner.py:1990` 的 `shutil.which` 解析；跑批 preflight 认 `~/mamba/envs/whisper/bin`，产品侧不认）→ 媒体阶段 `tools_missing=['whisper']`，音频/视频/V 门输入全不产 | **是**（挡视频轨） | 环境层已修：`~/bin/whisper` → `~/mamba/envs/whisper/bin/whisper`；实测 `shutil.which('whisper')` = `/home/renanzai/bin/whisper` |
+| 2026-10-15 | `edge-tts` 经 PATH 解析到 hermes venv **7.2.7** → 合成 `WSServerHandshakeError: 403`（0 字节），媒体阶段 `media_stage_failed`；本仓 `.venv` 的 **7.3.1** 可用 | **是**（挡视频轨） | 环境层已修：`~/bin/edge-tts` → 本仓 `.venv/bin/edge-tts`；实测 7.3.1 出 26,064B mp3，复跑后媒体链路真出片 |
+| 2026-10-15 | 同题重复跑**复用同一项目目录**（`20261014_<slug>`）：`00_project_info.json` 被后跑覆盖（`project_id` 变）、`01_content/drafts/` 并列多份（本轮 4 份）、`cost_log.jsonl` 累积（本轮 3 跑 → 8 行）→ 一个项目目录不再对应单轮证据 | 否 | 记账（如需分轮证据，换题目或让产品按 `project_id` 分目录；不自行改产品） |
 
 ---
 
