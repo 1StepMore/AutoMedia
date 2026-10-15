@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from automedia.core.doctor import Doctor
+
+_HEALTHY_CONFIG: dict[str, Any] = {
+    "llm": {
+        "text_generation": {
+            "provider": "deepseek",
+            "model": "deepseek-chat",
+            "api_key": "sk-test",
+            "base_url": "https://api.deepseek.com/v1",
+        }
+    }
+}
 
 
 class TestDoctorLlmConnectivity:
@@ -21,10 +33,18 @@ class TestDoctorLlmConnectivity:
     # doctor.py imports it via a local import (inside _check_llm_api).
     # Patching at the module where the function is defined (not where it's
     # called) ensures the mock intercepts the local import correctly.
+    #
+    # ``load_config`` is patched as well (issue #208): the assertions below are
+    # about the probe's verdict on a *known* config, not about whatever the
+    # host's real ``~/.automedia/model_config.yaml`` happens to contain.
 
+    @patch("automedia.core.config_loader.load_config")
     @patch("automedia.core.llm_client.llm_complete")
-    def test_llm_connectivity_reports_installed(self, mock_llm: MagicMock) -> None:
+    def test_llm_connectivity_reports_installed(
+        self, mock_llm: MagicMock, mock_load_config: MagicMock
+    ) -> None:
         """When LLM responds, llm_api shows installed=True."""
+        mock_load_config.return_value = _HEALTHY_CONFIG
         mock_llm.return_value = "OK"
         d = Doctor()
         results = d.check_dependencies()
@@ -32,11 +52,15 @@ class TestDoctorLlmConnectivity:
         assert llm_result["installed"] is True
         assert llm_result["version"] == "API reachable"
 
+    @patch("automedia.core.config_loader.load_config")
     @patch("automedia.core.llm_client.llm_complete")
-    def test_llm_connectivity_reports_missing_on_error(self, mock_llm: MagicMock) -> None:
+    def test_llm_connectivity_reports_missing_on_error(
+        self, mock_llm: MagicMock, mock_load_config: MagicMock
+    ) -> None:
         """When LLM call fails, llm_api shows installed=False with error detail."""
         from automedia.core.llm_client import LLMError
 
+        mock_load_config.return_value = _HEALTHY_CONFIG
         mock_llm.side_effect = LLMError("API key not found")
         d = Doctor()
         results = d.check_dependencies()

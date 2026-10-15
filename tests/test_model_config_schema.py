@@ -14,8 +14,10 @@ from automedia.manifests.model_config_schema import (
     ModelConfig,
     ProviderConfig,
     _parse_provider,
+    backup_model_config,
     load_model_config,
     save_model_config,
+    validate_model_config_updates,
 )
 
 # ---------------------------------------------------------------------------
@@ -405,3 +407,180 @@ class TestSaveModelConfig:
         assert self._read(path) == {
             "llm": {"text_generation": {"provider": "deepseek", "model": "deepseek-chat"}}
         }
+
+
+class TestWriteGuards:
+    """Write guards from issue #208: backup, blank-value refusal, user scope."""
+
+    def _seed(self, tmp_path: Path, data: dict) -> Path:
+        p = tmp_path / "model_config.yaml"
+        p.write_text(yaml.dump(data, allow_unicode=True), encoding="utf-8")
+        return p
+
+    def _read(self, path: Path) -> dict:
+        with open(path, encoding="utf-8") as fh:
+            return yaml.safe_load(fh)
+
+    def test_backup_created_before_overwrite(self, tmp_path: Path) -> None:
+        """An existing file is copied to a timestamped backup before the write."""
+        path = self._seed(
+            tmp_path,
+            {"llm": {"text_generation": {"provider": "amd", "model": "old-model"}}},
+        )
+        before = path.read_text(encoding="utf-8")
+
+        save_model_config(
+            path,
+            {"llm": {"text_generation": {"provider": "deepseek", "model": "deepseek-chat"}}},
+        )
+
+        backups = sorted(tmp_path.glob("model_config.yaml.bak-*"))
+        assert len(backups) == 1
+        assert backups[0].read_text(encoding="utf-8") == before
+        assert "provider: deepseek" in path.read_text(encoding="utf-8")
+
+    def test_no_backup_when_file_is_new(self, tmp_path: Path) -> None:
+        """A first write has nothing to back up and creates no backup file."""
+        path = tmp_path / "nested" / "model_config.yaml"
+        save_model_config(path, {"llm": {"text_generation": {"provider": "deepseek"}}})
+
+        assert path.is_file()
+        assert not list(tmp_path.rglob("*.bak-*"))
+
+    def test_backup_model_config_returns_none_without_file(self, tmp_path: Path) -> None:
+        """backup_model_config is a no-op for a path that does not exist."""
+        assert backup_model_config(tmp_path / "missing.yaml") is None
+
+    def test_failed_backup_aborts_the_write(self, tmp_path: Path, monkeypatch) -> None:
+        """If the backup cannot be made, the original file is left untouched."""
+        path = self._seed(
+            tmp_path,
+            {"llm": {"text_generation": {"provider": "amd", "model": "old-model"}}},
+        )
+        before = path.read_text(encoding="utf-8")
+
+        def _boom(_src, _dst):
+            raise OSError("simulated backup failure")
+
+        monkeypatch.setattr(
+            "automedia.manifests.model_config_write_guard.shutil.copy2",
+            _boom,
+        )
+
+        with pytest.raises(OSError, match="pre-write backup could not be created"):
+            save_model_config(
+                path,
+                {"llm": {"text_generation": {"provider": "deepseek"}}},
+            )
+
+        assert path.read_text(encoding="utf-8") == before
+
+    def test_empty_provider_is_refused(self, tmp_path: Path) -> None:
+        """An explicitly empty provider is refused instead of being written."""
+        path = self._seed(
+            tmp_path,
+            {"llm": {"text_generation": {"provider": "amd", "model": "old-model"}}},
+        )
+
+        with pytest.raises(ValueError, match=r"empty llm\.text_generation\.provider"):
+            save_model_config(
+                path,
+                {"llm": {"text_generation": {"provider": ""}}},
+            )
+
+        slot = self._read(path)["llm"]["text_generation"]
+        assert slot["provider"] == "amd"
+
+    def test_whitespace_provider_is_refused(self, tmp_path: Path) -> None:
+        """A whitespace-only provider is the same corruption, also refused."""
+        path = tmp_path / "model_config.yaml"
+        with pytest.raises(ValueError, match=r"empty llm\.text_generation\.provider"):
+            save_model_config(path, {"llm": {"text_generation": {"provider": "  "}}})
+        assert not path.exists()
+
+    def test_empty_base_url_is_refused(self, tmp_path: Path) -> None:
+        """A blank base_url is not a valid endpoint and is refused."""
+        path = tmp_path / "model_config.yaml"
+        with pytest.raises(ValueError, match=r"empty llm\.text_generation\.base_url"):
+            save_model_config(path, {"llm": {"text_generation": {"base_url": ""}}})
+
+    def test_update_without_provider_key_still_merges(self, tmp_path: Path) -> None:
+        """Omitting the key is the documented way to leave provider alone."""
+        path = self._seed(
+            tmp_path,
+            {"llm": {"text_generation": {"provider": "amd", "model": "old-model"}}},
+        )
+        save_model_config(path, {"llm": {"text_generation": {"model": "new-model"}}})
+
+        slot = self._read(path)["llm"]["text_generation"]
+        assert slot["provider"] == "amd"
+        assert slot["model"] == "new-model"
+
+    def test_empty_provider_in_a_sibling_slot_is_refused(self, tmp_path: Path) -> None:
+        """The guard walks every configured slot, not only text_generation."""
+        path = tmp_path / "model_config.yaml"
+        with pytest.raises(ValueError, match=r"empty llm\.vision\.provider"):
+            save_model_config(path, {"llm": {"vision": {"provider": ""}}})
+
+    def test_validate_model_config_updates_accepts_a_valid_update(self) -> None:
+        """A well-formed update passes validation without raising."""
+        validate_model_config_updates({"llm": {"text_generation": {"provider": "deepseek"}}})
+
+    def test_validate_model_config_updates_ignores_non_llm_payload(self) -> None:
+        """A payload without an ``llm`` mapping is left to the writer."""
+        validate_model_config_updates({"pipeline": {"mode": "auto"}})
+
+
+class TestUserScopeGuard:
+    """Refusing writes into the real user config directory (issue #208)."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_user_config_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Point the user config dir at *tmp_path* before any guard runs."""
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+        self._tmp = tmp_path
+
+    def test_isolated_dir_write_is_allowed(self, tmp_path: Path) -> None:
+        """With AUTOMEDIA_CONFIG_DIR set, the target is not user scope."""
+        path = tmp_path / "model_config.yaml"
+        save_model_config(path, {"llm": {"text_generation": {"provider": "deepseek"}}})
+        assert path.is_file()
+
+    def test_real_user_dir_is_refused_without_opt_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A write aimed at the resolved user config dir needs the opt-in."""
+        fake_home = tmp_path / "home"
+        (fake_home / ".automedia").mkdir(parents=True)
+        target = fake_home / ".automedia" / "model_config.yaml"
+        target.write_text("llm:\n  text_generation:\n    provider: amd\n", encoding="utf-8")
+
+        monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR")
+        monkeypatch.setenv("HOME", str(fake_home))
+
+        with pytest.raises(ValueError, match="real user config directory"):
+            save_model_config(
+                target,
+                {"llm": {"text_generation": {"provider": "deepseek"}}},
+            )
+
+        assert "provider: amd" in target.read_text(encoding="utf-8")
+
+    def test_opt_in_allows_the_user_dir_write(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """allow_user_scope=True is the documented escape hatch."""
+        fake_home = tmp_path / "home"
+        (fake_home / ".automedia").mkdir(parents=True)
+        target = fake_home / ".automedia" / "model_config.yaml"
+
+        monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR")
+        monkeypatch.setenv("HOME", str(fake_home))
+
+        save_model_config(
+            target,
+            {"llm": {"text_generation": {"provider": "deepseek"}}},
+            allow_user_scope=True,
+        )
+
+        assert "provider: deepseek" in target.read_text(encoding="utf-8")

@@ -156,7 +156,7 @@ Registered MCP tools:
 | `list_brands` | Return all configured brands with profile metadata |
 | `add_brand` | Create a new brand profile (name required; industry and target audience optional) |
 | `get_config` | Return merged configuration (secrets redacted) |
-| `configure_llm` | Configure the LLM provider in `~/.automedia/model_config.yaml` (preserves an existing LLM fallback chain) |
+| `configure_llm` | Configure the LLM provider in `~/.automedia/model_config.yaml` (preserves an existing LLM fallback chain; refuses an empty provider and backs the previous file up to `model_config.yaml.bak-<timestamp>` before overwriting) |
 | `init_config` | Initialize AutoMedia configuration: create `.automedia/` and a default `config.yaml` |
 | `onboard` | One-step onboarding: configure the LLM and create a brand profile without interactive prompts |
 | `get_redlines` | Return the list of agent red-line constraints |

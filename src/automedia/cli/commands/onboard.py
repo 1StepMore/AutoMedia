@@ -101,7 +101,10 @@ def _step_llm() -> None:
     if base_url:
         data["llm"]["text_generation"]["base_url"] = base_url
 
-    save_model_config(cfg_path, data)
+    try:
+        save_model_config(cfg_path, data, allow_user_scope=True)
+    except ValueError as exc:
+        output_error(str(exc))
     _print_success(str(cfg_path))
     typer.echo("  Tip: You can also set AUTOMEDIA_LLM_API_KEY env var instead.")
 
@@ -127,10 +130,14 @@ def _step_llm() -> None:
                 fb_entry["api_key"] = fb_api_key
             if fb_base_url:
                 fb_entry["base_url"] = fb_base_url
-            save_model_config(
-                cfg_path,
-                {"llm": {"text_generation": {"fallback": [fb_entry]}}},
-            )
+            try:
+                save_model_config(
+                    cfg_path,
+                    {"llm": {"text_generation": {"fallback": [fb_entry]}}},
+                    allow_user_scope=True,
+                )
+            except ValueError as exc:
+                output_error(str(exc))
             typer.secho("  Fallback provider added.", fg=typer.colors.GREEN)
         else:
             typer.echo(

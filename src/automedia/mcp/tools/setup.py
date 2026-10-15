@@ -88,8 +88,9 @@ def configure_llm(
     """Configure the LLM provider for AutoMedia.
 
     Writes LLM configuration (provider, model, optional API key) to
-    ``~/.automedia/model_config.yaml`` by reusing path constants from
-    the existing CLI ``init`` command.
+    ``~/.automedia/model_config.yaml`` by resolving the user config
+    directory at call time (``automedia.core.paths.get_user_config_dir``),
+    so ``AUTOMEDIA_CONFIG_DIR`` isolation is honoured.
 
     .. warning::
 
@@ -101,7 +102,9 @@ def configure_llm(
     ----------
     provider:
         LLM provider name (e.g. ``"openai"``, ``"deepseek"``,
-        ``"anthropic"``).
+        ``"anthropic"``).  An empty provider is refused: it used to be
+        written as ``provider: ''``, a config that looks configured but
+        resolves to nothing (issue #208).
     model:
         Model identifier (e.g. ``"gpt-4o-mini"``, ``"deepseek-chat"``).
         When empty, only the provider is set.
@@ -115,10 +118,7 @@ def configure_llm(
         "config_file": str}`` on success, or an error dict on failure.
     """
     try:
-        from automedia.cli.commands.init_cmd import (
-            _MODEL_CONFIG_FILE,
-            _USER_CFG_DIR,
-        )
+        from automedia.core.paths import get_user_config_dir
 
         if api_key:
             log.warning(
@@ -126,7 +126,12 @@ def configure_llm(
                 "Prefer AUTOMEDIA_LLM_API_KEY environment variable instead."
             )
 
-        _USER_CFG_DIR.mkdir(parents=True, exist_ok=True)
+        # Resolved per call, not imported from init_cmd's module constants:
+        # a stale import-time path is what let a write land in the real
+        # user config dir from an environment that thought it was isolated.
+        cfg_dir = get_user_config_dir()
+        cfg_path = cfg_dir / "model_config.yaml"
+        cfg_dir.mkdir(parents=True, exist_ok=True)
 
         llm_config: dict[str, Any] = {
             "llm": {
@@ -140,16 +145,21 @@ def configure_llm(
         if api_key:
             llm_config["llm"]["text_generation"]["api_key"] = api_key
 
-        save_model_config(_MODEL_CONFIG_FILE, llm_config)
+        save_model_config(cfg_path, llm_config, allow_user_scope=True)
 
         return success_response(
             {
                 "success": True,
                 "provider": provider,
                 "model": model,
-                "config_file": str(_MODEL_CONFIG_FILE),
+                "config_file": str(cfg_path),
             }
         )
+    except ValueError as exc:
+        return {
+            "success": False,
+            **error_response(MCPErrorCode.INVALID_PARAM, f"Invalid LLM configuration: {exc}"),
+        }
     except OSError as exc:
         return {
             "success": False,
@@ -212,6 +222,7 @@ def onboard(
                 save_model_config(
                     cfg_path,
                     {"llm": {"text_generation": {"base_url": base_url}}},
+                    allow_user_scope=True,
                 )
 
         # Create brand profile via add_brand (delegates to brand profile schema)

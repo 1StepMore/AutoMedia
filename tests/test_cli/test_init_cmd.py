@@ -141,6 +141,74 @@ class TestWriteModelConfig:
             actual = yaml.safe_load(fh)
         assert actual == {"v": 2}
 
+    def _patch_config_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
+        """Point ``_USER_CFG_DIR``/``_MODEL_CONFIG_FILE`` at an isolated dir."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        cfg_dir = tmp_path / ".automedia"
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
+        monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_dir / "model_config.yaml")
+        return init_mod
+
+    def test_empty_provider_is_refused(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression #208: a blank provider is refused, not written."""
+        init_mod = self._patch_config_path(tmp_path, monkeypatch)
+        cfg_file = tmp_path / ".automedia" / "model_config.yaml"
+        cfg_file.parent.mkdir(parents=True, exist_ok=True)
+        cfg_file.write_text("llm:\n  text_generation:\n    provider: amd\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"empty llm\.text_generation\.provider"):
+            init_mod._write_model_config({"llm": {"text_generation": {"provider": ""}}})
+
+        assert "provider: amd" in cfg_file.read_text(encoding="utf-8")
+
+    def test_backs_up_existing_file_before_overwrite(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression #208: the comment-preserving writer still backs up first."""
+        init_mod = self._patch_config_path(tmp_path, monkeypatch)
+        cfg_file = tmp_path / ".automedia" / "model_config.yaml"
+        first = "# AutoMedia LLM configuration\nllm:\n  text_generation:\n    provider: amd\n"
+        cfg_file.parent.mkdir(parents=True, exist_ok=True)
+        cfg_file.write_text(first, encoding="utf-8")
+
+        init_mod._write_model_config({"llm": {"text_generation": {"provider": "deepseek"}}})
+
+        backups = sorted(cfg_file.parent.glob("model_config.yaml.bak-*"))
+        assert len(backups) == 1
+        assert backups[0].read_text(encoding="utf-8") == first
+        assert "provider: deepseek" in cfg_file.read_text(encoding="utf-8")
+
+    def test_real_user_config_dir_requires_opt_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A write into the resolved user config dir needs the opt-in."""
+        import automedia.cli.commands.init_cmd  # noqa: F401
+
+        init_mod = sys.modules["automedia.cli.commands.init_cmd"]
+
+        fake_home = tmp_path / "home"
+        (fake_home / ".automedia").mkdir(parents=True)
+        monkeypatch.setattr(init_mod, "_USER_CFG_DIR", fake_home / ".automedia")
+        monkeypatch.setattr(
+            init_mod, "_MODEL_CONFIG_FILE", fake_home / ".automedia" / "model_config.yaml"
+        )
+        monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(fake_home))
+
+        with pytest.raises(ValueError, match="real user config directory"):
+            init_mod._write_model_config({"llm": {"text_generation": {"provider": "deepseek"}}})
+
+        init_mod._write_model_config(
+            {"llm": {"text_generation": {"provider": "deepseek"}}},
+            allow_user_scope=True,
+        )
+        assert (fake_home / ".automedia" / "model_config.yaml").is_file()
+
 
 # =========================================================================
 # init_cmd dispatch — template / JSON combinations
