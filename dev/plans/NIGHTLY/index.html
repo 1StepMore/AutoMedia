@@ -1989,6 +1989,12 @@
 hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4）· <code>unreachable=2</code>（G4/G5）。</p>
 <p><strong>读法</strong>：文本轨是真的，图文/视频轨是空的。<code>unconfigured 31</code> 主要是缺 LLM 密钥的真模型场景——
 按 owner 决定（缺密钥先不配），这批<strong>不计入本轮 DoD</strong>，只记账。</p>
+<h3 id="2026-10-13-main-481ad18">2026-10-13 夜间复跑（在 main 481ad18 上）<a class="headerlink" href="#2026-10-13-main-481ad18" title="Permanent link">&para;</a></h3>
+<ul>
+<li>批跑基线是 <code>e310ebb</code>（旧判据）→ 报「三轨全达标」；同步到 <code>481ad18</code> 后重跑 <code>scripts/nightly_gap.py</code> → <strong>exit 1</strong>、<code>gap = ["视频轨"]</code>、视频轨 <code>count=0</code>（<code>tracks.视频轨.ok=false</code>、<code>evidence=[]</code>）；图文轨证据数同时由 2 降到 1。</li>
+<li>差异来源：#195/PR#196 的「继承文本证据子句」未进入批跑工作树 ⇒ 缺陷已立案 e2e-test-suite#166（修复在途）。</li>
+<li>⚠️ <strong>口径提醒：该晚的「三轨全达标记」不可引用</strong>；本小节为重跑后的真实结论。</li>
+</ul>
 <hr />
 <h2 id="_3">【活区】下一步队列<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -1999,8 +2005,12 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <li><strong>打穿视频轨</strong>：<code>video_only</code>/<code>short-video</code> 走一次真跑，让 <code>03_video/</code> 出真视频，<strong>并让 V 门（V0–V7）真执行给出结论</strong>（当前 V0/V1/V3/V4/V6 显式 <code>skipped</code>）。</li>
 <li><strong>持久落盘体检</strong>：确认跑出来的项目落在 repo 内的项目目录，<strong>不是 <code>/tmp</code></strong>。</li>
 <li><strong>HITL 不阻塞</strong>：验证非交互运行返回 <code>awaiting_hitl</code> + 专用退出码。</li>
+<li><strong>（当前唯一未达标轨）打穿视频轨（复跑口径）</strong>：视频轨需要<strong>一次带真模型 cost_log 的 <code>video_only</code>（或 <code>short-video</code>）端到端跑</strong>，达标需同时满足：<code>cost_log.jsonl</code> 非空 + <code>01_content/drafts/</code> 有 ≥500B 的 md + <code>03_video/</code> 有 ≥10KB 视频 + 该项目 gate-report <code>failed=0/errored=0</code> + V2/V5/V7 真跑且 pass（V0/V1/V3/V4/V6 允许 skip 但属已登记能力债 #193）。现有唯一候选 <code>20261003_turning-blog-posts-into-video-essays</code> 因缺 <code>cost_log</code>/draft 不达标。</li>
 </ol>
 <h3 id="agent">已完成（agent 追加）<a class="headerlink" href="#agent" title="Permanent link">&para;</a></h3>
+<ul>
+<li>2026-10-13：复跑口径更正 —— 视频轨当前为 ❌（见上「2026-10-13 夜间复跑」小节）。</li>
+</ul>
 <hr />
 <h2 id="_4">【活区】摩擦账本<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -2021,6 +2031,24 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <td style="text-align: left;">门 <code>L1–L4</code> missing、<code>G4/G5</code> unreachable（已提 issue #130/#131）</td>
 <td style="text-align: left;">否</td>
 <td style="text-align: left;">记账</td>
+</tr>
+<tr>
+<td style="text-align: left;">2026-10-13</td>
+<td style="text-align: left;">夜跑跑批不同步 main ⇒ 本仓矩阵测于过期判据（当晚「三轨全达标」系假绿）</td>
+<td style="text-align: left;">是（判据静默失效）</td>
+<td style="text-align: left;">已立案 e2e-test-suite#166（修复在途）；本仓不改跑批脚本</td>
+</tr>
+<tr>
+<td style="text-align: left;">2026-10-13</td>
+<td style="text-align: left;">本仓同时存在两份冻结区文档：docs/NIGHTLY.md 与 docs/NIGHTLY.html 未入库，与已入库的 docs/dev/plans/NIGHTLY.md 内容分歧</td>
+<td style="text-align: left;">否（但会误导读文档的人）</td>
+<td style="text-align: left;">已立案本仓 #199，等 owner 裁定；本轮不动</td>
+</tr>
+<tr>
+<td style="text-align: left;">2026-10-13</td>
+<td style="text-align: left;">【活区】下一步队列第 2 项仍是 2026-10-07 修订前的措辞（「打穿视频轨…并让 V 门（V0–V7）真执行给出结论（当前 V0/V1/V3/V4/V6 显式 skipped）」），与 owner 2026-10-07 裁定的「允许 skip + 登记能力债」相冲突</td>
+<td style="text-align: left;">否</td>
+<td style="text-align: left;">本轮不改（L1 §5 摩擦预算=0）；已由本轮新增的队列第 5 项取代，待 owner / 下轮清理</td>
 </tr>
 </tbody>
 </table>
