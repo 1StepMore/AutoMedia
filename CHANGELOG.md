@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.9](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.8...automedia-v1.8.9) (2026-10-15)
+
+
+### Bug Fixes
+
+* **llm:** 兜底档空值不再覆盖主配置，并让 doctor 逐档试构造（[#206](https://github.com/1StepMore/AutoMedia/issues/206)） ([#209](https://github.com/1StepMore/AutoMedia/issues/209)) ([158a8c0](https://github.com/1StepMore/AutoMedia/commit/158a8c0a3db7362fa735f5611e56585dbc86d525))
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#201](https://github.com/1StepMore/AutoMedia/issues/201)) ([f845e5f](https://github.com/1StepMore/AutoMedia/commit/f845e5f7db9f272d4d28ce64f08a9b5393886d2d))
+
+
+### Documentation
+
+* **nightly:** 收敛为单一权威文档，删除 docs/NIGHTLY.md 镜像（[#199](https://github.com/1StepMore/AutoMedia/issues/199)） ([#210](https://github.com/1StepMore/AutoMedia/issues/210)) ([969940f](https://github.com/1StepMore/AutoMedia/commit/969940fe74e9910a18919fcb0f1a5983fefd570d))
+* 入库 docs/NIGHTLY.md（不眠计划冻结区镜像）+ 忽略渲染副本 ([#203](https://github.com/1StepMore/AutoMedia/issues/203)) ([d179702](https://github.com/1StepMore/AutoMedia/commit/d179702ebc0fdfa4827c750650854cbbd0f1e006))
+
 ## [1.8.8](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.7...automedia-v1.8.8) (2026-10-06)
 
 
