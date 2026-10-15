@@ -5,7 +5,7 @@ Red Line 4 强制工序最后一道 gate.  Any single check failure → pipeline
 Checks:
     1. brand_name_present   — 主品牌名或别名列表出现
     2. cta_present          — CTA（行动号召）存在
-    3. brand_identity       — 品牌身份定位与档案声明一致（未声明时回退默认短语）
+    3. brand_identity       — 品牌身份出现在正文首段（未声明身份时 skip，不判失败）
     4. blocked_words_absent — 禁止词未出现
     5. cta_direction_sync   — 视频 + 文章 CTA 方向同步（可选）
     6. bridge_sentence      — CTA 前存在过渡句
@@ -61,22 +61,19 @@ _CTA_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Brand identity markers — at least one must appear
-_BRAND_IDENTITY_PHRASES: list[str] = [
-    "AI内容生产",
-    "AI内容生产公司",
-    "AI内容创作",
-    "AI驱动的内容生产",
-]
+#: Window size (characters) used to approximate the "正文首段" when the
+#: content carries no blank-line paragraph separation.  Matches the 200-char
+#: context window already used by :func:`_check_bridge_sentence`.
+_BRAND_IDENTITY_WINDOW_CHARS: int = 200
 
 _EXPECTED_MAP: dict[str, str] = {
     "brand_name_present": "Brand name appears in content",
     "cta_present": "Call-to-action is present in content",
-    # Fallback wording for the *undeclared* path; when brand_profile declares
-    # ``brand_identity`` the gate injects the actual declared value instead
-    # (see G3BrandCTA.execute).
+    # A declared identity must land in the first paragraph; an undeclared
+    # profile skips this check entirely (see G3BrandCTA.execute).
     "brand_identity": (
-        "Brand identity matches one of the default identity phrases (e.g. 'AI内容生产')"
+        "Declared brand identity appears in the first paragraph "
+        "(skipped when the brand declares no identity)"
     ),
     "blocked_words_absent": "No blocked/forbidden words appear in content",
     "cta_direction_sync": "Video and article CTA directions are synchronized",
@@ -167,59 +164,95 @@ def _normalize_identity(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+def _split_paragraphs(content: str) -> list[str]:
+    """按空行切分正文段落（Markdown / 纯文本通用）。"""
+    return [block.strip() for block in re.split(r"\n\s*\n", content.strip()) if block.strip()]
+
+
+def _first_identity_window(content: str) -> tuple[str, str]:
+    """返回判定品牌身份所用的「正文首段」文本及其人类可读的窗口描述。
+
+    中文说明：优先取正文的第一段——跳过开头的纯 Markdown 标题块（H1 标题
+    不承载定位句）。若正文没有任何段落切分（整篇只有一个文本块），退化为
+    **前 N 个字符**的窗口，``N = :data:`_BRAND_IDENTITY_WINDOW_CHARS```。
+    返回的窗口描述用于失败信息，方便排障时知道「在哪个窗口找的」。
+    """
+    paragraphs = _split_paragraphs(content)
+    if len(paragraphs) > 1:
+        for index, block in enumerate(paragraphs):
+            lines = [ln for ln in block.splitlines() if ln.strip()]
+            if lines and all(ln.lstrip().startswith("#") for ln in lines):
+                continue
+            return block, f"first body paragraph (paragraph {index + 1})"
+    window = content.strip()[:_BRAND_IDENTITY_WINDOW_CHARS]
+    return window, f"first {_BRAND_IDENTITY_WINDOW_CHARS} characters (no paragraph break)"
+
+
+def _locate_identity(content: str, expected: str) -> str:
+    """定位声明身份在正文中的首次出现位置（供失败信息使用）。
+
+    先按段落定位（返回 ``paragraph N``），段落级找不到时再退回整篇字符
+    偏移（返回 ``character N``），始终找不到则返回 ``not found anywhere``。
+    """
+    needle = _normalize_identity(expected)
+    for index, block in enumerate(_split_paragraphs(content)):
+        if needle in _normalize_identity(block):
+            return f"paragraph {index + 1}"
+    pos = content.lower().find(expected.lower())
+    if pos < 0:
+        pos = _normalize_identity(content).find(needle)
+    if pos >= 0:
+        return f"character {pos}"
+    return "not found anywhere"
+
+
 def _check_brand_identity(
     content: str,
     brand_profile: dict[str, Any],
 ) -> CheckResult:
-    """Check 3: 品牌身份定位是否正确。
+    """Check 3: 品牌身份是否出现在正文首段。
 
-    品牌档案声明了 ``brand_identity`` 时，以声明值为准：正文归一化后包含
-    该声明值即 pass，否则 fail。未声明时回退到默认身份短语匹配（保持历史
-    行为不变）。
+    判据（#202，方案 ②）：品牌档案声明了 ``brand_identity`` 时，归一化后的
+    声明值必须出现在**正文首段**（无段落切分时取前
+    :data:`_BRAND_IDENTITY_WINDOW_CHARS` 个字符的窗口），出现次数 ≥1 即
+    pass。「全文只出现一次」由写作端 Prompt 保证，判据不因重复而判失败。
+    档案**未声明** ``brand_identity`` 时该子检查不适用 → 返回 skip
+    （``passed=True`` + ``status="skipped"``），不再用凭空默认短语判失败。
 
-    中文说明：本检查只回答一个问题——**正文是否体现了档案声明的身份**。
+    中文说明：本检查只回答一个问题——**档案声明的身份是否落在正文首段**。
     它不回答「这个身份是否被允许」：那属于 per-brand 的约束，归属
-    ``blocked_words``（见 :func:`_check_blocked_words`）。此前这里硬编码了一份
-    投资/金融行业词表，把特定行业判为「恒错身份」，导致正当投资品牌即便档案与
-    正文完全一致也被判失败，且失败信息会建议它改成「AI内容生产」——对这类账号
-    是错误的引导。定位守卫若仍需要，应放在产品级配置或本产品自己的示例档案
-    的 ``blocked_words`` 里，而不是施加给每一个跑门禁的品牌（#157）。
+    ``blocked_words``（见 :func:`_check_blocked_words`，#157）。
     """
     name = "brand_identity"
 
-    # Also check brand_profile for explicit identity field
     declared_identity: str = brand_profile.get("brand_identity", "")
-
-    # Declared identity drives the check when present (#146)
     expected = declared_identity.strip()
-    if expected:
-        if _normalize_identity(expected) in _normalize_identity(content):
-            return {
-                "name": name,
-                "passed": True,
-                "detail": f"brand identity confirmed: {expected}",
-            }
-        return {
-            "name": name,
-            "passed": False,
-            "detail": f"declared brand identity '{expected}' not found in content",
-        }
 
-    # No declared identity → fall back to default identity phrases
-    content_has_identity = any(phrase in content for phrase in _BRAND_IDENTITY_PHRASES)
-    if content_has_identity:
-        found = [p for p in _BRAND_IDENTITY_PHRASES if p in content]
+    # 未声明身份 ⇒ 不适用：skip 并记账，绝不判失败（#202）。
+    if not expected:
         return {
             "name": name,
             "passed": True,
-            "detail": f"brand identity confirmed: {', '.join(found)}",
+            "status": "skipped",
+            "detail": "skipped (no declared identity)",
         }
 
-    # If no explicit identity in brand_profile and not in content → fail
+    window, window_desc = _first_identity_window(content)
+    if _normalize_identity(expected) in _normalize_identity(window):
+        return {
+            "name": name,
+            "passed": True,
+            "detail": f"declared brand identity '{expected}' found in {window_desc}",
+        }
+
+    location = _locate_identity(content, expected)
     return {
         "name": name,
         "passed": False,
-        "detail": "brand identity 'AI内容生产' not found in content",
+        "detail": (
+            f"declared brand identity '{expected}' not found in the {window_desc}; "
+            f"first occurrence in content: {location}"
+        ),
     }
 
 
@@ -443,7 +476,7 @@ class G3BrandCTA(BaseGate):
         declared_expected = (brand_profile.get("brand_identity") or "").strip()
         if declared_expected:
             expected_map["brand_identity"] = (
-                f"Brand identity '{declared_expected}' is present in content"
+                f"Brand identity '{declared_expected}' appears in the first paragraph"
             )
 
         result = build_gate_result(checks, gate="G3", expected_map=expected_map)

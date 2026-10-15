@@ -460,6 +460,21 @@ class TestBrandProfileFieldInjection:
         assert "Brand tone/voice: 友好、口语化" in user_msg
         assert "菲律宾外卖平台" in user_msg.split("Brand identity", 1)[-1]
 
+    def test_identity_placement_rule_replaces_keyword_stuff_ban(self, tmp_path: Path) -> None:
+        """Prompt states the "first paragraph, once" rule and drops the old ban.
+
+        #202：旧表述 "do not keyword-stuff" 与 G3 判据（要求身份字面串出现）
+        互斥，是「恒拦」的根因之一。新表述必须给出可判定的位置与次数要求。
+        """
+        user_msg = self._build_user_message(
+            tmp_path,
+            {"brand_name": "TestBrand", "brand_identity": "菲律宾外卖平台"},
+        )
+
+        assert "first paragraph" in user_msg
+        assert "must not be repeated" in user_msg
+        assert "do not keyword-stuff" not in user_msg
+
     def test_legacy_voice_key_is_still_honoured(self, tmp_path: Path) -> None:
         """A profile without ``tone_guidelines`` falls back to legacy ``voice``."""
         user_msg = self._build_user_message(

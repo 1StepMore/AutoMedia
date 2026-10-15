@@ -238,9 +238,14 @@ class ContentWriterGate(BaseGate):
                 user_message += f"\nBrand tone/voice: {voice}"
             identity = brand_profile.get("brand_identity", "")
             if identity:
+                # The G3 gate checks that this exact phrase lands in the FIRST
+                # paragraph (and only there).  State the placement/count
+                # explicitly so the writer satisfies it without keyword-stuffing
+                # the phrase across the article (--issue #202).
                 user_message += (
-                    "\nBrand identity (the content must reflect this positioning "
-                    f"naturally, do not keyword-stuff): {identity}"
+                    "\nBrand identity — the exact phrase must appear exactly once, "
+                    "in the first paragraph (the opening positioning sentence), and "
+                    f"must not be repeated in any other paragraph: {identity}"
                 )
             # Inject CTA principles — this is what they are for: guidance on how
             # the call-to-action should be written.  Feeding them into the prompt
