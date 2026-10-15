@@ -386,9 +386,20 @@ def _iter_provider_specs(
     provider/model/base_url/api_key) follow in order.  An empty list
     means no usable configuration.
 
-    Fallback entries inherit unspecified fields from the primary block,
-    so a fallback may override only ``provider``/``model``/``base_url``
-    and keep the primary's temperature/max_tokens.
+    Fallback entries inherit fields from the primary block, so a fallback
+    may override only ``provider``/``model``/``base_url`` and keep the
+    primary's temperature/max_tokens.
+
+    A field explicitly set to an empty value (``""`` or ``None``) in a
+    fallback entry is treated as *not provided* and does not override the
+    primary's value.  Without this, an empty ``api_key: ''`` placeholder
+    would silently wipe the primary key and the fallback would only fail
+    once the chain actually reached it.
+
+    We deliberately stop here: this only skips empty overrides.  We do
+    **not** add extra logic to fall back to the primary's key on a spec
+    that has no key at all — primary and fallback may use different
+    providers/base_urls, and sharing A's key with B would yield a 401.
     """
     llm_cfg: dict[str, Any] = config.get("llm", {}).get(task_type, {})
     if not isinstance(llm_cfg, dict) or not llm_cfg:
@@ -400,7 +411,9 @@ def _iter_provider_specs(
         for fb in fallbacks:
             if isinstance(fb, dict) and fb.get("provider"):
                 merged = dict(primary)
-                merged.update({k: v for k, v in fb.items() if k != "fallback"})
+                merged.update(
+                    {k: v for k, v in fb.items() if k != "fallback" and v not in ("", None)}
+                )
                 chain.append(merged)
     return chain
 
