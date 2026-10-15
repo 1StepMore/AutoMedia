@@ -1309,6 +1309,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#save_model_config-refuses-three-write-shapes-issue-208" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_model_config refuses three write shapes (issue #208)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2356,6 +2367,22 @@ and <code>automedia onboard</code>) deep-merges a partial update into the existi
 <code>model_config.yaml</code>. Keys you do not touch, notably the LLM <code>fallback</code> chain,
 are preserved. Do not assume a reconfigure wipes the fallback chain, and do
 not hand-write an overwrite that drops it.</p>
+<h3 id="save_model_config-refuses-three-write-shapes-issue-208"><code>save_model_config</code> refuses three write shapes (issue #208)<a class="headerlink" href="#save_model_config-refuses-three-write-shapes-issue-208" title="Permanent link">&para;</a></h3>
+<p>An automated flow once rewrote a real <code>~/.automedia/model_config.yaml</code> with
+<code>provider: ''</code> and no backup. The writer now refuses:</p>
+<ul>
+<li>an <strong>explicit empty</strong> <code>provider</code> or <code>base_url</code> (<code>ValueError</code>); omit the key
+  instead of passing <code>""</code> to keep the existing value;</li>
+<li>a target inside the <strong>real user config directory</strong> unless the caller passes
+  <code>allow_user_scope=True</code> (user-driven surfaces do; tests and scripts must set
+  <code>AUTOMEDIA_CONFIG_DIR</code> to a temporary directory instead — a test that forgets
+  to isolate fails loudly here rather than writing the real file);</li>
+<li>an overwrite whose <strong>pre-write backup</strong> (<code>model_config.yaml.bak-&lt;UTC
+  timestamp&gt;</code>, same directory) cannot be created (<code>OSError</code>).</li>
+</ul>
+<p>An empty provider is a doctor <strong>error</strong> (<code>llm_api</code> reports the empty slot), not
+an advisory warning: the runtime's environment fallback can make a blank
+provider look healthy.</p>
 <h2 id="pipeline-execution">Pipeline Execution<a class="headerlink" href="#pipeline-execution" title="Permanent link">&para;</a></h2>
 <h3 id="run_full_pipeline-does-not-throw-exceptions"><code>run_full_pipeline()</code> does not throw exceptions<a class="headerlink" href="#run_full_pipeline-does-not-throw-exceptions" title="Permanent link">&para;</a></h3>
 <p>All exceptions are caught and placed into the <code>PipelineResult.error</code> field,

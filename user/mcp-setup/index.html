@@ -2655,7 +2655,7 @@
 </tr>
 <tr>
 <td><code>configure_llm</code></td>
-<td>Configure the LLM provider in <code>~/.automedia/model_config.yaml</code> (preserves an existing LLM fallback chain)</td>
+<td>Configure the LLM provider in <code>~/.automedia/model_config.yaml</code> (preserves an existing LLM fallback chain; refuses an empty provider and backs the previous file up to <code>model_config.yaml.bak-&lt;timestamp&gt;</code> before overwriting)</td>
 </tr>
 <tr>
 <td><code>init_config</code></td>
