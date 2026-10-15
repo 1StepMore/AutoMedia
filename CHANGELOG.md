@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.10](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.9...automedia-v1.8.10) (2026-10-15)
+
+
+### Bug Fixes
+
+* **gates:** G3 品牌身份改为「首段出现一次」判据 + 未声明时 skip（[#202](https://github.com/1StepMore/AutoMedia/issues/202)） ([#211](https://github.com/1StepMore/AutoMedia/issues/211)) ([22957ae](https://github.com/1StepMore/AutoMedia/commit/22957ae6a1555043fced68dddc35c72f356969a7))
+
 ## [1.8.9](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.8...automedia-v1.8.9) (2026-10-15)
 
 
