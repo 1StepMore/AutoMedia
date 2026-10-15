@@ -85,6 +85,24 @@ and `automedia onboard`) deep-merges a partial update into the existing
 are preserved. Do not assume a reconfigure wipes the fallback chain, and do
 not hand-write an overwrite that drops it.
 
+### `save_model_config` refuses three write shapes (issue #208)
+
+An automated flow once rewrote a real `~/.automedia/model_config.yaml` with
+`provider: ''` and no backup. The writer now refuses:
+
+- an **explicit empty** `provider` or `base_url` (`ValueError`); omit the key
+  instead of passing `""` to keep the existing value;
+- a target inside the **real user config directory** unless the caller passes
+  `allow_user_scope=True` (user-driven surfaces do; tests and scripts must set
+  `AUTOMEDIA_CONFIG_DIR` to a temporary directory instead — a test that forgets
+  to isolate fails loudly here rather than writing the real file);
+- an overwrite whose **pre-write backup** (`model_config.yaml.bak-<UTC
+  timestamp>`, same directory) cannot be created (`OSError`).
+
+An empty provider is a doctor **error** (`llm_api` reports the empty slot), not
+an advisory warning: the runtime's environment fallback can make a blank
+provider look healthy.
+
 ## Pipeline Execution
 
 ### `run_full_pipeline()` does not throw exceptions

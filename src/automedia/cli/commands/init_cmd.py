@@ -16,6 +16,11 @@ import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.paths import get_user_config_dir
+from automedia.manifests.model_config_write_guard import (
+    backup_model_config,
+    targets_real_user_config_dir,
+    validate_model_config_updates,
+)
 
 _USER_CFG_DIR = get_user_config_dir()
 _MODEL_CONFIG_FILE = _USER_CFG_DIR / "model_config.yaml"
@@ -99,7 +104,7 @@ def _serialize_preserved_tg(preserved: dict) -> list[str]:
     return lines
 
 
-def _write_model_config(data: dict) -> None:
+def _write_model_config(data: dict, *, allow_user_scope: bool = False) -> None:
     """Write a YAML file to ``~/.automedia/model_config.yaml``.
 
     When *data* follows the ``llm.text_generation`` structure the output
@@ -109,7 +114,23 @@ def _write_model_config(data: dict) -> None:
     Any existing ``llm.text_generation`` keys not in ``_PRIMARY_TG_KEYS``
     (for example a ``fallback`` chain) are carried forward so that
     re-running ``automedia init`` does not destroy them.
+
+    Mirrors ``save_model_config``'s write guards (issue #208): an empty
+    ``provider``/``base_url`` is refused, and an existing file is backed up
+    to ``model_config.yaml.bak-<timestamp>`` before it is overwritten — the
+    comment-preserving writer below still loses the original comments, so
+    the backup is the only copy of the previous shape.
     """
+    validate_model_config_updates(data)
+
+    if not allow_user_scope and targets_real_user_config_dir(_MODEL_CONFIG_FILE):
+        raise ValueError(
+            f"Refusing to write {_MODEL_CONFIG_FILE}: it is inside the real user "
+            "config directory. Automated callers must isolate first — set "
+            "AUTOMEDIA_CONFIG_DIR to a temporary directory — or pass "
+            "allow_user_scope=True when a human explicitly asked for this write."
+        )
+
     _USER_CFG_DIR.mkdir(parents=True, exist_ok=True)
 
     tg = data.get("llm", {}).get("text_generation", {})
@@ -137,6 +158,14 @@ def _write_model_config(data: dict) -> None:
         content = "\n".join(lines) + "\n"
     else:
         content = yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+    try:
+        backup_model_config(_MODEL_CONFIG_FILE)
+    except OSError as exc:
+        raise OSError(
+            f"Refusing to overwrite {_MODEL_CONFIG_FILE}: the pre-write backup "
+            f"could not be created ({exc}). The file was left untouched."
+        ) from exc
 
     with open(_MODEL_CONFIG_FILE, "w", encoding="utf-8") as fh:
         fh.write(content)
@@ -305,7 +334,10 @@ def _init_interactive() -> None:
         else:
             typer.echo("No fallback configured. You can add one later in model_config.yaml.")
 
-    _write_model_config(data)
+    try:
+        _write_model_config(data, allow_user_scope=True)
+    except ValueError as exc:
+        output_error(str(exc))
 
 
 def _init_minimal() -> None:
@@ -319,7 +351,10 @@ def _init_minimal() -> None:
             },
         },
     }
-    _write_model_config(data)
+    try:
+        _write_model_config(data, allow_user_scope=True)
+    except ValueError as exc:
+        output_error(str(exc))
     output_text(
         "Minimal configuration written. Run `automedia doctor` to verify, then "
         '`automedia run --topic "..." --brand my-brand` to start.',

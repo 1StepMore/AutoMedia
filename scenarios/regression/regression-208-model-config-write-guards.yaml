@@ -1,0 +1,27 @@
+name: regression-208-model-config-write-guards
+description: The model-config writer refuses an empty provider, backs up an existing model_config.yaml before overwriting it, refuses the real user config directory without an explicit opt-in, and doctor reports an empty provider as an error — the four guards issue #208 demanded after an automated flow clobbered a real ~/.automedia/model_config.yaml.
+intent: Pin the issue #208 regression: no automated or library caller may ever again rewrite a user's real model_config.yaml into a blank-provider, comment-less, backup-less config. The guards are proved through the real configure_llm tool, the real save_model_config writer and the real doctor CLI, all pointed at throwaway directories.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#208"
+requires_env: []
+steps:
+  - name: model-config write guards are enforced
+    kind: cli
+    check: "Run the committed regression-208 helper, which points an isolated AUTOMEDIA_CONFIG_DIR at a temp directory seeded with a fallback chain and then verifies: configure_llm with an empty provider is refused without writing, a valid configure creates a model_config.yaml.bak-<timestamp> copy of the previous content, a blank provider/base_url is rejected by save_model_config, a write into the real user config directory is refused without allow_user_scope, `automedia doctor` reports an empty provider as an llm_api error, and the real user config directory is left byte-for-byte untouched."
+    standard: tool.contract
+    command: python3 scripts/regression_208_check.py
+    timeout_seconds: 180
+    expect:
+      stdout_has:
+        - REG208_GUARDS_ENFORCED
+cleanup_steps:
+  - name: remove leftover reg208 temp config directories
+    kind: cli
+    check: "Best-effort removal of any leftover /tmp/automedia/reg208-* directories (the helper self-cleans via TemporaryDirectory, so this is a safety net only)."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/reg208-*
+    expect:
+      exit_code: 0

@@ -1,14 +1,19 @@
 """Tests for MCP setup tools: init_config, configure_llm, add_brand.
 
 Tests the three first-time setup tool handlers in
-:mod:`automedia.mcp.tools`.  Uses ``@patch`` to avoid file-system
-side effects on the real ``~/.automedia/`` directory.
+:mod:`automedia.mcp.tools`.  Every test that can reach the model-config
+writer is isolated through ``AUTOMEDIA_CONFIG_DIR`` (a ``tmp_path``), which
+is the same escape hatch the product's user-scope guard recognises: a test
+that forgot to isolate would write into the real ``~/.automedia`` and fail
+the guard loudly instead of passing silently (issue #208).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from automedia.mcp.tools import add_brand, configure_llm, init_config, onboard
 
@@ -56,89 +61,107 @@ class TestInitConfig:
 # ===================================================================
 
 
+def _model_config_under(tmp_path: Path) -> Path:
+    """Return the model_config.yaml path inside an isolated config dir."""
+    return tmp_path / "model_config.yaml"
+
+
 class TestConfigureLLM:
     """Tests for the ``configure_llm`` MCP tool."""
 
+    @pytest.fixture(autouse=True)
+    def _isolate_user_config_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Redirect every user-config write of these tests into *tmp_path*."""
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+
     def test_returns_success_with_provider(self, tmp_path: Path) -> None:
         """configure_llm returns success=True with provider info."""
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                tmp_path / "model_config.yaml",
-            ),
-        ):
-            result = configure_llm(provider="deepseek", model="deepseek-chat")
+        cfg_file = _model_config_under(tmp_path)
+
+        result = configure_llm(provider="deepseek", model="deepseek-chat")
 
         assert result["success"] is True
         assert result["provider"] == "deepseek"
         assert result["model"] == "deepseek-chat"
         assert "config_file" in result
+        assert cfg_file.is_file()
 
     def test_writes_config_file(self, tmp_path: Path) -> None:
         """configure_llm writes model_config.yaml to disk."""
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                tmp_path / "model_config.yaml",
-            ),
-        ):
-            configure_llm(provider="openai", model="gpt-4o-mini")
+        cfg_file = _model_config_under(tmp_path)
 
-        assert (tmp_path / "model_config.yaml").is_file()
+        configure_llm(provider="openai", model="gpt-4o-mini")
+
+        assert cfg_file.is_file()
+        assert "provider: openai" in cfg_file.read_text(encoding="utf-8")
 
     def test_accepts_api_key(self, tmp_path: Path) -> None:
         """configure_llm accepts optional api_key."""
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                tmp_path / "model_config.yaml",
-            ),
-        ):
-            result = configure_llm(
-                provider="anthropic",
-                model="claude-3-sonnet-20240229",
-                api_key="sk-test-123",
-            )
+        cfg_file = _model_config_under(tmp_path)
+
+        result = configure_llm(
+            provider="anthropic",
+            model="claude-3-sonnet-20240229",
+            api_key="sk-test-123",
+        )
 
         assert result["success"] is True
         assert result["provider"] == "anthropic"
 
         # Verify the key was written to the file
-        content = (tmp_path / "model_config.yaml").read_text(encoding="utf-8")
+        content = cfg_file.read_text(encoding="utf-8")
         assert "sk-test-123" in content
 
     def test_handles_empty_provider(self, tmp_path: Path) -> None:
-        """configure_llm handles empty provider gracefully (writes empty)."""
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                tmp_path / "model_config.yaml",
-            ),
-        ):
-            result = configure_llm(provider="")
+        """configure_llm refuses an empty provider instead of writing it.
+
+        Contract changed by issue #208: an empty provider used to be written
+        as ``provider: ''`` — a config that looks configured but resolves to
+        nothing at runtime.  It is now refused, and an existing config is
+        left untouched.
+        """
+        cfg_file = _model_config_under(tmp_path)
+        cfg_file.write_text(
+            "llm:\n  text_generation:\n    provider: amd\n",
+            encoding="utf-8",
+        )
+
+        result = configure_llm(provider="")
+
+        assert result["success"] is False
+        assert "error" in result
+        assert "provider" in str(result["error"])
+        assert "provider: amd" in cfg_file.read_text(encoding="utf-8")
+
+    def test_refusal_creates_no_backup(self, tmp_path: Path) -> None:
+        """A refused write aborts before the backup step."""
+        cfg_file = _model_config_under(tmp_path)
+        cfg_file.write_text("llm:\n  text_generation:\n    provider: amd\n", encoding="utf-8")
+
+        configure_llm(provider="")
+
+        assert not list(tmp_path.glob("model_config.yaml.bak-*"))
+
+    def test_backs_up_existing_config(self, tmp_path: Path) -> None:
+        """A successful write backs up the previous file first (issue #208)."""
+        cfg_file = _model_config_under(tmp_path)
+        cfg_file.write_text(
+            "llm:\n  text_generation:\n    provider: amd\n    model: old-model\n",
+            encoding="utf-8",
+        )
+        before = cfg_file.read_text(encoding="utf-8")
+
+        result = configure_llm(provider="deepseek", model="deepseek-chat")
 
         assert result["success"] is True
-        assert result["provider"] == ""
+        backups = sorted(tmp_path.glob("model_config.yaml.bak-*"))
+        assert len(backups) == 1
+        assert backups[0].read_text(encoding="utf-8") == before
+        assert "provider: deepseek" in cfg_file.read_text(encoding="utf-8")
 
     def test_preserves_existing_fallback(self, tmp_path: Path) -> None:
         """configure_llm preserves an existing fallback list on update."""
-        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file = _model_config_under(tmp_path)
         cfg_file.write_text(
             "llm:\n"
             "  text_generation:\n"
@@ -149,17 +172,8 @@ class TestConfigureLLM:
             "        model: fallback-model\n",
             encoding="utf-8",
         )
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                cfg_file,
-            ),
-        ):
-            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        result = configure_llm(provider="deepseek", model="deepseek-chat")
 
         assert result["success"] is True
         content = cfg_file.read_text(encoding="utf-8")
@@ -170,7 +184,7 @@ class TestConfigureLLM:
 
     def test_preserves_existing_base_url(self, tmp_path: Path) -> None:
         """configure_llm preserves an existing base_url when not updated."""
-        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file = _model_config_under(tmp_path)
         cfg_file.write_text(
             "llm:\n"
             "  text_generation:\n"
@@ -178,17 +192,8 @@ class TestConfigureLLM:
             "    base_url: https://custom.example.com/v1\n",
             encoding="utf-8",
         )
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                cfg_file,
-            ),
-        ):
-            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        result = configure_llm(provider="deepseek", model="deepseek-chat")
 
         assert result["success"] is True
         content = cfg_file.read_text(encoding="utf-8")
@@ -204,7 +209,7 @@ class TestConfigureLLM:
         that absent keys (like fallback) are kept intact while provider/model
         are updated.
         """
-        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file = _model_config_under(tmp_path)
         cfg_file.write_text(
             "llm:\n"
             "  text_generation:\n"
@@ -215,17 +220,8 @@ class TestConfigureLLM:
             "        model: fb-model\n",
             encoding="utf-8",
         )
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                cfg_file,
-            ),
-        ):
-            result = configure_llm(provider="deepseek", model="deepseek-chat")
+
+        result = configure_llm(provider="deepseek", model="deepseek-chat")
 
         assert result["success"] is True
         content = cfg_file.read_text(encoding="utf-8")
@@ -243,14 +239,13 @@ class TestConfigureLLM:
 class TestOnboard:
     """Tests for the ``onboard`` MCP tool."""
 
-    @patch("automedia.core.paths.get_user_config_dir")
-    def test_base_url_merge_preserves_fallback(
-        self,
-        mock_get_user_config_dir: object,
-        tmp_path: Path,
-    ) -> None:
+    @pytest.fixture(autouse=True)
+    def _isolate_user_config_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Redirect every user-config write of these tests into *tmp_path*."""
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+
+    def test_base_url_merge_preserves_fallback(self, tmp_path: Path) -> None:
         """onboard's base_url merge preserves an existing fallback list."""
-        mock_get_user_config_dir.return_value = tmp_path
         cfg_file = tmp_path / "model_config.yaml"
         cfg_file.write_text(
             "llm:\n"
@@ -261,21 +256,12 @@ class TestOnboard:
             "        model: fallback-model\n",
             encoding="utf-8",
         )
-        with (
-            patch(
-                "automedia.cli.commands.init_cmd._USER_CFG_DIR",
-                tmp_path,
-            ),
-            patch(
-                "automedia.cli.commands.init_cmd._MODEL_CONFIG_FILE",
-                cfg_file,
-            ),
-        ):
-            result = onboard(
-                llm_provider="deepseek",
-                llm_key="sk-test-123",
-                base_url="https://custom.example.com/v1",
-            )
+
+        result = onboard(
+            llm_provider="deepseek",
+            llm_key="sk-test-123",
+            base_url="https://custom.example.com/v1",
+        )
 
         assert result["success"] is True
         content = cfg_file.read_text(encoding="utf-8")
@@ -283,6 +269,19 @@ class TestOnboard:
         assert "fallback-model" in content
         assert "https://custom.example.com/v1" in content
         assert "deepseek" in content
+
+    def test_empty_provider_is_refused(self, tmp_path: Path) -> None:
+        """onboard with an empty provider configures nothing and succeeds.
+
+        A blank ``llm_provider`` means "skip LLM setup" (the brand step may
+        still run), so it must not reach the writer and must not be reported
+        as a configured LLM.
+        """
+        result = onboard(llm_provider="", brand_name="")
+
+        assert result["success"] is True
+        assert "llm" not in result
+        assert not (tmp_path / "model_config.yaml").exists()
 
 
 # ===================================================================

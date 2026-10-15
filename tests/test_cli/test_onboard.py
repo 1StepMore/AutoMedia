@@ -21,6 +21,24 @@ from automedia.cli.app import app
 runner = CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def _isolate_user_config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep every write of this module inside *tmp_path* (issue #208).
+
+    All three isolation points are armed, because the CLI registers its
+    commands lazily: the module that owns ``_USER_CFG_DIR`` is imported on
+    first dispatch, so importing it *under* the patched resolver fixes the
+    import-time constant, and the attribute patch covers the case where an
+    earlier test in the session already imported it.
+    """
+    monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr("automedia.core.paths.get_user_config_dir", lambda: tmp_path)
+
+    import automedia.cli.commands.onboard as onboard_mod
+
+    monkeypatch.setattr(onboard_mod, "_USER_CFG_DIR", tmp_path)
+
+
 class TestOnboardStepLlm:
     """Tests for the LLM onboarding step."""
 
@@ -153,3 +171,47 @@ class TestOnboardStepLlm:
         assert fallback[0]["provider"] == "openai"
         assert fallback[0]["model"] == "gpt-4o-mini"
         assert config["llm"]["text_generation"]["provider"] == "anthropic"
+
+
+class TestOnboardLlmWriteGuards:
+    """Issue #208 guards on the onboarding LLM step."""
+
+    def test_empty_provider_is_refused(self, tmp_path: Path) -> None:
+        """A blank provider is refused instead of written as ``''``.
+
+        The wizard's prompt default follows the stored provider, so a config
+        left with ``provider: ''`` reproduces the incident path: pressing
+        Enter keeps the blank and the write must be refused, not silently
+        persisted.
+        """
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text("llm:\n  text_generation:\n    provider: ''\n", encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            ["onboard", "start", "--step", "llm"],
+            input="\ndeepseek-chat\nsk-key\n\n0.7\n2048\nn\n",
+        )
+
+        assert result.exit_code == 1
+        assert "provider" in result.output.lower()
+        assert "provider: ''" in cfg_file.read_text(encoding="utf-8")
+
+    def test_successful_step_backs_up_previous_config(self, tmp_path: Path) -> None:
+        """Re-running the step backs up the existing config first."""
+        cfg_file = tmp_path / "model_config.yaml"
+        cfg_file.write_text(
+            "llm:\n  text_generation:\n    provider: old-provider\n", encoding="utf-8"
+        )
+        before = cfg_file.read_text(encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            ["onboard", "start", "--step", "llm"],
+            input="deepseek\ndeepseek-chat\nsk-key\n\n0.7\n2048\nn\n",
+        )
+        assert result.exit_code == 0
+
+        backups = sorted(tmp_path.glob("model_config.yaml.bak-*"))
+        assert len(backups) == 1
+        assert backups[0].read_text(encoding="utf-8") == before

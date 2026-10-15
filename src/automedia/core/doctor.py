@@ -42,6 +42,11 @@ logger = structlog.get_logger(__name__)
 _LLM_PROBE_TIMEOUT_S = 15.0
 _LLM_PROBE_MAX_ATTEMPTS = 1
 
+# LLM task slots whose ``provider`` must never be an explicit empty string
+# (issue #208). Slots absent from the config are skipped by
+# ``_iter_provider_specs``, so only an explicitly blank provider is reported.
+_LLM_TASK_SLOTS = ("text_generation", "vision", "subtitle_proofread", "translation")
+
 # ---------------------------------------------------------------------------
 # OS-specific install instructions
 # ---------------------------------------------------------------------------
@@ -273,6 +278,31 @@ class Doctor:
         )
 
     @staticmethod
+    def _empty_provider_slots(config: dict[str, Any]) -> list[str]:
+        """Return the LLM slots whose ``provider`` is an explicit empty string.
+
+        Issue #208: ``provider: ''`` used to pass silently.  An empty provider
+        resolves at runtime through the environment/credential lookup, so a
+        clobbered ``model_config.yaml`` still produced "API reachable" from
+        ``automedia doctor`` — the corruption was invisible in the one check
+        an operator runs after a bad automated write.
+
+        A slot that omits ``provider`` entirely is *not* reported here: the
+        runtime implies "openai" for it, so it is not the broken state this
+        check exists to surface.
+        """
+        from automedia.core.llm_client import _iter_provider_specs
+
+        empty: list[str] = []
+        for slot in _LLM_TASK_SLOTS:
+            for spec in _iter_provider_specs(config, slot):
+                provider = spec.get("provider")
+                if "provider" in spec and not str(provider or "").strip():
+                    empty.append(slot)
+                    break
+        return empty
+
+    @staticmethod
     def _check_llm_chain(config: dict[str, Any]) -> tuple[bool, str | None]:
         """Dry-run build every spec in the ``text_generation`` provider chain.
 
@@ -287,8 +317,21 @@ class Doctor:
         primary the live probe would otherwise resolve.  Every fallback spec is
         validated strictly and named in the returned message by
         provider/model/base_url.
+
+        An explicitly empty ``provider`` is the exception: it is reported here
+        even on the primary, because the live probe would resolve it through
+        the environment fallback and mask the corruption (issue #208).
         """
         from automedia.core.llm_client import _build_client, _iter_provider_specs
+
+        empty_slots = Doctor._empty_provider_slots(config)
+        if empty_slots:
+            return False, (
+                f"llm.{empty_slots[0]}.provider is empty in the resolved model "
+                "config — set a real provider (e.g. openai, deepseek) in "
+                "model_config.yaml or via the AUTOMEDIA_* credential env vars; "
+                "an empty provider resolves to nothing at runtime."
+            )
 
         specs = _iter_provider_specs(config, "text_generation")
         for index, spec in enumerate(specs):

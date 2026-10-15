@@ -21,7 +21,7 @@
 | docs/dev/AutoMedia开发简报.md | 4640 | file |
 | docs/dev/agent-reference.md | 12520 | file |
 | docs/dev/agent-troubleshooting.md | 27046 | file |
-| docs/dev/api-gotchas.md | 9365 | file |
+| docs/dev/api-gotchas.md | 10310 | file |
 | docs/dev/automedia-business-validation-20260902.md | 19417 | file |
 | docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -55,7 +55,7 @@
 | docs/user/cli-reference.md | 28007 | file |
 | docs/user/deployment.md | 8829 | file |
 | docs/user/hitl-framework.md | 9314 | file |
-| docs/user/mcp-setup.md | 26854 | file |
+| docs/user/mcp-setup.md | 26970 | file |
 | docs/user/omni-integration.md | 13082 | file |
 | docs/user/production-workflow.md | 10716 | file |
 | docs/user/user-introduction.md | 8446 | file |

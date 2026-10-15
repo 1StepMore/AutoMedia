@@ -5,7 +5,19 @@ Public API
 - ``ProviderConfig`` dataclass
 - ``ModelConfig`` dataclass
 - ``load_model_config(path) -> ModelConfig``
-- ``save_model_config(path, updates) -> None``
+- ``save_model_config(path, updates, *, allow_user_scope=False) -> None``
+- ``validate_model_config_updates(updates) -> None``
+- ``backup_model_config(path) -> Path | None``
+
+Write safety (issue #208)
+------------------------
+An automated flow once overwrote a real ``~/.automedia/model_config.yaml``:
+``provider`` became ``''``, the header comments were lost, and no backup
+existed.  ``save_model_config`` therefore validates the update, refuses the
+real user config directory unless ``allow_user_scope=True``, and backs the
+existing file up to ``model_config.yaml.bak-<UTC timestamp>`` before
+writing; a failed backup aborts the write.  The guards themselves live in
+:mod:`automedia.manifests.model_config_write_guard`.
 """
 
 from __future__ import annotations
@@ -17,6 +29,11 @@ from pathlib import Path
 import yaml
 
 from automedia.core.credential_loader import load_credential
+from automedia.manifests.model_config_write_guard import (
+    backup_model_config,
+    targets_real_user_config_dir,
+    validate_model_config_updates,
+)
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -54,8 +71,6 @@ class ModelConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-_TASK_SLOTS = ("text_generation", "vision", "subtitle_proofread", "translation")
 
 
 def _parse_provider(raw: dict | None) -> ProviderConfig:
@@ -147,7 +162,7 @@ def _deep_merge(base: dict, updates: dict) -> dict:
     return merged
 
 
-def save_model_config(path: str | Path, updates: dict) -> None:
+def save_model_config(path: str | Path, updates: dict, *, allow_user_scope: bool = False) -> None:
     """Merge *updates* into an existing ``model_config.yaml`` and write it back.
 
     Parameters
@@ -159,15 +174,54 @@ def save_model_config(path: str | Path, updates: dict) -> None:
         Mapping shaped ``{"llm": {"<slot>": {...}}}``. Provided keys replace
         existing values; absent keys (e.g. ``fallback``) are preserved. Slots
         not present in *updates* are left untouched.
+    allow_user_scope:
+        Opt in to writing inside the real user config directory
+        (``~/.automedia`` when ``AUTOMEDIA_CONFIG_DIR`` is unset or points
+        there).  User-driven surfaces pass ``True``; library callers,
+        tests and scripts leave it ``False`` and isolate with
+        ``AUTOMEDIA_CONFIG_DIR`` instead.
+
+    Raises
+    ------
+    ValueError
+        When *updates* explicitly writes a blank ``provider`` or
+        ``base_url``, or when the target is the real user config directory
+        and *allow_user_scope* is ``False``.
+    OSError
+        When the pre-write backup cannot be created — the write is aborted.
 
     Notes
     -----
+    Order of operations is deliberate: validate the update, check the
+    write scope, then back up the existing file, and only then write.
+    A failed backup aborts the write instead of overwriting unbacked.
+
     If the file exists and parses to a mapping it is used as the merge base;
     otherwise (missing, empty, unparseable, or non-mapping content) the base
     is ``{}``. The file is written with owner-only permissions (``0o600``).
     """
     file_path = Path(path)
+
+    validate_model_config_updates(updates)
+
+    if not allow_user_scope and targets_real_user_config_dir(file_path):
+        raise ValueError(
+            f"Refusing to write {file_path}: it is inside the real user config "
+            "directory. Automated/library callers must isolate first — set "
+            "AUTOMEDIA_CONFIG_DIR to a temporary directory (what tests and CI do) "
+            "— or pass allow_user_scope=True when a human explicitly asked for "
+            "this write."
+        )
+
     file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        backup_model_config(file_path)
+    except OSError as exc:
+        raise OSError(
+            f"Refusing to overwrite {file_path}: the pre-write backup could not "
+            f"be created ({exc}). The file was left untouched."
+        ) from exc
 
     base: dict = {}
     if file_path.is_file():
