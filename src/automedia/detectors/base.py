@@ -16,10 +16,10 @@ import-time concern and availability a runtime question.
 
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, NotRequired, TypedDict
 
+from automedia.core.env_overlay import env_lookup
 from automedia.detectors.registry import DetectorRegistry
 from automedia.gates._result import CheckResult
 
@@ -97,12 +97,13 @@ class BaseDetector(ABC):
         """Whether this detector can run in the current environment.
 
         True when ``_env_required`` is empty, or when the required env var
-        is set and non-empty.  Detectors that are not available should be
+        is set and non-empty (detected directly, or read from the ``.env``
+        overlay).  Detectors that are not available should be
         skipped by callers (e.g. :func:`automedia.detectors.detect_text`).
         """
         if not self._env_required:
             return True
-        return bool(os.environ.get(self._env_required))
+        return bool(env_lookup(self._env_required))
 
     # -- Required method -------------------------------------------------
 

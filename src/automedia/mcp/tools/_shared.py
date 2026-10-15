@@ -21,6 +21,7 @@ import yaml
 from pydantic import ValidationError
 from structlog import get_logger
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.llm_client import LLMError  # noqa: F401 — re-exported via tools/__init__.py
 from automedia.core.logging import bind_correlation_id  # noqa: F401 — re-exported
 from automedia.exceptions import (  # noqa: F401 — re-exported
@@ -240,8 +241,8 @@ def _get_active_pipelines_path() -> Path:
 
 
 def _resolve_projects_dir() -> str:
-    """Resolve the projects directory from env or config defaults."""
-    env_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "")
+    """Resolve the projects directory from env (or ``.env``) or config defaults."""
+    env_dir = env_lookup("AUTOMEDIA_PROJECTS_DIR", "")
     if env_dir:
         return str(Path(env_dir).resolve())
     return str(Path.cwd() / ".automedia" / "output" / "projects")

@@ -24,12 +24,12 @@ loud :class:`LoadError`, never a silent pass (Momus improvement 3).
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Protocol
 
 import yaml
 
+from automedia.core.env_overlay import env_lookup
 from automedia.validation.schema import Scenario, SchemaError, Step
 
 
@@ -54,13 +54,14 @@ class StandardsRegistryProtocol(Protocol):
 def default_scenarios_dir() -> Path:
     """Resolve the scenarios directory.
 
-    ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR``, when set, REPLACES the default
-    ``<repo root>/scenarios`` — the swap point for tests and alternate
-    scenario libraries.  The default is derived from this module's location:
-    ``src/automedia/validation/loader.py`` resolves to the repo root at
-    ``parents[3]`` (parents[0]=validation, [1]=automedia, [2]=src, [3]=root).
+    ``AUTOMEDIA_VALIDATION_SCENARIOS_DIR``, when set (env or ``.env`` overlay),
+    REPLACES the default ``<repo root>/scenarios`` — the swap point for tests
+    and alternate scenario libraries.  The default is derived from this
+    module's location: ``src/automedia/validation/loader.py`` resolves to the
+    repo root at ``parents[3]`` (parents[0]=validation, [1]=automedia, [2]=src,
+    [3]=root).
     """
-    override = os.environ.get("AUTOMEDIA_VALIDATION_SCENARIOS_DIR")
+    override = env_lookup("AUTOMEDIA_VALIDATION_SCENARIOS_DIR")
     if override:
         return Path(override).expanduser()
     return Path(__file__).resolve().parents[3] / "scenarios"

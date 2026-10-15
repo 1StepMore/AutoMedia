@@ -18,6 +18,7 @@ from structlog import get_logger
 
 from automedia.adapters.base import BasePlatformAdapter, PublishResult
 from automedia.core.credential_loader import load_credential
+from automedia.core.env_overlay import env_lookup
 
 log = get_logger(__name__)
 
@@ -50,18 +51,18 @@ def _sanitize_url(url: str) -> str:
 
 
 def _load_wx_credentials() -> tuple[str, str]:
-    """Load WeChat appid and secret via credential_loader with legacy env fallback."""
+    """Load WeChat appid and secret via credential_loader with legacy env fallback.
+
+    The ``.env`` overlay participates in the legacy lookups: a real
+    environment variable still wins over a ``.env`` value.
+    """
     appid = load_credential("wechat_appid")
     if not appid:
-        import os
-
-        appid = os.environ.get("WX_APPID", "").strip() or None
+        appid = env_lookup("WX_APPID", "").strip() or None
 
     secret = load_credential("wechat_appsecret")
     if not secret:
-        import os
-
-        secret = os.environ.get("WX_APPSECRET", "").strip() or None
+        secret = env_lookup("WX_APPSECRET", "").strip() or None
 
     return (appid or "", secret or "")
 

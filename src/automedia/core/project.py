@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from automedia.core.env_overlay import env_lookup
+
 _log = logging.getLogger(__name__)
 
 # Project identity file — one JSON blob per project directory.  ``_discover``
@@ -157,7 +159,7 @@ class Project:
         sanitize_path(brand)
 
         if base_dir is None:
-            env_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "")
+            env_dir = env_lookup("AUTOMEDIA_PROJECTS_DIR", "")
             base_dir = str(Path(env_dir).resolve()) if env_dir else os.getcwd()
         base_dir = sanitize_path(base_dir)
 
@@ -247,10 +249,11 @@ class Project:
 def find_project_dir(project_id: str, base_dir: str | None = None) -> str | None:
     """Return the directory of the project whose id is *project_id*, or ``None``.
 
-    Scans the base directory (``base_dir``, else ``AUTOMEDIA_PROJECTS_DIR``, else
-    the cwd) one level deep for a matching ``00_project_info.json``.
+    Scans the base directory (`base_dir`, else ``AUTOMEDIA_PROJECTS_DIR`` from
+    env or the ``.env`` overlay, else the cwd) one level deep for a matching
+    ``00_project_info.json``.
     """
-    root = base_dir or os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
+    root = base_dir or env_lookup("AUTOMEDIA_PROJECTS_DIR", "") or os.getcwd()
     base = Path(sanitize_path(root))
     for info_file in sorted(base.glob(_PROJECT_INFO_GLOB)):
         try:

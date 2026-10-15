@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import warnings
 from typing import Any
 
 from pydantic import ValidationError
 from structlog import get_logger
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.llm_client import LLMError
 from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools._shared import (
@@ -97,7 +97,7 @@ def select_topic(
 
 
 def _fetch_tavily_trending(category: str) -> str:
-    api_key = os.environ.get("AUTOMEDIA_TAVILY_API_KEY", "")
+    api_key = env_lookup("AUTOMEDIA_TAVILY_API_KEY", "")
     if not api_key:
         return ""
 

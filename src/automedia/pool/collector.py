@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 
 from structlog import get_logger
 
+from automedia.core.env_overlay import env_lookup
+
 log = get_logger(__name__)
 
 if TYPE_CHECKING:
@@ -44,10 +46,11 @@ class HotCollector:
         Args:
             seed_topics: Optional pre-seeded topics to include in the
                 collection funnel.
-            tavily_api_key: Tavily Search API key. Falls back to env var.
+            tavily_api_key: Tavily Search API key. Falls back to env var or
+                the ``.env`` overlay.
         """
         self._seed_topics = seed_topics or []
-        self._tavily_api_key = tavily_api_key or os.environ.get("AUTOMEDIA_TAVILY_API_KEY", "")
+        self._tavily_api_key = tavily_api_key or env_lookup("AUTOMEDIA_TAVILY_API_KEY", "")
 
     # ------------------------------------------------------------------
     # Public API

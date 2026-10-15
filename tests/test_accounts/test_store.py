@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
 from cryptography.exceptions import InvalidTag
 
 from automedia.accounts.store import AccountStore
+from automedia.core.env_overlay import reset_dotenv_overlay_cache
+from tests.test_accounts.conftest import TEST_MASTER_KEY
 
 # ---------------------------------------------------------------------------
 # Sample credential payloads (synthetic — no real secrets)
@@ -425,11 +429,29 @@ class TestUpdateStatus:
 class TestInitialisation:
     """Store initialisation and edge cases."""
 
-    def test_no_key_raises_value_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_key_raises_value_error(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Creating a store without a key raises ``ValueError``."""
         monkeypatch.delenv("AUTOMEDIA_MASTER_KEY", raising=False)
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(tmp_path / "absent.env"))
+        reset_dotenv_overlay_cache()
         with pytest.raises(ValueError, match="AUTOMEDIA_MASTER_KEY"):
-            AccountStore(store_dir="/tmp/no-key-test", master_key="")
+            AccountStore(store_dir=str(tmp_path / "no-key-test"), master_key="")
+
+    def test_master_key_resolved_from_dotenv_overlay(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``AUTOMEDIA_MASTER_KEY`` resolves from ``.env`` without an env write."""
+        reset_dotenv_overlay_cache()
+        monkeypatch.delenv("AUTOMEDIA_MASTER_KEY", raising=False)
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(tmp_path / "keys.env"))
+        (tmp_path / "keys.env").write_text(f"AUTOMEDIA_MASTER_KEY={TEST_MASTER_KEY}\n")
+
+        store = AccountStore(store_dir=str(tmp_path / "dotenv-store"))
+        assert store._key == hashlib.sha256(TEST_MASTER_KEY.encode()).digest()
+        assert "AUTOMEDIA_MASTER_KEY" not in os.environ
+        reset_dotenv_overlay_cache()
 
     def test_store_dir_created(self, temp_store_dir: Path) -> None:
         """The store directory is created on init if it doesn't exist."""

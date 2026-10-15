@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from structlog import get_logger
 
+from automedia.core.env_overlay import env_lookup
 from automedia.core.overrides import OverridesLoader
 from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
@@ -1024,7 +1025,7 @@ def _run_pipeline(
 
     try:
         config = load_config(config_dir=config_dir)
-        projects_dir = os.environ.get("AUTOMEDIA_PROJECTS_DIR", "") or None
+        projects_dir = env_lookup("AUTOMEDIA_PROJECTS_DIR", "") or None
         if resume_project_id is not None:
             from automedia.core.project import find_project_dir
 

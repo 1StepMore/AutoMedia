@@ -1,0 +1,27 @@
+name: regression-207-lazy-dotenv-no-env-leak
+description: Importing the product with a populated .env present leaves os.environ untouched while credentials and fake mode still resolve from that .env — the lazy-dotenv fix issue #207 demanded after the import-time dotenv load aborted every pytest session on machines with ~/.automedia/.env.
+intent: "Pin the issue #207 regression: no automedia import may ever write .env values into os.environ again (the environment-leak guard in tests/conftest.py aborts the whole session when it happens), and the documented .env contract must survive the move to lazy loading — real env vars still win, .env values still power load_credential() and fake mode."
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#207"
+requires_env: []
+steps:
+  - name: dotenv overlay stays out of os.environ
+    kind: cli
+    check: "Run the committed regression-207 helper, which stages an isolated .env under /tmp/automedia/reg207-* and then imports the product, verifying: the watched variables (AUTOMEDIA_MASTER_KEY, AUTOMEDIA_FAKE_LLM, AUTOMEDIA_LLM_API_KEY, AUTOMEDIA_CONFIG_DIR) are still absent from os.environ after the import, load_credential('llm_api_key') resolves the .env value, _is_fake_mode() is True, and after reset_dotenv_overlay_cache() a real environment variable set afterwards still wins over the overlay."
+    standard: tool.contract
+    command: python3 scripts/regression_207_check.py
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - REG207_DOTENV_LAZY_OK
+cleanup_steps:
+  - name: remove leftover reg207 temp env directories
+    kind: cli
+    check: "Best-effort removal of any leftover /tmp/automedia/reg207-* directories (the helper self-cleans via shutil.rmtree, so this is a safety net only)."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/reg207-*
+    expect:
+      exit_code: 0

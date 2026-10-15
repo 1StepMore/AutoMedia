@@ -9,7 +9,8 @@ raises instead of fabricating evidence.
 Production wiring point: to integrate a real external AI-taste API (e.g.
 a GPTZero-style service), replace the raise at the end of
 :meth:`GPTZeroStyleApiDetector.detect` with an authenticated HTTP call
-using the key from ``os.environ["AUTOMEDIA_DETECTOR_GPTZERO_API_KEY"]``
+using the key resolved through
+``automedia.core.env_overlay.env_lookup("AUTOMEDIA_DETECTOR_GPTZERO_API_KEY")``
 and map the API response into a :class:`DetectorResult`.  This build never
 makes a network call — the adapter is a deliberate, honest no-op boundary
 that raises rather than returning fake scores.
@@ -55,6 +56,6 @@ class GPTZeroStyleApiDetector(BaseDetector):
             f"detector '{self.detector_name}' is not configured in this build: "
             "no external endpoint is wired. Production wiring point: replace "
             "this raise with an authenticated HTTP call to the external "
-            f"AI-taste API using os.environ['{self._env_required}'] and map "
+            f"AI-taste API using env_lookup('{self._env_required}') and map "
             "the response into a DetectorResult."
         )

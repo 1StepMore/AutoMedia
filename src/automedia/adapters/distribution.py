@@ -7,11 +7,13 @@ for multi-platform publishing.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from structlog import get_logger
 
 from automedia.adapters.publish_engine import PublishEngine
+from automedia.core.env_overlay import env_lookup
 
 log = get_logger(__name__)
 
@@ -26,19 +28,18 @@ def _resolve_projects_dir(override: str | None = None) -> str:
     """Resolve the projects directory.
 
     Checks *override* first, then falls back to the default logic
-    (``AUTOMEDIA_PROJECTS_DIR`` env var or ``.automedia/output/projects``).
+    (``AUTOMEDIA_PROJECTS_DIR`` env var or ``.env`` overlay, else
+    ``.automedia/output/projects``).
     """
     if override:
         return override
     global _default_projects_dir
     if _default_projects_dir is None:
-        env_dir = __import__("os").environ.get("AUTOMEDIA_PROJECTS_DIR", "")
+        env_dir = env_lookup("AUTOMEDIA_PROJECTS_DIR", "")
         if env_dir:
-            _default_projects_dir = str(__import__("pathlib").Path(env_dir).resolve())
+            _default_projects_dir = str(Path(env_dir).resolve())
         else:
-            _default_projects_dir = str(
-                __import__("pathlib").Path.cwd() / ".automedia" / "output" / "projects"
-            )
+            _default_projects_dir = str(Path.cwd() / ".automedia" / "output" / "projects")
     return _default_projects_dir
 
 

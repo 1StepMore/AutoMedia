@@ -14,10 +14,11 @@ local development).
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 
 import structlog
+
+from automedia.core.env_overlay import env_lookup
 
 _CONFIGURED = False
 
@@ -29,7 +30,7 @@ def configure_structlog() -> None:
     calls are no-ops.
 
     The renderer is selected by the ``AUTOMEDIA_LOG_FORMAT``
-    environment variable:
+    environment variable (or the ``.env`` overlay):
 
     * ``"json"`` → :class:`structlog.processors.JSONRenderer`
     * anything else (default) → :class:`structlog.dev.ConsoleRenderer`
@@ -39,7 +40,7 @@ def configure_structlog() -> None:
         return
     _CONFIGURED = True
 
-    fmt = os.environ.get("AUTOMEDIA_LOG_FORMAT", "console").lower()
+    fmt = env_lookup("AUTOMEDIA_LOG_FORMAT", "console").lower()
 
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,

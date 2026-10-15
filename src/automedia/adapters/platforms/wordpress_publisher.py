@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -32,6 +31,7 @@ from structlog import get_logger
 
 from automedia.adapters.base import BasePlatformAdapter, PublishResult
 from automedia.core.credential_loader import load_credential
+from automedia.core.env_overlay import env_lookup
 
 log = get_logger(__name__)
 
@@ -541,19 +541,22 @@ class WordPressPublisher(BasePlatformAdapter):
 def _load_wp_credentials() -> tuple[str, str]:
     """Load WordPress site URL and token via credential_loader with legacy env fallback.
 
+    The ``.env`` overlay participates in every fallback lookup: a real
+    environment variable still wins over a ``.env`` value.
+
     Returns:
         ``(site_url, token)`` tuple.  Either value may be empty string.
     """
     url = load_credential("wordpress_url")
     if not url:
-        url = os.environ.get("AUTOMEDIA_WORDPRESS_URL", "").strip() or ""
+        url = env_lookup("AUTOMEDIA_WORDPRESS_URL", "").strip() or ""
 
     token = load_credential("wordpress_token")
     if not token:
-        token = os.environ.get("AUTOMEDIA_WORDPRESS_TOKEN", "").strip() or ""
+        token = env_lookup("AUTOMEDIA_WORDPRESS_TOKEN", "").strip() or ""
         # Also check for legacy AUTOMEDIA_WORDPRESS_APP_PASSWORD
         if not token:
-            token = os.environ.get("AUTOMEDIA_WORDPRESS_APP_PASSWORD", "").strip() or ""
+            token = env_lookup("AUTOMEDIA_WORDPRESS_APP_PASSWORD", "").strip() or ""
 
     return (url, token)
 

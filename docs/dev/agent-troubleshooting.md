@@ -556,7 +556,7 @@ Beyond the core variables in AGENTS.md section 11, the following variables are a
 |----------|---------|---------|
 | `AUTOMEDIA_LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
 | `AUTOMEDIA_LOG_FORMAT` | Output format: `console` (human) or `json` (log aggregators) | `console` |
-| `AUTOMEDIA_DOTENV_PATH` | Custom path to `.env` file loaded on startup | (auto) |
+| `AUTOMEDIA_DOTENV_PATH` | Custom path to the `.env` file AutoMedia reads lazily (real env only — never read from `.env` itself) | (auto) |
 
 ### MCP Server Network Mode
 

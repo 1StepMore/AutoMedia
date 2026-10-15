@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 import warnings
 from typing import Any
@@ -11,6 +10,7 @@ import yaml
 from structlog import get_logger
 
 import automedia.mcp.tools._shared as _shared_mod
+from automedia.core.env_overlay import env_lookup
 from automedia.exceptions import AutoMediaError
 from automedia.mcp._state import _SERVER_START
 from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
@@ -45,8 +45,8 @@ def _detect_first_run() -> bool:
             and brand_file.read_text(encoding="utf-8").strip()
         )
 
-        # Check for LLM API key (env var or model_config.yaml)
-        llm_key_env = bool(os.environ.get("AUTOMEDIA_LLM_API_KEY"))
+        # Check for LLM API key (env var or .env overlay or model_config.yaml)
+        llm_key_env = bool(env_lookup("AUTOMEDIA_LLM_API_KEY"))
 
         model_config = user_cfg_dir / "model_config.yaml"
         has_llm_config_file = False

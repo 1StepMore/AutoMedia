@@ -36,6 +36,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from structlog import get_logger
 
 from automedia.accounts.models import AccountInfo
+from automedia.core.env_overlay import env_lookup
 from automedia.core.paths import get_user_config_dir
 
 log = get_logger(__name__)
@@ -63,7 +64,8 @@ class AccountStore:
             ``~/.automedia/accounts/``.
         master_key:
             Encryption master key.  Defaults to the ``AUTOMEDIA_MASTER_KEY``
-            environment variable.  At least one must be provided.
+            environment variable (or the ``~/.automedia/.env`` overlay).  At
+            least one must be provided.
 
         Raises
         ------
@@ -71,11 +73,11 @@ class AccountStore:
             When no master key is available via either argument or environment.
         """
         self._store_dir: Path = Path(store_dir or get_user_config_dir() / "accounts")
-        key_str = master_key or os.environ.get("AUTOMEDIA_MASTER_KEY", "")
+        key_str = master_key or env_lookup("AUTOMEDIA_MASTER_KEY") or ""
         if not key_str:
             raise ValueError(
-                "AUTOMEDIA_MASTER_KEY environment variable must be set, "
-                "or a master_key must be provided."
+                "AUTOMEDIA_MASTER_KEY environment variable must be set "
+                "(env or .env), or a master_key must be provided."
             )
         # Derive 32-byte AES-256 key via SHA-256
         self._key: bytes = hashlib.sha256(key_str.encode()).digest()
