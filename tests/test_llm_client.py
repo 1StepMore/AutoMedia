@@ -1212,3 +1212,96 @@ class TestProviderFallbackChain:
             result = llm_complete_structured("Hello", response_format=_FencedOutput, config=config)
         assert isinstance(result, _FencedOutput)
         assert result.value == "structured ok"
+
+
+# ===========================================================================
+# Issue #206 — empty fallback values must not override the primary block
+# ===========================================================================
+
+
+class TestProviderSpecMergeEmptyValues:
+    """``_iter_provider_specs`` must ignore empty/None fallback overrides.
+
+    An explicit ``api_key: ''`` placeholder used to wipe the primary's key,
+    so the fallback spec only failed once the chain reached it (issue #206).
+    """
+
+    @staticmethod
+    def _config(fallback_entry: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "llm": {
+                "text_generation": {
+                    "provider": "primary-provider",
+                    "model": "primary-model",
+                    "api_key": "sk-primary",
+                    "base_url": "https://primary.test/v1",
+                    "temperature": 0.5,
+                    "max_tokens": 1024,
+                    "fallback": [fallback_entry],
+                }
+            }
+        }
+
+    def test_empty_api_key_does_not_override_primary_key(self) -> None:
+        """A fallback ``api_key: ''`` keeps the primary's non-empty key."""
+        from automedia.core.llm_client import _iter_provider_specs
+
+        config = self._config(
+            {
+                "provider": "backup-provider",
+                "model": "backup-model",
+                "api_key": "",
+                "base_url": "https://backup.test/v1",
+            }
+        )
+        specs = _iter_provider_specs(config, "text_generation")
+        assert len(specs) == 2
+        assert specs[1]["api_key"] == "sk-primary"
+
+    def test_none_api_key_does_not_override_primary_key(self) -> None:
+        """A fallback ``api_key: null`` keeps the primary's non-empty key."""
+        from automedia.core.llm_client import _iter_provider_specs
+
+        config = self._config(
+            {
+                "provider": "backup-provider",
+                "model": "backup-model",
+                "api_key": None,
+                "base_url": "https://backup.test/v1",
+            }
+        )
+        specs = _iter_provider_specs(config, "text_generation")
+        assert specs[1]["api_key"] == "sk-primary"
+
+    def test_explicit_api_key_still_wins(self) -> None:
+        """A fallback with a real key still overrides the primary's key."""
+        from automedia.core.llm_client import _iter_provider_specs
+
+        config = self._config(
+            {
+                "provider": "backup-provider",
+                "model": "backup-model",
+                "api_key": "sk-backup",
+                "base_url": "https://backup.test/v1",
+            }
+        )
+        specs = _iter_provider_specs(config, "text_generation")
+        assert specs[1]["api_key"] == "sk-backup"
+
+    def test_empty_non_key_fields_inherit_primary(self) -> None:
+        """Empty ``base_url``/knobs are treated as unset and inherited."""
+        from automedia.core.llm_client import _iter_provider_specs
+
+        config = self._config(
+            {
+                "provider": "backup-provider",
+                "model": "",
+                "base_url": "",
+                "temperature": None,
+            }
+        )
+        specs = _iter_provider_specs(config, "text_generation")
+        assert specs[1]["model"] == "primary-model"
+        assert specs[1]["base_url"] == "https://primary.test/v1"
+        assert specs[1]["temperature"] == 0.5
+        assert specs[1]["api_key"] == "sk-primary"

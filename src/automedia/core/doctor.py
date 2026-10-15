@@ -273,6 +273,41 @@ class Doctor:
         )
 
     @staticmethod
+    def _check_llm_chain(config: dict[str, Any]) -> tuple[bool, str | None]:
+        """Dry-run build every spec in the ``text_generation`` provider chain.
+
+        ``_build_client`` is called for each spec — construction only, no
+        request is sent.  This turns a silently-broken fallback (the kind that
+        an empty ``api_key: ''`` used to produce) into an up-front
+        ``automedia doctor`` failure instead of a surprise when the chain
+        actually fails over.
+
+        The primary spec (index 0) is probed live by :meth:`_check_llm_api`;
+        a construction failure there is left to that probe so it cannot mask a
+        primary the live probe would otherwise resolve.  Every fallback spec is
+        validated strictly and named in the returned message by
+        provider/model/base_url.
+        """
+        from automedia.core.llm_client import _build_client, _iter_provider_specs
+
+        specs = _iter_provider_specs(config, "text_generation")
+        for index, spec in enumerate(specs):
+            try:
+                _build_client(config, task_type="text_generation", provider_spec=spec)
+            except Exception as exc:
+                if index == 0:
+                    # Primary: the live probe below owns this failure.
+                    continue
+                provider = spec.get("provider") or "?"
+                model = spec.get("model") or "?"
+                base_url = spec.get("base_url") or "(default)"
+                return False, (
+                    f"fallback[{index}] provider={provider!r} model={model!r} "
+                    f"base_url={base_url!r} cannot be constructed: {exc}"
+                )
+        return True, None
+
+    @staticmethod
     def _check_llm_api() -> tuple[bool, str | None]:
         """Check LLM API connectivity by sending a minimal completion.
 
@@ -285,6 +320,10 @@ class Doctor:
         whole ``doctor`` run.  Fake-LLM mode is resolved from the *same* merged
         config the probe would use (env var OR ``llm.fake_mode``), and is
         reported as not-reachable rather than a false-positive "API reachable".
+
+        Before contacting the network, every fallback spec in the chain is
+        dry-run built by :meth:`_check_llm_chain` so an unusable fallback is
+        reported instead of silently dropped.
         """
         try:
             from automedia.core.llm_client import _is_fake_mode, llm_complete
@@ -303,6 +342,10 @@ class Doctor:
 
         if _is_fake_mode(config):
             return False, "fake LLM mode active — provider API not contacted"
+
+        chain_ok, chain_message = Doctor._check_llm_chain(config)
+        if not chain_ok:
+            return False, chain_message
 
         try:
             llm_complete(
