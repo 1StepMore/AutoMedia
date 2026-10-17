@@ -136,6 +136,7 @@ or value.
 |---|---|
 | `success` | The call envelope reports success; the call completed without a protocol-level error |
 | `data_has` | `output.data` is a dict containing every listed key |
+| `output_has` | The call's output dict carries every listed key |
 | `exit_code` | The CLI process exited with the given code |
 | `stdout_has` | CLI stdout contains every listed substring |
 | `stderr_has` | CLI stderr contains every listed substring |
@@ -143,6 +144,8 @@ or value.
 | `artifact_size_min` | That file is at least N bytes; applies to the path named in `artifact_exists` of the same block |
 | `artifact_nonempty` | The given path exists and is non-empty |
 | `gate_records_pass` | The artifact's JSON carries non-empty gate or pass records |
+| `min_score` | The output carries a numeric quality score at least this large |
+| `error_expected` | Opt in to a deliberately failing call: the error envelope (or non-zero exit) counts as a pass, not a failure |
 
 A step that deliberately exercises a failing call **must** declare
 `error_expected: true` in its `expect` block; otherwise the harness treats the
