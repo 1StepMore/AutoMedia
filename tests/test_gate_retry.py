@@ -42,6 +42,35 @@ class _FakeGate:
         return self._execute_fn(ctx)
 
 
+class _BudgetedFakeGate(_FakeGate):
+    """Fake gate that caps its level-1 quality retries via the ClassVar knob."""
+
+    max_quality_retries = 1
+
+
+class _HaltingFakeGate(_FakeGate):
+    """Fake gate: one quality retry, then halt on exhaustion (issue #219)."""
+
+    max_quality_retries = 1
+    halt_on_exhaustion = True
+
+
+class _AfterRecorder:
+    """Minimal GateHook observer recording every ``after_gate`` call."""
+
+    def __init__(self) -> None:
+        self.after_calls: list[tuple[str, dict[str, Any]]] = []
+
+    def before_gate(self, gate_name: str, context: dict[str, Any]) -> None:
+        return None
+
+    def after_gate(self, gate_name: str, context: dict[str, Any], result: dict[str, Any]) -> None:
+        self.after_calls.append((gate_name, dict(result)))
+
+    def on_gate_failed(self, gate_name: str, context: dict[str, Any], error: Exception) -> None:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # (a) Flaky gate fails 2 times transient, succeeds on 3rd
 # ---------------------------------------------------------------------------
@@ -419,6 +448,115 @@ def test_quality_retry_exhausted_continues_pipeline() -> None:
 
 
 # ---------------------------------------------------------------------------
+# (g2) Per-gate retry knobs (issue #219): max_quality_retries + halt_on_exhaustion
+# ---------------------------------------------------------------------------
+
+
+def test_per_gate_max_quality_retries_overrides_engine_default() -> None:
+    """A gate's ``max_quality_retries`` ClassVar wins over the engine default.
+
+    The engine is configured with 5 retries; the gate caps itself at 1, so the
+    gate must be re-executed exactly once (initial attempt + one retry).  If
+    the per-gate value were ignored, call_count would be 6.
+    """
+    call_count = {"n": 0}
+
+    def _always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        call_count["n"] += 1
+        return {"passed": False, "gate": "G0", "error": "always fails"}
+
+    gate = _BudgetedFakeGate("G0", "retry", _always_fail)
+    trailing = _FakeGate("G1", "stop", lambda ctx: {"passed": True, "gate": "G1"})
+    engine = GateEngine([gate, trailing], max_quality_retries=5, max_regenerations=0)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+
+    ok, results = engine.run({"topic": "test"})
+
+    assert ok is True
+    assert results[0]["quality_retry_count"] == 1
+    assert call_count["n"] == 2
+    assert [r["gate"] for r in results] == ["G0", "G1"]
+
+
+def test_halt_on_exhaustion_halts_after_single_rewrite_and_records_failure() -> None:
+    """A ``halt_on_exhaustion`` gate returns early after its last retry fails.
+
+    The downstream sentinel must never run, the failed result must carry the
+    structured error, and ``_dispatch_after`` must fire exactly once on the
+    halt path so observers (e.g. PipelineHistoryHook) record the failure.
+    """
+    call_count = {"n": 0}
+
+    def _always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        call_count["n"] += 1
+        return {
+            "passed": False,
+            "gate": "G0",
+            "error": "unsourced number '30%'",
+            "modified_content": "rewritten copy",
+        }
+
+    sentinel_calls = {"n": 0}
+
+    def _sentinel(ctx: dict[str, Any]) -> dict[str, Any]:
+        sentinel_calls["n"] += 1
+        return {"passed": True, "gate": "G99"}
+
+    gate = _HaltingFakeGate("G0", "retry", _always_fail)
+    sentinel = _FakeGate("G99", "stop", _sentinel)
+    hook = _AfterRecorder()
+    engine = GateEngine(
+        [gate, sentinel],  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+        hooks=[hook],  # type: ignore[arg-type]  # duck-typed observer matches GateHook
+        max_quality_retries=5,  # ignored — the gate caps itself at 1
+        max_regenerations=0,
+    )
+
+    ok, results = engine.run({"topic": "test"})
+
+    assert ok is False
+    assert [r["gate"] for r in results] == ["G0"]
+    assert sentinel_calls["n"] == 0
+    assert call_count["n"] == 2
+    assert results[0]["quality_retry_count"] == 1
+    # Exactly one after_gate dispatch on the halt path, carrying the failure.
+    assert len(hook.after_calls) == 1
+    hook_gate, hook_result = hook.after_calls[0]
+    assert hook_gate == "G0"
+    assert hook_result["passed"] is False
+    assert hook_result["error"] == "unsourced number '30%'"
+
+
+def test_gates_without_retry_knobs_keep_engine_defaults() -> None:
+    """Gates that never set the new ClassVars are unaffected (backward compat).
+
+    The defaults on ``BaseGate`` are ``max_quality_retries=None`` and
+    ``halt_on_exhaustion=False``; a plain retry gate therefore consumes the
+    engine default budget and the pipeline continues after exhaustion.
+    """
+    from automedia.gates.base import BaseGate
+
+    assert BaseGate.max_quality_retries is None
+    assert BaseGate.halt_on_exhaustion is False
+
+    call_count = {"n": 0}
+
+    def _always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        call_count["n"] += 1
+        return {"passed": False, "gate": "G0", "error": "always fails"}
+
+    gate = _FakeGate("G0", "retry", _always_fail)
+    trailing = _FakeGate("G1", "stop", lambda ctx: {"passed": True, "gate": "G1"})
+    engine = GateEngine([gate, trailing], max_quality_retries=2, max_regenerations=0)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+
+    ok, results = engine.run({"topic": "test"})
+
+    assert ok is True
+    assert results[0]["quality_retry_count"] == 2
+    assert call_count["n"] == 3
+    assert [r["gate"] for r in results] == ["G0", "G1"]
+
+
+# ---------------------------------------------------------------------------
 # (h) Quality retry with level 2 handler — delegates
 # ---------------------------------------------------------------------------
 
@@ -768,14 +906,13 @@ def test_level2_escalation_flows_to_h0_gate() -> None:
 # (f) modified_content application before each quality retry (todo 7)
 # ---------------------------------------------------------------------------
 
-_CONTENT_GATES_WITH_REWRITE = frozenset({"G1", "G2"})
+_CONTENT_GATES_WITH_REWRITE = frozenset({"G0", "G1", "G2"})
 """Content gates allowed to apply ``modified_content`` into the main flow.
 
-Mirrors the Oracle scope correction: G1 (humanizer) and G2 (copy review) are
-the only ``failure_mode="retry"`` gates that emit ``modified_content`` on
-failing attempts.  An explicit allowlist guards the main content flow against
-clobbering from D-gate/P-gate style rewrites that should never touch the
-master draft.
+Mirrors ``gate_engine._CONTENT_GATES_WITH_REWRITE``: the ``failure_mode="retry"``
+copy gates that emit ``modified_content`` on failing attempts.  An explicit
+allowlist guards the main content flow against clobbering from D-gate/P-gate
+style rewrites that should never touch the master draft.
 """
 
 

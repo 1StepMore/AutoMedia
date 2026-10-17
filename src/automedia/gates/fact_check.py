@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from structlog import get_logger
 
@@ -28,7 +28,12 @@ from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.llm_helpers import G0CheckResult, LLMCheckResult, llm_check_with_fallback
+from automedia.gates.llm_helpers import (
+    G0CheckResult,
+    G0RewriteResult,
+    LLMCheckResult,
+    llm_check_with_fallback,
+)
 from automedia.prompts import load_prompt
 
 log = get_logger(__name__)
@@ -540,7 +545,7 @@ def _run_plausibility_check(
             "detail": detail,
         }
 
-        return build_gate_result(
+        gate_result = build_gate_result(
             [check],
             gate="G0",
             expected_map={
@@ -550,6 +555,10 @@ def _run_plausibility_check(
             method="llm",
             status="completed",
         )
+        if gate_result.get("passed") is False:
+            _enrich_failing_checks_with_issue_details([check], result.structured_issues)
+            gate_result["error"] = _build_failure_reason([check])
+        return gate_result
 
     except Exception:
         log.warning(
@@ -557,6 +566,156 @@ def _run_plausibility_check(
             exc_info=True,
         )
         return None
+
+
+# ---------------------------------------------------------------------------
+# Issue #219 — structured failure reason + one-shot rewrite
+# ---------------------------------------------------------------------------
+
+_ISSUE_NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?\s*%?")
+_ISSUE_SENTENCE_RE = re.compile(r"[「『“\"]([^」』”\"\n]+)[」』”\"]")
+
+
+def _issue_details(text: str) -> dict[str, Any]:
+    """Derive sentence/number/missing-citation hints from issue *text*.
+
+    Returns only the keys it can establish; callers attach them additively to
+    a failing check and never overwrite an existing key.
+    """
+    details: dict[str, Any] = {}
+    number_match = _ISSUE_NUMBER_RE.search(text)
+    if number_match:
+        number = number_match.group(0).strip()
+        if number:
+            details["number"] = number
+    sentence_match = _ISSUE_SENTENCE_RE.search(text)
+    if sentence_match:
+        sentence = sentence_match.group(1).strip()
+        if sentence:
+            details["sentence"] = sentence
+    lowered = text.lower()
+    if "citation" in lowered or "source material" in lowered:
+        details["missing_citation"] = True
+    return details
+
+
+def _enrich_failing_checks_with_issue_details(
+    checks: list[CheckResult],
+    structured_issues: list[dict[str, Any]] | None = None,
+) -> None:
+    """Additively attach sentence/number/missing_citation to failing checks.
+
+    Heuristics read each failing check's own ``detail``; explicit
+    ``structured_issues`` entries returned by the LLM (the richest source)
+    then override the first failing check.  Passing checks are untouched and
+    existing keys are never renamed or removed.
+    """
+    failing = [check for check in checks if not check.get("passed")]
+    if not failing:
+        return
+    for check in failing:
+        hints = _issue_details(str(check.get("detail", "")))
+        number = hints.get("number")
+        if isinstance(number, str) and number:
+            check["number"] = number
+        sentence = hints.get("sentence")
+        if isinstance(sentence, str) and sentence:
+            check["sentence"] = sentence
+        if hints.get("missing_citation") is True:
+            check["missing_citation"] = True
+    for issue in structured_issues or []:
+        target = failing[0]
+        structured_sentence = issue.get("sentence")
+        if isinstance(structured_sentence, str) and structured_sentence.strip():
+            target["sentence"] = structured_sentence
+        structured_number = issue.get("number")
+        if isinstance(structured_number, str) and structured_number.strip():
+            target["number"] = structured_number
+        structured_missing = issue.get("missing_citation")
+        if structured_missing is not None:
+            target["missing_citation"] = bool(structured_missing)
+
+
+def _build_failure_reason(checks: list[CheckResult]) -> str:
+    """Compose a non-empty failure summary naming the failing checks.
+
+    Every failing check contributes ``name: detail`` (with a derivable
+    number/sentence hint appended), so a persisted reason points at the
+    offending sentence and figure instead of a bare "failed".
+    """
+    fragments: list[str] = []
+    for check in checks:
+        if check.get("passed"):
+            continue
+        name = str(check.get("name", "?"))
+        detail = str(check.get("detail", "")).strip()
+        fragment = f"{name}: {detail}" if detail else name
+        hints = _issue_details(detail)
+        if hints.get("number"):
+            fragment += f" [number={hints['number']}]"
+        if hints.get("sentence"):
+            fragment += f" [sentence={hints['sentence']}]"
+        fragments.append(fragment)
+    if not fragments:
+        return "G0 fact-check failed: no specific reason reported"
+    return "G0 fact-check failed — " + "; ".join(dict.fromkeys(fragments))
+
+
+def _attempt_g0_rewrite(content: str, reason: str) -> str | None:
+    """Request one structured rewrite; return content or ``None`` (fail-closed).
+
+    Any provider/parse exception or an empty result yields ``None`` so the
+    caller emits no ``modified_content``; the failing result still carries its
+    structured ``error``.
+    """
+    try:
+        prompt = load_prompt(
+            "fact_check_g0_rewrite",
+            content=content,
+            failure_reason=reason,
+        )
+        rewrite = llm_complete_structured_safe(prompt, response_format=G0RewriteResult)
+    except Exception:
+        log.warning("G0 rewrite attempt failed (fail-closed)", exc_info=True)
+        return None
+    rewritten = getattr(rewrite, "rewritten_content", None)
+    if not isinstance(rewritten, str) or not rewritten.strip():
+        log.warning("G0 rewrite returned empty content (fail-closed)")
+        return None
+    return rewritten
+
+
+def _finalize_failure(
+    result: dict[str, Any],
+    gate_context: GateContext | dict[str, Any],
+    *,
+    rewrite_allowed: bool,
+    structured_issues: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Attach a structured reason and (once) a one-shot rewrite to *result*.
+
+    Passing results are returned unchanged (``error`` stays ``None``).  A
+    failing result always gains a non-empty ``error``.  When *rewrite_allowed*
+    and no rewrite has been attempted yet in this run, exactly one structured
+    rewrite is requested: the attempt flag is set BEFORE the call, so a failed
+    call can never produce a second attempt.
+    """
+    if result.get("passed") is not False:
+        return result
+    checks: list[CheckResult] = result.get("checks") or []
+    _enrich_failing_checks_with_issue_details(checks, structured_issues)
+    if not result.get("error"):
+        result["error"] = _build_failure_reason(checks)
+    if not rewrite_allowed or gate_context.get("_g0_rewrite_attempted"):
+        return result
+    gate_context["_g0_rewrite_attempted"] = True
+    content = str(gate_context.get("content", "") or "").strip()
+    if not content:
+        return result
+    rewritten = _attempt_g0_rewrite(content, str(result["error"]))
+    if rewritten:
+        result["modified_content"] = rewritten
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -582,7 +741,9 @@ class G0FactCheck(BaseGate):
     """
 
     _gate_name = "G0"
-    _failure_mode = "stop"
+    _failure_mode = "retry"
+    max_quality_retries: ClassVar[int | None] = 1
+    halt_on_exhaustion: ClassVar[bool] = True
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 5-step fact-check and return structured result."""
@@ -629,14 +790,18 @@ class G0FactCheck(BaseGate):
                 else:
                     checks.append({"name": name, "passed": True, "detail": ""})
 
-            return build_gate_result(
-                checks,
-                gate="G0",
-                expected_map=_EXPECTED_MAP,
-                confidence=round(
-                    sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
-                    4,
+            return _finalize_failure(
+                build_gate_result(
+                    checks,
+                    gate="G0",
+                    expected_map=_EXPECTED_MAP,
+                    confidence=round(
+                        sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
+                        4,
+                    ),
                 ),
+                gate_context,
+                rewrite_allowed=False,
             )
 
         if enable_llm:
@@ -685,22 +850,31 @@ class G0FactCheck(BaseGate):
 
             log.info("G0 fact-check method=%s passed=%s", method, llm_result["passed"])
 
-            return build_gate_result(
-                checks,
-                gate="G0",
-                expected_map=_EXPECTED_MAP,
-                confidence=confidence,
-                method=method,
+            return _finalize_failure(
+                build_gate_result(
+                    checks,
+                    gate="G0",
+                    expected_map=_EXPECTED_MAP,
+                    confidence=confidence,
+                    method=method,
+                ),
+                gate_context,
+                rewrite_allowed=enable_llm,
+                structured_issues=llm_result.get("structured_issues", []),
             )
 
         checks = _run_deterministic_checks(content, source_url, source_data)
-        return build_gate_result(
-            checks,
-            gate="G0",
-            expected_map=_EXPECTED_MAP,
-            confidence=round(
-                sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
-                4,
+        return _finalize_failure(
+            build_gate_result(
+                checks,
+                gate="G0",
+                expected_map=_EXPECTED_MAP,
+                confidence=round(
+                    sum(1 for c in checks if c["passed"]) / len(checks) if checks else 0.0,
+                    4,
+                ),
+                method="deterministic",
             ),
-            method="deterministic",
+            gate_context,
+            rewrite_allowed=False,
         )

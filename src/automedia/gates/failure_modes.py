@@ -15,7 +15,9 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "description": (
             "Fact-Check Gate — 5-step verification of content against"
             " source data (source trace, numbers, timeline, quotes,"
-            " entities)"
+            " entities).  On failure it emits exactly ONE rewrite and, if"
+            " that rewrite still fails, halts the pipeline with the"
+            " structured reason persisted."
         ),
         "common_causes": [
             "Source URL domain not found in content body",

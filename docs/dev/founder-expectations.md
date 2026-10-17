@@ -434,7 +434,7 @@ Expectations are grouped by journey phase.
 |-----------|---------------|
 | **Gate behavior** | G0 checks factual claims in the article against provided source material. Reports each check as passed/failed with evidence. |
 | **No source material** | If no source material was provided, G0 does a lightweight LLM-based plausibility check instead of strict fact verification. Summary notes: "事实核查基于 LLM 知识（无源材料）"。 |
-| **On failure — auto-recovery** | G0 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. Pipeline halts on failed fact check — no quality retry or regeneration. |
+| **On failure — auto-recovery** | G0 has failure_mode="retry" with exactly ONE quality retry（`max_quality_retries=1`）: the failing result carries a structured reason（哪句、哪个数字、缺什么引用）and G0 performs one surgical rewrite of the flagged sentences only. If the rewrite still fails, G0 halts（`halt_on_exhaustion=True`）with the structured reason persisted to state/history — diagnosable, never a bare halt. Level 0 transient retry (ConnectionError, TimeoutError) still applies via tenacity（最多 3 次，指数退避）. |
 | **Human sees** | Summary includes: `G0 ✅ 全部通过 (12 项核查)` or `G0 ⚠️ 3/12 项存疑` with details available on request. |
 
 #### F26 — Brand Compliance ✅

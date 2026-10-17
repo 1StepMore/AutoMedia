@@ -47,6 +47,7 @@ class LLMCheckResult(TypedDict, total=False):
     confidence: float
     tone_score: float
     brand_compliance: bool
+    structured_issues: list[dict[str, Any]]
 
 
 class DeepCheckOutput(TypedDict, total=False):
@@ -76,6 +77,20 @@ class G0CheckResult(BaseModel):
     passed: bool
     issues: list[str] = Field(default_factory=list)
     confidence: float = 1.0
+    structured_issues: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class G0RewriteResult(BaseModel):
+    """Structured output model for the one-shot G0 rewrite (issue #219).
+
+    ``rewritten_content`` carries the full corrected content; every other
+    field is optional so a sparse provider response still parses.  The field
+    name contains ``content`` so the regression driver's response coercion
+    fills it.
+    """
+
+    rewritten_content: str = ""
+    notes: list[str] = Field(default_factory=list)
 
 
 class G2CheckResult(BaseModel):
@@ -179,6 +194,9 @@ def llm_check_with_fallback(
         - ``confidence``: float (G0 / G1) — confidence score
         - ``tone_score``: float (G2 only) — tone quality score
         - ``brand_compliance``: bool (G2 only) — brand compliance flag
+        - ``structured_issues``: list[dict] (G0 only) — sentence-level issue
+          entries (sentence / number / missing citation), when the model
+          returns them
     """
     global _llm_success_count, _fallback_count
 
@@ -217,7 +235,10 @@ def llm_check_with_fallback(
         }
 
         # Add model-specific fields
-        if isinstance(result, (G0CheckResult, G1CheckResult)):
+        if isinstance(result, G0CheckResult):
+            response["confidence"] = result.confidence
+            response["structured_issues"] = result.structured_issues
+        elif isinstance(result, G1CheckResult):
             response["confidence"] = result.confidence
         elif isinstance(result, (G2CheckResult, G6ToneCheckResult)):
             response["tone_score"] = result.tone_score

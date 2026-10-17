@@ -48,6 +48,11 @@ _PROMPT_METADATA: dict[str, dict[str, Any]] = {
         "variables": ["content", "topic"],
         "purpose": "Plausibility check for content lacking source material (Gate G0).",
     },
+    "fact_check_g0_rewrite": {
+        "variables": ["content", "failure_reason"],
+        "purpose": "One-shot surgical rewrite of the sentences a failing G0 "
+        "fact-check flagged, preserving everything else (Gate G0).",
+    },
     "humanizer_g1": {
         "variables": ["content"],
         "purpose": "Detect AI writing patterns and assess natural readability (Gate G1).",

@@ -428,7 +428,7 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 |-------|------|------|-------------|
 | Pre | pre-gate | Topic selection validation | stop |
 | Writing | CW | Content writing (with inline SEO scoring) | stop |
-| Copy | G0 | Fact check | stop |
+| Copy | G0 | Fact check | retry |
 | Copy | G1 | Humanizer | retry |
 | Copy | G2 | Copy review | retry |
 | Copy | G3 | Brand CTA | stop |

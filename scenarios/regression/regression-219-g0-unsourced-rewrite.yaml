@@ -1,0 +1,27 @@
+name: regression-219-g0-unsourced-rewrite
+description: The G0 fact-check gate rewrites an unsourced number exactly once and lets the pipeline continue when the rewrite passes — or halts after that single rewrite with the structured reason persisted — the four-part contract issue #219 demanded after G0 halted a whole track on generated copy containing an unsourced figure (「点击率高 30%」) with no rewrite and no diagnosable reason.
+intent: "Pin the issue #219 regression: G0 must never again kill a whole track on an unsourced number without first emitting one rewrite and a structured, persisted failure reason. The regression driver runs the REAL G0FactCheck gate inside the REAL GateEngine with the LLM mocked at its lowest shared seam, a downstream sentinel gate proving continuation/halt, and the real PipelineHistoryHook proving the reason persists — no network, synthetic data only."
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#219"
+requires_env: []
+steps:
+  - name: G0 rewrites an unsourced number once and continues (or halts with a persisted reason)
+    kind: cli
+    check: "Run the committed regression-219 driver, which drives the real G0FactCheck gate inside the real GateEngine against synthetic copy containing an unsourced number (「点击率高 30%」) whose source material lacks it, with the LLM mocked at automedia.core.llm_client._structured_completion_with_fallback (no network). It asserts: the failing G0 result carries a structured reason (non-empty result['error']), exactly one rewrite (modified_content) is emitted, and in the default pass mode the pipeline continues to a downstream sentinel gate (rewrite accepted). In REG219_MODE=fail it asserts the pipeline halts before the sentinel and the structured reason is readable from the engine's persisted history/diff record. Failure prints one or more REG219_*_MISSING guard lines and exits non-zero."
+    standard: tool.contract
+    command: python3 scripts/regression_219_check.py
+    timeout_seconds: 120
+    expect:
+      stdout_has:
+        - REG219_G0_UNSOURCED_REWRITE_OK
+cleanup_steps:
+  - name: remove leftover reg219 temp project directories
+    kind: cli
+    check: "Best-effort removal of any leftover /tmp/automedia/reg219-* scratch project directories (the driver self-cleans via shutil.rmtree, so this is a safety net only)."
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/reg219-*
+    expect:
+      exit_code: 0

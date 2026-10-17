@@ -62,6 +62,42 @@ _SEO_DEFAULT_SCORES: dict[str, int] = dict.fromkeys(_SEO_KEYS, 70)
 _SEO_THRESHOLD: int = 40
 _MAX_SEO_RETRIES: int = 2
 
+# Generation-side hard constraint (issue #219): the writer may only use numbers
+# that appear in the provided source material.  The injected block is capped so
+# a large source document cannot blow up the prompt / token budget.
+_SOURCE_CONTENT_MAX_CHARS: int = 3500
+_SOURCE_TRUNCATION_MARKER: str = "\n...[SOURCE MATERIAL TRUNCATED]..."
+
+_SOURCED_NUMBERS_RULE: str = (
+    "SOURCED NUMBERS ONLY — hard constraint:\n"
+    "- Use a specific number, statistic, percentage, date, or monetary figure ONLY "
+    "when that exact figure appears in the SOURCE MATERIAL above. Cite it inline "
+    "with its source reference, e.g. [Source: <reference>].\n"
+    "- If the figure is not in the SOURCE MATERIAL, do NOT invent, estimate, or "
+    'recall one from memory. Use qualitative phrasing instead (e.g. "significantly '
+    'more", "many users", "a large share") with no precise value.\n'
+    "- This constraint overrides any platform instruction demanding data, statistics, "
+    "or concrete numbers: satisfy it only with sourced figures, otherwise answer "
+    "qualitatively.\n"
+    "- Do not fabricate citations."
+)
+
+
+def _build_source_material_block(source_content: str, source_reference: str) -> str:
+    snippet = source_content[:_SOURCE_CONTENT_MAX_CHARS]
+    if len(source_content) > _SOURCE_CONTENT_MAX_CHARS:
+        snippet += _SOURCE_TRUNCATION_MARKER
+    reference = source_reference.strip() or "provided source material"
+    return (
+        "\n\n=== SOURCE MATERIAL (only permitted source of facts and numbers) ===\n"
+        f"Source reference: {reference}\n"
+        "---\n"
+        f"{snippet}\n"
+        "=== END SOURCE MATERIAL ===\n\n"
+        f"{_SOURCED_NUMBERS_RULE}"
+    )
+
+
 _SEO_SCORING_PROMPT = (
     "You are an SEO content analyzer. Evaluate the following article and "
     "score it on these 5 dimensions (0-100):\n"
@@ -276,6 +312,17 @@ class ContentWriterGate(BaseGate):
                 "扫码…了解更多 / 点击…注册 / 联系我们 / 了解更多详情 / "
                 "sign up / learn more / get started."
             )
+
+        # Issue #219: the writer may only use numbers present in source material.
+        source_content = str(gate_context.get("source_content", "") or "").strip()
+        if source_content:
+            source_material = gate_context.get("source_material") or {}
+            source_reference = (
+                str(source_material.get("path") or source_material.get("url") or "")
+                if isinstance(source_material, dict)
+                else ""
+            )
+            user_message += _build_source_material_block(source_content, source_reference)
 
         # Inject format hint for social-thread mode
         content_format = gate_context.get("content_format", "")
