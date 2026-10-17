@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.11](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.10...automedia-v1.8.11) (2026-10-17)
+
+
+### Bug Fixes
+
+* **core:** .env 惰性加载，import 期不再污染 os.environ（[#207](https://github.com/1StepMore/AutoMedia/issues/207)） ([#218](https://github.com/1StepMore/AutoMedia/issues/218)) ([19dd582](https://github.com/1StepMore/AutoMedia/commit/19dd5824a5f30a2a16bebdb24a272e2d60037c57))
+* **manifests:** 模型配置写入安全：空值拒写、时间戳备份、真实用户目录守卫（[#208](https://github.com/1StepMore/AutoMedia/issues/208)） ([#215](https://github.com/1StepMore/AutoMedia/issues/215)) ([55751e0](https://github.com/1StepMore/AutoMedia/commit/55751e08fee4cf43fa3ea339014c34357b8ca0c9))
+
+
+### Dependencies
+
+* **deps:** bump mcp from 1.28.1 to 1.30.0 ([#217](https://github.com/1StepMore/AutoMedia/issues/217)) ([22648ea](https://github.com/1StepMore/AutoMedia/commit/22648ea6e5d543cb22f906bfefa478062f34caae))
+
 ## [1.8.10](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.9...automedia-v1.8.10) (2026-10-15)
 
 
