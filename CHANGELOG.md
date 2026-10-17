@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.13](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.12...automedia-v1.8.13) (2026-10-17)
+
+
+### Bug Fixes
+
+* **llm:** 结构化输出加字段级容错 + 一次二次修复 ([#221](https://github.com/1StepMore/AutoMedia/issues/221)) ([#222](https://github.com/1StepMore/AutoMedia/issues/222)) ([c256aed](https://github.com/1StepMore/AutoMedia/commit/c256aed5607aaac44d5569faf8624b33af64b93a))
+
 ## [1.8.12](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.11...automedia-v1.8.12) (2026-10-17)
 
 
