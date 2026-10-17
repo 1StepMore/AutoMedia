@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.12](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.11...automedia-v1.8.12) (2026-10-17)
+
+
+### Bug Fixes
+
+* **gates:** G0 无出处数字先重写一次，仍失败才拦停 + 生成侧限制仅用来源数字（[#219](https://github.com/1StepMore/AutoMedia/issues/219)） ([#224](https://github.com/1StepMore/AutoMedia/issues/224)) ([d4c2a99](https://github.com/1StepMore/AutoMedia/commit/d4c2a9913f6016a4bd3b57aca80385c6d6de9919))
+
 ## [1.8.11](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.10...automedia-v1.8.11) (2026-10-17)
 
 
