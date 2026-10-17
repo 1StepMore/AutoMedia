@@ -82,7 +82,7 @@ cd <repo>
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 ### 2026-10-15 夜间复跑（在最新 main `d179702` 上）
 
-- 批跑（02:00，systemd）：`nightly_gap.py` **exit 1** —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / **视频轨 ❌ 0**（项目目录 45 个，`cost_log` 非空 28 个）；场景 144 → `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；hard 10 全过；门 `missing=4 unreachable=2`。
+- 批跑（02:00，systemd）：`nightly_gap.py` **exit 1** —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / **视频轨 ❌ 0**；当时快照：项目目录 45 个（2026-10-18 实测 55，以 `nightly_gap.py` 产物为准）、`cost_log` 非空 28 个、场景 144 条（2026-10-18 实有 147，以 `automedia validate matrix` 产物为准）；本轮场景结果 `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；hard 10 全过；门 `missing=4 unreachable=2`。
 - **本轮按 L1 §4「执行」真跑视频轨**（`--mode short-video`，真模型 AMD `DeepSeek-V4.1-Flash`，产物落 repo 内持久目录，品牌 `w3t1-validation-brand`）：**3 跑**，门序列三跑一致 —— `pre-gate ✓ / CW ✓ / G0 ✓ / G1 ✓ / G2 ✓ / **G3 ✗**` → `status=partial`，**下游 `G6/H0/V0–V7` 未执行**。
 - **复跑差距（05:10，把本轮真跑计入）：文本轨 27 / 图文轨 4 / 视频轨 0**，`exit 1`。图文轨 3 → 4 就是本项目：真 draft 5,953B + `cost_log.jsonl` 8 行 + 2,117,596B 真图（ComfyUI）+ 556,992B 配音 + 7,807,842B 真视频（hyperframes）。
 - **本轮闭合的环境缺口（两处，环境层，产品代码未动）**：
@@ -100,9 +100,9 @@ cd <repo>
 | 图文轨 | ❌ **0 个** | 全部项目 `02_images/` 为空 |
 | 视频轨 | ❌ **0 个** | 全部项目 `03_video/` 为空 |
 
-**项目目录 32 个，其中 `cost_log.jsonl` 非空（= 真跑过）16 个。** `20260914_*` 那批阶段目录全空。
+**项目目录 32 个（2026-10-18 实测 55，以 `nightly_gap.py` 产物为准），其中 `cost_log.jsonl` 非空（= 真跑过）16 个。** `20260914_*` 那批阶段目录全空。
 
-**验证矩阵（自动生成）**：场景 144 条 → `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；
+**验证矩阵（自动生成）**：场景数见 `automedia validate matrix` 产物（2026-10-18 实有 147 条）→ `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；
 hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（G4/G5）。
 
 **读法**：文本轨是真的，图文/视频轨是空的。`unconfigured 31` 主要是缺 LLM 密钥的真模型场景——
@@ -158,4 +158,4 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 
 | 日期 | 目标条款 | 理由 + 证据 | 裁定 |
 |:---|:---|:---|:---|
-| 2026-10-06 | 视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 `scripts/nightly_gap.py:72` | 判据只看文件大小——`"video_ok": vid_max >= MIN_VIDEO_BYTES`，不读任何 gate 判定——因此一个 **V 门全部 skipped** 的项目，只要 `03_video/` 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 `20261003_turning-blog-posts-into-video-essays`，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。**诚实标注两点**：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故**这不是正在发生的误判**。(2) L1 总纲在仓库外（`Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md`），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。**真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」**，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。**（2026-10-07 更正两处：(1) 该证据项目目录**存在**且已复核——`03_video/output.mp4` = 5,117,183 B、gate-report 为 V2/V5/V7 `pass` / V0/V1/V3/V4/V6 `skip`，「目录现已不存在」一句有误；(2) L1 §2.2 原文已在仓库外文件读取并同步修订。）** | **已裁定（owner 2026-10-07）：采纳「带能力债的达标」**——冻结区判据已改为「文件 + gate 证据（V2/V5/V7 必须 pass；V0/V1/V3/V4/V6 计为登记能力债，登记见 #193）」；实现见本仓 `scripts/nightly_gap.py`（分支 `fix/181-video-gate-evidence`） |
+| 2026-10-06 | 视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 `scripts/nightly_gap.py`（旧判据见提交 `47f5a9f` 的 `:72`；现行带 gate 证据的实现在提交 `e310ebb` / `9df04b6`） | 判据只看文件大小——`"video_ok": vid_max >= MIN_VIDEO_BYTES`，不读任何 gate 判定——因此一个 **V 门全部 skipped** 的项目，只要 `03_video/` 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 `20261003_turning-blog-posts-into-video-essays`，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。**诚实标注两点**：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故**这不是正在发生的误判**。(2) L1 总纲在仓库外（`Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md`），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。**真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」**，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。**（2026-10-07 更正两处：(1) 该证据项目目录**存在**且已复核——`03_video/output.mp4` = 5,117,183 B、gate-report 为 V2/V5/V7 `pass` / V0/V1/V3/V4/V6 `skip`，「目录现已不存在」一句有误；(2) L1 §2.2 原文已在仓库外文件读取并同步修订。）** | **已裁定（owner 2026-10-07）：采纳「带能力债的达标」**——冻结区判据已改为「文件 + gate 证据（V2/V5/V7 必须 pass；V0/V1/V3/V4/V6 计为登记能力债，登记见 #193）」；实现见本仓 `scripts/nightly_gap.py`（分支 `fix/181-video-gate-evidence`） |
