@@ -2330,7 +2330,7 @@ contains one or more rule dicts.</p>
 <span class="w">  </span><span class="nt">exclude</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">V3</span>
 <span class="w">  </span><span class="nt">override_failure_mode</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">G0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rewrite</span>
+<span class="w">    </span><span class="nt">G0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retry</span>
 <span class="nt">engines</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">tts</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zh-CN-XiaoxiaoNeural</span>
@@ -2458,7 +2458,7 @@ custom gate for the WeChat platform:</p>
 <span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wechat</span>
 <span class="nt">gates</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">override_failure_mode</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">G0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rewrite</span><span class="w">      </span><span class="c1"># Retry fact-check instead of halting pipeline</span>
+<span class="w">    </span><span class="nt">G0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retry</span><span class="w">        </span><span class="c1"># Retry fact-check instead of halting pipeline</span>
 <span class="w">  </span><span class="nt">include</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">G6</span><span class="w">             </span><span class="c1"># Add a custom G6 gate</span>
 </code></pre></div>

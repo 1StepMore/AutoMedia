@@ -4195,7 +4195,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>On failure — auto-recovery</strong></td>
-<td>G0 has failure_mode="stop". Only Level 0 transient retry (ConnectionError, TimeoutError) applies via tenacity（最多 3 次，指数退避）. Pipeline halts on failed fact check — no quality retry or regeneration.</td>
+<td>G0 has failure_mode="retry" with exactly ONE quality retry（<code>max_quality_retries=1</code>）: the failing result carries a structured reason（哪句、哪个数字、缺什么引用）and G0 performs one surgical rewrite of the flagged sentences only. If the rewrite still fails, G0 halts（<code>halt_on_exhaustion=True</code>）with the structured reason persisted to state/history — diagnosable, never a bare halt. Level 0 transient retry (ConnectionError, TimeoutError) still applies via tenacity（最多 3 次，指数退避）.</td>
 </tr>
 <tr>
 <td><strong>Human sees</strong></td>
