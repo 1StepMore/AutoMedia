@@ -6,6 +6,7 @@ Config is read from the merged AutoMedia config dict at call time.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from typing import TYPE_CHECKING, Any, TypeVar, cast
@@ -20,7 +21,13 @@ from tenacity import (
 
 from automedia.core.credential_loader import resolve_api_key
 from automedia.core.env_overlay import env_lookup
+from automedia.core.json_tolerance import repair_json_text, salvage_fields
 from automedia.exceptions import AutoMediaError
+
+# Underscore-prefixed aliases keep the private naming convention used inside
+# this module and in tests.
+_repair_json_text = repair_json_text
+_salvage_fields = salvage_fields
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -616,6 +623,189 @@ def _strip_markdown_fence(raw_text: str) -> str:
     return "\n".join(lines).strip()
 
 
+# Maximum number of characters of the bad output echoed back to the model
+# during a one-shot repair call.  Keeps the repair prompt bounded.
+_REPAIR_ECHO_LIMIT = 1500
+
+
+def _format_validation_error(exc: ValidationError) -> str:
+    """Render a pydantic ``ValidationError`` as a compact, field-named string."""
+    parts: list[str] = []
+    for error in exc.errors():
+        loc = ".".join(str(part) for part in error.get("loc", ())) or "<root>"
+        parts.append(f"{loc}: {error.get('msg', 'validation error')}")
+    return "; ".join(parts) if parts else str(exc)
+
+
+def _mark_invalid_fields(instance: BaseModel, invalid_fields: list[str]) -> None:
+    """Attach ``_invalid_fields`` to *instance* when its model allows extras."""
+    if not invalid_fields:
+        return
+    if type(instance).model_config.get("extra") != "allow":
+        return
+    try:
+        attr_name = "_invalid_fields"
+        setattr(instance, attr_name, list(invalid_fields))
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("could not record _invalid_fields on %s: %s", type(instance).__name__, exc)
+
+
+def _tolerant_validate(
+    model_cls: type[_ModelT],
+    raw_text: str,
+) -> tuple[_ModelT | None, list[str], str | None]:
+    """Repair, parse and salvage *raw_text* into *model_cls*.
+
+    Returns ``(instance, invalid_fields, error_detail)``:
+
+    * *instance* is the validated model, or ``None`` when parsing/validation
+      could not be saved by field-level salvage;
+    * *invalid_fields* lists fields that were nulled/dropped;
+    * *error_detail* describes the remaining failure (``None`` on success).
+    """
+    text = repair_json_text(raw_text)
+    try:
+        payload = json.loads(text)
+    except (json.JSONDecodeError, ValueError) as exc:
+        return None, [], f"invalid JSON: {exc}"
+
+    if not isinstance(payload, (dict, list)):
+        try:
+            return model_cls.model_validate(payload), [], None
+        except ValidationError as exc:
+            return None, [], _format_validation_error(exc)
+
+    try:
+        return model_cls.model_validate(payload), [], None
+    except ValidationError as first_error:
+        salvaged, invalid_fields = salvage_fields(model_cls, payload)
+        if not invalid_fields:
+            return None, [], _format_validation_error(first_error)
+        try:
+            instance = model_cls.model_validate(salvaged)
+        except ValidationError as exc:
+            return None, invalid_fields, _format_validation_error(exc)
+        _mark_invalid_fields(instance, invalid_fields)
+        return instance, invalid_fields, None
+
+
+def _build_repair_instruction(bad_text: str, error_detail: str) -> str:
+    """Build the user message that asks the model to fix its own JSON."""
+    echoed = (bad_text or "").strip()
+    if len(echoed) > _REPAIR_ECHO_LIMIT:
+        echoed = echoed[:_REPAIR_ECHO_LIMIT] + "…[truncated]"
+    return (
+        "The previous response could not be parsed as JSON matching the "
+        "required schema.\n"
+        f"Validation error: {error_detail}\n"
+        "Previous (invalid) output:\n"
+        f"{echoed}\n\n"
+        "Return ONLY the corrected JSON object. Do not include explanations, "
+        "commentary, or markdown code fences."
+    )
+
+
+def _attempt_structured_repair(
+    *,
+    client: OpenAI,
+    model: str,
+    messages: list[dict[str, str]],  # type: ignore[type-arg]
+    temperature: float,
+    max_tokens: int,
+    bad_text: str,
+    error_detail: str,
+) -> str:
+    """Make the single allowed repair call, returning the new raw text.
+
+    The call uses the same provider spec (same client/model/temperature/
+    limits) as the original request — never a different provider tier.
+    """
+    repair_messages = list(messages)
+    repair_messages.append(
+        {"role": "user", "content": _build_repair_instruction(bad_text, error_detail)}
+    )
+    try:
+        response = _llm_chat_completion_with_retry(
+            client,
+            model=model,
+            messages=repair_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+        )
+    except _FALLBACK_STRUCTURED_ERRORS:
+        response = _llm_chat_completion_with_retry(
+            client,
+            model=model,
+            messages=repair_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+    return response.choices[0].message.content or ""
+
+
+def _parse_structured_with_repair(
+    *,
+    response_format: type[_ModelT],
+    raw_text: str,
+    client: OpenAI,
+    model: str,
+    messages: list[dict[str, str]],  # type: ignore[type-arg]
+    temperature: float,
+    max_tokens: int,
+) -> _ModelT:
+    """Parse *raw_text* tolerantly, with at most one repair call on failure."""
+    instance, invalid_fields, error_detail = _tolerant_validate(response_format, raw_text)
+    if instance is not None:
+        if invalid_fields:
+            logger.warning(
+                "structured output for %s salvaged; invalid_fields=%s",
+                response_format.__name__,
+                invalid_fields,
+            )
+        return instance
+
+    logger.warning(
+        "structured output for %s failed validation (invalid_fields=%s): %s — "
+        "attempting one repair call",
+        response_format.__name__,
+        invalid_fields,
+        error_detail,
+    )
+    repaired_text = _attempt_structured_repair(
+        client=client,
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        bad_text=raw_text,
+        error_detail=error_detail or "unknown validation error",
+    )
+    repaired_instance, repaired_invalid, repaired_detail = _tolerant_validate(
+        response_format, repaired_text
+    )
+    if repaired_instance is not None:
+        logger.info(
+            "structured output for %s recovered after one repair call (salvaged_fields=%s)",
+            response_format.__name__,
+            sorted(set(invalid_fields) | set(repaired_invalid)),
+        )
+        if repaired_invalid:
+            logger.warning(
+                "structured output for %s salvaged after repair; invalid_fields=%s",
+                response_format.__name__,
+                repaired_invalid,
+            )
+        return repaired_instance
+
+    bad_fields = sorted(set(invalid_fields) | set(repaired_invalid))
+    raise LLMError(
+        f"Failed to parse LLM response as {response_format.__name__} after one "
+        f"repair attempt; invalid/missing fields: {bad_fields or ['<unknown>']}: "
+        f"{repaired_detail or error_detail}"
+    )
+
+
 def _structured_completion_with_fallback(
     prompt: str,
     *,
@@ -786,12 +976,15 @@ def _structured_completion_with_fallback(
 
             raw_text: str = response.choices[0].message.content or ""
 
-            try:
-                return response_format.model_validate_json(_strip_markdown_fence(raw_text))
-            except Exception as exc:
-                raise LLMError(
-                    f"Failed to parse LLM response as {response_format.__name__}: {exc}"
-                ) from exc
+            return _parse_structured_with_repair(
+                response_format=response_format,
+                raw_text=raw_text,
+                client=client,
+                model=resolved_model,
+                messages=messages,
+                temperature=resolved_temp,
+                max_tokens=resolved_max,
+            )
         except Exception as exc:
             errors.append(f"{provider_key}: {exc}")
             logger.warning(
@@ -1113,14 +1306,18 @@ def llm_complete_structured(
                 return cast(_ModelT, response.choices[0].message.parsed)
             except ValidationError:
                 # Provider returned 200 OK but ignored the schema (e.g. fenced JSON) —
-                # retry against the raw content with fence stripping.
+                # retry against the raw content with tolerance repairs.
                 raw_text: str = response.choices[0].message.content or ""
-                try:
-                    return response_format.model_validate_json(_strip_markdown_fence(raw_text))
-                except Exception as exc:
-                    raise LLMError(
-                        f"Failed to parse LLM response as {response_format.__name__}: {exc}"
-                    ) from exc
+                instance, invalid_fields, error_detail = _tolerant_validate(
+                    response_format, raw_text
+                )
+                if instance is not None:
+                    return instance
+                raise LLMError(
+                    f"Failed to parse LLM response as {response_format.__name__}; "
+                    f"invalid/missing fields: {invalid_fields or ['<unknown>']}: "
+                    f"{error_detail}"
+                ) from None
         except Exception as exc:
             errors.append(f"{spec_provider}: {exc}")
             logger.warning(
