@@ -131,6 +131,13 @@ class TestDoctorChromeHeadless:
 class TestDoctorCheckDependencies:
     """Full check_dependencies integration."""
 
+    @pytest.fixture(autouse=True)
+    def _no_hyperframes(self):
+        """Isolate chrome resolution: without this, the real hyperframes binary
+        (when installed) would win over the mocked ``_resolve_path``."""
+        with patch.object(Doctor, "_hyperframes_browser_path", return_value=None):
+            yield
+
     def test_all_installed(self, doctor: Doctor):
         """All tools found — returns installed=True for each."""
         with (
@@ -365,3 +372,125 @@ class TestDoctorComfyuiUpscaleModel:
 
     def test_install_instructions_exist(self, doctor: Doctor):
         assert doctor.get_install_instructions("comfyui_upscale_model") is not None
+
+
+class TestDoctorChromeResolution:
+    """Issue #227: chrome is resolved via hyperframes (the render authority)."""
+
+    def test_hyperframes_path_preferred(self, doctor: Doctor):
+        with (
+            patch.object(
+                Doctor,
+                "_hyperframes_browser_path",
+                return_value="/opt/hf/chrome-headless-shell",
+            ),
+            patch.object(doctor, "_resolve_path", return_value="/usr/bin/google-chrome"),
+        ):
+            assert doctor._resolve_chrome() == "/opt/hf/chrome-headless-shell"
+
+    def test_falls_back_to_path_when_hyperframes_missing(self, doctor: Doctor):
+        with (
+            patch.object(Doctor, "_hyperframes_browser_path", return_value=None),
+            patch.object(doctor, "_resolve_path", return_value="/usr/bin/chromium"),
+        ):
+            assert doctor._resolve_chrome() == "/usr/bin/chromium"
+
+    def test_hyperframes_browser_path_returns_existing_last_line(self, tmp_path):
+        binary = tmp_path / "chrome-headless-shell"
+        binary.write_text("#!/bin/sh\n", encoding="utf-8")
+        result = MagicMock(returncode=0, stdout=f"banner line\n{binary}\n", stderr="")
+        with (
+            patch("automedia.core.doctor.shutil.which", return_value="/usr/bin/hyperframes"),
+            patch("automedia.core.doctor.subprocess.run", return_value=result),
+        ):
+            assert Doctor._hyperframes_browser_path() == str(binary)
+
+    def test_hyperframes_browser_path_none_when_absent(self):
+        with patch("automedia.core.doctor.shutil.which", return_value=None):
+            assert Doctor._hyperframes_browser_path() is None
+
+    def test_hyperframes_browser_path_none_on_failure(self):
+        result = MagicMock(returncode=1, stdout="", stderr="no browser")
+        with (
+            patch("automedia.core.doctor.shutil.which", return_value="/usr/bin/hyperframes"),
+            patch("automedia.core.doctor.subprocess.run", return_value=result),
+        ):
+            assert Doctor._hyperframes_browser_path() is None
+
+    def test_hyperframes_browser_path_none_when_reported_path_missing(self):
+        result = MagicMock(returncode=0, stdout="/does/not/exist\n", stderr="")
+        with (
+            patch("automedia.core.doctor.shutil.which", return_value="/usr/bin/hyperframes"),
+            patch("automedia.core.doctor.subprocess.run", return_value=result),
+        ):
+            assert Doctor._hyperframes_browser_path() is None
+
+
+class TestDoctorChromeRemediation:
+    """Issue #227: WSL must get Linux-Chrome guidance, not irrelevant apt libs."""
+
+    def test_wsl_windows_shim_points_at_linux_chrome(self, tmp_path):
+        shim = tmp_path / "google-chrome"
+        shim.write_text(
+            '#!/bin/bash\nexec "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe" "$@"\n',
+            encoding="utf-8",
+        )
+        dep = {
+            "name": "chrome",
+            "installed": True,
+            "path": str(shim),
+            "headless_ok": False,
+            "headless_message": "Invalid argument",
+        }
+        with patch.object(Doctor, "_is_wsl", return_value=True):
+            msg = Doctor.chrome_remediation(dep)
+        assert msg is not None
+        assert "Linux Chrome" in msg
+        assert "hyperframes browser ensure" in msg
+        assert "libnss3" not in msg
+
+    def test_wsl_no_browser_mentions_linux_chrome(self):
+        dep = {
+            "name": "chrome",
+            "installed": False,
+            "path": None,
+            "headless_ok": False,
+            "headless_message": None,
+        }
+        with patch.object(Doctor, "_is_wsl", return_value=True):
+            msg = Doctor.chrome_remediation(dep)
+        assert msg is not None
+        assert "Linux Chrome" in msg
+
+    def test_non_wsl_headless_failure_uses_headless_deps(self):
+        dep = {
+            "name": "chrome",
+            "installed": True,
+            "path": "/usr/bin/google-chrome",
+            "headless_ok": False,
+            "headless_message": "missing lib",
+        }
+        with patch.object(Doctor, "_is_wsl", return_value=False):
+            msg = Doctor.chrome_remediation(dep)
+        assert msg is not None
+        assert "libnss3" in msg
+
+    def test_healthy_chrome_has_no_remediation(self):
+        dep = {
+            "name": "chrome",
+            "installed": True,
+            "path": "/opt/hf/shell",
+            "headless_ok": True,
+            "headless_message": None,
+        }
+        assert Doctor.chrome_remediation(dep) is None
+
+    def test_windows_side_path_detection(self, tmp_path):
+        assert Doctor._is_windows_side_chrome(
+            "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
+        )
+        assert Doctor._is_windows_side_chrome(r"C:\Program Files\Google\Chrome\chrome.exe")
+        shim = tmp_path / "google-chrome"
+        shim.write_text('exec "chrome.exe" "$@"\n', encoding="utf-8")
+        assert Doctor._is_windows_side_chrome(str(shim))
+        assert not Doctor._is_windows_side_chrome("/usr/bin/google-chrome")
