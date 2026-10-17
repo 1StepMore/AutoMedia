@@ -38,8 +38,8 @@ A `status="partial"` means some gates passed but a `failure_mode="stop"` gate fa
 
 Each gate has a `failure_mode` defined at the class level:
 
-- **`"stop"`** — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: pre-gate, CW, G0, G3, G4, G5, G6, V0, V1, V2, V3, V4, V6, V7, L1, L2, L3, L4, H0, D1-D7, P1-P4.
-- **`"retry"`** — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: G1, G2, V5.
+- **`"stop"`** — Halts the pipeline immediately on failure. The result will contain results only up to the failing gate. Gates with this mode: pre-gate, CW, G3, G4, G5, G6, V0, V1, V2, V3, V4, V6, V7, L1, L2, L3, L4, H0, D1-D7, P1-P4.
+- **`"retry"`** — The gate can be retried. The pipeline continues even if this gate fails. Gates with this mode: G0, G1, G2, V5. G0 (fact check) additionally halts after its single quality retry is exhausted (`halt_on_exhaustion=True`), with the structured failure reason persisted.
 
 Gates with `"retry"` mode can be retried by re-running the pipeline with `resume_from` set to the failed gate name.
 

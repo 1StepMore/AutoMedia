@@ -48,6 +48,8 @@ def _make_context(
     project_dir: str | None = None,
     config: dict[str, Any] | None = None,
     brand_profile: dict[str, Any] | None = None,
+    source_content: str | None = None,
+    source_material: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a minimal gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {
@@ -60,6 +62,10 @@ def _make_context(
         ctx["config"] = config
     if brand_profile is not None:
         ctx["brand_profile"] = brand_profile
+    if source_content is not None:
+        ctx["source_content"] = source_content
+    if source_material is not None:
+        ctx["source_material"] = source_material
     return ctx
 
 
@@ -510,3 +516,85 @@ class TestBrandProfileFieldInjection:
 
         for form in _CTA_FORMS:
             assert form in user_msg, f"CTA form {form!r} missing from writer prompt"
+
+
+# =========================================================================
+# Generation-side sourced-numbers constraint — #219
+# =========================================================================
+
+_SOURCED_NUMBERS_MARKER = "SOURCED NUMBERS ONLY"
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "src" / "automedia" / "prompts"
+
+
+class TestSourceMaterialInjection:
+    """CW injects ``gate_context["source_content"]`` and constrains numbers to it (#219).
+
+    中文说明：G0 数字校验的下游约束必须在生成侧成立 —— 写手只能用来源材料中
+    真实出现的数字，否则改用定性表达；没有来源时不得凭空生成任何数字。
+    """
+
+    def _writer_user_message(self, ctx: dict[str, Any]) -> str:
+        gate = ContentWriterGate()
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=MOCK_ARTICLE,
+        ) as mock_llm:
+            result = gate.execute(ctx)
+        assert result["passed"] is True, f"Expected passed=True, got: {result}"
+        return str(mock_llm.call_args_list[0][0][0])
+
+    def test_source_block_injected_when_present(self, tmp_path: Path) -> None:
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            source_content="2025年市场规模达到 123.4 亿元，同比增长 8.7%。",
+            source_material={"path": "https://example.com/report"},
+        )
+
+        user_msg = self._writer_user_message(ctx)
+
+        assert "=== SOURCE MATERIAL" in user_msg
+        assert "=== END SOURCE MATERIAL ===" in user_msg
+        assert "123.4 亿元" in user_msg
+        assert "https://example.com/report" in user_msg
+        assert _SOURCED_NUMBERS_MARKER in user_msg
+        assert "qualitative" in user_msg
+
+    def test_source_block_absent_when_not_provided(self, tmp_path: Path) -> None:
+        ctx = _make_context(project_dir=str(tmp_path), config=_minimal_config())
+
+        user_msg = self._writer_user_message(ctx)
+
+        assert "SOURCE MATERIAL" not in user_msg
+        assert _SOURCED_NUMBERS_MARKER not in user_msg
+
+    def test_source_content_truncated_at_cap(self, tmp_path: Path) -> None:
+        from automedia.gates.content_writer import _SOURCE_CONTENT_MAX_CHARS
+
+        tail_marker = "TAIL-UNIQUE-STRING"
+        ctx = _make_context(
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+            source_content=("A" * _SOURCE_CONTENT_MAX_CHARS) + tail_marker,
+        )
+
+        user_msg = self._writer_user_message(ctx)
+
+        assert "SOURCE MATERIAL TRUNCATED" in user_msg
+        assert tail_marker not in user_msg
+
+    def test_generic_template_carries_hard_constraint(self) -> None:
+        from automedia.prompts import load_prompt
+
+        prompt = load_prompt("content_writer", platform="")
+
+        assert _SOURCED_NUMBERS_MARKER in prompt
+        assert "qualitative" in prompt
+
+    def test_platform_variants_carry_hard_constraint(self) -> None:
+        variants = sorted((_PROMPTS_DIR / "platforms").glob("*/content_writer.j2"))
+        assert len(variants) == 10, f"expected 10 platform variants, found {len(variants)}"
+
+        for path in variants:
+            text = path.read_text(encoding="utf-8")
+            assert _SOURCED_NUMBERS_MARKER in text, f"missing constraint in {path}"

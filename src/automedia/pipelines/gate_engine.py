@@ -56,13 +56,13 @@ _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, Type
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
 # Content gates whose failing results may apply ``modified_content`` into the
-# main content flow (quality-retry branch).  G1 (humanizer) and G2 (copy
-# review) are ``failure_mode="retry"`` gates that emit ``modified_content``
-# only when their checks fail.  The explicit allowlist guards the master
-# draft in ``01_content/drafts/`` against D-gate/P-gate style platform
-# rewrites, which also produce ``modified_content`` but must never clobber
-# the main flow.
-_CONTENT_GATES_WITH_REWRITE: frozenset[str] = frozenset({"G1", "G2"})
+# main content flow (quality-retry branch).  G0 (fact check), G1 (humanizer)
+# and G2 (copy review) are ``failure_mode="retry"`` gates that emit
+# ``modified_content`` only when their checks fail.  The explicit allowlist
+# guards the master draft in ``01_content/drafts/`` against D-gate/P-gate
+# style platform rewrites, which also produce ``modified_content`` but must
+# never clobber the main flow.
+_CONTENT_GATES_WITH_REWRITE: frozenset[str] = frozenset({"G0", "G1", "G2"})
 
 # Per-diff size cap (characters) for gate diff records under
 # ``.automedia/gate_diffs/``.  A rewrite larger than this is stored
@@ -1016,9 +1016,13 @@ class GateEngine:
                             return False, results
                         return results
 
-                    # Level 1: quality-feedback retry
-                    _local_max_quality = gate_context.get(
-                        "max_quality_retries", self._max_quality_retries
+                    # Level 1: quality-feedback retry.  A gate's own
+                    # ``max_quality_retries`` ClassVar wins when not None.
+                    _gate_max_quality = getattr(gate, "max_quality_retries", None)
+                    _local_max_quality = (
+                        _gate_max_quality
+                        if _gate_max_quality is not None
+                        else gate_context.get("max_quality_retries", self._max_quality_retries)
                     )
                     _quality_attempt = 0
                     while _quality_attempt < _local_max_quality:
@@ -1221,6 +1225,21 @@ class GateEngine:
                         if self._hitl_rejected_halt:
                             # A human rejection is terminal — it must not be
                             # consumed by level-2 regeneration retries.
+                            if early_stop:
+                                return False, results
+                            return results
+                        if getattr(gate, "halt_on_exhaustion", False):
+                            # Gate opted into halting once its own quality
+                            # retries are exhausted: no level-2 regeneration.
+                            # dispatch_after records the failed result (with
+                            # its error) exactly once before the halt.
+                            log.warning(
+                                "gate.quality_retry.halt_on_exhaustion",
+                                gate_name=gate_name,
+                                quality_retry_count=_quality_attempt,
+                                max_quality_retries=_local_max_quality,
+                            )
+                            self._dispatch_after(gate_name, gate_context, result)
                             if early_stop:
                                 return False, results
                             return results

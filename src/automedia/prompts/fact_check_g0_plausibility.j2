@@ -15,8 +15,18 @@ Return a JSON object with these exact keys:
   "issues": [
     "string — each string describes one questionable claim found. Include what was claimed, why it appears incorrect, and what the correct fact likely is."
   ],
+  "structured_issues": [
+    {
+      "sentence": "string — the exact sentence or clause copied from the content that carries the questionable claim",
+      "number": "string — the specific number, percentage, date, or figure at fault; omit or leave empty when the issue is not numeric",
+      "missing_citation": true,
+      "detail": "string — one line naming what appears incorrect"
+    }
+  ],
   "confidence": 0.95
 }
+
+Populate `structured_issues` for every issue you list in `issues` so the failing sentence and the offending figure are recoverable programmatically.
 
 The `passed` field must be:
 - true if all claims appear factually plausible or no questionable claims were found

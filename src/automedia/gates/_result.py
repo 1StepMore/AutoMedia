@@ -39,6 +39,12 @@ class CheckResult(TypedDict):
     actual_value: NotRequired[str]
     threshold: NotRequired[str]
     suggestion: NotRequired[str]
+    # G0 additively attaches sentence-level failure detail where derivable
+    # (issue #219): which sentence / which number / whether the source
+    # citation is missing.  Purely additive — never replaces existing keys.
+    sentence: NotRequired[str]
+    number: NotRequired[str]
+    missing_citation: NotRequired[bool]
 
 
 class ExpectedVsActual(TypedDict):

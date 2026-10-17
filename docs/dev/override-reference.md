@@ -86,7 +86,7 @@ gates:
   exclude:
     - V3
   override_failure_mode:
-    G0: rewrite
+    G0: retry
 engines:
   tts:
     voice: zh-CN-XiaoxiaoNeural
@@ -187,7 +187,7 @@ custom gate for the WeChat platform:
 platform: wechat
 gates:
   override_failure_mode:
-    G0: rewrite      # Retry fact-check instead of halting pipeline
+    G0: retry        # Retry fact-check instead of halting pipeline
   include:
     - G6             # Add a custom G6 gate
 ```

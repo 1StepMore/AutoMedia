@@ -60,7 +60,7 @@ class GateNode:
 AUTO_GATE_DAG: dict[str, GateNode] = {
     "pre-gate": GateNode(name="pre-gate", track="qa", depends_on=(), failure_mode="stop"),
     "CW": GateNode(name="CW", track="copy", depends_on=("pre-gate",), failure_mode="stop"),
-    "G0": GateNode(name="G0", track="copy", depends_on=("CW",), failure_mode="stop"),
+    "G0": GateNode(name="G0", track="copy", depends_on=("CW",), failure_mode="retry"),
     "G1": GateNode(name="G1", track="copy", depends_on=("G0",), failure_mode="retry"),
     "G2": GateNode(name="G2", track="copy", depends_on=("G1",), failure_mode="retry"),
     "G3": GateNode(name="G3", track="copy", depends_on=("G2",), failure_mode="stop"),

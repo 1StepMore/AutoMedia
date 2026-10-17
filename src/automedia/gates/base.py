@@ -106,6 +106,17 @@ class BaseGate(ABC):
     _gate_name: ClassVar[str]
     _failure_mode: ClassVar[str]
 
+    # Optional per-gate retry knobs (issue #219).  A gate may set these as
+    # ClassVars to override the engine defaults for its own quality-retry
+    # branch without affecting any other gate:
+    # - ``max_quality_retries`` caps the number of level-1 quality retries
+    #   (``None`` keeps the engine/config default).
+    # - ``halt_on_exhaustion`` makes the engine halt the pipeline (instead of
+    #   continuing or handing off to level-2 regeneration) once those retries
+    #   are exhausted, so a failed attempt is terminal for that gate.
+    max_quality_retries: ClassVar[int | None] = None
+    halt_on_exhaustion: ClassVar[bool] = False
+
     @property
     def gate_name(self) -> str:
         """Human/short identifier for this gate (e.g. ``"G0"``)."""

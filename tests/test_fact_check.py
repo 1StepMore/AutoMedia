@@ -75,7 +75,13 @@ class TestG0FactCheckMetadata:
 
     def test_failure_mode(self) -> None:
         gate = G0FactCheck()
-        assert gate.failure_mode == "stop"
+        assert gate.failure_mode == "retry"
+
+    def test_quality_retry_contract(self) -> None:
+        """G0 retries once, emits at most one rewrite, then halts (#219)."""
+        gate = G0FactCheck()
+        assert gate.max_quality_retries == 1
+        assert gate.halt_on_exhaustion is True
 
     def test_is_base_gate_subclass(self) -> None:
         assert issubclass(G0FactCheck, BaseGate)

@@ -17,6 +17,14 @@ Return a JSON object with these exact keys:
   "issues": [
     "string — each string describes one factual issue found. Use a severity prefix: [CRITICAL] for claims that would mislead the entire argument if wrong, [MAJOR] for significant errors in supporting claims, [MINOR] for small inaccuracies. For each claim, state what was claimed, what the correct fact is, and why it matters. Example: '[CRITICAL] Claims GPT-4 has 1.8 trillion parameters, but the actual confirmed parameter count from OpenAI's technical report is approximately 1.76 trillion. This is a key technical detail that undermines credibility if wrong.'"
   ],
+  "structured_issues": [
+    {
+      "sentence": "string — the exact sentence or clause copied from the content that carries the problem (so an editor can locate it precisely)",
+      "number": "string — the specific number, percentage, date, or figure at fault; omit or leave empty when the issue is not numeric",
+      "missing_citation": true,
+      "detail": "string — one line naming what is wrong and what support is missing"
+    }
+  ],
   "confidence": 0.92,
   "verified_claims": [
     "string — each string is a factual claim from the content that you can confirm as true with reasonable certainty. State the claim and briefly note the basis. Example: 'OpenAI released GPT-4 in March 2023 — confirmed by OpenAI's official blog post and multiple independent sources.'"
@@ -31,6 +39,8 @@ The `passed` field must be:
 - false if there is at least one CRITICAL or MAJOR issue
 
 The `confidence` field is a float between 0.0 and 1.0 representing your overall certainty in the fact-check results. A score of 1.0 means every claim was verified against reliable sources. A score below 0.5 means too many claims were unverifiable.
+
+Populate `structured_issues` for every issue you list in `issues` so the failing sentence, the offending number, and the missing source citation are recoverable programmatically. Every numeric issue MUST carry its `number`; every unsupported-claim issue MUST set `missing_citation` to true.
 
 ## Few-Shot Examples
 
