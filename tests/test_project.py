@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
 
 import pytest
 
-from automedia.core.project import Project, _slugify, sanitize_path
+from automedia.core.project import Project, _slugify, sanitize_path, slugify_topic
 
 # ===================================================================
 # _slugify
@@ -54,6 +55,45 @@ class TestSlugify:
 
     def test_only_whitespace(self):
         assert _slugify("   ") == ""
+
+
+# ===================================================================
+# slugify_topic — deterministic fallback for CJK / symbol / empty input
+# ===================================================================
+
+
+class TestSlugifyTopic:
+    """Regression coverage for issue #228.
+
+    ``_slugify`` still strips non-ASCII (its contract is unchanged), but the
+    topic-level ``slugify_topic`` must never return an empty string: a pure
+    CJK topic keeps its characters, and anything with no readable content
+    falls back to a reproducible ``topic-<sha1>`` hash.
+    """
+
+    def test_chinese_topic_is_non_empty_and_readable(self):
+        slug = slugify_topic("小团队内容排期的实用做法")
+        assert slug
+        assert slug == "小团队内容排期的实用做法"
+
+    def test_mixed_chinese_english_uses_ascii_part(self):
+        # Unchanged behaviour: the ASCII portion is the slug.
+        assert slugify_topic("AutoMedia 2024 项目启动") == "automedia-2024"
+
+    def test_symbols_fall_back_to_hash(self):
+        text = "!!! @@@ ###"
+        slug = slugify_topic(text)
+        assert slug == f"topic-{hashlib.sha1(text.encode('utf-8')).hexdigest()[:8]}"
+
+    def test_empty_string_falls_back_to_hash(self):
+        slug = slugify_topic("")
+        assert slug == f"topic-{hashlib.sha1(b'').hexdigest()[:8]}"
+
+    def test_fallback_is_deterministic(self):
+        """Same input must always yield the same slug (reproducible renders)."""
+        assert slugify_topic("!!! @@@ ###") == slugify_topic("!!! @@@ ###")
+        cjk = "小团队内容排期的实用做法"
+        assert slugify_topic(cjk) == slugify_topic(cjk)
 
 
 # ===================================================================
@@ -190,17 +230,18 @@ class TestProjectInit:
         for ch in "项目启动":
             assert ch not in dirname
 
-    def test_empty_slug_raises(self, tmp_path):
-        """A topic that produces an empty slug raises ValueError."""
-        with pytest.raises(ValueError, match="empty slug"):
-            Project.init("!!! @@ @@@", "acme", base_dir=str(tmp_path))
+    def test_empty_slug_falls_back(self, tmp_path):
+        """A topic that produces an empty ASCII slug falls back, never raises."""
+        project = Project.init("!!! @@ @@@", "acme", base_dir=str(tmp_path))
+        dirname = os.path.basename(project.project_dir)
+        slug = dirname.split("_", 1)[1]
+        assert slug == f"topic-{hashlib.sha1(b'!!! @@ @@@').hexdigest()[:8]}"
 
-    def test_cjk_only_topic_raises_with_clear_message(self, tmp_path):
-        """Bug 3: pure-CJK topic raises with a clear error message."""
-        with pytest.raises(ValueError) as exc_info:
-            Project.init("壹目贯维投资策略分析", "acme", base_dir=str(tmp_path))
-        assert "empty slug" in str(exc_info.value)
-        assert "壹目贯维投资策略分析" in str(exc_info.value)
+    def test_cjk_only_topic_keeps_readable_slug(self, tmp_path):
+        """Bug #228: pure-CJK topic no longer hard-fails; keeps a readable slug."""
+        project = Project.init("壹目贯维投资策略分析", "acme", base_dir=str(tmp_path))
+        dirname = os.path.basename(project.project_dir)
+        assert "壹目贯维投资策略分析" in dirname
 
     def test_invalid_brand_path_rejected(self):
         """A brand containing path traversal is rejected."""
