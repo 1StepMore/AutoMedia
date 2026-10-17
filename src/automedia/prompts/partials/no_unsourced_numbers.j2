@@ -1,0 +1,18 @@
+{#
+  Shared generation-side constraint — single source of truth (#219).
+
+  Every content_writer.j2 (base + platform variants) includes this partial so
+  the "no unsourced numbers" rule cannot drift between templates. Edit the rule
+  HERE, never per-template.
+
+  The visible marker strings below are asserted by
+  tests/test_prompts/test_content_writer_sourcing.py — keep them stable.
+#}
+## 数字与统计来源硬约束 — NO_UNSOURCED_NUMBERS
+
+[ONLY_USE_SOURCED_NUMBERS] 只允许使用来源材料（source material / source_data）里出现过的数字、百分比与统计量。
+
+- 确实需要引用数字时，必须同时给出出处（citation），沿用 G0 事实核查门认定的引用形式：来源名 / URL / 原文句。
+- 来源材料里没有的数字，一律只做定性表述：例如写「明显更高」，不要写「高 30%」这类无出处数字。
+- 禁止用「业内普遍认为」「数据显示」「研究表明」等伪引用（pseudo-citation）为无出处数字兜底。
+- Numbers, percentages and statistics MUST come from the source material. If a number is not in the source, describe it qualitatively instead of inventing a figure.

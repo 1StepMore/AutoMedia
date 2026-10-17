@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 
 from automedia.core.paths import get_user_config_dir
 
@@ -33,6 +33,23 @@ from automedia.core.paths import get_user_config_dir
 
 _PROMPTS_DIR = Path(__file__).parent
 _OVERRIDE_DIR = get_user_config_dir() / "overrides" / "prompts"
+
+# A shared environment whose loader resolves ``{% include %}`` / ``{% import %}``
+# against the built-in prompts directory. This lets platform templates reuse
+# common partials (e.g. ``partials/no_unsourced_numbers.j2``) instead of
+# copy-pasting the same constraint into every file. User overrides are rendered
+# through this environment too, so an override may also include built-in
+# partials. Rendering defaults match the previous ``jinja2.Template`` usage.
+# Prompts are plain-text LLM instructions, never rendered to HTML, so
+# autoescape stays off to preserve the exact template text (matching the
+# previous jinja2.Template default).
+_JINJA_ENV = Environment(loader=FileSystemLoader(str(_PROMPTS_DIR)))  # noqa: S701
+
+
+def _render(source: str, **kwargs: object) -> str:
+    """Render a Jinja2 template *source* string with the shared environment."""
+    return _JINJA_ENV.from_string(source).render(**kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -81,12 +98,12 @@ def load_prompt(name: str, platform: str | None = None, **kwargs: object) -> str
     if platform is not None:
         platform_override_path = _OVERRIDE_DIR / platform.lower() / f"{name}.j2"
         if platform_override_path.exists():
-            return Template(platform_override_path.read_text(encoding="utf-8")).render(**kwargs)
+            return _render(platform_override_path.read_text(encoding="utf-8"), **kwargs)
 
     # 2. Global user override
     override_path = _OVERRIDE_DIR / f"{name}.j2"
     if override_path.exists():
-        return Template(override_path.read_text(encoding="utf-8")).render(**kwargs)
+        return _render(override_path.read_text(encoding="utf-8"), **kwargs)
 
     # 3. Built-in platform variant (shipped with automedia)
     if platform is not None:
@@ -94,11 +111,11 @@ def load_prompt(name: str, platform: str | None = None, **kwargs: object) -> str
         for subdir in ("platforms", "platforms/mcp"):
             builtin_platform_path = _PROMPTS_DIR / subdir / platform.lower() / f"{name}.j2"
             if builtin_platform_path.exists():
-                return Template(builtin_platform_path.read_text(encoding="utf-8")).render(**kwargs)
+                return _render(builtin_platform_path.read_text(encoding="utf-8"), **kwargs)
 
     # 4. Built-in generic fallback
     builtin_path = _PROMPTS_DIR / f"{name}.j2"
-    return Template(builtin_path.read_text(encoding="utf-8")).render(**kwargs)
+    return _render(builtin_path.read_text(encoding="utf-8"), **kwargs)
 
 
 __all__ = ["load_prompt"]
