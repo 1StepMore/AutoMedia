@@ -6,6 +6,7 @@ on ``$PATH`` (or reachable via HTTP in the case of ComfyUI).
 
 from __future__ import annotations
 
+import os
 import platform
 import shutil
 import subprocess
@@ -41,6 +42,10 @@ logger = structlog.get_logger(__name__)
 # ``automedia doctor`` for the SDK's default multi-retry × 600 s timeout.
 _LLM_PROBE_TIMEOUT_S = 15.0
 _LLM_PROBE_MAX_ATTEMPTS = 1
+
+# ``hyperframes browser path`` is a local lookup; bound it so a wedged process
+# cannot hang ``automedia doctor``.
+_HYPERFRAMES_BROWSER_TIMEOUT_S = 15.0
 
 # LLM task slots whose ``provider`` must never be an explicit empty string
 # (issue #208). Slots absent from the config are skipped by
@@ -176,6 +181,46 @@ class Doctor:
             if path:
                 return path
         return None
+
+    @staticmethod
+    def _hyperframes_browser_path() -> str | None:
+        """Return the Chrome executable hyperframes will actually render with.
+
+        hyperframes manages its own headless shell, so it — not ``$PATH`` — is
+        the authority for the real render path.  Under WSL the ``google-chrome``
+        on ``$PATH`` is frequently a shim that ``exec``s a Windows ``chrome.exe``
+        which cannot run headless; asking hyperframes sidesteps that false alarm.
+
+        Returns ``None`` when hyperframes is absent, errors/times out, or
+        reports a path that does not exist on disk.
+        """
+        exe = shutil.which("hyperframes")
+        if exe is None:
+            return None
+        try:
+            result = subprocess.run(  # noqa: S603 — trusted internal command
+                [exe, "browser", "path"],
+                capture_output=True,
+                text=True,
+                timeout=_HYPERFRAMES_BROWSER_TIMEOUT_S,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if result.returncode != 0:
+            return None
+        for line in reversed((result.stdout or "").splitlines()):
+            candidate = line.strip()
+            if candidate and Path(candidate).is_file():
+                return candidate
+        return None
+
+    def _resolve_chrome(self) -> str | None:
+        """Resolve the Chrome that will actually be used for rendering.
+
+        Ask hyperframes first (the render authority); fall back to ``$PATH``
+        probing only when hyperframes is unavailable.
+        """
+        return self._hyperframes_browser_path() or self._resolve_path("chrome")
 
     @staticmethod
     def _get_version(cmd: list[str]) -> str | None:
@@ -458,6 +503,71 @@ class Doctor:
         system = platform.system()
         return _HEADLESS_CHROME_DEPENDENCIES.get(system)
 
+    @staticmethod
+    def _is_wsl() -> bool:
+        """Best-effort detection of a Windows Subsystem for Linux environment."""
+        if "microsoft" in platform.release().lower():
+            return True
+        return bool(os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"))
+
+    @staticmethod
+    def _is_windows_side_chrome(path: str) -> bool:
+        """Whether *path* points at a Windows Chrome (or a shim that execs one).
+
+        Covers the two shapes seen under WSL: a direct ``/mnt/c/.../chrome.exe``
+        and a tiny shell script (e.g. ``~/.local/bin/google-chrome``) whose body
+        invokes ``chrome.exe``.  Such a binary cannot run headless from WSL.
+        """
+        if not path:
+            return False
+        normalised = path.replace("\\", "/").lower()
+        if normalised.endswith(".exe") or normalised.startswith("/mnt/"):
+            return True
+        try:
+            if os.path.isfile(path) and os.path.getsize(path) < 8192:
+                with open(path, "rb") as fh:
+                    head = fh.read(8192).decode("utf-8", "ignore").lower()
+                if "chrome.exe" in head:
+                    return True
+        except OSError:
+            pass
+        return False
+
+    @classmethod
+    def chrome_remediation(cls, dep: dict[str, Any]) -> str | None:
+        """Return an actionable next step for the chrome check's outcome.
+
+        Distinguishes the two failure shapes surfaced by
+        :meth:`check_dependencies`:
+
+        * browser not found at all; and
+        * browser found but unable to run headless.
+
+        Under WSL either shape, when caused by a Windows-side Chrome, must point
+        at a Linux browser (or hyperframes' bundled headless shell) instead of
+        the unrelated Linux shared-library ``apt`` advice.
+        """
+        path = str(dep.get("path") or "")
+        if not dep.get("installed"):
+            if cls._is_wsl():
+                return (
+                    "No Linux Chrome/Chromium found. A Windows browser cannot be "
+                    "driven headless from WSL — install a Linux Chrome/Chromium, "
+                    "or rely on hyperframes' bundled headless shell: "
+                    "`hyperframes browser ensure`."
+                )
+            return None
+        if dep.get("headless_ok") is False:
+            if cls._is_wsl() and cls._is_windows_side_chrome(path):
+                return (
+                    "Only a Windows-side Chrome was found, which cannot run "
+                    "headless from WSL. Install a Linux Chrome/Chromium — or just "
+                    "use hyperframes' bundled headless shell: "
+                    "`hyperframes browser ensure`."
+                )
+            return cls.get_headless_chrome_instructions()
+        return None
+
     def check_dependencies(self) -> list[dict[str, Any]]:
         """Check every known dependency and return a list of status dicts.
 
@@ -467,7 +577,7 @@ class Doctor:
         results: list[dict[str, Any]] = []
         for dep in _DEPENDENCIES:
             name: str = dep["name"]
-            path: str | None = self._resolve_path(name)
+            path: str | None = None
 
             # --- Special case: ComfyUI is an HTTP service ------------------
             if name == "comfyui":
@@ -515,6 +625,7 @@ class Doctor:
 
             # --- Chrome headless probe --------------------------------------
             if name == "chrome":
+                path = self._resolve_chrome()
                 if path is None:
                     results.append(
                         {
@@ -542,6 +653,7 @@ class Doctor:
                 continue
 
             # --- Standard CLI-based check ---------------------------------
+            path = self._resolve_path(name)
             if path is None:
                 results.append(
                     {
