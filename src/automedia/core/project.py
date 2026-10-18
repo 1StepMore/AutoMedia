@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -52,6 +53,50 @@ def _slugify(text: str) -> str:
     # Collapse multiple hyphens
     text = re.sub(r"-{2,}", "-", text)
     return text.strip("-")
+
+
+# Readable fallback alphabet: ASCII alphanumerics plus CJK (Han, Hiragana,
+# Katakana, Hangul).  ``sanitize_path`` accepts Unicode path components, so a
+# pure-CJK topic can keep its own characters instead of vanishing.
+_CJK_SLUG_RE = re.compile(r"[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7a3-]")
+
+# Cap the readable fallback so a very long CJK topic cannot exceed the
+# filesystem's 255-byte component limit (UTF-8 CJK is 3 bytes/char).
+_SLUG_MAX_LEN = 60
+
+
+def _fallback_slug(text: str) -> str:
+    """Deterministic, always-non-empty slug for topics :func:`_slugify` drops.
+
+    Two-tier strategy:
+
+    1. **Readable** — keep CJK characters (see ``_CJK_SLUG_RE``) so a
+       Chinese/Japanese/Korean topic still yields an identifiable directory.
+    2. **Hash** — when nothing readable survives (pure symbols, emoji, empty
+       string), fall back to ``topic-<sha1(original)[:8]>``.  The digest is
+       computed over the *original* text, so the same input always yields the
+       same slug and renders are reproducible.
+    """
+    lowered = text.lower()
+    readable = re.sub(r"[\s_]+", "-", lowered)
+    readable = _CJK_SLUG_RE.sub("", readable)
+    readable = re.sub(r"-{2,}", "-", readable).strip("-")
+    if readable:
+        return readable[:_SLUG_MAX_LEN].strip("-")
+
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]  # noqa: S324 — non-crypto slug digest
+    return f"topic-{digest}"
+
+
+def slugify_topic(text: str) -> str:
+    """Return a non-empty, deterministic slug for *text*.
+
+    ASCII/Latin topics keep the historical :func:`_slugify` result.  Topics
+    that sanitise to nothing (pure CJK, pure punctuation, empty string) no
+    longer raise — they fall through to :func:`_fallback_slug`, which prefers
+    readable CJK characters and otherwise emits a reproducible hash.
+    """
+    return _slugify(text) or _fallback_slug(text)
 
 
 def sanitize_path(path: str) -> str:
@@ -146,12 +191,9 @@ class Project:
         Raises
         ------
         ValueError
-            If *brand* or *base_dir* contain path-traversal patterns, or
-            if the slugified *topic_slug* is empty.
+            If *brand* or *base_dir* contain path-traversal patterns.
         """
-        slug = _slugify(topic_slug)
-        if not slug:
-            raise ValueError(f"topic_slug {topic_slug!r} produces empty slug after sanitisation")
+        slug = slugify_topic(topic_slug)
 
         # Validate brand for path safety (call has side effect — raises ValueError)
         if not brand:
