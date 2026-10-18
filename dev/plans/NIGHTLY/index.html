@@ -1963,7 +1963,7 @@
 <h2 id="2026-09-30">【活区】当前差距矩阵（基线 2026-09-30）<a class="headerlink" href="#2026-09-30" title="Permanent link">&para;</a></h2>
 <h3 id="2026-10-15-main-d179702">2026-10-15 夜间复跑（在最新 main <code>d179702</code> 上）<a class="headerlink" href="#2026-10-15-main-d179702" title="Permanent link">&para;</a></h3>
 <ul>
-<li>批跑（02:00，systemd）：<code>nightly_gap.py</code> <strong>exit 1</strong> —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / <strong>视频轨 ❌ 0</strong>（项目目录 45 个，<code>cost_log</code> 非空 28 个）；场景 144 → <code>passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1</code>；hard 10 全过；门 <code>missing=4 unreachable=2</code>。</li>
+<li>批跑（02:00，systemd）：<code>nightly_gap.py</code> <strong>exit 1</strong> —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / <strong>视频轨 ❌ 0</strong>；当时快照：项目目录 45 个（2026-10-18 实测 55，以 <code>nightly_gap.py</code> 产物为准）、<code>cost_log</code> 非空 28 个、场景 144 条（2026-10-18 实有 147，以 <code>automedia validate matrix</code> 产物为准）；本轮场景结果 <code>passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1</code>；hard 10 全过；门 <code>missing=4 unreachable=2</code>。</li>
 <li><strong>本轮按 L1 §4「执行」真跑视频轨</strong>（<code>--mode short-video</code>，真模型 AMD <code>DeepSeek-V4.1-Flash</code>，产物落 repo 内持久目录，品牌 <code>w3t1-validation-brand</code>）：<strong>3 跑</strong>，门序列三跑一致 —— <code>pre-gate ✓ / CW ✓ / G0 ✓ / G1 ✓ / G2 ✓ / **G3 ✗**</code> → <code>status=partial</code>，<strong>下游 <code>G6/H0/V0–V7</code> 未执行</strong>。</li>
 <li><strong>复跑差距（05:10，把本轮真跑计入）：文本轨 27 / 图文轨 4 / 视频轨 0</strong>，<code>exit 1</code>。图文轨 3 → 4 就是本项目：真 draft 5,953B + <code>cost_log.jsonl</code> 8 行 + 2,117,596B 真图（ComfyUI）+ 556,992B 配音 + 7,807,842B 真视频（hyperframes）。</li>
 <li><strong>本轮闭合的环境缺口（两处，环境层，产品代码未动）</strong>：</li>
@@ -2000,8 +2000,8 @@
 </tr>
 </tbody>
 </table>
-<p><strong>项目目录 32 个，其中 <code>cost_log.jsonl</code> 非空（= 真跑过）16 个。</strong> <code>20260914_*</code> 那批阶段目录全空。</p>
-<p><strong>验证矩阵（自动生成）</strong>：场景 144 条 → <code>passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1</code>；
+<p><strong>项目目录 32 个（2026-10-18 实测 55，以 <code>nightly_gap.py</code> 产物为准），其中 <code>cost_log.jsonl</code> 非空（= 真跑过）16 个。</strong> <code>20260914_*</code> 那批阶段目录全空。</p>
+<p><strong>验证矩阵（自动生成）</strong>：场景数见 <code>automedia validate matrix</code> 产物（2026-10-18 实有 147 条）→ <code>passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1</code>；
 hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4）· <code>unreachable=2</code>（G4/G5）。</p>
 <p><strong>读法</strong>：文本轨是真的，图文/视频轨是空的。<code>unconfigured 31</code> 主要是缺 LLM 密钥的真模型场景——
 按 owner 决定（缺密钥先不配），这批<strong>不计入本轮 DoD</strong>，只记账。</p>
@@ -2112,7 +2112,7 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <tbody>
 <tr>
 <td style="text-align: left;">2026-10-06</td>
-<td style="text-align: left;">视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 <code>scripts/nightly_gap.py:72</code></td>
+<td style="text-align: left;">视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 <code>scripts/nightly_gap.py</code>（旧判据见提交 <code>47f5a9f</code> 的 <code>:72</code>；现行带 gate 证据的实现在提交 <code>e310ebb</code> / <code>9df04b6</code>）</td>
 <td style="text-align: left;">判据只看文件大小——<code>"video_ok": vid_max &gt;= MIN_VIDEO_BYTES</code>，不读任何 gate 判定——因此一个 <strong>V 门全部 skipped</strong> 的项目，只要 <code>03_video/</code> 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 <code>20261003_turning-blog-posts-into-video-essays</code>，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。<strong>诚实标注两点</strong>：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故<strong>这不是正在发生的误判</strong>。(2) L1 总纲在仓库外（<code>Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md</code>），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。<strong>真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」</strong>，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。<strong>（2026-10-07 更正两处：(1) 该证据项目目录</strong>存在<strong>且已复核——<code>03_video/output.mp4</code> = 5,117,183 B、gate-report 为 V2/V5/V7 <code>pass</code> / V0/V1/V3/V4/V6 <code>skip</code>，「目录现已不存在」一句有误；(2) L1 §2.2 原文已在仓库外文件读取并同步修订。）</strong></td>
 <td style="text-align: left;"><strong>已裁定（owner 2026-10-07）：采纳「带能力债的达标」</strong>——冻结区判据已改为「文件 + gate 证据（V2/V5/V7 必须 pass；V0/V1/V3/V4/V6 计为登记能力债，登记见 #193）」；实现见本仓 <code>scripts/nightly_gap.py</code>（分支 <code>fix/181-video-gate-evidence</code>）</td>
 </tr>

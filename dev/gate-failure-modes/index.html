@@ -2367,20 +2367,38 @@ style.</p>
 <li>Ensure the CTA is specific, actionable, and visible</li>
 </ul>
 <h2 id="g3-brand-cta">G3: Brand CTA<a class="headerlink" href="#g3-brand-cta" title="Permanent link">&para;</a></h2>
-<p>Brand name integrity and CTA compliance.</p>
+<p>Zero-tolerance brand &amp; call-to-action compliance: <strong>any single check failure
+stops the pipeline</strong>. The gate runs six checks (<code>gates/brand_cta.py</code>):</p>
+<ol>
+<li><code>brand_name_present</code> — the primary brand name or one of its aliases appears.</li>
+<li><code>cta_present</code> — a call-to-action is present.</li>
+<li><code>brand_identity</code> — the value declared in the brand profile's <code>brand_identity</code>
+   field must appear in the <strong>first body paragraph</strong> (a 200-char window when the
+   content has no blank-line paragraphs). When the profile declares no
+   <code>brand_identity</code>, this check is <strong>skipped, never failed</strong> (issue #202 / PR #211).</li>
+<li><code>blocked_words_absent</code> — no per-brand blocked word appears.</li>
+<li><code>cta_direction_sync</code> — when a video script is supplied, the article and video
+   CTAs point the same direction (passes when no video script is provided).</li>
+<li><code>bridge_sentence</code> — a transition sentence precedes the CTA.</li>
+</ol>
+<blockquote>
+<p>Brand <strong>mention frequency</strong> and <strong>CTA position prominence</strong> are <strong>not</strong> checks
+in this gate; voice/tone requirements belong to <strong>G6</strong>, not G3.</p>
+</blockquote>
 <p><strong>Common failure causes:</strong></p>
 <ul>
 <li>Brand name appears with homophone typos</li>
-<li>CTA link or QR code reference missing</li>
-<li>Brand mention frequency below minimum threshold</li>
-<li>CTA placement not prominent enough (not at beginning or end)</li>
+<li>CTA missing (no actionable phrase and no link/QR reference)</li>
+<li>The declared <code>brand_identity</code> phrase is absent from the first paragraph</li>
+<li>A blocked word for the brand appears</li>
+<li>The CTA has no bridging sentence before it, or the video/article CTA directions diverge</li>
 </ul>
 <p><strong>Remediation:</strong></p>
 <ul>
 <li>Verify the brand name character by character</li>
-<li>Ensure CTA includes actionable text and link/QR code reference</li>
-<li>Increase brand mentions to at least the required frequency</li>
-<li>Move CTA to high-visibility positions (near beginning or end)</li>
+<li>Ensure CTA includes actionable text and a link/QR reference</li>
+<li>Put the profile's declared <code>brand_identity</code> in the opening paragraph</li>
+<li>Remove blocked words; add a transition sentence before the CTA; align the video and article CTAs</li>
 </ul>
 <p><strong>Common pitfall:</strong> "壹目贯维" is often written by the LLM as "一目贯维" or
 "壹目惯维". You must emphasize this in the prompt and do character-level
