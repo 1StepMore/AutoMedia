@@ -481,6 +481,30 @@ class TestBrandProfileFieldInjection:
         assert "must not be repeated" in user_msg
         assert "do not keyword-stuff" not in user_msg
 
+    def test_brand_name_is_injected_exactly_once(self, tmp_path: Path) -> None:
+        """``brand_name`` is injected with an explicit exactly-once placement rule (#236)."""
+        user_msg = self._build_user_message(tmp_path, {"brand_name": "TestBrand"})
+
+        assert "TestBrand" in user_msg
+        assert "exactly once" in user_msg
+        assert "must not be repeated" in user_msg
+
+    def test_brand_name_falls_back_to_first_alias(self, tmp_path: Path) -> None:
+        """An empty ``brand_name`` falls back to the first non-empty alias (#236)."""
+        user_msg = self._build_user_message(
+            tmp_path,
+            {"brand_name": "", "aliases": ["", "AliasOne"]},
+        )
+
+        assert "AliasOne" in user_msg
+        assert "exactly once" in user_msg
+
+    def test_empty_brand_name_and_aliases_inject_nothing(self, tmp_path: Path) -> None:
+        """With no usable name, no ``Brand name`` line is injected (#236)."""
+        user_msg = self._build_user_message(tmp_path, {"brand_name": "", "aliases": []})
+
+        assert "Brand name" not in user_msg
+
     def test_legacy_voice_key_is_still_honoured(self, tmp_path: Path) -> None:
         """A profile without ``tone_guidelines`` falls back to legacy ``voice``."""
         user_msg = self._build_user_message(
@@ -506,7 +530,7 @@ class TestBrandProfileFieldInjection:
         assert "Brand tone" not in user_msg
         assert "Brand identity" not in user_msg
         for line in user_msg.splitlines():
-            if line.startswith(("Brand tone", "Brand identity")):
+            if line.startswith(("Brand tone", "Brand identity", "Brand name")):
                 value = line.split(": ", 1)[-1] if ": " in line else ""
                 assert value.strip(), f"empty brand field injected: {line!r}"
 
