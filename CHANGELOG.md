@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.14](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.13...automedia-v1.8.14) (2026-10-18)
+
+
+### Bug Fixes
+
+* 中文 topic 生成 slug 不再硬失败 ([#228](https://github.com/1StepMore/AutoMedia/issues/228)) + doctor 的 chrome 检查与真实渲染路径同源 ([#227](https://github.com/1StepMore/AutoMedia/issues/227)) ([#229](https://github.com/1StepMore/AutoMedia/issues/229)) ([2649484](https://github.com/1StepMore/AutoMedia/commit/2649484fd4c64cf1df6c9821cb53eaaed015686f))
+
+
+### Documentation
+
+* 对齐漂移计数与门描述（2026-10-18 漂移审计） ([#231](https://github.com/1StepMore/AutoMedia/issues/231)) ([2cfd451](https://github.com/1StepMore/AutoMedia/commit/2cfd4517e1711ba156f3dbd649c469b1a24c5b93))
+
 ## [1.8.13](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.12...automedia-v1.8.13) (2026-10-17)
 
 
