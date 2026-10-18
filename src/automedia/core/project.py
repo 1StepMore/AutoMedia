@@ -84,7 +84,9 @@ def _fallback_slug(text: str) -> str:
     if readable:
         return readable[:_SLUG_MAX_LEN].strip("-")
 
-    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]  # noqa: S324 — non-crypto slug digest
+    digest = hashlib.sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :8
+    ]  # non-crypto slug digest
     return f"topic-{digest}"
 
 
