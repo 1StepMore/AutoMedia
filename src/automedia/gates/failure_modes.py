@@ -94,19 +94,21 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
     },
     "G3": {
         "description": (
-            "Brand CTA Gate — enforces brand-name integrity and call-to-action compliance"
+            "Brand CTA Gate — six brand-name integrity and call-to-action checks;"
+            " any single failure stops the pipeline"
         ),
         "common_causes": [
             "Brand name 壹目贯维 is written with incorrect characters (homophone errors)",
-            "CTA link or QR code reference is missing from the content",
-            "Brand mention frequency is below the minimum threshold",
-            "CTA placement is not prominent enough (above fold or closing)",
+            "CTA is missing from the content (no actionable phrase and no link/QR reference)",
+            "The declared brand_identity is absent from the first body paragraph",
+            "A blocked word for the brand appears in the content",
+            "The CTA lacks a bridging sentence, or the video/article CTA directions diverge",
         ],
         "fixes": [
             "Verify brand name character-by-character: 壹目贯维",
             "Ensure CTA includes actionable text and link/QR reference",
-            "Increase brand mention count to at least the required frequency",
-            "Move CTA to a high-visibility position (near start or end)",
+            "Put the profile's declared brand_identity in the opening paragraph",
+            "Remove blocked words; add a CTA transition sentence; align video/article CTAs",
         ],
         "docstring_ref": "gates/brand_cta.py",
     },

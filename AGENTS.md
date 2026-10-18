@@ -5,7 +5,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 
 ## 1. Project Overview
 - **Language:** Python 3.11+
-- **Size:** 62,461 LOC across 252 Python files (automedia/ core) · ~183,000 LOC across 737+ files (repo)
+- **Size:** 67,750 LOC across 261 Python files (`src/automedia/` core) · 163,015 LOC across 589 Python files (repo, `.py` only, excluding `.venv`/`.git`) · 994 git-tracked files (as-of 2026-10-18; run find & wc -l)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 - **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
@@ -185,7 +185,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 ## 11. Validation Layer
 AutoMedia is agent-oriented, so agents are the testers and humans are the director. The single
 schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md` is the onboarding guide.
-- Scenario library: 147 scenarios; `scenarios/baseline/` holds the committed pre-flight baseline.
+- Scenario library: count is authoritative from `automedia validate matrix` output (147 scenarios as-of 2026-10-18; do not hard-code a count elsewhere); `scenarios/baseline/` holds the committed pre-flight baseline.
 - CLI: `automedia validate list|run|report|diff|coverage|matrix|sign`
 - MCP: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`
 - The validation-driving surface is the CLI and MCP server only; the SDK is a product entry point, explicitly out of validation scope.

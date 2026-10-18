@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 14505 | file |
+| AGENTS.md | 14734 | file |
 | README.md | 31840 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
@@ -32,10 +32,10 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gate-failure-modes.md | 21860 | file |
+| docs/dev/gate-failure-modes.md | 23011 | file |
 | docs/dev/override-reference.md | 9341 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 17093 | file |
+| docs/dev/plans/NIGHTLY.md | 17492 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
