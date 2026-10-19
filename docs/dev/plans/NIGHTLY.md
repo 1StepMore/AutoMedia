@@ -80,6 +80,18 @@ cd <repo>
 ---
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
+
+### 2026-10-19 夜间复跑（在最新 main `1f6714e` 上）
+
+批跑（02:00，systemd `nightly-gap.service`，进程树外）：`.venv/bin/python scripts/nightly_gap.py` **exit 0 —— 三轨全达标（机器可判部分完成）**（`nightly/gap.json`：`gap: []`、`passing_units: 3`）。
+
+- 文本轨 ✅ 31 个 · 图文轨 ✅ 6 个 · **视频轨 ✅ 1 个**（证据 `20261018_每周一次内容复盘小团队反救火手册`）。
+- 视频轨证据逐条对照冻结判据：draft **1,110B** ≥500B ✓ · `cost_log.jsonl` **2 行** ✓ · `03_video/output.mp4` **7,867,543B** ≥10KB ✓ · gate-report `failed=0 / errored=0` ✓ · **V2/V5/V7 真跑且 pass** ✓ · 其余 skip（V0/V1/V3/V4/V6）全部落在已登记能力债（#193）内 ✓。
+- 该证据产自 **PR #238（`fix/236-brand-name-instruction`）分支的验收跑**（G3 `brand_name_present` 补生成侧指令后通过）。冻结判据只看产物与 gate-report，故本轮判定成立；但 **main 上该修复未合并** ⇒ 在 main 重跑同题仍可能被 G3 间歇拦住（同一品牌 `w3t1-validation-brand` 实测 4 跑 2 真 2 假）⇒ **建议合并 #238 以在 main 上固化**。
+- 补记（2026-10-19）：**#238 已合并入 main**（squash `4851660`，随 **v1.8.15** 发布）⇒ 上条「main 上该修复未合并」已闭环。
+- 验证矩阵（自动生成）：场景 **147** 条 `{passed 107, unconfigured 31, partial-pass 3, None 2, recovered 1, failed 3}`；hard 10 全过；门 `missing=4` / `unreachable=2`（旧账，不挡 DoD）；与 2026-10-18 逐项一致 ⇒ 无退步。
+- 回归护栏：无新增「挡住 DoD」项。**最终裁决仍由 owner 保留。**
+
 ### 2026-10-15 夜间复跑（在最新 main `d179702` 上）
 
 - 批跑（02:00，systemd）：`nightly_gap.py` **exit 1** —— 文本轨 ✅ 26 / 图文轨 ✅ 3 / **视频轨 ❌ 0**；当时快照：项目目录 45 个（2026-10-18 实测 55，以 `nightly_gap.py` 产物为准）、`cost_log` 非空 28 个、场景 144 条（2026-10-18 实有 147，以 `automedia validate matrix` 产物为准）；本轮场景结果 `passed 106 / unconfigured 31 / partial-pass 3 / None 3 / recovered 1`；hard 10 全过；门 `missing=4 unreachable=2`。
@@ -126,12 +138,14 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 3. **持久落盘体检**：确认跑出来的项目落在 repo 内的项目目录，**不是 `/tmp`**。
 4. **HITL 不阻塞**：验证非交互运行返回 `awaiting_hitl` + 专用退出码。
 5. **（当前唯一未达标轨）打穿视频轨（复跑口径）**：视频轨需要**一次带真模型 cost_log 的 `video_only`（或 `short-video`）端到端跑**，达标需同时满足：`cost_log.jsonl` 非空 + `01_content/drafts/` 有 ≥500B 的 md + `03_video/` 有 ≥10KB 视频 + 该项目 gate-report `failed=0/errored=0` + V2/V5/V7 真跑且 pass（V0/V1/V3/V4/V6 允许 skip 但属已登记能力债 #193）。现有唯一候选 `20261003_turning-blog-posts-into-video-essays` 因缺 `cost_log`/draft 不达标。
+  → **2026-10-19 状态：✅ 已闭合**（证据 `20261018_每周一次内容复盘小团队反救火手册`；门序 `pre-gate/CW/G0/G1/G2/G3/G6/V2/V5/V7` 全 pass、`status=success`、真实 `output.mp4` 7,867,543B；main 上固化依赖 PR #238 合并）。
 
 ### 已完成（agent 追加）
 
 - 2026-10-13：复跑口径更正 —— 视频轨当前为 ❌（见上「2026-10-13 夜间复跑」小节）。
 - 2026-10-15：**图文轨 3 → 4**（`20261014_a-practical-guide-to-weekly-content-reviews-for-small-teams`：真 draft 5,953B + cost_log 8 行 + 2.12MB 真图）→ 队列第 1 项（打穿图文轨）闭合。
 - 2026-10-15：**队列第 3 项（持久落盘体检）复核闭合** —— 本轮 3 次真跑的 `00_project_info.json` / `01_content/drafts/` / `03_video/output.mp4` 全落在 **repo 内项目目录**（非 `/tmp`）；产品侧 hyperframes 的临时工程目录仍在 `/tmp/hyperframes_*`，但出片产物落项目目录，符合 DoD 附加硬要求 1。
+- 2026-10-19：**视频轨 0 → 1 —— 三轨全达标**（`nightly_gap.py` exit 0；证据见上「2026-10-19 夜间复跑」）。
 
 ---
 
