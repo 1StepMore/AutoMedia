@@ -7,23 +7,23 @@ deleted ``.hitl_state.json`` at run start, and (c) folded a parked run into
 ``"success"``/``"partial"``.  These tests pin the runner-level contract that
 closes those three gaps.
 
-The module pre-imports the gate engine on purpose: it pulls in the gate
-registry and the LLM client (a multi-second import), and the non-TTY test's
-``elapsed < 2.0`` assertion must measure parking, not a one-off import.
+The parked path must never enter the blocking wait primitive: the parking test
+patches ``PipelineProgress.wait_for_hitl`` (which wraps
+``threading.Event.wait``) to raise.  That is stricter than a wall-clock bound —
+it is independent of machine speed and fails immediately on regression, instead
+of only when a run happens to outlast a timing budget.
 """
 
 from __future__ import annotations
 
 import json
 import threading
-import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
-import automedia.pipelines.gate_engine  # noqa: F401 — warm heavy imports before timing
 from automedia.core.project import Project
 from automedia.pipelines.gate_engine import PipelineResult
 from automedia.pipelines.gate_types import PipelineProgress
@@ -63,9 +63,9 @@ def _run(topic: str, brand: str, **kwargs: Any) -> PipelineResult:
     """Run the real pipeline with config and gate selection stubbed.
 
     ``_select_gates`` is replaced (rather than ``_build_gates_from_names``) so
-    the timing test never pays the multi-second ``automedia.gates`` import
-    inside the measured section.  Everything under test — project resolution,
-    the stale-state sweep, and the engine wiring — lives in ``_run_pipeline``.
+    the parking test never pays the multi-second ``automedia.gates`` import on
+    the path it exercises.  Everything under test — project resolution, the
+    stale-state sweep, and the engine wiring — lives in ``_run_pipeline``.
     """
     with (
         patch("automedia.core.config_loader.load_config", return_value={}),
@@ -93,16 +93,26 @@ def test_non_tty_run_parks_immediately(projects_dir: Path) -> None:
 
     ``video_only`` owes a video; with no V gate the success/partial derivation
     would downgrade the run to ``partial`` — unless the parked state wins.  The
-    2s bound is the load-bearing assertion: a regression that waits out the
-    review budget still passes a bare status check.
+    load-bearing assertion is structural: the blocking HITL wait raises
+    ``AssertionError``, so a regression that starts waiting fails immediately
+    instead of passing a bare status check after a machine-dependent delay.
     """
-    start = time.monotonic()
-    result = _run("park now", "testbrand", mode="video_only", block_on_hitl=False)
-    elapsed = time.monotonic() - start
+    progress = PipelineProgress(project_id="park-now")
+    with patch.object(
+        PipelineProgress,
+        "wait_for_hitl",
+        side_effect=AssertionError("parked run entered the blocking HITL wait"),
+    ):
+        result = _run(
+            "park now",
+            "testbrand",
+            mode="video_only",
+            block_on_hitl=False,
+            progress=progress,
+        )
 
     assert result.status == "awaiting_review"
     assert result.status != "partial"
-    assert elapsed < 2.0, f"parked run took {elapsed:.1f}s — it blocked instead of parking"
 
     parked_rows = [entry for entry in result.gates_log if entry.gate_name == "STUB"]
     assert parked_rows and parked_rows[0].status == "awaiting_hitl", (

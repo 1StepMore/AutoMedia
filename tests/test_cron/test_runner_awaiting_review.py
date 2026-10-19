@@ -8,7 +8,6 @@ publish a run that a human has not approved.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -49,12 +48,9 @@ class TestParkedJob:
         )
         monkeypatch.setattr("automedia.cron.runner.run_full_pipeline", run_mock)
 
-        start = time.monotonic()
         result = run_scheduled_pipeline(_entry(), pool_db_path=db_path)
-        elapsed = time.monotonic() - start
 
         assert result["status"] == "awaiting_review"
-        assert elapsed < 1.0, "cron blocked instead of parking the job"
         run_mock.assert_called_once_with(
             topic="parked topic",
             brand="brand",
