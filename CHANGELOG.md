@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.15](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.14...automedia-v1.8.15) (2026-10-19)
+
+
+### Bug Fixes
+
+* **core:** declare SHA1 slug digest as non-security in project.py ([#234](https://github.com/1StepMore/AutoMedia/issues/234)) ([c85f689](https://github.com/1StepMore/AutoMedia/commit/c85f689a1255c5b83d16ff253f6148c157c5c461))
+* **gates:** 给 writer prompt 补上品牌名指令，与 G3 brand_name_present 配对 ([#236](https://github.com/1StepMore/AutoMedia/issues/236)) ([#238](https://github.com/1StepMore/AutoMedia/issues/238)) ([4851660](https://github.com/1StepMore/AutoMedia/commit/48516603677479e097d4570a2bc51e2f058b9c12))
+
 ## [1.8.14](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.13...automedia-v1.8.14) (2026-10-18)
 
 
