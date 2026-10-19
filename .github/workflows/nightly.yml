@@ -39,9 +39,13 @@ jobs:
           uv pip install pip-audit
           uv run pip-audit
 
+      # Pin bandit so the nightly scan is reproducible: an unpinned install
+      # picks up the day's latest release, and bandit's rule set/false positives
+      # drift with it — the same commit goes red one day and green the next
+      # (issue #243). Upgrade bandit only in a dedicated PR with a fresh run.
       - name: Security scan (bandit)
         run: |
-          uv pip install bandit
+          uv pip install "bandit==1.9.4"
           uv run bandit -r src/automedia/ -ll
 
       - name: Safety check (vulnerability database)
