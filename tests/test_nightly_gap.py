@@ -12,7 +12,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.nightly_gap import scan_projects, video_gate_evidence
+from scripts.nightly_gap import (
+    MIN_VIDEO_BYTES,
+    _bench_line,
+    _video_red_reason,
+    _video_track_note,
+    scan_projects,
+    video_gate_evidence,
+)
 
 V_GATES = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
 MUST_RUN = ("V2", "V5", "V7")
@@ -240,3 +247,92 @@ def test_latest_report_wins(tmp_path: Path) -> None:
     assert ev["passed"] == ["V2", "V5", "V7"]
     p = _one(tmp_path)
     assert p["video_ok"] is True
+
+
+# ── #235：判红原因按合取顺序，别把「没视频」伪装成 `no gate-report` ───────────
+
+
+def test_red_reason_is_video_size_when_no_video(tmp_path: Path) -> None:
+    """无视频的项目：原因必须是尺寸子句，而不是会被藏起候选的 `no gate-report`。"""
+    _project(tmp_path, video_bytes=0, reports=None)
+    p = _one(tmp_path)
+    assert p["video_ok"] is False
+    assert p["video_gates"]["reason"] == "no gate-report"
+    assert _video_red_reason(p) == f"视频文件 <{MIN_VIDEO_BYTES}B"
+
+
+def test_red_reason_is_text_evidence_when_missing(tmp_path: Path) -> None:
+    """缺文本证据时取第一个 false 的子句——即使门证据本身违规。"""
+    _project(tmp_path, cost_lines=0, video_bytes=0, reports=None)
+    p = _one(tmp_path)
+    assert _video_red_reason(p) == "缺文本证据（draft < 500B 或 cost_log 空）"
+
+
+def test_red_reason_falls_through_to_gate_evidence(tmp_path: Path) -> None:
+    """尺寸与文本都过、只差 V 门证据 → 用门证据自己的 reason。"""
+    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report([], []))])
+    p = _one(tmp_path)
+    assert p["video_max_bytes"] >= MIN_VIDEO_BYTES
+    assert p["text_evidence_ok"] is True
+    assert p["video_gates"]["ok"] is False
+    assert _video_red_reason(p).startswith("must-run gate not passed")
+
+
+# ── #235：选样优先「离达标最近」的候选（尺寸降序），不再按项目名 ─────────────
+
+
+def test_sampling_covers_nearest_candidates(tmp_path: Path) -> None:
+    # 3 个近失候选：尺寸 + 文本都过，只差 V 门证据（报告全 skipped）。
+    near_bytes = {
+        "20260822_near-94kb": 94 * 1024,
+        "20260822_near-4mb": 4900 * 1024,
+        "20260822_near-7mb": 7800 * 1024,
+    }
+    for name, nbytes in near_bytes.items():
+        _project(
+            tmp_path,
+            name=name,
+            video_bytes=nbytes,
+            reports=[("2026-01-01T00:00:00+0000", _report([], []))],
+        )
+    # 若干无关项目（字母序更靠前、无视频），此前会把候选挤出前 5。
+    for i in range(6):
+        _project(tmp_path, name=f"20260822_aaa-unrelated-{i}", video_bytes=0, reports=None)
+
+    projects = scan_projects(root=tmp_path)
+    note = _video_track_note(projects, {"ok": False})
+    listed = note.split("：", 1)[1].split("；")
+    assert len(listed) == 5
+    for name in near_bytes:
+        assert any(entry.startswith(name + ":") for entry in listed), name
+    # 近失候选按 video_max_bytes 降序排在最前。
+    near_order = [
+        entry.split(":", 1)[0] for entry in listed if entry.split(":", 1)[0] in near_bytes
+    ]
+    assert near_order == [
+        "20260822_near-7mb",
+        "20260822_near-4mb",
+        "20260822_near-94kb",
+    ]
+
+
+# ── #235：报告头部有 bench 行 ────────────────────────────────────────────────
+
+
+def test_bench_line_shape() -> None:
+    line = _bench_line()
+    assert line.startswith("- bench：")
+    assert "@" in line
+
+
+def test_main_md_header_has_bench(tmp_path: Path, monkeypatch) -> None:
+    from scripts import nightly_gap
+
+    _project(tmp_path, video_bytes=0, reports=None)
+    real_scan = nightly_gap.scan_projects
+    monkeypatch.setattr(nightly_gap, "scan_projects", lambda root=None: real_scan(root=tmp_path))
+    out = tmp_path / "gap.md"
+    rc = nightly_gap.main(["--skip-validate", "--md-out", str(out)])
+    assert rc == 1
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert any(line.startswith("- bench：") for line in lines[:6])

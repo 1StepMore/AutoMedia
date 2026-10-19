@@ -233,22 +233,78 @@ def validate_summary(python: str) -> dict:
     }
 
 
+def _video_red_reason(p: dict) -> str:
+    """视频轨判红的**合取**首因：文本证据 → 文件下限 → V 门证据（#235）。
+
+    `video_ok = text_evidence AND vid_max >= 10KB AND video_gate_evidence.ok`，
+    故原因必须按同一合取顺序取第一个 false 的子句，否则「根本没视频」的项目
+    会被末尾的门证据原因（`no gate-report`）盖住，藏起真正可执行的信息。
+    """
+    if not p["text_evidence_ok"]:
+        return "缺文本证据（draft < 500B 或 cost_log 空）"
+    if p["video_max_bytes"] < MIN_VIDEO_BYTES:
+        return f"视频文件 <{MIN_VIDEO_BYTES}B"
+    return p["video_gates"]["reason"] or "视频门证据未通过"
+
+
+def _is_near_miss(p: dict) -> bool:
+    """「离达标最近」的候选：尺寸 + 文本都过，只差 gate-report 里的 V 门行。"""
+    return (
+        p["text_evidence_ok"]
+        and p["video_max_bytes"] >= MIN_VIDEO_BYTES
+        and not p["video_gates"]["ok"]
+    )
+
+
 def _video_track_note(projects: list[dict], track: dict) -> str:
-    """视频轨那一行下面的附注：达标 → 登记的能力债；未达标 → 前 5 个判红原因。"""
+    """视频轨那一行下面的附注：达标 → 登记的能力债；未达标 → 前 5 个判红原因。
+
+    选样优先展示「离达标最近」的项目：先按 `video_max_bytes` 降序列只差 V 门证据
+    的候选，再列其余（#235）——按项目名字母序会把 `20260822_*` 文本轨目录排到
+    前面，把真视频候选藏起来。
+    """
     if track["ok"]:
         return (
             f"  - 能力债（登记，不计入达标）："
             f"{'/'.join(VIDEO_GATES_CAPABILITY_DEBT)}（无诚实生产者，{VIDEO_GATE_DEBT_ISSUE}）"
         )
-    bad = []
-    for p in projects:
-        if p["video_ok"]:
-            continue
-        why = p["video_gates"]["reason"] or f"视频文件 <{MIN_VIDEO_BYTES}B"
-        bad.append(f"{p['project']}: {why}")
-        if len(bad) == 5:
-            break
+    red = [p for p in projects if not p["video_ok"]]
+    near = sorted(
+        (p for p in red if _is_near_miss(p)),
+        key=lambda p: p["video_max_bytes"],
+        reverse=True,
+    )
+    rest = [p for p in red if not _is_near_miss(p)]
+    bad = [f"{p['project']}: {_video_red_reason(p)}" for p in (near + rest)[:5]]
     return "  - 判红原因（前 5 个）：" + ("；".join(bad) if bad else "无项目")
+
+
+def _git(*args: str) -> str:
+    """跑一条 git 命令；任何失败（非零返回 / 异常 / 空输出）都退化为 `<unknown>`。"""
+    try:
+        r = subprocess.run(  # noqa: S603 — argv is literals from _git callers, no shell
+            ["git", *args],  # noqa: S607 — bare `git` resolved via PATH is intended
+            capture_output=True,
+            text=True,
+            cwd=REPO,
+            timeout=10,
+        )
+    except Exception:
+        return "<unknown>"
+    if r.returncode != 0:
+        return "<unknown>"
+    return r.stdout.strip() or "<unknown>"
+
+
+def _bench_line() -> str:
+    """报告正文里的 `bench：<branch>@<sha>`——让「这份矩阵测的是哪棵树」可见。
+
+    2026-10-18 那轮实际测的不是 main（见 e2e-test-suite#186），所以把 benchmark
+    的树写进报告头部，而不是只在 CI 日志里。
+    """
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    sha = _git("rev-parse", "--short", "HEAD")
+    return f"- bench：{branch}@{sha}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -315,6 +371,7 @@ def main(argv: list[str] | None = None) -> int:
         "",
         f"- 项目目录：{len(projects)} 个（真模型 cost_log 非空："
         f"{sum(1 for p in projects if p['cost_log_lines'] > 0)} 个）",
+        _bench_line(),
     ]
     for name, v in tracks.items():
         mark = "✅" if v["ok"] else "❌"
