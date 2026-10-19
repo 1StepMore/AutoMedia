@@ -272,6 +272,24 @@ class ContentWriterGate(BaseGate):
             voice = brand_profile.get("tone_guidelines", "") or brand_profile.get("voice", "")
             if voice:
                 user_message += f"\nBrand tone/voice: {voice}"
+            primary_name = (brand_profile.get("brand_name") or "").strip()
+            if not primary_name:
+                aliases = brand_profile.get("aliases") or []
+                if isinstance(aliases, list):
+                    for alias in aliases:
+                        if isinstance(alias, str) and alias.strip():
+                            primary_name = alias.strip()
+                            break
+            if primary_name:
+                # G3's zero-tolerance brand_name_present check requires the exact
+                # brand name in the body.  State the count/placement rule so the
+                # writer satisfies it without repeating the name everywhere
+                # (--issue #236, consistent with the #202 identity contract).
+                user_message += (
+                    "\nBrand name — the exact brand name must appear naturally "
+                    "exactly once in the body, "
+                    f"and must not be repeated in any other paragraph: {primary_name}"
+                )
             identity = brand_profile.get("brand_identity", "")
             if identity:
                 # The G3 gate checks that this exact phrase lands in the FIRST
