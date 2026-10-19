@@ -57,19 +57,19 @@ def _parking_stub(
     seen: dict[str, Any],
     *,
     status: _PipelineStatus = "awaiting_review",
-    blocking_delay: float = 3.0,
 ) -> _Stub:
-    """A ``run_full_pipeline`` stub that only "blocks" when told to block.
+    """A ``run_full_pipeline`` stub that only "waits" when told to wait.
 
-    When ``block_on_hitl`` is not explicitly ``False`` the stub simulates a
-    human wait by sleeping — so a caller that fails to pass
-    ``block_on_hitl=False`` is caught by the elapsed-time assertion.
+    When ``block_on_hitl`` is not explicitly ``False`` the stub raises
+    instead of simulating a human wait — so a caller that fails to pass
+    ``block_on_hitl=False`` fails immediately and structurally, with no
+    machine-speed-dependent elapsed-time assertion.
     """
 
     def _stub(topic: str, brand: str, **kwargs: Any) -> PipelineResult:
         seen.update(kwargs)
         if kwargs.get("block_on_hitl") is not False:
-            time.sleep(blocking_delay)
+            raise AssertionError("run_full_pipeline entered the blocking HITL wait")
         return PipelineResult(project_id=f"parked-{topic}", topic=topic, status=status)
 
     return _stub
@@ -82,15 +82,12 @@ class TestRunPipelineParks:
             "automedia.pipelines.runner.run_full_pipeline",
             side_effect=_parking_stub(seen),
         ):
-            start = time.monotonic()
             result = run_pipeline(topic="park me", brand="test-brand", mode="text_only")
             assert result["success"] is True
             project_id = result["project_id"]
             entry = _wait_for_terminal(project_id)
-            elapsed = time.monotonic() - start
 
         assert seen.get("block_on_hitl") is False
-        assert elapsed < 2.0, f"run_pipeline blocked for {elapsed:.2f}s"
         assert entry["status"] == "awaiting_review"
 
     def test_run_pipeline_status_is_not_reported_as_completed_when_parked(self) -> None:
@@ -164,16 +161,13 @@ class TestRunBatchParks:
         def _stub(topic: str, brand: str, **kwargs: Any) -> PipelineResult:
             seen.update(kwargs)
             if kwargs.get("block_on_hitl") is not False:
-                time.sleep(3.0)
+                raise AssertionError("run_batch entered the blocking HITL wait")
             return PipelineResult(project_id=f"batch-{topic}", topic=topic, status=next(statuses))
 
         with patch("automedia.pipelines.runner.run_full_pipeline", side_effect=_stub):
-            start = time.monotonic()
             result = run_batch(topics=["a", "b"], brand="test-brand", mode="text_only")
-            elapsed = time.monotonic() - start
 
         assert seen.get("block_on_hitl") is False
-        assert elapsed < 2.0, f"run_batch blocked for {elapsed:.2f}s"
         assert result["total"] == 2
         assert result["awaiting"] == 2
         assert result["passed"] == 0

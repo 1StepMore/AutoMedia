@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from pathlib import Path
 from typing import Any
 
@@ -100,21 +99,31 @@ def test_h0_explicit_gate_context_timeout_wins() -> None:
 
 
 def test_wait_for_hitl_honours_delivered_approve(tmp_path: Path) -> None:
-    """Given a decision file written by another process, the wait approves."""
+    """Given a decision file written by another process, the wait approves.
+
+    ``on_timeout="reject"`` makes the outcome the structural proof: a wait
+    that timed out instead of reading the delivered file would return
+    ``False``, so the bare ``decision is True`` cannot be satisfied by the
+    timeout policy — no wall clock needed.
+    """
     progress = PipelineProgress(project_id="p1")
     threading.Timer(0.2, lambda: _write_decision(tmp_path, "approve")).start()
-    start = time.monotonic()
-    assert progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0) is True
-    assert time.monotonic() - start < 2.0, "returned by timeout, not by delivery"
+    decision = progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0, on_timeout="reject")
+    assert decision is True
 
 
 def test_wait_for_hitl_honours_delivered_reject(tmp_path: Path) -> None:
-    """Given a decision file saying reject, the wait rejects."""
+    """Given a decision file saying reject, the wait rejects.
+
+    The timeout policy fails open (``on_timeout="approve"``, passed
+    explicitly here): the delivered rejection is the only outcome that can
+    yield ``False``, so no wall clock is needed to tell delivery apart from
+    a timeout.
+    """
     progress = PipelineProgress(project_id="p2")
     threading.Timer(0.2, lambda: _write_decision(tmp_path, "reject")).start()
-    start = time.monotonic()
-    assert progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0) is False
-    assert time.monotonic() - start < 2.0, "returned by timeout, not by delivery"
+    decision = progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0, on_timeout="approve")
+    assert decision is False
 
 
 def test_wait_for_hitl_consumes_the_decision_file(tmp_path: Path) -> None:
@@ -139,14 +148,15 @@ def test_a_delivered_decision_is_not_wiped_by_registering_the_pause(tmp_path: Pa
     Regression guard: resetting the tracker when a gate *begins* awaiting review
     turned such a decision into a timeout, which under the old fail-open default
     silently auto-approved a human rejection.  It shipped as a broken
-    ``test_h0_reject_in_quality_retry_path_halts``.
+    ``test_h0_reject_in_quality_retry_path_halts``.  A timeout would fail open
+    (``True``), so ``decision is False`` is the structural proof the
+    pre-delivered rejection was honoured.
     """
     progress = PipelineProgress(project_id="p5a")
     progress.reject_hitl()
     progress.on_gate_awaiting_hitl("H0")
-    start = time.monotonic()
-    assert progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0) is False
-    assert time.monotonic() - start < 2.0, "pre-delivered decision was discarded"
+    decision = progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0, on_timeout="approve")
+    assert decision is False
 
 
 def test_a_decision_stays_sticky_across_quality_retries(tmp_path: Path) -> None:
@@ -157,7 +167,9 @@ def test_a_decision_stays_sticky_across_quality_retries(tmp_path: Path) -> None:
     for the full budget and then fall through to the timeout policy — which
     turned a human *rejection* into an approval and let the pipeline publish.
     This is the invariant ``test_h0_reject_in_quality_retry_path_halts`` relies
-    on at the engine level.
+    on at the engine level.  The re-wait's ``decision is False`` is structural:
+    a re-wait that blocked to its budget would fail open (``approve``) and
+    return ``True``.
     """
     progress = PipelineProgress(project_id="p5")
     progress.on_gate_awaiting_hitl("H0")
@@ -166,9 +178,8 @@ def test_a_decision_stays_sticky_across_quality_retries(tmp_path: Path) -> None:
     assert progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0) is False
 
     progress.on_gate_awaiting_hitl("H0")
-    start = time.monotonic()
-    assert progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0) is False
-    assert time.monotonic() - start < 2.0, "re-wait blocked instead of reusing the decision"
+    decision = progress.wait_for_hitl(project_dir=str(tmp_path), timeout=5.0, on_timeout="approve")
+    assert decision is False
 
 
 # -- the timeout outcome is honoured by the wait -----------------------------
@@ -192,39 +203,41 @@ def test_wait_for_hitl_timeout_approves_when_configured() -> None:
 def test_engine_delivers_an_external_approval_to_a_paused_gate(tmp_path: Path) -> None:
     """The engine must pass a real project_dir, or the file branch is dead code.
 
-    The elapsed assertion is load-bearing: with the old ``project_dir=""`` the
-    engine ignored the delivered file, waited out the stub's 10s budget and
-    auto-approved, so a bare "did it pass?" check would go green on exactly the
-    silent-trap behaviour this issue is about.
+    The stub gate's ``on_timeout`` is set to ``"reject"`` so the discriminator
+    is structural: with the old ``project_dir=""`` the engine ignored the
+    delivered file, waited out the stub's 10s budget and applied the timeout
+    policy — "reject" turns that silent trap into ``ok is False``, so the
+    ``ok is True`` below can only be produced by consuming the delivered
+    decision, never by machine speed.
     """
-    engine = GateEngine(gates=[_AwaitingGate()])
+    engine = GateEngine(gates=[_AwaitingGate(on_timeout="reject")])
     progress = PipelineProgress(project_id="p8")
     context: dict[str, Any] = {"project_dir": str(tmp_path), "topic": "t", "brand": "b"}
     threading.Timer(0.3, lambda: _write_decision(tmp_path, "approve")).start()
 
-    start = time.monotonic()
     ok, results = engine.run(context, progress=progress)
-    elapsed = time.monotonic() - start
 
     assert ok is True
     assert results[0]["_hitl_approved"] is True
-    assert elapsed < 5.0, "gate auto-approved on timeout instead of consuming the decision"
 
 
 def test_engine_delivers_an_external_rejection_to_a_paused_gate(tmp_path: Path) -> None:
-    """A delivered rejection must halt the pipeline, exactly like an in-process one."""
-    engine = GateEngine(gates=[_AwaitingGate()])
+    """A delivered rejection must halt the pipeline, exactly like an in-process one.
+
+    ``on_timeout="approve"`` is passed explicitly so the discriminator is
+    structural: had the engine timed out instead of consuming the file, the
+    gate would have failed open and the run would be ``ok`` — ``ok is False``
+    can only come from the delivered rejection.
+    """
+    engine = GateEngine(gates=[_AwaitingGate(on_timeout="approve")])
     progress = PipelineProgress(project_id="p9")
     context: dict[str, Any] = {"project_dir": str(tmp_path), "topic": "t", "brand": "b"}
     threading.Timer(0.3, lambda: _write_decision(tmp_path, "reject")).start()
 
-    start = time.monotonic()
     ok, results = engine.run(context, progress=progress)
-    elapsed = time.monotonic() - start
 
     assert ok is False
     assert results[0]["_hitl_approved"] is False
-    assert elapsed < 5.0, "gate timed out instead of consuming the decision"
 
 
 def test_engine_applies_on_timeout_from_the_gate_result(tmp_path: Path) -> None:
