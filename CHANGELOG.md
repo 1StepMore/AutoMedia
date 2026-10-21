@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.9.0...automedia-v1.9.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **changelog:** restore the 1.9.0 section to the commits it actually shipped ([#258](https://github.com/1StepMore/AutoMedia/issues/258)) ([b4eb081](https://github.com/1StepMore/AutoMedia/commit/b4eb08165459414c20cd2f615d3cb2396dcc5f8a))
+
 ## [1.9.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.15...automedia-v1.9.0) (2026-10-21)
 
 
