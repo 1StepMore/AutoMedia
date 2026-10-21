@@ -2143,7 +2143,7 @@
 </table>
 <p>门取到的是硬编码默认空值（<code>""</code> / <code>0</code> / <code>[]</code>）。这意味着 V 门<strong>要么恒失败、要么空洞地通过——两种情况下都没有在验证真实视频</strong>。</p>
 <p><strong>佐证</strong>：<code>AudioPipeline</code> 是孤立模块，仅被 <code>pipelines/__init__.py:25</code> 的惰性导出表引用，<strong>无任何生产调用者</strong>；对照 <code>ImagePipeline</code> 在 <code>runner.py:1401</code> 被真实调用，证明"有实现"与"已接线"是两件事。</p>
-<p><strong>影响</strong>：<code>video_only</code> 模式在 CLI help 中对外列出（<code>cli/commands/run.py:145-149</code>），实际不可用。这是当前最大的**"宣称能力 &gt; 实际能力"**项。</p>
+<p><strong>影响</strong>：<code>video_only</code> 模式在 CLI help 中对外列出（<code>cli/commands/run.py:145-149</code>），实际不可用。这是当前最大的<strong>"宣称能力 &gt; 实际能力"</strong>项。</p>
 <p><strong>性质判定</strong>：与 <code>capability-gap-assessment-20260915.md</code> §0b 描述的 L1–L4 缺陷<strong>完全同构</strong>——预设中包含"输入不存在的门"，且被 <code>_mock_results</code> 掩盖。L 门已于 09-15 修复，V 门族<strong>尚未处理</strong>。</p>
 <hr />
 <h3 id="p0-2-windows-os-independent">P0-2 Windows 完全不可用，但声明 OS Independent<a class="headerlink" href="#p0-2-windows-os-independent" title="Permanent link">&para;</a></h3>

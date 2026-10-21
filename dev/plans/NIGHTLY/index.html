@@ -1961,6 +1961,24 @@
 </code></pre></div>
 <hr />
 <h2 id="2026-09-30">【活区】当前差距矩阵（基线 2026-09-30）<a class="headerlink" href="#2026-09-30" title="Permanent link">&para;</a></h2>
+<h3 id="2026-10-21-main-df483ea">2026-10-21 夜间复跑（在最新 main <code>df483ea</code> 上）<a class="headerlink" href="#2026-10-21-main-df483ea" title="Permanent link">&para;</a></h3>
+<p>批跑（02:00，systemd <code>nightly-gap.service</code>，网关进程树外）：<code>.venv/bin/python scripts/nightly_gap.py</code> <strong>exit 0 —— 三轨全达标（机器可判部分完成）</strong>（<code>nightly/gap.json</code>：<code>gap: []</code>、<code>passing_units: 3</code>）。</p>
+<ul>
+<li>文本轨 ✅ 31 个 · 图文轨 ✅ 6 个 · <strong>视频轨 ✅ 1 个</strong>（证据 <code>20261018_每周一次内容复盘小团队反救火手册</code>）。</li>
+<li>项目目录 <strong>57</strong> 个（<code>cost_log.jsonl</code> 非空 = 真跑过：<strong>33</strong> 个）；<code>bench: main@df483ea</code>。</li>
+<li>视频轨能力债照登记：<strong>V0/V1/V3/V4/V6 无诚实生产者（#193）</strong>，不计入达标、不静默忽略（<code>gap.json</code> 的 <code>capability_debt</code> 字段）。</li>
+<li>验证矩阵（自动生成）：场景 <strong>147</strong> 条 <code>{passed 107, unconfigured 31, partial-pass 3, None 2, recovered 1, failed 3}</code>；hard 10 条全过（<code>hard_not_passed: []</code>）；门 <code>missing=4</code> / <code>unreachable=2</code>（旧账，不挡 DoD）—— 与 2026-10-19 逐项一致 ⇒ <strong>无退步</strong>。</li>
+<li>回归护栏：无新增「挡住 DoD」项。<strong>最终裁决仍由 owner 保留。</strong></li>
+</ul>
+<h3 id="2026-10-20-main-df483ea">2026-10-20 夜间复跑（在最新 main <code>df483ea</code> 上）<a class="headerlink" href="#2026-10-20-main-df483ea" title="Permanent link">&para;</a></h3>
+<p>批跑（02:00，systemd <code>nightly-gap.service</code>，进程树外）：<code>.venv/bin/python scripts/nightly_gap.py</code> <strong>exit 0 —— 三轨全达标（机器可判部分完成）</strong>（<code>nightly/gap.json</code>：<code>gap: []</code>、<code>passing_units: 3</code>）。</p>
+<ul>
+<li>文本轨 ✅ 31 个 · 图文轨 ✅ 6 个 · 视频轨 ✅ 1 个（证据 <code>20261018_每周一次内容复盘小团队反救火手册</code>，与 2026-10-19 同一证据）。</li>
+<li>视频轨证据的 gate-report：<code>passed [V2,V5,V7]</code> · <code>failed []</code> · <code>errored []</code> · <code>debt_skipped [V0,V1,V3,V4,V6]</code> ⇒ 空生产者五门仍按 #193 登记为<strong>能力债</strong>（<code>gap.json</code> 的 <code>capability_debt</code> 字段），不计入达标、也不静默忽略。</li>
+<li>验证矩阵（自动生成）：场景 <strong>147</strong> 条 <code>{passed 107, unconfigured 31, partial-pass 3, None 2, recovered 1, failed 3}</code>；hard 10 全过；门 <code>missing=4</code> / <code>unreachable=2</code>（L1–L4 / G4-G5 旧账，不挡 DoD）；与 2026-10-19 逐项一致 ⇒ 无退步。</li>
+<li>同步基点：main <code>df483ea</code>（由 <code>58f28a4</code> 快进）。</li>
+<li>回归护栏：无新增「挡住 DoD」项。<strong>最终裁决仍由 owner 保留。</strong></li>
+</ul>
 <h3 id="2026-10-19-main-1f6714e">2026-10-19 夜间复跑（在最新 main <code>1f6714e</code> 上）<a class="headerlink" href="#2026-10-19-main-1f6714e" title="Permanent link">&para;</a></h3>
 <p>批跑（02:00，systemd <code>nightly-gap.service</code>，进程树外）：<code>.venv/bin/python scripts/nightly_gap.py</code> <strong>exit 0 —— 三轨全达标（机器可判部分完成）</strong>（<code>nightly/gap.json</code>：<code>gap: []</code>、<code>passing_units: 3</code>）。</p>
 <ul>
