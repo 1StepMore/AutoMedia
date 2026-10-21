@@ -90,15 +90,41 @@ def _fallback_slug(text: str) -> str:
     return f"topic-{digest}"
 
 
+def _cjk_part(text: str) -> str:
+    """Return the sanitised CJK-only segment of *text*.
+
+    Mirrors :func:`_fallback_slug`'s readable branch but keeps only CJK
+    characters (ASCII letters/digits are dropped), so callers can combine the
+    Latin and CJK portions of a mixed topic without losing either one.
+    """
+    lowered = text.lower()
+    readable = re.sub(r"[\s_]+", "-", lowered)
+    readable = re.sub(r"[^\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7a3-]", "", readable)
+    readable = re.sub(r"-{2,}", "-", readable).strip("-")
+    return readable[:_SLUG_MAX_LEN].strip("-")
+
+
 def slugify_topic(text: str) -> str:
     """Return a non-empty, deterministic slug for *text*.
 
-    ASCII/Latin topics keep the historical :func:`_slugify` result.  Topics
-    that sanitise to nothing (pure CJK, pure punctuation, empty string) no
-    longer raise — they fall through to :func:`_fallback_slug`, which prefers
-    readable CJK characters and otherwise emits a reproducible hash.
+    Latin-only topics keep the historical :func:`_slugify` result.  Mixed
+    Latin/CJK topics keep both parts, ASCII first and CJK second, joined by a
+    hyphen (e.g. ``automedia-2024-项目启动``) so distinct Chinese topics with the
+    same English suffix never collapse onto the same directory.  Pure-CJK
+    topics keep their characters, and topics that sanitise to nothing (pure
+    punctuation, empty string) fall through to :func:`_fallback_slug`, which
+    emits a reproducible hash.
     """
-    return _slugify(text) or _fallback_slug(text)
+    ascii_part = _slugify(text)
+    cjk_part = _cjk_part(text)
+
+    if ascii_part and cjk_part:
+        return f"{ascii_part}-{cjk_part}"[:_SLUG_MAX_LEN].strip("-")
+    if ascii_part:
+        return ascii_part
+    if cjk_part:
+        return cjk_part
+    return _fallback_slug(text)
 
 
 def sanitize_path(path: str) -> str:
