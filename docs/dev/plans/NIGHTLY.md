@@ -81,6 +81,26 @@ cd <repo>
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 
+### 2026-10-21 夜间复跑（在最新 main `df483ea` 上）
+
+批跑（02:00，systemd `nightly-gap.service`，网关进程树外）：`.venv/bin/python scripts/nightly_gap.py` **exit 0 —— 三轨全达标（机器可判部分完成）**（`nightly/gap.json`：`gap: []`、`passing_units: 3`）。
+
+- 文本轨 ✅ 31 个 · 图文轨 ✅ 6 个 · **视频轨 ✅ 1 个**（证据 `20261018_每周一次内容复盘小团队反救火手册`）。
+- 项目目录 **57** 个（`cost_log.jsonl` 非空 = 真跑过：**33** 个）；`bench: main@df483ea`。
+- 视频轨能力债照登记：**V0/V1/V3/V4/V6 无诚实生产者（#193）**，不计入达标、不静默忽略（`gap.json` 的 `capability_debt` 字段）。
+- 验证矩阵（自动生成）：场景 **147** 条 `{passed 107, unconfigured 31, partial-pass 3, None 2, recovered 1, failed 3}`；hard 10 条全过（`hard_not_passed: []`）；门 `missing=4` / `unreachable=2`（旧账，不挡 DoD）—— 与 2026-10-19 逐项一致 ⇒ **无退步**。
+- 回归护栏：无新增「挡住 DoD」项。**最终裁决仍由 owner 保留。**
+
+### 2026-10-20 夜间复跑（在最新 main `df483ea` 上）
+
+批跑（02:00，systemd `nightly-gap.service`，进程树外）：`.venv/bin/python scripts/nightly_gap.py` **exit 0 —— 三轨全达标（机器可判部分完成）**（`nightly/gap.json`：`gap: []`、`passing_units: 3`）。
+
+- 文本轨 ✅ 31 个 · 图文轨 ✅ 6 个 · 视频轨 ✅ 1 个（证据 `20261018_每周一次内容复盘小团队反救火手册`，与 2026-10-19 同一证据）。
+- 视频轨证据的 gate-report：`passed [V2,V5,V7]` · `failed []` · `errored []` · `debt_skipped [V0,V1,V3,V4,V6]` ⇒ 空生产者五门仍按 #193 登记为**能力债**（`gap.json` 的 `capability_debt` 字段），不计入达标、也不静默忽略。
+- 验证矩阵（自动生成）：场景 **147** 条 `{passed 107, unconfigured 31, partial-pass 3, None 2, recovered 1, failed 3}`；hard 10 全过；门 `missing=4` / `unreachable=2`（L1–L4 / G4-G5 旧账，不挡 DoD）；与 2026-10-19 逐项一致 ⇒ 无退步。
+- 同步基点：main `df483ea`（由 `58f28a4` 快进）。
+- 回归护栏：无新增「挡住 DoD」项。**最终裁决仍由 owner 保留。**
+
 ### 2026-10-19 夜间复跑（在最新 main `1f6714e` 上）
 
 批跑（02:00，systemd `nightly-gap.service`，进程树外）：`.venv/bin/python scripts/nightly_gap.py` **exit 0 —— 三轨全达标（机器可判部分完成）**（`nightly/gap.json`：`gap: []`、`passing_units: 3`）。
