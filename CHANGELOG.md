@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.16](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.15...automedia-v1.8.16) (2026-10-21)
+
+
+### Dependencies
+
+* **deps:** bump aiohttp from 3.14.3 to 3.14.4 ([#250](https://github.com/1StepMore/AutoMedia/issues/250)) ([3f0fcfd](https://github.com/1StepMore/AutoMedia/commit/3f0fcfd22fb9f2f6e3fbf483e42e16a34b7cc12d))
+* **deps:** bump bridgecrewio/checkov-action ([#241](https://github.com/1StepMore/AutoMedia/issues/241)) ([1660b8e](https://github.com/1StepMore/AutoMedia/commit/1660b8e8853d295608d55b45f57221b33ce1e254))
+
 ## [1.8.15](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.14...automedia-v1.8.15) (2026-10-19)
 
 
