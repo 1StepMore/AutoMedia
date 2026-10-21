@@ -16,6 +16,7 @@ the change is recorded in a new ADR that marks the old one with
 | [ADR-004](ADR-004-mcp-server-decomposition.md) | Split the monolithic `mcp/server.py` into `allowlist.py`, `tools.py`, `resources.py`, and a thin `server.py` with backward-compatible re-exports |
 | [ADR-005](ADR-005-issue-driven-commits.md) | Codify the repository's issue-driven commit discipline: one atomic, verifiable commit per issue or unit of work |
 | [ADR-006](ADR-006-graph-engineering-dag.md) | Make the gate pipeline an explicit per-mode DAG (additive, order-equivalent) with opt-in `--auto-resume`, failure localization, and a read-only state view |
+| [ADR-007](ADR-007-gate-engine-verdict-aggregate.md) | Make `GateEngine.run()`'s success flag an aggregate over per-gate results instead of a last-write-wins latch, so a failed gate can never report a successful run |
 
 ## How to Add a New ADR
 

@@ -13,7 +13,8 @@
 | docs/adr/ADR-004-mcp-server-decomposition.md | 5808 | file |
 | docs/adr/ADR-005-issue-driven-commits.md | 4300 | file |
 | docs/adr/ADR-006-graph-engineering-dag.md | 8823 | file |
-| docs/adr/README.md | 1966 | file |
+| docs/adr/ADR-007-gate-engine-verdict-aggregate.md | 6351 | file |
+| docs/adr/README.md | 2185 | file |
 | docs/adr/TEMPLATE.md | 2267 | file |
 | docs/dev | — | dir |
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |

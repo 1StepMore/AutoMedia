@@ -438,7 +438,7 @@ def test_quality_retry_exhausted_continues_pipeline() -> None:
 
     ok, results = engine.run({"topic": "test"})
 
-    assert ok is True
+    assert ok is False  # the retry gate never passed
     assert len(results) == 2
     assert results[0]["passed"] is False
     assert results[0].get("quality_retry_count") == 2
@@ -471,7 +471,7 @@ def test_per_gate_max_quality_retries_overrides_engine_default() -> None:
 
     ok, results = engine.run({"topic": "test"})
 
-    assert ok is True
+    assert ok is False  # the retry gate never passed
     assert results[0]["quality_retry_count"] == 1
     assert call_count["n"] == 2
     assert [r["gate"] for r in results] == ["G0", "G1"]
@@ -550,7 +550,7 @@ def test_gates_without_retry_knobs_keep_engine_defaults() -> None:
 
     ok, results = engine.run({"topic": "test"})
 
-    assert ok is True
+    assert ok is False  # the retry gate never passed
     assert results[0]["quality_retry_count"] == 2
     assert call_count["n"] == 3
     assert [r["gate"] for r in results] == ["G0", "G1"]

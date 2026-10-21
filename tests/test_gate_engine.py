@@ -270,10 +270,10 @@ class TestGateEngineRun:
         assert len(results) == 1  # second gate never ran
 
     def test_rewrite_does_not_stop(self) -> None:
-        """A failing rewrite gate does NOT halt the pipeline."""
+        """A failing retry gate does not halt the pipeline, but is not success."""
         engine = GateEngine([_FailRewriteGate(), _PassGate()])
         ok, results = engine.run({})
-        assert ok is True  # pipeline completed with stop gate passing
+        assert ok is False  # the gate never passed, so the run is not a success
         assert len(results) == 2  # second gate DID run
 
     def test_exception_in_stop_gate_stops(self) -> None:
@@ -286,10 +286,10 @@ class TestGateEngineRun:
         assert "gate crashed" in results[0]["error"]
 
     def test_exception_in_rewrite_gate_continues(self) -> None:
-        """A transient exception in a rewrite gate does NOT halt the pipeline."""
+        """A transient exception in a retry gate continues, but is not success."""
         engine = GateEngine([_ErrorRewriteGate(), _PassGate()])
         ok, results = engine.run({})
-        assert ok is True  # pipeline completed with stop gate passing
+        assert ok is False  # the gate never passed, so the run is not a success
         assert len(results) == 2
 
     def test_gate_context_gets_gate_name(self) -> None:
@@ -570,7 +570,7 @@ class TestExceptionCategorization:
         engine = GateEngine([_TransientConnectionErrorGate(), trailing])
         ok, results = engine.run({})
 
-        assert ok is True  # pipeline completed with stop gate passing
+        assert ok is False  # the gate never passed, so the run is not a success
         assert len(results) == 2, "Transient error should not halt pipeline"
         assert results[0]["passed"] is False
         assert results[1]["passed"] is True
@@ -581,7 +581,7 @@ class TestExceptionCategorization:
         engine = GateEngine([_TransientTimeoutErrorGate(), trailing])
         ok, results = engine.run({})
 
-        assert ok is True  # pipeline completed with stop gate passing
+        assert ok is False  # the gate never passed, so the run is not a success
         assert len(results) == 2
         assert results[0]["passed"] is False
         assert results[1]["passed"] is True
