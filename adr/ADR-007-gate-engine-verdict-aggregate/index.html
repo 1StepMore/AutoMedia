@@ -1858,7 +1858,7 @@
 
 <h1 id="adr-007-gate-engine-verdict-is-an-aggregate-not-a-latch">ADR-007: Gate Engine Verdict Is an Aggregate, Not a Latch<a class="headerlink" href="#adr-007-gate-engine-verdict-is-an-aggregate-not-a-latch" title="Permanent link">&para;</a></h1>
 <h3 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h3>
-<p>Accepted · Effort: Small (one function + one helper + eight test assertions)</p>
+<p>Accepted · Effort: Small (one function + one helper + eight test assertions) · Issue #261</p>
 <h3 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h3>
 <p><code>GateEngine.run()</code> returns <code>(success, results)</code>. <code>success</code> was carried by a
 local <code>all_ok</code> variable assigned in twelve places inside <code>_run()</code>. Every
