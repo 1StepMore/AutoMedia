@@ -1,7 +1,7 @@
 # ADR-007: Gate Engine Verdict Is an Aggregate, Not a Latch
 
 ### Status
-Accepted · Effort: Small (one function + one helper + eight test assertions)
+Accepted · Effort: Small (one function + one helper + eight test assertions) · Issue #261
 
 ### Context
 
