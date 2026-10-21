@@ -4,7 +4,7 @@ intent: "Pin ADR-007. Before the fix, GateEngine.run()'s success flag was reset 
 category: regression
 user_level: L0
 regression: true
-regression_issue: "ADR-007"
+regression_issue: "#261"
 requires_env: []
 steps:
   - name: a failed retry gate is not reported as success
