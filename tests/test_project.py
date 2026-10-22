@@ -111,6 +111,20 @@ class TestSlugifyTopic:
         slug = slugify_topic(f"{'x' * 200} 项目启动")
         assert len(slug) <= 60
 
+    def test_long_latin_topic_is_byte_capped(self):
+        # Issue #263: uncapped, a 300-char topic yields a 309-byte directory.
+        assert len(slugify_topic("x" * 300).encode("utf-8")) == 200
+
+    def test_latin_byte_cap_boundary(self):
+        assert slugify_topic("y" * 200) == "y" * 200
+        assert len(slugify_topic("y" * 201)) == 200
+
+    def test_long_latin_topic_init_succeeds(self, tmp_path):
+        project = Project.init("x" * 300, "acme", base_dir=str(tmp_path))
+        dirname = os.path.basename(project.project_dir)
+        assert len(dirname.encode("utf-8")) <= 255
+        assert os.path.isdir(project.project_dir)
+
     def test_symbols_fall_back_to_hash(self):
         text = "!!! @@@ ###"
         slug = slugify_topic(text)

@@ -22,7 +22,7 @@
 | docs/dev/AutoMedia开发简报.md | 4640 | file |
 | docs/dev/agent-reference.md | 12520 | file |
 | docs/dev/agent-troubleshooting.md | 27023 | file |
-| docs/dev/api-gotchas.md | 10770 | file |
+| docs/dev/api-gotchas.md | 10896 | file |
 | docs/dev/automedia-business-validation-20260902.md | 19417 | file |
 | docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
