@@ -23,9 +23,10 @@ p = Project.init("AutoMedia 2024 项目启动")    # 20260707_automedia-2024-项
 CJK characters are kept rather than dropped, so two Chinese topics sharing the
 same English suffix no longer land in the same directory. The Latin prefix is
 clipped to leave room for the CJK part, and the whole slug is capped at 60 code
-points. Topics with no Latin characters keep their CJK text; topics that
-sanitise to nothing (pure punctuation, empty string) become
-`topic-<sha1[:8]>` and never raise.
+points. Latin-only topics are capped at 200 UTF-8 bytes, so `YYYYMMDD_<slug>`
+stays inside the filesystem's 255-byte component limit. Topics with no Latin
+characters keep their CJK text; topics that sanitise to nothing (pure
+punctuation, empty string) become `topic-<sha1[:8]>` and never raise.
 
 **Gotcha:** re-running a topic that produced a slug before this change creates
 a new directory instead of reusing the old one — existing directories are never

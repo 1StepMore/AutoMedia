@@ -1,0 +1,19 @@
+name: regression-263-slug-long-topic-filename
+description: A Latin topic longer than 246 characters no longer produces a directory name above the filesystem's 255-byte component limit — Project.init stays creatable instead of raising OSError(ENAMETOOLONG).
+intent: "Pin #263. slugify_topic() returned _slugify() verbatim for Latin input, and _slugify() has no length cap, so Project.init() built YYYYMMDD_<slug> and mkdir failed once the component passed 255 bytes (topic >= 247 characters on ext4). The driver runs the real slug helpers and the real Project.init in a temporary directory: it proves the uncapped fixture would indeed cross the limit (so the check cannot pass vacuously), then asserts the slug is clipped to 200 UTF-8 bytes and the project directory is actually created with a name inside the limit. Inputs at or below the cap must keep their historical slug."
+category: regression
+user_level: L0
+regression: true
+regression_issue: "#263"
+requires_env: []
+steps:
+  - name: a 300-character Latin topic creates a project
+    kind: cli
+    check: "Run the committed #263 driver. It asserts the 300-character fixture would exceed 255 bytes uncapped, that slugify_topic() clips it to at most 200 UTF-8 bytes, that Project.init() creates the project directory with a component name within 255 bytes, and that a 200-character Latin topic, a mixed topic, a pure-Latin topic and a pure-CJK topic all keep their historical slugs."
+    standard: tool.contract
+    command: python3 scripts/regression_slug_long_topic_check.py
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - SLUG_LONG_TOPIC_FITS_FILESYSTEM

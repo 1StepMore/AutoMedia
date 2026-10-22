@@ -31,7 +31,7 @@
   "boundary_only_modes": [],
   "by_level": {
     "distribution": {
-      "L0": 112,
+      "L0": 113,
       "L1": 23,
       "L2": 8,
       "L3": 3,
@@ -112,7 +112,7 @@
         "L5": 0
       },
       "regression": {
-        "L0": 7,
+        "L0": 8,
         "L1": 0,
         "L2": 0,
         "L3": 0,
@@ -136,7 +136,7 @@
         "L5": 0
       }
     },
-    "total": 148
+    "total": 149
   },
   "covered": {
     "cli": [],
@@ -416,7 +416,7 @@
     "mcp_help",
     "pool_add_topic"
   ],
-  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (run_validation_suite) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = ∅ means '∅ excluding boundary-only (listed)'. Director waiver required for this classification (guide §5.1: error-boundary probes are never silently counted as coverage).",
+  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (run_validation_suite) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = \u2205 means '\u2205 excluding boundary-only (listed)'. Director waiver required for this classification (guide \u00a75.1: error-boundary probes are never silently counted as coverage).",
   "error_boundary_scenarios": [
     "meta/validation-suite-boundary.yaml",
     "surface/control/approve-gate-boundary.yaml",
@@ -429,7 +429,7 @@
   ],
   "evidence_confidence": null,
   "evidence_run": null,
-  "generated_at": "2026-10-21T17:21:28.404789+00:00",
+  "generated_at": "2026-10-22T05:48:42.371792+00:00",
   "meta_scenario_count": 32,
   "meta_scenarios": [
     "account-cli-surface",
@@ -491,8 +491,8 @@
   "phantom_gates": [],
   "phantom_mcp": [],
   "phantom_modes": [],
-  "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist — phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom → ∅.",
-  "scenario_count": 148,
+  "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
+  "scenario_count": 149,
   "summary": {
     "cli_boundary_only": 0,
     "cli_covered": 19,
@@ -524,7 +524,7 @@
   },
   "surface_by_level": {
     "distribution": {
-      "L0": 80,
+      "L0": 81,
       "L1": 23,
       "L2": 8,
       "L3": 3,
@@ -597,7 +597,7 @@
         "L5": 0
       },
       "regression": {
-        "L0": 1,
+        "L0": 2,
         "L1": 0,
         "L2": 0,
         "L3": 0,
@@ -621,9 +621,9 @@
         "L5": 0
       }
     },
-    "total": 116
+    "total": 117
   },
-  "surface_scenario_count": 116,
+  "surface_scenario_count": 117,
   "surface_scenarios": [
     "account-list-cli-behavior",
     "add-brand-isolated",
@@ -712,6 +712,7 @@
     "redteam-path-traversal-refused",
     "redteam-prompt-injection-topic",
     "register-platform-adapter-stub",
+    "regression-263-slug-long-topic-filename",
     "regression-adr007-gate-verdict-aggregate",
     "reject-gate-boundary",
     "reject-gate-positive",

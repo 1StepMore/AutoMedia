@@ -76,12 +76,31 @@ _SLUG_MAX_LEN = 60
 # segment away, which brings back the very collisions issue #256 is about.
 _SLUG_CJK_RESERVE = 20
 
+# Hard ceiling in UTF-8 bytes: filesystem components allow 255 and
+# ``Project.init`` prefixes ``YYYYMMDD_`` (9 bytes).  The code-point caps above
+# keep CJK slugs at <= 180 bytes, so this guard only bites long Latin topics.
+_SLUG_MAX_BYTES = 200
+
 
 def _readable(text: str, alphabet: re.Pattern[str]) -> str:
     cleaned = re.sub(r"[\s_]+", "-", text.lower())
     cleaned = alphabet.sub("", cleaned)
     cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-")
     return cleaned[:_SLUG_MAX_LEN].strip("-")
+
+
+def _clip_bytes(slug: str, limit: int = _SLUG_MAX_BYTES) -> str:
+    if len(slug.encode("utf-8")) <= limit:
+        return slug
+    kept: list[str] = []
+    used = 0
+    for char in slug:
+        size = len(char.encode("utf-8"))
+        if used + size > limit:
+            break
+        kept.append(char)
+        used += size
+    return "".join(kept).strip("-")
 
 
 def _fallback_slug(text: str) -> str:
@@ -119,14 +138,16 @@ def _cjk_part(text: str) -> str:
 def slugify_topic(text: str) -> str:
     """Return a non-empty, deterministic slug for *text*.
 
-    Latin-only topics keep the historical :func:`_slugify` result.  Mixed
-    Latin/CJK topics keep both parts, Latin first and CJK second, joined by a
-    hyphen (e.g. ``automedia-2024-项目启动``).  The Latin prefix is clipped to
-    leave ``_SLUG_CJK_RESERVE`` code points for the CJK segment, so distinct
-    Chinese topics sharing an English suffix do not collapse onto the same
-    directory.  Pure-CJK topics keep their characters, and topics that sanitise
-    to nothing (pure punctuation, empty string) fall through to
-    :func:`_fallback_slug`, which emits a reproducible hash.
+    Latin-only topics keep the historical :func:`_slugify` result, clipped to
+    ``_SLUG_MAX_BYTES`` so the directory name stays inside the filesystem's
+    255-byte component limit.  Mixed Latin/CJK topics keep both parts, Latin
+    first and CJK second, joined by a hyphen (e.g. ``automedia-2024-项目启动``).
+    The Latin prefix is clipped to leave ``_SLUG_CJK_RESERVE`` code points for
+    the CJK segment, so distinct Chinese topics sharing an English suffix do
+    not collapse onto the same directory.  Pure-CJK topics keep their
+    characters, and topics that sanitise to nothing (pure punctuation, empty
+    string) fall through to :func:`_fallback_slug`, which emits a reproducible
+    hash.
     """
     ascii_part = _slugify(text)
     cjk_part = _cjk_part(text)
@@ -136,14 +157,14 @@ def slugify_topic(text: str) -> str:
         ascii_part = ascii_part[:ascii_budget].strip("-")
         cjk_budget = _SLUG_MAX_LEN - len(ascii_part) - 1
         cjk_part = cjk_part[:cjk_budget].strip("-")
-        if cjk_part:
-            return f"{ascii_part}-{cjk_part}"
-        return ascii_part
-    if ascii_part:
-        return ascii_part
-    if cjk_part:
-        return cjk_part
-    return _fallback_slug(text)
+        slug = f"{ascii_part}-{cjk_part}" if cjk_part else ascii_part
+    elif ascii_part:
+        slug = ascii_part
+    elif cjk_part:
+        slug = cjk_part
+    else:
+        slug = _fallback_slug(text)
+    return _clip_bytes(slug)
 
 
 def sanitize_path(path: str) -> str:
