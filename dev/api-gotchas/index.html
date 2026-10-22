@@ -2328,9 +2328,10 @@ the original SKILL.md and day-to-day development experience.</p>
 <p>CJK characters are kept rather than dropped, so two Chinese topics sharing the
 same English suffix no longer land in the same directory. The Latin prefix is
 clipped to leave room for the CJK part, and the whole slug is capped at 60 code
-points. Topics with no Latin characters keep their CJK text; topics that
-sanitise to nothing (pure punctuation, empty string) become
-<code>topic-&lt;sha1[:8]&gt;</code> and never raise.</p>
+points. Latin-only topics are capped at 200 UTF-8 bytes, so <code>YYYYMMDD_&lt;slug&gt;</code>
+stays inside the filesystem's 255-byte component limit. Topics with no Latin
+characters keep their CJK text; topics that sanitise to nothing (pure
+punctuation, empty string) become <code>topic-&lt;sha1[:8]&gt;</code> and never raise.</p>
 <p><strong>Gotcha:</strong> re-running a topic that produced a slug before this change creates
 a new directory instead of reusing the old one — existing directories are never
 renamed.</p>
