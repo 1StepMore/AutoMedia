@@ -2319,13 +2319,21 @@
 the original SKILL.md and day-to-day development experience.</p>
 <h2 id="paths-and-directories">Paths and Directories<a class="headerlink" href="#paths-and-directories" title="Permanent link">&para;</a></h2>
 <h3 id="projectinit-slugifies-the-topic-parameter"><code>Project.init()</code> slugifies the topic parameter<a class="headerlink" href="#projectinit-slugifies-the-topic-parameter" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># topic is slugified: lowercased, non-ASCII removed, hyphenated</span>
-<span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">"Hello World 项目启动"</span><span class="p">)</span>  <span class="c1"># directory name: 20260707_hello-world</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Latin-only topics: lowercased and hyphenated</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">"Hello World"</span><span class="p">)</span>              <span class="c1"># 20260707_hello-world</span>
+
+<span class="c1"># Mixed Latin/CJK topics keep both parts, Latin first and CJK second</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">"AutoMedia 2024 项目启动"</span><span class="p">)</span>    <span class="c1"># 20260707_automedia-2024-项目启动</span>
 </code></pre></div>
-<p>Chinese characters are completely removed, so the directory name may be shorter
-than expected. If the slug result is empty, a <code>ValueError</code> is raised.</p>
-<p><strong>Gotcha:</strong> Do not assume the original Chinese topic content is preserved in
-<code>project_dir</code>.</p>
+<p>CJK characters are kept rather than dropped, so two Chinese topics sharing the
+same English suffix no longer land in the same directory. The Latin prefix is
+clipped to leave room for the CJK part, and the whole slug is capped at 60 code
+points. Topics with no Latin characters keep their CJK text; topics that
+sanitise to nothing (pure punctuation, empty string) become
+<code>topic-&lt;sha1[:8]&gt;</code> and never raise.</p>
+<p><strong>Gotcha:</strong> re-running a topic that produced a slug before this change creates
+a new directory instead of reusing the old one — existing directories are never
+renamed.</p>
 <h3 id="sanitize_path-rejects-path-traversal"><code>sanitize_path()</code> rejects path traversal<a class="headerlink" href="#sanitize_path-rejects-path-traversal" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.core.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitize_path</span>
 

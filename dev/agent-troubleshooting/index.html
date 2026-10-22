@@ -2939,11 +2939,6 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <td>Add character-level verification in the prompt. The G3 gate rejects incorrect characters</td>
 </tr>
 <tr>
-<td><code>ValueError: topic_slug '...' produces empty slug after sanitisation</code></td>
-<td>Topic string contains no ASCII characters after slugification (e.g., pure CJK)</td>
-<td>Add an ASCII keyword to the topic or set the topic to include Latin characters</td>
-</tr>
-<tr>
 <td><code>ValueError: Path must not contain '..'</code></td>
 <td>Path traversal detected in brand or base_dir</td>
 <td>Check for <code>..</code>, <code>~</code>, or <code>//</code> in the path parameter</td>
