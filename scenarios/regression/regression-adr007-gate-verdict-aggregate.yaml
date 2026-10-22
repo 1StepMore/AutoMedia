@@ -1,0 +1,19 @@
+name: regression-adr007-gate-verdict-aggregate
+description: A retry-mode gate that exhausts its retries can no longer be reported as a successful run — the engine verdict is the aggregate of per-gate results, not a last-write-wins flag that a later passing gate resets.
+intent: "Pin ADR-007. Before the fix, GateEngine.run()'s success flag was reset to True by every passing gate, so a retry gate that exhausted its retries in a CW-less mode (qa_only G2, video_only V5) left a failed row in results while the run reported status=success and the CLI exited 0. The driver runs the REAL gate classes in the REAL GateEngine with deterministic execute stubs (no network) and asserts both modes report failure, the fixture is non-vacuous, and an all-passing run still reports success."
+category: regression
+user_level: L0
+regression: true
+regression_issue: "#261"
+requires_env: []
+steps:
+  - name: a failed retry gate is not reported as success
+    kind: cli
+    check: "Run the committed ADR-007 driver, which drives the real qa_only (G2) and video_only (V5) gate sequences through the real GateEngine with every gate's execute stubbed so only the target retry gate fails. It asserts engine.run() returns False in both modes, that the fixture actually produced a failing row (so the check cannot pass vacuously), and that an all-passing run of the same shape still returns True."
+    standard: tool.contract
+    command: python3 scripts/regression_adr007_check.py
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - ADR007_GATE_VERDICT_IS_AN_AGGREGATE

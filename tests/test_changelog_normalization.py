@@ -171,6 +171,34 @@ def test_released_sections_have_no_duplicate_bullets() -> None:
     )
 
 
+def test_newest_released_section_does_not_repeat_an_older_section() -> None:
+    """The newest released section must not re-list an older section's commits.
+
+    A release section describes exactly the commits that landed in that
+    release.  When release-please cannot resolve the previous release tag it
+    falls back to an older baseline and re-lists that baseline's commits as if
+    they were new: the 1.9.0 section carried 197 bullets that already belonged
+    to 1.1.0-1.8.15, and the published release body repeated them.
+
+    Only the newest section is checked.  The historical sections predate this
+    invariant and several of them overlap each other (1.5.0/1.6.0/1.7.0), so
+    asserting the rule for all of them would fail on published history rather
+    than on a regression.  Checking the newest section catches the defect at
+    the moment release-please creates it, which is when it can still be fixed.
+    """
+    text = _read()
+    sections = released_sections(text)
+    assert sections, "CHANGELOG.md has no released section to check"
+    newest_version = next(iter(sections))
+    newest = set(COMMIT_SHA_RE.findall(sections[newest_version]))
+    older = "\n".join(body for version, body in sections.items() if version != newest_version)
+    repeated = sorted(newest & set(COMMIT_SHA_RE.findall(older)))
+    assert not repeated, (
+        f"the {newest_version} section re-lists commits that already belong to "
+        f"an older released section: {repeated}"
+    )
+
+
 def test_commit_references_resolve() -> None:
     _skip_unless_full_history()
     text = _read()

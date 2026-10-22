@@ -55,6 +55,18 @@ def _hitl_project_dir(gate_context: GateContext | dict[str, Any]) -> str:
 _PERMANENT_EXCEPTIONS: tuple[type[Exception], ...] = (KeyError, ValueError, TypeError, GateError)
 _TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
 
+
+def _verdict_from_results(results: list[dict[str, Any]]) -> bool:
+    """Return ``True`` only when every executed gate ended in a passing state.
+
+    A gate that was skipped for missing inputs reports ``passed=True``
+    (``gates/_result.missing_input_result``), so skipped gates do not fail the
+    run.  A retry-mode gate that exhausted its retries leaves ``passed=False``
+    and therefore fails the run even though the engine kept executing.
+    """
+    return all(r.get("passed", True) for r in results)
+
+
 # Content gates whose failing results may apply ``modified_content`` into the
 # main content flow (quality-retry branch).  G0 (fact check), G1 (humanizer)
 # and G2 (copy review) are ``failure_mode="retry"`` gates that emit
@@ -894,10 +906,9 @@ class GateEngine:
         early_stop: bool = True,
         progress: PipelineProgress | None = None,
     ) -> tuple[bool, list[dict[str, Any]]] | list[dict[str, Any]]:
-        """Execute gates sequentially. Returns ``(all_ok, results)`` when
+        """Execute gates sequentially. Returns ``(success, results)`` when
         *early_stop* is ``True``, or just *results* when ``False``."""
         results: list[dict[str, Any]] = []
-        all_ok = True
         total_gates = len(self._gates)
 
         _gate_loop_idx = 0
@@ -990,7 +1001,7 @@ class GateEngine:
                     )
                     if hitl_outcome == "parked":
                         if early_stop:
-                            return all_ok, results
+                            return _verdict_from_results(results), results
                         return results
 
                 passed = result.get("passed", True)
@@ -1000,11 +1011,9 @@ class GateEngine:
                     )
 
                 if passed:
-                    all_ok = True
                     log.info("gate.passed", gate_name=gate_name, duration_s=duration)
                     self._dispatch_after(gate_name, gate_context, result)
                 else:
-                    all_ok = False
                     log.warning(
                         "gate.failed",
                         gate_name=gate_name,
@@ -1080,7 +1089,7 @@ class GateEngine:
                                 )
                                 if hitl_outcome == "parked":
                                     if early_stop:
-                                        return all_ok, results
+                                        return _verdict_from_results(results), results
                                     return results
 
                             passed = result.get("passed", True)
@@ -1095,7 +1104,6 @@ class GateEngine:
                                 )
 
                             if passed:
-                                all_ok = True
                                 log.info(
                                     "gate.passed",
                                     gate_name=gate_name,
@@ -1113,7 +1121,6 @@ class GateEngine:
 
                         except _PERMANENT_EXCEPTIONS as exc:
                             duration = time.monotonic() - start
-                            all_ok = False
                             tb = traceback.format_exc()
                             log.error(
                                 "gate.quality_retry.error.permanent",
@@ -1150,7 +1157,6 @@ class GateEngine:
 
                         except _TRANSIENT_EXCEPTIONS as exc:
                             duration = time.monotonic() - start
-                            all_ok = False
                             tb = traceback.format_exc()
                             log.error(
                                 "gate.quality_retry.error.transient",
@@ -1218,7 +1224,6 @@ class GateEngine:
                             raise
 
                     if not passed:
-                        all_ok = False
                         # Retries exhausted — undo any applied rewrite so the
                         # failed chain leaves no partial write behind.
                         self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
@@ -1294,7 +1299,6 @@ class GateEngine:
 
             except _PERMANENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start
-                all_ok = False
                 tb = traceback.format_exc()
                 log.error(
                     "gate.error.permanent",
@@ -1320,7 +1324,6 @@ class GateEngine:
 
             except _TRANSIENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start
-                all_ok = False
                 tb = traceback.format_exc()
                 log.error(
                     "gate.error.transient",
@@ -1352,7 +1355,6 @@ class GateEngine:
             except Exception as exc:
                 # Unknown error during gate execution — log, record, stop pipeline
                 duration = time.monotonic() - start
-                all_ok = False
                 tb = traceback.format_exc()
                 log.error(
                     "gate.error.unknown",
@@ -1411,7 +1413,7 @@ class GateEngine:
             _gate_loop_idx += 1
 
         if early_stop:
-            return all_ok, results
+            return _verdict_from_results(results), results
         return results
 
     # ------------------------------------------------------------------
@@ -1438,9 +1440,11 @@ class GateEngine:
         Returns
         -------
         tuple[bool, list[dict]]
-            ``(success, results)`` where *success* is ``True`` when
-            every gate passed (or no ``failure_mode="stop"`` gate failed),
-            and *results* is the list of per-gate result dicts.
+            ``(success, results)`` where *success* is ``True`` only when every
+            executed gate ended in a passing state.  A retry-mode gate that
+            exhausted its retries fails the run even though the engine kept
+            executing later gates; only a level-2 escalation that H0 approved
+            overrides that.  *results* is the list of per-gate result dicts.
         """
         # Wire level 2 handler when regeneration is enabled
         _local_max_regen = gate_context.get(  # type: ignore[typeddict-unknown-key]  # max_regenerations not a known key in GateContext TypedDict

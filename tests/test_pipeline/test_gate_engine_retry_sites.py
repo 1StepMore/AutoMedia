@@ -671,5 +671,5 @@ class TestEngineWithoutProgress:
             max_regenerations=0,
         )
         ok, results = engine.run({}, progress=None)
-        assert ok is True  # PassGate after the failing retry gate
+        assert ok is False  # the retry gate never passed
         assert len(results) == 2
