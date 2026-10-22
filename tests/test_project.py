@@ -96,6 +96,21 @@ class TestSlugifyTopic:
         assert slugify_topic("Hello World") == "hello-world"
         assert slugify_topic("AutoMedia 2024") == "automedia-2024"
 
+    def test_long_latin_prefix_does_not_starve_cjk(self):
+        # A 60-char Latin prefix used to spend the whole budget and truncate
+        # the CJK segment away, restoring the issue #256 collision.
+        prefix = "a very long english topic title about content scheduling for small teams"
+        first = slugify_topic(f"{prefix} 小团队排期")
+        second = slugify_topic(f"{prefix} 海尔复盘")
+
+        assert first != second
+        assert first.endswith("小团队排期")
+        assert second.endswith("海尔复盘")
+
+    def test_mixed_slug_fits_the_length_budget(self):
+        slug = slugify_topic(f"{'x' * 200} 项目启动")
+        assert len(slug) <= 60
+
     def test_symbols_fall_back_to_hash(self):
         text = "!!! @@@ ###"
         slug = slugify_topic(text)

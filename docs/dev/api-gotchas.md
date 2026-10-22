@@ -13,15 +13,23 @@ the original SKILL.md and day-to-day development experience.
 ### `Project.init()` slugifies the topic parameter
 
 ```python
-# topic is slugified: lowercased, non-ASCII removed, hyphenated
-p = Project.init("Hello World 项目启动")  # directory name: 20260707_hello-world
+# Latin-only topics: lowercased and hyphenated
+p = Project.init("Hello World")              # 20260707_hello-world
+
+# Mixed Latin/CJK topics keep both parts, Latin first and CJK second
+p = Project.init("AutoMedia 2024 项目启动")    # 20260707_automedia-2024-项目启动
 ```
 
-Chinese characters are completely removed, so the directory name may be shorter
-than expected. If the slug result is empty, a `ValueError` is raised.
+CJK characters are kept rather than dropped, so two Chinese topics sharing the
+same English suffix no longer land in the same directory. The Latin prefix is
+clipped to leave room for the CJK part, and the whole slug is capped at 60 code
+points. Topics with no Latin characters keep their CJK text; topics that
+sanitise to nothing (pure punctuation, empty string) become
+`topic-<sha1[:8]>` and never raise.
 
-**Gotcha:** Do not assume the original Chinese topic content is preserved in
-`project_dir`.
+**Gotcha:** re-running a topic that produced a slug before this change creates
+a new directory instead of reusing the old one — existing directories are never
+renamed.
 
 ### `sanitize_path()` rejects path traversal
 
