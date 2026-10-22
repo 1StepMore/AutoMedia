@@ -21,8 +21,8 @@
 | docs/dev/2026-08-30-graph-engineering-调研与三项目落地-修正版.md | 15409 | file |
 | docs/dev/AutoMedia开发简报.md | 4640 | file |
 | docs/dev/agent-reference.md | 12520 | file |
-| docs/dev/agent-troubleshooting.md | 27259 | file |
-| docs/dev/api-gotchas.md | 10310 | file |
+| docs/dev/agent-troubleshooting.md | 27023 | file |
+| docs/dev/api-gotchas.md | 10770 | file |
 | docs/dev/automedia-business-validation-20260902.md | 19417 | file |
 | docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |

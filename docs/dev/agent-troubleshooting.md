@@ -353,7 +353,6 @@ This scans directories for `00_project_info.json` files and reads metadata from 
 | `ModuleNotFoundError: No module named 'mcp'` | MCP dependencies not installed | Install with `pip install -e ".[mcp]"` |
 | `Permission denied` when accessing files via MCP | Path is not in `mcp_allowlist.yaml` | Ask the user to add the path to the allowlist, or use a path under `/tmp/automedia/` |
 | Brand name "壹目贯维" written as "一目贯维" | LLM writes homophone characters for the brand name | Add character-level verification in the prompt. The G3 gate rejects incorrect characters |
-| `ValueError: topic_slug '...' produces empty slug after sanitisation` | Topic string contains no ASCII characters after slugification (e.g., pure CJK) | Add an ASCII keyword to the topic or set the topic to include Latin characters |
 | `ValueError: Path must not contain '..'` | Path traversal detected in brand or base_dir | Check for `..`, `~`, or `//` in the path parameter |
 | `Result has status="partial" with G0-V7 all passing` | A lifecycle gate (L1-L4) failed | Check L1-L4 gate outputs. These usually fail due to missing artifacts or schema mismatches |
 | Audio/Video gates fail with "file not found" | Asset files were not produced by a previous gate | Run the pipeline without `resume_from` to ensure prerequisite gates execute |

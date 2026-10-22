@@ -55,14 +55,33 @@ def _slugify(text: str) -> str:
     return text.strip("-")
 
 
-# Readable fallback alphabet: ASCII alphanumerics plus CJK (Han, Hiragana,
-# Katakana, Hangul).  ``sanitize_path`` accepts Unicode path components, so a
-# pure-CJK topic can keep its own characters instead of vanishing.
-_CJK_SLUG_RE = re.compile(r"[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7a3-]")
+# Readable alphabet: CJK (Han, Hiragana, Katakana, Hangul).  ``sanitize_path``
+# accepts Unicode path components, so a CJK topic can keep its own characters
+# instead of vanishing.  One source of truth for both slug helpers below.
+_CJK_RANGES = "\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7a3"
+
+# Readable fallback alphabet: ASCII alphanumerics plus CJK.
+_CJK_SLUG_RE = re.compile(rf"[^a-z0-9{_CJK_RANGES}-]")
+
+# Same alphabet without ASCII, used to isolate the CJK segment of a mixed
+# topic (see :func:`_cjk_part`).
+_CJK_ONLY_RE = re.compile(rf"[^{_CJK_RANGES}-]")
 
 # Cap the readable fallback so a very long CJK topic cannot exceed the
 # filesystem's 255-byte component limit (UTF-8 CJK is 3 bytes/char).
 _SLUG_MAX_LEN = 60
+
+# Code points reserved for the CJK segment of a mixed Latin/CJK slug.  Without
+# a reserve a long Latin prefix spends the entire budget and truncates the CJK
+# segment away, which brings back the very collisions issue #256 is about.
+_SLUG_CJK_RESERVE = 20
+
+
+def _readable(text: str, alphabet: re.Pattern[str]) -> str:
+    cleaned = re.sub(r"[\s_]+", "-", text.lower())
+    cleaned = alphabet.sub("", cleaned)
+    cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-")
+    return cleaned[:_SLUG_MAX_LEN].strip("-")
 
 
 def _fallback_slug(text: str) -> str:
@@ -77,12 +96,9 @@ def _fallback_slug(text: str) -> str:
        computed over the *original* text, so the same input always yields the
        same slug and renders are reproducible.
     """
-    lowered = text.lower()
-    readable = re.sub(r"[\s_]+", "-", lowered)
-    readable = _CJK_SLUG_RE.sub("", readable)
-    readable = re.sub(r"-{2,}", "-", readable).strip("-")
+    readable = _readable(text, _CJK_SLUG_RE)
     if readable:
-        return readable[:_SLUG_MAX_LEN].strip("-")
+        return readable
 
     digest = hashlib.sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()[
         :8
@@ -90,15 +106,44 @@ def _fallback_slug(text: str) -> str:
     return f"topic-{digest}"
 
 
+def _cjk_part(text: str) -> str:
+    """Return the sanitised CJK-only segment of *text*.
+
+    Mirrors :func:`_fallback_slug`'s readable branch but keeps only CJK
+    characters (ASCII letters/digits are dropped), so callers can combine the
+    Latin and CJK portions of a mixed topic without losing either one.
+    """
+    return _readable(text, _CJK_ONLY_RE)
+
+
 def slugify_topic(text: str) -> str:
     """Return a non-empty, deterministic slug for *text*.
 
-    ASCII/Latin topics keep the historical :func:`_slugify` result.  Topics
-    that sanitise to nothing (pure CJK, pure punctuation, empty string) no
-    longer raise — they fall through to :func:`_fallback_slug`, which prefers
-    readable CJK characters and otherwise emits a reproducible hash.
+    Latin-only topics keep the historical :func:`_slugify` result.  Mixed
+    Latin/CJK topics keep both parts, Latin first and CJK second, joined by a
+    hyphen (e.g. ``automedia-2024-项目启动``).  The Latin prefix is clipped to
+    leave ``_SLUG_CJK_RESERVE`` code points for the CJK segment, so distinct
+    Chinese topics sharing an English suffix do not collapse onto the same
+    directory.  Pure-CJK topics keep their characters, and topics that sanitise
+    to nothing (pure punctuation, empty string) fall through to
+    :func:`_fallback_slug`, which emits a reproducible hash.
     """
-    return _slugify(text) or _fallback_slug(text)
+    ascii_part = _slugify(text)
+    cjk_part = _cjk_part(text)
+
+    if ascii_part and cjk_part:
+        ascii_budget = _SLUG_MAX_LEN - _SLUG_CJK_RESERVE - 1
+        ascii_part = ascii_part[:ascii_budget].strip("-")
+        cjk_budget = _SLUG_MAX_LEN - len(ascii_part) - 1
+        cjk_part = cjk_part[:cjk_budget].strip("-")
+        if cjk_part:
+            return f"{ascii_part}-{cjk_part}"
+        return ascii_part
+    if ascii_part:
+        return ascii_part
+    if cjk_part:
+        return cjk_part
+    return _fallback_slug(text)
 
 
 def sanitize_path(path: str) -> str:

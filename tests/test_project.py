@@ -76,9 +76,40 @@ class TestSlugifyTopic:
         assert slug
         assert slug == "小团队内容排期的实用做法"
 
-    def test_mixed_chinese_english_uses_ascii_part(self):
-        # Unchanged behaviour: the ASCII portion is the slug.
-        assert slugify_topic("AutoMedia 2024 项目启动") == "automedia-2024"
+    def test_mixed_chinese_english_keeps_both_parts(self):
+        # Mixed topics keep ASCII first, CJK second (issue #256).
+        assert slugify_topic("AutoMedia 2024 项目启动") == "automedia-2024-项目启动"
+
+    def test_mixed_topics_do_not_collide(self):
+        # The ASCII suffix alone used to collapse both topics onto "tips".
+        first = slugify_topic("小团队内容排期的实用做法 tips")
+        second = slugify_topic("海尔全球创牌的复盘 tips")
+        assert first != second
+        assert "小团队内容排期的实用做法" in first
+        assert "海尔全球创牌的复盘" in second
+
+    def test_mixed_slug_is_deterministic(self):
+        text = "小团队内容排期的实用做法 tips"
+        assert slugify_topic(text) == slugify_topic(text)
+
+    def test_pure_english_unchanged(self):
+        assert slugify_topic("Hello World") == "hello-world"
+        assert slugify_topic("AutoMedia 2024") == "automedia-2024"
+
+    def test_long_latin_prefix_does_not_starve_cjk(self):
+        # A 60-char Latin prefix used to spend the whole budget and truncate
+        # the CJK segment away, restoring the issue #256 collision.
+        prefix = "a very long english topic title about content scheduling for small teams"
+        first = slugify_topic(f"{prefix} 小团队排期")
+        second = slugify_topic(f"{prefix} 海尔复盘")
+
+        assert first != second
+        assert first.endswith("小团队排期")
+        assert second.endswith("海尔复盘")
+
+    def test_mixed_slug_fits_the_length_budget(self):
+        slug = slugify_topic(f"{'x' * 200} 项目启动")
+        assert len(slug) <= 60
 
     def test_symbols_fall_back_to_hash(self):
         text = "!!! @@@ ###"
@@ -223,12 +254,10 @@ class TestProjectInit:
         assert parts[1] == "hello-world"
 
     def test_cjk_topic_slugified(self, tmp_path):
-        """CJK characters are stripped from the directory name."""
+        """Mixed CJK/ASCII topics keep both parts in the directory name."""
         project = Project.init("AutoMedia 项目启动 2024", "acme", base_dir=str(tmp_path))
         dirname = os.path.basename(project.project_dir)
-        assert "automedia-2024" in dirname
-        for ch in "项目启动":
-            assert ch not in dirname
+        assert dirname.split("_", 1)[1] == "automedia-2024-项目启动"
 
     def test_empty_slug_falls_back(self, tmp_path):
         """A topic that produces an empty ASCII slug falls back, never raises."""
@@ -274,3 +303,20 @@ class TestProjectInit:
         """The original topic_slug string is stored, not the slugified version."""
         project = Project.init("Hello World!!", "acme", base_dir=str(tmp_path))
         assert project.topic == "Hello World!!"
+
+    def test_init_mixed_topics_create_distinct_dirs(self, tmp_path):
+        """Issue #256: two mixed topics no longer share one date+tips dir."""
+        topics = [
+            "小团队内容排期的实用做法 tips",
+            "海尔全球创牌的复盘 tips",
+        ]
+        projects = [Project.init(topic, "acme", base_dir=str(tmp_path)) for topic in topics]
+
+        assert len(os.listdir(tmp_path)) == 2
+        assert len({p.project_dir for p in projects}) == 2
+
+        stored = set()
+        for info_path in Path(tmp_path).glob("*/00_project_info.json"):
+            with open(info_path, encoding="utf-8") as fh:
+                stored.add(json.load(fh)["topic"])
+        assert stored == set(topics)
