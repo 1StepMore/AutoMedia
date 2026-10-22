@@ -140,8 +140,10 @@ Key `AUTOMEDIA_*` environment variables:
 | `AUTOMEDIA_DATA_DIR` | Data directory | `./data` |
 | `AUTOMEDIA_OUTPUT_DIR` | Output directory | `./output` |
 | `AUTOMEDIA_PROJECTS_DIR` | Projects root override | (auto) |
+| `AUTOMEDIA_ASSET_LIBRARY` | AssetLibrary root pulled into new projects; unset uses the built-in workspace default | `/mnt/d/Hermes-Workspace/01-Projects/AutoMedia/AssetLibrary` |
+| `AUTOMEDIA_SKIP_ASSET_PULL` | Set to `1`/`true`/`yes` to skip the project-init asset pull | (unset) |
 
-These env vars map to `llm.text_generation.*` config keys in `automedia/core/config_loader.py`. See `.env.example` for the complete list.
+The `AUTOMEDIA_LLM_*` vars map to `llm.text_generation.*` config keys in `automedia/core/config_loader.py`. See `.env.example` for the complete list.
 
 ## Documentation Index
 

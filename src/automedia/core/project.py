@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from automedia.core.asset_pack import pull_video_assets
 from automedia.core.env_overlay import env_lookup
 
 _log = logging.getLogger(__name__)
@@ -289,6 +290,11 @@ class Project:
         ]
         for sub in subdirs:
             (root / sub).mkdir(parents=True, exist_ok=True)
+
+        try:
+            pull_video_assets(project_dir)
+        except Exception as exc:
+            _log.warning("Could not pull video asset pack for %s: %s", project_dir, exc)
 
         # Metadata
         project_id = uuid.uuid4().hex[:12]
