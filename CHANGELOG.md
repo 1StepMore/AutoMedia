@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.0...automedia-v1.10.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **gates:** make V7 MD5 verification recompute the actual digest ([#274](https://github.com/1StepMore/AutoMedia/issues/274)) ([4f40432](https://github.com/1StepMore/AutoMedia/commit/4f4043280a83ae137deb600fa7d1c6c41727bb53)), closes [#270](https://github.com/1StepMore/AutoMedia/issues/270)
+* **pipeline:** rehydrate the draft when resuming past CW ([#273](https://github.com/1StepMore/AutoMedia/issues/273)) ([35f39e5](https://github.com/1StepMore/AutoMedia/commit/35f39e533984b527bee06896456ff11e42fb9086)), closes [#269](https://github.com/1StepMore/AutoMedia/issues/269)
+* **pipeline:** wire gate_engine retry config into GateEngine ([#272](https://github.com/1StepMore/AutoMedia/issues/272)) ([842fca4](https://github.com/1StepMore/AutoMedia/commit/842fca4f30d5ec465b910cc285dc12872bc6a377)), closes [#268](https://github.com/1StepMore/AutoMedia/issues/268)
+
 ## [1.10.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.9.1...automedia-v1.10.0) (2026-10-23)
 
 
