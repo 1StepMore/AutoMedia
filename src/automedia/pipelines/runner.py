@@ -1115,6 +1115,7 @@ def _run_pipeline(
             gate_context,
             progress,
             block_on_hitl,
+            config,
         )
 
         # Does THIS RUN owe a video, as opposed to merely attempting one?  The
@@ -1507,6 +1508,39 @@ def _build_pipeline_context(
     return gate_context
 
 
+_ENGINE_RETRY_DEFAULTS: dict[str, int | float] = {
+    "max_retries": 3,
+    "retry_delay": 1.0,
+    "max_quality_retries": 3,
+    "max_regenerations": 2,
+}
+
+
+def _engine_retry_settings(config: dict[str, Any] | None) -> dict[str, int | float]:
+    """Read and validate the ``gate_engine`` retry knobs from *config*."""
+    raw = config.get("gate_engine") if isinstance(config, dict) else None
+    configured = raw if isinstance(raw, dict) else {}
+
+    def _read(key: str, minimum: int | float, coerce: type[int] | type[float]) -> int | float:
+        value = configured.get(key, _ENGINE_RETRY_DEFAULTS[key])
+        try:
+            parsed = coerce(value)
+        except (TypeError, ValueError):
+            log.warning("pipeline.gate_engine.invalid_setting", key=key, value=value)
+            parsed = coerce(_ENGINE_RETRY_DEFAULTS[key])
+        if parsed < minimum:
+            log.warning("pipeline.gate_engine.out_of_range_setting", key=key, value=value)
+            parsed = coerce(_ENGINE_RETRY_DEFAULTS[key])
+        return parsed
+
+    return {
+        "max_retries": _read("max_retries", 1, int),
+        "retry_delay": _read("retry_delay", 0.0, float),
+        "max_quality_retries": _read("max_quality_retries", 0, int),
+        "max_regenerations": _read("max_regenerations", 0, int),
+    }
+
+
 def _setup_and_run_engine(
     gates: list[BaseGate],
     hooks: list[GateHook] | None,
@@ -1515,6 +1549,7 @@ def _setup_and_run_engine(
     gate_context: GateContext | dict[str, Any],
     progress: PipelineProgress | None,
     wait_for_hitl: bool,
+    engine_config: dict[str, Any] | None = None,
 ) -> tuple[bool, list[dict[str, Any]], bool]:
     from automedia.hooks.cost_tracker import CostTracker
     from automedia.hooks.pipeline_history import PipelineHistoryHook
@@ -1524,9 +1559,14 @@ def _setup_and_run_engine(
     all_hooks.append(CostTracker(project.project_dir))
     all_hooks.append(PipelineHistoryHook())
 
+    retry = _engine_retry_settings(engine_config)
     engine = GateEngine(
         gates,
         hooks=all_hooks,
+        max_retries=int(retry["max_retries"]),
+        retry_delay=float(retry["retry_delay"]),
+        max_quality_retries=int(retry["max_quality_retries"]),
+        max_regenerations=int(retry["max_regenerations"]),
         pause_on_approval=director,
         # Fires once, right before the first V gate: V0–V7 inspect media
         # artifacts this pipeline must produce first (P0-1 wiring).

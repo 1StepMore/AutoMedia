@@ -68,8 +68,12 @@ pool:
   enable_llm_scoring: true
 
 gate_engine:
+  # Total attempts for a retry-mode gate that raises a transient exception
+  # (tenacity stop_after_attempt), not "retries after the first attempt".
   max_retries: 3
   retry_delay: 1.0
+  max_quality_retries: 3
+  max_regenerations: 2
   # H0 human-review pause budget, in seconds. Was a hardcoded 86400 (24h) in
   # runner.py, which made a non-interactive `automedia run` hang for a day and
   # then silently auto-approve. Override per run with `--hitl-timeout`.
