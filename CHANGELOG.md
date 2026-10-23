@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.9.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.9.0...automedia-v1.9.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **changelog:** restore the 1.9.0 section to the commits it actually shipped ([#258](https://github.com/1StepMore/AutoMedia/issues/258)) ([b4eb081](https://github.com/1StepMore/AutoMedia/commit/b4eb08165459414c20cd2f615d3cb2396dcc5f8a))
+* **gates:** make the engine verdict an aggregate, not a latch ([6337484](https://github.com/1StepMore/AutoMedia/commit/6337484f93e21924ce722d5c328fd1e7e11f2b4e))
+* **slug:** cap Latin-only slugs so long topics stay creatable ([#264](https://github.com/1StepMore/AutoMedia/issues/264)) ([5370cb1](https://github.com/1StepMore/AutoMedia/commit/5370cb18bfd594ddd563110f9478cf859fbea731)), closes [#263](https://github.com/1StepMore/AutoMedia/issues/263)
+* **slug:** 中英混排 topic 保留中文段，避免不同 topic 撞同一目录（[#256](https://github.com/1StepMore/AutoMedia/issues/256)） ([#257](https://github.com/1StepMore/AutoMedia/issues/257)) ([e73925a](https://github.com/1StepMore/AutoMedia/commit/e73925a3eba98eb1ba579424ed1dc41290531763))
+
 ## [1.9.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.8.15...automedia-v1.9.0) (2026-10-21)
 
 
