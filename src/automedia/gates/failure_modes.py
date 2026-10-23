@@ -12,6 +12,7 @@ log = get_logger(__name__)
 
 FAILURE_MODES: dict[str, dict[str, object]] = {
     "G0": {
+        "failure_mode": "retry",
         "description": (
             "Fact-Check Gate — 5-step verification of content against"
             " source data (source trace, numbers, timeline, quotes,"
@@ -36,6 +37,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/fact_check.py",
     },
     "G1": {
+        "failure_mode": "retry",
         "description": (
             "Humanizer Gate — removes AI-generated phrasing patterns"
             " to produce natural-sounding text"
@@ -74,6 +76,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/humanizer.py",
     },
     "G2": {
+        "failure_mode": "retry",
         "description": (
             "Copy-Review Gate — structural and stylistic review of"
             " generated copy for readability and flow"
@@ -93,6 +96,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/copy_review.py",
     },
     "G3": {
+        "failure_mode": "stop",
         "description": (
             "Brand CTA Gate — six brand-name integrity and call-to-action checks;"
             " any single failure stops the pipeline"
@@ -113,6 +117,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/brand_cta.py",
     },
     "G4": {
+        "failure_mode": "stop",
         "description": (
             "WeChat Checklist Gate — pre-publish checks specific"
             " to the WeChat Official Accounts platform"
@@ -132,6 +137,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/wechat_checklist.py",
     },
     "G5": {
+        "failure_mode": "stop",
         "description": (
             "HTML Hard Gate — validates that rendered HTML output"
             " meets structural and accessibility standards"
@@ -151,6 +157,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/html_hard.py",
     },
     "G6": {
+        "failure_mode": "retry",
         "description": (
             "Tone Check Gate — evaluates content against brand tone"
             " guidelines for voice consistency and style compliance"
@@ -174,6 +181,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/g6_tone_check.py",
     },
     "V0": {
+        "failure_mode": "stop",
         "description": "Lint Gate — code quality checks for rendered HyperFrames HTML/JS output",
         "common_causes": [
             "JavaScript syntax error detected by ESLint or equivalent",
@@ -190,6 +198,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/lint.py",
     },
     "V1": {
+        "failure_mode": "stop",
         "description": (
             "Vision QA Gate — visual quality assurance for generated video frames and images"
         ),
@@ -208,6 +217,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/vision_qa.py",
     },
     "V2": {
+        "failure_mode": "stop",
         "description": "Pre-Send Whisper Gate — validates Whisper ASR output before SRT generation",
         "common_causes": [
             "Whisper transcribed text has high WER (word error rate)",
@@ -224,6 +234,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/pre_send_whisper.py",
     },
     "V3": {
+        "failure_mode": "stop",
         "description": (
             "Content Semantic Gate — checks semantic consistency"
             " and topic alignment of generated content"
@@ -243,6 +254,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/content_semantic.py",
     },
     "V4": {
+        "failure_mode": "stop",
         "description": "TTS Brand Asset Gate — verifies brand audio (TTS) quality and correctness",
         "common_causes": [
             "TTS audio mispronounces the brand name 壹目贯维",
@@ -259,6 +271,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/tts_brand_asset.py",
     },
     "V5": {
+        "failure_mode": "retry",
         "description": "MP3 vs SRT Gate — cross-validates audio length against subtitle timing",
         "common_causes": [
             "Total MP3 duration is significantly shorter/longer than SRT timeline",
@@ -275,6 +288,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/mp3_vs_srt.py",
     },
     "V6": {
+        "failure_mode": "stop",
         "description": (
             "Subtitle Render Gate — ensures subtitles are rendered correctly into the video"
         ),
@@ -293,6 +307,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/subtitle_render.py",
     },
     "V7": {
+        "failure_mode": "stop",
         "description": (
             "Six-Step Hard Gate — final comprehensive quality gate before publish (6 checks)"
         ),
@@ -311,6 +326,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/six_step_hard.py",
     },
     "L1": {
+        "failure_mode": "stop",
         "description": (
             "Publish Log Schema Gate — validates that the publish log"
             " entry conforms to the required schema"
@@ -328,6 +344,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/publish_log_schema.py",
     },
     "L2": {
+        "failure_mode": "stop",
         "description": (
             "Archive Validation Gate — verifies that the project"
             " archive is complete and uncorrupted"
@@ -347,6 +364,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/archive_validation.py",
     },
     "L3": {
+        "failure_mode": "stop",
         "description": (
             "Platform Integrity Gate — ensures the asset set is"
             " complete for every target publishing platform"
@@ -366,6 +384,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/platform_integrity.py",
     },
     "D4": {
+        "failure_mode": "retry",
         "description": (
             "Xiaohongshu Rewrite Gate — rewrites draft content into"
             " Xiaohongshu-style notes with emoji-rich, personal experience tone"
@@ -385,6 +404,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d4_xiaohongshu.py",
     },
     "D1": {
+        "failure_mode": "retry",
         "description": (
             "WeChat Distribution Gate — rewrites base content into WeChat"
             " Official Account article format (professional tone, structured"
@@ -405,6 +425,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d1_wechat.py",
     },
     "pre-gate": {
+        "failure_mode": "stop",
         "description": (
             "Topic Selection Gate — filters and scores candidate topics before pipeline entry"
         ),
@@ -423,6 +444,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/topic_selection.py",
     },
     "CW": {
+        "failure_mode": "stop",
         "description": (
             "Content Writer Gate — generates draft content from the topic brief using LLM"
         ),
@@ -441,6 +463,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/content_writer.py",
     },
     "L4": {
+        "failure_mode": "stop",
         "description": (
             "Translation Quality Gate — validates the quality of"
             " translated content across target languages"
@@ -460,6 +483,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/translation_quality.py",
     },
     "D3": {
+        "failure_mode": "retry",
         "description": (
             "Zhihu Rewrite Gate (D3) — rewrites draft content into"
             " Zhihu-style Q&A or long-form article with expert tone,"
@@ -480,6 +504,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/d3_zhihu.py",
     },
     "D5": {
+        "failure_mode": "retry",
         "description": (
             "Bilibili Rewrite Gate — rewrites draft content into Bilibili-style"
             " video script with [SCENE] markers, hook opening, and Chinese"
@@ -499,6 +524,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d5_bilibili.py",
     },
     "D2": {
+        "failure_mode": "retry",
         "description": (
             "Twitter/X Distribution Gate — rewrites base content into a"
             " Twitter/X thread format (5-10 tweets, each ≤ 280 characters)"
@@ -518,6 +544,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d2_twitter.py",
     },
     "D7": {
+        "failure_mode": "retry",
         "description": (
             "TikTok Distribution Gate — rewrites base content into a TikTok"
             " short-form video script (hook-first, trending tone, 15-60 sec,"
@@ -538,6 +565,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d7_tiktok.py",
     },
     "P1": {
+        "failure_mode": "retry",
         "description": (
             "WeChat Repurpose Gate (P1) — runs a 3-step sub-pipeline"
             " (rewrite -> fact_check -> humanize) to repurpose pipeline content"
@@ -559,6 +587,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/sub_pipelines/p1_wechat.py",
     },
     "D6": {
+        "failure_mode": "retry",
         "description": (
             "YouTube Standalone Rewrite Gate — rewrites pipeline content"
             " into a YouTube-style video script with intro hook, body"
@@ -580,6 +609,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/distribution/d6_youtube.py",
     },
     "P3": {
+        "failure_mode": "retry",
         "description": (
             "Newsletter Repurpose Gate (P3) — 3-step sub-pipeline that"
             " rewrites base content into newsletter format (rewrite →"
@@ -600,6 +630,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/sub_pipelines/p3_newsletter.py",
     },
     "P4": {
+        "failure_mode": "retry",
         "description": (
             "Bilibili Repurpose Gate (P4) — 3-step sub-pipeline (rewrite →"
             " fact_check → humanize) for Bilibili-adapted video scripts in"
@@ -622,6 +653,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/sub_pipelines/p4_bilibili.py",
     },
     "P2": {
+        "failure_mode": "retry",
         "description": (
             "Twitter/X Repurpose Gate — rewrites base content into a Twitter/X"
             " thread format with thread_format → fact_check → humanize sub-pipeline"
@@ -643,6 +675,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
         "docstring_ref": "gates/sub_pipelines/p2_twitter.py",
     },
     "H0": {
+        "failure_mode": "stop",
         "description": (
             "Human Review Gate (HITL) — pauses pipeline before publish"
             " to await human approval or rejection"
