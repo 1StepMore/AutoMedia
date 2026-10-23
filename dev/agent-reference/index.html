@@ -2281,9 +2281,19 @@ is the onboarding guide. How to read a scenario:</p>
 <td>Projects root override</td>
 <td>(auto)</td>
 </tr>
+<tr>
+<td><code>AUTOMEDIA_ASSET_LIBRARY</code></td>
+<td>AssetLibrary root pulled into new projects; unset uses the built-in workspace default</td>
+<td><code>/mnt/d/Hermes-Workspace/01-Projects/AutoMedia/AssetLibrary</code></td>
+</tr>
+<tr>
+<td><code>AUTOMEDIA_SKIP_ASSET_PULL</code></td>
+<td>Set to <code>1</code>/<code>true</code>/<code>yes</code> to skip the project-init asset pull</td>
+<td>(unset)</td>
+</tr>
 </tbody>
 </table>
-<p>These env vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>
+<p>The <code>AUTOMEDIA_LLM_*</code> vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>
 <h2 id="documentation-index">Documentation Index<a class="headerlink" href="#documentation-index" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
