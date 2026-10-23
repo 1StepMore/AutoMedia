@@ -110,6 +110,12 @@ jobs:
             --junitxml=test-results.xml \
             -q --tb=short
 
+      - name: Pytest (e2e — default addopts excludes the e2e marker)
+        # The global addopts carries `-m 'not e2e'`; clearing it is what makes
+        # this step collect the 208 e2e tests instead of zero (issue #267).
+        if: '!cancelled()'
+        run: uv run python3 -m pytest tests/test_e2e/ -q --tb=short -o addopts=""
+
       # ── Artifacts ──
 
       - name: Upload coverage report
