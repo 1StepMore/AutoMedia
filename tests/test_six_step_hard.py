@@ -8,6 +8,7 @@ from typing import Any
 
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.six_step_hard import _CHECK_NAMES, V7SixStepHard
+from automedia.hooks.md5_tracker import compute_md5
 
 
 def _make_context(
@@ -153,6 +154,35 @@ class TestV7RealLogic:
         )
         chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
         assert chk["passed"] is False
+
+    def test_md5_missing_actual_is_computed(self, tmp_path: Any) -> None:
+        test_file = tmp_path / "a.bin"
+        test_file.write_bytes(b"payload")
+        result = V7SixStepHard().execute(
+            _make_context(md5_records={str(test_file): {"expected": compute_md5(str(test_file))}})
+        )
+        chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
+        assert chk["passed"] is True
+
+    def test_md5_corruption_after_recording_fails(self, tmp_path: Any) -> None:
+        test_file = tmp_path / "a.bin"
+        test_file.write_bytes(b"payload")
+        expected = compute_md5(str(test_file))
+        test_file.write_bytes(b"tampered")
+        result = V7SixStepHard().execute(
+            _make_context(md5_records={str(test_file): {"expected": expected}})
+        )
+        chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
+        assert chk["passed"] is False
+
+    def test_md5_unreadable_file_fails(self, tmp_path: Any) -> None:
+        missing = str(tmp_path / "missing.bin")
+        result = V7SixStepHard().execute(
+            _make_context(md5_records={missing: {"expected": "deadbeef"}})
+        )
+        chk = next(c for c in result["checks"] if c["name"] == "md5_verified")
+        assert chk["passed"] is False
+        assert "cannot read" in chk["detail"]
 
     def test_whisper_full_passes(self) -> None:
         result = V7SixStepHard().execute(_make_context(whisper_full_audio=True))

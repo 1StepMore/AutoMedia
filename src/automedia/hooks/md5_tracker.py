@@ -18,7 +18,7 @@ def _md5_path(project_dir: str) -> str:
     return os.path.join(project_dir, PIPELINE_MD5_FILENAME)
 
 
-def _compute_md5(file_path: str) -> str:
+def compute_md5(file_path: str) -> str:
     """Compute MD5 hex digest of *file_path*."""
     h = hashlib.md5(usedforsecurity=False)
     with open(file_path, "rb") as f:
@@ -50,7 +50,7 @@ def record_md5(project_dir: str, gate_name: str, file_path: str) -> str:
 
     Returns the MD5 hex digest.
     """
-    md5_digest = _compute_md5(file_path)
+    md5_digest = compute_md5(file_path)
     now = datetime.now(UTC).isoformat()
 
     data = get_pipeline_md5(project_dir)
@@ -79,5 +79,5 @@ def verify_md5(project_dir: str, gate_name: str, file_path: str) -> bool:
     record = gates.get(gate_name)
     if record is None:
         return False
-    current_md5 = _compute_md5(file_path)
+    current_md5 = compute_md5(file_path)
     return current_md5 == record["md5"]
