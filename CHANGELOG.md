@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.1...automedia-v1.10.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **hooks:** enforce the GateHook readonly contract ([#294](https://github.com/1StepMore/AutoMedia/issues/294)) ([f458598](https://github.com/1StepMore/AutoMedia/commit/f4585988da6b25be4b7a5542486f540b0071b31d)), closes [#278](https://github.com/1StepMore/AutoMedia/issues/278)
+
+
+### Documentation
+
+* **mkdocs:** add ADR-006 and ADR-007 to the nav ([#289](https://github.com/1StepMore/AutoMedia/issues/289)) ([7793719](https://github.com/1StepMore/AutoMedia/commit/7793719ee8016c089fa62a4145616354e77db3e0)), closes [#276](https://github.com/1StepMore/AutoMedia/issues/276)
+* refresh size claims and gate them against the tree ([#296](https://github.com/1StepMore/AutoMedia/issues/296)) ([9ef545e](https://github.com/1StepMore/AutoMedia/commit/9ef545ea30fe255b33c6cf67e6b832fb5ef9c335)), closes [#280](https://github.com/1StepMore/AutoMedia/issues/280)
+
 ## [1.10.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.0...automedia-v1.10.1) (2026-10-23)
 
 
