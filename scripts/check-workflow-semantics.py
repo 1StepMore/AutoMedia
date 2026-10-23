@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Static semantics check for GitHub Actions workflows — catches two real,
-silent bug classes in this repo (plus one order-dependent evidence bug).
+"""Static semantics check for GitHub Actions workflows — catches five real,
+silent bug classes in this repo.
 
 Third member of the repo-hygiene gate family (after
 ``scripts/check-doc-consistency.py`` and ``scripts/doc_inventory.py``):
@@ -65,6 +65,18 @@ stops firing when the tag range comes back empty.
 A gate that fails CLOSED is noisy and safe; one that fails OPEN is silent and
 is the more dangerous defect, which is why this rule exists.
 
+Rule 5 — PR subject read from a two-sided range.  A step that reads the PR's
+own commit subject with ``git log`` must bound the range to the PR SIDE only.
+The symmetric difference ``A...B`` also yields commits reachable from ``A``
+but not from ``B``, so as soon as the base moves ahead of the branch — every
+PR that is merely "behind main" — ``git log -1`` returns the newest commit on
+MAIN and the gate judges somebody else's squash subject.  Real instance:
+``conventional-commits.yml`` job ``release-scope`` compared #301/#302 against
+main's tip ``refactor(gates): d2 reuses ... (#304)``, failing both PRs on a
+commit neither of them authored.  The one-sided forms ``<pr> ^<base>`` or
+``<base>..<pr>`` are accepted; a three-dot range that references a PR-side ref
+(``refs/pull/...`` / ``refs/remotes/pr/...``) is a finding.
+
 PREDICATES (explicit, documented, not fuzzy):
 
 * "is a security/vulnerability scan step" — the step ``name:`` matches
@@ -107,14 +119,14 @@ guessed, and the affected expressions are reported as unverifiable.
 MALFORMED INPUT: a workflow that fails YAML parsing (or is not a mapping) is a
 hard failure with a clear ``file: [PARSE] ...`` diagnostic — never silence.
 
-ADVISORY vs HARD-FAIL (explicit decision): all three rules HARD-FAIL.  They are
+ADVISORY vs HARD-FAIL (explicit decision): all five rules HARD-FAIL.  They are
 deterministic over the supported grammar and cannot false-positive there
 (unparseable shapes are diverted to the non-failing unverifiable section), so
 no allowlist is needed.  A future legitimate single-combination conditional
 should be rewritten, not allowlisted.
 
 SIZE_OK: this module deliberately exceeds the 250-line guideline.  It owns ONE
-concept — workflow-semantics checking — and the three rules share the same
+concept — workflow-semantics checking — and the five rules share the same
 parser, matrix expander and line index; splitting them would fragment a single
 cohesive gate.  Same precedent as ``scripts/check-doc-consistency.py``.
 
@@ -635,6 +647,70 @@ def _check_rule4(
         )
 
 
+# --------------------------------------------------------------------------- #
+# Rule 5 predicates (see the module docstring for the contract)
+# --------------------------------------------------------------------------- #
+
+# A ref naming the PR itself. Reading the subject must be bounded on both ends
+# to that side; a symmetric difference silently widens it to the base's history.
+_PR_SIDE_REF_RE = re.compile(r"(?:refs/pull/|refs/remotes/pr/|\$PR_NUMBER|\$\{PR_NUMBER\})")
+# ``A...B`` inside a git log argument list. A shell line continuation (``\``
+# + newline) keeps the command on one logical line, so the run is normalized
+# before scanning; otherwise a wrapped range hides from the regex.
+_GIT_LOG_RE = re.compile(r"\bgit\s+log\b[^\n]*")
+_RANGE_RE = re.compile(r"([\w./${}-]+)\.\.\.([\w./${}-]+)")
+_CONTINUATION_RE = re.compile(r"\\\s*\n\s*")
+
+
+def _logical_lines(run: str) -> str:
+    """Collapse shell line continuations so a wrapped command reads as one line."""
+    return _CONTINUATION_RE.sub(" ", run)
+
+
+def _reads_pr_subject(run: str) -> bool:
+    """True when a run reads a commit subject via ``git log ... --format=%s``."""
+    return bool(re.search(r"\bgit\s+log\b", run)) and bool(
+        re.search(r"--format=(?:%s|'%s'|\"%s\")", run)
+    )
+
+
+def _has_two_sided_range(run: str) -> bool:
+    """True when the run's git log uses ``A...B`` with a PR-side endpoint."""
+    for log_call in _GIT_LOG_RE.finditer(_logical_lines(run)):
+        for match in _RANGE_RE.finditer(log_call.group(0)):
+            left, right = match.group(1), match.group(2)
+            if _PR_SIDE_REF_RE.search(left) or _PR_SIDE_REF_RE.search(right):
+                return True
+    return False
+
+
+def _check_rule5(
+    steps: Sequence[object],
+    line_of: Callable[[int], int],
+    filename: str,
+    findings: list[Finding],
+) -> None:
+    for index, step_value in enumerate(steps):
+        step = _mapping(step_value)
+        if step is None:
+            continue
+        run = _text(step.get("run"))
+        if run is None or not _reads_pr_subject(run) or not _has_two_sided_range(run):
+            continue
+        findings.append(
+            Finding(
+                filename,
+                line_of(index),
+                "R5",
+                f"step '{_step_name(step)}' reads the PR's commit subject through a "
+                "symmetric-difference range (``A...B``); once the base is ahead of the "
+                "branch the range also contains base-side commits, so ``git log -1`` "
+                "returns main's tip and the gate compares the PR title against another "
+                "PR's subject — use the one-sided ``<pr> ^<base>`` range instead",
+            )
+        )
+
+
 def _step_line(parsed: ParsedWorkflow, job_name: object, index: int) -> int:
     return _line(parsed, ("jobs", job_name, "steps", index))
 
@@ -662,6 +738,7 @@ def analyze_workflow(parsed: ParsedWorkflow, filename: str) -> Analysis:
             _check_rule2(step, matrix, line, filename, findings)
         _check_rule3(steps, line_of, filename, findings)
         _check_rule4(steps, line_of, filename, findings)
+        _check_rule5(steps, line_of, filename, findings)
     return Analysis(tuple(findings), tuple(unverifiable))
 
 
