@@ -5,7 +5,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 
 ## 1. Project Overview
 - **Language:** Python 3.11+
-- **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 177,000+ LOC across 640+ Python files (repo, `.py` only, excluding `.venv`/`.git`) · 1,000+ git-tracked files (as-of 2026-10-23; run find & wc -l)
+- **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 165,000+ LOC across 600+ Python files (repo, `.py` only, git-tracked) · 1,000+ git-tracked files (as-of 2026-10-24; `scripts/check-doc-consistency.py` derives and gates these)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 - **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.

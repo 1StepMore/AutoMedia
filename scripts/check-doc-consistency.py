@@ -54,6 +54,11 @@ below are wired into ``main()`` and gate the build:
 * ``scan_marker`` (docs/doc-inventory.md): the first line must be byte-equal
   to the AUTO-GENERATED marker of ``scripts/doc_inventory.py``; a missing or
   wrong marker is gate-failing.
+* ``scan_size_claims`` (README.md, AGENTS.md, docs/index.md): every
+  ``N+ LOC`` / ``N+ Python files`` / ``N+ test functions`` claim is a lower
+  bound the GIT-TRACKED tree must still satisfy.  ``compute_repo_stats()``
+  derives those numbers so the docs can never drift again (issue #280 — the
+  counts were stale for months precisely because nothing derived them).
 
 SIZE_OK: this module deliberately exceeds the 250-line guideline — plan
 W5-T3 pins the WHOLE doc gate in one step (extend the existing check, never
@@ -101,6 +106,27 @@ _USER_DOC_FILES: tuple[str, ...] = (
     "docs/user/cli-reference.md",
     "docs/user/mcp-setup.md",
     "docs/user/api-reference.md",
+)
+
+# Size claims (``68,000+ LOC``, ``640+ Python files``, ...).  Each is a LOWER
+# BOUND the tree must still satisfy: a claim of "600+ files" is honest at 604
+# and false at 590.  The qualifier in the same sentence decides which stat a
+# number belongs to, so ``68,000+ LOC (core)`` and ``177,000+ LOC (total)`` are
+# judged against different measurements.  Issue #280: README/AGENTS/docs-index
+# carried stale counts for months because nothing derived them from the tree.
+_SIZE_CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("core_loc", re.compile(r"([\d,]+)\+\s*LOC\s*\(core\)")),
+    (
+        "core_loc",
+        re.compile(r"([\d,]+)\+\s*LOC\s+across\s+[\d,]+\+\s*Python files\s*\(`src/automedia/`"),
+    ),
+    ("total_loc", re.compile(r"([\d,]+)\+\s*LOC\s*\(total\)")),
+    ("total_loc", re.compile(r"([\d,]+)\+\s*LOC\s+across\s+[\d,]+\+\s*Python files\s*\(repo")),
+    ("core_files", re.compile(r"([\d,]+)\+\s*Python files\s*\(`src/automedia/`")),
+    ("total_files", re.compile(r"([\d,]+)\+\s*Python files\b(?!\s*\(`src/automedia/`)")),
+    ("test_functions", re.compile(r"([\d,]+)\+\s*test functions")),
+    ("test_files", re.compile(r"across\s+([\d,]+)\+\s*files")),
+    ("tracked_files", re.compile(r"([\d,]+)\+\s*git-tracked files")),
 )
 
 # Numeric claims we look for. Each entry maps the claim kind to the derived
@@ -203,6 +229,137 @@ def _count_scenarios() -> int:
     from automedia.validation.loader import load_scenarios
 
     return len(load_scenarios())
+
+
+# --------------------------------------------------------------------------- #
+# Tree-size stats (issue #280)
+# --------------------------------------------------------------------------- #
+
+# Measured over GIT-TRACKED files only.  A clean clone (and therefore CI) has
+# exactly these; an on-disk walk would count gitignored build output and
+# untracked scratch dirs, so the same commit would report different numbers on
+# different machines and the gate would be unreproducible.
+_CoreStats = dict[str, int]
+
+
+def _tracked_python_files() -> list[str] | None:
+    """Repo-relative paths of every git-tracked ``*.py`` file, or None without git."""
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    if git is None:
+        return None
+    try:
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "--", "*.py"],
+            capture_output=True,
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    names = proc.stdout.decode("utf-8", errors="surrogateescape").split("\0")
+    return [name for name in names if name]
+
+
+def _tracked_file_count() -> int | None:
+    """Number of git-tracked files, or None without git."""
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    if git is None:
+        return None
+    try:
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z"],
+            capture_output=True,
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    names = proc.stdout.decode("utf-8", "surrogateescape").split("\0")
+    return len([name for name in names if name])
+
+
+def _line_count(paths: list[str]) -> int:
+    total = 0
+    for rel in paths:
+        try:
+            text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        total += len(text.splitlines())
+    return total
+
+
+def compute_repo_stats() -> dict[str, int]:
+    """Derive every size statistic the docs may claim, from the tracked tree.
+
+    Returns ``core_loc``, ``core_files``, ``total_loc``, ``total_files``,
+    ``test_functions``, ``test_files`` and ``tracked_files``.  Without git the
+    Python-file stats fall back to an on-disk walk so the gate still runs on an
+    exported tarball (the numbers may then be larger, which only makes the
+    ``N+`` lower-bound assertions easier to satisfy — never a false red).
+    """
+    tracked = _tracked_python_files()
+    if tracked is None:
+        tracked = sorted(
+            rel.as_posix()
+            for rel in REPO_ROOT.rglob("*.py")
+            if ".venv" not in rel.parts and ".git" not in rel.parts
+        )
+    core = [rel for rel in tracked if rel.startswith("src/automedia/")]
+    tests = [rel for rel in tracked if rel.startswith("tests/") and "/test_" in f"/{rel}"]
+    test_count = 0
+    test_file_count = 0
+    for rel in tests:
+        if not rel.rsplit("/", 1)[-1].startswith("test_"):
+            continue
+        try:
+            text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        test_file_count += 1
+        test_count += len(re.findall(r"^\s*(?:async\s+)?def\s+test_", text, re.MULTILINE))
+    tracked_files = _tracked_file_count()
+    return {
+        "core_loc": _line_count(core),
+        "core_files": len(core),
+        "total_loc": _line_count(tracked),
+        "total_files": len(tracked),
+        "test_functions": test_count,
+        "test_files": test_file_count,
+        "tracked_files": tracked_files if tracked_files is not None else 0,
+    }
+
+
+def scan_size_claims(text: str, stats: dict[str, int]) -> list[Finding]:
+    """Report every ``N+ <size unit>`` claim the tree can no longer satisfy.
+
+    A claim is a LOWER BOUND: ``600+ Python files`` is true while the tree has
+    604 and false the moment it drops to 590.  ``Finding.file`` stays ``""``
+    (pure function); the caller fills in the real path.
+    """
+    findings: list[Finding] = []
+    for kind, pattern in _SIZE_CLAIM_PATTERNS:
+        actual = stats.get(kind, 0)
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            for match in pattern.finditer(line):
+                claimed = int(match.group(1).replace(",", ""))
+                if claimed > actual:
+                    findings.append(
+                        Finding(
+                            file="",
+                            line=lineno,
+                            found=match.group(0),
+                            expected=f"at most {actual:,} ({kind}); the tree has "
+                            f"{actual:,}, so the claim overstates it",
+                        )
+                    )
+    return findings
 
 
 @dataclass(frozen=True)
@@ -579,9 +736,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     tool_count = _count_mcp_tools()
     command_count = _count_cli_commands()
     scenario_count = _count_scenarios()
+    stats = compute_repo_stats()
     print(
         f"Derived counts: {tool_count} MCP tools, {command_count} CLI commands, "
         f"{scenario_count} scenarios"
+    )
+    print(
+        f"Derived sizes: {stats['core_loc']:,} core LOC / {stats['core_files']} files, "
+        f"{stats['total_loc']:,} total LOC / {stats['total_files']} files, "
+        f"{stats['test_functions']:,} test functions / {stats['test_files']} files, "
+        f"{stats['tracked_files']:,} tracked files"
     )
 
     files = list(_DEFAULT_DOC_FILES)
@@ -595,6 +759,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"WARNING: {rel} not found — skipped")
             continue
         for finding in _scan_file(path, tool_count, command_count, scenario_count):
+            print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
+            all_findings.append(finding)
+        # Size claims ride the SAME loop: a stale "640+ Python files" is a
+        # numeric claim of the same family, and one doc step is the pinned
+        # layering decision (see SIZE_OK above).
+        for finding in scan_size_claims(path.read_text(encoding="utf-8"), stats):
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
