@@ -11,11 +11,11 @@ Red Line 7: Full audio must be transcribed, no partial/sampling allowed.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.hashing import compute_md5
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
@@ -73,14 +73,7 @@ def _check_md5_integrity(audio_path: str, expected_md5: str) -> CheckResult:
     if not expected_md5:
         return {"name": name, "passed": True, "detail": "no expected_md5 provided, skip"}
     try:
-        h = hashlib.md5(usedforsecurity=False)
-        with open(audio_path, "rb") as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk:
-                    break
-                h.update(chunk)
-        actual = h.hexdigest()
+        actual = compute_md5(audio_path)
         if actual == expected_md5:
             return {"name": name, "passed": True, "detail": "MD5 matches"}
         return {

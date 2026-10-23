@@ -19,7 +19,6 @@ and any embedded front-matter metadata.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from dataclasses import dataclass, field
@@ -30,6 +29,7 @@ from structlog import get_logger
 
 from automedia.asset_library.db import ASSET_TYPES, AssetDatabase, AssetDoc
 from automedia.asset_library.vector_store import VectorStore
+from automedia.core.hashing import compute_md5_bytes
 
 log = get_logger(__name__)
 
@@ -301,7 +301,7 @@ def _build_asset_doc(
     filename), compute the MD5 checksum, and gather tags.
     """
     content_bytes = file_path.read_bytes()
-    checksum = hashlib.md5(content_bytes, usedforsecurity=False).hexdigest()
+    checksum = compute_md5_bytes(content_bytes)
 
     # Try to extract title from front-matter or first heading.
     title = _extract_title(file_path, content_bytes) or file_path.stem
