@@ -1048,7 +1048,7 @@ def _run_pipeline(
         if resume_project_id is None and resume_from is None:
             clear_stale_hitl_state(project.project_dir)
 
-        brand_profile, mode, workflow_obj = _resolve_brand_and_workflow(
+        brand_profile, mode, workflow_obj, workflow_prompts = _resolve_brand_and_workflow(
             mode,
             brand,
             project,
@@ -1088,6 +1088,7 @@ def _run_pipeline(
             hitl_timeout_s,
             hitl_on_timeout,
             resume_from,
+            workflow_prompts,
         )
 
         if block_on_hitl is None:
@@ -1158,7 +1159,7 @@ def _resolve_brand_and_workflow(
     brand: str,
     project: Project,
     workflow: str | None,
-) -> tuple[BrandProfile | None, str, Workflow | None]:
+) -> tuple[BrandProfile | None, str, Workflow | None, dict[str, str] | None]:
     from automedia.core.workflow import WorkflowLoader
     from automedia.manifests.brand_profile_schema import (
         BrandProfile,
@@ -1206,9 +1207,11 @@ def _resolve_brand_and_workflow(
                 hint="Pipeline will continue without workflow overrides.",
             )
 
+    workflow_prompts: dict[str, str] | None = None
     if workflow_obj is not None and brand_profile is not None:
         brand_dict = _merge_workflow_config(workflow_obj, asdict(brand_profile))
-        # Pop extra keys that BrandProfile doesn't accept before reconstructing
+        # Keep workflow-level overrides that BrandProfile doesn't accept;
+        # they are consumed directly from workflow_obj downstream.
         brand_dict.pop("workflow_gates", None)
         brand_dict.pop("workflow_prompts", None)
         try:
@@ -1221,6 +1224,8 @@ def _resolve_brand_and_workflow(
                 hint="Workflow merge produced invalid brand profile. "
                 "Falling back to original brand config.",
             )
+        if workflow_obj.prompts is not None:
+            workflow_prompts = dict(workflow_obj.prompts)
         mode = workflow_obj.mode
         log.info(
             "pipeline.workflow.mode_override",
@@ -1228,7 +1233,7 @@ def _resolve_brand_and_workflow(
             mode=mode,
         )
 
-    return brand_profile, mode, workflow_obj
+    return brand_profile, mode, workflow_obj, workflow_prompts
 
 
 def _select_gates(
@@ -1376,6 +1381,7 @@ def _build_pipeline_context(
     hitl_timeout_s: float | None = None,
     hitl_on_timeout: str | None = None,
     resume_from: str | None = None,
+    workflow_prompts: dict[str, str] | None = None,
 ) -> GateContext:
     from automedia.engines import resolve_engine
     from automedia.engines.errors import (
@@ -1460,6 +1466,10 @@ def _build_pipeline_context(
     gate_context["hitl_config"] = hitl_config
     gate_context["hitl_preset"] = "director" if director else "automated"
     gate_context["skip_review"] = skip_review
+
+    if workflow_prompts is not None:
+        gate_context["workflow_prompts"] = workflow_prompts
+        log.info("pipeline.workflow_prompts_applied", templates=sorted(workflow_prompts))
 
     hyperframes_available = _check_hyperframes(mode=mode)
     video_engine_available = False
