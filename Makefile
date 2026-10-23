@@ -1,6 +1,8 @@
 .PHONY: install install-dev install-mcp test test-coverage test-e2e \
         lint lint-fix typecheck mcp clean pre-commit doctor
 
+PYTHON ?= python3
+
 # =============================================================================
 # AutoMedia — Development Makefile
 # =============================================================================
@@ -27,7 +29,7 @@ test-coverage:
 	python -m pytest --cov=src/automedia
 
 test-e2e:
-	python -m pytest tests/test_e2e/ -v
+	$(PYTHON) -m pytest tests/test_e2e/ -v -o addopts=""
 
 # ---- Code Quality ----------------------------------------------------------
 

@@ -141,6 +141,7 @@ class TestMultilingualEnglishPipeline:
 
         mock_engine = MagicMock()
         mock_engine.run.side_effect = _capturing_run
+        mock_engine.hitl_awaiting = False
         mock_ge_cls.return_value = mock_engine
 
         # --- Act ---
@@ -225,6 +226,7 @@ class TestMultilingualEnglishPipeline:
 
         mock_engine = MagicMock()
         mock_engine.run.side_effect = _capturing_run
+        mock_engine.hitl_awaiting = False
         mock_ge_cls.return_value = mock_engine
 
         # --- Act ---
