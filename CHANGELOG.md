@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.3...automedia-v1.10.4) (2026-10-23)
+
+
+### Bug Fixes
+
+* **pipeline:** wire workflow prompt overrides through to load_prompt ([#298](https://github.com/1StepMore/AutoMedia/issues/298)) ([5f54ed7](https://github.com/1StepMore/AutoMedia/commit/5f54ed7a567449a94be9f82771a1c2da886d8424)), closes [#281](https://github.com/1StepMore/AutoMedia/issues/281)
+
+
+### Dependencies
+
+* **deps:** bump virtualenv from 21.14.9 to 21.14.13 ([#302](https://github.com/1StepMore/AutoMedia/issues/302)) ([a047976](https://github.com/1StepMore/AutoMedia/commit/a0479768fb979f514795f799a26abe42660c85d4))
+
+
+### Documentation
+
+* gate the size claims the [#280](https://github.com/1StepMore/AutoMedia/issues/280) fix left ungated ([#308](https://github.com/1StepMore/AutoMedia/issues/308)) ([194b338](https://github.com/1StepMore/AutoMedia/commit/194b338f5b0ef5d7080edbd3e779c3f4e471b00c))
+
 ## [1.10.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.2...automedia-v1.10.3) (2026-10-23)
 
 
