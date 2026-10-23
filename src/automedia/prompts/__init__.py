@@ -77,7 +77,12 @@ def load_prompt(name: str, platform: str | None = None, **kwargs: object) -> str
     FileNotFoundError
         When neither the user override nor the built-in template exists.
     """
-    # 1. Platform-scoped user override (highest priority)
+    # 0. Workflow-level inline override (highest priority)
+    workflow_prompts = kwargs.pop("workflow_prompts", None)
+    if isinstance(workflow_prompts, dict) and name in workflow_prompts:
+        return Template(str(workflow_prompts[name])).render(**kwargs)
+
+    # 1. Platform-scoped user override
     if platform is not None:
         platform_override_path = _OVERRIDE_DIR / platform.lower() / f"{name}.j2"
         if platform_override_path.exists():
