@@ -1087,6 +1087,7 @@ def _run_pipeline(
             skip_review,
             hitl_timeout_s,
             hitl_on_timeout,
+            resume_from,
         )
 
         if block_on_hitl is None:
@@ -1342,6 +1343,20 @@ def clear_stale_hitl_state(project_dir: str) -> None:
         log.warning("pipeline.hitl_state_clear_failed", path=str(state_file))
 
 
+def _latest_draft(project_dir: str | Path) -> Path | None:
+    """Return the newest ``01_content/drafts/*.md`` file, if any."""
+    drafts = Path(project_dir) / "01_content" / "drafts"
+    if not drafts.is_dir():
+        return None
+    candidates = [path for path in drafts.glob("*.md") if path.is_file()]
+    if not candidates:
+        return None
+    try:
+        return max(candidates, key=lambda path: (path.stat().st_mtime_ns, path.name))
+    except OSError:
+        return None
+
+
 def _build_pipeline_context(
     topic: str,
     brand: str,
@@ -1360,6 +1375,7 @@ def _build_pipeline_context(
     skip_review: bool = False,
     hitl_timeout_s: float | None = None,
     hitl_on_timeout: str | None = None,
+    resume_from: str | None = None,
 ) -> GateContext:
     from automedia.engines import resolve_engine
     from automedia.engines.errors import (
@@ -1493,10 +1509,37 @@ def _build_pipeline_context(
             )
 
     if "CW" not in gate_names and not gate_context.get("content", "").strip():
-        placeholder = f"[content skipped in {mode} mode]"
-        gate_context["content"] = placeholder
-        gate_context["draft"] = placeholder
-        log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
+        draft_path = _latest_draft(project.project_dir)
+        draft_text = ""
+        if draft_path is not None:
+            try:
+                draft_text = draft_path.read_text(encoding="utf-8").strip()
+            except OSError as exc:
+                log.warning(
+                    "pipeline.resume.draft_unreadable",
+                    path=str(draft_path),
+                    error=str(exc),
+                )
+        if draft_text:
+            gate_context["content"] = draft_text
+            gate_context["draft"] = draft_text
+            log.info(
+                "pipeline.resume.draft_rehydrated",
+                path=str(draft_path),
+                chars=len(draft_text),
+            )
+        else:
+            placeholder = f"[content skipped in {mode} mode]"
+            gate_context["content"] = placeholder
+            gate_context["draft"] = placeholder
+            if resume_from is not None:
+                log.warning(
+                    "pipeline.resume.draft_missing",
+                    project_dir=project.project_dir,
+                    mode=mode,
+                    resume_from=resume_from,
+                )
+            log.info("pipeline.content_placeholder", mode=mode, placeholder=placeholder)
 
     if mode == "social-thread":
         gate_context["content_format"] = "social_thread"
