@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.9.1...automedia-v1.10.0) (2026-10-23)
+
+
+### Features
+
+* **project:** pull standard video asset pack on init ([#265](https://github.com/1StepMore/AutoMedia/issues/265)) ([acd48ac](https://github.com/1StepMore/AutoMedia/commit/acd48ac17963afcdd9986073da9d3977a4d7d6f8))
+
 ## [1.9.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.9.0...automedia-v1.9.1) (2026-10-22)
 
 
