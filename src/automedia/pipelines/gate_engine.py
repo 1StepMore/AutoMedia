@@ -372,7 +372,15 @@ class GateEngine:
         log.debug("hooks.dispatch_before", gate_name=gate_name, hook_count=len(self._hooks))
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
-            hook.before_gate(gate_name, ctx)
+            try:
+                hook.before_gate(gate_name, ctx)
+            except Exception as exc:
+                log.warning(
+                    "hooks.before_failed",
+                    hook=type(hook).__name__,
+                    gate_name=gate_name,
+                    error=str(exc),
+                )
 
     def _dispatch_after(
         self, gate_name: str, context: GateContext | dict[str, Any], result: dict[str, Any]
@@ -381,7 +389,15 @@ class GateEngine:
         log.debug("hooks.dispatch_after", gate_name=gate_name, hook_count=len(self._hooks))
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
-            hook.after_gate(gate_name, ctx, result)
+            try:
+                hook.after_gate(gate_name, ctx, result)
+            except Exception as exc:
+                log.warning(
+                    "hooks.after_failed",
+                    hook=type(hook).__name__,
+                    gate_name=gate_name,
+                    error=str(exc),
+                )
 
     def _dispatch_failed(
         self, gate_name: str, context: GateContext | dict[str, Any], error: Exception
@@ -395,7 +411,15 @@ class GateEngine:
         )
         ctx = context.to_dict() if isinstance(context, GateContext) else context
         for hook in self._hooks:
-            hook.on_gate_failed(gate_name, ctx, error)
+            try:
+                hook.on_gate_failed(gate_name, ctx, error)
+            except Exception as exc:
+                log.warning(
+                    "hooks.failed_failed",
+                    hook=type(hook).__name__,
+                    gate_name=gate_name,
+                    error=str(exc),
+                )
 
     def _gate_requires_approval(
         self, gate_name: str, gate_context: GateContext | dict[str, Any]
@@ -1021,6 +1045,7 @@ class GateEngine:
                         failure_mode=fm,
                     )
                     if fm == "stop":
+                        self._dispatch_after(gate_name, gate_context, result)
                         if early_stop:
                             return False, results
                         return results

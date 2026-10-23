@@ -25,6 +25,18 @@ from structlog import get_logger
 log = get_logger(__name__)
 
 
+def _detached(value: Any) -> Any:  # noqa: ANN401 — recursive copy of arbitrary context values
+    if isinstance(value, dict):
+        return {key: _detached(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_detached(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_detached(item) for item in value)
+    if isinstance(value, set):
+        return {_detached(item) for item in value}
+    return value
+
+
 @dataclass
 class GateContext:
     """Typed pipeline context with dict-compatible access.
@@ -286,10 +298,10 @@ class GateContext:
         result: dict[str, Any] = {}
         for f in fields(self):
             if f.name == "extra":
-                result.update(self.extra)
+                result.update(_detached(self.extra))
             else:
-                result[f.name] = getattr(self, f.name)
+                result[f.name] = _detached(getattr(self, f.name))
         # Preserve legacy key names for hooks that expect them
         result["_gate_name"] = self.gate_name
-        result["_mock_results"] = self.mock_results
+        result["_mock_results"] = _detached(self.mock_results)
         return result
