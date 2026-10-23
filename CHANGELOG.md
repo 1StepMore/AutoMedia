@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.2...automedia-v1.10.3) (2026-10-23)
+
+
+### Dependencies
+
+* **deps:** bump opentelemetry-api from 1.43.0 to 1.45.1 ([#292](https://github.com/1StepMore/AutoMedia/issues/292)) ([d7427e9](https://github.com/1StepMore/AutoMedia/commit/d7427e9ffa3ff7a90390d09737951340c14cb7f0))
+* **deps:** bump virtualenv from 21.7.13 to 21.14.9 ([#293](https://github.com/1StepMore/AutoMedia/issues/293)) ([2fe9401](https://github.com/1StepMore/AutoMedia/commit/2fe940151a63e7753e2510c8810ad7f379be2119))
+
 ## [1.10.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.1...automedia-v1.10.2) (2026-10-23)
 
 
