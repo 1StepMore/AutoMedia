@@ -361,6 +361,74 @@ jobs:
 """
 
 
+# A PR-subject read bounded by a symmetric difference. The range also contains
+# base-side commits once the branch falls behind, so `-1` returns main's tip.
+_PR_SUBJECT_THREE_DOT = """
+name: pr-subject-three-dot
+on: [pull_request]
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Subject comparison
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log --no-merges -1 --format=%s \
+            "origin/$BASE_REF...refs/remotes/pr/$PR_NUMBER")"
+          echo "$SUBJECT"
+"""
+
+# The fixed shape: PR-side ref bounded by the base's complement (one-sided).
+_PR_SUBJECT_ONE_SIDED = """
+name: pr-subject-one-sided
+on: [pull_request]
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Subject comparison
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log --no-merges -1 --format=%s \
+            "refs/remotes/pr/$PR_NUMBER" "^origin/$BASE_REF")"
+          echo "$SUBJECT"
+"""
+
+# Two-dot is also one-sided (base..pr) and must stay clean.
+_PR_SUBJECT_TWO_DOT = """
+name: pr-subject-two-dot
+on: [pull_request]
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Subject comparison
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log --no-merges -1 --format=%s \
+            "origin/$BASE_REF..refs/remotes/pr/$PR_NUMBER")"
+          echo "$SUBJECT"
+"""
+
+# A git log that never reads a subject (no --format=%s) is out of scope.
+_PR_SUBJECT_NO_FORMAT = """
+name: pr-subject-no-format
+on: [pull_request]
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Count commits
+        run: |
+          set -euo pipefail
+          git log --oneline "origin/main...refs/remotes/pr/$PR_NUMBER"
+"""
+
+
 def _analyze(text: str, name: str = "fixture.yml") -> object:
     return _WF.analyze_text(text, name)
 
@@ -523,6 +591,43 @@ def test_pinned_base_without_a_diff_built_list_is_clean() -> None:
     analysis = _analyze(_PINNED_BASE_NO_DIFF)
 
     assert len(analysis.findings) == 0
+
+
+# --------------------------------------------------------------------------- #
+# Rule 5 — PR subject read from a two-sided range
+# --------------------------------------------------------------------------- #
+
+
+def test_three_dot_pr_subject_range_is_one_finding() -> None:
+    analysis = _analyze(_PR_SUBJECT_THREE_DOT)
+
+    assert [f.rule for f in analysis.findings] == ["R5"]
+
+
+@pytest.mark.parametrize(
+    "text", [_PR_SUBJECT_ONE_SIDED, _PR_SUBJECT_TWO_DOT], ids=["caret", "two-dot"]
+)
+def test_one_sided_pr_subject_range_is_clean(text: str) -> None:
+    analysis = _analyze(text)
+
+    assert len(analysis.findings) == 0
+
+
+def test_git_log_without_a_subject_format_is_clean() -> None:
+    analysis = _analyze(_PR_SUBJECT_NO_FORMAT)
+
+    assert len(analysis.findings) == 0
+
+
+def test_release_scope_workflow_reads_only_the_pr_side() -> None:
+    # REGRESSION LOCK for the live instance Rule 5 found (#301/#302 judged
+    # against main's tip). Reading the real workflow is the point: a fixture
+    # cannot catch a regression that puts the three-dot range back.
+    workflow = _REPO_ROOT / ".github" / "workflows" / "conventional-commits.yml"
+
+    analysis = _WF.analyze_text(workflow.read_text(encoding="utf-8"), "conventional-commits.yml")
+
+    assert [f.rule for f in analysis.findings if f.rule == "R5"] == []
 
 
 def test_release_pr_guard_workflow_is_not_failing_open() -> None:

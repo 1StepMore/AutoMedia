@@ -10,7 +10,6 @@ This gate reads the pipeline content, rewrites it as a Twitter/X thread
 from __future__ import annotations
 
 import os
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -20,6 +19,7 @@ from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.sub_pipelines.p2_twitter import split_into_tweets
 
 log = get_logger(__name__)
 
@@ -38,43 +38,7 @@ _EXPECTED_MAP: dict[str, str] = {
 
 
 def _split_into_tweets(raw: str) -> list[str]:
-    """Split LLM output into individual tweet strings.
-
-    Supports two common thread formats:
-    - Numbered tweets (``1/``, ``1.``, ``Tweet 1:``, etc.)
-    - Blank-line-separated tweets
-
-    Parameters
-    ----------
-    raw:
-        The raw LLM response text.
-
-    Returns
-    -------
-    list[str]
-        List of individual tweet strings (stripped, non-empty).
-    """
-    # Try numbered-tweet format first: "1/", "1.", "Tweet 1:", "#1", etc.
-    numbered_pattern = re.compile(
-        r"(?:^|\n)\s*(?:"
-        r"(?:\d+\s*[./:)])|"  # 1/, 1., 1:, 1)
-        r"(?:Tweet\s*\d+\s*[:.])|"  # Tweet 1:, Tweet 1.
-        r"(?:Thread\s*\d+\s*[:.])|"  # Thread 1:, Thread 1.
-        r"(?:#\d+)"  # #1
-        r")\s*\n?"
-    )
-    parts = numbered_pattern.split(raw)
-    tweets = [p.strip() for p in parts if p.strip()]
-
-    # If split didn't yield enough tweets, fall back to blank-line splitting
-    if len(tweets) < _MIN_TWEET_COUNT:
-        tweets = [p.strip() for p in raw.split("\n\n") if p.strip()]
-
-    # If still insufficient, treat as single-tweet-per-line
-    if len(tweets) < _MIN_TWEET_COUNT:
-        tweets = [p.strip() for p in raw.split("\n") if p.strip() and len(p.strip()) > 20]
-
-    return tweets
+    return split_into_tweets(raw)
 
 
 def _render_twitter_prompt(content: str, brand: str, title: str) -> str:

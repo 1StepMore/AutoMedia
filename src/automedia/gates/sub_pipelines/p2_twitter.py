@@ -70,7 +70,7 @@ _EXPECTED_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _split_into_tweets(raw: str) -> list[str]:
+def split_into_tweets(raw: str) -> list[str]:
     """Split LLM output into individual tweet strings.
 
     Supports two common thread formats:
@@ -117,7 +117,7 @@ def _check_thread_quality(content: str) -> str | None:
 
     Returns ``None`` on pass, or an error string describing the issue.
     """
-    tweets = _split_into_tweets(content)
+    tweets = split_into_tweets(content)
     tweet_count = len(tweets)
 
     # Check combined length
@@ -341,7 +341,7 @@ def _write_twitter_output(
     output_path = os.path.join(twitter_dir, filename)
 
     # Format thread with tweet separators for readability
-    tweets = _split_into_tweets(content)
+    tweets = split_into_tweets(content)
     thread_lines: list[str] = []
     for i, tweet in enumerate(tweets):
         thread_lines.append(f"## Tweet {i + 1}\n\n{tweet}\n")
@@ -549,7 +549,7 @@ class P2TwitterGate(BaseGate):
                         "detail": (
                             f"thread content length {len(thread)} chars "
                             f">= {_MIN_OUTPUT_LENGTH}, "
-                            f"{len(_split_into_tweets(thread))} tweets"
+                            f"{len(split_into_tweets(thread))} tweets"
                         ),
                     },
                     {
@@ -576,7 +576,7 @@ class P2TwitterGate(BaseGate):
         # ==================================================================
         # Success
         # ==================================================================
-        tweet_count = len(_split_into_tweets(humanized))
+        tweet_count = len(split_into_tweets(humanized))
         log.info(
             "P2 twitter sub-pipeline complete",
             thread_length=len(thread),
@@ -603,7 +603,7 @@ class P2TwitterGate(BaseGate):
                     "detail": (
                         f"thread content length {len(thread)} chars "
                         f">= {_MIN_OUTPUT_LENGTH}, "
-                        f"{len(_split_into_tweets(thread))} tweets, "
+                        f"{len(split_into_tweets(thread))} tweets, "
                         f"all ≤ {_MAX_TWEET_LENGTH} chars"
                     ),
                 },
