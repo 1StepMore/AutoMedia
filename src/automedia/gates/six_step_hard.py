@@ -20,6 +20,7 @@ from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
+from automedia.hooks.md5_tracker import compute_md5
 
 log = get_logger(__name__)
 
@@ -72,7 +73,9 @@ def _check_file_size_valid(file_sizes: dict[str, int]) -> CheckResult:
 def _check_md5_verified(md5_records: dict[str, dict[str, str]]) -> CheckResult:
     """Check 3: MD5 checksums match recorded values.
 
-    md5_records: {file_path: {"expected": str, "actual": str}}
+    md5_records: {file_path: {"expected": str, "actual": str (optional)}}.
+    When ``actual`` is absent it is computed from *file_path* now, so the
+    check verifies the bytes on disk instead of comparing a value with itself.
     """
     name = "md5_verified"
     if not md5_records:
@@ -80,8 +83,16 @@ def _check_md5_verified(md5_records: dict[str, dict[str, str]]) -> CheckResult:
     mismatches: list[str] = []
     for path, rec in md5_records.items():
         expected = rec.get("expected", "")
+        if not expected:
+            continue
         actual = rec.get("actual", "")
-        if expected and actual and expected != actual:
+        if not actual:
+            try:
+                actual = compute_md5(path)
+            except OSError as exc:
+                mismatches.append(f"{os.path.basename(path)}: cannot read ({exc})")
+                continue
+        if actual != expected:
             mismatches.append(f"{os.path.basename(path)}: {actual} != {expected}")
     if mismatches:
         return {"name": name, "passed": False, "detail": f"MD5 mismatches: {mismatches[:3]}"}
@@ -152,7 +163,7 @@ class V7SixStepHard(BaseGate):
     ``gate_context`` expected keys:
         - ``required_files``: list[str] — paths that must exist
         - ``file_sizes``: dict[str, int] — {path: size_in_bytes}
-        - ``md5_records``: dict[str, dict] — {path: {"expected": str, "actual": str}}
+        - ``md5_records``: dict[str, dict] — {path: {"expected": str, "actual": str (optional)}}
         - ``whisper_full_audio``: bool — whether Whisper ran on full audio
         - ``actual_format``: str — actual output format
         - ``expected_format``: str — expected output format

@@ -2150,6 +2150,13 @@ def _produce_cover_image(gate_context: GateContext | dict[str, Any]) -> None:
         )
 
 
+def _expected_md5_records(paths: list[str]) -> dict[str, dict[str, str]]:
+    """Record only the expected digest; V7 computes the actual one at check time."""
+    from automedia.hooks.md5_tracker import compute_md5
+
+    return {path: {"expected": compute_md5(path)} for path in paths}
+
+
 def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     """音频轨 → 图片 → 视频 → 产物清单，供 V 门真实校验。
 
@@ -2252,16 +2259,12 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         except Exception as exc:
             log.warning("pipeline.video_production_unexpected_error", error=str(exc))
 
-    # 产物段：V7 的输入——如实登记本次真实产出的文件（清单、尺寸、md5 自洽记录）。
-    from automedia.hooks.md5_tracker import _compute_md5
-
+    # 产物段：V7 的输入——登记清单、尺寸和生成时的 expected md5；
+    # actual 由 V7 校验时从磁盘重新计算，不能用同一次计算自证。
     required_files = [path for path in produced if path and os.path.isfile(path)]
     gate_context["required_files"] = required_files
     gate_context["file_sizes"] = {path: os.path.getsize(path) for path in required_files}
-    gate_context["md5_records"] = {
-        path: {"expected": _compute_md5(path), "actual": _compute_md5(path)}
-        for path in required_files
-    }
+    gate_context["md5_records"] = _expected_md5_records(required_files)
     log.info("pipeline.media_stage.artifacts_recorded", count=len(required_files))
 
 

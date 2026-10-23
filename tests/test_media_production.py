@@ -22,6 +22,7 @@ import pytest
 
 from automedia.gates._context import GateContext
 from automedia.gates._result import missing_input_result
+from automedia.hooks.md5_tracker import compute_md5
 from automedia.pipelines.runner import _media_narration_text, _produce_media_assets
 
 _AUDIO_PATH = "automedia.pipelines.audio_pipeline.AudioPipeline"
@@ -175,8 +176,8 @@ class TestFullChain:
             missing_input_result("V7", ctx, ("required_files", "file_sizes", "md5_records")) is None
         )
 
-    def test_v7_artifact_ledger_is_self_consistent(self, tmp_path: Path) -> None:
-        """V7 的清单只登记真实存在的文件，且 md5 记录自洽。"""
+    def test_v7_artifact_ledger_records_expected_only(self, tmp_path: Path) -> None:
+        """V7 的清单只登记真实文件；md5 只记 expected，actual 由 V7 现算。"""
         ctx = self._run(tmp_path)
 
         required = ctx.get("required_files")
@@ -190,7 +191,7 @@ class TestFullChain:
         records = ctx.get("md5_records")
         assert isinstance(records, dict)
         for path in required:
-            assert records[path]["expected"] == records[path]["actual"]
+            assert records[path] == {"expected": compute_md5(path)}
 
     def test_gates_never_scored_stay_skipped(self, tmp_path: Path) -> None:
         """无可信生产者的门（V0/V1/V3/V4/V6）仍须跳过——绝不写假数据。"""
