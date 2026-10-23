@@ -1,12 +1,13 @@
 """MD5 tracker for pipeline gates — record and verify file integrity."""
 
-import hashlib
 import json
 import os
 from datetime import UTC, datetime
 from typing import Any
 
 from structlog import get_logger
+
+from automedia.core.hashing import compute_md5
 
 log = get_logger(__name__)
 
@@ -16,18 +17,6 @@ PIPELINE_MD5_FILENAME = "pipeline_md5.json"
 def _md5_path(project_dir: str) -> str:
     """Return absolute path to pipeline_md5.json under *project_dir*."""
     return os.path.join(project_dir, PIPELINE_MD5_FILENAME)
-
-
-def compute_md5(file_path: str) -> str:
-    """Compute MD5 hex digest of *file_path*."""
-    h = hashlib.md5(usedforsecurity=False)
-    with open(file_path, "rb") as f:
-        while True:
-            chunk = f.read(8192)
-            if not chunk:
-                break
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def get_pipeline_md5(project_dir: str) -> dict[str, Any]:

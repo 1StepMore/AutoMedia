@@ -9,13 +9,13 @@ Writes to pipeline_md5.json with per-section keys:
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.hashing import compute_md5
 from automedia.core.paths import get_user_config_dir
 
 log = get_logger(__name__)
@@ -28,18 +28,6 @@ _OMNI_SECTIONS = ("omni_inputs", "omni_extraction", "omni_translation", "omni_or
 def _default_state_dir() -> Path:
     """Return the default state directory (``~/.automedia``)."""
     return get_user_config_dir()
-
-
-def compute_md5(file_path: str | Path) -> str:
-    """Compute MD5 hex digest of a file."""
-    h = hashlib.md5(usedforsecurity=False)
-    with open(file_path, "rb") as f:
-        while True:
-            chunk = f.read(8192)
-            if not chunk:
-                break
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def _state_path(state_dir: str | Path | None = None) -> Path:
