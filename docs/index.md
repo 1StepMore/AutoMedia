@@ -68,7 +68,7 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
 | [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
-| [Architecture Decision Records](adr/README.md) | ADR-001..ADR-006 index + template, canonical source in docs/adr/ |
+| [Architecture Decision Records](adr/README.md) | ADR-001..ADR-007 index + template, canonical source in docs/adr/ |
 | [Agent Reference](dev/agent-reference.md) | On-demand deep reference split out of AGENTS.md (layout, task patterns, validation contract) |
 | [Validation Schema Authority](https://github.com/1StepMore/AutoMedia/blob/main/scenarios/STANDARDS.md) | `scenarios/STANDARDS.md` — the single schema authority for validation `standard:` keys |
 
