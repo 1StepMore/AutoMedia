@@ -20,6 +20,7 @@ from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
 from automedia.core.overrides import OverridesLoader
+from automedia.core.platforms import platform_categories
 from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 if TYPE_CHECKING:
@@ -183,31 +184,12 @@ _VIDEO_PRODUCING_MODES: tuple[str, ...] = ("video_only", "short-video")
 # Valid modes tuple — shared reference for CLI/MCP/SDK validation
 VALID_MODES: tuple[str, ...] = tuple(_MODE_MAP)
 
-# Platform → content-category mapping for auto-deriving pipeline mode.
-# Used by _derive_mode_from_platforms() when mode is not explicitly set.
-_PLATFORM_CATEGORIES: dict[str, str] = {
-    "wechat": "text-first",
-    "zhihu": "text-first",
-    "xiaohongshu": "mixed-social",
-    "feishu": "notification-only",
-    "youtube": "video-first",
-    "twitter": "text-first",
-    "bilibili": "video-first",
-    "tiktok": "video-first",
-    "linkedin": "text-first",
-    "medium": "text-first",
-    "newsletter": "text-first",
-    "douyin": "video-first",
-    "wordpress": "text-first",
-    "reddit": "text-first",
-    "baijiahao": "text-first",
-    "juejin": "text-first",
-    "toutiao": "text-first",
-    "facebook": "mixed-social",
-    "instagram": "mixed-social",
-    "weibo": "text-first",
-    "kuaishou": "video-first",
-}
+# Platform -> content-category mapping for auto-deriving pipeline mode.
+# DERIVED from automedia.core.platforms (the single source of truth) rather
+# than maintained here: the local copy had 21 entries while the media-spec
+# table had 19 and the adapter registry 20, and nothing recorded why (issue
+# #283). See that module for what each count means.
+_PLATFORM_CATEGORIES: dict[str, str] = platform_categories()
 
 
 # ---------------------------------------------------------------------------
