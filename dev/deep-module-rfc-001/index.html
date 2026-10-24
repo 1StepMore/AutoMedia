@@ -2127,22 +2127,22 @@ maximally-different interfaces in parallel, (5) recommend and write an RFC.</p>
 <tbody>
 <tr>
 <td><code>src/automedia/pipelines/runner.py</code></td>
-<td>1,617 lines; 23 functions; ~3 public symbols; 13 function-level lazy imports; 47 callers of <code>run_full_pipeline</code></td>
+<td>2,309 lines; 37 functions; 3 public symbols; 44 function-level lazy-import sites; <code>run_full_pipeline</code> invoked at 68 call sites across 34 files</td>
 <td><strong>Strongest friction — selected</strong></td>
 </tr>
 <tr>
 <td><code>src/automedia/core/config_loader.py</code></td>
-<td>266 lines; 7 functions; <code>_env_to_config()</code> (lines 105–192) holds ~87 lines of env-mapping</td>
+<td>411 lines; 7 functions; <code>_env_to_config()</code> (line 111) holds the env-mapping</td>
 <td>Moderate; self-contained, no cycle risk</td>
 </tr>
 <tr>
 <td><code>src/automedia/adapters/registry.py</code></td>
-<td>89 lines; single <code>AdapterRegistry(BaseRegistry)</code> class</td>
+<td>90 lines; single <code>AdapterRegistry(BaseRegistry)</code> class</td>
 <td>Small; shallow but not frictional</td>
 </tr>
 <tr>
 <td><code>src/automedia/gates/base.py</code></td>
-<td>171 lines; <code>GateRegistry</code> + <code>BaseGate</code>; gate implementations already one-class-per-file (7,702 lines across <code>gates/</code>)</td>
+<td>182 lines; <code>GateRegistry</code> + <code>BaseGate</code>; gate implementations already one-class-per-file (13,684 lines across <code>gates/</code>)</td>
 <td>Already well-factored; no god-object</td>
 </tr>
 </tbody>
@@ -2155,17 +2155,17 @@ single largest module in the <code>automedia/</code> core. Concrete friction obs
    mode derivation, gate selection/composition, brand/workflow resolution,
    context building, engine execution, source-material resolution, MD5
    tracking, asset collection, and error handling.</li>
-<li><strong>Import-cycle web.</strong> 13 function-level (lazy) imports force the module to
+<li><strong>Import-cycle web.</strong> 44 function-level (lazy) import sites force the module to
    defer importing <code>gate_engine</code>, <code>gates.base._registry</code>, <code>engines</code>, <code>hitl</code>,
    <code>hooks</code>, <code>core</code>, <code>manifests</code>, and <code>language_config</code> until call time —
    evidence that <code>runner.py</code> sits at the center of the package import graph
    (see §3 for line references).</li>
 <li><strong>Signature sprawl.</strong> The single public entry <code>run_full_pipeline()</code> takes
-   <strong>17 parameters</strong> (line 727); every new capability (workflow, director
+   <strong>23 parameters</strong> (line 838); every new capability (workflow, director
    mode, source material, platform filtering) extends the signature rather
    than composing.</li>
 <li><strong>Agent cognitive load.</strong> Per §3.1's motivation, any agent (or human)
-   working on pipeline behavior must load ~1,600 lines into context because
+   working on pipeline behavior must load ~2,300 lines into context because
    sub-concerns have no module boundary of their own — they exist only as
    private functions inside one file.</li>
 </ol>
@@ -2174,7 +2174,7 @@ follow-up plan and is out of scope for this RFC.</p>
 <hr />
 <h2 id="2-scan-findings">2. Scan Findings<a class="headerlink" href="#2-scan-findings" title="Permanent link">&para;</a></h2>
 <h3 id="21-structure">2.1 Structure<a class="headerlink" href="#21-structure" title="Permanent link">&para;</a></h3>
-<p><code>src/automedia/pipelines/runner.py</code> (1,617 lines) exposes a thin public
+<p><code>src/automedia/pipelines/runner.py</code> (2,309 lines) exposes a thin public
 surface over a large private implementation:</p>
 <p><strong>Public symbols (consumed outside the module):</strong></p>
 <table>
@@ -2188,18 +2188,18 @@ surface over a large private implementation:</p>
 <tbody>
 <tr>
 <td><code>run_full_pipeline</code></td>
-<td>line 727</td>
-<td>47 callers: <code>src/automedia/cli/commands/run.py:19</code>, <code>src/automedia/cron/runner.py:15</code>, <code>src/automedia/mcp/tools/pipeline.py:193,276</code>, <code>src/automedia/mcp/tools/strategy.py:200</code>; lazy re-export via <code>automedia/__init__.py:58</code> and <code>automedia/pipelines/__init__.py:34</code>; tests incl. <code>tests/test_runner.py</code>, <code>tests/test_e2e/</code></td>
+<td>line 838</td>
+<td>68 call sites across 34 files: <code>cli/commands/run.py</code>, <code>cron/runner.py</code>, <code>mcp/tools/pipeline.py</code>, <code>mcp/tools/strategy.py</code>; lazy re-export via <code>automedia/__init__.py:60</code> and <code>automedia/pipelines/__init__.py:34</code>; tests incl. <code>tests/test_runner*</code>, <code>tests/test_e2e/</code></td>
 </tr>
 <tr>
 <td><code>VALID_MODES</code></td>
-<td>line 207</td>
-<td><code>cli/commands/run.py:19,132</code>, <code>core/workflow.py:238–244</code> (lazy), <code>mcp/tools/cron_tools.py:15,89</code>, <code>mcp/tools/_shared.py:62</code></td>
+<td>line 184</td>
+<td><code>cli/commands/run.py:21</code>, <code>core/workflow.py:238–244</code> (lazy), <code>mcp/tools/cron_tools.py:15,89</code>, <code>mcp/tools/_shared.py:62</code></td>
 </tr>
 <tr>
 <td><code>validate_gate_modifiers</code></td>
-<td>line 383</td>
-<td><code>core/workflow.py:53</code> (doc reference)</td>
+<td>line 452</td>
+<td><code>core/workflow.py</code> (lazy, doc reference)</td>
 </tr>
 </tbody>
 </table>
@@ -2214,61 +2214,61 @@ surface over a large private implementation:</p>
 <tbody>
 <tr>
 <td>Mode derivation</td>
-<td><code>_derive_mode_from_platforms</code> (241), <code>_check_hyperframes</code> (262)</td>
+<td><code>_derive_mode_from_platforms</code> (218), <code>_check_hyperframes</code> (239)</td>
 </tr>
 <tr>
 <td>Gate selection &amp; composition</td>
-<td><code>_compose_gate_list</code> (466), <code>_collect_platform_gate_modifiers</code> (504), <code>_filter_gates_for_platform</code> (594), <code>_select_gates</code> (984), <code>_build_gates_from_names</code> (1535), <code>validate_gate_modifiers</code> (383)</td>
+<td><code>_compose_gate_list</code> (535), <code>_collect_platform_gate_modifiers</code> (603), <code>_filter_gates_for_platform</code> (693), <code>_select_gates</code> (1239), <code>_build_gates_from_names</code> (1939), <code>validate_gate_modifiers</code> (452)</td>
 </tr>
 <tr>
 <td>Brand / workflow resolution</td>
-<td><code>_resolve_brand_and_workflow</code> (906), <code>_merge_workflow_config</code> (666)</td>
+<td><code>_resolve_brand_and_workflow</code> (1157), <code>_merge_workflow_config</code> (765)</td>
 </tr>
 <tr>
 <td>Context &amp; engine execution</td>
-<td><code>_build_pipeline_context</code> (1067), <code>_setup_and_run_engine</code> (1207), <code>_run_pipeline</code> (835)</td>
+<td><code>_build_pipeline_context</code> (1365), <code>_setup_and_run_engine</code> (1597), <code>_run_pipeline</code> (983)</td>
 </tr>
 <tr>
 <td>Source material</td>
-<td><code>_resolve_source_material</code> (1385)</td>
+<td><code>_resolve_source_material</code> (1775)</td>
 </tr>
 <tr>
 <td>MD5 / integrity</td>
-<td><code>_verify_resume_integrity</code> (307), <code>_record_gate_md5s</code> (356)</td>
+<td><code>_verify_resume_integrity</code> (301), <code>_record_gate_md5s</code> (425)</td>
 </tr>
 <tr>
 <td>Asset collection</td>
-<td><code>_collect_assets</code> (284), <code>_collect_video_assets</code> (1585)</td>
+<td><code>_collect_assets</code> (278), <code>_collect_video_assets</code> (2033)</td>
 </tr>
 <tr>
 <td>Error handling</td>
-<td><code>_handle_pipeline_error</code> (1348), <code>_collect_gate_failure_overrides</code> (1476)</td>
+<td><code>_handle_pipeline_error</code> (1738), <code>_collect_gate_failure_overrides</code> (1872)</td>
 </tr>
 <tr>
 <td>Result formatting</td>
-<td><code>_finalize_pipeline</code> (1234), <code>_build_gates_log</code> (1567)</td>
+<td><code>_finalize_pipeline</code> (1643), <code>_build_gates_log</code> (1972)</td>
 </tr>
 </tbody>
 </table>
 <h3 id="22-coupling">2.2 Coupling<a class="headerlink" href="#22-coupling" title="Permanent link">&para;</a></h3>
 <p><strong>Outward (imports):</strong> only two top-level internal imports
 (<code>automedia.core.overrides.OverridesLoader</code> at line 19; structlog). All other
-dependencies are lazy, function-level imports — 13 sites at lines 286, 318,
-361, 415, 854, 912, 994, 1083, 1215, 1246, 1355, 1553, 1569 — pulling from
+dependencies are lazy, function-level lazy-import sites — 44
+of them (<code>python3 scripts/check_rfc_aging.py</code> reports the live count) — pulling from
 <code>pipelines.gate_engine</code> (incl. <code>AssetInfo</code>, <code>GateEngine</code>, <code>PipelineResult</code>,
 <code>GateLogEntry</code>), <code>gates.base._registry</code>, <code>hooks.md5_tracker</code>,
 <code>hooks.cost_tracker</code>, <code>hooks.pipeline_history</code>, <code>core.config_loader</code>,
 <code>core.llm_client</code>, <code>core.logging</code>, <code>core.project</code>, <code>core.workflow</code>,
 <code>manifests.brand_profile_schema</code>, <code>engines</code> (+<code>engines.errors</code>,
 <code>engines.base</code>), <code>hitl</code>, <code>pipelines.language_config</code>, <code>gates._context</code>, and
-<code>automedia.gates</code> (side-effect import for registration, line 994).</p>
+<code>automedia.gates</code> (side-effect import for gate registration).</p>
 <p><strong>Inward (dependents):</strong> CLI (<code>cli/commands/run.py</code>), cron
 (<code>cron/runner.py</code>), MCP (<code>mcp/tools/pipeline.py</code>, <code>mcp/tools/strategy.py</code>,
 <code>mcp/tools/cron_tools.py</code>, <code>mcp/tools/_shared.py</code>), <code>core/workflow.py</code>
 (lazy), and the package <code>__init__</code> files, which re-export
 <code>run_full_pipeline</code> through a <strong>lazy <code>__getattr__</code> import map</strong> —
-<code>automedia/pipelines/__init__.py:34</code> and <code>automedia/__init__.py:58</code>. The
-lazy re-export plus the 13 in-function imports are direct evidence that
+<code>automedia/pipelines/__init__.py:34</code> and <code>automedia/__init__.py:60</code>. The
+lazy re-export plus the 44 in-function imports are direct evidence that
 eager import of <code>runner.py</code> would create import cycles.</p>
 <h3 id="23-shallow-module-candidates-god-object-smell">2.3 Shallow-module candidates &amp; god-object smell<a class="headerlink" href="#23-shallow-module-candidates-god-object-smell" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2279,12 +2279,11 @@ eager import of <code>runner.py</code> would create import cycles.</p>
   <strong>not</strong> to extract tiny pure functions "for testability" (the documented
   anti-pattern), but to give whole sub-processes real module boundaries.</li>
 <li><strong>Shallow-module risk elsewhere (noted, not chosen):</strong> <code>adapters/registry.py</code>
-  (89 lines) and <code>gates/base.py</code> (171 lines) are small but their interfaces
+  (90 lines) and <code>gates/base.py</code> (182 lines) are small but their interfaces
   match their size — they are legitimately shallow and fine as-is.</li>
 <li><strong>Already-observed friction markers:</strong> <code>decision_mode</code> and
-  <code>force_provenance</code> parameters are deprecated-but-retained (lines 766–769,
-  782–784 in the <code>run_full_pipeline</code> docstring; <code>_run_pipeline</code> emits a
-  <code>DeprecationWarning</code> at lines 863–869) — signature creep that a
+  <code>force_provenance</code> parameters are deprecated-but-retained (<code>run_full_pipeline</code>
+  docstring; <code>_run_pipeline</code> emits a <code>DeprecationWarning</code>) — signature creep that a
   config-object interface would absorb.</li>
 </ul>
 <hr />
@@ -2303,16 +2302,16 @@ eager import of <code>runner.py</code> would create import cycles.</p>
 <code>runner.py</code> shrinks to a thin coordinator (~400 lines) whose public signature
 stays byte-identical.</p>
 <ul>
-<li><strong>Tradeoffs:</strong> (+) Zero API break — 47 callers, lazy <code>__init__</code> maps, and
+<li><strong>Tradeoffs:</strong> (+) Zero API break — 68 call sites, lazy <code>__init__</code> maps, and
   tests untouched; (+) directly reduces the §3.1 cognitive-load cost, the
   primary goal; (+) each sub-module becomes independently testable at its own
   level (per §3.1: integration-test the sub-process, not the helper);
-  (−) does not address signature sprawl — <code>run_full_pipeline</code> still takes 17
+  (−) does not address signature sprawl — <code>run_full_pipeline</code> still takes 23
   params; (−) module boundaries follow existing function clusters rather than
   a redesigned flow.</li>
 </ul>
 <h3 id="proposal-b-single-pipelinerunspec-config-object-data-driven-interface">Proposal B — Single <code>PipelineRunSpec</code> config object (data-driven interface)<a class="headerlink" href="#proposal-b-single-pipelinerunspec-config-object-data-driven-interface" title="Permanent link">&para;</a></h3>
-<p>Replace the 17-parameter signature with one dataclass, e.g.
+<p>Replace the 23-parameter signature with one dataclass, e.g.
 <code>PipelineRunSpec</code> (topic, brand, mode, workflow, hooks, platforms,
 resume_from, director, source_path, source_url, …), and keep
 <code>run_full_pipeline(spec: PipelineRunSpec)</code> (plus a thin
@@ -2327,7 +2326,7 @@ sub-concerns are reorganized into pure functions of the spec: a
   MCP tools can validate it against a schema instead of hand-plumbing 17
   kwargs; (+) call sites read as data, not as a positional minefield;
   (−) breaking change to the SDK surface unless a compat shim is kept
-  indefinitely; (−) does not by itself reduce the 1,617-line file — the
+  indefinitely; (−) does not by itself reduce the 2,309-line file — the
   sub-process extraction of Proposal A is still needed; (−) risks becoming a
   "kitchen-sink DTO" if sub-concerns are not given real boundaries.</li>
 </ul>
@@ -2345,7 +2344,7 @@ one function. New pipeline modes become new stage compositions.</p>
   (director mode, workflow mode, and new modes become configuration, not
   branching); (+) enables behavior-level integration tests per stage (§3.1's
   preferred testing strategy); (−) largest diff and highest regression risk
-  for the 47 callers and the lazy-import cycle web — the import graph must be
+  for the 68 call sites and the lazy-import cycle web — the import graph must be
   re-wired first; (−) overkill if AutoMedia never gains new pipeline modes;
   (−) abstraction layer (stage protocol) adds indirection that §3.1 warns
   against when it merely re-shapes, rather than reduces, the interface.</li>
@@ -2357,7 +2356,7 @@ second.</strong></p>
 <p>Rationale:</p>
 <ol>
 <li><strong>Friction priority.</strong> The dominant, measurable friction is
-   cognitive-load: one 1,617-line file that every agent must fully load. §3.1
+   cognitive-load: one 2,309-line file that every agent must fully load. §3.1
    ranks this above interface aesthetics. Proposal A removes it with
    zero behavioral risk.</li>
 <li><strong>§3.1 anti-pattern compliance.</strong> A extracts whole sub-processes into
@@ -2365,12 +2364,12 @@ second.</strong></p>
    and explicitly avoids extracting tiny pure functions "for testability"
    (the documented trap). Test strategy stays integration-level per
    sub-process.</li>
-<li><strong>Cycle-web safety.</strong> A keeps all public imports identical, so the 13
+<li><strong>Cycle-web safety.</strong> A keeps all public imports identical, so the 44
    lazy-import sites and the <code>__init__</code> lazy maps remain valid; the import
    graph can be de-cycled incrementally afterwards.</li>
 <li><strong>B as a compatible follow-up.</strong> Once sub-concerns have boundaries,
-   collapsing the 17-parameter signature into a <code>PipelineRunSpec</code> is a
-   localized, shim-guarded change with an obvious migration path for the 47
+   collapsing the 23-parameter signature into a <code>PipelineRunSpec</code> is a
+   localized, shim-guarded change with an obvious migration path for the 68
    callers. C remains a viable future direction if new pipeline modes make
    stage composition valuable, but its cost is not justified today.</li>
 </ol>
