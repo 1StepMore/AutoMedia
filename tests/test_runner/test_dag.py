@@ -110,6 +110,45 @@ class TestTopologicalOrderEquivalence:
                 assert ordered.index("CW") < ordered.index("G6"), mode
 
 
+class TestEdgesMustBeSatisfiable:
+    """A DAG edge must name a predecessor that can actually run first.
+
+    Under present-parents semantics a parent outside the mode subset is
+    silently ignored, so an edge whose parent is in NO preset is not a soft
+    constraint — it is a claim that can never be honoured.  Two such edges
+    existed (G6<-G5 and P1<-L4) and both were invisible because the DAG was
+    only ever checked against inputs that happened to be pre-sorted.
+    """
+
+    def test_no_preset_gate_depends_on_a_gate_in_no_preset(self) -> None:
+        """The specific defect: a preset gate claiming an unpreset predecessor."""
+        preset_gates = set().union(*_MODE_MAP.values())
+        offenders = [
+            f"{gate} <- {parent}"
+            for gate, node in AUTO_GATE_DAG.items()
+            if gate in preset_gates
+            for parent in node.depends_on
+            if parent not in preset_gates
+        ]
+
+        assert offenders == [], (
+            "these edges name a predecessor that no preset ever runs: " + ", ".join(offenders)
+        )
+
+    def test_unpreset_gates_may_still_chain_among_themselves(self) -> None:
+        """G4/G5 and L1-L4 keep their order for the command paths that run them."""
+        for gate, parent in (("G5", "G4"), ("L2", "L1"), ("L3", "L2"), ("L4", "L3")):
+            assert AUTO_GATE_DAG[gate].depends_on == (parent,)
+
+    def test_every_edges_parent_also_appears_earlier_in_declaration_order(self) -> None:
+        """Declaration order is the tie-break, so an edge must respect it."""
+        order = list(AUTO_GATE_DAG)
+        position = {name: index for index, name in enumerate(order)}
+        for gate, node in AUTO_GATE_DAG.items():
+            for parent in node.depends_on:
+                assert position[parent] < position[gate], f"{parent} must be declared before {gate}"
+
+
 class TestDownstreamReverseTopologicalClosure:
     """``downstream`` returns the reverse-topological closure of a gate.
 
@@ -176,9 +215,15 @@ class TestDownstreamReverseTopologicalClosure:
             "P4",
         ]
 
-    def test_downstream_l4_covers_repurpose_only(self) -> None:
-        """L4 is the last lifecycle gate; only the repurpose chain follows."""
-        assert downstream(AUTO_GATE_DAG, "L4") == ["P1", "P2", "P3", "P4"]
+    def test_downstream_l4_is_empty(self) -> None:
+        """L4 is the last lifecycle gate and nothing in a preset follows it.
+
+        P1 used to depend on L4, but L4 runs only from the standalone
+        ``localize`` command while P1 runs inside ``repurpose`` — so the edge
+        declared a gate that can never precede P1.  P1 now depends on H0, the
+        last gate both flows actually share.
+        """
+        assert downstream(AUTO_GATE_DAG, "L4") == []
 
     def test_downstream_g0_no_video_gates(self) -> None:
         """G0's subtree is copy→H0→lifecycle→repurpose; never video.
@@ -283,8 +328,16 @@ class TestDependsOnEdges:
     def test_cw_depends_on_pre_gate(self) -> None:
         assert AUTO_GATE_DAG["CW"].depends_on == ("pre-gate",)
 
-    def test_g6_depends_on_g5(self) -> None:
-        assert AUTO_GATE_DAG["G6"].depends_on == ("G5",)
+    def test_g6_depends_on_the_copy_track_not_on_unpreset_g5(self) -> None:
+        """G6 depends on G3, not G5.
+
+        G5 (html_hard) is in no preset, so "G6 depends on G5" declared an
+        ordering that can never happen: under present-parents semantics the
+        edge was silently dropped and G6 became ready immediately.  G3 is the
+        last copy gate every copy-bearing mode actually runs, so the edge now
+        encodes a real predecessor.
+        """
+        assert AUTO_GATE_DAG["G6"].depends_on == ("G3",)
 
     def test_v0_depends_on_cw_and_is_parallel(self) -> None:
         """V0 runs async-parallel off CW, independent of the copy track."""
