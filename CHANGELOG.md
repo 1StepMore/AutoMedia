@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.4...automedia-v1.10.5) (2026-10-24)
+
+
+### Bug Fixes
+
+* **core:** give the project layout one source of truth ([#312](https://github.com/1StepMore/AutoMedia/issues/312)) ([26568da](https://github.com/1StepMore/AutoMedia/commit/26568da3d03635d8f38d6fa248c42c6d0b2c9af3)), closes [#284](https://github.com/1StepMore/AutoMedia/issues/284)
+
 ## [1.10.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.3...automedia-v1.10.4) (2026-10-23)
 
 
