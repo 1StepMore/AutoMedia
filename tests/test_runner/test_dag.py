@@ -28,7 +28,14 @@ import sys
 
 import pytest
 
-from automedia.pipelines.dag import AUTO_GATE_DAG, GateNode, downstream, topological_order
+from automedia.pipelines import dag
+from automedia.pipelines.dag import (
+    AUTO_GATE_DAG,
+    GATE_ORDER,
+    GateNode,
+    downstream,
+    topological_order,
+)
 from automedia.pipelines.runner import _MODE_MAP
 
 # Canonical track assignment (per the graph-engineering-rollout spec).
@@ -108,6 +115,104 @@ class TestTopologicalOrderEquivalence:
                 shuffler.shuffle(shuffled)
                 ordered = topological_order(AUTO_GATE_DAG, shuffled)
                 assert ordered.index("CW") < ordered.index("G6"), mode
+
+
+class TestDeclarationOrderIsSemantic:
+    """``AUTO_GATE_DAG`` insertion order IS the tie-break, so it is pinned.
+
+    ``topological_order`` resolves ready gates in declaration order.  Without a
+    pin, reordering the dict would silently change which gate runs first — the
+    exact class of change that produced the G6-before-CW bug.  These tests make
+    the order data instead of an accident of source layout.
+    """
+
+    EXPECTED_ORDER: tuple[str, ...] = (
+        "pre-gate",
+        "CW",
+        "G0",
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "G5",
+        "G6",
+        "V0",
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6",
+        "V7",
+        "H0",
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+    )
+
+    def test_gate_order_matches_the_pinned_sequence(self) -> None:
+        """The literal sequence.  Editing the dict without editing this fails."""
+        assert GATE_ORDER == self.EXPECTED_ORDER
+
+    def test_gate_order_covers_the_dag_exactly(self) -> None:
+        assert set(GATE_ORDER) == set(AUTO_GATE_DAG)
+        assert len(GATE_ORDER) == len(AUTO_GATE_DAG)
+
+    def test_track_blocks_appear_in_the_documented_order(self) -> None:
+        """pre-gate → copy → video → H0 → lifecycle → repurpose."""
+        index = {name: i for i, name in enumerate(GATE_ORDER)}
+        blocks = [
+            ("pre-gate",),
+            ("CW", "G0", "G1", "G2", "G3", "G4", "G5", "G6"),
+            ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7"),
+            ("H0",),
+            ("L1", "L2", "L3", "L4"),
+            ("P1", "P2", "P3", "P4"),
+        ]
+        flattened = [gate for block in blocks for gate in block]
+        assert flattened == list(GATE_ORDER)
+        assert [index[g] for g in flattened] == sorted(index[g] for g in flattened)
+
+    def test_import_time_guard_accepts_the_real_dag(self) -> None:
+        """The guard runs at import; importing this module already proved it."""
+        dag._validate_declaration_order()  # must not raise
+
+    def test_import_time_guard_rejects_a_forward_edge(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A dependent declared BEFORE its parent must be rejected.
+
+        Simulated by patching the order so CW (which depends on pre-gate) comes
+        first — the exact shape a careless reorder would produce.
+        """
+        # Move pre-gate to the END: same key set (so the drift guard passes),
+        # but CW now sits before the parent it depends on.
+        rotated = (*(name for name in GATE_ORDER if name != "pre-gate"), "pre-gate")
+        monkeypatch.setattr(dag, "GATE_ORDER", rotated)
+
+        with pytest.raises(RuntimeError, match="declared LATER"):
+            dag._validate_declaration_order()
+
+    def test_import_time_guard_rejects_drift(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(dag, "GATE_ORDER", GATE_ORDER[:-1])
+
+        with pytest.raises(RuntimeError, match="drifted"):
+            dag._validate_declaration_order()
+
+    def test_unknown_parent_is_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        broken = dict(AUTO_GATE_DAG)
+        broken["CW"] = GateNode(
+            name="CW", track="copy", depends_on=("does-not-exist",), failure_mode="stop"
+        )
+        monkeypatch.setattr(dag, "AUTO_GATE_DAG", broken)
+
+        with pytest.raises(RuntimeError, match="unknown gate"):
+            dag._validate_declaration_order()
 
 
 class TestEdgesMustBeSatisfiable:
