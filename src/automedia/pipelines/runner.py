@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
+from automedia.core.layout import AUDIO, DRAFTS, VIDEO
 from automedia.core.overrides import OverridesLoader
 from automedia.core.platforms import platform_categories
 from automedia.pipelines.review_prompt import start_interactive_review_prompt
@@ -1332,7 +1333,7 @@ def clear_stale_hitl_state(project_dir: str) -> None:
 
 def _latest_draft(project_dir: str | Path) -> Path | None:
     """Return the newest ``01_content/drafts/*.md`` file, if any."""
-    drafts = Path(project_dir) / "01_content" / "drafts"
+    drafts = Path(project_dir) / DRAFTS
     if not drafts.is_dir():
         return None
     candidates = [path for path in drafts.glob("*.md") if path.is_file()]
@@ -2188,7 +2189,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     from automedia.pipelines.audio_pipeline import AudioPipeline
 
     audio = AudioPipeline(config=gate_context.get("config"))
-    audio_dir = os.path.join(project_dir, "04_audio")
+    audio_dir = os.path.join(project_dir, AUDIO)
     audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
     transcription = audio.transcribe_audio(audio_path)
     transcript_text = str(transcription.get("text", "") or "").strip()
@@ -2240,9 +2241,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             video_engine = cast(
                 BaseVideoEngine, resolve_engine("video", gate_context.get("config"))
             )
-            video_path = video_engine.render(
-                assets, os.path.join(project_dir, "03_video", "output.mp4")
-            )
+            video_path = video_engine.render(assets, os.path.join(project_dir, VIDEO, "output.mp4"))
             gate_context["video_path"] = video_path
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)

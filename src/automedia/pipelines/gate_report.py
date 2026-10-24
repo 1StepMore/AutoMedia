@@ -37,6 +37,7 @@ from typing import Any, NamedTuple, TypedDict, cast
 
 from structlog import get_logger
 
+from automedia.core.layout import GATE_REPORT
 from automedia.gates.failure_modes import FAILURE_MODES
 from automedia.pipelines.gate_engine import GateLogEntry
 
@@ -45,7 +46,7 @@ log = get_logger(__name__)
 __all__ = ["GateReportArtifacts", "render_gate_report", "write_gate_report"]
 
 #: Report directory relative to the project root (layout: core/project.py).
-REPORT_SUBDIR = Path("05_review") / "gate-report"
+REPORT_SUBDIR = Path(GATE_REPORT)
 #: Report filename stem (timestamp is appended at write time).
 REPORT_STEM = "gate-report"
 

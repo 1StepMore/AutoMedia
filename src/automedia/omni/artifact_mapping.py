@@ -8,8 +8,13 @@ pipeline stages — OPP (extraction), OL (localisation), and ORF
 Convention
 ----------
 - **research_data/**: OPP extraction outputs, organised by document name.
-- **05_publish/{lang}/**: OL translation output.
-- **05_publish/{lang}/deliverables/**: ORF formatted deliverables.
+- **06_publish/{lang}/**: OL translation output.
+- **06_publish/{lang}/deliverables/**: ORF formatted deliverables.
+
+The path names come from :mod:`automedia.core.layout` — the single source of
+truth for the project layout.  ``06_publish`` absorbed the former
+``05_publish`` (issue #284): there is exactly one publish directory, and
+:func:`automedia.core.layout.resolve_path` still finds an old project's files.
 """
 
 from __future__ import annotations
@@ -17,6 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from structlog import get_logger
+
+from automedia.core.layout import RESEARCH_DATA, publish_dir
 
 log = get_logger(__name__)
 
@@ -61,7 +68,7 @@ def opp_output_path(
         ``skeleton`` mapped to absolute :class:`Path` objects.
     """
     root = Path(project_dir).resolve()
-    base = root / "research_data" / name
+    base = root / RESEARCH_DATA / name
 
     if mkdir:
         base.mkdir(parents=True, exist_ok=True)
@@ -87,7 +94,7 @@ def ol_output_path(
 ) -> Path:
     """Return the OL output directory for a given *lang*.
 
-    The convention is ``05_publish/{lang}/``.
+    The convention is ``06_publish/{lang}/`` (formerly ``05_publish``).
 
     Parameters
     ----------
@@ -105,7 +112,7 @@ def ol_output_path(
         Absolute :class:`Path` to the publish directory for *lang*.
     """
     root = Path(project_dir).resolve()
-    path = root / "05_publish" / lang
+    path = publish_dir(root, lang)
 
     if mkdir:
         path.mkdir(parents=True, exist_ok=True)
@@ -126,7 +133,7 @@ def orf_output_path(
 ) -> Path:
     """Return the ORF deliverables directory for a given *lang*.
 
-    The convention is ``05_publish/{lang}/deliverables/``.
+    The convention is ``06_publish/{lang}/deliverables/`` (formerly ``05_publish``).
 
     Parameters
     ----------
@@ -144,7 +151,7 @@ def orf_output_path(
         Absolute :class:`Path` to the deliverables directory for *lang*.
     """
     root = Path(project_dir).resolve()
-    path = root / "05_publish" / lang / "deliverables"
+    path = publish_dir(root, lang, "deliverables")
 
     if mkdir:
         path.mkdir(parents=True, exist_ok=True)

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from automedia.core.asset_pack import pull_video_assets
 from automedia.core.env_overlay import env_lookup
+from automedia.core.layout import PROJECT_SUBDIRS
 
 _log = logging.getLogger(__name__)
 
@@ -278,17 +279,11 @@ class Project:
         dirname = f"{today}_{slug}"
         project_dir = os.path.join(base_dir, dirname)
 
-        # Create standard directory structure
+        # Create standard directory structure.  The list lives in
+        # ``core.layout`` — one source of truth shared with every writer, so a
+        # path cannot be written to without also being created (issue #284).
         root = Path(project_dir)
-        subdirs = [
-            "01_content/drafts",
-            "02_images/cover",
-            "03_video",
-            "04_subtitle",
-            "05_review",
-            "06_publish",
-        ]
-        for sub in subdirs:
+        for sub in PROJECT_SUBDIRS:
             (root / sub).mkdir(parents=True, exist_ok=True)
 
         try:

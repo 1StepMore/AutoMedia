@@ -22,6 +22,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import REPURPOSE
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
@@ -56,7 +57,7 @@ _EXPECTED_MAP: dict[str, str] = {
     "scene_markers": "Content contains at least one [TIMESTAMP] or [SCENE] marker",
 }
 
-_OUTPUT_SUBDIR: str = os.path.join("04_repurpose", "bilibili")
+_OUTPUT_SUBDIR: str = os.path.join(REPURPOSE, "bilibili")
 """Relative path under ``project_dir`` for P4 output."""
 
 

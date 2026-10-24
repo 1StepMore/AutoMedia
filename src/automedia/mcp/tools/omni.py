@@ -6,6 +6,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import DRAFTS
 from automedia.core.llm_client import LLMError
 from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools._shared import (
@@ -150,7 +151,7 @@ def localize_output(
     """Translate all project drafts into multiple target languages.
 
     Reads markdown files from ``01_content/drafts/``, translates each into
-    every target language via OLAdapter, writes to ``05_publish/{lang}/``,
+    every target language via OLAdapter, writes to ``06_publish/{lang}/``,
     and returns a mapping of language → output file paths plus the recorded
     L4 translation-quality verdicts.
 
@@ -188,7 +189,7 @@ def localize_output(
 
         effective_source_lang = resolve_source_lang(source_lang)
         proj = Path(project_dir)
-        drafts_dir = proj / "01_content" / "drafts"
+        drafts_dir = proj / DRAFTS
 
         results: dict[str, list[str]] = {}
         warnings: list[str] = []
@@ -276,8 +277,9 @@ def localize_output(
                     )
 
                 try:
-                    publish_dir = proj / "05_publish" / lang
-                    publish_dir.mkdir(parents=True, exist_ok=True)
+                    from automedia.omni.artifact_mapping import ol_output_path
+
+                    publish_dir = ol_output_path(proj, lang, mkdir=True)
                     output_file = publish_dir / md_file.name
                     output_file.write_text(trans_result.translated_md, encoding="utf-8")
                 except OSError as exc:
