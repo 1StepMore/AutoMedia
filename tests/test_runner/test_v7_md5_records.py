@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from automedia.hooks.md5_tracker import compute_md5
+from automedia.core.md5_tracker import compute_md5
 from automedia.pipelines.runner import _expected_md5_records
 
 

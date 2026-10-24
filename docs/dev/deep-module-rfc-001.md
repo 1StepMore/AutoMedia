@@ -87,7 +87,7 @@ surface over a large private implementation:
 dependencies are lazy, function-level lazy-import sites — 44
 of them (`python3 scripts/check_rfc_aging.py` reports the live count) — pulling from
 `pipelines.gate_engine` (incl. `AssetInfo`, `GateEngine`, `PipelineResult`,
-`GateLogEntry`), `gates.base._registry`, `hooks.md5_tracker`,
+`GateLogEntry`), `gates.base._registry`, `core.md5_tracker`,
 `hooks.cost_tracker`, `hooks.pipeline_history`, `core.config_loader`,
 `core.llm_client`, `core.logging`, `core.project`, `core.workflow`,
 `manifests.brand_profile_schema`, `engines` (+`engines.errors`,

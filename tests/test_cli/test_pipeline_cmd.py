@@ -28,7 +28,7 @@ import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
-from automedia.hooks.md5_tracker import record_md5
+from automedia.core.md5_tracker import record_md5
 from automedia.hooks.pipeline_history import _db_path, _ensure_schema
 from automedia.pipelines.runner import _MODE_MAP
 

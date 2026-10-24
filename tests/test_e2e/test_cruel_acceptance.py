@@ -82,7 +82,7 @@ def test_cruel_c_md5_detects_tampered_asset_during_resume(tmp_path: str) -> None
     directory (no real LLM calls), then runs the runner's
     ``_verify_resume_integrity`` to confirm the full integration path.
     """
-    from automedia.hooks.md5_tracker import record_md5
+    from automedia.core.md5_tracker import record_md5
     from automedia.pipelines.runner import _verify_resume_integrity
 
     proj = Path(str(tmp_path))

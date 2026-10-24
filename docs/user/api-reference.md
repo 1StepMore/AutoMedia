@@ -157,7 +157,7 @@ class MyHook(GateObserver):
 Built-in MD5 tracking Hook:
 
 ```python
-from automedia.hooks.md5_tracker import record_md5, verify_md5, get_pipeline_md5
+from automedia.core.md5_tracker import record_md5, verify_md5, get_pipeline_md5
 
 # Record file MD5
 record_md5(project_dir, "G0", "/path/to/output.txt")

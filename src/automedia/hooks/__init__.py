@@ -14,7 +14,6 @@ from automedia.hooks.protocol import GateHook
 __all__ = [
     "CostTracker",
     "GateHook",
-    "MetricsHook",
     "PipelineHistoryHook",
     "get_pipeline_md5",
     "record_md5",
@@ -24,11 +23,10 @@ __all__ = [
 
 _LAZY_MAP: dict[str, tuple[str, str]] = {
     "CostTracker": ("automedia.hooks.cost_tracker", "CostTracker"),
-    "MetricsHook": ("automedia.hooks.metrics", "MetricsHook"),
     "PipelineHistoryHook": ("automedia.hooks.pipeline_history", "PipelineHistoryHook"),
-    "get_pipeline_md5": ("automedia.hooks.md5_tracker", "get_pipeline_md5"),
-    "record_md5": ("automedia.hooks.md5_tracker", "record_md5"),
-    "verify_md5": ("automedia.hooks.md5_tracker", "verify_md5"),
+    "get_pipeline_md5": ("automedia.core.md5_tracker", "get_pipeline_md5"),
+    "record_md5": ("automedia.core.md5_tracker", "record_md5"),
+    "verify_md5": ("automedia.core.md5_tracker", "verify_md5"),
 }
 
 

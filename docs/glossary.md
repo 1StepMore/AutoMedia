@@ -132,7 +132,7 @@ A readonly observer protocol. Hooks receive gate context through `before_gate`, 
 
 Every gate writes product checksums to `pipeline_md5.json` in the project directory. This gives integrity verification for pipeline artifacts.
 
-**See:** `automedia/hooks/md5_tracker.py`
+**See:** `automedia/core/md5_tracker.py`
 
 ## Omni Triad (OPP / OL / ORF)
 

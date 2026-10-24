@@ -182,7 +182,7 @@ def _verify_resume_integrity(
     the resume point.  Mismatches are logged as warnings — the pipeline
     will regenerate those outputs anyway.
     """
-    from automedia.hooks.md5_tracker import get_pipeline_md5, verify_md5
+    from automedia.core.md5_tracker import get_pipeline_md5, verify_md5
 
     try:
         resume_idx = gate_names_in_mode.index(resume_from)
@@ -300,7 +300,7 @@ def _record_gate_md5s(
     gate_results: list[dict[str, Any]],
 ) -> None:
     """Record MD5 for each gate result that includes ``output_path``."""
-    from automedia.hooks.md5_tracker import record_md5
+    from automedia.core.md5_tracker import record_md5
 
     for result in gate_results:
         output_path = result.get("output_path")
@@ -1824,8 +1824,7 @@ def _write_run_gate_report(
 
     Rendered LIVE (``gate_results`` passed) so rows carry per-check detail
     and H0 ``_hitl_approved`` semantics.  Write errors are logged and
-    silently skipped — a report-write failure must never fail the pipeline
-    (same discipline as the MetricsHook write).
+    silently skipped — a report-write failure must never fail the pipeline.
     """
     from automedia.pipelines.gate_report import render_gate_report, write_gate_report
 
@@ -1972,7 +1971,7 @@ def _produce_cover_image(gate_context: GateContext | dict[str, Any]) -> None:
 
 def _expected_md5_records(paths: list[str]) -> dict[str, dict[str, str]]:
     """Record only the expected digest; V7 computes the actual one at check time."""
-    from automedia.hooks.md5_tracker import compute_md5
+    from automedia.core.md5_tracker import compute_md5
 
     return {path: {"expected": compute_md5(path)} for path in paths}
 

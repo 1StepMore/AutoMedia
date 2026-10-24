@@ -557,8 +557,7 @@ class TestRunFullPipeline:
         mock_config: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """A report-write error is swallowed (logged + skipped), mirroring the
-        MetricsHook write-error discipline."""
+        """A report-write error is swallowed (logged + skipped)."""
         from unittest.mock import patch as _patch
 
         mock_proj = MagicMock()

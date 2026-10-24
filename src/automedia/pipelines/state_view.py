@@ -4,7 +4,7 @@ Aggregates the current state of every gate in a pipeline mode from two
 existing state sources — ``history.db`` (written by
 :class:`~automedia.hooks.pipeline_history.PipelineHistoryHook`) and
 ``pipeline_md5.json`` (written by
-:func:`~automedia.hooks.md5_tracker.record_md5`) — plus the static
+:func:`~automedia.core.md5_tracker.record_md5`) — plus the static
 ``AUTO_GATE_DAG`` for track metadata.
 
 This module is READ-ONLY (Metis G3/G8): it performs NO new state writes.
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from automedia.hooks.md5_tracker import get_pipeline_md5
+from automedia.core.md5_tracker import get_pipeline_md5
 from automedia.hooks.pipeline_history import _read_history
 from automedia.pipelines.dag import AUTO_GATE_DAG
 from automedia.pipelines.runner import _MODE_MAP

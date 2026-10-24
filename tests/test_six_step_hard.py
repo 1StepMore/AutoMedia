@@ -6,9 +6,9 @@ import os
 import tempfile
 from typing import Any
 
+from automedia.core.md5_tracker import compute_md5
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.six_step_hard import _CHECK_NAMES, V7SixStepHard
-from automedia.hooks.md5_tracker import compute_md5
 
 
 def _make_context(

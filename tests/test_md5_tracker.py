@@ -1,4 +1,4 @@
-"""Tests for automedia.hooks.md5_tracker — pipeline_md5.json read/write/verify."""
+"""Tests for automedia.core.md5_tracker — pipeline_md5.json read/write/verify."""
 
 import hashlib
 import json
@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from automedia.hooks.md5_tracker import (
+from automedia.core.md5_tracker import (
     PIPELINE_MD5_FILENAME,
     get_pipeline_md5,
     record_md5,
