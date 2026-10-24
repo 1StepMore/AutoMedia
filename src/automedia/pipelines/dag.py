@@ -70,7 +70,7 @@ AUTO_GATE_DAG: dict[str, GateNode] = {
     "G3": GateNode(name="G3", track="copy", depends_on=("G2",), failure_mode="stop"),
     "G4": GateNode(name="G4", track="copy", depends_on=("G3",), failure_mode="stop"),
     "G5": GateNode(name="G5", track="copy", depends_on=("G4",), failure_mode="stop"),
-    "G6": GateNode(name="G6", track="copy", depends_on=("G5",), failure_mode="retry"),
+    "G6": GateNode(name="G6", track="copy", depends_on=("G3",), failure_mode="retry"),
     "V0": GateNode(
         name="V0",
         track="video",
@@ -95,7 +95,7 @@ AUTO_GATE_DAG: dict[str, GateNode] = {
     "L2": GateNode(name="L2", track="lifecycle", depends_on=("L1",), failure_mode="stop"),
     "L3": GateNode(name="L3", track="lifecycle", depends_on=("L2",), failure_mode="stop"),
     "L4": GateNode(name="L4", track="lifecycle", depends_on=("L3",), failure_mode="stop"),
-    "P1": GateNode(name="P1", track="qa", depends_on=("L4",), failure_mode="retry"),
+    "P1": GateNode(name="P1", track="qa", depends_on=("H0",), failure_mode="retry"),
     "P2": GateNode(name="P2", track="qa", depends_on=("P1",), failure_mode="retry"),
     "P3": GateNode(name="P3", track="qa", depends_on=("P2",), failure_mode="retry"),
     "P4": GateNode(name="P4", track="qa", depends_on=("P3",), failure_mode="retry"),
