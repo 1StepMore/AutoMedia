@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.11.0...automedia-v1.11.1) (2026-10-24)
+
+
+### Dependencies
+
+* **deps:** bump filelock from 3.29.7 to 4.2.1 ([#307](https://github.com/1StepMore/AutoMedia/issues/307)) ([e6abaaa](https://github.com/1StepMore/AutoMedia/commit/e6abaaab0e3a844e82fae010c360b49b15943eca))
+
 ## [1.11.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.5...automedia-v1.11.0) (2026-10-24)
 
 
