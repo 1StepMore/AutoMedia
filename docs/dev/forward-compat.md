@@ -133,7 +133,7 @@ hard error is unparseable JSON (malformed file).
 **Purpose**: Per-gate file integrity checksums. Written incrementally as each
 gate completes. Two subsystems write to this file:
 
-1. **Gate MD5 tracker** (`automedia/hooks/md5_tracker.py`): writes per-gate
+1. **Gate MD5 tracker** (`automedia/core/md5_tracker.py`): writes per-gate
    checksums under `gates.<gate_name>`.
 2. **Omni MD5 tracker** (`automedia/omni/md5_integration.py`): writes Omni
    pipeline checksums under `omni_*` sections.
@@ -344,7 +344,7 @@ Agent-facing behavior when opening an old project:
   MD5 checksum tracking and verification.
 - [F39: Run Isolation](founder-expectations.md#f39--run-isolation) -
   Shared-nothing project isolation model.
-- `src/automedia/hooks/md5_tracker.py` - Gate MD5 tracker implementation.
+- `src/automedia/core/md5_tracker.py` - Gate MD5 tracker implementation.
 - `src/automedia/omni/md5_integration.py` - Omni MD5 tracker implementation.
 - `src/automedia/core/project.py` - Project creation and `00_project_info.json`
   writer.

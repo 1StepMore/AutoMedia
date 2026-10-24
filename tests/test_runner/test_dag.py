@@ -22,6 +22,7 @@ below.
 
 from __future__ import annotations
 
+import random
 import subprocess
 import sys
 
@@ -40,8 +41,14 @@ _QA_TRACK = {"pre-gate", "H0", "P1", "P2", "P3", "P4"}
 class TestTopologicalOrderEquivalence:
     """P0 load-bearing invariant: the DAG reproduces the linear lists.
 
-    For every mode in ``_MODE_MAP``, topologically ordering the mode's gate
-    subset must yield the exact same list the runner uses today — byte-exact.
+    The old version of this test passed the mode's own list as input and
+    asserted the same list came back — true by construction, because the
+    implementation tie-broke on input order.  It proved nothing: a shuffled
+    input could legally emit G6 before CW, and only the sorted input ever
+    produced the sorted answer.
+
+    These tests pin the property that actually matters: the output depends on
+    the GRAPH, not on how the caller ordered its argument.
     """
 
     @pytest.mark.parametrize("mode", list(_MODE_MAP))
@@ -51,6 +58,56 @@ class TestTopologicalOrderEquivalence:
         ordered = topological_order(AUTO_GATE_DAG, expected)
         assert isinstance(ordered, list)
         assert ordered == expected
+
+    @pytest.mark.parametrize("mode", list(_MODE_MAP))
+    def test_shuffled_input_still_yields_the_canonical_order(self, mode: str) -> None:
+        """Any permutation of a mode's gates must sort back to the plan.
+
+        Without this, the equivalence above is an identity check on the input.
+        """
+        expected = _MODE_MAP[mode]
+        shuffler = random.Random(f"dag-{mode}")
+        for _ in range(50):
+            shuffled = list(expected)
+            shuffler.shuffle(shuffled)
+            assert topological_order(AUTO_GATE_DAG, shuffled) == expected
+
+    @pytest.mark.parametrize("mode", list(_MODE_MAP))
+    def test_output_is_a_valid_topological_order(self, mode: str) -> None:
+        """Vertices precede nothing that depends on them.
+
+        Checked on a SHUFFLED input so the assertion cannot pass just by
+        echoing the plan back.
+        """
+        subset = set(_MODE_MAP[mode])
+        shuffler = random.Random(f"valid-{mode}")
+        shuffled = list(_MODE_MAP[mode])
+        shuffler.shuffle(shuffled)
+        ordered = topological_order(AUTO_GATE_DAG, shuffled)
+
+        position = {gate: index for index, gate in enumerate(ordered)}
+        for gate in ordered:
+            for parent in AUTO_GATE_DAG[gate].depends_on:
+                if parent in subset:
+                    assert position[parent] < position[gate], f"{parent} must precede {gate}"
+
+    def test_g6_never_precedes_cw(self) -> None:
+        """REGRESSION LOCK for the bug the old tie-break hid.
+
+        G6 depends on G5, which is in no preset, so under present-parents
+        semantics G6 becomes "ready" immediately.  With an input-order
+        tie-break that let it emit first and inspect content CW had not yet
+        written.  Declaration-order tie-break keeps CW ahead of it.
+        """
+        for mode in ("text_with_cover", "image-carousel", "social-thread"):
+            gates = _MODE_MAP[mode]
+            shuffler = random.Random(f"g6-{mode}")
+            shuffled = list(gates)
+            shuffle_attempts = 20
+            for _ in range(shuffle_attempts):
+                shuffler.shuffle(shuffled)
+                ordered = topological_order(AUTO_GATE_DAG, shuffled)
+                assert ordered.index("CW") < ordered.index("G6"), mode
 
 
 class TestDownstreamReverseTopologicalClosure:

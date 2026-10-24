@@ -16,11 +16,11 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.md5_tracker import compute_md5
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
-from automedia.hooks.md5_tracker import compute_md5
 
 log = get_logger(__name__)
 

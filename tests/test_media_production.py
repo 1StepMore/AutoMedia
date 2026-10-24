@@ -20,9 +20,9 @@ from unittest.mock import patch
 
 import pytest
 
+from automedia.core.md5_tracker import compute_md5
 from automedia.gates._context import GateContext
 from automedia.gates._result import missing_input_result
-from automedia.hooks.md5_tracker import compute_md5
 from automedia.pipelines.runner import _media_narration_text, _produce_media_assets
 
 _AUDIO_PATH = "automedia.pipelines.audio_pipeline.AudioPipeline"

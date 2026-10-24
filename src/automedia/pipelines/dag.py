@@ -109,18 +109,31 @@ def topological_order(dag: dict[str, GateNode], mode_gates: list[str]) -> list[s
     every parent in ``depends_on`` that is ALSO in ``mode_gates`` has already
     been emitted; parents outside the mode subset are ignored ("present-parents
     semantics" — this is what lets ``qa_only``/``text_only`` run without
-    pre-gate/CW). Among ready gates, emit in ``mode_gates`` order, which
-    reproduces the runner's existing linear lists byte-exact for every mode.
+    pre-gate/CW).
+
+    TIE-BREAK: among ready gates, emit in **``dag`` declaration order**, not in
+    the caller's order.  This is what makes the result a property of the graph
+    rather than of the input list:
+
+    * With the old input-order tie-break, a mode's declared list was the only
+      thing that ever produced the expected answer, so "topological_order
+      reproduces the plan" was true by construction and proved nothing.  Worse,
+      a shuffled input could legally emit ``G6`` before ``CW`` (``G6``'s parent
+      ``G5`` is in no preset, so it looked ready) — a valid topological order
+      that would make G6 check content CW had not written yet.
+    * With declaration order, any input permutation of the same gate set yields
+      the same output, and that output is exactly the canonical gate order.
 
     Raises:
         ValueError: If a cycle or an unsatisfiable dependency leaves gates
             un-emittable.
     """
+    canonical = [name for name in dag if name in set(mode_gates)]
     emitted: list[str] = []
-    remaining: list[str] = [g for g in mode_gates if g in dag]
+    remaining: list[str] = list(canonical)
     while remaining:
         progress = False
-        for gate in list(remaining):  # iterate in mode_gates order
+        for gate in list(remaining):
             parents = dag[gate].depends_on
             if all(p not in mode_gates or p in emitted for p in parents):
                 emitted.append(gate)
