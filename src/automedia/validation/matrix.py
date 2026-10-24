@@ -7,7 +7,7 @@ Two honest halves in one deterministic artifact:
   verbatim declared/covered/missing/phantom/boundary-only lists; per scenario
   its declarative metadata plus the last recorded engine status; one ``rows``
   table where each cell answers "does this scenario exercise this surface?".
-* ASSERTION half (dynamic, from run records — the AutoInfo 04-MATRIX gap the
+* ASSERTION half (dynamic, from run records — the the 04-MATRIX artifact gap the
   #86 review demanded): ``report_cards`` (per-scenario digest: status, hard
   safety, assertion counts, exit codes, failures, artifacts, diff bucket),
   ``assertions`` (the per-step truth table with exit_code / hard_safety /
