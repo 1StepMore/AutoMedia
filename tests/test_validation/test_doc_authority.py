@@ -18,6 +18,8 @@ INDEX = REPO_ROOT / "docs" / "index.md"
 STANDARDS = REPO_ROOT / "scenarios" / "STANDARDS.md"
 LIVE_GUIDE = REPO_ROOT / "docs" / "agent-tester-validation-guide.md"
 ARCHIVED_GUIDE = REPO_ROOT / "docs" / "archived" / "agent-tester-validation-guide.md"
+# 2026-10-24 边界整改：该指南的 worked example 是另一条产线的内部实现，已移出本仓
+# （正本在 workspace 99-Tools/methodology/）。两条路径都必须不存在。
 _LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
@@ -36,8 +38,8 @@ def test_llms_txt_links_resolve() -> None:
 
 def test_single_schema_authority_is_named_and_reachable() -> None:
     assert STANDARDS.is_file()
-    assert ARCHIVED_GUIDE.is_file()
     assert not LIVE_GUIDE.exists()
+    assert not ARCHIVED_GUIDE.exists()
     assert "scenarios/STANDARDS.md" in INDEX.read_text(encoding="utf-8")
 
 
