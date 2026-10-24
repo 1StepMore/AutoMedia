@@ -1,4 +1,11 @@
-"""Platform media specification data model and built-in defaults."""
+"""Platform media specification data model and built-in defaults.
+
+The set of platform NAMES lives in :mod:`automedia.core.platforms` (the
+single source of truth).  This module owns what a name's media requirements
+are; ``PLATFORM_MEDIA_SPECS`` is checked against that registry by
+``tests/test_platform_registry.py`` so a new publisher cannot be added with
+a media spec silently missing (issue #283).
+"""
 
 from __future__ import annotations
 
