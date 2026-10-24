@@ -57,14 +57,14 @@ def test_localize_full_pipeline(tmp_path: Path) -> None:
     assert "Localised" in result.output, "Success message not printed"
     assert "article.md" in result.output, "Output file name not in success message"
 
-    en_file = tmp_path / "05_publish" / "en" / "article.md"
-    ja_file = tmp_path / "05_publish" / "ja" / "article.md"
+    en_file = tmp_path / "06_publish" / "en" / "article.md"
+    ja_file = tmp_path / "06_publish" / "ja" / "article.md"
     assert en_file.exists(), f"Expected {en_file} to exist"
     assert ja_file.exists(), f"Expected {ja_file} to exist"
     assert en_file.read_text(encoding="utf-8") == "# Hello World in English"
     assert ja_file.read_text(encoding="utf-8") == "# こんにちは世界"
 
-    # Files from 05_publish/en/ match the input file name
+    # Files from 06_publish/en/ match the input file name
     assert en_file.name == "article.md"
     assert ja_file.name == "article.md"
 
@@ -132,7 +132,7 @@ def test_localize_translation_failure(tmp_path: Path) -> None:
 
 
 def test_localize_single_language(tmp_path: Path) -> None:
-    """--target-langs fr creates 05_publish/fr/ but not en/ or ja/."""
+    """--target-langs fr creates 06_publish/fr/ but not en/ or ja/."""
     drafts = tmp_path / "01_content" / "drafts"
     drafts.mkdir(parents=True)
     (drafts / "article.md").write_text("# Hello", encoding="utf-8")
@@ -154,13 +154,13 @@ def test_localize_single_language(tmp_path: Path) -> None:
         assert result.exit_code == 0
         assert "Localised" in result.output
 
-        fr_file = tmp_path / "05_publish" / "fr" / "article.md"
+        fr_file = tmp_path / "06_publish" / "fr" / "article.md"
         assert fr_file.exists()
         assert fr_file.read_text(encoding="utf-8") == "# Bonjour"
 
         # No other language directories should have been created
-        assert not (tmp_path / "05_publish" / "en").exists()
-        assert not (tmp_path / "05_publish" / "ja").exists()
+        assert not (tmp_path / "06_publish" / "en").exists()
+        assert not (tmp_path / "06_publish" / "ja").exists()
 
 
 # =========================================================================

@@ -19,7 +19,10 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
+from automedia.core.layout import AUDIO, DRAFTS, VIDEO
 from automedia.core.overrides import OverridesLoader
+from automedia.core.platforms import platform_categories
+from automedia.pipelines import gate_plan
 from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 if TYPE_CHECKING:
@@ -38,138 +41,27 @@ log = get_logger(__name__)
 # Gate name lists per mode
 # ---------------------------------------------------------------------------
 
-_AUTO_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-]
+# The per-mode gate plan lives in ``pipelines.gate_plan`` — the single
+# authority for gate order (issue #282).  The names above are imported from
+# there and re-exported unchanged, so the historical private imports (tests,
+# the CLI, coverage's static scan) keep working while the declaration exists
+# in exactly one place.  A test asserts each name IS the gate_plan list
+# object, so a local redefinition cannot silently fork the plan again.
+_AUTO_GATE_NAMES: list[str] = gate_plan._AUTO_GATE_NAMES
+_TEXT_ONLY_GATE_NAMES: list[str] = gate_plan._TEXT_ONLY_GATE_NAMES
+_TEXT_WITH_COVER_GATE_NAMES: list[str] = gate_plan._TEXT_WITH_COVER_GATE_NAMES
+_VIDEO_ONLY_GATE_NAMES: list[str] = gate_plan._VIDEO_ONLY_GATE_NAMES
+_QA_ONLY_GATE_NAMES: list[str] = gate_plan._QA_ONLY_GATE_NAMES
+_IMAGE_CAROUSEL_GATE_NAMES: list[str] = gate_plan._IMAGE_CAROUSEL_GATE_NAMES
+_SOCIAL_THREAD_GATE_NAMES: list[str] = gate_plan._SOCIAL_THREAD_GATE_NAMES
+_SHORT_VIDEO_GATE_NAMES: list[str] = gate_plan._SHORT_VIDEO_GATE_NAMES
+_REPURPOSE_GATE_NAMES: list[str] = gate_plan._REPURPOSE_GATE_NAMES
 
-_TEXT_ONLY_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "H0",
-]
+_MODE_MAP: dict[str, list[str]] = gate_plan.MODE_GATE_NAMES
 
-_VIDEO_ONLY_GATE_NAMES: list[str] = [
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-]
-
-_QA_ONLY_GATE_NAMES: list[str] = [
-    "G0",
-    "G2",
-    "G3",
-    "V1",
-    "V6",
-]
-
-_IMAGE_CAROUSEL_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-]
-
-_TEXT_WITH_COVER_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "H0",
-]
-
-_SOCIAL_THREAD_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-]
-
-_SHORT_VIDEO_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-]
-
-_REPURPOSE_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-    "P1",
-    "P2",
-    "P3",
-    "P4",
-]
-
-_MODE_MAP: dict[str, list[str]] = {
-    "auto": _AUTO_GATE_NAMES,
-    "text_only": _TEXT_ONLY_GATE_NAMES,
-    "text_with_cover": _TEXT_WITH_COVER_GATE_NAMES,
-    "video_only": _VIDEO_ONLY_GATE_NAMES,
-    "qa_only": _QA_ONLY_GATE_NAMES,
-    "image-carousel": _IMAGE_CAROUSEL_GATE_NAMES,
-    "social-thread": _SOCIAL_THREAD_GATE_NAMES,
-    "short-video": _SHORT_VIDEO_GATE_NAMES,
-    "repurpose": _REPURPOSE_GATE_NAMES,
-}
-
-# Lifecycle gates — these are required and cannot be excluded via modifiers
-_LIFECYCLE_GATE_NAMES: list[str] = ["L1", "L2", "L3", "L4"]
+# Lifecycle gates — required where they apply and never removable via a gate
+# modifier.  Declared in ``gate_plan`` (see the plan block above).
+_LIFECYCLE_GATE_NAMES: list[str] = gate_plan.LIFECYCLE_GATE_NAMES
 
 #: Modes that owe a video artifact — the modes whose pipeline runs the
 #: video-production stage in ``_finalize_pipeline`` and are therefore
@@ -183,31 +75,12 @@ _VIDEO_PRODUCING_MODES: tuple[str, ...] = ("video_only", "short-video")
 # Valid modes tuple — shared reference for CLI/MCP/SDK validation
 VALID_MODES: tuple[str, ...] = tuple(_MODE_MAP)
 
-# Platform → content-category mapping for auto-deriving pipeline mode.
-# Used by _derive_mode_from_platforms() when mode is not explicitly set.
-_PLATFORM_CATEGORIES: dict[str, str] = {
-    "wechat": "text-first",
-    "zhihu": "text-first",
-    "xiaohongshu": "mixed-social",
-    "feishu": "notification-only",
-    "youtube": "video-first",
-    "twitter": "text-first",
-    "bilibili": "video-first",
-    "tiktok": "video-first",
-    "linkedin": "text-first",
-    "medium": "text-first",
-    "newsletter": "text-first",
-    "douyin": "video-first",
-    "wordpress": "text-first",
-    "reddit": "text-first",
-    "baijiahao": "text-first",
-    "juejin": "text-first",
-    "toutiao": "text-first",
-    "facebook": "mixed-social",
-    "instagram": "mixed-social",
-    "weibo": "text-first",
-    "kuaishou": "video-first",
-}
+# Platform -> content-category mapping for auto-deriving pipeline mode.
+# DERIVED from automedia.core.platforms (the single source of truth) rather
+# than maintained here: the local copy had 21 entries while the media-spec
+# table had 19 and the adapter registry 20, and nothing recorded why (issue
+# #283). See that module for what each count means.
+_PLATFORM_CATEGORIES: dict[str, str] = platform_categories()
 
 
 # ---------------------------------------------------------------------------
@@ -1350,7 +1223,7 @@ def clear_stale_hitl_state(project_dir: str) -> None:
 
 def _latest_draft(project_dir: str | Path) -> Path | None:
     """Return the newest ``01_content/drafts/*.md`` file, if any."""
-    drafts = Path(project_dir) / "01_content" / "drafts"
+    drafts = Path(project_dir) / DRAFTS
     if not drafts.is_dir():
         return None
     candidates = [path for path in drafts.glob("*.md") if path.is_file()]
@@ -2000,6 +1873,10 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
                 status=status,
                 duration_s=r.get("duration_s", 0.0),
                 error=r.get("error"),
+                # The gate's own explanation of a skip, preserved verbatim
+                # (issue #285).  A skip without a reason is a report that
+                # cannot distinguish "no input" from "absent tooling".
+                skip_reason=(r.get("reason") or r.get("detail")) if status == "skipped" else None,
             )
         )
     return entries
@@ -2206,7 +2083,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     from automedia.pipelines.audio_pipeline import AudioPipeline
 
     audio = AudioPipeline(config=gate_context.get("config"))
-    audio_dir = os.path.join(project_dir, "04_audio")
+    audio_dir = os.path.join(project_dir, AUDIO)
     audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
     transcription = audio.transcribe_audio(audio_path)
     transcript_text = str(transcription.get("text", "") or "").strip()
@@ -2258,9 +2135,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             video_engine = cast(
                 BaseVideoEngine, resolve_engine("video", gate_context.get("config"))
             )
-            video_path = video_engine.render(
-                assets, os.path.join(project_dir, "03_video", "output.mp4")
-            )
+            video_path = video_engine.render(assets, os.path.join(project_dir, VIDEO, "output.mp4"))
             gate_context["video_path"] = video_path
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)

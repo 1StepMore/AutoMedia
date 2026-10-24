@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from automedia.core.layout import DRAFTS
+
 
 def analyze_content(
     project_id: str,
@@ -57,7 +59,7 @@ def analyze_content(
 
         # Read content from drafts
         project_dir = Path(project_info["_dir"])
-        drafts_dir = project_dir / "01_content" / "drafts"
+        drafts_dir = project_dir / DRAFTS
         content = ""
         if drafts_dir.is_dir():
             parts: list[str] = []

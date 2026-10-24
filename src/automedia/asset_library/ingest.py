@@ -30,6 +30,7 @@ from structlog import get_logger
 from automedia.asset_library.db import ASSET_TYPES, AssetDatabase, AssetDoc
 from automedia.asset_library.vector_store import VectorStore
 from automedia.core.hashing import compute_md5_bytes
+from automedia.core.layout import CONTENT, IMAGES, PUBLISH, RESEARCH_DATA, REVIEW, SUBTITLE, VIDEO
 
 log = get_logger(__name__)
 
@@ -183,7 +184,12 @@ def ingest_artifacts(project_dir: str, brand: str) -> IngestResult:
 # Discovery helpers
 # ---------------------------------------------------------------------------
 
-_INGEST_SUBDIRS = {"decision", "research_data", "01_content", "02_images"}
+_INGEST_SUBDIRS = {
+    "decision",
+    RESEARCH_DATA,
+    CONTENT,
+    IMAGES,
+}
 _PROJECT_FILE_PATTERNS = ("*.md", "*.yaml", "*.yml", "*.json")
 
 
@@ -260,13 +266,13 @@ def _classify_by_path(fp: Path, root: Path) -> dict[str, Any]:
     # 2. Detect source phase from directory structure.
     phase_hints = {
         "decision": "1b",
-        "research_data": "1b",
-        "01_content": "2",
-        "02_images": "2",
-        "03_video": "2",
-        "04_subtitle": "2",
-        "05_review": "3",
-        "06_publish": "3",
+        RESEARCH_DATA: "1b",
+        CONTENT: "2",
+        IMAGES: "2",
+        VIDEO: "2",
+        SUBTITLE: "2",
+        REVIEW: "3",
+        PUBLISH: "3",
         "phase-0": "0",
         "phase-1a": "1a",
         "phase-1b": "1b",

@@ -146,6 +146,13 @@ class GateLogEntry:
     status: Literal["passed", "failed", "error", "skipped"]
     duration_s: float
     error: str | None = None
+    #: Why a gate was skipped, in the gate's own words (issue #285).  A skip
+    #: is a first-class status, and "the gate did not run" is only honest when
+    #: the report can also say WHY: a missing input key set, HyperFrames being
+    #: absent, and ``--skip-review`` are three different facts an operator must
+    #: be able to tell apart.  ``None`` for non-skipped gates and for older
+    #: persisted rows that never recorded one.
+    skip_reason: str | None = None
 
 
 @dataclass

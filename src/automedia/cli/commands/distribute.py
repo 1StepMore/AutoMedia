@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, cast
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+from automedia.core.layout import DRAFTS
 
 if TYPE_CHECKING:
     from automedia.gates.base import BaseGate
@@ -90,7 +91,7 @@ def _load_project_content(project_dir: Path) -> tuple[str, str | None]:
         ``(content, title)`` — *title* is inferred from the first ``# `` heading
         and may be ``None``.
     """
-    drafts_dir = project_dir / "01_content" / "drafts"
+    drafts_dir = project_dir / DRAFTS
     if not drafts_dir.is_dir():
         return "", None
 

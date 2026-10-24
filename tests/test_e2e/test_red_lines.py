@@ -402,8 +402,8 @@ class TestRedLine9:
 
         rogue = DecisionArtifact(
             artifact_type="strategy_doc",
-            content={"output_path": "/projects/abc/05_publish/en/report.md"},
+            content={"output_path": "/projects/abc/06_publish/en/report.md"},
         )
-        assert "05_publish" not in rogue.artifact_type, (
+        assert "06_publish" not in rogue.artifact_type, (
             "RL9: artifact_type must not contain filesystem paths"
         )

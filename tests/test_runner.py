@@ -1791,7 +1791,11 @@ class TestOverrideGateRules:
         return None
 
     def _patch_home(self, monkeypatch: pytest.MonkeyPatch, home: Path) -> None:
-        monkeypatch.setattr("os.path.expanduser", lambda p: str(home) if p == "~" else p)
+        # Patch the resolver the loader ACTUALLY uses.  Patching
+        # ``os.path.expanduser`` was a no-op once overrides moved to
+        # ``core.paths.get_user_config_dir``, so these tests silently read the
+        # real ~/.automedia and passed/failed depending on what else ran.
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(home / ".automedia"))
 
     def test_override_adds_gate(
         self,
