@@ -430,6 +430,69 @@
   "evidence_confidence": null,
   "evidence_run": null,
   "generated_at": "2026-10-22T05:48:42.371792+00:00",
+  "input_missing_keys": {
+    "V0": [
+      "lint_result"
+    ],
+    "V1": [
+      "entries"
+    ],
+    "V3": [
+      "source_keywords",
+      "content_keywords",
+      "source_texts"
+    ],
+    "V4": [
+      "voice_id",
+      "segments"
+    ],
+    "V6": [
+      "avg_brightness",
+      "contrast",
+      "opacity",
+      "pixel_valid"
+    ]
+  },
+  "input_reachability_note": "3 of the 8 gates that DECLARE required inputs have them produced by this pipeline; 25 gates declare no required inputs (reachability not asserted). 5 will always report skipped because no module produces a required key: V0(lint_result), V1(entries), V3(source_keywords,content_keywords,source_texts), V4(voice_id,segments), V6(avg_brightness,contrast,opacity,pixel_valid).",
+  "input_reachable_gates": [
+    "V2",
+    "V5",
+    "V7"
+  ],
+  "input_unknown_gates": [
+    "CW",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7",
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "G6",
+    "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "pre-gate"
+  ],
+  "input_unreachable_gates": [
+    "V0",
+    "V1",
+    "V3",
+    "V4",
+    "V6"
+  ],
   "meta_scenario_count": 32,
   "meta_scenarios": [
     "account-cli-surface",
@@ -503,6 +566,9 @@
     "gates_boundary_only": 0,
     "gates_covered": 27,
     "gates_declared": 33,
+    "gates_input_reachable": 3,
+    "gates_input_unknown": 25,
+    "gates_input_unreachable": 5,
     "gates_missing": 4,
     "gates_phantom": 0,
     "gates_unreachable": 2,

@@ -77,6 +77,7 @@ class GateReportRow(TypedDict, total=False):
     reviewed: bool  # True only when HITL involvement is a fact, not a guess
     duration_s: float
     error: str | None
+    skip_reason: str | None  # why a skipped gate did not run (issue #285)
     checks: list[dict[str, Any]] | None  # per-check detail (live renders only)
     expected_vs_actual: dict[str, Any] | None
     output_path: str | None
@@ -151,6 +152,7 @@ def _build_row(
         reviewed=reviewed,
         duration_s=round(float(entry.duration_s), 4),
         error=entry.error,
+        skip_reason=entry.skip_reason,
     )
 
     if result is not None:
@@ -254,7 +256,7 @@ def _render_markdown(report: GateReport) -> str:
         verdict = row["verdict"]
         if row.get("reviewed"):
             verdict += " (reviewed)"
-        reason = row.get("error") or ""
+        reason = row.get("error") or row.get("skip_reason") or ""
         fix = _gate_fix(row)
         lines.append(
             f"| {row['gate']} | {verdict} | {row.get('duration_s', 0.0)} | {reason} | {fix} |"
