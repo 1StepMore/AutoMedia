@@ -28,7 +28,7 @@
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
-| docs/dev/deep-module-rfc-001.md | 12981 | file |
+| docs/dev/deep-module-rfc-001.md | 12887 | file |
 | docs/dev/developer-guide.md | 25320 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |
