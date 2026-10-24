@@ -177,6 +177,12 @@ Each entry cites the file:line of its execution surface; extend it when a new
 standalone surface ships."""
 
 
+#: The module that DECLARES every mode's ordered gate list.  It moved out of
+#: ``runner.py`` into ``gate_plan.py`` (issue #282); the static scan follows the
+#: declaration so it never drifts from where the plan actually lives.
+_MODE_PLAN_REL = "src/automedia/pipelines/gate_plan.py"
+
+
 def _preset_reachable_gates(runner_path: str | Path | None) -> set[str]:
     """Union of every mode preset's gate list (preset reachability).
 
@@ -185,7 +191,7 @@ def _preset_reachable_gates(runner_path: str | Path | None) -> set[str]:
     ``declared_gates - preset_reachable - COMMAND_PATH_REACHABLE_GATES`` is
     exactly the registered-but-unreachable set (G4/G5 today).
     """
-    runner_src = _read_declared_source(runner_path, "src/automedia/pipelines/runner.py")
+    runner_src = _read_declared_source(runner_path, _MODE_PLAN_REL)
     reachable: set[str] = set()
     for gate_names in _parse_mode_map(runner_src).values():
         reachable.update(gate_names)
@@ -724,7 +730,11 @@ def _declared_cli(src: str) -> list[str]:
 
 
 def _parse_mode_map(runner_src: str) -> dict[str, list[str]]:
-    """Extract ``_MODE_MAP`` (mode → gate-name list) from runner.py source.
+    """Extract the mode → gate-name plan from the declaration module.
+
+    Recognizes both the historical ``_MODE_MAP`` name and the current
+    ``MODE_GATE_NAMES`` (issue #282 moved the declaration into
+    ``pipelines/gate_plan.py``), so the scan keeps working across the move.
 
     The module is read as text and parsed with :mod:`ast` — never imported —
     so the audit stays a static pass (guide §5.1) with no pipeline side
@@ -751,7 +761,7 @@ def _parse_mode_map(runner_src: str) -> dict[str, list[str]]:
                 for element in value.elts
                 if isinstance(element, ast.Constant) and isinstance(element.value, str)
             ]
-        elif target.id == "_MODE_MAP" and isinstance(value, ast.Dict):
+        elif target.id in ("_MODE_MAP", "MODE_GATE_NAMES") and isinstance(value, ast.Dict):
             for key, val in zip(value.keys, value.values, strict=False):
                 if (
                     isinstance(key, ast.Constant)
@@ -779,7 +789,7 @@ def _declared_pipeline_surfaces(
     registry is deliberately NOT imported: it is a process-global singleton
     that collection-time test-gate registration would pollute.
     """
-    runner_src = _read_declared_source(runner_path, "src/automedia/pipelines/runner.py")
+    runner_src = _read_declared_source(runner_path, _MODE_PLAN_REL)
     mode_map = _parse_mode_map(runner_src)
     gates = set().union(*mode_map.values()) if mode_map else set()
     gates_root = _repo_root() / "src/automedia/gates" if gates_path is None else Path(gates_path)
