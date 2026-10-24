@@ -15,6 +15,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import DISTRIBUTION
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
@@ -233,7 +234,7 @@ class D5BilibiliRewrite(BaseGate):
         all_passed = all(c["passed"] for c in checks)
 
         # ---- Write to disk ---------------------------------------------------------
-        bilibili_dir = os.path.join(project_dir, "04_distribution", "bilibili")
+        bilibili_dir = os.path.join(project_dir, DISTRIBUTION, "bilibili")
         os.makedirs(bilibili_dir, exist_ok=True)
 
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")

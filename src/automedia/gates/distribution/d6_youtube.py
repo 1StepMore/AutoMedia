@@ -19,6 +19,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import DISTRIBUTION
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
@@ -325,7 +326,7 @@ class D6YouTubeGate(BaseGate):
         # ------------------------------------------------------------------
         # Write to 04_distribution/youtube/
         # ------------------------------------------------------------------
-        youtube_dir = os.path.join(project_dir, "04_distribution", "youtube")
+        youtube_dir = os.path.join(project_dir, DISTRIBUTION, "youtube")
         os.makedirs(youtube_dir, exist_ok=True)
 
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")

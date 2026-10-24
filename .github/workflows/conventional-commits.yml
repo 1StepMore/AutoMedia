@@ -130,8 +130,16 @@ jobs:
           # Do NOT pipe this through `head -1`: under `set -o pipefail`, git gets
           # SIGPIPE when head closes early and the whole pipeline exits 141, a false
           # red (#212). Use git's own -1 limit instead, which needs no pipe.
+          #
+          # The range must be ONE-SIDED (PR side only). The symmetric difference
+          # ``A...B`` also yields commits reachable from BASE but not from the PR,
+          # so once BASE moves ahead of the branch -- every PR that is simply
+          # "behind main" -- ``-1`` returns the newest MAIN commit and the check
+          # compares the PR title against somebody else's squash subject. Real
+          # instance: #301/#302 were judged against main's tip
+          # ``refactor(gates): d2 reuses ... (#304)`` instead of their own commits.
           SUBJECT="$(git log --no-merges -1 --format=%s \
-            "origin/$BASE_REF...refs/remotes/pr/$PR_NUMBER")"
+            "refs/remotes/pr/$PR_NUMBER" "^origin/$BASE_REF")"
           TITLE_TYPE="$(conventional_type "$PR_TITLE")"
           SUBJECT_TYPE="$(conventional_type "$SUBJECT")"
           echo "PR title:         $PR_TITLE"

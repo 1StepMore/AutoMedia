@@ -16,15 +16,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from automedia.core.layout import DRAFTS, IMAGES, PUBLISH, SUBTITLE, VIDEO
 from automedia.gates.publish_log_schema import (
     PUBLISH_PLATFORM_SET,
     PUBLISH_PLATFORMS,
     L1PublishLogSchema,
 )
 
-PUBLISH_LOG_RELPATH = ("06_publish", "publish_log.json")
+PUBLISH_LOG_RELPATH = (PUBLISH, "publish_log.json")
 
-_MEDIA_DIRS = ("02_images", "03_video", "04_subtitle")
+_MEDIA_DIRS = (IMAGES, VIDEO, SUBTITLE)
 
 
 class PublishLogGateError(RuntimeError):
@@ -111,7 +112,7 @@ def prepare_publish_log(
 
 
 def _read_primary_draft(root: Path) -> str:
-    drafts_dir = root / "01_content" / "drafts"
+    drafts_dir = root / DRAFTS
     if not drafts_dir.is_dir():
         return ""
     md_files = sorted(drafts_dir.glob("*.md"))

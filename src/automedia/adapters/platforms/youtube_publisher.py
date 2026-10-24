@@ -41,6 +41,7 @@ from structlog import get_logger
 
 from automedia.adapters.base import BasePlatformAdapter, PublishResult
 from automedia.core.credential_loader import load_credential
+from automedia.core.layout import VIDEO
 
 log = get_logger(__name__)
 
@@ -417,7 +418,7 @@ class YouTubePublisher(BasePlatformAdapter):
 
         # Directories to search, in priority order.
         search_dirs: list[Path] = [
-            base / "03_video",
+            base / VIDEO,
             base / "video",
             base,
         ]

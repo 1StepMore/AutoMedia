@@ -8,18 +8,19 @@ from pathlib import Path
 import typer
 
 from automedia.cli.output import output_error, output_text
+from automedia.core.layout import CONTENT, IMAGES, PUBLISH, REVIEW, SUBTITLE, VIDEO
 
 app = typer.Typer(name="projects", help="List and inspect media projects.")
 
 _PROJECT_GLOB = "*/00_project_info.json"
 
 _ASSET_SUBDIRS = (
-    "01_content",
-    "02_images",
-    "03_video",
-    "04_subtitle",
-    "05_review",
-    "06_publish",
+    CONTENT,
+    IMAGES,
+    VIDEO,
+    SUBTITLE,
+    REVIEW,
+    PUBLISH,
 )
 
 

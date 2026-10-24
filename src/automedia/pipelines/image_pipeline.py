@@ -19,6 +19,7 @@ from structlog import get_logger
 if TYPE_CHECKING:
     from automedia.engines.base import BaseImageEngine
 
+from automedia.core.layout import BODY_IMAGES, COVER, FALLBACK_IMAGES, IMAGES
 from automedia.core.llm_client import LLMError, llm_complete
 
 logger = get_logger(__name__)
@@ -226,7 +227,7 @@ class ImagePipeline:
         from automedia.engines.errors import EngineExecutionError
 
         count = max(3, min(6, count))
-        body_dir = os.path.join(project_dir, "02_images", "body")
+        body_dir = os.path.join(project_dir, IMAGES, "body")
         os.makedirs(body_dir, exist_ok=True)
 
         w, h = BODY_IMAGE_SIZE
@@ -281,7 +282,7 @@ class ImagePipeline:
         from automedia.engines.errors import EngineExecutionError
 
         spec = COVER_SPECS.get(ratio, (1920, 1080))
-        cover_dir = os.path.join(project_dir, "02_images", "cover")
+        cover_dir = os.path.join(project_dir, IMAGES, "cover")
         os.makedirs(cover_dir, exist_ok=True)
 
         output_path = os.path.join(cover_dir, "cover.png")
@@ -327,7 +328,7 @@ class ImagePipeline:
         """
         from automedia.engines.errors import EngineExecutionError
 
-        fallback_dir = os.path.join(project_dir, "02_images", "fallback")
+        fallback_dir = os.path.join(project_dir, IMAGES, "fallback")
         os.makedirs(fallback_dir, exist_ok=True)
 
         w, h = BODY_IMAGE_SIZE  # 4:3 landscape default
@@ -465,9 +466,9 @@ class ImageValidator:
         image_extensions = {".png", ".jpg", ".jpeg", ".webp"}
 
         for subdir, validator_fn, _extra_args in [
-            ("02_images/cover", ImageValidator._validate_cover_file, None),
-            ("02_images/body", ImageValidator._validate_body_file, None),
-            ("02_images/fallback", ImageValidator._validate_body_file, None),
+            (COVER, ImageValidator._validate_cover_file, None),
+            (BODY_IMAGES, ImageValidator._validate_body_file, None),
+            (FALLBACK_IMAGES, ImageValidator._validate_body_file, None),
         ]:
             dir_path = os.path.join(project_dir, subdir)
             if not os.path.isdir(dir_path):

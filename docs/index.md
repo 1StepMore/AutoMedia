@@ -13,7 +13,7 @@ Automated Media Production Pipeline — for content teams and AI coding agents.
 
 AutoMedia automates content production from **topic selection** through **draft writing**, **video generation**, **subtitle rendering**, and **multi-platform publishing**. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-**Stats:** 62,461 LOC (core) · ~183,000+ LOC (total) · 737+ Python files · Python 3.11+ · MIT License
+**Stats:** 68,000+ LOC (core) · 165,000+ LOC (total) · 600+ Python files · Python 3.11+ · MIT License
 
 ---
 

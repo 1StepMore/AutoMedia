@@ -17,6 +17,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import CONTENT
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
@@ -254,7 +255,11 @@ class ContentWriterGate(BaseGate):
         platform: str = brand_platforms[0] if brand_platforms else ""
 
         # --- Build the writer prompt ------------------------------------------------
-        writer_prompt = load_prompt("content_writer", platform=platform)
+        writer_prompt = load_prompt(
+            "content_writer",
+            platform=platform,
+            workflow_prompts=gate_context.get("workflow_prompts"),
+        )
         # Allow per-call override from model_config.yaml → llm.writer.system_prompt
         if config:
             llm_cfg = config.get("llm", {})
@@ -414,7 +419,7 @@ class ContentWriterGate(BaseGate):
             }
 
         # --- Write to disk ----------------------------------------------------------
-        content_dir = os.path.join(project_dir, "01_content", "drafts")
+        content_dir = os.path.join(project_dir, CONTENT, "drafts")
         os.makedirs(content_dir, exist_ok=True)
 
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")

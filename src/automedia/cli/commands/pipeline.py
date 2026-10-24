@@ -1,8 +1,10 @@
 """``automedia pipeline`` — DAG export and pipeline state inspection.
 
-Wave 1 of the graph-engineering-rollout: ``export-dag`` renders the canonical
-gate DAG (``automedia.pipelines.dag.AUTO_GATE_DAG``) per pipeline mode as a
-Markdown gate table plus a Graphviz DOT graph. With ``--project``, gates that
+Wave 1 of the graph-engineering-rollout: ``export-dag`` renders the gate
+dependency graph (``automedia.pipelines.dag.AUTO_GATE_DAG``) per pipeline mode
+as a Markdown gate table plus a Graphviz DOT graph.  The gate ORDER comes from
+``automedia.pipelines.gate_plan`` (the execution authority); the DAG supplies
+the edges, and a test pins the two to agree. With ``--project``, gates that
 appear in the project's ``history.db`` are overlaid with a run marker.
 
 Wave 3 adds ``state``: a read-only per-gate status view (passed/failed/pending
@@ -54,12 +56,15 @@ def _render_markdown(mode: str, ordered: list[str], ran_gates: set[str]) -> str:
     """Render one mode's DAG as a Markdown document.
 
     The gate table lists every mode gate in ``ordered`` (canonical
-    ``_MODE_MAP``) order, annotated with the ``∥`` async-parallel marker on V0
+    ``gate_plan.MODE_GATE_NAMES``) order, annotated with the ``∥`` marker on V0
     and ``✓`` run markers for gates that appear in the project history.
     """
     mode_set = set(ordered)
     lines: list[str] = [f"# Pipeline DAG — mode `{mode}`", ""]
-    lines.append("Gate execution order (canonical, from `AUTO_GATE_DAG` via `topological_order`).")
+    lines.append(
+        "Gate execution order (canonical: `pipelines.gate_plan.MODE_GATE_NAMES`; "
+        "verified equal to `AUTO_GATE_DAG` via `topological_order`)."
+    )
     lines.append("")
     lines.append("| gate | track | depends_on | failure_mode |")
     lines.append("|------|-------|------------|--------------|")

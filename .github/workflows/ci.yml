@@ -42,6 +42,11 @@ jobs:
         # --check regenerates in memory and fails on any byte difference, so a
         # stale committed inventory can never merge.
         run: python3 scripts/doc_inventory.py --check
+      - name: RFC aging check (issue #286)
+        # A Proposed RFC whose recorded metrics no longer match the source
+        # (or that has sat un-triaged past the age budget) fails the job, so
+        # the diagnosis→RFC→落地 pipeline cannot be silently starved.
+        run: python3 scripts/check_rfc_aging.py
       - name: Workflow semantics (static gate/coverage invariants)
         # Blocking: static guard over .github/workflows/*.yml. Workflow
         # defects are silent by construction — CI stays green while test

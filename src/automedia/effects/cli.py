@@ -14,6 +14,7 @@ from typing import Any
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error
+from automedia.core.layout import DRAFTS
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -37,7 +38,7 @@ def _find_project_by_id(project_id: str, base_dir: str) -> dict[str, Any] | None
 def _read_project_content(project_dir: str) -> str:
     """Read all markdown drafts from a project directory."""
     root = Path(project_dir)
-    drafts_dir = root / "01_content" / "drafts"
+    drafts_dir = root / DRAFTS
 
     if not drafts_dir.is_dir():
         return ""

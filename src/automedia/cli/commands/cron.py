@@ -14,6 +14,7 @@ import typer
 import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+from automedia.core.layout import PUBLISH
 from automedia.cron.schedule import is_schedule_due
 from automedia.pool.collector import HotCollector
 from automedia.pool.db import PoolDB
@@ -367,7 +368,7 @@ def _job_publish_check() -> None:
         base = Path(".")
         for info_file in sorted(base.glob("*/00_project_info.json")):
             proj_dir = info_file.parent
-            publish_dir = proj_dir / "06_publish"
+            publish_dir = proj_dir / PUBLISH
             if publish_dir.is_dir() and not any(publish_dir.iterdir()):
                 ready_projects.append(proj_dir.name)
 

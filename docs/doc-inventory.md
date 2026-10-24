@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 14734 | file |
-| README.md | 31840 | file |
+| AGENTS.md | 14913 | file |
+| README.md | 31841 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -28,7 +28,7 @@
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
-| docs/dev/deep-module-rfc-001.md | 12981 | file |
+| docs/dev/deep-module-rfc-001.md | 12887 | file |
 | docs/dev/developer-guide.md | 25320 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12884 | file |

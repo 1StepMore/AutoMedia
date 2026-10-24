@@ -1,5 +1,64 @@
 # Changelog
 
+## [1.11.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.11.0...automedia-v1.11.1) (2026-10-24)
+
+
+### Dependencies
+
+* **deps:** bump filelock from 3.29.7 to 4.2.1 ([#307](https://github.com/1StepMore/AutoMedia/issues/307)) ([e6abaaa](https://github.com/1StepMore/AutoMedia/commit/e6abaaab0e3a844e82fae010c360b49b15943eca))
+
+## [1.11.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.5...automedia-v1.11.0) (2026-10-24)
+
+
+### Features
+
+* **gates:** report why a gate skipped and whether its inputs exist ([#315](https://github.com/1StepMore/AutoMedia/issues/315)) ([d58a956](https://github.com/1StepMore/AutoMedia/commit/d58a956db99d45c33164a056c1344562f8d11ecd)), closes [#285](https://github.com/1StepMore/AutoMedia/issues/285)
+
+## [1.10.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.4...automedia-v1.10.5) (2026-10-24)
+
+
+### Bug Fixes
+
+* **core:** give the project layout one source of truth ([#312](https://github.com/1StepMore/AutoMedia/issues/312)) ([26568da](https://github.com/1StepMore/AutoMedia/commit/26568da3d03635d8f38d6fa248c42c6d0b2c9af3)), closes [#284](https://github.com/1StepMore/AutoMedia/issues/284)
+
+## [1.10.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.3...automedia-v1.10.4) (2026-10-23)
+
+
+### Bug Fixes
+
+* **pipeline:** wire workflow prompt overrides through to load_prompt ([#298](https://github.com/1StepMore/AutoMedia/issues/298)) ([5f54ed7](https://github.com/1StepMore/AutoMedia/commit/5f54ed7a567449a94be9f82771a1c2da886d8424)), closes [#281](https://github.com/1StepMore/AutoMedia/issues/281)
+
+
+### Dependencies
+
+* **deps:** bump virtualenv from 21.14.9 to 21.14.13 ([#302](https://github.com/1StepMore/AutoMedia/issues/302)) ([a047976](https://github.com/1StepMore/AutoMedia/commit/a0479768fb979f514795f799a26abe42660c85d4))
+
+
+### Documentation
+
+* gate the size claims the [#280](https://github.com/1StepMore/AutoMedia/issues/280) fix left ungated ([#308](https://github.com/1StepMore/AutoMedia/issues/308)) ([194b338](https://github.com/1StepMore/AutoMedia/commit/194b338f5b0ef5d7080edbd3e779c3f4e471b00c))
+
+## [1.10.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.2...automedia-v1.10.3) (2026-10-23)
+
+
+### Dependencies
+
+* **deps:** bump opentelemetry-api from 1.43.0 to 1.45.1 ([#292](https://github.com/1StepMore/AutoMedia/issues/292)) ([d7427e9](https://github.com/1StepMore/AutoMedia/commit/d7427e9ffa3ff7a90390d09737951340c14cb7f0))
+* **deps:** bump virtualenv from 21.7.13 to 21.14.9 ([#293](https://github.com/1StepMore/AutoMedia/issues/293)) ([2fe9401](https://github.com/1StepMore/AutoMedia/commit/2fe940151a63e7753e2510c8810ad7f379be2119))
+
+## [1.10.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.1...automedia-v1.10.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **hooks:** enforce the GateHook readonly contract ([#294](https://github.com/1StepMore/AutoMedia/issues/294)) ([f458598](https://github.com/1StepMore/AutoMedia/commit/f4585988da6b25be4b7a5542486f540b0071b31d)), closes [#278](https://github.com/1StepMore/AutoMedia/issues/278)
+
+
+### Documentation
+
+* **mkdocs:** add ADR-006 and ADR-007 to the nav ([#289](https://github.com/1StepMore/AutoMedia/issues/289)) ([7793719](https://github.com/1StepMore/AutoMedia/commit/7793719ee8016c089fa62a4145616354e77db3e0)), closes [#276](https://github.com/1StepMore/AutoMedia/issues/276)
+* refresh size claims and gate them against the tree ([#296](https://github.com/1StepMore/AutoMedia/issues/296)) ([9ef545e](https://github.com/1StepMore/AutoMedia/commit/9ef545ea30fe255b33c6cf67e6b832fb5ef9c335)), closes [#280](https://github.com/1StepMore/AutoMedia/issues/280)
+
 ## [1.10.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.10.0...automedia-v1.10.1) (2026-10-23)
 
 

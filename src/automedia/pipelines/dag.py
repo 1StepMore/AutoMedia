@@ -1,6 +1,9 @@
-"""Canonical gate DAG for the AutoMedia pipeline.
+"""Gate dependency graph for the AutoMedia pipeline.
 
-Part of the graph-engineering-rollout Wave 1 (P0 equivalence layer).
+The AUTHORITY for gate ORDER is :mod:`automedia.pipelines.gate_plan`; this
+module describes the dependency EDGES among the same gates.  A test asserts
+the topological order of every mode's gate subset reproduces the plan's list
+exactly, so "canonical" is a verified claim rather than a label (issue #282).
 
 This module is a pure, declarative description of the pipeline's gate
 dependency graph: ``AUTO_GATE_DAG`` maps every gate name to a ``GateNode``
@@ -9,17 +12,18 @@ helpers operate on it:
 
 - ``topological_order`` — topologically orders a mode-scoped gate-name list
   (``present-parents`` semantics: parents outside the mode subset are ignored).
-  For every mode in ``automedia.pipelines.runner._MODE_MAP`` this reproduces
-  the existing linear gate-name list byte-exact, proving the DAG is a drop-in
-  replacement for the hardcoded mode lists.
+  For every mode in :data:`automedia.pipelines.gate_plan.MODE_GATE_NAMES` this
+  reproduces the plan's linear gate-name list byte-exact.
 - ``downstream`` — the reverse-topological closure of a gate: every gate that
   transitively depends on it, ordered dependencies-before-dependents.
 
 Import-isolation contract (Metis G7): this module must NOT import anything
-from ``automedia.pipelines.runner`` (or any other ``automedia`` subpackage) —
-it is a standalone declarative layer. The ``failure_mode`` strings are literal
-values mirrored from the registered gate classes; tests verify they agree with
-the registry.
+from ``automedia.pipelines.runner`` — a fresh interpreter importing only
+``dag`` must not load the runner.  The only ``automedia`` import permitted is
+``gate_plan``, which itself imports nothing from ``automedia``.
+
+The ``failure_mode`` strings are literal values mirrored from the registered
+gate classes; tests verify they agree with the registry.
 """
 
 from __future__ import annotations

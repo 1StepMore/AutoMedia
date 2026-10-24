@@ -13,7 +13,7 @@ This README serves **both human developers and AI coding agents** (OpenCode, Cla
 
 AutoMedia automates content production from topic selection through draft writing, video generation, subtitle rendering, and multi-platform publishing. It handles the repetitive parts of media production so you can focus on creative decisions.
 
-62,461 LOC (core) · ~183,000+ LOC (total) · 737+ Python files · Python 3.11+ · 4,580 test functions across 247 files · MIT License
+68,000+ LOC (core) · 165,000+ LOC (total) · 600+ Python files · Python 3.11+ · 5,200+ test functions across 290+ files · MIT License
 
 ### For AI Agents
 
@@ -706,7 +706,7 @@ pytest tests/test_mcp/ -v
 
 ## Project Status
 
-Active development. 4,580+ test functions across 247+ files. ~183,000+ LOC across 737+ Python files (62,461+ LOC in automedia/ core).
+Active development. 5,200+ test functions across 290+ files. 165,000+ LOC across 600+ Python files (68,000+ LOC in automedia/ core).
 
 ## License
 

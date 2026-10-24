@@ -107,7 +107,7 @@ class TestOmniLocalize:
         assert result.exit_code == 0
         assert "Localised" in result.output
 
-        publish_file = tmp_path / "05_publish" / "fr" / "article.md"
+        publish_file = tmp_path / "06_publish" / "fr" / "article.md"
         assert publish_file.exists()
         assert publish_file.read_text(encoding="utf-8") == "# Bonjour"
 
@@ -137,8 +137,8 @@ class TestOmniLocalize:
         assert result.exit_code == 0
         assert "Localised" in result.output
 
-        assert (tmp_path / "05_publish" / "fr" / "doc.md").exists()
-        assert (tmp_path / "05_publish" / "ja" / "doc.md").exists()
+        assert (tmp_path / "06_publish" / "fr" / "doc.md").exists()
+        assert (tmp_path / "06_publish" / "ja" / "doc.md").exists()
 
     @patch("automedia.omni.ol_adapter.OLAdapter.translate")
     def test_localize_translation_failure(self, mock_translate: MagicMock, tmp_path: Path) -> None:

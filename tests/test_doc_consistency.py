@@ -253,3 +253,74 @@ def test_scan_file_regression_mis_set_tool_count(checker: ModuleType, tmp_path: 
     assert finding.line == 1
     assert finding.found == "99 tools"
     assert finding.expected == "67 tools"
+
+
+# ---------------------------------------------------------------------------
+# Size claims — issue #280's second half (LOC / file / test counts)
+# ---------------------------------------------------------------------------
+
+_SYNTH_STATS = {
+    "core_loc": 68_000,
+    "core_files": 260,
+    "total_loc": 165_000,
+    "total_files": 600,
+    "test_functions": 5_200,
+    "test_files": 290,
+    "tracked_files": 1_000,
+}
+
+
+def test_scan_size_claims_accepts_satisfied_lower_bounds(checker: ModuleType) -> None:
+    """A claim at or below the real count is honest and must stay clean."""
+    text = (
+        "68,000+ LOC (core) · 165,000+ LOC (total) · 600+ Python files\n"
+        "5,200+ test functions across 290+ files\n"
+    )
+    assert checker.scan_size_claims(text, _SYNTH_STATS) == []
+
+
+def test_scan_size_claims_flags_an_overstated_lower_bound(checker: ModuleType) -> None:
+    """`700+ Python files` is false at 600 and must be one Finding on its line."""
+    findings = checker.scan_size_claims("Intro line.\n700+ Python files here.\n", _SYNTH_STATS)
+
+    assert len(findings) == 1
+    assert findings[0].line == 2
+    assert findings[0].found == "700+ Python files"
+
+
+def test_scan_size_claims_separates_core_from_total(checker: ModuleType) -> None:
+    """`(core)` and `(total)` qualifiers route the same unit to different stats.
+
+    A core claim of 100,000 is false at 68,000 core LOC while the identical
+    number qualified `(total)` is true at 165,000 — proving the qualifier, not
+    the magnitude, decides which statistic judges the claim.
+    """
+    findings = checker.scan_size_claims("100,000+ LOC (core)\n100,000+ LOC (total)\n", _SYNTH_STATS)
+
+    assert [f.line for f in findings] == [1]
+
+
+def test_scan_size_claims_flags_stale_test_counts(checker: ModuleType) -> None:
+    findings = checker.scan_size_claims("9,000+ test functions across 400+ files\n", _SYNTH_STATS)
+
+    assert {f.line for f in findings} == {1}
+    assert len(findings) == 2  # both the function count and the file count are stale
+
+
+def test_compute_repo_stats_are_internally_consistent(checker: ModuleType) -> None:
+    """Live stats: core is a strict subset of the repo, so it can never exceed it."""
+    stats = checker.compute_repo_stats()
+
+    assert 0 < stats["core_files"] <= stats["total_files"]
+    assert 0 < stats["core_loc"] <= stats["total_loc"]
+    assert stats["test_files"] <= stats["total_files"]
+    assert stats["tracked_files"] >= stats["total_files"]
+
+
+def test_live_docs_satisfy_the_size_gate(checker: ModuleType) -> None:
+    """The committed docs must pass the gate this PR adds (no drift on landing)."""
+    stats = checker.compute_repo_stats()
+
+    for rel in ("README.md", "AGENTS.md", "docs/index.md"):
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        assert checker.scan_size_claims(text, stats) == [], rel

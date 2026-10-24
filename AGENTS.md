@@ -5,7 +5,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 
 ## 1. Project Overview
 - **Language:** Python 3.11+
-- **Size:** 67,750 LOC across 261 Python files (`src/automedia/` core) · 163,015 LOC across 589 Python files (repo, `.py` only, excluding `.venv`/`.git`) · 994 git-tracked files (as-of 2026-10-18; run find & wc -l)
+- **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 165,000+ LOC across 600+ Python files (repo, `.py` only, git-tracked) · 1,000+ git-tracked files (as-of 2026-10-24; `scripts/check-doc-consistency.py` derives and gates these)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 - **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
@@ -38,7 +38,7 @@ docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 - **External Scheduling:** no built-in scheduler; external crond calls `automedia cron run --due` (dispatches every schedule entry due now; `automedia cron run <job>` remains the explicit single-job path). See `automedia/cron/`.
 - **Three-Entry-Point Design:** CLI, MCP, and SDK all delegate to `run_full_pipeline()` (see §2); MCP also exposes Omni triad tools (extract, translate, convert).
 - **Gate Auto-Registration:** `BaseGate` subclasses auto-register in the global `GateRegistry` singleton via `__init_subclass__`.
-- **Canonical Gate DAG:** `pipelines/dag.py` (`AUTO_GATE_DAG`, 26 nodes) + `pipelines/state_view.py` are an additive, order-equivalent representation of `_MODE_MAP` — mode gate lists stay authoritative, and the DAG layer adds topological/downstream/state queries on top.
+- **Gate order — one authority:** `pipelines/gate_plan.py` (`MODE_GATE_NAMES`, 9 modes) declares the ordered gate list every mode executes. `pipelines/dag.py` (`AUTO_GATE_DAG`, 26 nodes) describes the dependency EDGES among the same gates and powers topological/downstream/state queries; a test pins the DAG's topological order to the plan for every mode. `runner._MODE_MAP` is that same plan object, re-exported.
 
 ## 5. Agent Constraints (Red Lines) — MUST OBEY
 
