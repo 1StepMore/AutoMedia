@@ -22,6 +22,7 @@ from automedia.core.env_overlay import env_lookup
 from automedia.core.layout import AUDIO, DRAFTS, VIDEO
 from automedia.core.overrides import OverridesLoader
 from automedia.core.platforms import platform_categories
+from automedia.pipelines import gate_plan
 from automedia.pipelines.review_prompt import start_interactive_review_prompt
 
 if TYPE_CHECKING:
@@ -40,138 +41,27 @@ log = get_logger(__name__)
 # Gate name lists per mode
 # ---------------------------------------------------------------------------
 
-_AUTO_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-]
+# The per-mode gate plan lives in ``pipelines.gate_plan`` — the single
+# authority for gate order (issue #282).  The names above are imported from
+# there and re-exported unchanged, so the historical private imports (tests,
+# the CLI, coverage's static scan) keep working while the declaration exists
+# in exactly one place.  A test asserts each name IS the gate_plan list
+# object, so a local redefinition cannot silently fork the plan again.
+_AUTO_GATE_NAMES: list[str] = gate_plan._AUTO_GATE_NAMES
+_TEXT_ONLY_GATE_NAMES: list[str] = gate_plan._TEXT_ONLY_GATE_NAMES
+_TEXT_WITH_COVER_GATE_NAMES: list[str] = gate_plan._TEXT_WITH_COVER_GATE_NAMES
+_VIDEO_ONLY_GATE_NAMES: list[str] = gate_plan._VIDEO_ONLY_GATE_NAMES
+_QA_ONLY_GATE_NAMES: list[str] = gate_plan._QA_ONLY_GATE_NAMES
+_IMAGE_CAROUSEL_GATE_NAMES: list[str] = gate_plan._IMAGE_CAROUSEL_GATE_NAMES
+_SOCIAL_THREAD_GATE_NAMES: list[str] = gate_plan._SOCIAL_THREAD_GATE_NAMES
+_SHORT_VIDEO_GATE_NAMES: list[str] = gate_plan._SHORT_VIDEO_GATE_NAMES
+_REPURPOSE_GATE_NAMES: list[str] = gate_plan._REPURPOSE_GATE_NAMES
 
-_TEXT_ONLY_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "H0",
-]
+_MODE_MAP: dict[str, list[str]] = gate_plan.MODE_GATE_NAMES
 
-_VIDEO_ONLY_GATE_NAMES: list[str] = [
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-]
-
-_QA_ONLY_GATE_NAMES: list[str] = [
-    "G0",
-    "G2",
-    "G3",
-    "V1",
-    "V6",
-]
-
-_IMAGE_CAROUSEL_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-]
-
-_TEXT_WITH_COVER_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "H0",
-]
-
-_SOCIAL_THREAD_GATE_NAMES: list[str] = [
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-]
-
-_SHORT_VIDEO_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-]
-
-_REPURPOSE_GATE_NAMES: list[str] = [
-    "pre-gate",
-    "CW",
-    "G0",
-    "G1",
-    "G2",
-    "G3",
-    "G6",
-    "V0",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "H0",
-    "P1",
-    "P2",
-    "P3",
-    "P4",
-]
-
-_MODE_MAP: dict[str, list[str]] = {
-    "auto": _AUTO_GATE_NAMES,
-    "text_only": _TEXT_ONLY_GATE_NAMES,
-    "text_with_cover": _TEXT_WITH_COVER_GATE_NAMES,
-    "video_only": _VIDEO_ONLY_GATE_NAMES,
-    "qa_only": _QA_ONLY_GATE_NAMES,
-    "image-carousel": _IMAGE_CAROUSEL_GATE_NAMES,
-    "social-thread": _SOCIAL_THREAD_GATE_NAMES,
-    "short-video": _SHORT_VIDEO_GATE_NAMES,
-    "repurpose": _REPURPOSE_GATE_NAMES,
-}
-
-# Lifecycle gates — these are required and cannot be excluded via modifiers
-_LIFECYCLE_GATE_NAMES: list[str] = ["L1", "L2", "L3", "L4"]
+# Lifecycle gates — required where they apply and never removable via a gate
+# modifier.  Declared in ``gate_plan`` (see the plan block above).
+_LIFECYCLE_GATE_NAMES: list[str] = gate_plan.LIFECYCLE_GATE_NAMES
 
 #: Modes that owe a video artifact — the modes whose pipeline runs the
 #: video-production stage in ``_finalize_pipeline`` and are therefore
