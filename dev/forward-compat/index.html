@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2328,7 +2328,7 @@ hard error is unparseable JSON (malformed file).</p>
 <p><strong>Purpose</strong>: Per-gate file integrity checksums. Written incrementally as each
 gate completes. Two subsystems write to this file:</p>
 <ol>
-<li><strong>Gate MD5 tracker</strong> (<code>automedia/hooks/md5_tracker.py</code>): writes per-gate
+<li><strong>Gate MD5 tracker</strong> (<code>automedia/core/md5_tracker.py</code>): writes per-gate
    checksums under <code>gates.&lt;gate_name&gt;</code>.</li>
 <li><strong>Omni MD5 tracker</strong> (<code>automedia/omni/md5_integration.py</code>): writes Omni
    pipeline checksums under <code>omni_*</code> sections.</li>
@@ -2686,7 +2686,7 @@ Re-running with current pipeline is available on request."</p>
   MD5 checksum tracking and verification.</li>
 <li><a href="../founder-expectations/#f39--run-isolation">F39: Run Isolation</a> -
   Shared-nothing project isolation model.</li>
-<li><code>src/automedia/hooks/md5_tracker.py</code> - Gate MD5 tracker implementation.</li>
+<li><code>src/automedia/core/md5_tracker.py</code> - Gate MD5 tracker implementation.</li>
 <li><code>src/automedia/omni/md5_integration.py</code> - Omni MD5 tracker implementation.</li>
 <li><code>src/automedia/core/project.py</code> - Project creation and <code>00_project_info.json</code>
   writer.</li>
@@ -2759,10 +2759,10 @@ Re-running with current pipeline is available on request."</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
