@@ -1873,6 +1873,10 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
                 status=status,
                 duration_s=r.get("duration_s", 0.0),
                 error=r.get("error"),
+                # The gate's own explanation of a skip, preserved verbatim
+                # (issue #285).  A skip without a reason is a report that
+                # cannot distinguish "no input" from "absent tooling".
+                skip_reason=(r.get("reason") or r.get("detail")) if status == "skipped" else None,
             )
         )
     return entries

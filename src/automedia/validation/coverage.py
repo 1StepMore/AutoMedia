@@ -110,6 +110,10 @@ from typing import Any, cast
 
 import yaml
 
+from automedia.validation.gate_inputs import (
+    audit_input_reachability,
+    input_reachability_note,
+)
 from automedia.validation.loader import LoadError, default_scenarios_dir, load_scenarios
 from automedia.validation.persist import latest_run
 from automedia.validation.schema import USER_LEVELS, Scenario, Step
@@ -298,6 +302,19 @@ def coverage_audit(
         declared_gates_set - _preset_reachable_gates(runner_path) - COMMAND_PATH_REACHABLE_GATES
     )
     unreachable_gates = sorted(unreachable_gates_set)
+    # Issue #285 — the FIFTH dimension.  Reachability above asks "can anything
+    # EXECUTE this gate"; input reachability asks the narrower, more damning
+    # question: "does anything PRODUCE what this gate inspects?"  A gate whose
+    # required keys have no producer will always report skipped, so a headline
+    # gate count that includes it overstates what the run actually checked.
+    # Reported as its own dimension, never folded into missing/covered.
+    _src_root = _repo_root() / "src" / "automedia"
+    reachability = audit_input_reachability(
+        Path(gates_path) if gates_path is not None else _src_root / "gates",
+        _src_root,
+        declared_gates_set,
+    )
+
     missing_mcp = sorted(declared_mcp_set - set(covered_mcp) - boundary_mcp)
     missing_cli = sorted(declared_cli_set - set(covered_cli) - boundary_cli)
     missing_gates = sorted(
@@ -335,6 +352,13 @@ def coverage_audit(
         "phantom_modes": phantom_modes,
         "unreachable_gates": unreachable_gates,
         "unreachable_note": _unreachable_note(unreachable_gates),
+        "input_reachable_gates": list(reachability.reachable_gates),
+        "input_unreachable_gates": list(reachability.unreachable_gates),
+        "input_unknown_gates": list(reachability.unknown_gates),
+        "input_missing_keys": {
+            gate: list(keys) for gate, keys in sorted(reachability.missing_keys.items())
+        },
+        "input_reachability_note": input_reachability_note(reachability),
         "boundary_only_mcp": sorted(boundary_mcp),
         "boundary_only_cli": sorted(boundary_cli),
         "boundary_only_gates": sorted(boundary_gates),
@@ -363,6 +387,9 @@ def coverage_audit(
             "gates_missing": len(missing_gates),
             "gates_phantom": len(phantom_gates),
             "gates_unreachable": len(unreachable_gates),
+            "gates_input_reachable": len(reachability.reachable_gates),
+            "gates_input_unreachable": len(reachability.unreachable_gates),
+            "gates_input_unknown": len(reachability.unknown_gates),
             "gates_boundary_only": len(boundary_gates),
             "modes_declared": len(declared_modes),
             "modes_used": len(used_modes),
