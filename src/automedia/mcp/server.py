@@ -791,7 +791,7 @@ def create_server() -> FastMCP:
         description=(
             "Translate all project drafts into multiple target languages. "
             "Reads markdown from 01_content/drafts/, translates via OLAdapter, "
-            "writes translated files to 05_publish/{lang}/. "
+            "writes translated files to 06_publish/{lang}/. "
             "Returns a mapping of language code to list of output file paths."
         ),
     )(localize_output)

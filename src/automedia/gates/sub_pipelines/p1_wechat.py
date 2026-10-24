@@ -28,6 +28,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import REPURPOSE
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates._result import build_gate_result
@@ -357,7 +358,7 @@ def _write_wechat_output(
     str or None
         Output file path, or ``None`` on failure.
     """
-    wechat_dir = os.path.join(project_dir, "04_repurpose", "wechat")
+    wechat_dir = os.path.join(project_dir, REPURPOSE, "wechat")
     os.makedirs(wechat_dir, exist_ok=True)
 
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")

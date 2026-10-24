@@ -108,11 +108,11 @@ def pipeline_paths(tmp_path: Path) -> dict[str, Path]:
     xliff_path.write_text("<?xml version='1.0' encoding='UTF-8'?>\n<xliff/>")
     skeleton_path.write_text("fake skeleton zip content")
 
-    ol_dir = tmp_path / "05_publish" / "zh"
+    ol_dir = tmp_path / "06_publish" / "zh"
     ol_dir.mkdir(parents=True)
     translated_xliff = ol_dir / SAMPLE_XLIFF
 
-    orf_dir = tmp_path / "05_publish" / "zh" / "deliverables"
+    orf_dir = tmp_path / "06_publish" / "zh" / "deliverables"
     orf_dir.mkdir(parents=True)
     output_docx = orf_dir / f"{SAMPLE_DOCX_NAME}.backfilled.docx"
 

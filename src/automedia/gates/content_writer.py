@@ -17,6 +17,7 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.layout import CONTENT
 from automedia.core.llm_client import LLMError, llm_complete
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
@@ -418,7 +419,7 @@ class ContentWriterGate(BaseGate):
             }
 
         # --- Write to disk ----------------------------------------------------------
-        content_dir = os.path.join(project_dir, "01_content", "drafts")
+        content_dir = os.path.join(project_dir, CONTENT, "drafts")
         os.makedirs(content_dir, exist_ok=True)
 
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")

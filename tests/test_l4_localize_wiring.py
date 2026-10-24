@@ -238,7 +238,7 @@ class TestMcpLocalizeOutputL4Wiring:
         assert result["l4_verdicts"][0]["passed"] is False
         assert result["l4_verdicts"][0]["failure_mode"] == "advisory"
         # Translation output was still written.
-        out_file = tmp_path / "05_publish" / "en" / "article.md"
+        out_file = tmp_path / "06_publish" / "en" / "article.md"
         assert out_file.exists()
         assert "en" in result["results"]
         assert any("advisory" in w.lower() for w in result["warnings"])
@@ -265,7 +265,7 @@ class TestMcpLocalizeOutputL4Wiring:
         assert result["success"] is True
         assert result["l4_verdicts"][0]["passed"] is False
         assert any("L4 exploded" in f for f in result["l4_verdicts"][0]["failures"])
-        assert (tmp_path / "05_publish" / "en" / "article.md").exists()
+        assert (tmp_path / "06_publish" / "en" / "article.md").exists()
 
 
 # ---------------------------------------------------------------------------

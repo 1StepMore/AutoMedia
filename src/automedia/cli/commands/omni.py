@@ -9,6 +9,7 @@ from pathlib import Path
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
+from automedia.core.layout import DRAFTS
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ def omni_localize(
 
     Reads markdown files from ``01_content/drafts/``, translates each into
     every specified target language via OLAdapter, and writes the translated
-    files into ``05_publish/{lang}/``.
+    files into ``06_publish/{lang}/``.
 
     ``--source-lang`` defaults to the merged config's ``content.default_language``
     (``zh``); the literal ``"auto"`` is never passed to ``OLAdapter.translate``
@@ -174,7 +175,7 @@ def omni_localize(
     from automedia.omni.ol_adapter import OLAdapter, resolve_source_lang
 
     project_dir = Path(project)
-    drafts_dir = project_dir / "01_content" / "drafts"
+    drafts_dir = project_dir / DRAFTS
 
     if not drafts_dir.is_dir():
         output_error(f"Drafts directory not found: {drafts_dir}")
