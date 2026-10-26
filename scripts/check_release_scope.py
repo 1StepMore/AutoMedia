@@ -86,6 +86,7 @@ change that must be retyped ``fix(deps)`` by a human (#172).  See
 from __future__ import annotations
 
 import argparse
+import codecs
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -170,6 +171,30 @@ def is_internal_path(path: str) -> bool:
     if normalized in INTERNAL_EXACT or normalized in GENERATED_ARTIFACTS:
         return True
     return normalized.startswith(INTERNAL_PREFIXES)
+
+
+def unquote_git_path(path: str) -> str:
+    """Decode a path that ``git diff --name-only`` C-quoted.
+
+    Git quotes paths containing bytes it considers unusual (non-ASCII included)
+    when ``core.quotePath`` is true, the default.  A quoted path such as
+    ``"docs/dev/AutoMedia\\345\\274\\200..."`` starts with a literal ``"``, so
+    every :data:`INTERNAL_PREFIXES` match misses and an internal-only PR reads
+    as user-visible -- the failure measured on PR #323.  Unquoting here makes
+    the taxonomy independent of how the caller invoked git; the workflows also
+    pass ``-c core.quotePath=false`` so their logs show real paths.
+
+    A path that is not quoted is returned unchanged.  A malformed escape is
+    returned unchanged as well: the fail-safe direction is to keep judging the
+    literal path, never to drop it.
+    """
+    if len(path) < 2 or not (path.startswith('"') and path.endswith('"')):
+        return path
+    try:
+        raw = codecs.escape_decode(path[1:-1].encode("utf-8"))[0]
+        return raw.decode("utf-8")
+    except (UnicodeDecodeError, ValueError):
+        return path
 
 
 def parse_title_type(title: str | None) -> str | None:
@@ -362,7 +387,7 @@ def _read_paths(args: argparse.Namespace) -> list[str]:
             raw = Path(args.files).read_text(encoding="utf-8")
     else:
         raw = Path(args.files_file).read_text(encoding="utf-8")
-    return [line.strip() for line in raw.splitlines() if line.strip()]
+    return [unquote_git_path(line.strip()) for line in raw.splitlines() if line.strip()]
 
 
 def _parse_labels(raw: str) -> list[str]:

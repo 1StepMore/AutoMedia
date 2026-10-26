@@ -75,6 +75,24 @@ def test_real_data_replay_is_frozen(guard: ModuleType) -> None:
     assert "internal-only" in decision.reason
 
 
+QUOTED_NON_ASCII_DOC = (
+    r'"docs/dev/2026-08-30-graph-engineering-\350\260\203\347\240\224'
+    r"\344\270\216\344\270\211\351\241\271\347\233\256\350\220\275\345\234\260"
+    r'-\344\277\256\346\255\243\347\211\210.md"'
+)
+
+
+def test_git_quoted_non_ascii_internal_path_is_frozen(guard: ModuleType) -> None:
+    decision = guard.assess_candidate([QUOTED_NON_ASCII_DOC])
+    assert decision.snooze is True, decision.reason
+
+
+def test_git_quoted_non_ascii_doc_does_not_hide_source(guard: ModuleType) -> None:
+    decision = guard.assess_candidate([QUOTED_NON_ASCII_DOC, "src/automedia/x.py"])
+    assert decision.snooze is False
+    assert "src/automedia/x.py" in decision.reason
+
+
 def test_negative_control_is_left_alone(guard: ModuleType) -> None:
     decision = guard.assess_candidate([*REAL_PATHS, "src/automedia/x.py"])
     assert decision.snooze is False

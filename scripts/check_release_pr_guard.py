@@ -75,7 +75,7 @@ class Decision(NamedTuple):
 
 
 def _normalize(path: str) -> str:
-    normalized = path.strip()
+    normalized = scope.unquote_git_path(path.strip())
     while normalized.startswith("./"):
         normalized = normalized[2:]
     return normalized

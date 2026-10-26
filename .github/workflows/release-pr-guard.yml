@@ -110,7 +110,7 @@ jobs:
           PR_STATE: ${{ github.event.pull_request.state }}
         run: |
           set -euo pipefail
-          git diff --name-only "${{ steps.tag.outputs.LAST_TAG }}..origin/main" > "${{ runner.temp }}/files.txt"
+          git -c core.quotePath=false diff --name-only "${{ steps.tag.outputs.LAST_TAG }}..origin/main" > "${{ runner.temp }}/files.txt"
           # An empty diff must fail. check_release_pr_guard.py reads "no files" as
           # nothing to judge and exits 0 with snooze=false, so without this a stale
           # LAST_TAG or truncated fetch silently stops the freeze from ever firing.

@@ -88,7 +88,7 @@ jobs:
           # An empty diff must FAIL. check_release_scope.py treats "no files" as
           # nothing to judge and exits 0, so without this guard a bad ref or a
           # truncated fetch would silently pass every PR instead of judging nothing.
-          FILES="$(git diff --name-only "origin/$BASE_REF...refs/remotes/pr/$PR_NUMBER")"
+          FILES="$(git -c core.quotePath=false diff --name-only "origin/$BASE_REF...refs/remotes/pr/$PR_NUMBER")"
           if [ -z "$FILES" ]; then
             echo "::error::empty diff for origin/$BASE_REF...refs/pull/$PR_NUMBER/head; refusing to report a scope check that judged no files"
             exit 1
