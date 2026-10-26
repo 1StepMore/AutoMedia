@@ -188,6 +188,50 @@ def test_offending_path_list_is_capped(scope: ModuleType) -> None:
     assert "… and 15 more" in result.reason
 
 
+# --- Regression: git C-quotes non-ASCII paths (observed on PR #323) ---------
+#
+# `git diff --name-only` quotes non-ASCII names unless `core.quotePath=false`.
+# The quoted form starts with a literal `"`, so it missed every internal
+# prefix and a docs-only PR was reported as changing user-visible paths.
+
+QUOTED_NON_ASCII_DOC = (
+    r'"docs/dev/2026-08-30-graph-engineering-\350\260\203\347\240\224'
+    r"\344\270\216\344\270\211\351\241\271\347\233\256\350\220\275\345\234\260"
+    r'-\344\277\256\346\255\243\347\211\210.md"'
+)
+UNQUOTED_NON_ASCII_DOC = "docs/dev/2026-08-30-graph-engineering-调研与三项目落地-修正版.md"
+
+
+def test_git_quoted_non_ascii_path_is_unquoted(scope: ModuleType) -> None:
+    assert scope.unquote_git_path(QUOTED_NON_ASCII_DOC) == UNQUOTED_NON_ASCII_DOC
+    assert scope.is_internal_path(scope.unquote_git_path(QUOTED_NON_ASCII_DOC)) is True
+
+
+def test_plain_path_is_not_altered(scope: ModuleType) -> None:
+    assert scope.unquote_git_path("docs/dev/agent-reference.md") == "docs/dev/agent-reference.md"
+
+
+def test_cli_treats_git_quoted_non_ascii_path_as_internal(
+    scope: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO(QUOTED_NON_ASCII_DOC + "\n"))
+    assert (
+        scope.main(
+            [
+                "--files",
+                "-",
+                "--title",
+                "chore(boundary): move portfolio-level analyses out of the repo",
+                "--labels",
+                "",
+            ]
+        )
+        == 0
+    )
+
+
 # ---------------------------------------------------------------------------
 # parse_title_type
 # ---------------------------------------------------------------------------
