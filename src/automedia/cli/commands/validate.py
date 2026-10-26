@@ -766,7 +766,7 @@ def _render_matrix_text(matrix: dict[str, Any]) -> None:
 
 def _render_assertion_section(matrix: dict[str, Any]) -> None:
     """The run-record assertion half: report cards + per-step truth table +
-    diff four-way classification (AutoInfo 04-MATRIX, issue #86)."""
+    diff four-way classification (the 04-MATRIX artifact, issue #86)."""
     cards = matrix.get("report_cards") or []
     assertions = matrix.get("assertions") or {}
     diff = matrix.get("diff")

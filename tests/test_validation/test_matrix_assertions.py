@@ -1,6 +1,6 @@
 """Unit tests for the run-record assertion matrix (issue #86 review gap).
 
-Covers the AutoInfo-style artifact-assertion matrix: report cards (per
+Covers the scenario-per-question artifact-assertion matrix: report cards (per
 scenario digest), per-step assertion rows with exit_code and hard-safety
 cells, and the diff four-way classification.  Synthetic engine-shaped suite
 records only — never the real library or a real run record.

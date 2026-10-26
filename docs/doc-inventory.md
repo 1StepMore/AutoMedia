@@ -41,7 +41,7 @@
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
-| docs/dev/validation-loop-log.md | 10012 | file |
+| docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 12806 | file |
 | docs/index.md | 4873 | file |
