@@ -18,13 +18,10 @@
 | docs/adr/TEMPLATE.md | 2267 | file |
 | docs/dev | — | dir |
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
-| docs/dev/2026-08-30-graph-engineering-调研与三项目落地-修正版.md | 15409 | file |
-| docs/dev/AutoMedia开发简报.md | 4640 | file |
+| docs/dev/AutoMedia开发简报.md | 4642 | file |
 | docs/dev/agent-reference.md | 12817 | file |
 | docs/dev/agent-troubleshooting.md | 27023 | file |
 | docs/dev/api-gotchas.md | 10896 | file |
-| docs/dev/automedia-business-validation-20260902.md | 19417 | file |
-| docs/dev/automedia-dev-roadmap-20260902.md | 8495 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
