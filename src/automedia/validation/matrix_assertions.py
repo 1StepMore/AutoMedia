@@ -1,6 +1,6 @@
 """Run-record assertion matrix for the agent-tester validation layer (issue #86).
 
-The review gap this closes: the matrix must be AutoInfo-style — a full
+The review gap this closes: the matrix must be a full coverage matrix — a full
 artifact-assertion matrix over what each scenario's assertions actually
 PRODUCED (from run records), not just a static coverage grid over what the
 scenarios DECLARE.  Pure functions, no new dependencies: consume only engine

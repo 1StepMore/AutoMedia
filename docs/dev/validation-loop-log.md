@@ -1,7 +1,7 @@
 # LOOP-LOG — AutoMedia validation 循环记录
 
 > **活跃文档（2026-09-07 自 archive 复活）** — 每次迭代循环（打包/验证/修复）的**关键事件、根因、修复、验证结果**必须记录在此。
-> 机制对齐 AutoInfo 2026-08-15 规范 + 跨项目循环治理规范（validation-run-governance.md）：每次迭代**开始前**必复查「坑清单」，新坑当天追加（现象 → 根因 → 预防）。
+> 机制对齐姊妹仓 2026-08-15 规范 + 跨项目循环治理规范（validation-run-governance.md）：每次迭代**开始前**必复查「坑清单」，新坑当天追加（现象 → 根因 → 预防）。
 > 历史归档版（2026-08-23 及以前）见 `docs/archived/validation-loop-log-20260823.md`。
 
 ## 坑清单（pitfall checklist，迭代前逐条对照）
@@ -33,7 +33,7 @@
 
 ### 2026-09-07 LOOP-LOG 复活 + fix-retro 复盘机制接入
 
-- 归档版（docs/archived/validation-loop-log-20260823.md）复活为活跃文档（docs/dev/），路径与 AutoInfo / omni suite 统一。
+- 归档版（docs/archived/validation-loop-log-20260823.md）复活为活跃文档（docs/dev/），路径与姊妹仓统一。
 - 接入 GStack 工作流实施项 B：每轮修复完成后按 `fix-retro` skill 输出复盘块（5 问），追加到下方「复盘记录」段。
 
 ## 复盘记录（fix-retro，2026-09-07 起）
