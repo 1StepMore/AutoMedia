@@ -32,7 +32,7 @@
   "by_level": {
     "distribution": {
       "L0": 113,
-      "L1": 23,
+      "L1": 30,
       "L2": 8,
       "L3": 3,
       "L4": 2,
@@ -87,6 +87,14 @@
         "L4": 0,
         "L5": 0
       },
+      "production": {
+        "L0": 0,
+        "L1": 7,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
       "publish": {
         "L0": 2,
         "L1": 0,
@@ -136,7 +144,7 @@
         "L5": 0
       }
     },
-    "total": 149
+    "total": 156
   },
   "covered": {
     "cli": [],
@@ -429,7 +437,7 @@
   ],
   "evidence_confidence": null,
   "evidence_run": null,
-  "generated_at": "2026-10-22T05:48:42.371792+00:00",
+  "generated_at": "2026-10-27T07:51:55.210074+00:00",
   "input_missing_keys": {
     "V0": [
       "lint_result"
@@ -555,7 +563,7 @@
   "phantom_mcp": [],
   "phantom_modes": [],
   "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
-  "scenario_count": 149,
+  "scenario_count": 156,
   "summary": {
     "cli_boundary_only": 0,
     "cli_covered": 19,
@@ -591,7 +599,7 @@
   "surface_by_level": {
     "distribution": {
       "L0": 81,
-      "L1": 23,
+      "L1": 30,
       "L2": 8,
       "L3": 3,
       "L4": 2,
@@ -633,6 +641,14 @@
       "partial": {
         "L0": 2,
         "L1": 1,
+        "L2": 0,
+        "L3": 0,
+        "L4": 0,
+        "L5": 0
+      },
+      "production": {
+        "L0": 0,
+        "L1": 7,
         "L2": 0,
         "L3": 0,
         "L4": 0,
@@ -687,9 +703,9 @@
         "L5": 0
       }
     },
-    "total": 117
+    "total": 124
   },
-  "surface_scenario_count": 117,
+  "surface_scenario_count": 124,
   "surface_scenarios": [
     "account-list-cli-behavior",
     "add-brand-isolated",
@@ -718,6 +734,7 @@
     "distribute-dgates-journey",
     "doctor-cli-contract",
     "doctor-cli-surface",
+    "e2e-topic-to-article",
     "effects-cli-contract",
     "engine-health-alias",
     "engine-health-list",
@@ -767,6 +784,12 @@
     "pipeline-export-dag-surface",
     "pipeline-state-surface",
     "pool-add-topic-alias",
+    "produce-article",
+    "produce-audio",
+    "produce-carousel",
+    "produce-cover",
+    "produce-subtitle",
+    "produce-video",
     "publish-content-probe",
     "publish-draft-only-real-adapters",
     "publish-dry-run-all-platforms",

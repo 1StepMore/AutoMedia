@@ -1,9 +1,11 @@
 """Expect evaluation and verdict aggregation for agent-tester scenarios (W1-T6).
 
-Pure module: no subprocess, no network — artifact checks are ``os.path``
-reads only.  Step *execution* belongs to the engine (W1-T7); this module
-grades an already-produced ``output`` envelope against an :class:`Expect`
-block and derives scenario verdicts.
+Pure module: no network — artifact checks are ``os.path`` reads plus the
+read-only probes in :mod:`automedia.validation.media_probe` (image inspection
+via Pillow, media inspection via an ``ffprobe`` subprocess).  Step *execution*
+belongs to the engine (W1-T7); this module grades an already-produced
+``output`` envelope against an :class:`Expect` block and derives scenario
+verdicts.
 
 Output envelope contract (produced by the adapters, W1-T4)::
 
@@ -61,9 +63,22 @@ import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
-from automedia.validation.schema import Expect, Scenario, Step
+from automedia.validation.media_probe import (
+    glob_artifacts,
+    is_image_path,
+    probe_image,
+    probe_media,
+    probe_srt,
+    probe_text,
+)
+from automedia.validation.schema import (
+    Expect,
+    MediaExpect,
+    Scenario,
+    Step,
+)
 
 _GATE_RECORD_KEYS: tuple[str, ...] = ("gates", "gate_results", "passed_gates")
 """Accepted key names for gate/pass record lists in a project-info JSON."""
@@ -123,6 +138,24 @@ CHECK_TYPE_EVALUATORS: dict[str, CheckTypeEvaluator] = {
     "exit_code": CheckTypeEvaluator("exit_code", ("exit_code",)),
     "stdout": CheckTypeEvaluator("stdout", ("stdout_has",)),
     "stderr": CheckTypeEvaluator("stderr", ("stderr_has",)),
+    "media_structure": CheckTypeEvaluator(
+        "media_structure", ("artifact_exists", "artifact_glob", "media")
+    ),
+    "text_structure": CheckTypeEvaluator("text_structure", ("artifact_exists", "text")),
+    "subtitle_structure": CheckTypeEvaluator("subtitle_structure", ("artifact_exists", "subtitle")),
+    "keyword_coverage": CheckTypeEvaluator(
+        "keyword_coverage", ("artifact_exists", "keyword_coverage")
+    ),
+    "artifact.glob-exists": CheckTypeEvaluator("artifact.glob-exists", ("artifact_glob",)),
+    "media.video": CheckTypeEvaluator("media.video", ("artifact_exists", "artifact_glob", "media")),
+    "media.audio": CheckTypeEvaluator("media.audio", ("artifact_exists", "artifact_glob", "media")),
+    "media.image": CheckTypeEvaluator("media.image", ("artifact_exists", "artifact_glob", "media")),
+    "media.carousel": CheckTypeEvaluator("media.carousel", ("artifact_glob", "media")),
+    "text.article": CheckTypeEvaluator("text.article", ("artifact_exists", "text")),
+    "subtitle.srt": CheckTypeEvaluator("subtitle.srt", ("artifact_exists", "subtitle")),
+    "quality.keyword-coverage": CheckTypeEvaluator(
+        "quality.keyword-coverage", ("artifact_exists", "keyword_coverage")
+    ),
     "unconfigured": CheckTypeEvaluator("unconfigured", ()),
 }
 """Every standard check type the framework can grade, bound to its evaluator keys."""
@@ -352,6 +385,21 @@ def evaluate_expect(
     if expect.trace_id is not None:
         failures.extend(_trace_id_failures(expect.trace_id, output))
 
+    if expect.artifact_glob is not None and expect.media is None:
+        failures.extend(_artifact_glob_failures(expect, step, base))
+
+    if expect.media is not None:
+        failures.extend(_media_failures(expect, step, base))
+
+    if expect.text is not None:
+        failures.extend(_text_failures(expect, step, base))
+
+    if expect.subtitle is not None:
+        failures.extend(_subtitle_failures(expect, step, base))
+
+    if expect.keyword_coverage is not None:
+        failures.extend(_keyword_coverage_failures(expect, step, base))
+
     return ExpectResult(passed=not failures, failures=failures)
 
 
@@ -413,7 +461,353 @@ def apply_recovery(primary_passed: bool, recovery_results: Sequence[bool]) -> st
     return "recovered" if any(recovery_results) else "failed"
 
 
+# --- Phase 1.1 media / text / subtitle / keyword grading -------------------
+
+
+def _artifact_glob_root(step: Step | None, base: Path) -> Path:
+    """Directory a relative ``artifact_glob`` pattern is matched under.
+
+    For a ``file`` step the command is the artifact (or artifact directory);
+    a directory command is the root, a file command contributes its parent.
+    Without a usable command the engine's ``cwd`` is the root.
+    """
+    if step is not None and step.kind == "file" and step.command:
+        candidate = _resolve_path(step.command, base)
+        if candidate.is_dir():
+            return candidate
+        if candidate.exists() or candidate.suffix:
+            return candidate.parent
+    return base
+
+
+def _artifact_glob_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    """Standalone ``artifact.glob-exists``: the pattern must match >= 1 file."""
+    if expect.artifact_glob is None:
+        return []
+    root = _artifact_glob_root(step, base)
+    matches = glob_artifacts(str(root), expect.artifact_glob)
+    if not matches:
+        return [
+            f"expect.artifact_glob: pattern {expect.artifact_glob!r} matched no files under {root}"
+        ]
+    return []
+
+
+def _media_targets(expect: Expect, step: Step | None, base: Path) -> tuple[list[Path], list[str]]:
+    """Resolve the media target set and any locator failures."""
+    failures: list[str] = []
+    if expect.artifact_glob is not None:
+        root = _artifact_glob_root(step, base)
+        matches = [Path(match) for match in glob_artifacts(str(root), expect.artifact_glob)]
+        if not matches:
+            failures.append(
+                "expect.media: artifact_glob "
+                f"{expect.artifact_glob!r} matched no files under {root}"
+            )
+        return matches, failures
+    if expect.artifact_exists is not None:
+        resolved = _resolve_path(expect.artifact_exists, base)
+        if not resolved.is_file():
+            failures.append(
+                "expect.media: artifact_exists path "
+                f"{expect.artifact_exists!r} is not a file (resolved {resolved})"
+            )
+            return [], failures
+        return [resolved], failures
+    failures.append("expect.media: no artifact_exists or artifact_glob path to inspect")
+    return [], failures
+
+
+def _media_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    if expect.media is None:
+        return []
+    media = expect.media
+    targets, failures = _media_targets(expect, step, base)
+    if not targets:
+        return failures
+    if media.min_count is not None and len(targets) < media.min_count:
+        failures.append(f"expect.media.min_count: observed {len(targets)} < min {media.min_count}")
+    check_type = _standard_check_type(step)
+    needs_image = any(
+        value is not None
+        for value in (media.min_width, media.min_height, media.non_uniform, media.same_size)
+    )
+    needs_media = check_type in {"media.video", "media.audio"} or any(
+        value is not None
+        for value in (
+            media.min_duration_s,
+            media.max_duration_s,
+            media.min_bitrate_kbps,
+            media.decodable,
+            media.codec,
+        )
+    )
+    if check_type in {"media.image", "media.carousel"}:
+        image_targets, media_targets = targets, []
+    elif check_type in {"media.video", "media.audio"}:
+        image_targets, media_targets = [], targets
+    elif needs_image and not needs_media:
+        image_targets, media_targets = targets, []
+    elif needs_media and not needs_image:
+        image_targets, media_targets = [], targets
+    else:
+        image_targets = [path for path in targets if is_image_path(path)]
+        media_targets = [path for path in targets if not is_image_path(path)]
+    image_probes = [(path, probe_image(path)) for path in image_targets]
+    media_probes = [(path, probe_media(path)) for path in media_targets]
+    for path, probe in image_probes:
+        if probe.get("ok") is not True:
+            failures.append(f"expect.media: image probe failed for {path}: {probe.get('error')}")
+    for path, probe in media_probes:
+        if probe.get("ok") is not True:
+            failures.append(f"expect.media: media probe failed for {path}: {probe.get('error')}")
+    for path, probe in image_probes:
+        if probe.get("ok") is not True:
+            continue
+        failures.extend(_image_criterion_failures(path, probe, media))
+    for path, probe in media_probes:
+        if probe.get("ok") is not True:
+            continue
+        failures.extend(_media_criterion_failures(path, probe, media, check_type))
+    if media.same_size is not None:
+        sizes = {
+            (probe.get("width"), probe.get("height"))
+            for _, probe in image_probes
+            if probe.get("ok") is True
+        }
+        observed_same = len(sizes) == 1
+        if media.same_size and not observed_same:
+            failures.append(
+                "expect.media.same_size: observed differing sizes "
+                f"{sorted(str(size) for size in sizes)}"
+            )
+        if media.same_size is False and observed_same and sizes:
+            failures.append(
+                "expect.media.same_size: observed one uniform size "
+                f"{sorted(str(size) for size in sizes)}"
+            )
+    return failures
+
+
+def _image_criterion_failures(path: Path, probe: dict[str, Any], media: MediaExpect) -> list[str]:
+    failures: list[str] = []
+    width = probe.get("width")
+    height = probe.get("height")
+    if media.min_width is not None and (width is None or width < media.min_width):
+        failures.append(
+            f"expect.media.min_width: {path.name} observed {width} < min {media.min_width}"
+        )
+    if media.min_height is not None and (height is None or height < media.min_height):
+        failures.append(
+            f"expect.media.min_height: {path.name} observed {height} < min {media.min_height}"
+        )
+    observed_non_uniform = probe.get("non_uniform")
+    if (
+        media.non_uniform is not None
+        and observed_non_uniform is not None
+        and observed_non_uniform != media.non_uniform
+    ):
+        failures.append(
+            f"expect.media.non_uniform: {path.name} observed {observed_non_uniform} "
+            f"(expected {media.non_uniform}; stddev {probe.get('stddev')})"
+        )
+    return failures
+
+
+def _media_criterion_failures(
+    path: Path,
+    probe: dict[str, Any],
+    media: MediaExpect,
+    check_type: str,
+) -> list[str]:
+    failures: list[str] = []
+    duration = probe.get("duration_s")
+    bitrate = probe.get("bitrate_kbps")
+    if check_type == "media.video" and probe.get("has_video") is not True:
+        failures.append(f"expect.media: {path.name} has no video stream")
+    if check_type == "media.audio" and probe.get("has_audio") is not True:
+        failures.append(f"expect.media: {path.name} has no audio stream")
+    if media.min_duration_s is not None and (duration is None or duration < media.min_duration_s):
+        failures.append(
+            f"expect.media.min_duration_s: {path.name} observed {duration} "
+            f"< min {media.min_duration_s}"
+        )
+    if media.max_duration_s is not None and (duration is None or duration > media.max_duration_s):
+        failures.append(
+            f"expect.media.max_duration_s: {path.name} observed {duration} "
+            f"> max {media.max_duration_s}"
+        )
+    if media.min_bitrate_kbps is not None and (bitrate is None or bitrate < media.min_bitrate_kbps):
+        failures.append(
+            f"expect.media.min_bitrate_kbps: {path.name} observed {bitrate} "
+            f"< min {media.min_bitrate_kbps}"
+        )
+    if media.decodable is not None:
+        observed = probe.get("ok") is True and probe.get("decodable") is True
+        if observed != media.decodable:
+            failures.append(
+                f"expect.media.decodable: {path.name} observed {observed} "
+                f"(expected {media.decodable})"
+            )
+    if media.codec is not None:
+        observed_codec = probe.get("codec")
+        if not isinstance(observed_codec, str) or observed_codec.lower() != media.codec.lower():
+            failures.append(
+                f"expect.media.codec: {path.name} observed {observed_codec!r} "
+                f"(expected {media.codec!r})"
+            )
+    if check_type != "media.audio":
+        width = probe.get("width")
+        height = probe.get("height")
+        if media.min_width is not None and (width is None or width < media.min_width):
+            failures.append(
+                f"expect.media.min_width: {path.name} observed {width} < min {media.min_width}"
+            )
+        if media.min_height is not None and (height is None or height < media.min_height):
+            failures.append(
+                f"expect.media.min_height: {path.name} observed {height} < min {media.min_height}"
+            )
+    return failures
+
+
+def _text_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    text_expect = expect.text
+    if text_expect is None:
+        return []
+    path = expect.artifact_exists
+    if path is None and step is not None and step.kind == "file":
+        path = step.command
+    if path is None:
+        return ["expect.text: no artifact_exists path or file-step command to inspect"]
+    probe = probe_text(_resolve_path(path, base))
+    if probe.get("ok") is False:
+        return [f"expect.text: probe failed for {path}: {probe.get('error')}"]
+    failures: list[str] = []
+    if text_expect.min_paragraphs is not None:
+        observed = probe["paragraphs"]
+        if observed < text_expect.min_paragraphs:
+            failures.append(
+                f"expect.text.min_paragraphs: observed {observed} "
+                f"< min {text_expect.min_paragraphs}"
+            )
+    if text_expect.min_chars is not None:
+        observed = probe["chars"]
+        if observed < text_expect.min_chars:
+            failures.append(
+                f"expect.text.min_chars: observed {observed} < min {text_expect.min_chars}"
+            )
+    if text_expect.min_headings is not None:
+        observed = probe["headings"]
+        if observed < text_expect.min_headings:
+            failures.append(
+                f"expect.text.min_headings: observed {observed} < min {text_expect.min_headings}"
+            )
+    if text_expect.has_heading is not None:
+        observed = probe["has_heading"]
+        if observed != text_expect.has_heading:
+            failures.append(
+                f"expect.text.has_heading: observed {observed} (expected {text_expect.has_heading})"
+            )
+    return failures
+
+
+def _subtitle_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    subtitle = expect.subtitle
+    if subtitle is None:
+        return []
+    path = expect.artifact_exists
+    if path is None and step is not None and step.kind == "file":
+        path = step.command
+    if path is None:
+        return ["expect.subtitle: no artifact_exists path or file-step command to inspect"]
+    probe = probe_srt(_resolve_path(path, base))
+    if probe.get("ok") is False:
+        return [f"expect.subtitle: probe failed for {path}: {probe.get('error')}"]
+    failures: list[str] = []
+    if subtitle.min_cues is not None and probe["cues"] < subtitle.min_cues:
+        failures.append(
+            f"expect.subtitle.min_cues: observed {probe['cues']} < min {subtitle.min_cues}"
+        )
+    if subtitle.monotonic is not None and probe["monotonic"] != subtitle.monotonic:
+        failures.append(
+            f"expect.subtitle.monotonic: observed {probe['monotonic']} "
+            f"(expected {subtitle.monotonic})"
+        )
+    if subtitle.within is not None:
+        media_probe = probe_media(_resolve_path(subtitle.within, base))
+        duration = media_probe.get("duration_s")
+        last_end = probe.get("last_end_s")
+        if media_probe.get("ok") is False or duration is None:
+            failures.append(
+                "expect.subtitle.within: media "
+                f"{subtitle.within!r} not decodable ({media_probe.get('error')})"
+            )
+        elif last_end is None or last_end > duration + 0.5:
+            failures.append(
+                f"expect.subtitle.within: last cue end {last_end} > media duration "
+                f"{duration} + 0.5s tolerance"
+            )
+    return failures
+
+
+def _keyword_coverage_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    coverage = expect.keyword_coverage
+    if coverage is None:
+        return []
+    paths = coverage.over
+    if paths is None:
+        if expect.artifact_exists is None:
+            return ["expect.keyword_coverage: no artifact_exists path and no 'over' list"]
+        paths = [expect.artifact_exists]
+    if expect.artifact_glob is not None:
+        read_base = _artifact_glob_root(step, base)
+    elif step is not None and step.kind == "file" and step.command:
+        command_path = _resolve_path(step.command, base)
+        read_base = command_path if command_path.is_dir() else command_path.parent
+    else:
+        read_base = base
+    chunks: list[str] = []
+    failures: list[str] = []
+    for raw in paths:
+        resolved = _resolve_path(raw, read_base)
+        try:
+            chunks.append(resolved.read_text(encoding="utf-8", errors="replace"))
+        except OSError as exc:
+            failures.append(f"expect.keyword_coverage: cannot read {raw!r}: {exc}")
+    if failures:
+        return failures
+    haystack = _normalize_text("\n".join(chunks))
+    missing = [keyword for keyword in coverage.keywords if _normalize_text(keyword) not in haystack]
+    total = len(coverage.keywords)
+    hits = total - len(missing)
+    ratio = hits / total if total else 0.0
+    if ratio < coverage.min_ratio:
+        failures.append(
+            "expect.keyword_coverage: missing keyword(s) "
+            f"{_fmt(missing)}; observed ratio {hits}/{total} = {ratio:.2f} "
+            f"< min {coverage.min_ratio}"
+        )
+    return failures
+
+
+def _normalize_text(text: str) -> str:
+    """Lowercase, collapse whitespace, and fold full-width ASCII to half-width."""
+    folded = "".join(
+        chr(ord(char) - 0xFEE0) if 0xFF01 <= ord(char) <= 0xFF5E else char for char in text
+    )
+    return "".join(folded.split()).lower()
+
+
 # --- helpers ---------------------------------------------------------------
+
+_MEDIA_CHECK_TYPES = frozenset({"media.video", "media.audio", "media.image", "media.carousel"})
+
+
+def _standard_check_type(step: Step | None) -> str:
+    """The media check type declared by ``step.standard`` (handbook key == type)."""
+    if step is None:
+        return ""
+    return step.standard if step.standard in _MEDIA_CHECK_TYPES else ""
 
 
 def _resolve_path(path: str, cwd: Path) -> Path:

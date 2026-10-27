@@ -1,0 +1,70 @@
+# Production capability L2 — video cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   env:  a working TTS + ASR path. This machine has piper/faster-whisper only:
+#           AUTOMEDIA_PIPER_MODEL_PATH=~/.cache/automedia-models/piper/zh_CN-huayan-medium.onnx
+#           AUTOMEDIA_FASTER_WHISPER_MODEL=~/.cache/automedia-models/whisper-tiny
+#         (defaults.yaml never hardcodes these paths)
+#   env:  AUTOMEDIA_ENGINES_VIDEO_DEFAULT=hyperframes when a stale user override
+#         points engines.video.default at an unregistered engine name.
+#   Cell isolation via `env AUTOMEDIA_PROJECTS_DIR=...` on the command; a step
+#   has no env: field (CLIAdapter runs shell=False).
+#
+# HONESTY NOTES:
+#   - exit 0 requires the whole short-video preset to succeed. A missing video
+#     track downgrades the run to "partial" (exit 1), so this step cannot pass
+#     on a machine with no working video path — by design.
+#   - media facts come from ffprobe (automedia.validation.media_probe): duration,
+#     width, height and decodability are measured on the produced mp4.
+
+name: produce-video
+description: "short-video produces a decodable ≥30s 1080p mp4 (measured with ffprobe)."
+intent: "Prove the video cell of the production capability matrix: the shipped video track (TTS → ASR/SRT → image → ffmpeg render) yields a real 1080p video of real length, not an 8-second 1600×1200 slideshow."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - short-video
+steps:
+  - name: clean the video cell
+    kind: cli
+    check: The video cell starts empty so the locator can only find an artifact from this run.
+    standard: media.video
+    command: rm -rf /tmp/automedia/prod-video
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: short-video pipeline completes
+    kind: cli
+    check: A real short-video run for a fixed Chinese topic and brand completes through the full preset and prints the completion marker.
+    standard: media.video
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-video automedia run --topic "短视频时代的品牌内容生产方法" --brand my-brand --mode short-video --skip-review
+    timeout_seconds: 2700
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced video
+    kind: cli
+    check: The video produced by this run is pinned to a stable path for inspection.
+    standard: media.video
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-video "03_video/output.mp4" --link /tmp/automedia/prod-video/video.mp4
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: video properties
+    kind: file
+    check: The produced mp4 decodes, is at least 30 seconds long and at least 1920x1080 (ffprobe facts, not filenames).
+    standard: media.video
+    command: /tmp/automedia/prod-video/video.mp4
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-video/video.mp4
+      media:
+        min_duration_s: 30
+        min_width: 1920
+        min_height: 1080
+        decodable: true

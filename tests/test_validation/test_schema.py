@@ -168,6 +168,11 @@ class TestAcceptsValid:
             "error_code_has",
             "recovery_has",
             "trace_id",
+            "artifact_glob",
+            "media",
+            "text",
+            "subtitle",
+            "keyword_coverage",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS

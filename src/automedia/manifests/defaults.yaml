@@ -85,16 +85,51 @@ gate_engine:
 
 engines:
   tts:
-    default: edge-tts
+    default: piper
+    # Ordered fallback chain (highest priority first). Piper is the offline
+    # guarantee and matches ``default`` above; Edge-TTS is the cloud fallback
+    # for machines with no Piper voice model installed.
+    chain: [piper, edge-tts]
+    fallback:
+      - edge-tts
+    piper:
+      # Absolute path to a Piper .onnx voice model (with its .onnx.json next
+      # to it). Leave null and set AUTOMEDIA_PIPER_MODEL_PATH (or the legacy
+      # AUTOMEDIA_PIPER_MODEL) instead — do not hardcode a machine path here.
+      model_path: null
+      speaker: 0
+      length_scale: 1.0
+      bitrate: 192
+      sample_rate: 44100
     edge-tts:
       voice: zh-CN-YunxiNeural
   asr:
-    default: whisper
+    default: faster-whisper
+    # Ordered fallback chain (highest priority first).
+    chain: [whisper, faster-whisper]
+    fallback:
+      - whisper
+    faster-whisper:
+      # Local CTranslate2 model directory. Leave null to use the
+      # AUTOMEDIA_FASTER_WHISPER_MODEL env var or the "tiny" size name
+      # (downloaded by the library on first use).
+      model_path: null
+      compute_type: int8
+      language: zh
     whisper:
       model: tiny
       language: zh
   image:
     default: comfyui
+    # Ordered fallback chain: ComfyUI when reachable, otherwise the local
+    # deterministic Pillow renderer (offline, always available).
+    chain: [comfyui, local]
+    fallback:
+      - local
+    local:
+      # Optional explicit CJK-capable TTF/TTC path. Leave null to let the
+      # engine probe wqy-zenhei → wqy-microhei → DejaVuSans → Pillow default.
+      font_path: null
     comfyui:
       host: 127.0.0.1
       port: 8188

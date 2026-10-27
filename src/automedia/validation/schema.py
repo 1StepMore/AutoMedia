@@ -8,7 +8,8 @@ AutoMedia deviations from ``scenarios/STANDARDS.md``:
 ``kind`` is closed to {"tool", "cli", "file"} (no HTTP adapter —
 ``requires_http`` stays a schema-only inert flag); ``error_boundary`` is
 supported at BOTH levels (scenario: what the coverage audit reads; step:
-marks boundary probes); the expect block is closed to the 9 keys below.
+marks boundary probes); the expect block is closed to the keys declared by
+:class:`Expect`.
 
 Artifact expect design (W1-T6 ``expects.py`` must follow this):
 ``artifact_exists: <path>`` (path string; the artifact must exist);
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field, fields
+from pathlib import Path
 from typing import Any
 
 from automedia.validation.schema_parse import (
@@ -89,6 +91,205 @@ class ArtifactCheck:
         )
 
 
+MEDIA_EXPECT_FIELDS: tuple[str, ...] = (
+    "min_count",
+    "min_width",
+    "min_height",
+    "same_size",
+    "min_duration_s",
+    "max_duration_s",
+    "min_bitrate_kbps",
+    "decodable",
+    "non_uniform",
+    "codec",
+)
+"""Closed field set of a ``media`` expect block (Phase 1.1).
+
+``min_count``/``same_size`` count and compare the multi-file set named by
+``artifact_glob``; ``min_width``/``min_height`` apply to image and video
+frames; ``min_duration_s``/``max_duration_s``/``min_bitrate_kbps``/``codec``
+apply to audio/video streams; ``decodable`` requires a successful ``ffprobe``
+parse; ``non_uniform`` rejects flat image fills.  There is no ``max_count``: a
+set's upper bound is not part of the Phase 1.1 contract.
+"""
+
+TEXT_EXPECT_FIELDS: tuple[str, ...] = (
+    "min_paragraphs",
+    "min_chars",
+    "min_headings",
+    "has_heading",
+)
+"""Closed field set of a ``text`` expect block (Phase 1.1)."""
+
+SUBTITLE_EXPECT_FIELDS: tuple[str, ...] = ("min_cues", "monotonic", "within")
+"""Closed field set of a ``subtitle`` expect block (Phase 1.1)."""
+
+COVERAGE_EXPECT_FIELDS: tuple[str, ...] = ("keywords", "min_ratio", "over")
+"""Closed field set of a ``keyword_coverage`` expect block (Phase 1.1)."""
+
+
+@dataclass(frozen=True)
+class MediaExpect:
+    """Structural media assertions (Phase 1.1).
+
+    ``min_count``/``same_size`` address the multi-file set named by
+    ``artifact_glob``; width/height grade image or video frames; duration,
+    bitrate, codec, and ``decodable`` grade audio/video streams;
+    ``non_uniform`` rejects a flat image fill.  Every field is optional and
+    absent fields are not evaluated.
+    """
+
+    min_count: int | None = None
+    min_width: int | None = None
+    min_height: int | None = None
+    same_size: bool | None = None
+    min_duration_s: float | None = None
+    max_duration_s: float | None = None
+    min_bitrate_kbps: float | None = None
+    decodable: bool | None = None
+    non_uniform: bool | None = None
+    codec: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: object, where: str = "media") -> MediaExpect:
+        """Parse a media block; unknown keys and wrong types raise :class:`SchemaError`."""
+        data = _reject_unknown(data, MEDIA_EXPECT_FIELDS, where)
+        prefix = f"{where}."
+        ints = ("min_count", "min_width", "min_height")
+        numbers = ("min_duration_s", "max_duration_s", "min_bitrate_kbps")
+        kwargs: dict[str, Any] = {}
+        for name in ints:
+            if name in data:
+                value = _expect_int(data[name], prefix + name)
+                if value < 0:
+                    raise SchemaError(f"{prefix}{name} must be >= 0")
+                kwargs[name] = value
+        for name in numbers:
+            if name in data:
+                amount = float(_expect_number(data[name], prefix + name))
+                if amount < 0:
+                    raise SchemaError(f"{prefix}{name} must be >= 0")
+                kwargs[name] = amount
+        for name in ("same_size", "decodable", "non_uniform"):
+            if name in data:
+                kwargs[name] = _expect_bool(data[name], prefix + name)
+        if "codec" in data:
+            codec = _expect_str(data["codec"], prefix + "codec")
+            if not codec.strip():
+                raise SchemaError(prefix + "codec must be a non-empty string")
+            kwargs["codec"] = codec
+        return cls(**kwargs)
+
+
+@dataclass(frozen=True)
+class TextExpect:
+    """Structural text/Markdown assertions (Phase 1.1): paragraph count,
+    character count, heading count/presence, measured by ``probe_text``."""
+
+    min_paragraphs: int | None = None
+    min_chars: int | None = None
+    min_headings: int | None = None
+    has_heading: bool | None = None
+
+    @classmethod
+    def from_dict(cls, data: object, where: str = "text") -> TextExpect:
+        """Parse a text block; unknown keys and wrong types raise :class:`SchemaError`."""
+        data = _reject_unknown(data, TEXT_EXPECT_FIELDS, where)
+        prefix = f"{where}."
+        kwargs: dict[str, Any] = {}
+        for name in ("min_paragraphs", "min_chars", "min_headings"):
+            if name in data:
+                value = _expect_int(data[name], prefix + name)
+                if value < 0:
+                    raise SchemaError(f"{prefix}{name} must be >= 0")
+                kwargs[name] = value
+        if "has_heading" in data:
+            kwargs["has_heading"] = _expect_bool(data["has_heading"], prefix + "has_heading")
+        return cls(**kwargs)
+
+
+@dataclass(frozen=True)
+class SubtitleExpect:
+    """SRT assertions (Phase 1.1): cue count, timing monotonicity, and the
+    ``within`` media path whose duration bounds the last cue's end."""
+
+    min_cues: int | None = None
+    monotonic: bool | None = None
+    within: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: object, where: str = "subtitle") -> SubtitleExpect:
+        """Parse a subtitle block; unknown keys and wrong types raise :class:`SchemaError`."""
+        data = _reject_unknown(data, SUBTITLE_EXPECT_FIELDS, where)
+        prefix = f"{where}."
+        kwargs: dict[str, Any] = {}
+        if "min_cues" in data:
+            value = _expect_int(data["min_cues"], prefix + "min_cues")
+            if value < 0:
+                raise SchemaError(prefix + "min_cues must be >= 0")
+            kwargs["min_cues"] = value
+        if "monotonic" in data:
+            kwargs["monotonic"] = _expect_bool(data["monotonic"], prefix + "monotonic")
+        if "within" in data:
+            kwargs["within"] = _expect_str(data["within"], prefix + "within")
+        return cls(**kwargs)
+
+
+@dataclass(frozen=True)
+class CoverageExpect:
+    """Keyword coverage assertions (Phase 1.1): every keyword in ``keywords``
+    must appear in the concatenated text of ``over`` (default: the block's
+    ``artifact_exists`` path) at ``min_ratio`` (default 1.0)."""
+
+    keywords: list[str]
+    min_ratio: float = 1.0
+    over: list[str] | None = None
+
+    @classmethod
+    def from_dict(cls, data: object, where: str = "keyword_coverage") -> CoverageExpect:
+        """Parse a coverage block; unknown keys, wrong types, and empty keyword
+        lists raise :class:`SchemaError`."""
+        data = _reject_unknown(data, COVERAGE_EXPECT_FIELDS, where)
+        prefix = f"{where}."
+        if "keywords" not in data:
+            raise SchemaError(f"{where}: missing required field 'keywords'")
+        keywords = _expect_str_list(data["keywords"], prefix + "keywords")
+        if not keywords:
+            raise SchemaError(prefix + "keywords must not be empty")
+        for index, keyword in enumerate(keywords):
+            if not keyword.strip():
+                raise SchemaError(f"{prefix}keywords[{index}]: must be a non-empty string")
+        min_ratio = 1.0
+        if "min_ratio" in data:
+            min_ratio = float(_expect_number(data["min_ratio"], prefix + "min_ratio"))
+            if not 0 <= min_ratio <= 1:
+                raise SchemaError(prefix + "min_ratio must satisfy 0 <= min_ratio <= 1")
+        over = None
+        if "over" in data:
+            over = _expect_str_list(data["over"], prefix + "over")
+            if not over:
+                raise SchemaError(prefix + "over must not be empty")
+            for index, path in enumerate(over):
+                if not path.strip():
+                    raise SchemaError(f"{prefix}over[{index}]: must be a non-empty string")
+        return cls(keywords=keywords, min_ratio=min_ratio, over=over)
+
+
+def _expect_artifact_glob(value: object, where: str) -> str:
+    """Validate an ``artifact_glob`` locator: non-empty relative glob pattern."""
+    pattern = _expect_str(value, where)
+    if not pattern.strip():
+        raise SchemaError(f"{where}: must be a non-empty string")
+    candidate = Path(pattern)
+    if candidate.is_absolute():
+        raise SchemaError(f"{where}: must be relative, not absolute ({pattern!r})")
+    if ".." in candidate.parts:
+        raise SchemaError(f"{where}: must not contain '..' ({pattern!r})")
+    if "*" not in pattern and "?" not in pattern:
+        raise SchemaError(f"{where}: must contain '*' or '?' ({pattern!r})")
+    return pattern
+
+
 _EXPECT_PARSE: tuple[tuple[str, Callable[[object, str], Any]], ...] = (
     ("success", _expect_bool),
     ("data_has", _expect_str_list),
@@ -105,6 +306,7 @@ _EXPECT_PARSE: tuple[tuple[str, Callable[[object, str], Any]], ...] = (
     ("error_code_has", _expect_str_list),
     ("recovery_has", _expect_str_list),
     ("trace_id", _expect_str_or_bool),
+    ("artifact_glob", _expect_artifact_glob),
 )
 """Field-name → type-parser map for the simple (non-cross-validated) expect keys."""
 
@@ -130,6 +332,11 @@ class Expect:
     error_code_has: list[str] | None = None
     recovery_has: list[str] | None = None
     trace_id: str | bool | None = None
+    artifact_glob: str | None = None
+    media: MediaExpect | None = None
+    text: TextExpect | None = None
+    subtitle: SubtitleExpect | None = None
+    keyword_coverage: CoverageExpect | None = None
 
     @classmethod
     def from_dict(cls, data: object, where: str = "expect") -> Expect:
@@ -149,6 +356,50 @@ class Expect:
             if size < 0:
                 raise SchemaError(prefix + "artifact_size_min must be >= 0")
             kwargs["artifact_size_min"] = size
+        kwargs["media"] = (
+            MediaExpect.from_dict(data["media"], prefix + "media") if "media" in data else None
+        )
+        kwargs["text"] = (
+            TextExpect.from_dict(data["text"], prefix + "text") if "text" in data else None
+        )
+        kwargs["subtitle"] = (
+            SubtitleExpect.from_dict(data["subtitle"], prefix + "subtitle")
+            if "subtitle" in data
+            else None
+        )
+        kwargs["keyword_coverage"] = (
+            CoverageExpect.from_dict(data["keyword_coverage"], prefix + "keyword_coverage")
+            if "keyword_coverage" in data
+            else None
+        )
+        if "artifact_exists" in data and "artifact_glob" in data:
+            raise SchemaError(
+                prefix + "artifact_exists and artifact_glob are mutually exclusive "
+                "(a single-file locator vs a multi-file set)"
+            )
+        if kwargs["media"] is not None:
+            if "artifact_exists" not in data and "artifact_glob" not in data:
+                raise SchemaError(
+                    prefix + "media requires 'artifact_exists' (single file) or "
+                    "'artifact_glob' (multi-file set)"
+                )
+            if kwargs["media"].same_size is True and "artifact_glob" not in data:
+                raise SchemaError(prefix + "media.same_size=True requires 'artifact_glob'")
+            if kwargs["media"].min_count is not None and "artifact_glob" not in data:
+                raise SchemaError(
+                    prefix + "media.min_count requires 'artifact_glob' (it counts a multi-file set)"
+                )
+            min_duration = kwargs["media"].min_duration_s
+            max_duration = kwargs["media"].max_duration_s
+            if (
+                min_duration is not None
+                and max_duration is not None
+                and max_duration < min_duration
+            ):
+                raise SchemaError(
+                    prefix + "media.max_duration_s must be >= media.min_duration_s "
+                    f"({max_duration} < {min_duration})"
+                )
         return cls(**kwargs)
 
     def is_empty(self) -> bool:

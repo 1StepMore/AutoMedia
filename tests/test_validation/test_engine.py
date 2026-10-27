@@ -638,6 +638,24 @@ steps:
       success: true
 """
 
+CATEGORY_YAML = """\
+name: category-production
+description: category-filter fixture
+intent: prove the suite runs only the requested category
+user_level: L0
+category: production
+steps:
+  - name: echo
+    kind: cli
+    check: stdout carries marker
+    standard: builtin.data_has
+    command: python3 -c "print('category-ok')"
+    expect:
+      success: true
+      stdout_has:
+        - category-ok
+"""
+
 
 @pytest.fixture
 def suite_scenarios_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -693,6 +711,28 @@ class TestSuite:
         assert stored["trace_id"] == record["trace_id"]
         assert stored["generated_at"] == record["generated_at"]
         assert len(stored["scenarios"]) == 3
+
+    def test_suite_category_filters_records_and_metrics(
+        self, suite_scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        (suite_scenarios_dir / "category.yaml").write_text(CATEGORY_YAML, encoding="utf-8")
+        record = asyncio.run(
+            run_validation_suite_async(
+                suite_server(),
+                suite_scenarios_dir,
+                runs_root=tmp_path / "runs-production",
+                category="production",
+            )
+        )
+        assert [r["scenario"] for r in record["scenarios"]] == ["category-production"]
+        assert record["metrics"]["runs"]["runnable_real"] == 1
+        assert record["blocked"] is False
+        full = asyncio.run(
+            run_validation_suite_async(
+                suite_server(), suite_scenarios_dir, runs_root=tmp_path / "runs-all"
+            )
+        )
+        assert len(full["scenarios"]) == 4
 
     def test_suite_aggregates_violations_and_blocked(
         self, suite_scenarios_dir: Path, tmp_path: Path

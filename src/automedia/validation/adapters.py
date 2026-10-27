@@ -39,6 +39,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from automedia.validation.media_probe import (
+    glob_artifacts,
+    is_image_path,
+    probe_image,
+    probe_media,
+    probe_srt,
+    probe_text,
+)
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Step
 
 _JSON_PARSE_LIMIT: int = 4 * 1024 * 1024
@@ -246,11 +254,11 @@ def _extract_gate_records(parsed: object) -> list[Any]:
 
 
 class FileAdapter:
-    """File surface: one artifact file inspection (plan W1-T4).
+    """File surface: one artifact inspection (plan W1-T4).
 
-    ``step.command`` carries the artifact path.  The output dict is the
-    artifact fact sheet consumed by the artifact expects (W1-T6) and the
-    report:
+    ``step.command`` carries the artifact path or the root directory of an
+    ``artifact_glob`` set.  The output dict is the artifact fact sheet
+    consumed by the artifact expects (W1-T6) and the report:
 
     * ``exists`` / ``size`` / ``nonempty`` — basic artifact facts;
     * ``is_json`` — the content looks like JSON (starts with ``{``/``[``
@@ -258,7 +266,11 @@ class FileAdapter:
     * ``json_parse_ok`` — that content actually parsed with
       :func:`json.loads`;
     * ``gate_records`` — the ``gates``/``gate_records`` list of a parsed
-      JSON artifact (project info / pipeline_md5.json records), else [].
+      JSON artifact (project info / pipeline_md5.json records), else [];
+    * ``artifact_glob`` — absolute matching paths for a glob locator;
+    * ``media`` / ``text`` / ``subtitle`` — probe facts when the step
+      declares the corresponding expect block;
+    * ``base_dir`` — absolute directory for resolving relative assertions.
 
     A missing file is ``ok=False`` with ``exists=False``; artifacts larger
     than :data:`_JSON_PARSE_LIMIT` are never read (facts only).
@@ -270,20 +282,41 @@ class FileAdapter:
         if command is None:
             return StepResult(False, {"success": False, "error": "file step without a path"})
         path = Path(command).expanduser()
+        pattern = step.expect.artifact_glob
+        base_dir = path if path.is_dir() else path.parent
+        if pattern is not None:
+            matches = glob_artifacts(str(path), pattern) if path.exists() else []
+            facts: dict[str, Any] = {
+                "success": path.exists(),
+                "path": str(path),
+                "exists": bool(matches),
+                "size": 0,
+                "nonempty": bool(matches),
+                "is_json": False,
+                "json_parse_ok": False,
+                "gate_records": [],
+                "artifact_glob": matches,
+                "base_dir": str(base_dir.resolve()),
+            }
+            if not path.exists():
+                facts["error"] = f"artifact root not found: {path}"
+            targets = [Path(match) for match in matches]
+            self._add_probe_facts(step, facts, targets, path)
+            return StepResult(path.exists(), facts)
         if not path.exists():
-            return StepResult(
-                False,
-                {
-                    "success": False,
-                    "path": str(path),
-                    "exists": False,
-                    "size": 0,
-                    "nonempty": False,
-                    "is_json": False,
-                    "json_parse_ok": False,
-                    "gate_records": [],
-                },
-            )
+            facts = {
+                "success": False,
+                "path": str(path),
+                "exists": False,
+                "size": 0,
+                "nonempty": False,
+                "is_json": False,
+                "json_parse_ok": False,
+                "gate_records": [],
+                "base_dir": str(base_dir.resolve()),
+            }
+            self._add_probe_facts(step, facts, [path], path)
+            return StepResult(False, facts)
         size = path.stat().st_size
         parsed: object = None
         if size <= _JSON_PARSE_LIMIT:
@@ -299,16 +332,44 @@ class FileAdapter:
                     parsed = None
         else:
             is_json = False
-        return StepResult(
-            True,
-            {
-                "success": True,
-                "path": str(path),
-                "exists": True,
-                "size": size,
-                "nonempty": size > 0,
-                "is_json": is_json,
-                "json_parse_ok": parsed is not None,
-                "gate_records": _extract_gate_records(parsed),
-            },
-        )
+        facts = {
+            "success": True,
+            "path": str(path),
+            "exists": True,
+            "size": size,
+            "nonempty": size > 0,
+            "is_json": is_json,
+            "json_parse_ok": parsed is not None,
+            "gate_records": _extract_gate_records(parsed),
+            "base_dir": str(base_dir.resolve()),
+        }
+        self._add_probe_facts(step, facts, [path], path)
+        return StepResult(True, facts)
+
+    @staticmethod
+    def _add_probe_facts(
+        step: Step,
+        facts: dict[str, Any],
+        targets: list[Path],
+        path: Path,
+    ) -> None:
+        """Attach media/text/subtitle probe facts declared by the step."""
+        expect = step.expect
+        if expect.media is not None:
+            probes: list[dict[str, Any]] = []
+            for target in targets:
+                if step.check in {"media.image", "media.carousel"}:
+                    probes.append(probe_image(target))
+                elif step.check in {"media.video", "media.audio"}:
+                    probes.append(probe_media(target))
+                elif is_image_path(target):
+                    probes.append(probe_image(target))
+                else:
+                    probes.append(probe_media(target))
+            facts["media"] = probes
+        if expect.text is not None:
+            target = path if path.is_file() else targets[0] if targets else path
+            facts["text"] = probe_text(target)
+        if expect.subtitle is not None:
+            target = path if path.is_file() else targets[0] if targets else path
+            facts["subtitle"] = probe_srt(target)

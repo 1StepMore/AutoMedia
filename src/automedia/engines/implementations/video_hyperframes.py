@@ -405,41 +405,97 @@ class HyperFramesVideoEngine(BaseVideoEngine):
 
             images: list[str] = assets.get("images", [])
             audio: str | None = assets.get("audio")
-            fallback_framerate: float = self._FALLBACK_FRAMERATE
             output_framerate: int = self._OUTPUT_FRAMERATE
             video_codec: str = self._VIDEO_CODEC
 
-            # Step 1: Build slideshow video from images
-            # Use the first image's directory as the glob root
-            images_dir: str = os.path.dirname(images[0]) if images else ""
-            glob_pattern: str = os.path.join(images_dir, "*.png")
+            # Target resolution comes from the engine config block
+            # (``engines.video.hyperframes``), defaulting to 1080p.
+            width: int = int(self._config.get("width", 1920))
+            height: int = int(self._config.get("height", 1080))
 
-            # Determine the actual image extension from the first image
-            first_img: str = images[0]
-            img_ext: str = os.path.splitext(first_img)[1] or ".png"
-            glob_pattern = os.path.join(images_dir, f"*{img_ext}")
+            # Derive the input framerate from the real audio duration so the
+            # slideshow's total length matches the narration.  With N images
+            # at ``N / duration`` fps each image occupies ``duration / N``
+            # seconds, giving exactly ``duration`` seconds overall.  Fall back
+            # to the legacy 0.5 fps when the audio is missing or unprobeable.
+            audio_duration: float | None = self._get_audio_duration(audio) if audio else None
+            image_count: int = len(images)
+            if audio_duration is not None and audio_duration > 0 and image_count > 0:
+                input_framerate: float = image_count / audio_duration
+            else:
+                input_framerate = self._FALLBACK_FRAMERATE
 
-            step1_cmd: list[str] = [
-                "ffmpeg",
-                "-y",
-                "-framerate",
-                str(fallback_framerate),
-                "-pattern_type",
-                "glob",
-                "-i",
-                glob_pattern,
-                "-c:v",
-                video_codec,
-                "-r",
-                str(output_framerate),
-                "-pix_fmt",
-                "yuv420p",
-                temp_video,
-            ]
+            # Letterbox into the exact target size: scale down preserving
+            # aspect ratio, then pad the remaining area symmetrically.
+            video_filter: str = (
+                f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2"
+            )
+
+            # Step 1: Build slideshow video from images.
+            if image_count == 1:
+                # A single file cannot be expressed as a glob sequence (the
+                # image2 glob demuxer emits only ~2s); loop it instead and
+                # bound the loop with an explicit duration.
+                loop_duration: float = (
+                    audio_duration
+                    if audio_duration is not None and audio_duration > 0
+                    else float(self._DEFAULT_SCENE_DURATION)
+                )
+                slide_source: str = images[0]
+                step1_cmd: list[str] = [
+                    "ffmpeg",
+                    "-y",
+                    "-loop",
+                    "1",
+                    "-framerate",
+                    str(input_framerate),
+                    "-i",
+                    images[0],
+                    "-t",
+                    str(loop_duration),
+                    "-vf",
+                    video_filter,
+                    "-c:v",
+                    video_codec,
+                    "-r",
+                    str(output_framerate),
+                    "-pix_fmt",
+                    "yuv420p",
+                    temp_video,
+                ]
+            else:
+                # Use the first image's directory as the glob root and its
+                # extension to select the sequence.
+                images_dir: str = os.path.dirname(images[0]) if images else ""
+                first_img: str = images[0]
+                img_ext: str = os.path.splitext(first_img)[1] or ".png"
+                glob_pattern: str = os.path.join(images_dir, f"*{img_ext}")
+
+                slide_source = glob_pattern
+                step1_cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-framerate",
+                    str(input_framerate),
+                    "-pattern_type",
+                    "glob",
+                    "-i",
+                    glob_pattern,
+                    "-vf",
+                    video_filter,
+                    "-c:v",
+                    video_codec,
+                    "-r",
+                    str(output_framerate),
+                    "-pix_fmt",
+                    "yuv420p",
+                    temp_video,
+                ]
 
             logger.info(
-                "Running FFmpeg slideshow (step 1/2) (glob=%s, temp=%s)",
-                glob_pattern,
+                "Running FFmpeg slideshow (step 1/2) (source=%s, temp=%s)",
+                slide_source,
                 temp_video,
             )
 
