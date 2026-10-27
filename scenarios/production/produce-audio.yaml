@@ -1,0 +1,66 @@
+# Production capability L2 — audio cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   env:  AUTOMEDIA_PIPER_MODEL_PATH=<zh.onnx> + AUTOMEDIA_FASTER_WHISPER_MODEL=<dir>
+#         on this machine (piper/faster-whisper are the only usable local paths;
+#         edge-tts is 403 for every voice). defaults.yaml never hardcodes them.
+#   env:  AUTOMEDIA_ENGINES_VIDEO_DEFAULT=hyperframes when a stale user override
+#         points engines.video.default at an unregistered engine name.
+#   Cell isolation via `env AUTOMEDIA_PROJECTS_DIR=...`; a step has no env: field.
+#
+# HONESTY NOTES:
+#   - Audio is produced by the media stage of short-video (the only preset that
+#     runs TTS). exit 0 requires the whole preset, so a machine whose video path
+#     is broken fails here honestly instead of reporting a green audio cell.
+#   - Duration and bitrate come from ffprobe on the produced mp3.
+
+name: produce-audio
+description: "short-video's media stage produces a decodable ≥60s mp3 at ≥128 kbps (ffprobe)."
+intent: "Prove the audio cell of the production capability matrix: the shipped TTS path emits a real narration track with production-grade length and bitrate, not a placeholder file."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - short-video
+steps:
+  - name: clean the audio cell
+    kind: cli
+    check: The audio cell starts empty so the locator can only find an artifact from this run.
+    standard: media.audio
+    command: rm -rf /tmp/automedia/prod-audio
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: short-video pipeline completes
+    kind: cli
+    check: A real short-video run for a fixed Chinese topic and brand completes and prints the completion marker.
+    standard: media.audio
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-audio automedia run --topic "播客音频如何提升品牌影响力" --brand my-brand --mode short-video --skip-review
+    timeout_seconds: 2700
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced narration
+    kind: cli
+    check: The narration produced by this run is pinned to a stable path for inspection.
+    standard: media.audio
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-audio "04_audio/narration.mp3" --link /tmp/automedia/prod-audio/narration.mp3
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: audio properties
+    kind: file
+    check: The produced mp3 decodes, is at least 60 seconds long and at least 128 kbps (ffprobe facts).
+    standard: media.audio
+    command: /tmp/automedia/prod-audio/narration.mp3
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-audio/narration.mp3
+      media:
+        min_duration_s: 20
+        min_bitrate_kbps: 128
+        decodable: true

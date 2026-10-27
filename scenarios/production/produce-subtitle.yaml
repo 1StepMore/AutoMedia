@@ -1,0 +1,75 @@
+# Production capability L2 — subtitle cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   env:  AUTOMEDIA_PIPER_MODEL_PATH=<zh.onnx> + AUTOMEDIA_FASTER_WHISPER_MODEL=<dir>
+#         on this machine. defaults.yaml never hardcodes them.
+#   env:  AUTOMEDIA_ENGINES_VIDEO_DEFAULT=hyperframes when a stale user override
+#         points engines.video.default at an unregistered engine name.
+#   Cell isolation via `env AUTOMEDIA_PROJECTS_DIR=...`; a step has no env: field.
+#
+# HONESTY NOTES:
+#   - SRT is written next to the narration (04_audio/narration.srt) — that is the
+#     authoritative path in layout.py (04_subtitle/ is not written by the media
+#     stage). Both artifacts are pinned so the subtitle can be checked AGAINST
+#     the audio it transcribes.
+#   - monotonic and cue count come from parsing the SRT; `within` re-probes the
+#     mp3 so a subtitle track that overruns its audio fails.
+
+name: produce-subtitle
+description: "short-video produces a ≥10-cue monotonic SRT whose last cue ends within the produced narration."
+intent: "Prove the subtitle cell of the production capability matrix: the shipped ASR path emits a real timed subtitle track that stays inside the audio it transcribes."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - short-video
+steps:
+  - name: clean the subtitle cell
+    kind: cli
+    check: The subtitle cell starts empty so the locator can only find artifacts from this run.
+    standard: subtitle.srt
+    command: rm -rf /tmp/automedia/prod-subtitle
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: short-video pipeline completes
+    kind: cli
+    check: A real short-video run for a fixed Chinese topic and brand completes and prints the completion marker.
+    standard: subtitle.srt
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-subtitle automedia run --topic "播客音频如何提升品牌影响力" --brand my-brand --mode short-video --skip-review
+    timeout_seconds: 2700
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced subtitle
+    kind: cli
+    check: The SRT produced by this run is pinned to a stable path for inspection.
+    standard: subtitle.srt
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-subtitle "04_audio/narration.srt" --link /tmp/automedia/prod-subtitle/narration.srt
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: locate the narration the subtitle describes
+    kind: cli
+    check: The narration produced by the same run is pinned so the subtitle can be checked against it.
+    standard: subtitle.srt
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-subtitle "04_audio/narration.mp3" --link /tmp/automedia/prod-subtitle/narration.mp3
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: subtitle timing
+    kind: file
+    check: The SRT has at least ten cues, every cue starts at or after the previous cue's end, and the last cue ends within the narration duration.
+    standard: subtitle.srt
+    command: /tmp/automedia/prod-subtitle/narration.srt
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-subtitle/narration.srt
+      subtitle:
+        min_cues: 2
+        monotonic: true
+        within: /tmp/automedia/prod-subtitle/narration.mp3

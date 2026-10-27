@@ -429,6 +429,14 @@ def build_single_run_record(record: dict[str, object]) -> dict[str, object]:
     }
 
 
+class UnknownCategoryError(ValueError):
+    """A requested suite category is not present in the loaded scenario library.
+
+    Raised after loading (never before), so the message can list the categories
+    that actually exist instead of a hardcoded set.
+    """
+
+
 async def run_validation_suite_async(
     server: ToolCallable | None,
     scenarios_dir: str | Path | None = None,
@@ -437,6 +445,7 @@ async def run_validation_suite_async(
     save: bool = True,
     cwd: Path | None = None,
     include_requires_real_adapter: bool = False,
+    category: str | None = None,
 ) -> dict[str, object]:
     """Load the library, run every scenario, persist one immutable run record.
 
@@ -447,9 +456,23 @@ async def run_validation_suite_async(
     ``latest.txt`` is refreshed (guide §3.1 phase 6).  Load failures
     propagate loudly
     (:class:`~automedia.validation.loader.LoadError`).
+
+    ``category`` (optional) restricts the suite to scenarios whose
+    ``category`` matches; the run record then reflects only that subset.
+    An unknown category raises :class:`UnknownCategoryError` naming the
+    categories present in the loaded library.  ``None`` runs the whole
+    library (unchanged behavior for every existing caller).
     """
     apply_stub_bin_to_path()
     scenarios = load_scenarios(scenarios_dir)
+    if category is not None:
+        known = sorted({scenario.category for scenario in scenarios})
+        if category not in known:
+            listing = ", ".join(known) if known else "(none)"
+            raise UnknownCategoryError(
+                f"unknown category {category!r}; known categories: {listing}"
+            )
+        scenarios = [scenario for scenario in scenarios if scenario.category == category]
     # gap T-21: a requires_real_adapter scenario can only be proved with real
     # platform credentials, so the credential-free suite excludes it from the
     # denominator by default (the nightly credentialed job proves it once).
@@ -506,6 +529,7 @@ def run_validation_suite(
     save: bool = True,
     cwd: Path | None = None,
     include_requires_real_adapter: bool = False,
+    category: str | None = None,
 ) -> dict[str, object]:
     """Sync wrapper of :func:`run_validation_suite_async` (CLI path only).
 
@@ -520,5 +544,6 @@ def run_validation_suite(
             save=save,
             cwd=cwd,
             include_requires_real_adapter=include_requires_real_adapter,
+            category=category,
         )
     )

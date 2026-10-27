@@ -138,6 +138,25 @@ class EngineRegistry(BaseRegistry):
         """
         return sorted(self._modality_map.get(modality, set()))
 
+    def list_by_modality_ordered(self, modality: str) -> list[str]:
+        """Return engine names for *modality* in **registration order**.
+
+        :meth:`list_by_modality` sorts names for stable display; fallback
+        chain construction needs the order engines were actually registered
+        in, which is the registry dict's insertion order.
+
+        Parameters
+        ----------
+        modality:
+            Modality string (e.g. ``"tts"``).
+
+        Returns
+        -------
+        List of engine names in registration order (possibly empty).
+        """
+        registered = self._modality_map.get(modality, set())
+        return [name for name in self._registry if name in registered]
+
     def get_default(self, modality: str, config: dict) -> type:
         """Resolve the default engine class for *modality* from *config*.
 

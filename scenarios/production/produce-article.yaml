@@ -1,0 +1,67 @@
+# Production capability L2 — article cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   The cell's projects dir is set per command (`env AUTOMEDIA_PROJECTS_DIR=...`):
+#   a step has NO env: field — CLIAdapter runs shell=False and inherits the suite
+#   process env only, so the path is inlined on the command itself.
+#
+# HONESTY NOTES:
+#   - exit 0 + "Pipeline finished:" is a real all-gates-pass claim: run.py maps
+#     both "failed" and "partial" to exit 1, so a run that skipped a gate cannot
+#     pass this step.
+#   - The CW draft filename embeds a timestamp, so the artifact is located by
+#     scripts/production_artifact.py (newest match under the cell) and pinned to
+#     a stable path; the file step inspects that stable path.
+#   - text.article facts come from automedia.validation.media_probe (the real
+#     file), never from the run's own stdout.
+
+name: produce-article
+description: "text_only produces a real article artifact whose markdown structure is measured (heading, ≥5 paragraphs, ≥800 chars)."
+intent: "Prove the article cell of the production capability matrix: a real LLM run from the CLI yields a publishable draft, and the framework grades the produced file's structure instead of trusting the run's exit code."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - text_only
+steps:
+  - name: clean the article cell
+    kind: cli
+    check: The article cell starts empty so the locator can only find an artifact from this run.
+    standard: text.article
+    command: rm -rf /tmp/automedia/prod-article
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: text_only pipeline completes
+    kind: cli
+    check: A real text_only run for a fixed Chinese topic and brand completes and prints the completion marker.
+    standard: text.article
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-article automedia run --topic "AI 智能体如何改变内容团队的工作方式" --brand my-brand --mode text_only --skip-review
+    timeout_seconds: 1800
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced draft
+    kind: cli
+    check: The timestamped draft produced by this run is pinned to a stable path for inspection.
+    standard: text.article
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-article "01_content/drafts/*_draft.md" --link /tmp/automedia/prod-article/article.md
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: article structure
+    kind: file
+    check: The produced draft has a markdown H1, at least five paragraphs and at least 500 characters (measured from the file, not assumed).
+    standard: text.article
+    command: /tmp/automedia/prod-article/article.md
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-article/article.md
+      text:
+        has_heading: true
+        min_paragraphs: 5
+        min_chars: 500

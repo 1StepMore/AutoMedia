@@ -25,7 +25,10 @@ subprocess or filesystem interaction.
 from __future__ import annotations
 
 import importlib
+import json
 import os
+import shutil
+import subprocess
 from collections.abc import Iterator
 from typing import Any
 from unittest.mock import ANY, MagicMock, call, patch
@@ -1386,3 +1389,126 @@ class TestDefaultTemplateProvisioning:
         copy_calls = mock_all["copy2"].call_args_list
         root_copies = [c for c in copy_calls if c[0][1] == "/tmp/hyperframes_test"]
         assert len(root_copies) >= 1, f"No files copied to temp root: {copy_calls}"
+
+
+# ===================================================================
+# render — real FFmpeg integration
+# ===================================================================
+
+
+def _ffmpeg_toolchain_available() -> bool:
+    return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+
+
+requires_ffmpeg = pytest.mark.skipif(
+    not _ffmpeg_toolchain_available(),
+    reason="ffmpeg/ffprobe not available on PATH",
+)
+
+
+def _write_png_sequence(directory: Any, count: int) -> list[str]:
+    from PIL import Image
+
+    colors = [(220, 20, 60), (34, 139, 34), (30, 64, 175), (255, 215, 0)]
+    paths: list[str] = []
+    for index in range(count):
+        path = directory / f"frame_{index + 1:02d}.png"
+        Image.new("RGB", (800, 600), colors[index % len(colors)]).save(path)
+        paths.append(str(path))
+    return paths
+
+
+def _write_silent_wav(path: Any, seconds: float) -> None:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:cl=mono",
+            "-t",
+            str(seconds),
+            "-c:a",
+            "pcm_s16le",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def _probe_video(path: Any) -> tuple[int, int, float]:
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height:format=duration",
+            "-of",
+            "json",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    data = json.loads(result.stdout)
+    stream = data["streams"][0]
+    return (
+        int(stream["width"]),
+        int(stream["height"]),
+        float(data["format"]["duration"]),
+    )
+
+
+@requires_ffmpeg
+class TestFFmpegRenderIntegration:
+    """Real ffmpeg/ffprobe run of the fallback path (synthetic assets only)."""
+
+    def test_uses_config_resolution_and_audio_duration(self, tmp_path: Any) -> None:
+        image_dir = tmp_path / "images"
+        image_dir.mkdir()
+        images = _write_png_sequence(image_dir, 4)
+        audio = tmp_path / "narration.wav"
+        _write_silent_wav(audio, 6)
+        output = tmp_path / "out.mp4"
+
+        engine = HyperFramesVideoEngine({"width": 1920, "height": 1080})
+        result = engine._render_with_ffmpeg(
+            {"images": images, "audio": str(audio)},
+            str(output),
+        )
+
+        assert result == os.path.abspath(str(output))
+        width, height, duration = _probe_video(output)
+        assert (width, height) == (1920, 1080)
+        assert abs(duration - 6.0) <= 1.0
+
+    def test_single_image_spans_full_audio_duration(self, tmp_path: Any) -> None:
+        image_dir = tmp_path / "images"
+        image_dir.mkdir()
+        images = _write_png_sequence(image_dir, 1)
+        audio = tmp_path / "narration.wav"
+        _write_silent_wav(audio, 4)
+        output = tmp_path / "out.mp4"
+
+        engine = HyperFramesVideoEngine({"width": 1920, "height": 1080})
+        result = engine._render_with_ffmpeg(
+            {"images": images, "audio": str(audio)},
+            str(output),
+        )
+
+        assert result == os.path.abspath(str(output))
+        width, height, duration = _probe_video(output)
+        assert (width, height) == (1920, 1080)
+        assert abs(duration - 4.0) <= 1.0

@@ -1,0 +1,65 @@
+# Production capability L2 — cover cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   The image engine is the configured image chain (comfyui → local); the local
+#   fallback needs no external service. Cell isolation via
+#   `env AUTOMEDIA_PROJECTS_DIR=...`; a step has no env: field.
+#
+# HONESTY NOTES:
+#   - The cover is written to the layout-authoritative path
+#     (02_images/cover/cover.png), which is stable — no locator step needed, but
+#     the locator still pins it so a stale cell cannot leak in (the cell is
+#     cleaned first).
+#   - non_uniform is a real pixel measurement (stddev of the grayscale image): a
+#     flat placeholder fill fails this cell, which is the point.
+
+name: produce-cover
+description: "text_with_cover produces a non-uniform ≥1200x630 cover image (PIL pixel facts)."
+intent: "Prove the cover cell of the production capability matrix: the shipped cover path yields a real, size-conformant, visually non-flat image rather than a blank placeholder."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - text_with_cover
+steps:
+  - name: clean the cover cell
+    kind: cli
+    check: The cover cell starts empty so the inspection can only see this run's artifact.
+    standard: media.image
+    command: rm -rf /tmp/automedia/prod-cover
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: text_with_cover pipeline completes
+    kind: cli
+    check: A real text_with_cover run for a fixed Chinese topic and brand completes and prints the completion marker.
+    standard: media.image
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-cover automedia run --topic "封面设计如何提升文章点击率" --brand my-brand --mode text_with_cover --skip-review
+    timeout_seconds: 1800
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced cover
+    kind: cli
+    check: The cover produced by this run is pinned to a stable path for inspection.
+    standard: media.image
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-cover "02_images/cover/cover.png" --link /tmp/automedia/prod-cover/cover.png
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: cover properties
+    kind: file
+    check: The produced cover decodes, is at least 1200x630, and is not a flat fill (grayscale stddev measured with PIL).
+    standard: media.image
+    command: /tmp/automedia/prod-cover/cover.png
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-cover/cover.png
+      media:
+        min_width: 1200
+        min_height: 630
+        non_uniform: true

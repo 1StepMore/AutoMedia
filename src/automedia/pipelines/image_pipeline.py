@@ -134,18 +134,99 @@ class ImagePipeline:
         """
         self._config = config
         self._image_engine: BaseImageEngine | None = None
+        self._image_chain: list[BaseImageEngine] | None = None
+
+    def _image_engine_chain(self) -> list[BaseImageEngine]:
+        """Return the ordered, available image engine chain (cached).
+
+        The chain comes from ``config["engines"]["image"]`` (``default`` +
+        ``fallback``).  Resolution never raises: unavailable or misconfigured
+        engines are skipped, and an empty list means "no image possible".
+        """
+        from automedia.engines import resolve_engine_chain
+
+        if self._image_chain is None:
+            try:
+                resolved = resolve_engine_chain("image", self._config)
+            except Exception:
+                logger.warning("Image engine chain resolution failed")
+                resolved = []
+            self._image_chain = [cast("BaseImageEngine", engine) for engine in resolved]
+        return self._image_chain
 
     def _get_image_engine(self) -> BaseImageEngine:
-        """Lazy-load and cache the image engine from config."""
-        from automedia.engines import resolve_engine
-        from automedia.engines.base import BaseImageEngine
+        """Lazy-load and cache the first available image engine.
+
+        Raises:
+            EngineUnavailableError: When no engine in the chain is available.
+        """
+        from automedia.engines.errors import EngineUnavailableError
 
         if self._image_engine is None:
-            self._image_engine = cast(
-                BaseImageEngine,
-                resolve_engine("image", self._config),
-            )
+            chain = self._image_engine_chain()
+            if not chain:
+                raise EngineUnavailableError(
+                    engine_name="image",
+                    reason="no image engine available",
+                    install_hint=(
+                        "Configure engines.image (comfyui or local) and install its dependencies."
+                    ),
+                )
+            self._image_engine = chain[0]
         return self._image_engine
+
+    def _generate_with_chain(
+        self,
+        prompt: str,
+        width: int,
+        height: int,
+        output_path: str,
+    ) -> str:
+        """Generate one image, falling through the engine chain on failure.
+
+        Raises the last engine error when every engine fails, or
+        :class:`EngineUnavailableError` when the chain is empty.
+        """
+        from automedia.engines.errors import EngineExecutionError, EngineUnavailableError
+
+        chain = self._image_engine_chain()
+        if not chain:
+            raise EngineUnavailableError(
+                engine_name="image",
+                reason="no image engine available",
+                install_hint=(
+                    "Configure engines.image (comfyui or local) and install its dependencies."
+                ),
+            )
+
+        last_exc: Exception | None = None
+        for engine in chain:
+            try:
+                return engine.generate(prompt, width, height, output_path)
+            except (EngineExecutionError, EngineUnavailableError) as exc:
+                logger.warning(
+                    "Image engine %s failed for %s: %s — trying next engine",
+                    getattr(engine, "engine_name", engine),
+                    output_path,
+                    exc,
+                )
+                last_exc = exc
+            except Exception as exc:
+                logger.warning(
+                    "Image engine %s raised unexpectedly for %s: %s — trying next engine",
+                    getattr(engine, "engine_name", engine),
+                    output_path,
+                    exc,
+                )
+                last_exc = exc
+
+        if last_exc is not None:
+            raise last_exc
+        raise EngineUnavailableError(
+            engine_name="image",
+            reason="no image engine available",
+            install_hint="Configure engines.image (comfyui or local) and install its dependencies.",
+        )
 
     def generate_covers(
         self,
@@ -181,7 +262,7 @@ class ImagePipeline:
             filename = f"cover_{safe_ratio}.png"
             output_path = os.path.join(covers_dir, filename)
             try:
-                path = self._get_image_engine().generate(
+                path = self._generate_with_chain(
                     f"{topic} — {brand} cover {ratio}",
                     w,
                     h,
@@ -237,7 +318,7 @@ class ImagePipeline:
             output_path = os.path.join(body_dir, filename)
             prompt = _generate_image_prompt(topic, brand, i)
             try:
-                path = self._get_image_engine().generate(prompt, w, h, output_path)
+                path = self._generate_with_chain(prompt, w, h, output_path)
             except EngineExecutionError as exc:
                 logger.warning(
                     "Body image %d generation failed: %s — continuing without images",
@@ -287,7 +368,7 @@ class ImagePipeline:
 
         output_path = os.path.join(cover_dir, "cover.png")
         try:
-            path = self._get_image_engine().generate(
+            path = self._generate_with_chain(
                 f"{topic} — {brand} cover {ratio}",
                 spec[0],
                 spec[1],
@@ -334,7 +415,7 @@ class ImagePipeline:
         w, h = BODY_IMAGE_SIZE  # 4:3 landscape default
         output_path = os.path.join(fallback_dir, "fallback_frame.png")
         try:
-            path = self._get_image_engine().generate(
+            path = self._generate_with_chain(
                 f"{topic} fallback frame",
                 w,
                 h,

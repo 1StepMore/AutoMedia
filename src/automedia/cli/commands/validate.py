@@ -50,6 +50,7 @@ import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_json
 from automedia.validation.engine import (
+    UnknownCategoryError,
     build_single_run_record,
     make_adapters,
     run_validation_scenario,
@@ -150,6 +151,15 @@ def validate_run(
             "missing; 'skip' runs the scenario even when env vars are missing."
         ),
     ),
+    category: str | None = typer.Option(
+        None,
+        "--category",
+        help=(
+            "With --all, run only scenarios in this category (e.g. "
+            "'production'). The persisted suite record then reflects only "
+            "that subset."
+        ),
+    ),
     runs_root: str = typer.Option(
         "validation-runs",
         "--runs-root",
@@ -157,6 +167,9 @@ def validate_run(
     ),
 ) -> None:
     """Run ONE named scenario, or the whole library with ``--all``.
+
+    ``--category`` narrows ``--all`` to one scenario category (mutually
+    exclusive with ``--scenario``, and rejected without ``--all``).
 
     Exit codes for a single run: 1 when the scenario status is ``failed`` OR
     the scenario is a hard-safety violation (``hard: true`` and not
@@ -166,11 +179,16 @@ def validate_run(
     """
     if env_gate not in _ENV_GATE_CHOICES:
         raise typer.BadParameter(f"must be one of {', '.join(_ENV_GATE_CHOICES)}") from None
+    if category is not None:
+        if scenario is not None:
+            raise typer.BadParameter("--category and --scenario are mutually exclusive")
+        if not run_all:
+            raise typer.BadParameter("--category requires --all")
     root = Path(runs_root)
     if run_all:
         if scenario is not None:
             raise typer.BadParameter("--all and --scenario are mutually exclusive")
-        _run_suite(root)
+        _run_suite(root, category=category)
         return
     if scenario is None:
         raise typer.BadParameter("Missing option '--scenario' — pass --scenario <name> or --all")
@@ -268,20 +286,25 @@ def validate_run(
         raise typer.Exit(code=1)
 
 
-def _run_suite(root: Path) -> None:
-    """Run the whole library, persist one suite record, and report it.
+def _run_suite(root: Path, *, category: str | None = None) -> None:
+    """Run the whole library (or one category), persist one suite record, and report it.
 
     Delegates to the engine's suite core (gap R-09): one exclusive-create run
     directory holds ``scenarios.json`` plus any collected artifacts, and
-    ``latest.txt`` is refreshed.  Exit 1 when any scenario ``failed`` or the
-    suite carries a hard-safety violation.
+    ``latest.txt`` is refreshed.  ``category`` restricts the run to matching
+    scenarios (the engine filters after loading, so the record reflects only
+    that subset).  Exit 1 when any scenario ``failed`` or the suite carries a
+    hard-safety violation.
     """
     from automedia.mcp.server import create_server
 
     try:
-        record = run_validation_suite(create_server(), runs_root=root)
+        record = run_validation_suite(create_server(), runs_root=root, category=category)
     except LoadError as exc:
         output_error(f"Failed to load scenarios: {exc}")
+        raise typer.Exit(code=1) from None
+    except UnknownCategoryError as exc:
+        output_error(str(exc))
         raise typer.Exit(code=1) from None
     except PersistError as exc:
         output_error(f"Could not persist suite record: {exc}")

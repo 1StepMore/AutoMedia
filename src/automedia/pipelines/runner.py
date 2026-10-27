@@ -1892,6 +1892,51 @@ _CONTENT_PLACEHOLDER_PREFIX = "[content skipped in"
 _MEDIA_TTS_COMMAND = "edge-tts"
 _MEDIA_ASR_COMMAND = "whisper"
 
+#: ``(modality, legacy CLI command)`` pairs the media stage needs.  The engine
+#: layer is the primary availability signal; the CLI name is only the fallback
+#: probe for the legacy direct-subprocess path in ``AudioPipeline``.
+_MEDIA_MODALITY_COMMANDS: tuple[tuple[str, str], ...] = (
+    ("tts", _MEDIA_TTS_COMMAND),
+    ("asr", _MEDIA_ASR_COMMAND),
+)
+
+
+def _media_modality_available(
+    modality: str,
+    config: dict[str, Any] | None,
+    cli_command: str,
+) -> bool:
+    """媒体能力可用性：优先问引擎，引擎不可用时回退到 CLI 探测。
+
+    中文说明：只看 ``shutil.which`` 会把"引擎已安装、只是没有同名 CLI"错判成
+    不可用（例如 ``whisper`` CLI 缺失但 ``faster-whisper`` 引擎已装）。因此先让
+    ``resolve_engine`` 解析并实例化配置的引擎——它内部已执行
+    ``check_available``；任何异常（引擎未注册、依赖缺失、配置错误）都不外抛，
+    回退到旧的 CLI 探测，保证旧路径仍然可用。
+
+    Args:
+        modality: 引擎模态（``"tts"`` / ``"asr"``）。
+        config: 流水线配置，用于定位该模态配置的默认引擎。
+        cli_command: 该模态对应的旧版 CLI 命令名（回退探测用）。
+
+    Returns:
+        True 表示引擎或 CLI 至少一条路径可用；绝不上抛异常。
+    """
+    try:
+        from automedia.engines import resolve_engine
+
+        engine = resolve_engine(modality, config)
+        available = engine.check_available()
+        if isinstance(available, tuple) and available and available[0] is True:
+            return True
+    except Exception as exc:
+        log.debug(
+            "pipeline.media_stage.engine_probe_failed",
+            modality=modality,
+            error=str(exc),
+        )
+    return shutil.which(cli_command) is not None
+
 
 def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
     """媒体旁白文本：CW 产出的内容 → 源材料 → 空字符串（表示"无从产出"）。
@@ -2003,8 +2048,12 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         )
         return
 
-    missing = [cmd for cmd in (_MEDIA_TTS_COMMAND, _MEDIA_ASR_COMMAND) if shutil.which(cmd) is None]
-    if missing:
+    missing = [
+        cli_command
+        for modality, cli_command in _MEDIA_MODALITY_COMMANDS
+        if not _media_modality_available(modality, gate_context.get("config"), cli_command)
+    ]
+    if len(missing) == len(_MEDIA_MODALITY_COMMANDS):
         log.info(
             "pipeline.media_stage.tools_missing",
             missing=missing,

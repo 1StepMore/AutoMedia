@@ -141,11 +141,36 @@ or value.
 | `stdout_has` | CLI stdout contains every listed substring |
 | `stderr_has` | CLI stderr contains every listed substring |
 | `artifact_exists` | The given path is a file |
+| `artifact_glob` | A relative glob pattern whose absolute matches are the artifact set; mutually exclusive with `artifact_exists` |
 | `artifact_size_min` | That file is at least N bytes; applies to the path named in `artifact_exists` of the same block |
 | `artifact_nonempty` | The given path exists and is non-empty |
+| `media` | Media assertions over the `artifact_exists` file or `artifact_glob` set: count, dimensions, duration, bitrate, codec, decodability, uniformity |
+| `text` | Text/Markdown assertions measured by the read-only text probe: paragraphs, characters, headings |
+| `subtitle` | SRT assertions: cue count, monotonic timing, and `within` media duration |
+| `keyword_coverage` | Required keywords and ratio over the artifact text (or an explicit `over` list) |
 | `gate_records_pass` | The artifact's JSON carries non-empty gate or pass records |
 | `min_score` | The output carries a numeric quality score at least this large |
 | `error_expected` | Opt in to a deliberately failing call: the error envelope (or non-zero exit) counts as a pass, not a failure |
+
+### Media and artifact check types
+
+These check types bind the expect keys above to concrete read-only probes.
+Every probe is non-mutating; a missing file, a missing `ffprobe`, or an
+unreadable image is a failed observation, never a silent pass.
+
+| Check type | Expect keys | What it proves |
+|---|---|---|
+| `artifact.glob-exists` | `artifact_glob` | The glob matches at least one file |
+| `media.video` | `artifact_exists` / `artifact_glob`, `media` | Video exists, decodes, has a video stream, and meets duration/bitrate/codec/size thresholds |
+| `media.audio` | `artifact_exists` / `artifact_glob`, `media` | Audio exists, decodes, has an audio stream, and meets duration/bitrate/codec thresholds |
+| `media.image` | `artifact_exists` / `artifact_glob`, `media` | Image is readable, meets size thresholds, and is non-uniform when required |
+| `media.carousel` | `artifact_glob`, `media` | Carousel set meets `min_count` and every image is readable, with consistent dimensions when `same_size` is set |
+| `text.article` | `artifact_exists` or file-step command, `text` | Text meets paragraph/character/heading thresholds |
+| `subtitle.srt` | `artifact_exists` or file-step command, `subtitle` | SRT cues meet count, overlap, and media-duration checks |
+| `quality.keyword-coverage` | `artifact_exists` / `over`, `keyword_coverage` | Required keywords appear at or above `min_ratio` |
+
+`media.same_size=True` and `media.min_count` require `artifact_glob`;
+`artifact_exists` and `artifact_glob` are mutually exclusive in one block.
 
 A step that deliberately exercises a failing call **must** declare
 `error_expected: true` in its `expect` block; otherwise the harness treats the
