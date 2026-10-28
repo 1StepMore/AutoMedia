@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.11.1...automedia-v1.12.0) (2026-10-27)
+
+
+### Features
+
+* **validation:** prove production artifacts end to end ([#329](https://github.com/1StepMore/AutoMedia/issues/329)) ([9255242](https://github.com/1StepMore/AutoMedia/commit/925524298eb2651e07c072014915d927260a5abc))
+
 ## [1.11.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.11.0...automedia-v1.11.1) (2026-10-24)
 
 
