@@ -57,6 +57,11 @@ anthropic = ["anthropic>=0.116.0"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0,<2"]
 
+# Local, offline engine backends. Optional on purpose: the engines import
+# their dependency lazily and report unavailable when it is absent.
+tts-piper = ["piper-tts>=1.2"]
+asr-faster = ["faster-whisper>=1.0"]
+
 omni-core = ["lxml>=6", "python-docx>=1.2", "python-pptx>=1.0", "openpyxl>=3.1", "pandas>=2"]
 omni-pdf = ["pymupdf>=1.24"]
 omni-ml = ["sentence-transformers>=3", "torch>=2.13.0"]

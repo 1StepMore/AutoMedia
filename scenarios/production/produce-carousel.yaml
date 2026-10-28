@@ -1,0 +1,60 @@
+# Production capability L2 — carousel cell (plan production-capability-validation §1.7)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   The image engine is the configured image chain (comfyui → local); the local
+#   fallback needs no external service. Cell isolation via
+#   `env AUTOMEDIA_PROJECTS_DIR=...`; a step has no env: field.
+#
+# HONESTY NOTES:
+#   - Carousel images are written under 02_images/body/ with per-image names, so
+#     the file step takes the CELL ROOT as its path and `artifact_glob` selects
+#     every body image produced under it (project dirs are one level deep:
+#     <cell>/<YYYYmmdd>_<slug>/02_images/body/*.png).
+#   - `artifact_glob` and `media` are asserted together on purpose: the count and
+#     the same-size/uniformity facts are only meaningful over the whole set.
+#   - non_uniform is a real pixel measurement; identical flat placeholders fail.
+
+name: produce-carousel
+description: "image-carousel produces at least three same-size, non-uniform body images (PIL facts over the whole set)."
+intent: "Prove the carousel cell of the production capability matrix: the shipped carousel path yields a real multi-image set with consistent dimensions and non-flat content."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - image-carousel
+steps:
+  - name: clean the carousel cell
+    kind: cli
+    check: The carousel cell starts empty so the inspection can only see this run's artifacts.
+    standard: media.carousel
+    command: rm -rf /tmp/automedia/prod-carousel
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: image-carousel pipeline completes
+    kind: cli
+    check: A real image-carousel run for a fixed Chinese topic and brand completes and prints the completion marker.
+    standard: media.carousel
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-carousel automedia run --topic "图文轮播的品牌叙事技巧" --brand my-brand --mode image-carousel --skip-review
+    timeout_seconds: 1800
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: carousel image set
+    kind: file
+    check: At least three body images exist; all have the same dimensions, are each at least 1200x900, and none is a flat fill.
+    standard: media.carousel
+    command: /tmp/automedia/prod-carousel
+    timeout_seconds: 120
+    expect:
+      artifact_glob: "*/02_images/body/*.png"
+      media:
+        min_count: 3
+        same_size: true
+        min_width: 1200
+        min_height: 900
+        non_uniform: true

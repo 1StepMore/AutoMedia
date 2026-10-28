@@ -21,9 +21,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, cast
 
-from automedia.engines import resolve_engine
+from automedia.engines import resolve_engine_chain
 from automedia.engines.base import BaseASREngine, BaseTTSEngine
-from automedia.engines.errors import EngineUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +61,8 @@ class AudioPipeline:
         self._config: dict[str, Any] = config or {}
         self._tts_engine: BaseTTSEngine | None = None
         self._asr_engine: BaseASREngine | None = None
+        self._tts_chain: list[BaseTTSEngine] | None = None
+        self._asr_chain: list[BaseASREngine] | None = None
         self._tts_fallback: bool = False
         self._asr_fallback: bool = False
 
@@ -69,63 +70,68 @@ class AudioPipeline:
     # Engine resolution (lazy)
     # ------------------------------------------------------------------
 
-    def _get_tts_engine(self) -> BaseTTSEngine | None:
-        """Resolve and cache the TTS engine.
+    def _tts_engine_chain(self) -> list[BaseTTSEngine]:
+        """Return the ordered, available TTS engine chain (cached).
 
-        Uses :func:`resolve_engine` with ``self._config`` to obtain the
-        configured TTS engine.  On ``EngineUnavailableError``, logs a
-        warning and returns ``None`` so callers can fall back to the
-        original direct subprocess approach.
-
-        Returns
-        -------
-        BaseTTSEngine or None
-            The resolved TTS engine, or ``None`` if the engine is
-            unavailable.
+        The chain comes from ``config["engines"]["tts"]`` (``default`` +
+        ``fallback``).  When no engine in the chain is available the list is
+        empty and callers fall back to the direct edge-tts subprocess call.
         """
-        if self._tts_engine is not None:
+        if self._tts_chain is None:
+            try:
+                resolved = resolve_engine_chain("tts", self._config or None)
+            except Exception:
+                logger.warning("TTS engine chain resolution failed", exc_info=True)
+                resolved = []
+            self._tts_chain = [cast(BaseTTSEngine, engine) for engine in resolved]
+        return self._tts_chain
+
+    def _asr_engine_chain(self) -> list[BaseASREngine]:
+        """Return the ordered, available ASR engine chain (cached)."""
+        if self._asr_chain is None:
+            try:
+                resolved = resolve_engine_chain("asr", self._config or None)
+            except Exception:
+                logger.warning("ASR engine chain resolution failed", exc_info=True)
+                resolved = []
+            self._asr_chain = [cast(BaseASREngine, engine) for engine in resolved]
+        return self._asr_chain
+
+    def _get_tts_engine(self) -> BaseTTSEngine | None:
+        """Resolve and cache the first available TTS engine.
+
+        Backward-compatible single-engine accessor.  Returns ``None`` when no
+        engine in the chain is available, so callers fall back to the direct
+        subprocess approach.
+        """
+        chain = self._tts_engine_chain()
+        if chain:
+            self._tts_engine = chain[0]
             return self._tts_engine
-        if self._tts_fallback:
-            return None
-        try:
-            engine = resolve_engine("tts", self._config)
-            self._tts_engine = cast(BaseTTSEngine, engine)
-        except EngineUnavailableError:
+        if not self._tts_fallback:
             logger.warning(
                 "TTS engine not available, falling back to direct edge-tts subprocess call"
             )
-            self._tts_fallback = True
-            return None
-        return self._tts_engine
+        self._tts_fallback = True
+        return None
 
     def _get_asr_engine(self) -> BaseASREngine | None:
-        """Resolve and cache the ASR engine.
+        """Resolve and cache the first available ASR engine.
 
-        Uses :func:`resolve_engine` with ``self._config`` to obtain the
-        configured ASR engine.  On ``EngineUnavailableError``, logs a
-        warning and returns ``None`` so callers can fall back to the
-        original direct subprocess approach.
-
-        Returns
-        -------
-        BaseASREngine or None
-            The resolved ASR engine, or ``None`` if the engine is
-            unavailable.
+        Backward-compatible single-engine accessor.  Returns ``None`` when no
+        engine in the chain is available, so callers fall back to the direct
+        subprocess approach.
         """
-        if self._asr_engine is not None:
+        chain = self._asr_engine_chain()
+        if chain:
+            self._asr_engine = chain[0]
             return self._asr_engine
-        if self._asr_fallback:
-            return None
-        try:
-            engine = resolve_engine("asr", self._config)
-            self._asr_engine = cast(BaseASREngine, engine)
-        except EngineUnavailableError:
+        if not self._asr_fallback:
             logger.warning(
                 "ASR engine not available, falling back to direct whisper subprocess call"
             )
-            self._asr_fallback = True
-            return None
-        return self._asr_engine
+        self._asr_fallback = True
+        return None
 
     # ------------------------------------------------------------------
     # TTS: edge-tts
@@ -169,10 +175,22 @@ class AudioPipeline:
         # Ensure parent directory exists
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-        # Try engine delegation first; fall back to direct subprocess call
-        engine = self._get_tts_engine()
-        if engine is not None:
-            return engine.synthesize(text, voice=voice, output_path=output_path)
+        # Try the engine chain first; fall back to direct subprocess call
+        chain = self._tts_engine_chain()
+        if chain:
+            last_exc: Exception | None = None
+            for engine in chain:
+                try:
+                    return engine.synthesize(text, voice=voice, output_path=output_path)
+                except Exception as exc:
+                    logger.warning(
+                        "TTS engine %s failed: %s — trying next engine",
+                        engine.engine_name,
+                        exc,
+                    )
+                    last_exc = exc
+            if last_exc is not None:
+                raise last_exc
 
         # Fallback: direct edge-tts subprocess call (backward compat)
         cmd = [
@@ -194,6 +212,8 @@ class AudioPipeline:
         )
         if result.returncode != 0:
             logger.error("edge-tts failed (rc=%d): %s", result.returncode, result.stderr)
+            if os.path.isfile(output_path):
+                os.remove(output_path)
             raise subprocess.CalledProcessError(
                 result.returncode, cmd, result.stdout, result.stderr
             )
@@ -237,10 +257,22 @@ class AudioPipeline:
         if not os.path.isfile(audio_path):
             raise FileNotFoundError(f"audio file not found: {audio_path}")
 
-        # Try engine delegation first; fall back to direct subprocess call
-        engine = self._get_asr_engine()
-        if engine is not None:
-            return engine.transcribe(audio_path, language=language)
+        # Try the engine chain first; fall back to direct subprocess call
+        chain = self._asr_engine_chain()
+        if chain:
+            last_exc: Exception | None = None
+            for engine in chain:
+                try:
+                    return engine.transcribe(audio_path, language=language)
+                except Exception as exc:
+                    logger.warning(
+                        "ASR engine %s failed: %s — trying next engine",
+                        engine.engine_name,
+                        exc,
+                    )
+                    last_exc = exc
+            if last_exc is not None:
+                raise last_exc
 
         # Fallback: direct whisper subprocess call (backward compat)
         audio_dir = os.path.dirname(os.path.abspath(audio_path))

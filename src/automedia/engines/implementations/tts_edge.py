@@ -139,6 +139,8 @@ class EdgeTTSEngine(BaseTTSEngine):
         )
         if result.returncode != 0:
             logger.error("edge-tts failed (rc=%d): %s", result.returncode, result.stderr)
+            if os.path.isfile(output_path):
+                os.remove(output_path)
             raise subprocess.CalledProcessError(
                 result.returncode,
                 cmd,

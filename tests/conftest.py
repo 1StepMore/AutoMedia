@@ -264,6 +264,24 @@ def _correlation_id_isolation() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _path_isolation() -> Generator[None, None, None]:
+    """Save and restore ``PATH`` between tests.
+
+    The validation harness prepends its stub-bin directory to
+    ``os.environ["PATH"]`` so pipeline subprocesses resolve the committed
+    stand-in ``ffmpeg``/``ffprobe``/``whisper`` binaries. That prepend is
+    intentionally permanent for a CLI process, but in-process it outlives the
+    test that set ``AUTOMEDIA_VALIDATION_STUB_BIN``: later tests (e.g. the
+    real ``ffprobe`` integration probe) then resolve the stub, whose
+    ``ffprobe`` prints a bare duration instead of JSON. Snapshotting ``PATH``
+    keeps each test hermetic without weakening the harness.
+    """
+    saved = os.environ.get("PATH", "")
+    yield
+    os.environ["PATH"] = saved
+
+
+@pytest.fixture(autouse=True)
 def _no_mock_paths_in_cwd() -> Generator[None, None, None]:
     """Fail any test that leaves a ``MagicMock``-repr path in the CWD.
 

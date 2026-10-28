@@ -14,13 +14,15 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Any, ClassVar
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from automedia.core.md5_tracker import compute_md5
+from automedia.engines.errors import EngineUnavailableError
 from automedia.gates._context import GateContext
 from automedia.gates._result import missing_input_result
 from automedia.pipelines.runner import _media_narration_text, _produce_media_assets
@@ -28,6 +30,7 @@ from automedia.pipelines.runner import _media_narration_text, _produce_media_ass
 _AUDIO_PATH = "automedia.pipelines.audio_pipeline.AudioPipeline"
 _IMAGE_PATH = "automedia.pipelines.image_pipeline.ImagePipeline"
 _ENGINE_PATH = "automedia.engines.resolve_engine"
+_AUDIO_ENGINE_PATH = "automedia.pipelines.audio_pipeline.resolve_engine_chain"
 _WHICH_PATH = "shutil.which"
 
 
@@ -78,6 +81,61 @@ class _FakeVideoEngine:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"fake-mp4")
         return os.path.abspath(output_path)
+
+
+class _FakeTTSEngine:
+    """引擎替身：``check_available`` 为真，``synthesize`` 写真实文件。"""
+
+    def check_available(self) -> tuple[bool, str]:
+        return True, "fake tts available"
+
+    def synthesize(self, text: str, voice: str = "", output_path: str = "") -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake-mp3")
+        return os.path.abspath(output_path)
+
+
+class _FakeASREngine:
+    """引擎替身：``check_available`` 为真，``transcribe`` 返回可控文本。"""
+
+    def __init__(self, text: str = "hello world") -> None:
+        self._text = text
+
+    def check_available(self) -> tuple[bool, str]:
+        return True, "fake asr available"
+
+    def transcribe(self, audio_path: str, language: str | None = None) -> dict[str, Any]:
+        if not self._text:
+            return {"text": "", "segments": []}
+        return {
+            "text": self._text,
+            "segments": [{"start": 0.0, "end": 1.0, "text": self._text}],
+        }
+
+
+def _fake_engine_resolver(asr_text: str = "hello world") -> Any:
+    """按模态返回假引擎；``tts``/``asr`` 都可用，覆盖"无 CLI 有引擎"。"""
+
+    def _resolve(modality: str, config: dict[str, Any] | None = None) -> Any:
+        engines: dict[str, Any] = {
+            "tts": _FakeTTSEngine(),
+            "asr": _FakeASREngine(asr_text),
+        }
+        return engines[modality]
+
+    return _resolve
+
+
+def _fake_engine_chain_resolver(asr_text: str = "hello world") -> Any:
+    """Chain-shaped wrapper: the pipelines resolve a list, the runner a single engine."""
+
+    single = _fake_engine_resolver(asr_text)
+
+    def _resolve_chain(modality: str, config: dict[str, Any] | None = None) -> Any:
+        return [single(modality, config)]
+
+    return _resolve_chain
 
 
 def _video_context(tmp_path: Path, *, content: str = "real content") -> GateContext:
@@ -240,3 +298,89 @@ class TestIdempotence:
             _produce_media_assets(ctx)
 
         assert ctx.get("_media_stage_done") is True
+
+
+class TestEngineAvailabilityFallback:
+    """CLI 全缺失但引擎可用 ⇒ 媒体阶段继续；引擎与 CLI 全不可用才跳过。"""
+
+    def _patch_engines_available(
+        self, monkeypatch: pytest.MonkeyPatch, *, asr_text: str = "hello world"
+    ) -> None:
+        """把引擎解析器换成假实现，同时让所有 CLI 探测失败。"""
+        resolver = _fake_engine_resolver(asr_text)
+        chain_resolver = _fake_engine_chain_resolver(asr_text)
+        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(_ENGINE_PATH, resolver)
+        monkeypatch.setattr(_AUDIO_ENGINE_PATH, chain_resolver)
+        monkeypatch.setattr(
+            "automedia.pipelines.image_pipeline.ImagePipeline.generate_fallback_frame",
+            lambda self, topic, project_dir: "",
+        )
+
+    def test_engine_without_cli_still_produces_audio_and_subtitles(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """whisper CLI 缺失但 ASR 引擎可用 → narration.mp3 + narration.srt 仍产出。"""
+        ctx = _video_context(tmp_path)
+        self._patch_engines_available(monkeypatch)
+
+        _produce_media_assets(ctx)
+
+        assert os.path.basename(str(ctx.get("audio_path"))) == "narration.mp3"
+        assert os.path.basename(str(ctx.get("subtitles_path"))) == "narration.srt"
+        assert os.path.isfile(str(ctx.get("audio_path")))
+        assert os.path.isfile(str(ctx.get("subtitles_path")))
+        assert ctx.get("transcription") == "hello world"
+        assert ctx.get("whisper_text") == "hello world"
+        assert ctx.get("srt_text")
+
+        required = ctx.get("required_files")
+        assert required == [ctx.get("audio_path"), ctx.get("subtitles_path")]
+        assert ctx.was_written("video_path") is False
+
+    def test_neither_engine_nor_cli_returns_early_and_logs_tools_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """引擎与 CLI 全不可用 ⇒ 一个键都不写，并保留 tools_missing 取证日志。"""
+        ctx = _video_context(tmp_path)
+        mock_log = MagicMock()
+
+        def _unavailable(modality: str, config: dict[str, Any] | None = None) -> Any:
+            raise EngineUnavailableError(
+                engine_name=modality, reason="not installed", install_hint="install it"
+            )
+
+        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(_ENGINE_PATH, _unavailable)
+        monkeypatch.setattr("automedia.pipelines.runner.log", mock_log)
+
+        _produce_media_assets(ctx)
+
+        assert ctx.was_written("audio_path") is False
+        assert ctx.was_written("required_files") is False
+        events = [
+            call
+            for call in mock_log.info.call_args_list
+            if call.args and call.args[0] == "pipeline.media_stage.tools_missing"
+        ]
+        assert events, "tools_missing event was not logged"
+        assert events[0].kwargs["missing"] == ["edge-tts", "whisper"]
+
+    def test_engine_available_but_empty_transcript_writes_no_partial_keys(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """转写为空 ⇒ 不写任何 V 门输入键（避免只写一半的残缺上下文）。"""
+        ctx = _video_context(tmp_path)
+        self._patch_engines_available(monkeypatch, asr_text="")
+
+        _produce_media_assets(ctx)
+
+        for key in (
+            "audio_path",
+            "transcription",
+            "whisper_text",
+            "subtitles_path",
+            "srt_text",
+            "required_files",
+        ):
+            assert ctx.was_written(key) is False

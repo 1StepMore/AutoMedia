@@ -1,0 +1,82 @@
+# Production capability L2 — end-to-end article cell (plan production-capability-validation §1.7 + §2.4)
+#
+# RUNNER CONVENTION (REQUIRED — read before running):
+#   cwd:  repo root (so scripts/production_artifact.py resolves)
+#   env:  AUTOMEDIA_LLM_API_KEY=<real key>   (requires_env below → no key = unconfigured)
+#   Cell isolation via `env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-e2e`; a
+#   step has no env: field (CLIAdapter runs shell=False).
+#
+# HONESTY NOTES:
+#   - This is the E1 cell: topic → publishable article in one CLI call. It is the
+#     only cell whose L3 sample (LLM judge) is mandatory; the judge lives in its
+#     own scenario (e2e-topic-to-article-llm-judge, Phase 2) so its absence or
+#     failure cannot silently colour this cell's PASS.
+#   - keyword_coverage is a deterministic offline proxy for "the article is
+#     about the requested topic": at least 2 of the 3 topic keywords must appear
+#     (min_ratio 0.66). It is NOT a quality judgement.
+#   - The draft is timestamped; the locator pins it to article.md first.
+
+name: e2e-topic-to-article
+description: "One CLI call turns a topic into an article whose structure and topic-keyword coverage are measured (≥2 of 3 keywords)."
+intent: "Prove the end-to-end production cell: an agent with no docs goes from an idea to a structured, on-topic draft in one command, and the framework grades the produced file rather than the run's self-report."
+category: production
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_modes:
+  - text_only
+steps:
+  - name: clean the e2e cell
+    kind: cli
+    check: The e2e cell starts empty so the locator can only find an artifact from this run.
+    standard: text.article
+    command: rm -rf /tmp/automedia/prod-e2e
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: topic to article in one call
+    kind: cli
+    check: A real text_only run for the fixed topic and brand completes and prints the completion marker.
+    standard: text.article
+    command: env AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/prod-e2e automedia run --topic "AI 智能体如何改变内容团队的工作方式" --brand my-brand --mode text_only --skip-review
+    timeout_seconds: 1800
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Pipeline finished:"
+  - name: locate the produced draft
+    kind: cli
+    check: The timestamped draft produced by this run is pinned to a stable path for inspection.
+    standard: artifact.glob-exists
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-e2e "01_content/drafts/*_draft.md" --link /tmp/automedia/prod-e2e/article.md
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+  - name: article structure
+    kind: file
+    check: The produced draft has a markdown H1, at least five paragraphs and 800 characters (measured from the file, not assumed).
+    standard: text.article
+    command: /tmp/automedia/prod-e2e/article.md
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-e2e/article.md
+      text:
+        has_heading: true
+        min_paragraphs: 5
+        min_chars: 800
+  - name: article topic coverage
+    kind: file
+    check: At least two of the three topic keywords appear in the draft (deterministic offline proxy, not a quality judgement).
+    standard: quality.keyword-coverage
+    command: /tmp/automedia/prod-e2e/article.md
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-e2e/article.md
+      keyword_coverage:
+        keywords:
+          - 智能体
+          - 内容团队
+          - 编辑
+        min_ratio: 0.66
+        over:
+          - /tmp/automedia/prod-e2e/article.md

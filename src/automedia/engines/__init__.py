@@ -161,6 +161,126 @@ def resolve_engine(
     return engine
 
 
+def _dedupe(names: list[str]) -> list[str]:
+    """Return *names* with duplicates removed, preserving first occurrence."""
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for name in names:
+        if name and name not in seen:
+            seen.add(name)
+            ordered.append(name)
+    return ordered
+
+
+def _chain_names(
+    modality: str,
+    engine_cfg: dict[str, Any] | None,
+    registry: EngineRegistry,
+) -> list[str]:
+    """Resolve the ordered engine names a chain should try for *modality*.
+
+    An explicit ``chain`` list wins.  Otherwise the configured (or built-in)
+    default comes first, followed by the legacy ``fallback`` list and then
+    every other engine registered for the modality in registration order.
+    """
+    if isinstance(engine_cfg, dict):
+        chain = engine_cfg.get("chain")
+        if isinstance(chain, str):
+            return _dedupe([chain])
+        if isinstance(chain, (list, tuple)):
+            return _dedupe([str(name) for name in chain if name])
+
+    names: list[str] = []
+    default_name: str | None = None
+    if isinstance(engine_cfg, dict):
+        raw_default = engine_cfg.get("default")
+        if raw_default:
+            default_name = str(raw_default)
+        fallback = engine_cfg.get("fallback")
+        if isinstance(fallback, str):
+            names.extend([fallback])
+        elif isinstance(fallback, (list, tuple)):
+            names.extend(str(name) for name in fallback if name)
+
+    if default_name is None:
+        default_name = _DEFAULT_ENGINES.get(modality)
+
+    try:
+        registered = registry.list_by_modality_ordered(modality)
+    except Exception:  # pragma: no cover - defensive against registry swaps
+        registered = []
+
+    ordered = ([default_name] if default_name else []) + names + registered
+    return _dedupe(ordered)
+
+
+def resolve_engine_chain(
+    modality: str,
+    config: dict[str, Any] | None = None,
+) -> list[BaseEngine]:
+    """Resolve an ordered chain of available engines for *modality*.
+
+    Reads ``config["engines"][modality]["chain"]`` (a list of engine names)
+    when present::
+
+        {"chain": ["edge-tts", "piper"], "piper": {...}}
+
+    Without a ``chain`` key the order is the configured ``default`` (or the
+    built-in default), then the legacy ``fallback`` list, then every other
+    engine registered for the modality in registration order.  Duplicates are
+    removed while preserving order.
+
+    Each candidate is instantiated through :func:`resolve_engine`, which also
+    runs its availability check.  Unavailable, unknown, or misconfigured
+    engines are skipped with a debug log.
+
+    This function **never raises**: callers decide what an empty chain means
+    (direct subprocess fallback for audio, "no image" for image).
+
+    Parameters
+    ----------
+    modality:
+        One of ``"tts"``, ``"asr"``, ``"image"``, ``"video"``.
+    config:
+        Full pipeline configuration dictionary (may be ``None``).
+
+    Returns
+    -------
+    list[BaseEngine]
+        Ready-to-use engines in preference order (possibly empty).
+    """
+    try:
+        cfg: dict[str, Any] = config or {}
+        engines_section = cfg.get("engines")
+        engine_cfg = engines_section.get(modality) if isinstance(engines_section, dict) else None
+        if engine_cfg is not None and not isinstance(engine_cfg, dict):
+            log.debug(
+                "Ignoring non-dict engines.%s config (%s)", modality, type(engine_cfg).__name__
+            )
+            engine_cfg = None
+
+        registry: EngineRegistry = EngineRegistry()
+        names = _chain_names(modality, engine_cfg, registry)
+
+        chain: list[BaseEngine] = []
+        for name in names:
+            per_modality = dict(engine_cfg or {})
+            per_modality["default"] = name
+            new_engines = dict(engines_section) if isinstance(engines_section, dict) else {}
+            new_engines[modality] = per_modality
+            candidate_cfg = dict(cfg)
+            candidate_cfg["engines"] = new_engines
+            try:
+                chain.append(resolve_engine(modality, candidate_cfg))
+            except Exception as exc:
+                log.debug("Engine chain: skipping %r for modality %r: %s", name, modality, exc)
+                continue
+        return chain
+    except Exception as exc:  # pragma: no cover - chain resolution never raises
+        log.debug("Engine chain resolution failed for %r: %s", modality, exc)
+        return []
+
+
 __all__ = [
     "BaseASREngine",
     "BaseEngine",
@@ -172,4 +292,5 @@ __all__ = [
     "EngineRegistry",
     "EngineUnavailableError",
     "resolve_engine",
+    "resolve_engine_chain",
 ]

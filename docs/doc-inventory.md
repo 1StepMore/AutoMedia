@@ -19,7 +19,7 @@
 | docs/dev | — | dir |
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
-| docs/dev/agent-reference.md | 12817 | file |
+| docs/dev/agent-reference.md | 12830 | file |
 | docs/dev/agent-troubleshooting.md | 27023 | file |
 | docs/dev/api-gotchas.md | 10896 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |

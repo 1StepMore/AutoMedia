@@ -67,6 +67,11 @@ def _write_srt(path: str, content: str) -> None:
 class TestGenerateTts:
     """TTS generation via edge-tts subprocess."""
 
+    @pytest.fixture(autouse=True)
+    def _direct_subprocess(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(AudioPipeline, "_tts_engine_chain", lambda self: [])
+        monkeypatch.setattr(AudioPipeline, "_asr_engine_chain", lambda self: [])
+
     @patch("automedia.pipelines.audio_pipeline.subprocess.run")
     def test_calls_edge_tts_with_correct_args(self, mock_run: MagicMock, tmp_path: Any) -> None:
         mock_run.return_value = _make_subprocess_result()
@@ -129,6 +134,11 @@ class TestGenerateTts:
 
 class TestTranscribeAudio:
     """Whisper ASR transcription via subprocess."""
+
+    @pytest.fixture(autouse=True)
+    def _direct_subprocess(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(AudioPipeline, "_tts_engine_chain", lambda self: [])
+        monkeypatch.setattr(AudioPipeline, "_asr_engine_chain", lambda self: [])
 
     @patch("automedia.pipelines.audio_pipeline.subprocess.run")
     def test_calls_whisper_with_correct_args(self, mock_run: MagicMock, tmp_path: Any) -> None:
@@ -346,6 +356,11 @@ class TestProofreadSrt:
 
 class TestGenerateAll:
     """One-stop TTS → ASR → SRT pipeline."""
+
+    @pytest.fixture(autouse=True)
+    def _direct_subprocess(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(AudioPipeline, "_tts_engine_chain", lambda self: [])
+        monkeypatch.setattr(AudioPipeline, "_asr_engine_chain", lambda self: [])
 
     @patch("automedia.pipelines.audio_pipeline.subprocess.run")
     def test_orchestrates_full_pipeline(self, mock_run: MagicMock, tmp_path: Any) -> None:

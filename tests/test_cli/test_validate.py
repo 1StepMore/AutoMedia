@@ -11,6 +11,7 @@ modules under ``automedia/cli/commands/`` get their surface tests in
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,23 @@ from automedia.cli.app import app
 from automedia.validation.persist import list_runs, persist_run, write_latest_pointer
 
 runner = CliRunner()
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+_BOX_GLYPH = re.compile(r"[│╭╮╰╯─]")
+
+
+def _flat(output: str) -> str:
+    """Flatten Rich output so a wrapped message matches at any terminal width.
+
+    Rich wraps its error box to the detected width and closes each visual
+    line with a box-drawing glyph, so ``--category requires --all`` can come
+    back as ``--category requires  │\n│ --all`` on the CI runner. Strip the
+    styling and the box glyphs, then collapse whitespace.
+    """
+    text = _ANSI_ESCAPE.sub("", output)
+    text = _BOX_GLYPH.sub(" ", text)
+    return " ".join(text.split())
+
 
 STANDARDS_FIXTURE = (
     Path(__file__).resolve().parents[1]
@@ -160,6 +178,25 @@ steps:
       stdout_has: ["ok"]
 """,
 }
+
+_PRODUCTION_SCENARIO = """\
+name: synth-production
+description: A passing synthetic scenario in the production category.
+intent: Unit-test the validate run --all --category filter.
+user_level: L0
+category: production
+requires_env: []
+steps:
+  - name: echo prints ok
+    kind: cli
+    check: echo prints the word ok
+    standard: founder-expectations.F02
+    command: echo ok
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+      stdout_has: ["ok"]
+"""
 
 
 @pytest.fixture()
@@ -605,7 +642,91 @@ class TestValidateRunAll:
             ],
         )
         assert result.exit_code == 2
-        assert "mutually exclusive" in result.output
+        assert "mutually exclusive" in _flat(result.output)
+
+    def test_run_all_category_runs_only_that_subset(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        (scenarios_dir / "synth-production.yaml").write_text(_PRODUCTION_SCENARIO, encoding="utf-8")
+        runs = tmp_path / "runs"
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "validate",
+                "run",
+                "--all",
+                "--category",
+                "production",
+                "--runs-root",
+                str(runs),
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert [row["scenario"] for row in data["scenarios"]] == ["synth-production"]
+        assert data["counts"] == {"passed": 1}
+        (run_name,) = list_runs(runs)
+        stored = json.loads((runs / run_name / "scenarios.json").read_text(encoding="utf-8"))
+        assert [row["scenario"] for row in stored["scenarios"]] == ["synth-production"]
+
+    def test_run_category_with_scenario_is_usage_error(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--category",
+                "baseline",
+                "--scenario",
+                "synth-passing",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 2
+        assert "mutually exclusive" in _flat(result.output)
+
+    def test_run_category_without_all_is_usage_error(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--category",
+                "baseline",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 2
+        assert "--category requires --all" in _flat(result.output)
+
+    def test_run_unknown_category_exits_1_with_known_categories(
+        self, scenarios_dir: Path, tmp_path: Path
+    ) -> None:
+        runs = tmp_path / "runs"
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--all",
+                "--category",
+                "no-such-category",
+                "--runs-root",
+                str(runs),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "unknown category" in _flat(result.output)
+        assert "baseline" in result.output
+        assert "no-such-category" in result.output
+        assert not runs.exists()
 
 
 # =========================================================================
