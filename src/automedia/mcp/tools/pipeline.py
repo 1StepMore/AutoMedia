@@ -170,16 +170,22 @@ def run_pipeline(
                 ),
             }
 
-    # Validate source_path against allowlist
-    # If the path is not allowed, log a warning and fall back gracefully
-    # rather than failing the pipeline start.
+    # Validate source_path against the allowlist — fail-closed (T2-2): a
+    # caller-supplied path outside the allowlist is a structured denial, not
+    # a silent fallback that ignores the source the caller asked for.
     if source_path:
         try:
             _require_allowed(source_path, tool_name="run_pipeline")
-        except Exception as exc:
-            # Allowlist check failed — fall back gracefully rather than failing startup
-            log.warning("run_pipeline: source_path %s not in allowlist: %s", source_path, exc)
-            source_path = ""
+        except PermissionError as exc:
+            return {
+                "status": "failed",
+                **error_response(
+                    MCPErrorCode.ALLOWLIST_DENIED,
+                    f"source_path {source_path!r} is not within any allowed directory: {exc}",
+                    "Pass a path under a directory listed in mcp_allowlist.yaml, "
+                    "or omit source_path.",
+                ),
+            }
 
     # --- Concurrency limit (Part A) ---
     # Acquire the semaphore; reject immediately if at max capacity.

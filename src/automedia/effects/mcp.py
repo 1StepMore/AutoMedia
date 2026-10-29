@@ -28,7 +28,9 @@ def analyze_content(
         The project ID to analyse.
     base_dir:
         Base directory to scan for projects.  Defaults to the current
-        working directory when empty.
+        working directory when empty.  An explicit *base_dir* is checked
+        against the MCP path allowlist (fail-closed); the default is the
+        caller's own working directory and is not allowlist-gated.
 
     Returns
     -------
@@ -41,6 +43,19 @@ def analyze_content(
             return {"status": "error", "error": "project_id is required"}
 
         base = Path(base_dir) if base_dir else Path.cwd()
+        if base_dir:
+            # Explicit caller-supplied path: fail-closed (T2-2).  The empty
+            # default resolves to the caller's own cwd and needs no gate.
+            from automedia.mcp.allowlist import check_path_allowed
+
+            if not check_path_allowed(str(base)):
+                return {
+                    "status": "error",
+                    "error": (
+                        f"base_dir {base_dir!r} is not within any allowed directory "
+                        "(mcp_allowlist.yaml)"
+                    ),
+                }
 
         # Find project by ID
         project_info: dict[str, Any] | None = None

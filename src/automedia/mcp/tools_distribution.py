@@ -80,19 +80,24 @@ def distribute_content(
             "or set all=True to distribute to every registered platform.",
         )
 
-    # Validate base_dir against allowlist if provided
+    # Validate base_dir against the allowlist — fail-closed (T2-2): an
+    # explicit caller-supplied directory outside the allowlist is a structured
+    # denial, not a silent fallback to a directory the caller did not ask for.
     if base_dir:
         try:
             from automedia.mcp.allowlist import _require_allowed
 
             _require_allowed(base_dir, tool_name="distribute_content")
-        except Exception:
-            # If allowlist check fails, log and fall back to default
-            log.warning(
-                "distribute_content: base_dir %s not in allowlist, using default",
-                base_dir,
-            )
-            base_dir = None
+        except PermissionError as exc:
+            return {
+                "success": False,
+                **error_response(
+                    MCPErrorCode.ALLOWLIST_DENIED,
+                    f"base_dir {base_dir!r} is not within any allowed directory: {exc}",
+                    "Pass a directory listed in mcp_allowlist.yaml, or omit "
+                    "base_dir to use the default projects directory.",
+                ),
+            }
 
     try:
         from automedia.adapters.distribution import distribute_to_platforms

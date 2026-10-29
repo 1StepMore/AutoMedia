@@ -48,6 +48,12 @@ def init_config(project_dir: str = "") -> dict[str, Any]:
     """
     try:
         target = Path(project_dir).resolve() if project_dir else Path.cwd()
+        if project_dir:
+            # Explicit caller-supplied path: fail-closed (T2-2).  The empty
+            # default resolves to the caller's own cwd and needs no gate.
+            from automedia.mcp.allowlist import _require_allowed
+
+            _require_allowed(str(target), tool_name="init_config")
         automedia_dir = target / ".automedia"
         automedia_dir.mkdir(parents=True, exist_ok=True)
 
@@ -68,6 +74,16 @@ def init_config(project_dir: str = "") -> dict[str, Any]:
                 "config_file": str(config_path),
             }
         )
+    except PermissionError as exc:
+        return {
+            "success": False,
+            **error_response(
+                MCPErrorCode.ALLOWLIST_DENIED,
+                f"project_dir {project_dir!r} is not within any allowed directory: {exc}",
+                "Pass a directory listed in mcp_allowlist.yaml, or omit "
+                "project_dir to use the current working directory.",
+            ),
+        }
     except OSError as exc:
         return {
             "success": False,

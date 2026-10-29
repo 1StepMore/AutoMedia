@@ -60,11 +60,15 @@ def publish_content(
         ``status: "draft_created"`` and ``draft_url``.
     """
     try:
-        _require_allowed(base_dir, tool_name="publish_content")
+        # Resolve the effective projects dir BEFORE the allowlist check so an
+        # empty base_dir (the default) is judged on the directory that will
+        # actually be scanned — not on the empty string (which always denied
+        # and made the default call unusable, T2-2).
+        projects_dir = base_dir or _resolve_projects_dir()
+        _require_allowed(projects_dir, tool_name="publish_content")
 
         from automedia.adapters.publish_engine import PublishEngine
 
-        projects_dir = base_dir or _resolve_projects_dir()
         projects = _discover_projects(projects_dir)
         match = [p for p in projects if p.get("project_id") == project_id]
         if not match:
@@ -179,6 +183,13 @@ def publish_content(
         return success_response(base_response)
     except ImportError as exc:
         return {"published": False, **error_response(MCPErrorCode.IMPORT_ERROR, str(exc))}
+    except PermissionError as exc:
+        # Allowlist denial (T2-2): surface the structured code, not a generic
+        # file-I/O failure — the caller asked for a path we must refuse.
+        return {
+            "published": False,
+            **error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc)),
+        }
     except OSError as exc:
         return {
             "published": False,

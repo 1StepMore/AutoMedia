@@ -10,12 +10,29 @@ the guard loudly instead of passing silently (issue #208).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from automedia.mcp.tools import add_brand, configure_llm, init_config, onboard
+
+
+@pytest.fixture(autouse=True)
+def _allowlist_tmp_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Allowlist the per-test tmp dir: ``init_config`` gates an explicit
+    ``project_dir`` fail-closed (T2-2), and these tests pass ``tmp_path``
+    explicitly — without the grant every call would be ALLOWLIST_DENIED."""
+    allowlist = tmp_path / "allowlist.yaml"
+    allowlist.write_text(f"allowed_directories:\n  - {tmp_path}\n", encoding="utf-8")
+    monkeypatch.setenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", str(allowlist))
+    from automedia.mcp.allowlist import _reset_allowlist_cache
+
+    _reset_allowlist_cache()
+    yield
+    _reset_allowlist_cache()
+
 
 # ===================================================================
 # Tests: init_config

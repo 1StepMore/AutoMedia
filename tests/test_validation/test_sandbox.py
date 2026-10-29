@@ -84,6 +84,67 @@ class TestSandboxDirectories:
         shutil.rmtree(root, ignore_errors=True)
 
 
+class TestSandboxAllowlistProvisioning:
+    """The sandbox provisions a scoped allowlist (T2-2 pairing).
+
+    The MCP tools gate caller-supplied paths fail-closed; committed
+    scenarios address sandbox paths (``base_dir: ${AUTOMEDIA_PROJECTS_DIR}``,
+    ``/tmp/automedia/`` recovery paths), so the sandbox must carry its own
+    allowlist or those steps would flip to ALLOWLIST_DENIED.
+    """
+
+    def test_owned_sandbox_provisions_scoped_allowlist(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.mcp.allowlist import check_path_allowed
+
+        monkeypatch.delenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", raising=False)
+        with validation_sandbox() as sandbox:
+            allowlist_path = os.environ["AUTOMEDIA_MCP_ALLOWLIST_PATH"]
+            assert allowlist_path
+            assert sandbox.env.get("AUTOMEDIA_MCP_ALLOWLIST_PATH") == allowlist_path
+            assert check_path_allowed(str(sandbox.projects_dir)) is True
+            assert check_path_allowed(str(sandbox.config_dir)) is True
+            # Recovery scenarios pin /tmp/automedia/ paths.
+            assert check_path_allowed("/tmp/automedia/recovery-x") is True
+            assert check_path_allowed(str(sandbox.root.parent / "elsewhere")) is False
+
+        assert "AUTOMEDIA_MCP_ALLOWLIST_PATH" not in os.environ
+        # Cache reset on exit: the tmp dirs are no longer allowed.
+        assert check_path_allowed(str(sandbox.projects_dir)) is False
+
+    def test_explicit_dirs_branch_also_provisions(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.mcp.allowlist import check_path_allowed
+
+        config = tmp_path / "cfg"
+        projects = tmp_path / "proj"
+        config.mkdir()
+        projects.mkdir()
+        monkeypatch.setenv(CONFIG_ENV, str(config))
+        monkeypatch.setenv(PROJECTS_ENV, str(projects))
+        monkeypatch.delenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", raising=False)
+
+        with validation_sandbox() as sandbox:
+            assert sandbox.temporary is False
+            assert os.environ["AUTOMEDIA_MCP_ALLOWLIST_PATH"]
+            assert check_path_allowed(str(projects)) is True
+            assert check_path_allowed(str(tmp_path / "denied")) is False
+
+    def test_caller_allowlist_path_is_honoured(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        custom = tmp_path / "custom.yaml"
+        custom.write_text(f"allowed_directories:\n  - {tmp_path}\n", encoding="utf-8")
+        monkeypatch.setenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", str(custom))
+        monkeypatch.delenv(CONFIG_ENV, raising=False)
+        monkeypatch.delenv(PROJECTS_ENV, raising=False)
+
+        with validation_sandbox():
+            assert os.environ["AUTOMEDIA_MCP_ALLOWLIST_PATH"] == str(custom)
+
+
 class TestIdempotency:
     def test_each_invocation_starts_from_a_clean_config(
         self, monkeypatch: pytest.MonkeyPatch
