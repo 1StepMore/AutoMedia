@@ -316,7 +316,7 @@ automedia run --topic "..." --brand my-brand --mode text_only
 New to this codebase? Here's your orientation path:
 
 ```
-Step 1: Read AGENTS.md       → Codebase map, constraints, red lines (10 MUST/MUST NOT)
+Step 1: Read AGENTS.md       → Codebase map, constraints, red lines (9 MUST/MUST NOT)
 Step 2: Review agent config  → .opencode/ (OpenCode), .claude/ (Claude Code)
 Step 3: Start MCP server     → python -m automedia.mcp.server
 Step 4: Verify setup         → automedia doctor
@@ -570,7 +570,7 @@ The project ships agent-specific config files at the repository root:
 | `.opencode/` | OpenCode | MCP plugin config + agent skill files |
 | `.claude/settings.json` | Claude Code | MCP server configuration |
 | `.claude/rules.md` | Claude Code | Project-level rules, constraints, and conventions |
-| `AGENTS.md` | Universal | Codebase map, 10 agent constraints, MCP/CLI references, red lines |
+| `AGENTS.md` | Universal | Codebase map, 9 agent constraints, MCP/CLI references, red lines |
 | `.env.example` | Universal | All supported environment variables with documentation |
 
 All tools also read `AGENTS.md` for project context — it's the single source of truth for agent-role information. Hermes Agent additionally supports `.hermes.md` (highest priority), but since this project targets multiple agent types, `AGENTS.md` is the canonical choice (per Hermes docs: *"Use AGENTS.md when the same project will also be worked on by other agents"*).

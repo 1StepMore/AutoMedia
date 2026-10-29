@@ -6,37 +6,37 @@ Plain-language definitions of AutoMedia terms for AI coding agents. Each entry p
 
 Copy quality gates that run in the middle of the pipeline: fact check (G0), humanizer (G1), copy review (G2), brand CTA (G3), WeChat checklist (G4), HTML check (G5), tone check (G6).
 
-**See:** `automedia/gates/`, gate lists in `automedia/pipelines/runner.py`
+**See:** `automedia/gates/`, gate lists in `automedia/pipelines/gate_plan.py`
 
 ## V0-V7 (video/quality gates)
 
 Video and production-quality gates that run after the copy gates: lint (V0), vision QA (V1), pre-send whisper (V2), content semantic (V3), TTS brand asset (V4), MP3 vs SRT (V5), subtitle render (V6), six-step hard check (V7).
 
-**See:** `automedia/gates/lint.py`, `automedia/pipelines/runner.py`
+**See:** `automedia/gates/lint.py`, `automedia/pipelines/gate_plan.py`
 
 ## L1-L4 (lifecycle gates)
 
 Lifecycle gates at the end of the pipeline: publish log schema (L1), archive validation (L2), platform integrity (L3), translation quality (L4).
 
-**See:** `automedia/gates/publish_log_schema.py`, `automedia/pipelines/runner.py`
+**See:** `automedia/gates/publish_log_schema.py`, `automedia/pipelines/gate_plan.py`
 
 ## D1-D7 (distribution gates)
 
-Standalone gates that rewrite content for specific platforms (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok). They are invoked via CLI/MCP `distribute`, not as part of a normal pipeline run.
+Standalone gates that rewrite content for specific platforms (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok). They are invoked via the `automedia distribute` CLI command (cron reuses the same command), not as part of a normal pipeline run. Note the two "distribute" surfaces are **not** the same capability: the MCP `distribute_content` tool publishes directly through the platform adapters and does **not** run these gates — same name, different semantics.
 
-**See:** `automedia/cli/commands/distribute.py`, `automedia/pipelines/runner.py`
+**See:** `automedia/cli/commands/distribute.py`, gate lists in `automedia/pipelines/gate_plan.py`
 
 ## P1-P4 (repurpose gates)
 
 Sub-pipelines that run at the end of `repurpose` pipeline mode to produce deep repurposed versions (WeChat, Twitter/X, Newsletter, Bilibili).
 
-**See:** `automedia/pipelines/runner.py`
+**See:** `automedia/pipelines/gate_plan.py`
 
 ## pre-gate
 
 The topic selection gate that runs before content writing. It validates that the topic is suitable before any generation happens.
 
-**See:** `automedia/gates/topic_selection.py`, `automedia/pipelines/runner.py`
+**See:** `automedia/gates/topic_selection.py`, `automedia/pipelines/gate_plan.py`
 
 ## CW (content writer)
 
@@ -64,7 +64,7 @@ The sequential executor that runs the ordered gate list for a pipeline. It suppo
 
 ## AUTO_GATE_DAG / dag.py
 
-The canonical gate dependency graph defined in `automedia/pipelines/dag.py`: 26 nodes (the 22 auto-mode gates plus P1-P4) with `depends_on` edges. It is an additive, order-equivalent representation of `_MODE_MAP` — `topological_order(AUTO_GATE_DAG, mode_gates)` reproduces every mode list byte-for-byte. It also answers structural questions `_MODE_MAP` cannot, like "which gates are downstream of G0?".
+The canonical gate dependency graph defined in `automedia/pipelines/dag.py`: 26 nodes (the 22 copy/video/lifecycle gates — pre-gate, CW, G0-G6, V0-V7, H0, L1-L4 — plus P1-P4) with `depends_on` edges. Note the DAG is a structural superset of every preset: `auto` mode executes 16 of these 22 (`G4`, `G5` and `L1`-`L4` belong to no preset). It is an additive, order-equivalent representation of `MODE_GATE_NAMES` — `topological_order(AUTO_GATE_DAG, mode_gates)` reproduces every mode list byte-for-byte. It also answers structural questions `MODE_GATE_NAMES` cannot, like "which gates are downstream of G0?".
 
 **See:** `automedia/pipelines/dag.py`
 
@@ -94,7 +94,7 @@ The per-run gate report written to `<project_dir>/05_review/gate-report/gate-rep
 
 ## get_gate_report
 
-MCP tool (one of 67) that returns the latest gate-report JSON for a project by reading `<project_dir>/05_review/gate-report/gate-report-*.json`. The project's base_dir must be allowlisted in `mcp_allowlist.yaml`, otherwise the request is denied fail-closed. Read-only: it never writes to the project.
+MCP tool (one of 68) that returns the latest gate-report JSON for a project by reading `<project_dir>/05_review/gate-report/gate-report-*.json`. The project's base_dir must be allowlisted in `mcp_allowlist.yaml`, otherwise the request is denied fail-closed. Read-only: it never writes to the project.
 
 **See:** `automedia/mcp/tools/pipeline.py` (registered in `automedia/mcp/server.py`)
 

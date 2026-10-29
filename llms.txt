@@ -22,6 +22,12 @@ writing, video generation, subtitle rendering, and multi-platform publishing.
 - [docs/user/api-reference.md](docs/user/api-reference.md): Python SDK API reference
 - [docs/dev/agent-troubleshooting.md](docs/dev/agent-troubleshooting.md): troubleshooting guide
 
+## Skills for pipeline operators (agent-as-user how-tos)
+- [docs/skills/brand-strategy.md](docs/skills/brand-strategy.md): generate brand positioning and messaging via `run_brand_strategy`
+- [docs/skills/pipeline-workflow.md](docs/skills/pipeline-workflow.md): run one project end to end — strategy, topic, `run_pipeline`, progress, archive
+- [docs/skills/distribution-workflow.md](docs/skills/distribution-workflow.md): publish or distribute finished content (`distribute_content` vs `publish_content`)
+- [docs/skills/batch-workflow.md](docs/skills/batch-workflow.md): produce multiple topics sequentially with `run_batch`
+
 ## Optional
 - [CHANGELOG.md](CHANGELOG.md): version history
 - [docs/doc-inventory.md](docs/doc-inventory.md): generated documentation inventory
