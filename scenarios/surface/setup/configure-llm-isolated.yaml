@@ -20,6 +20,6 @@ cleanup_steps:
     kind: cli
     check: rm -f removes the isolated model_config.yaml written by this scenario (config-dir-scoped, never the real user config).
     standard: founder-expectations.F01
-    command: rm -f /tmp/automedia/w3t1-config/model_config.yaml
+    command: rm -f ${AUTOMEDIA_CONFIG_DIR}/model_config.yaml
     expect:
       exit_code: 0

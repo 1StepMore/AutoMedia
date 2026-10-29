@@ -2,14 +2,14 @@
 #
 # RUNNER CONVENTION (REQUIRED — read before running):
 #   cwd:  /tmp/automedia/agent-lifecycle-cwd   (controlled working directory)
-#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/agent-lifecycle-projects
+#   env:  AUTOMEDIA_PROJECTS_DIR=<suite sandbox>  (automedia validate run sets it)
 #   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key> (scenario gates to unconfigured without it)
 #   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/agent-lifecycle-cwd",
 #                                     scenarios_dir="scenarios", runs_root="validation-runs")
 #   The run_pipeline background thread (step 7) reads AUTOMEDIA_PROJECTS_DIR
-#   from the suite process env (runner.py:883), so the controlled projects dir
-#   MUST be exported or the real project lands at the repo root. NEVER run from
-#   the repo root.
+#   from the suite process env (runner.py:883). `automedia validate run`
+#   installs a suite sandbox for it (#334), so the real project lands in a temp
+#   dir that is removed after the run even when the caller forgot to export it.
 #
 # ASYNC SURFACE CONTRACT (pinned, review fix m13):
 #   run_pipeline is a background-thread tool (pipeline.py:51-241): it returns
@@ -42,11 +42,11 @@
 #   project.
 #
 # SIDE EFFECTS + HONEST STATUSES:
-#   - run_pipeline writes ~/.automedia/active_pipelines.json (the shipped
-#     session tracker; stale entries are marked "lost" after 24h,
-#     _shared.py:303-334). The real project dir lands under
-#     AUTOMEDIA_PROJECTS_DIR with a random name — it cannot be statically
-#     cleaned (same convention as text_only-journey.yaml); cleanup here
+#   - run_pipeline writes config-dir-scoped state (the shipped session tracker
+#     active_pipelines.json; stale entries are marked "lost" after 24h,
+#     _shared.py:303-334), which the suite sandbox redirects to a temp config
+#     dir (#333). The real project dir lands under AUTOMEDIA_PROJECTS_DIR with
+#     a random name — the sandbox removes it after the run. Cleanup here
 #     removes only what this scenario names.
 #   - Real-LLM runs are 20-45 min on this box (429 rate limits). Verified path
 #     for this session: unconfigured without the key (the env gate fires
@@ -194,7 +194,7 @@ steps:
     check: "a python3 one-liner writes a synthetic project under the controlled projects dir: 00_project_info.json (same shape project.py:177-187 writes: project_id, topic, brand, tenant_id, created_at, plus status: draft) and a non-trivial draft in 01_content/drafts/ so effects computes real analytics. The real run's project has a random id, so the fixed-id synthetic is the static-YAML-compatible stand-in."
     standard: founder-expectations.F01
     command: |-
-      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/agent-lifecycle-projects/validation-synthetic"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "deadbeef00ab", "topic": "validation-synthetic", "brand": "my-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("AI agents are transforming content teams by handling research, drafting, and review loops, letting humans focus on editorial judgment.")'
+      python3 -c 'import json, pathlib; base = pathlib.Path("${AUTOMEDIA_PROJECTS_DIR}/validation-synthetic"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "deadbeef00ab", "topic": "validation-synthetic", "brand": "my-brand", "tenant_id": "", "created_at": "2026-08-14T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("AI agents are transforming content teams by handling research, drafting, and review loops, letting humans focus on editorial judgment.")'
     timeout_seconds: 60
     expect:
       exit_code: 0
@@ -208,7 +208,7 @@ steps:
       platforms: wechat
       all: false
       dry_run: true
-      base_dir: /tmp/automedia/agent-lifecycle-projects
+      base_dir: ${AUTOMEDIA_PROJECTS_DIR}
     timeout_seconds: 60
     expect:
       success: true
@@ -216,7 +216,7 @@ steps:
     kind: cli
     check: "automedia effects resolves the project by id and prints JSON analytics (word_count, sentiment, readability, brand mentions) computed from the real draft artifact — evidence the analyze surface works on project content, not a stub."
     standard: founder-expectations.F01
-    command: automedia effects deadbeef00ab --base-dir /tmp/automedia/agent-lifecycle-projects --output json
+    command: automedia effects deadbeef00ab --base-dir ${AUTOMEDIA_PROJECTS_DIR} --output json
     timeout_seconds: 60
     expect:
       exit_code: 0
@@ -227,7 +227,7 @@ steps:
     kind: cli
     check: "automedia projects list reads 00_project_info.json under the controlled projects dir and prints the synthetic project's topic row (the same info-file shape the real run writes). The real run's row carries a random id and topic 'AI agents for content teams' — visible here once the background run reaches Project.init, but not statically assertable."
     standard: founder-expectations.F01
-    command: automedia projects list --base-dir /tmp/automedia/agent-lifecycle-projects
+    command: automedia projects list --base-dir ${AUTOMEDIA_PROJECTS_DIR}
     timeout_seconds: 60
     expect:
       exit_code: 0
@@ -240,7 +240,7 @@ steps:
     tool: archive_project
     arguments:
       project_id: deadbeef00ab
-      base_dir: /tmp/automedia/agent-lifecycle-projects
+      base_dir: ${AUTOMEDIA_PROJECTS_DIR}
       force: false
     timeout_seconds: 60
     expect:
@@ -259,7 +259,7 @@ cleanup_steps:
     kind: cli
     check: rm -rf removes the synthetic validation-synthetic project created by this scenario (leaves the real pipeline's project dir untouched).
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/agent-lifecycle-projects/validation-synthetic
+    command: rm -rf ${AUTOMEDIA_PROJECTS_DIR}/validation-synthetic
     timeout_seconds: 60
     expect:
       exit_code: 0

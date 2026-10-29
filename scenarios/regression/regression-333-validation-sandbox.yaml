@@ -1,0 +1,19 @@
+name: regression-333-validation-sandbox
+description: A validation run installs a suite sandbox and points AUTOMEDIA_CONFIG_DIR and AUTOMEDIA_PROJECTS_DIR at temp dirs, so it cannot write the real user config or the repo root.
+intent: Pin issues #333/#334 - validation scenarios wrote accounts/brand profiles into ~/.automedia and project dirs into the repo root whenever the caller forgot to export the two directories by hand; a repeat run then failed on leftover state. The suite itself must own a per-run sandbox and hand both paths to subprocesses.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#333"
+requires_env: []
+steps:
+  - name: validation sandbox isolates config and projects
+    kind: cli
+    check: "Run the committed regression-333 helper: it enters a validation sandbox, asserts both AUTOMEDIA_CONFIG_DIR and AUTOMEDIA_PROJECTS_DIR point at live temp dirs, runs a CLI step whose subprocess must see those exact values, and asserts the root is removed on exit."
+    standard: tool.contract
+    command: python3 scripts/regression_333_sandbox_check.py
+    timeout_seconds: 120
+    expect:
+      stdout_has:
+        - REG333_SANDBOX_ISOLATED

@@ -62,6 +62,15 @@ Run records live in `validation-runs/` at the repo root. They are gitignored:
 they are evidence of a moment in time, not source. The `latest.txt` pointer
 inside names the most recent run.
 
+Every run also creates a sandbox: `AUTOMEDIA_CONFIG_DIR` and
+`AUTOMEDIA_PROJECTS_DIR` point into one `automedia-validation-*` temp root that
+is deleted when the run ends, so scenarios cannot write the real `~/.automedia`
+or the repo root and a repeated run starts clean (#333/#334). The run record's
+top-level `sandbox` field records the paths; an explicitly exported directory is
+honoured, and `AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1` keeps the root for
+inspection. Scenario commands, tool arguments, and artifact paths expand
+`${VAR}`, so scenarios address the sandbox symbolically.
+
 ## How to read a scenario
 
 ### Read a scenario in ten lines

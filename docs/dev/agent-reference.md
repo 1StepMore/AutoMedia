@@ -83,6 +83,22 @@ CLI (run from the repo root so relative artifact paths resolve):
 
 MCP tools: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`.
 
+### Per-run sandbox
+
+Every run installs a sandbox (`automedia.validation.sandbox`) before the env
+gate: `AUTOMEDIA_CONFIG_DIR` and `AUTOMEDIA_PROJECTS_DIR` point at a fresh
+`config/` + `projects/` pair under one `automedia-validation-*` temp root, and
+the root is removed when the run ends. This is what makes validation
+non-destructive: accounts, brand profiles, `active_pipelines.json`, and project
+dirs land in scratch space instead of `~/.automedia` and the repo root, and a
+second identical run starts from a clean slate (#333/#334). An explicitly
+exported directory is honoured (only the missing half is filled in);
+`AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1` preserves the root for inspection. The
+run record carries `sandbox: {root, config_dir, projects_dir, temporary}` at
+the top level and on each scenario. CLI steps expand `${VAR}` in `command`,
+tool/post-call arguments, and artifact paths, so scenarios reference the
+sandbox by name instead of hardcoding a path.
+
 ### The evidence contract
 
 The single schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md`
@@ -113,7 +129,7 @@ is the onboarding guide. How to read a scenario:
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (158 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (159 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: the single schema authority — standard keys (14 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.

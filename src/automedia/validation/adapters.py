@@ -32,12 +32,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shlex
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from automedia.validation.media_probe import (
     glob_artifacts,
@@ -133,6 +134,17 @@ def _unwrap_result(raw: object) -> dict[str, Any]:
     return {"success": True, "data": {"text": str(raw)}}
 
 
+def _expand_env(value: object) -> object:
+    """Recursively expand ``${VAR}`` in string arguments before a call."""
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, list):
+        return [_expand_env(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _expand_env(item) for key, item in value.items()}
+    return value
+
+
 class ToolAdapter:
     """MCP surface: one tool call through the injected FastMCP instance.
 
@@ -154,8 +166,9 @@ class ToolAdapter:
         tool = step.tool
         if tool is None:
             return StepResult(False, {"success": False, "error": "tool step without a tool name"})
+        arguments = cast(dict[str, Any], _expand_env(step.arguments or {}))
         try:
-            raw = await self._server.call_tool(tool, step.arguments or {})
+            raw = await self._server.call_tool(tool, arguments)
         except Exception as exc:  # surface failure is captured, never raised
             return StepResult(False, {"success": False, "error": str(exc)})
         return StepResult(True, _unwrap_result(raw))
@@ -180,14 +193,21 @@ class CLIAdapter:
     """
 
     def run(self, step: Step) -> StepResult:
-        """Run the command; capture exit code, stdout, and stderr."""
+        """Run the command; capture exit code, stdout, and stderr.
+
+        ``step.command`` is expanded with :func:`os.path.expandvars` (so a
+        sandboxed scenario can reference ``${AUTOMEDIA_PROJECTS_DIR}``) and the
+        child inherits the engine's environment, which carries the sandbox
+        directories (#333/#334).
+        """
         command = step.command
         if command is None:
             return StepResult(False, {"success": False, "error": "cli step without a command"})
         timeout = step.timeout_seconds or DEFAULT_TIMEOUT_SECONDS
+        expanded = os.path.expandvars(command)
         parts: str | list[str]
         try:
-            parts = shlex.split(command)
+            parts = shlex.split(expanded)
         except ValueError:
             parts = command
             shell = True
@@ -281,7 +301,7 @@ class FileAdapter:
         command = step.command
         if command is None:
             return StepResult(False, {"success": False, "error": "file step without a path"})
-        path = Path(command).expanduser()
+        path = Path(os.path.expandvars(command)).expanduser()
         pattern = step.expect.artifact_glob
         base_dir = path if path.is_dir() else path.parent
         if pattern is not None:

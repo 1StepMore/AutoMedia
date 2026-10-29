@@ -94,6 +94,7 @@ from automedia.validation.persist import (
     write_latest_pointer,
     write_metrics,
 )
+from automedia.validation.sandbox import Sandbox, validation_sandbox
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Scenario, Step
 from automedia.validation.stub_bin import apply_stub_bin_to_path
 
@@ -320,6 +321,7 @@ async def run_validation_scenario_async(
     cwd: Path | None = None,
     trace_id: str | None = None,
     env_gate_skipped: list[str] | None = None,
+    sandbox: Sandbox | None = None,
 ) -> dict[str, object]:
     """Phase 4 orchestration for ONE scenario (guide §3.3).
 
@@ -335,11 +337,48 @@ async def run_validation_scenario_async(
     and ``trusted: false`` — the run RAN, but the gate that would have
     proved the prerequisite was bypassed, so it is plumbing evidence only and
     the coverage audit never counts it as a Proved surface.
+
+    ``sandbox`` (#333/#334): the suite passes its shared isolation so every
+    scenario writes into the same temp config/projects dirs; a standalone
+    call creates its own and removes it on exit.
     """
     apply_stub_bin_to_path()
     base = Path.cwd() if cwd is None else Path(cwd)
     trace_id = trace_id or str(uuid.uuid4())
     skipped = list(env_gate_skipped) if env_gate_skipped else []
+    if sandbox is not None:
+        return await _run_scenario_in_sandbox(
+            scenario,
+            adapters,
+            trace_id=trace_id,
+            base=base,
+            run_root=run_root,
+            skipped=skipped,
+            sandbox=sandbox,
+        )
+    with validation_sandbox() as owned:
+        return await _run_scenario_in_sandbox(
+            scenario,
+            adapters,
+            trace_id=trace_id,
+            base=base,
+            run_root=run_root,
+            skipped=skipped,
+            sandbox=owned,
+        )
+
+
+async def _run_scenario_in_sandbox(
+    scenario: Scenario,
+    adapters: Adapters,
+    *,
+    trace_id: str,
+    base: Path,
+    run_root: Path | None,
+    skipped: list[str],
+    sandbox: Sandbox,
+) -> dict[str, object]:
+    """Run one scenario's phases 2-6 with the sandbox already installed."""
     gate = check_env(scenario.requires_env, requires_real_llm=scenario.requires_real_llm)
     if not gate.configured:
         return {
@@ -352,6 +391,7 @@ async def run_validation_scenario_async(
             "error_boundary": scenario.error_boundary,
             "hard_safety_violation": scenario.hard,
             "confidence": _confidence(),
+            "sandbox": sandbox.describe(),
             **(_skip_marker(skipped) if skipped else {}),
         }
     with apply_fixtures(scenario.fixtures):
@@ -377,6 +417,7 @@ async def run_validation_scenario_async(
         "error_boundary": scenario.error_boundary,
         "hard_safety_violation": scenario.hard and status != "passed",
         "confidence": _confidence(),
+        "sandbox": sandbox.describe(),
     }
     record.update(_skip_marker(skipped))
     return record
@@ -493,32 +534,39 @@ async def run_validation_suite_async(
             raise ValueError("save=True requires runs_root (directory for immutable run records)")
         root = runs_root
         run_root = prepare_run_dir(root)
-    records = [
-        await run_validation_scenario_async(
-            scenario, adapters, run_root=run_root, cwd=base, trace_id=trace_id
-        )
-        for scenario in scenarios
-    ]
-    violations = sorted(str(r["scenario"]) for r in records if r.get("hard_safety_violation"))
-    record: dict[str, object] = {
-        "trace_id": trace_id,
-        "generated_at": datetime.now(UTC).isoformat(),
-        "scenarios": records,
-        "hard_safety_violations": violations,
-        "blocked": bool(violations),
-        "confidence": _confidence(),
-        # A suite is trusted only when every scenario record is (gap R-06).
-        "trusted": all(bool(r.get("trusted", True)) for r in records),
-    }
-    if excluded:
-        record["requires_real_adapter_excluded"] = sorted(excluded)
-    record["metrics"] = build_metrics(record)
-    if save and root is not None:
-        record_path = persist_run(root, record, run_dir=run_root)
-        if run_root is not None:
-            write_metrics(run_root, record["metrics"])  # type: ignore[arg-type]
-        write_latest_pointer(root, record_path.parent.name)
-    return record
+    with validation_sandbox() as sandbox:
+        records = [
+            await run_validation_scenario_async(
+                scenario,
+                adapters,
+                run_root=run_root,
+                cwd=base,
+                trace_id=trace_id,
+                sandbox=sandbox,
+            )
+            for scenario in scenarios
+        ]
+        violations = sorted(str(r["scenario"]) for r in records if r.get("hard_safety_violation"))
+        record: dict[str, object] = {
+            "trace_id": trace_id,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "scenarios": records,
+            "hard_safety_violations": violations,
+            "blocked": bool(violations),
+            "confidence": _confidence(),
+            # A suite is trusted only when every scenario record is (gap R-06).
+            "trusted": all(bool(r.get("trusted", True)) for r in records),
+            "sandbox": sandbox.describe(),
+        }
+        if excluded:
+            record["requires_real_adapter_excluded"] = sorted(excluded)
+        record["metrics"] = build_metrics(record)
+        if save and root is not None:
+            record_path = persist_run(root, record, run_dir=run_root)
+            if run_root is not None:
+                write_metrics(run_root, record["metrics"])  # type: ignore[arg-type]
+            write_latest_pointer(root, record_path.parent.name)
+        return record
 
 
 def run_validation_suite(

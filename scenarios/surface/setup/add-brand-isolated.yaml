@@ -20,6 +20,6 @@ cleanup_steps:
     kind: cli
     check: rm -f removes the isolated brand_profiles.yaml entry written by this scenario (config-dir-scoped, never the real user config).
     standard: founder-expectations.F01
-    command: rm -f /tmp/automedia/w3t1-config/brand_profiles.yaml
+    command: rm -f ${AUTOMEDIA_CONFIG_DIR}/brand_profiles.yaml
     expect:
       exit_code: 0
