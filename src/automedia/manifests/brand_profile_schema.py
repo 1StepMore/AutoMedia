@@ -25,10 +25,20 @@ from automedia.core.paths import get_user_config_dir
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Path constant (patched in tests)
+# Path resolution
 # ---------------------------------------------------------------------------
 
-_BRAND_PROFILES_PATH: Path = get_user_config_dir() / "brand_profiles.yaml"
+
+_BRAND_PROFILES_PATH: Path | None = None
+"""Test seam: a patched path wins; ``None`` resolves from the environment."""
+
+
+def _brand_profiles_path() -> Path:
+    """Resolve the profile file at call time so ``AUTOMEDIA_CONFIG_DIR`` is honoured."""
+    if _BRAND_PROFILES_PATH is not None:
+        return _BRAND_PROFILES_PATH
+    return get_user_config_dir() / "brand_profiles.yaml"
+
 
 # ---------------------------------------------------------------------------
 # Dataclass
@@ -257,7 +267,7 @@ def load_brand_profiles() -> dict[str, BrandProfile]:
           aliases: [...]
           ...
     """
-    path = _BRAND_PROFILES_PATH
+    path = _brand_profiles_path()
     if not path.is_file():
         return {}
 
@@ -314,7 +324,7 @@ def save_brand_profile(brand_name: str, data: dict[str, Any]) -> None:
         msg = f"Brand profile validation failed for {brand_name!r}"
         raise ValueError(msg)
 
-    path = _BRAND_PROFILES_PATH
+    path = _brand_profiles_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing profiles

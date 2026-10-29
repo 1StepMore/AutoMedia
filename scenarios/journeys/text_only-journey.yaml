@@ -2,14 +2,14 @@
 #
 # RUNNER CONVENTION (REQUIRED — read before running):
 #   cwd:  /tmp/automedia/journey-cwd            (controlled working directory)
-#   env:  AUTOMEDIA_PROJECTS_DIR=/tmp/automedia/journey-projects
+#   env:  AUTOMEDIA_PROJECTS_DIR=<suite sandbox>  (automedia validate run sets it)
 #   env:  AUTOMEDIA_LLM_API_KEY=<real LLM key>  (scenario gates to unconfigured without it)
 #   engine call: run_validation_suite(server=create_server(), cwd="/tmp/automedia/journey-cwd",
 #                                     scenarios_dir="scenarios", runs_root="validation-runs")
 # Project dirs are created under AUTOMEDIA_PROJECTS_DIR (verified: runner.py:883
 # reads the env var; Project.init falls back to cwd when unset) — so the journey
 # MUST be run from the controlled cwd with the env exported, and NEVER from the
-# repo root, or project dirs land at the repo root. The controlled projects dir
+# repo root, or project dirs land at the repo root. The sandboxed projects dir
 # is scratch space owned by the runner; this scenario adds no cleanup_steps
 # because project dir names embed today's date (project.py:156-158) and a random
 # project_id (project.py:174), so a cleanup path cannot be named statically.
@@ -90,7 +90,7 @@ steps:
     kind: cli
     check: automedia projects list reads the 00_project_info.json the real run wrote and prints the project's topic row (artifact produced by a real run, never assumed).
     standard: founder-expectations.F01
-    command: automedia projects list --base-dir /tmp/automedia/journey-projects
+    command: automedia projects list --base-dir ${AUTOMEDIA_PROJECTS_DIR}
     timeout_seconds: 60
     expect:
       exit_code: 0
@@ -100,7 +100,7 @@ steps:
     kind: cli
     check: The run produced a non-trivial draft markdown file under 01_content/drafts/ in the controlled projects dir (the artifact the pipeline must show the director, not an assumed one).
     standard: founder-expectations.F01
-    command: find /tmp/automedia/journey-projects -name "*_draft.md" -size +500c
+    command: find ${AUTOMEDIA_PROJECTS_DIR} -name "*_draft.md" -size +500c
     timeout_seconds: 60
     expect:
       exit_code: 0

@@ -213,6 +213,7 @@ class TestUnconfigured:
         monkeypatch.delenv(_MISSING_ENV, raising=False)
         scenario = make_scenario([tool_step()], requires_env=[_MISSING_ENV])
         record = run_scenario(scenario, ok_server())
+        assert record.pop("sandbox")["temporary"] is True
         assert record == {
             "scenario": "probe-scenario",
             "status": "unconfigured",

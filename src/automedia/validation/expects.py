@@ -812,7 +812,7 @@ def _standard_check_type(step: Step | None) -> str:
 
 def _resolve_path(path: str, cwd: Path) -> Path:
     """Resolve ``path`` against ``cwd``; absolute paths are used as-is."""
-    candidate = Path(path)
+    candidate = Path(os.path.expandvars(path))
     return candidate if candidate.is_absolute() else cwd / candidate
 
 
