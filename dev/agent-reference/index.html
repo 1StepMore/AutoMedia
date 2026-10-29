@@ -2254,7 +2254,7 @@ is the onboarding guide. How to read a scenario:</p>
 - Director sign-off: the director appends run name, date, and verdict to <code>signed.txt</code> in the run dir; the agent grades, the human disposes.</p>
 <h3 id="where-things-live">Where things live<a class="headerlink" href="#where-things-live" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>scenarios/</code>: committed scenario library (156 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
+<li><code>scenarios/</code>: committed scenario library (157 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
 <li><code>scenarios/STANDARDS.md</code>: the single schema authority — standard keys (14 core plus 33 <code>gate.*</code> and 9 <code>mode.*</code>); unknown keys rejected at load.</li>
 <li><code>scenarios/baseline/</code>: committed pre-flight baseline run record and coverage audit.</li>
 <li><code>validation-runs/</code>: gitignored immutable run records with a <code>latest.txt</code> pointer.</li>
@@ -2350,6 +2350,16 @@ is the onboarding guide. How to read a scenario:</p>
 </tbody>
 </table>
 <p>The <code>AUTOMEDIA_LLM_*</code> vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>
+<p>Optional engine extras and their version constraints:</p>
+<ul>
+<li><code>[tts-piper]</code> installs Piper TTS.</li>
+<li><code>[asr-faster]</code> installs <code>faster-whisper</code> <strong>and</strong> <code>av&lt;19</code>. The upper bound is
+  required: av 19 removed the <code>metadata_errors</code> kwarg that faster-whisper 1.2.x
+  still passes to <code>av.open</code>, so <code>transcribe()</code> raises <code>TypeError</code> even though
+  <code>import faster_whisper</code> succeeds. <code>FasterWhisperASREngine.check_available()</code>
+  therefore decodes 10 ms of silence in memory, reporting the incompatible
+  combination as unavailable instead of failing mid-pipeline (issue #332).</li>
+</ul>
 <h2 id="documentation-index">Documentation Index<a class="headerlink" href="#documentation-index" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
