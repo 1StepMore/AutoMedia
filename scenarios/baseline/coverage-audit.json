@@ -31,7 +31,7 @@
   "boundary_only_modes": [],
   "by_level": {
     "distribution": {
-      "L0": 113,
+      "L0": 114,
       "L1": 30,
       "L2": 8,
       "L3": 3,
@@ -120,7 +120,7 @@
         "L5": 0
       },
       "regression": {
-        "L0": 8,
+        "L0": 9,
         "L1": 0,
         "L2": 0,
         "L3": 0,
@@ -144,7 +144,7 @@
         "L5": 0
       }
     },
-    "total": 156
+    "total": 157
   },
   "covered": {
     "cli": [],
@@ -437,7 +437,6 @@
   ],
   "evidence_confidence": null,
   "evidence_run": null,
-  "generated_at": "2026-10-27T07:51:55.210074+00:00",
   "input_missing_keys": {
     "V0": [
       "lint_result"
@@ -501,7 +500,7 @@
     "V4",
     "V6"
   ],
-  "meta_scenario_count": 32,
+  "meta_scenario_count": 33,
   "meta_scenarios": [
     "account-cli-surface",
     "adapter-cli-surface",
@@ -523,6 +522,7 @@
     "regression-207-lazy-dotenv-no-env-leak",
     "regression-208-model-config-write-guards",
     "regression-219-g0-unsourced-rewrite",
+    "regression-332-asr-av19-probe",
     "regression-83-configure-llm-preserves-fallback",
     "rollback-cli-surface",
     "run-cli-surface",
@@ -563,7 +563,7 @@
   "phantom_mcp": [],
   "phantom_modes": [],
   "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
-  "scenario_count": 156,
+  "scenario_count": 157,
   "summary": {
     "cli_boundary_only": 0,
     "cli_covered": 19,

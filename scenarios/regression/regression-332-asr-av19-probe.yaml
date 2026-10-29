@@ -1,0 +1,19 @@
+name: regression-332-asr-av19-probe
+description: The asr-faster extra pins av below 19 and FasterWhisperASREngine.check_available decodes silence, so an incompatible av is reported unavailable instead of claiming the engine works.
+intent: Pin issue #332 - a fresh asr-faster install resolved faster-whisper 1.2.1 with av 19.0.2, whose av.open no longer accepts metadata_errors; check_available only probed the import and lied, so transcription failed deep inside the pipeline. The extra must exclude av 19 and availability must be proved by a real decode.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#332"
+requires_env: []
+steps:
+  - name: asr extra excludes av 19 and the engine probes decoding
+    kind: cli
+    check: "Run the committed regression-332 helper: it reads pyproject.toml and asserts the asr-faster extra requires av<19, then installs a fake faster_whisper whose decode_audio raises the exact av 19 TypeError and asserts check_available reports unavailable with a decode message."
+    standard: tool.contract
+    command: python3 scripts/regression_332_check.py
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - REG332_ASR_PROBE_GUARDED

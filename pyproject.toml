@@ -60,7 +60,9 @@ mcp = ["mcp>=1.0,<2"]
 # Local, offline engine backends. Optional on purpose: the engines import
 # their dependency lazily and report unavailable when it is absent.
 tts-piper = ["piper-tts>=1.2"]
-asr-faster = ["faster-whisper>=1.0"]
+# av 19 removed the ``metadata_errors`` kwarg that faster-whisper 1.2.x still
+# passes to ``av.open``; the extra must stay below it until upstream adapts.
+asr-faster = ["faster-whisper>=1.0", "av<19"]
 
 omni-core = ["lxml>=6", "python-docx>=1.2", "python-pptx>=1.0", "openpyxl>=3.1", "pandas>=2"]
 omni-pdf = ["pymupdf>=1.24"]
