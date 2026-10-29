@@ -241,12 +241,17 @@ class PipelineProgress:
     def mark_finished(self) -> None:
         """Mark the pipeline as finished (no longer running).
 
-        Sets ``_finished`` to ``True`` and clears ``current_gate``.
-        Safe to call multiple times.
+        Sets ``_finished`` to ``True``, clears ``current_gate``, and removes
+        the pipeline from the ``_hitl_waiters`` registry — a finished run is
+        no longer reviewable, so ``review_decision`` must never resolve it
+        (a stale entry would let the tool report a successful approve/reject
+        that has no effect).  Safe to call multiple times.
         """
         with self._lock:
             self._finished = True
             self.current_gate = None
+        with _hitl_lock:
+            _hitl_waiters.pop(self.project_id, None)
 
     # -- HITL (Human-in-the-Loop) lifecycle --------------------------------
 

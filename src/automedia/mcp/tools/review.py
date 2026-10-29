@@ -12,6 +12,11 @@ and directly reachable — ``get_registered_engine`` is deliberately NOT used
 SAME-PROCESS CONSTRAINT: pipelines started by the CLI run in a separate
 process, so their waiters are invisible here.  Such requests are rejected
 fast with a structured error — never a deadlock, never a 24-hour stall.
+
+STALE-RUN GUARD: ``PipelineProgress.mark_finished`` removes the waiter from
+the registry, so a review of an already-finished run resolves to no waiter
+and returns the same fast structured ``NOT_FOUND`` — never a false
+``approved``/``rejected`` success for a decision that has no effect.
 """
 
 from __future__ import annotations

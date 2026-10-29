@@ -222,6 +222,50 @@ class TestReviewDecisionValidation:
             assert _hitl_waiters == before
 
 
+class TestStaleWaiterSemantics:
+    """A FINISHED pipeline must never yield a false successful review.
+
+    ``mark_finished`` removes the waiter, so a review of an already-finished
+    run falls into the fast structured ``NOT_FOUND`` path (the contract
+    ``mcp/instructions.py`` documents) — never ``{"approved": True}`` with no
+    effect, and never an audit-log entry for a decision that did nothing.
+    """
+
+    def test_mark_finished_removes_waiter(self) -> None:
+        progress = PipelineProgress(project_id="rvw-stalemrk1")
+        progress.on_gate_awaiting_hitl("H0")
+        with _hitl_lock:
+            assert "rvw-stalemrk1" in _hitl_waiters
+
+        progress.mark_finished()
+
+        with _hitl_lock:
+            assert "rvw-stalemrk1" not in _hitl_waiters
+
+    def test_finished_pipeline_review_returns_not_found(self, _audit_dir: Path) -> None:
+        project_id = "rvw-stalefin1"
+        tmp = Path(str(_audit_dir)).parent
+        _seed_project_with_diff_record(tmp, project_id)
+        _, progress, thread, results = _pause_h0_pipeline(project_id)
+
+        # Simulate the parked-run teardown: the run ended awaiting review.
+        progress.mark_finished()
+
+        result = review_decision(project_id=project_id, gate_name="H0", action="approve")
+
+        assert result["success"] is False
+        assert result["error"]["code"] == "NOT_FOUND"
+        log_file = Path(str(_audit_dir)) / "audit" / "review_decisions.log"
+        assert not log_file.exists() or log_file.read_text(encoding="utf-8").strip() == ""
+        with _hitl_lock:
+            assert project_id not in _hitl_waiters
+
+        # Release the still-blocked wait thread deterministically.
+        progress.approve_hitl()
+        thread.join(timeout=5.0)
+        assert results["done"]
+
+
 # =========================================================================
 # Tests: show_diff
 # =========================================================================
