@@ -6,11 +6,14 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from automedia.core.md5_tracker import (
     PIPELINE_MD5_FILENAME,
     get_pipeline_md5,
     record_md5,
     verify_md5,
+    write_json_atomic,
 )
 
 # ---------------------------------------------------------------------------
@@ -273,3 +276,88 @@ class TestIntegration:
         assert data["vision_calls_used"] == 3
         assert data["vision_window_start"] == "2026-07-06T00:00:00+00:00"
         assert "new_gate" in data["gates"]
+
+
+# ---------------------------------------------------------------------------
+# write_json_atomic — the shared UTF-8 + atomic primitive (T2-1)
+# ---------------------------------------------------------------------------
+
+
+class TestWriteJsonAtomic:
+    def test_roundtrip_preserves_non_ascii_in_non_ascii_dir(self, tmp_path: Path) -> None:
+        """UTF-8 is pinned: Chinese dir names and values survive write+read."""
+        project = tmp_path / "项目甲"
+        project.mkdir()
+        data = {"gates": {"G0": {"file_path": "稿件.md", "md5": "abc"}}}
+
+        write_json_atomic(project / PIPELINE_MD5_FILENAME, data)
+
+        assert get_pipeline_md5(str(project)) == data
+
+    def test_leaves_no_tmp_file_behind(self, tmp_path: Path) -> None:
+        """A successful write leaves exactly the target, no *.tmp litter."""
+        target = tmp_path / PIPELINE_MD5_FILENAME
+
+        write_json_atomic(target, {"a": 1})
+
+        assert target.is_file()
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_removes_tmp_file_on_failure_and_keeps_original(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If serialization blows up, the tmp file is cleaned up and the
+        previous state file survives untouched."""
+        import automedia.core.md5_tracker as mod
+
+        target = tmp_path / PIPELINE_MD5_FILENAME
+        target.write_text('{"previous": true}', encoding="utf-8")
+
+        def _boom(obj: object, fh: object, **kwargs: object) -> None:
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(mod.json, "dump", _boom)
+        with pytest.raises(RuntimeError, match="boom"):
+            write_json_atomic(target, {"a": 1})
+
+        assert list(tmp_path.glob("*.tmp")) == []
+        assert json.loads(target.read_text(encoding="utf-8")) == {"previous": True}
+
+    def test_second_write_fully_replaces_first(self, tmp_path: Path) -> None:
+        """Sequential writes never merge: the last write wins whole."""
+        target = tmp_path / PIPELINE_MD5_FILENAME
+
+        write_json_atomic(target, {"n": 1})
+        write_json_atomic(target, {"n": 2})
+
+        assert json.loads(target.read_text(encoding="utf-8")) == {"n": 2}
+
+
+class TestRecordMd5NonAsciiProjectDir:
+    def test_record_and_verify_under_non_ascii_dir(self, tmp_path: Path) -> None:
+        """Regression (T2-1): locale-dependent encodings corrupted non-ASCII
+        project paths on Windows; record/verify must round-trip through UTF-8."""
+        project = tmp_path / "贯维项目"
+        project.mkdir()
+        sample = project / "稿件.md"
+        sample.write_text("内容", encoding="utf-8")
+
+        digest = record_md5(str(project), "G0", str(sample))
+
+        assert verify_md5(str(project), "G0", str(sample))
+        assert get_pipeline_md5(str(project))["gates"]["G0"]["md5"] == digest
+
+
+class TestOmniMd5IntegrationSharedPrimitive:
+    def test_save_load_state_under_non_ascii_dir(self, tmp_path: Path) -> None:
+        """omni.md5_integration writes the same pipeline_md5.json through the
+        same UTF-8 + atomic primitive."""
+        from automedia.omni import md5_integration
+
+        state_dir = tmp_path / "状态目录"
+
+        md5_integration.save_state({"omni_extraction": {"k": {"md5": "d"}}}, state_dir)
+
+        loaded = md5_integration.load_state(state_dir)
+        assert loaded["omni_extraction"]["k"]["md5"] == "d"
+        assert list(state_dir.glob("*.tmp")) == []

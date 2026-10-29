@@ -1,8 +1,11 @@
 """MD5 tracker for pipeline gates — record and verify file integrity."""
 
+import contextlib
 import json
 import os
+import threading
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from structlog import get_logger
@@ -12,6 +15,29 @@ from automedia.core.hashing import compute_md5
 log = get_logger(__name__)
 
 PIPELINE_MD5_FILENAME = "pipeline_md5.json"
+
+
+def write_json_atomic(path: str | Path, data: dict[str, Any]) -> None:
+    """Write *data* to *path* as UTF-8 JSON, atomically (tmp file + os.replace).
+
+    Shared primitive for every ``pipeline_md5.json`` writer (this module and
+    ``omni.md5_integration``).  Encoding is pinned to UTF-8 so non-ASCII
+    project paths never depend on the platform locale, and the tmp+replace
+    swap means a crash mid-write can never leave a truncated state file
+    behind.  The tmp name carries the pid and thread id so concurrent
+    writers cannot collide on the same temp file.
+    """
+    path = str(path)
+    tmp_path = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        os.replace(tmp_path, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.remove(tmp_path)
+        raise
 
 
 def _md5_path(project_dir: str) -> str:
@@ -27,7 +53,7 @@ def get_pipeline_md5(project_dir: str) -> dict[str, Any]:
     path = _md5_path(project_dir)
     if not os.path.isfile(path):
         return {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -49,10 +75,7 @@ def record_md5(project_dir: str, gate_name: str, file_path: str) -> str:
         "recorded_at": now,
     }
 
-    path = _md5_path(project_dir)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    write_json_atomic(_md5_path(project_dir), data)
 
     return md5_digest
 

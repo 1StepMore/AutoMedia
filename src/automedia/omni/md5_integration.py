@@ -16,6 +16,7 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.core.hashing import compute_md5
+from automedia.core.md5_tracker import write_json_atomic
 from automedia.core.paths import get_user_config_dir
 
 log = get_logger(__name__)
@@ -57,7 +58,7 @@ def load_state(state_dir: str | Path | None = None) -> dict[str, Any]:
     path = _state_path(state_dir)
     if not path.is_file():
         return {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -66,9 +67,7 @@ def save_state(state: dict[str, Any], state_dir: str | Path | None = None) -> No
     path = _state_path(state_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     state = _ensure_sections(state)
-    with open(path, "w") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    write_json_atomic(path, state)
 
 
 def _find_key(state: dict[str, Any], key: str) -> tuple[str | None, dict[str, Any] | None]:
