@@ -27,7 +27,7 @@ If you are an AI coding agent entering this codebase:
 ## Features
 
 - **Three-layer API**: SDK / CLI (19 commands) / MCP Server (68 tools)
-- **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
+- **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
 - **Workflow system**: Reusable `workflows.yaml` definitions with cascading config merge
@@ -168,12 +168,18 @@ Verify: `edge-tts --help`
 Speech-to-text engine for subtitle generation. Choose one:
 
 ```bash
-# Recommended: faster-whisper (faster, lower memory)
-pip install faster-whisper
+# Recommended: the asr-faster extra (pins av<19 — see note below)
+pip install -e ".[asr-faster]"
 
 # Alternative: openai-whisper
 pip install openai-whisper
 ```
+
+> **Do not `pip install faster-whisper` on its own.** `av` 19 removed the
+> metadata_errors kwarg that faster-whisper still passes to av.open, which
+> surfaces as a TypeError at transcription time. The `[asr-faster]` extra pins
+> `av<19` for exactly this reason; installing the package directly bypasses
+> that pin.
 
 Verify:
 
@@ -241,14 +247,27 @@ Verify: Start the server (`python main.py`), check `http://localhost:8188` is re
 
 ```bash
 pip install -e .
-
-# With extras (recommended: use [all] for full functionality)
-pip install -e ".[all]"       # full functionality (all extras)
-pip install -e ".[dev]"       # development (LLM providers, mcp, rich, test)
-pip install -e ".[mcp]"       # MCP server only
-pip install -e ".[openai]"    # OpenAI provider
-pip install -e ".[anthropic]" # Anthropic provider
 ```
+
+All extras (`pyproject.toml` → `[project.optional-dependencies]`):
+
+| Extra | Adds | Use when |
+|-------|------|----------|
+| `.[all]` | every extra below | Full functionality (recommended) |
+| `.[dev]` | `[openai]`, `[anthropic]`, `[rich]`, `[mcp]` + http client + pytest/ruff/mypy/pre-commit | Working on AutoMedia itself |
+| `.[mcp]` | `mcp` Python SDK | MCP server only |
+| `.[openai]` | OpenAI provider | Using OpenAI models |
+| `.[anthropic]` | Anthropic provider | Using Claude models |
+| `.[rich]` | Rich terminal rendering | Prettier CLI output |
+| `.[tts-piper]` | `piper-tts` | Local offline TTS |
+| `.[asr-faster]` | `faster-whisper` + `av<19` | Local offline ASR (see the Whisper note above) |
+| `.[omni-core]` | lxml, python-docx, python-pptx, openpyxl, pandas | Omni document extraction/conversion |
+| `.[omni-pdf]` | PyMuPDF (AGPL v3 — see license notice) | PDF extraction |
+| `.[omni-ml]` | sentence-transformers, torch | Local vector search / semantic assets |
+| `.[omni]` | `[omni-core]` + `[omni-pdf]` + `[omni-ml]` | All three Omni capabilities |
+
+Note: `.[dev]` is **not** a superset of `.[all]` — it omits the `omni` extras.
+Use `.[all]` when you need full capability.
 
 ### Development installation
 
@@ -335,7 +354,7 @@ result = run_full_pipeline(
 | Command | Description |
 |---------|-------------|
 | `automedia run` | Execute production pipeline |
-| `automedia pool` | Topic pool management (list, add, score) |
+| `automedia pool` | Topic pool management (list, add, prune, attach-brief) |
 | `automedia projects` | List and manage production projects |
 | `automedia distribute` | Distribute pipeline content to platforms (D-gates) |
 | `automedia effects` | Compute content analytics stats for a project |
@@ -345,7 +364,7 @@ result = run_full_pipeline(
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |
-| `automedia omni` | Omni Triad operations (ingest, localize, format-output) |
+| `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
 | `automedia mcp` | MCP server management |

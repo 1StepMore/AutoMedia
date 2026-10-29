@@ -8,7 +8,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 - **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 165,000+ LOC across 600+ Python files (repo, `.py` only, git-tracked) · 1,000+ git-tracked files (as-of 2026-10-24; `scripts/check-doc-consistency.py` derives and gates these)
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
-- **Install:** `pip install -e ".[dev]"` (full capability) or `pip install -e ".[mcp]"` (MCP only). See README for prerequisites and all extras.
+- **Install:** `pip install -e ".[all]"` (full capability, includes the omni extras) or `pip install -e ".[mcp]"` (MCP only). `.[dev]` is the development set — it omits `omni`. See README for prerequisites and all extras.
 
 ## 2. Three Entry Points
 | Layer | Command | Description |
@@ -21,17 +21,17 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 Full tree: [agent-reference §Directory Layout](docs/dev/agent-reference.md#directory-layout). Core shape:
 ```
 src/automedia/
-├── core/        # config_loader (6-layer merge), project, doctor, overrides, llm_client, media_spec, workflow
-├── pipelines/   # runner.py, dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines
-├── gates/       # 33 quality gates: G0-G6, V0-V7, H0, L1-L4, D1-D7, P1-P4
-├── cli/ mcp/    # Typer CLI (19 commands) · FastMCP server (68 tools)
+├── core/ pipelines/ gates/   # config_loader · runner.py + gate_plan.py + dag.py (26 nodes) · 33 gates
+├── cli/ mcp/   # Typer CLI (19 commands) · FastMCP server (68 tools)
+├── engines/ validation/ effects/   # media engine backends · validation layer · content analytics
 ├── detectors/ hooks/ adapters/ accounts/ omni/ decision/ hitl/ pool/ cron/ prompts/ manifests/ asset_library/
+├── features/ templates/   # open-core tier markers · hyperframes render templates
 docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 └── pyproject.toml · .pre-commit-config.yaml · .env.example
 ```
 
 ## 4. Key Architecture Decisions
-- **Gate Engine:** ordered gates with `failure_mode`: `"stop"` halts the pipeline, `"rewrite"` retries. Preset order: pre-gate → CW → G0-G3 → G6 → V0-V7 → H0 (G4/G5 and L1-L4 stay registered but are in no preset; L1-L4 run via their lifecycle commands). Nine modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`) select gate subsets; D-gates (D1-D7) run standalone via CLI/MCP, P-gates (P1-P4) end repurpose. See `automedia/pipelines/runner.py`.
+- **Gate Engine:** ordered gates with `failure_mode`: `"stop"` halts the pipeline, `"rewrite"` retries. Preset order: pre-gate → CW → G0-G3 → G6 → V0-V7 → H0 (G4/G5 and L1-L4 stay registered but are in no preset; L1-L4 run via their lifecycle commands). Nine modes (`auto`, `text_only`, `text_with_cover`, `video_only`, `qa_only`, `image-carousel`, `social-thread`, `short-video`, `repurpose`) select gate subsets; D-gates (D1-D7) run standalone via CLI/MCP, P-gates (P1-P4) end repurpose. See `automedia/pipelines/gate_plan.py`.
 - **6-Layer Configuration:** built-in `defaults.yaml` → project `.automedia/` → user `~/.automedia/` → override rules → override prompts → `AUTOMEDIA_*` env vars + explicit overrides. See `automedia/core/config_loader.py`.
 - **GateHook Observer Protocol:** readonly observers; never mutate or skip gates. Lifecycle: `before_gate()`, `after_gate()`, `on_gate_failed()`; each returns `None`. See `automedia/hooks/protocol.py`.
 - **MD5 Tracking:** gates write product checksums to `pipeline_md5.json` in the project dir. See `automedia/core/md5_tracker.py`.
@@ -91,11 +91,11 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 |------|-----------|-------------|
 | `health_check` | — | Server health (version, uptime, tool count) |
 | `select_topic` | category, tenant_id, pool_db_path | Select highest-scored pending topic |
-| `research_topics` | category, count, trending | Research trending topics via LLM |
-| `run_brand_strategy` | brand_name, industry, target_audience, context | Generate brand strategy via LLM |
-| `run_pipeline` | topic, brand, mode, tenant_id, resume_from | Run full pipeline, async |
-| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context | Strategy via LLM, then pipeline |
-| `get_pipeline_progress` | project_id | Poll gate-by-gate progress |
+| `research_topics` | category, count, trending_data, pattern | Research trending topics via LLM |
+| `run_brand_strategy` | brand_name, industry, target_audience, context, pattern, platform | Generate brand strategy via LLM |
+| `run_pipeline` | topic, brand, mode, decision_mode, tenant_id, resume_from, auto_resume, source_path, source_url, workflow, director, platforms, project_id | Run full pipeline, async |
+| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context, pattern, platform, workflow | Strategy via LLM, then pipeline |
+| `get_pipeline_progress` | project_id, since_index | Poll gate-by-gate progress |
 | `get_pipeline_state` | project_id, base_dir, mode | Per-gate state view (passed/failed/pending/skipped/awaiting_review + md5) |
 | `get_gate_report` | project_id, base_dir, latest | Latest gate-report JSON from 05_review/gate-report/ (base_dir must be allowlisted) |
 | `get_pipeline_status` | project_id, base_dir | Query project status |
@@ -108,28 +108,28 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `list_platforms` | — | List registered platforms |
 | `extract_brief` | file_path, source_lang, target_lang | Extract brief via OPP |
 | `localize_content` | md_content, source_lang, target_lang | Translate via OL shield pipeline |
-| `localize_output` | project_dir, target_langs | Translate all drafts to target langs |
+| `localize_output` | project_dir, target_langs, source_lang | Translate all drafts to target langs |
 | `format_output` | content, target_format, **options | Convert format via ORF |
-| `evaluate_content_quality` | content, criteria, brand | Score content quality |
-| `analyze_content` | project_id | Content analytics stats |
+| `evaluate_content_quality` | content, criteria, brand, pattern, platform | Score content quality |
+| `analyze_content` | project_id, base_dir | Content analytics stats |
 | `distribute_content` | project_id, platforms, all, dry_run, base_dir | Distribute via D-gates |
 | `connect_account` | platform, auth_type, credentials, label | Register a platform account |
 | `list_accounts` | platform, status | List registered accounts |
 | `get_account_health` | account_id | Check account health |
 | `disconnect_account` | account_id | Remove an account |
-| `add_pool_topic` | topic, category, source | Add topic to pool |
-| `pool_add_topic` | topic, category, source | Deprecated: use add_pool_topic |
-| `publish_content` | project_id, platform, mode | Publish a project |
+| `add_pool_topic` | title, category, pool_db_path | Add topic to pool |
+| `pool_add_topic` | title, category, pool_db_path | Deprecated: use add_pool_topic |
+| `publish_content` | project_id, platform, account_id, base_dir, mode | Publish a project |
 | `run_batch` | topics, brand, mode | Run pipeline sequentially |
 | `batch_run` | topics, brand, mode | Deprecated: use run_batch |
-| `add_cron_schedule` | schedule, command | Add a cron schedule |
-| `list_cron_schedules` | — | List cron schedules |
-| `remove_cron_schedule` | schedule_id | Remove a cron schedule |
+| `add_cron_schedule` | name, expression, brand, category, count, platform, mode | Add a cron schedule |
+| `list_cron_schedules` | platform, mode | List cron schedules |
+| `remove_cron_schedule` | name | Remove a cron schedule |
 | `get_cron_health` | — | Cron config health |
 | `test_cron_schedule` | expression, count | Validate cron expression |
-| `search_assets` | query, brand, limit, filters | Keyword + semantic asset search |
+| `search_assets` | query, brand, limit, type, tags, lang, stage | Keyword + semantic asset search |
 | `list_brands` | — | List configured brands |
-| `add_brand` | name, industry, target_audience | Create a brand profile |
+| `add_brand` | name, industry, target_audience, aliases, blocked_words, brand_identity, tone_guidelines, cta_principles | Create a brand profile |
 | `get_config` | key | Merged config, secrets redacted |
 | `init_config` | project_dir | Init `.automedia/` + default config |
 | `configure_llm` | provider, model, api_key | Configure LLM provider |
@@ -148,13 +148,13 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `mcp_help` | — | Deprecated: use help_mcp |
 | `list_overridable_templates` | — | List overridable prompt templates + override status |
 | `list_workflows` | — | List configured workflows from workflows.yaml |
-| `approve_gate` | gate_name | Approve a paused gate in director mode (HITL) |
-| `reject_gate` | gate_name, reason | Reject a paused gate (triggers failure handling) |
-| `get_pending_approvals` | — | List gates awaiting human approval in director mode |
+| `approve_gate` | project_id, gate_name, modifications | Approve a paused gate in director mode (HITL) |
+| `reject_gate` | project_id, gate_name, reason | Reject a paused gate (triggers failure handling) |
+| `get_pending_approvals` | project_id | List gates awaiting human approval in director mode |
 | `list_validation_scenarios` | — | List validation scenario library |
-| `run_validation_scenario` | scenario_name, runs_root, save | Run one validation scenario |
-| `run_validation_suite` | scenarios_dir, runs_root, save | Run the whole validation library; persist one suite record |
-| `get_validation_report` | run_dir | Read a persisted run record |
+| `run_validation_scenario` | scenario_name, runs_root, save, context | Run one validation scenario |
+| `run_validation_suite` | scenarios_dir, runs_root, save, context | Run the whole validation library; persist one suite record |
+| `get_validation_report` | run_dir, runs_root | Read a persisted run record |
 | `validation_coverage_audit` | — | Static coverage audit |
 | `validation_matrix` | — | Validation matrix render |
 
@@ -163,17 +163,17 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | Command | Description |
 |---------|-------------|
 | `automedia run` | Run full production pipeline |
-| `automedia pool` | Topic pool management (list, add, score) |
+| `automedia pool` | Topic pool management (list, add, prune, attach-brief) |
 | `automedia projects` | List and manage projects |
 | `automedia distribute` | Distribute to platforms (D-gates: --platforms, --all, --dry-run) |
 | `automedia effects` | Content analytics stats |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
-| `automedia account` | Account management (connect, list, health, disconnect, refresh) |
+| `automedia account` | Account management (connect, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: --force unless published) |
 | `automedia init` | Initialize configuration |
 | `automedia doctor` | Check dependencies and environment health |
-| `automedia omni` | Omni Triad operations (extract, translate, convert) |
+| `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia onboard` | Onboarding wizard |
 | `automedia mcp` | MCP server management |
@@ -194,7 +194,7 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
 - **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index)
-- **Maintainer skills:** `.opencode/skills/` — `project-validation`, `doc-sync`, `validation-runner`, `deep-modules`
-- **User-facing skills:** `docs/skills/brand-strategy.md`
+- **Maintainer skills:** `.opencode/skills/` — `project-validation`, `doc-sync`, `validation-runner`, `deep-modules`, `issue-triage`, `pr-review-merge`
+- **User-facing skills:** `docs/skills/` — `brand-strategy`, `pipeline-workflow`, `batch-workflow`, `distribution-workflow`
 
 For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/agent-troubleshooting.md).

@@ -25,7 +25,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | Command | Description |
 |---------|-------------|
 | `automedia run` | Execute production pipeline (single topic or batch via `--topics`) |
-| `automedia pool` | Topic pool management (list, add, score) |
+| `automedia pool` | Topic pool management (list, add, prune, attach-brief) |
 | `automedia projects` | List and manage production projects |
 | `automedia distribute` | Distribute pipeline content to platforms (D-gates with `--platforms`, `--all`, `--dry-run`) |
 | `automedia effects` | Compute content analytics stats (word count, sentiment, readability, brand mentions, SEO) |
@@ -35,7 +35,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia archive` | Archive a project |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies |
-| `automedia omni` | Omni Triad operations (extract, translate, convert) |
+| `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
 | `automedia pipeline` | Pipeline DAG export and state inspection (export-dag, state) |
 | `automedia hitl` | Human-in-the-loop review operations |
 | `automedia mcp` | Generate MCP client configuration for various IDEs |
@@ -460,6 +460,9 @@ Run scheduled jobs and health checks.
 # Run a specific job
 automedia cron run <job-name>
 
+# Run every schedule entry that is due right now (external crond contract)
+automedia cron run --due
+
 # Full system health check
 automedia cron check-health
 ```
@@ -472,19 +475,47 @@ automedia cron check-health
 | `pool-score` | Score and rank topics |
 | `pool-prune` | Clean up expired topics |
 | `publish-check` | Check pending publish content |
+| `watchdog` | 4-step system health check (alias for `check-health`) |
 | `run-pipeline` | Execute scheduled pipeline runs from cron/jobs.yaml |
+| `run-distribute` | Execute scheduled distribution commands from cron/jobs.yaml |
 
 ### cron run Arguments
 
 | Argument | Type | Description |
-|------|------|------|
-| `job_name` | `str` | Job name (required) |
+|------|------|-------------|
+| `job_name` | `str` | Job name. Optional when `--due` is given. |
 
 ### cron run Flags
 
 | Flag | Type | Default | Description |
-|------|------|--------|------|
+|------|------|--------|-------------|
+| `--due` | `bool` | `false` | Dispatch **every** schedule entry due now |
 | `--timeout` | `int` | `120` | Job timeout in seconds |
+
+### `cron run --due` — the external crond contract
+
+AutoMedia ships **no scheduler**. An external crond calls this command on a
+fixed tick (e.g. every minute); `--due` reads the canonical schedule store and
+dispatches every entry whose next fire time has passed:
+
+```cron
+* * * * * cd /srv/automedia && automedia cron run --due
+```
+
+Two schedule sources are consulted, both from the canonical store:
+
+1. The static `jobs:` list (project `.automedia/`, falling back to the packaged
+   `cron/jobs.yaml`) — dispatched to their in-process handlers.
+2. The `pipeline_schedules:` list — `kind == "pipeline"` entries go through the
+   pool→pipeline bridge; `kind == "distribute"` entries go through the
+   distribution path.
+
+Exit code is `1` if any dispatched entry failed, `0` otherwise. Text mode
+prints `cron --due: N entries due, M failed.`; JSON mode returns
+`{"status", "due", "failed", "now"}`.
+
+Use `automedia cron run <job-name>` to force-run one named job regardless of
+its schedule.
 
 ### cron check-health
 
@@ -557,18 +588,27 @@ When a model_config.yaml exists, doctor also reports advisory LLM configuration 
 
 ## `automedia omni`
 
-Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF).
+Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF),
+plus launching the adapter MCP servers.
 
 Each CLI subcommand has a corresponding MCP tool with a different name (see the
 [MCP-CLI Naming Equivalences](#mcp-cli-naming-equivalences) table at the top of this page):
 
-| CLI Subcommand | MCP Equivalent |
-|----------------|----------------|
-| `automedia omni ingest` | ``extract_brief`` |
-| `automedia omni localize` | ``localize_content`` |
-| `automedia omni format-output` | ``format_output`` |
+| CLI Subcommand | MCP Equivalent | Purpose |
+|----------------|----------------|---------|
+| `automedia omni start` | — | Start one Omni adapter server (`--mode parallel\|proxy\|sdk`) |
+| `automedia omni start-all` | — | Start the main server plus OPP/OL/ORF adapters in parallel; blocks until Ctrl+C |
+| `automedia omni ingest` | `extract_brief` | OPP document extraction |
+| `automedia omni localize` | `localize_content` | OL translation |
+| `automedia omni format-output` | `format_output` | ORF format conversion |
 
 ```bash
+# Launch every adapter server in parallel (blocks; Ctrl+C to stop)
+automedia omni start-all
+
+# Start a single adapter server
+automedia omni start --mode sdk
+
 # Extract content brief
 automedia omni ingest --file document.md
 
@@ -698,6 +738,43 @@ automedia onboard list
 ```
 
 The LLM step preserves an existing fallback chain in `model_config.yaml` and offers fallback guidance during the flow.
+
+## `automedia mcp`
+
+Generate ready-to-paste MCP client configuration for the MCP server.
+
+```bash
+# All supported clients at once
+automedia mcp discover
+
+# One client
+automedia mcp discover --client claude
+automedia mcp discover --client opencode
+automedia mcp discover --client codexcli
+
+# Raw JSON (no labels) — pipe into a config file
+automedia mcp discover --client claude --json
+```
+
+### Supported Clients
+
+| Client | Value | Where the snippet goes |
+|--------|-------|------------------------|
+| Claude Desktop / Claude Code | `claude` | `claude_desktop_config.json` or `CLAUDE.md` |
+| OpenCode | `opencode` | `.opencode/package.json` under `mcpServers` |
+| Codex CLI | `codexcli` | `~/.codex/config.json` or project `.codex/config.json` |
+| all | `all` | Prints every configuration above, keyed by client |
+
+### Arguments and Flags
+
+| Argument / Flag | Type | Default | Description |
+|------|------|--------|-------------|
+| `--client, -c` | `str` | `all` | Target client: `claude`, `opencode`, `codexcli`, or `all` |
+| `--json` | `bool` | `false` | Emit raw JSON without wrapper labels |
+
+The generated snippet always points at `python -m automedia.mcp.server` using
+the interpreter that runs the CLI. An unknown `--client` value exits with
+code `1` and lists the valid options.
 
 ## `automedia history`
 

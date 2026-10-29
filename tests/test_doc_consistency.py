@@ -324,3 +324,163 @@ def test_live_docs_satisfy_the_size_gate(checker: ModuleType) -> None:
     for rel in ("README.md", "AGENTS.md", "docs/index.md"):
         text = (REPO_ROOT / rel).read_text(encoding="utf-8")
         assert checker.scan_size_claims(text, stats) == [], rel
+
+
+# ---------------------------------------------------------------------------
+# Structural-claim scan functions (doc-update-audit-20261029 §5 blind spots)
+# ---------------------------------------------------------------------------
+
+
+def test_scan_tool_params_flags_missing_and_phantom(checker: ModuleType) -> None:
+    """A tool row missing real params, or naming invented ones, is a Finding."""
+    table = (
+        "## 9. MCP Tools Quick Reference\n"
+        "\n"
+        "| Tool | Parameters | Description |\n"
+        "|------|-----------|-------------|\n"
+        "| `run_pipeline` | topic, brand | Run full pipeline |\n"
+        "| `health_check` | — | Server health |\n"
+    )
+    signatures = {
+        "run_pipeline": ["topic", "brand", "mode", "project_id"],
+        "health_check": [],
+    }
+
+    findings = checker.scan_tool_params(table, signatures)
+
+    assert len(findings) == 1
+    assert "run_pipeline" in findings[0].found
+    assert "mode" in findings[0].expected
+    assert "project_id" in findings[0].expected
+
+
+def test_scan_tool_params_accepts_reordered_but_complete_rows(checker: ModuleType) -> None:
+    """Order is not the contract — completeness is."""
+    table = (
+        "## 9. MCP Tools Quick Reference\n"
+        "\n"
+        "| Tool | Parameters | Description |\n"
+        "|------|-----------|-------------|\n"
+        "| `run_pipeline` | brand, topic | Run full pipeline |\n"
+    )
+
+    assert checker.scan_tool_params(table, {"run_pipeline": ["topic", "brand"]}) == []
+
+
+def test_scan_tool_params_ignores_tools_membership_does_not_know(checker: ModuleType) -> None:
+    """A doc-only name is the doc↔reality audit's finding, not this one's."""
+    table = (
+        "## 9. MCP Tools Quick Reference\n"
+        "\n"
+        "| Tool | Parameters | Description |\n"
+        "|------|-----------|-------------|\n"
+        "| `phantom_tool` | anything | Not registered |\n"
+    )
+
+    assert checker.scan_tool_params(table, {}) == []
+
+
+def test_scan_module_tree_flags_phantom_and_omitted(checker: ModuleType) -> None:
+    """A tree naming a nonexistent module is a Finding, and so is omitting a real one."""
+    text = (
+        "```\n"
+        "src/automedia/\n"
+        "├── core/        # foundation\n"
+        "├── platform/    # phantom\n"
+        "docs/ · scripts/ · tests/\n"
+        "```\n"
+    )
+
+    findings = checker.scan_module_tree(text, {"core", "engines", "validation"})
+
+    found = {f.found for f in findings}
+    assert "platform/" in found
+    assert "engines/" in found
+    assert "validation/" in found
+    assert "docs/" not in found
+    assert "scripts/" not in found
+
+
+def test_scan_module_tree_ignores_repo_root_siblings(checker: ModuleType) -> None:
+    """Only the block directly under automedia/ is compared, never its parents."""
+    text = (
+        "```\n"
+        "AutoMedia/\n"
+        "├── src/\n"
+        "│   └── automedia/\n"
+        "│       ├── core/\n"
+        "├── deploy/ · .github/workflows/\n"
+        "└── pyproject.toml\n"
+        "```\n"
+    )
+
+    assert checker.scan_module_tree(text, {"core"}) == []
+
+
+def test_scan_cli_sections_flags_missing_and_phantom(checker: ModuleType) -> None:
+    """Every real command needs a section; a section for a phantom command is a Finding."""
+    text = "## `automedia run`\n\n## `automedia bogus`\n"
+
+    findings = checker.scan_cli_sections(text, {"run", "validate"})
+
+    found = {f.found for f in findings}
+    assert "automedia bogus" in found
+    assert "automedia validate" in found
+
+
+def test_scan_cli_enumerations_flags_nonexistent_subcommand(checker: ModuleType) -> None:
+    """An enumerated sub-command that does not exist is a Finding (the `refresh` case)."""
+    text = (
+        "## 10. CLI Commands\n"
+        "\n"
+        "| Command | Description |\n"
+        "|---------|-------------|\n"
+        "| `automedia account` | Account management (connect, list, health, "
+        "disconnect, refresh) |\n"
+    )
+    subcommands = {"account": {"connect", "list", "health", "disconnect"}}
+
+    findings = checker.scan_cli_enumerations(text, subcommands, heading="## 10.")
+
+    assert len(findings) == 1
+    assert "refresh" in findings[0].found
+
+
+def test_scan_skill_list_flags_stale_and_omitted(checker: ModuleType) -> None:
+    """A listed skill that does not exist and a real skill listed nowhere are both Findings."""
+    text = (
+        "- **Maintainer skills:** `.opencode/skills/` — `alpha`, `ghost`\n"
+        "- **User-facing skills:** `docs/skills/` — `beta`\n"
+    )
+
+    findings = checker.scan_skill_list(text, {"alpha", "beta"}, label="Maintainer skills")
+
+    found = {f.found for f in findings}
+    assert "ghost" in found
+    assert "beta" in found
+
+
+def test_scan_skill_list_accepts_bullet_style(checker: ModuleType) -> None:
+    """The agent-reference bullet-list shape is equivalent to the inline shape."""
+    text = "- **Maintainer skills:** `.opencode/skills/`\n- `alpha`: A\n- `beta`: B\n"
+
+    assert checker.scan_skill_list(text, {"alpha", "beta"}, label="Maintainer skills") == []
+
+
+def test_live_structural_claims_are_clean(checker: ModuleType) -> None:
+    """The committed docs must pass every structural check this PR adds."""
+    agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    reference = (REPO_ROOT / "docs" / "dev" / "agent-reference.md").read_text(encoding="utf-8")
+    cli_ref = (REPO_ROOT / "docs" / "user" / "cli-reference.md").read_text(encoding="utf-8")
+    subpackages = checker._package_subpackages()
+
+    assert checker.scan_tool_params(agents, checker._tool_param_signatures()) == []
+    assert checker.scan_module_tree(agents, subpackages) == []
+    assert checker.scan_module_tree(reference, subpackages) == []
+    assert checker.scan_cli_sections(cli_ref, set(checker._cli_subcommands())) == []
+    assert checker.scan_cli_enumerations(agents, checker._cli_subcommands(), heading="## 10.") == []
+    for label, directory in (
+        ("Maintainer skills", ".opencode/skills"),
+        ("User-facing skills", "docs/skills"),
+    ):
+        assert checker.scan_skill_list(agents, checker._skill_names(directory), label=label) == []

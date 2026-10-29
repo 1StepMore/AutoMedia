@@ -12,8 +12,9 @@ AutoMedia production pipeline as a **side-channel adapter**.  Omni is
 **not embedded** in the main pipeline — it runs before (OPP document
 extraction) and after (OL translation + ORF format re-flow) the core
 gate chain, leaving the production gate sequence unchanged. In `auto`
-mode the full pipeline runs 22 gates: pre-gate, CW, G0-G6, V0-V7, H0,
-L1-L4.
+mode the preset runs 16 gates: pre-gate, CW, G0-G3, G6, V0-V7, H0.
+(G4/G5 and L1-L4 remain registered but belong to no preset; the L-gates
+run through their own lifecycle commands.)
 
 | Tool | Package | Role |
 |------|---------|------|

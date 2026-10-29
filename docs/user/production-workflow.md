@@ -186,15 +186,14 @@ Pipeline finished: success
   Project dir: /var/automedia/projects/20260707_ai-video-tools
   Duration   : 342.5s
 
-  Gates executed: 21
+  Gates executed: 16
     ✓ pre-gate (0.32s)
     ✓ CW (8.00s)
     ✓ G0 (12.50s)
     ✓ G1 (8.20s)
     ✓ G2 (5.10s)
     ✓ G3 (3.40s)
-    ✓ G4 (2.10s)
-    ✓ G5 (1.80s)
+    ✓ G6 (4.20s)
     ✓ V0 (0.90s)
     ✓ V1 (45.60s)
     ✓ V2 (30.20s)
@@ -203,10 +202,7 @@ Pipeline finished: success
     ✓ V5 (2.30s)
     ✓ V6 (60.10s)
     ✓ V7 (5.40s)
-    ✓ L1 (0.50s)
-    ✓ L2 (1.20s)
-    ✓ L3 (0.80s)
-    ✓ L4 (1.50s)
+    ✓ H0 (0.40s)
 
   Assets produced: 7
     - [article] 01_content/drafts/wechat/wechat_draft.html
@@ -217,6 +213,12 @@ Pipeline finished: success
     - [report] 04_review/qa_report.json
     - [log] 06_publish/publish_log.json
 ```
+
+> The list above is the `auto` preset as declared in
+> `pipelines/gate_plan.py` (`MODE_GATE_NAMES["auto"]`). `G4`, `G5`, and
+> `L1`-`L4` are registered gates but belong to **no** preset, so they never
+> appear here; the L-gates run through their own lifecycle commands. Timings
+> are illustrative — the gate set is not.
 
 ### Awaiting Review
 

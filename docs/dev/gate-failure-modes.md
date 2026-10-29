@@ -34,6 +34,43 @@ Topic score falls below threshold or duplicates recently published content.
 automedia pool list --status pending
 ```
 
+## CW: Content Writer
+
+The boundary gate between topic selection and content operations. It asks the
+LLM for a full article from the selected topic, writes it to
+`01_content/drafts/`, and attaches an inline SEO score. Every downstream copy
+gate (G0-G3, G6) consumes its output, so a CW failure stops the run
+(`failure_mode="stop"`).
+
+**Common failure causes:**
+
+- `topic` missing or empty in gate context — nothing to write about
+- `project_dir` missing, or `01_content/drafts/` not writable
+- LLM provider error: bad API key, wrong model name, unreachable endpoint,
+  rate limit
+- LLM returns an empty or whitespace-only response (prompt drift, over-tight
+  max-tokens)
+- Draft file write fails on a full disk or permission change mid-run
+
+**Remediation:**
+
+- Verify the topic reached the pipeline: `automedia run --topic "..."`
+- Check LLM config: `automedia doctor` (provider, model, key presence)
+- Confirm the project dir is writable and has free space
+- Re-run just this stage with `--resume-from CW` once the input is fixed
+- If responses are consistently empty, inspect the writer prompt template
+  (`prompts/content_writer.j2`) for drift
+
+**Quick diagnosis:**
+
+```bash
+# Inspect what CW produced
+ls -la <project_dir>/01_content/drafts/
+
+# Confirm the LLM path is healthy
+automedia doctor
+```
+
 ## G0: Fact Check
 
 Five-step verification of content consistency with source data: source tracing,

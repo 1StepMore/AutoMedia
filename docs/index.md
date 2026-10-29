@@ -84,6 +84,30 @@ Troubleshooting and operational guides:
 | [Production Workflow](user/production-workflow.md) | Daily production operations |
 | [Cron Troubleshooting](dev/cron-troubleshooting.md) | Debugging scheduled jobs |
 | [API Gotchas](dev/api-gotchas.md) | Common API pitfalls and solutions |
+| [Override Reference](dev/override-reference.md) | Override system: rules, prompts, platform scoping |
+
+---
+
+## Setup and Deployment
+
+| Guide | Description |
+|-------|-------------|
+| [Deployment Options](user/deployment.md) | Docker / native pip / systemd / Windows comparison + production checklist |
+| [Windows Deployment](user/windows-deployment.md) | WSL2, Docker Desktop, and native Windows setup |
+| [User Introduction](user/user-introduction.md) | Getting-started walkthrough for new users |
+
+---
+
+## Development Notes and History
+
+| Document | Description |
+|----------|-------------|
+| [Founder Expectations](dev/founder-expectations.md) | Timestamped expectation baseline (historical snapshot — do not refresh) |
+| [Evaluation Matrix Principles](dev/evaluation-matrix-principles.md) | How the evaluation matrix is scored |
+| [Forward Compatibility](dev/forward-compat.md) | Forward-compatibility rules for evolving the schema |
+| [Project Validation Framework](dev/project-validation-framework.md) | Structural validation framework |
+| [Validation Loop Log](dev/validation-loop-log.md) | Running log of validation loop iterations |
+| [Nightly Plan](dev/plans/NIGHTLY.md) | Nightly re-run plan and latest gap report |
 
 ---
 

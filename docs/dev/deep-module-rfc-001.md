@@ -1,10 +1,15 @@
 # RFC-001: Deep-Module Refactor — `automedia/pipelines/runner.py` Friction-Zone Scan
 
-**Status:** Proposed
+**Status:** Accepted (2026-10-29 — Proposal A; see §6 Adjudication)
 **Date:** 2026-08-13
+**Adjudicated:** 2026-10-29
 **Scope:** Document-only scan per the deep-module methodology (see
 `docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md` §3.1 — "Deep Modules（深模块）",
 after *Philosophy of Software Design*, John Ousterhout).
+
+> **Reading note:** §1-§5 are the original 2026-08-13 scan and are left as
+> written. Several metrics in them have since moved; **§6 Adjudication** holds
+> the re-verified numbers and the decision. Read §6 for the current state.
 
 ---
 
@@ -229,3 +234,71 @@ per PR #55.
 No code was modified in producing this document. Every file, function, and
 symbol named above was verified to exist against the current tree
 (`git rev-parse HEAD` = `6c7ca2a`).
+
+---
+
+## 6. Adjudication (2026-10-29)
+
+**Status changed: `Proposed` → `Accepted` (Proposal A, phased).**
+
+This RFC sat at `Proposed` for 77 days. The aging gate
+(`scripts/check_rfc_aging.py`, `PROPOSED_MAX_AGE_DAYS = 90`) would have turned
+CI red on 2026-11-11, and it was right to: a `Proposed` RFC is a zero-cost
+state, so it gets forgotten while the friction zone keeps moving underneath it.
+
+### What was re-verified against the tree at adjudication time
+
+| Metric in §1 | RFC (2026-08-13) | Actual (2026-10-29) | Note |
+|---|---|---|---|
+| `runner.py` lines | 2,309 | **2,165** | shrank, −6% |
+| top-level functions | 37 | 37 | unchanged |
+| function-level lazy imports | 44 | **45** | +1 |
+| `run_full_pipeline` parameters | 23 | **23** | unchanged |
+| `run_full_pipeline(` call sites | 68 across 34 files | **60 across 12 files** | §1 over-counted; grep matched the definition and doc prose |
+
+The premise is **weaker than when written but not resolved**: the file is still
+the largest module in `automedia/` and still mixes the same sub-concerns. Two
+merges since this RFC removed adjacent friction without executing any of the
+three proposals:
+
+- **#314** lifted the per-mode gate lists into `pipelines/gate_plan.py`. Gate
+  *membership* now has one authority; gate *selection/composition logic*
+  (`_compose_gate_list`, `_collect_platform_gate_modifiers`,
+  `validate_gate_modifiers`) still lives in `runner.py`.
+- **#318** deleted `_filter_gates_for_platform` — it was dead code. One
+  sub-concern from §2.1 is therefore gone rather than extracted.
+
+### Decision
+
+**Adopt Proposal A** (extract sub-process modules behind an unchanged public
+surface), in the phased order below. Proposal B (`PipelineRunSpec`) stays a
+follow-up gated on A landing. **Proposal C is rejected**: the stage-protocol
+layer adds indirection without removing interface surface, which is the
+anti-pattern §3.1 warns about, and no new pipeline modes have appeared to
+justify it.
+
+Phasing (each phase is an independent, revertible commit pair):
+
+| Phase | Extract | Into | Rationale |
+|---|---|---|---|
+| A1 | `_verify_resume_integrity`, `_record_gate_md5s` | `pipelines/integrity.py` | pure, no engine dependency — safest first cut |
+| A2 | `_compose_gate_list`, `_collect_platform_gate_modifiers`, `validate_gate_modifiers` | `pipelines/gate_selection.py` | finishes what #314 started; `gate_plan.py` supplies the lists |
+| A3 | `_build_pipeline_context`, `_resolve_source_material` | `pipelines/context.py` | |
+| A4 | `_collect_assets`, `_collect_video_assets` | `pipelines/assets.py` | |
+| A5 | `_finalize_pipeline`, `_build_gates_log`, `_handle_pipeline_error` | `pipelines/finalize.py` | |
+
+**Invariant for every phase:** `run_full_pipeline`'s signature, `VALID_MODES`,
+`validate_gate_modifiers`' public name, the 45 lazy-import sites, and the
+`__init__` lazy `__getattr__` maps stay byte-identical. No new eager import may
+cross a package boundary. `tests/test_runner/` must pass unmodified — if a test
+needs editing, the extraction changed behaviour and the phase is wrong.
+
+### Explicitly out of scope
+
+- Do **not** delete the deprecated `decision_mode` / `force_provenance`
+  parameters here; that is Proposal B's job and needs its own migration.
+- Do **not** touch `gate_plan.py`'s `MODE_GATE_NAMES` — A2 consumes it.
+- Do **not** renumber or edit ADR-006; it records the 2026-08-30 state.
+
+Any deviation from this adjudication (dropping A, adopting C) needs a new ADR,
+not an edit to this RFC.

@@ -231,6 +231,77 @@ def _count_scenarios() -> int:
     return len(load_scenarios())
 
 
+def _tool_param_signatures() -> dict[str, list[str]]:
+    """Derived truth for ``scan_tool_params``: real name + ordered params per tool.
+
+    ``**kwargs`` is rendered ``**options`` to match the documented spelling.
+    """
+    server = create_server()
+    manager = server._tool_manager
+    tools = getattr(manager, "_tools", {})
+    if not tools:
+        return {}
+    if inspect.iscoroutine(tools):
+        tools = asyncio.run(tools)
+    signatures: dict[str, list[str]] = {}
+    for name, tool in tools.items():
+        fn = getattr(tool, "fn", None)
+        if fn is None:
+            continue
+        try:
+            signature = inspect.signature(fn)
+        except (TypeError, ValueError):
+            continue
+        params = list(signature.parameters)
+        if params and signature.parameters[params[-1]].kind is inspect.Parameter.VAR_KEYWORD:
+            params = [*params[:-1], f"**{params[-1]}"]
+        signatures[name] = params
+    return signatures
+
+
+def _package_subpackages() -> set[str]:
+    """Derived truth for ``scan_module_tree``: real dirs directly under src/automedia/."""
+    src = REPO_ROOT / "src" / "automedia"
+    if not src.is_dir():
+        return set()
+    return {
+        path.name
+        for path in src.iterdir()
+        if path.is_dir() and not path.name.startswith(("__", "."))
+    }
+
+
+def _cli_subcommands() -> dict[str, set[str]]:
+    """Derived truth for ``scan_cli_enumerations``: group -> real sub-commands.
+
+    Duck-types on ``list_commands`` instead of ``isinstance(click.Group)``:
+    typer vendors its own click fork, so a real sub-app is a
+    ``typer._click.core.Group`` and fails an external ``click.Group`` check.
+    """
+    from typing import Any, cast
+
+    from typer.main import get_command as typer_get_command
+
+    group = cast(Any, typer_get_command(_cli_app))
+    ctx = click.Context(group)
+    result: dict[str, set[str]] = {}
+    for name in group.list_commands(ctx):
+        command = group.get_command(ctx, name)
+        if command is None or not hasattr(command, "list_commands"):
+            result[name] = set()
+            continue
+        result[name] = set(command.list_commands(click.Context(command)))
+    return result
+
+
+def _skill_names(directory: str) -> set[str]:
+    """Derived truth for ``scan_skill_list``: ``*.md`` stems under *directory*, minus README."""
+    path = REPO_ROOT / directory
+    if not path.is_dir():
+        return set()
+    return {p.stem for p in path.glob("*.md") if p.stem.lower() != "readme"}
+
+
 # --------------------------------------------------------------------------- #
 # Tree-size stats (issue #280)
 # --------------------------------------------------------------------------- #
@@ -491,6 +562,281 @@ def scan_marker(text: str, marker: str) -> list[Finding]:
             expected=f"first line == {marker!r}",
         )
     ]
+
+
+# --------------------------------------------------------------------------- #
+# Structural-claim checks (doc-update-audit-20261029 §5 blind spots):
+# parameter tables, directory trees, CLI enumerations, skill lists.
+# --------------------------------------------------------------------------- #
+
+# ``| `tool_name` | param, param | description |`` — the AGENTS.md §9 shape.
+_TOOL_ROW_RE: re.Pattern[str] = re.compile(r"^\|\s*`([A-Za-z_][A-Za-z0-9_]*)`\s*\|\s*([^|]*)\|")
+
+# ``## `automedia <name>` `` — one section per CLI command in cli-reference.md.
+_CLI_SECTION_RE: re.Pattern[str] = re.compile(r"^##\s+`automedia\s+([a-z][a-z0-9-]*)`\s*$")
+
+
+def scan_tool_params(
+    text: str,
+    signatures: dict[str, list[str]],
+    *,
+    section_heading: str = "## 9.",
+) -> list[Finding]:
+    """Compare the AGENTS.md MCP parameter table against real tool signatures.
+
+    Pure function: ``signatures`` maps tool name -> its real parameter names in
+    declaration order (``**kwargs`` rendered as ``**options``). The §9 table is
+    the most-read table in the repo and was silently wrong for 22 of 68 tools
+    because the numeric gate only checks tool *membership*, never *parameters*.
+
+    A row is a Finding when a real parameter is absent from the doc cell, or the
+    doc cell names a parameter the tool does not accept. Order is not enforced —
+    a reordered-but-complete cell is still correct documentation.
+    """
+    findings: list[Finding] = []
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith(section_heading)), None)
+    if start is None:
+        return findings
+    for offset, line in enumerate(lines[start + 1 :], start=start + 2):
+        if line.startswith("## "):
+            break
+        match = _TOOL_ROW_RE.match(line)
+        if match is None:
+            continue
+        name = match.group(1)
+        actual = signatures.get(name)
+        if actual is None:
+            continue  # membership is the doc↔reality audit's job, not this one
+        cell = match.group(2).strip()
+        declared = (
+            []
+            if cell in ("—", "-", "", "—")
+            else [part.strip().lstrip("*") for part in cell.split(",") if part.strip()]
+        )
+        missing = [p for p in actual if p.lstrip("*") not in declared]
+        phantom = [p for p in declared if p not in {a.lstrip("*") for a in actual}]
+        if missing or phantom:
+            findings.append(
+                Finding(
+                    file="",
+                    line=offset,
+                    found=f"{name}: {cell or '—'}",
+                    expected=(
+                        "parameters match the real signature "
+                        f"({', '.join(actual) if actual else '—'})"
+                        + (f"; missing {missing}" if missing else "")
+                        + (f"; not accepted {phantom}" if phantom else "")
+                    ),
+                )
+            )
+    return findings
+
+
+def scan_module_tree(text: str, actual: set[str]) -> list[Finding]:
+    """Compare a fenced ``src/automedia/`` tree against the real subpackages.
+
+    Pure function: ``actual`` is the set of real directory names under
+    ``src/automedia/``. Both directions are Findings — a phantom module sends
+    an agent to a path that does not exist, and an omitted module hides a real
+    subsystem (the audit's H3/H4: 5 modules missing, 1 phantom).
+
+    Only the block nested directly under the ``automedia/`` line is compared;
+    repo-root siblings (``docs/``, ``deploy/``, …) and parent levels are
+    outside the contract. Depth comes from the 4-char tree indent, so a parent
+    line is never mistaken for a child.
+    """
+    findings: list[Finding] = []
+    lines = text.splitlines()
+    anchor: int | None = None
+    anchor_depth: int | None = None
+    for index, line in enumerate(lines):
+        stripped = line.split("#", 1)[0]
+        if not stripped.rstrip().endswith("automedia/"):
+            continue
+        branch = re.search(r"[├└]──", stripped)
+        anchor = index
+        anchor_depth = len(stripped[: branch.start()]) // 4 + 1 if branch else None
+        break
+    if anchor is None:
+        return findings
+
+    rows: list[tuple[int, str]] = []
+    for offset in range(anchor + 1, len(lines)):
+        line = lines[offset]
+        if line.startswith("```"):
+            break
+        stripped = line.split("#", 1)[0]
+        branch = re.search(r"[├└]──", stripped)
+        if branch is None:
+            if stripped.strip():
+                break
+            continue
+        rows.append((len(stripped[: branch.start()]) // 4, stripped[branch.end() :]))
+    if not rows:
+        return findings
+
+    depth = anchor_depth if anchor_depth is not None else min(d for d, _ in rows)
+    declared: dict[str, int] = {}
+    for offset, (row_depth, body) in enumerate(rows, start=anchor + 2):
+        if row_depth != depth:
+            continue
+        for token in re.findall(r"([a-z_][a-z0-9_]*)/", body):
+            declared.setdefault(token, offset)
+    if not declared:
+        return findings
+    for name, lineno in sorted(declared.items()):
+        if name not in actual:
+            findings.append(
+                Finding(
+                    file="",
+                    line=lineno,
+                    found=f"{name}/",
+                    expected=f"a real subpackage of src/automedia/ ({len(actual)} exist)",
+                )
+            )
+    findings.extend(
+        Finding(
+            file="",
+            line=0,
+            found=f"{name}/",
+            expected="listed in the directory tree (it exists under src/automedia/)",
+        )
+        for name in sorted(actual - set(declared))
+    )
+    return findings
+
+
+def scan_cli_sections(text: str, commands: set[str]) -> list[Finding]:
+    """Compare ``## `automedia <cmd>` `` sections against real CLI commands.
+
+    Pure function: ``commands`` is the derived top-level command set. A command
+    with no section is undocumented (the audit's H8: `automedia mcp` had none);
+    a section for a command that does not exist is a phantom. Sub-command
+    enumerations inside a section are NOT checked here — those live in prose and
+    are covered by scan_cli_enumerations.
+    """
+    findings: list[Finding] = []
+    sections: dict[str, int] = {}
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        match = _CLI_SECTION_RE.match(line)
+        if match is not None:
+            sections.setdefault(match.group(1), lineno)
+    if not sections:
+        return findings
+    for name, lineno in sorted(sections.items()):
+        if name not in commands:
+            findings.append(
+                Finding(
+                    file="",
+                    line=lineno,
+                    found=f"automedia {name}",
+                    expected=f"a real CLI command ({len(commands)} registered)",
+                )
+            )
+    findings.extend(
+        Finding(
+            file="",
+            line=0,
+            found=f"automedia {name}",
+            expected="its own `## `automedia <cmd>`` section in cli-reference.md",
+        )
+        for name in sorted(commands - set(sections))
+    )
+    return findings
+
+
+def scan_cli_enumerations(
+    text: str,
+    subcommands: dict[str, set[str]],
+    *,
+    heading: str,
+) -> list[Finding]:
+    """Check that enumerated sub-command names in a table row really exist.
+
+    Pure function: ``subcommands`` maps a group command -> its real sub-command
+    names. Rows of the form ``| `automedia <group>` | ... (a, b, c) ... |`` are
+    parsed, and any parenthesised identifier that is not a real sub-command is a
+    Finding (the audit's H2: `account refresh` was documented but never existed).
+    """
+    findings: list[Finding] = []
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith(heading)), None)
+    if start is None:
+        return findings
+    row_re = re.compile(r"^\|\s*`automedia\s+([a-z][a-z0-9-]*)`\s*\|(.*)\|\s*$")
+    for offset, line in enumerate(lines[start + 1 :], start=start + 2):
+        if line.startswith("## "):
+            break
+        match = row_re.match(line)
+        if match is None:
+            continue
+        group, rest = match.group(1), match.group(2)
+        real = subcommands.get(group)
+        if not real:
+            continue
+        for parenthesised in re.findall(r"\(([^)]*)\)", rest):
+            for token in re.split(r"[,/]", parenthesised):
+                token = token.strip().strip("`")
+                if re.fullmatch(r"[a-z][a-z0-9-]*", token) and token not in real:
+                    findings.append(
+                        Finding(
+                            file="",
+                            line=offset,
+                            found=f"automedia {group} {token}",
+                            expected=f"a real sub-command (have: {', '.join(sorted(real))})",
+                        )
+                    )
+    return findings
+
+
+def scan_skill_list(text: str, actual: set[str], *, label: str) -> list[Finding]:
+    """Compare a skill list against real skill files.
+
+    Pure function: ``actual`` is the skill-name set derived from the directory
+    (file stem, minus README). Both a stale name and an omitted skill are
+    Findings (the audit's M1: two skills existed but were listed nowhere).
+
+    Two shapes are accepted because both are used: names backticked inline on
+    the ``- **label**:`` line itself (AGENTS.md), and names as a following
+    ``- `name`: ...`` bullet list (agent-reference.md).
+    """
+    findings: list[Finding] = []
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith(f"- **{label}")), None)
+    if start is None:
+        return findings
+    declared: dict[str, int] = {}
+    for match in re.finditer(r"`([a-z][a-z0-9-]*)`", lines[start]):
+        declared.setdefault(match.group(1), start + 1)
+    for offset, line in enumerate(lines[start + 1 :], start=start + 2):
+        if line.startswith("- **") or line.startswith("## "):
+            break
+        match = re.match(r"^\s*-\s*`([a-z][a-z0-9-]*)`", line)
+        if match is not None:
+            declared.setdefault(match.group(1), offset)
+    if not declared:
+        return findings
+    for name, lineno in sorted(declared.items()):
+        if name not in actual:
+            findings.append(
+                Finding(
+                    file="",
+                    line=lineno,
+                    found=name,
+                    expected=f"a real {label} skill ({len(actual)} exist)",
+                )
+            )
+    findings.extend(
+        Finding(
+            file="",
+            line=0,
+            found=name,
+            expected=f"listed under **{label}** (the skill exists)",
+        )
+        for name in sorted(actual - set(declared))
+    )
+    return findings
 
 
 def _read_allowlist() -> set[str]:
@@ -820,6 +1166,53 @@ def main(argv: Sequence[str] | None = None) -> int:
         for finding in scan_marker(inventory_path.read_text(encoding="utf-8"), _INVENTORY_MARKER):
             print(
                 f"docs/doc-inventory.md:{finding.line}: '{finding.found}' "
+                f"expected {finding.expected}"
+            )
+            all_findings.append(finding)
+
+    # Structural claims: the four classes the 2026-10-29 audit found unguarded.
+    # Tool PARAMETERS (not just names) in AGENTS.md §9.
+    agents_text = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else ""
+    if agents_text:
+        for finding in scan_tool_params(agents_text, _tool_param_signatures()):
+            print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
+            all_findings.append(finding)
+        for finding in scan_cli_enumerations(agents_text, _cli_subcommands(), heading="## 10."):
+            print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
+            all_findings.append(finding)
+        for label, directory in (
+            ("Maintainer skills", ".opencode/skills"),
+            ("User-facing skills", "docs/skills"),
+        ):
+            for finding in scan_skill_list(agents_text, _skill_names(directory), label=label):
+                print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
+                all_findings.append(finding)
+
+    # Directory tree: both AGENTS.md §3 and the agent-reference full tree.
+    actual_subpackages = _package_subpackages()
+    for rel in ("AGENTS.md", "docs/dev/agent-reference.md"):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        for finding in scan_module_tree(path.read_text(encoding="utf-8"), actual_subpackages):
+            print(f"{rel}:{finding.line}: '{finding.found}' expected {finding.expected}")
+            all_findings.append(finding)
+
+    # CLI sections: every command documented, no section for a phantom command.
+    cli_ref_path = REPO_ROOT / "docs" / "user" / "cli-reference.md"
+    if cli_ref_path.is_file():
+        cli_text = cli_ref_path.read_text(encoding="utf-8")
+        for finding in scan_cli_sections(cli_text, set(_cli_subcommands())):
+            print(
+                f"docs/user/cli-reference.md:{finding.line}: '{finding.found}' "
+                f"expected {finding.expected}"
+            )
+            all_findings.append(finding)
+        for finding in scan_cli_enumerations(
+            cli_text, _cli_subcommands(), heading="## Commands Overview"
+        ):
+            print(
+                f"docs/user/cli-reference.md:{finding.line}: '{finding.found}' "
                 f"expected {finding.expected}"
             )
             all_findings.append(finding)

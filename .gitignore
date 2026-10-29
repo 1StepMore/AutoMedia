@@ -1,6 +1,10 @@
 # ===== Production / Real Data =====
 /automedia-package/
 /automedia-infrastructure-*.zip
+# Delivery-package working docs (kept on disk, not repo content; see T0-4 of
+# docs/dev/plans/infrastructure-remediation-plan-20261030.md)
+/pkg-AutoMedia/
+/pkg-AutoMedia.zip
 /solution-wise/
 /projects/
 /test-*/
@@ -13,7 +17,9 @@ PRD/
 0[1-6]_*/
 
 # ===== Internal / Developer-Only Docs =====
-AutoMedia-*.md
+# Root-level drafts only; the pattern must not swallow committed docs under docs/.
+/AutoMedia-*.md
+!/docs/dev/AutoMedia-development-brief-v2.md
 docs/production-e2e-test-design.md
 /Production/
 /Pool/pool.db

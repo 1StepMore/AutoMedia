@@ -5,6 +5,33 @@ description: Python SDK API documentation — run_full_pipeline, GateEngine, Pip
 
 # API Reference
 
+## Public API surface
+
+Everything importable from the package root. This list is the contract: it
+matches `automedia.__all__` exactly (19 symbols).
+
+| Symbol | Kind | Documented in |
+|--------|------|---------------|
+| `run_full_pipeline` | function | [`run_full_pipeline()`](#run_full_pipeline) |
+| `get_platform_media_spec` | function | [`PlatformMediaSpec`](#platformmediaspec) |
+| `PipelineResult` | dataclass | [PipelineResult](#pipelineresult) |
+| `AssetInfo` | dataclass | [AssetInfo](#assetinfo) |
+| `GateLogEntry` | dataclass | [GateLogEntry](#gatelogentry) |
+| `PipelineProgress` | class | [PipelineProgress](#pipelineprogress) |
+| `Pipeline` | alias | [`Pipeline`](#pipeline-gateengine-alias) |
+| `GateEngine` | class | [GateEngine](#gateengine) |
+| `GateRegistry` | singleton | [GateRegistry](#gateregistry) |
+| `GateHook` | protocol | [GateHook Protocol](#gatehook-protocol) |
+| `PlatformMediaSpec` | dataclass | [`PlatformMediaSpec`](#platformmediaspec) |
+| `DecisionArtifact` | dataclass | [DecisionArtifact](#decisionartifact) |
+| `AutoMediaError` | exception | [Exceptions](#exceptions) |
+| `PipelineError` | exception | [Exceptions](#exceptions) |
+| `GateError` | exception | [Exceptions](#exceptions) |
+| `AdapterError` | exception | [Exceptions](#exceptions) |
+| `ConfigError` | exception | [Exceptions](#exceptions) |
+| `AccountError` | exception | [Exceptions](#exceptions) |
+| `__version__` | `str` | [`__version__`](#__version__) |
+
 ## `run_full_pipeline()`
 
 Core entry function, executes the full content production pipeline.
@@ -435,4 +462,161 @@ from automedia.core.project import sanitize_path
 
 safe_path = sanitize_path("/valid/path")  # Validate and normalize path
 # Rejects "..", "~", "//" patterns
+```
+
+## PipelineProgress
+
+Thread-safe observable progress tracker. The pipeline mutates it from a worker
+thread while an MCP query thread reads it; every mutation is behind a lock, so
+`get_progress()` never returns torn state. `get_pipeline_progress` and
+`automedia run` are both built on it.
+
+```python
+from automedia import PipelineProgress
+
+progress = PipelineProgress(project_id="a4c8e2f61b90")
+progress.set_gate_names(["pre-gate", "CW", "G0", "H0"])
+
+progress.get_progress()
+# {
+#   "project_id": "a4c8e2f61b90",
+#   "current_gate": None,
+#   "gates_done": [],
+#   "gates_remaining": ["pre-gate", "CW", "G0", "H0"],
+#   "total_gates": 4,
+#   "events": [],
+#   "error": None,
+#   "is_running": False,
+#   "is_failed": False,
+#   "elapsed_s": 0.0,
+#   "token_usage": None,
+#   "estimated_cost_usd": None,
+# }
+```
+
+| Method | Purpose |
+|--------|---------|
+| `set_gate_names(names)` | Declare the ordered gate list; sets `total_gates` |
+| `get_progress()` | JSON-compatible snapshot (shape above) |
+| `get_current_gate()` | Name of the running gate, or `None` |
+| `cancel()` / `pause()` / `resume()` | Cooperative run control |
+| `is_cancelled()` / `is_paused()` | Control-state queries |
+| `mark_retry_gate(name)` / `mark_skip_gate(name)` | Queue a per-gate override |
+| `mark_finished()` | Flag the run as complete |
+
+## `Pipeline` (GateEngine alias)
+
+`Pipeline` is an exported alias for `GateEngine`, kept for the documented
+`Pipeline` name. Both names resolve to the same class:
+
+```python
+from automedia import Pipeline, GateEngine
+assert Pipeline is GateEngine   # True
+```
+
+Use whichever reads better; behaviour is identical. See
+[GateEngine](#gateengine).
+
+## `PlatformMediaSpec`
+
+Per-platform media requirements (dimensions, aspect ratio, duration, codec,
+bitrate, fps), resolved with brand overrides layered on top of the built-in
+table.
+
+```python
+from automedia import PlatformMediaSpec, get_platform_media_spec
+
+spec = get_platform_media_spec("xiaohongshu")
+# PlatformMediaSpec(width=1080, height=1440, aspect_ratio="3:4", ...)
+
+# Brand config can override any field for a platform
+spec = get_platform_media_spec(
+    "wechat",
+    brand_config={"platforms": {"wechat": {"media": {"max_duration_s": 300}}}},
+)
+```
+
+| Field | Type | Default | Meaning |
+|-------|------|---------|---------|
+| `width` | `int` | `0` | Video/image width in pixels (`0` = n/a) |
+| `height` | `int` | `0` | Video/image height in pixels (`0` = n/a) |
+| `aspect_ratio` | `str` | `"free"` | e.g. `"16:9"`, `"9:16"`, `"1:1"`, `"3:4"`, `"free"` |
+| `max_duration_s` | `int` | `0` | Maximum content duration in seconds (`0` = n/a) |
+| `format` | `str` | `""` | e.g. `"mp4"`, `"jpg"`, `"markdown"`, `"html"` |
+| `codec` | `str` | `""` | Video/audio codec |
+| `bitrate` | `int` | `0` | Target bitrate in kbps |
+| `fps` | `int` | `0` | Frames per second |
+
+`get_platform_media_spec(platform, brand_config=None)` resolves in three steps:
+built-in `PLATFORM_MEDIA_SPECS` lookup → `DEFAULT_SPEC` fallback for unknown
+platforms → brand overrides from `brand_config["platforms"][platform]["media"]`.
+
+## DecisionArtifact
+
+Structured artifact produced by the Decision Layer agents (PRD-3) — briefs,
+brand DNA, market reports, persona maps, competitor matrices, strategy docs,
+asset blueprints, content calendars.
+
+```python
+from automedia import DecisionArtifact
+
+artifact = DecisionArtifact(
+    artifact_type="brief",
+    content={"title": "...", "audience": "..."},
+    format="yaml",
+)
+
+artifact.artifact_type   # "brief"
+artifact.created_at      # ISO-8601 timestamp (naive UTC)
+```
+
+| Field | Type | Default | Meaning |
+|-------|------|---------|---------|
+| `artifact_type` | `str` | (required) | `brief`, `brand_dna`, `market_report`, `persona_map`, `competitor_matrix`, `strategy_doc`, `asset_blueprint`, `content_calendar` |
+| `content` | `dict[str, Any]` | (required) | Structured payload |
+| `format` | `str` | `"yaml"` | `yaml`, `markdown`, or `csv` |
+| `metadata` | `dict[str, Any]` | `{}` | Provenance: source agent, timestamp, version |
+| `created_at` | `datetime` | now (UTC) | Creation timestamp |
+
+## Exceptions
+
+Every AutoMedia exception derives from `AutoMediaError`, so a single
+`except AutoMediaError` catches all of them. Catching a subclass narrows the
+failure to one subsystem.
+
+```
+AutoMediaError
+├── PipelineError      # pipeline execution failures
+├── GateError          # quality-gate execution failures
+├── AdapterError       # platform adapter publish failures
+├── ConfigError        # configuration loading/validation
+│   └── BrandNotFoundError
+├── AccountError       # account / credential management
+└── ModuleLoadError    # a required Python module cannot be imported
+```
+
+```python
+from automedia import AutoMediaError, GateError, run_full_pipeline
+
+try:
+    result = run_full_pipeline(topic="...", brand="my-brand")
+except GateError as exc:
+    ...                      # one gate failed
+except AutoMediaError as exc:
+    ...                      # anything else AutoMedia raised
+```
+
+The six names exported from the package root are `AutoMediaError`,
+`PipelineError`, `GateError`, `AdapterError`, `ConfigError`, and `AccountError`.
+`BrandNotFoundError` and `ModuleLoadError` live in `automedia.exceptions` and
+are importable from there.
+
+## `__version__`
+
+The installed package version, kept in sync with `pyproject.toml` and
+`CHANGELOG.md` by release-please.
+
+```python
+import automedia
+print(automedia.__version__)   # e.g. "1.12.0"
 ```

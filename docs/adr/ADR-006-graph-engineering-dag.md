@@ -58,3 +58,40 @@ Four additive changes, none of which alters default execution behavior.
 - `dag.py` must never import from `runner.py`. Keeping it a leaf module is what makes the lazy import in `_compute_affected_downstream` and the state view safe.
 - Auto-resume anchors only on `completed` with `passed: true`. A gate that exhausted retries lands as `completed` with `passed: false` and must not anchor.
 - If the DAG edges change (for example a gate moves tracks), re-run the equivalence test for all 9 modes: the byte-exact invariant is the contract that keeps the DAG additive.
+
+---
+
+## Status Appendix (2026-10-29) — what changed after this ADR
+
+This ADR is immutable history: the Context and Decision sections above describe
+the mechanism **as committed on 2026-08-30**. Two later changes moved the
+authority and shrank the `auto` preset. Read those sections as the design
+rationale, not as a description of today's code.
+
+**1. Gate-order authority moved out of `runner.py` (issue #314).**
+The `_MODE_MAP` module-level list this ADR calls canonical is no longer the
+source of truth. `src/automedia/pipelines/gate_plan.py` now declares
+`MODE_GATE_NAMES` (9 modes) and is the ONE authority; `runner.py` re-exports it
+(`_MODE_MAP: dict[str, list[str]] = gate_plan.MODE_GATE_NAMES`). `dag.py`
+still describes the dependency edges among the same gates, and a test still
+pins the DAG's topological order to the plan for every mode — the equivalence
+invariant survives, it just points at a different module.
+
+**2. The `auto` preset shrank from 22 gates to 16.**
+`MODE_GATE_NAMES["auto"]` is now:
+
+```
+pre-gate, CW, G0, G1, G2, G3, G6, V0, V1, V2, V3, V4, V5, V6, V7, H0
+```
+
+`G4`, `G5`, and `L1`-`L4` remain registered in `FAILURE_MODES` (33 gates total)
+but belong to **no** preset; the L-gates run through their own lifecycle
+commands. The figure "22 auto-mode gates" quoted in the Decision section above
+is therefore historical. Note the shape change is not just a count: `G6` and
+`H0` are now always in the `auto` preset, and `G4`/`G5` are always out.
+
+**3. Surface counts also moved.** This ADR records 64→65 MCP tools and 18→19
+CLI commands; the current surface is 68 MCP tools and 19 CLI commands.
+
+For the live answer to "which gates run in mode X", read `gate_plan.py` or
+`automedia pipeline export-dag` — never this document.

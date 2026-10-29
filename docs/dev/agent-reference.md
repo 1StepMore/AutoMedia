@@ -8,17 +8,21 @@ under 200 lines. Read the section you need — none of it is required up front.
 ```
 AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (62,461 LOC)
-│       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow
-│       ├── pipelines/          # runner.py (shared entry point), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
+│   └── automedia/              # Core Python package (22 subpackages; size claims live in AGENTS.md)
+│       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow, md5_tracker
+│       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
-│       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
-│       ├── cli/                # Typer CLI: app.py + 19 command modules
-│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist
+│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
+│       ├── effects/            # Content analytics: stats (word count, sentiment, readability, brand mentions, SEO) + cli/mcp entry points
+│       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
+│       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
+│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json)
+│       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
+│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (19 commands)
+│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
-│       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
 │       ├── omni/               # Omni Triad: ol_adapter, opp_adapter, orf_adapter, registry, config, allowlist
 │       ├── decision/           # Decision Layer (PRD-3)
 │       ├── hitl/               # HITL framework: config, executor, presets
@@ -39,7 +43,7 @@ AutoMedia/
 2. Set class-level `_gate_name` (e.g. `"G6"`) and `_failure_mode` (`"stop"` or `"retry"`)
 3. Implement `execute(self, gate_context: dict) -> dict`
 4. Add a failure mode entry in `automedia/gates/failure_modes.py`
-5. Add the gate name to the gate lists in `automedia/pipelines/runner.py` (`_AUTO_GATE_NAMES`, etc.)
+5. Add the gate name to the mode gate lists in `automedia/pipelines/gate_plan.py` (`MODE_GATE_NAMES` / `_AUTO_GATE_NAMES`, etc.) — this module is the single authority; `runner.py` only re-exports it.
 6. Write an ADR entry in `docs/adr/` documenting the design decision
 7. Create tests in `tests/test_gates/`
 
@@ -54,8 +58,8 @@ AutoMedia/
 3. Or use MCP tool `register_platform_adapter(platform_name="...", adapter_class="...")`
 
 ### Add a New MCP Tool
-1. Define a module-level handler function in `automedia/mcp/server.py`
-2. Register inside `create_server()` via `mcp.tool()`
+1. Define the handler function in the matching module under `automedia/mcp/tools/` (one module per domain: `pipeline.py`, `topics.py`, `cron_tools.py`, `brands.py`, …)
+2. Import it into `create_server()` in `automedia/mcp/server.py` and register it via `mcp.tool()` — `server.py` only wires registration, it holds no handlers
 
 ### Add a New Environment Variable
 1. Define it with the `AUTOMEDIA_` prefix
@@ -189,20 +193,33 @@ Optional engine extras and their version constraints:
 | `docs/dev/cron-troubleshooting.md` | Cron job debugging |
 | `docs/dev/api-gotchas.md` | Common API pitfalls |
 | `docs/dev/override-reference.md` | Override system reference (rules, prompts, platform scoping) |
-| `CHANGELOG.md` | Version history |
 | `docs/dev/agent-troubleshooting.md` | Agent troubleshooting guide for pipeline, config, MCP, and gate issues |
+| `docs/dev/founder-expectations.md` | Timestamped founder expectation baseline — **historical snapshot, do not refresh** |
+| `docs/dev/evaluation-matrix-principles.md` | How the evaluation matrix is scored |
+| `docs/dev/forward-compat.md` | Forward-compatibility rules for schema evolution |
+| `docs/dev/project-validation-framework.md` | Structural validation framework |
+| `docs/dev/validation-loop-log.md` | Running log of validation loop iterations |
+| `docs/dev/plans/NIGHTLY.md` | Nightly re-run plan + latest gap report |
+| `docs/dev/deep-module-rfc-001.md` | Deep-module refactor RFC for `runner.py` (see its Status header) |
+| `docs/user/deployment.md` | Deployment options comparison (Docker, native pip, systemd, Windows) |
+| `docs/user/windows-deployment.md` | Windows setup: WSL2, Docker Desktop, native |
+| `docs/user/user-introduction.md` | Getting-started walkthrough for new users |
+| `docs/skills/` | User-facing MCP how-to skills (see §User-Facing Skills) |
+| `CHANGELOG.md` | Version history |
 | `docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md` | 7-phase AI development methodology note (own your process, AFK implementation) |
 | `docs/archived/` | One-off historical reports (migration guides, per-run acceptance, superseded master plans) — not authoritative |
 | `docs/doc-inventory.md` | AUTO-GENERATED doc inventory — regenerate with `python3 scripts/doc_inventory.py`; never hand-edit |
 
 ## Skills
 
-Agent skills live in `.opencode/skills/` (canonical), with native copies synced to `.claude/skills/` and `.codex/skills/`. Cline references `.opencode/skills/` directly. When updating a skill, edit the canonical file and sync the copies.
+Agent skills live in `.opencode/skills/` (canonical). `.claude/skills/` and `.codex/skills/` hold synced copies (currently 4 of the 6 — `issue-triage` and `pr-review-merge` are canonical-only). Cline references `.opencode/skills/` directly. When updating a skill, edit the canonical file and sync the copies.
 
 - `project-validation`: Post-change validation against founder expectations
 - `doc-sync`: Documentation impact mapping when code changes affect docs (CLI/MCP tools, gates, config, API, pipelines, adapters)
 - `validation-runner`: Dev-side validation workflow; author regression scenarios on every bug fix; RED to GREEN evidence
 - `deep-modules`: Deep-module refactoring practice (Ousterhout, methodology §3.1)
+- `issue-triage`: Triage incoming issues into the repository's label/priority conventions
+- `pr-review-merge`: PR review and merge workflow
 
 ## User-Facing Skills
 
@@ -211,3 +228,6 @@ Skills for agents who USE AutoMedia (calling MCP tools to produce content) live 
 | File | Description |
 |------|-------------|
 | `docs/skills/brand-strategy.md` | How to call `run_brand_strategy` MCP tool: parameters, output structure, error handling |
+| `docs/skills/pipeline-workflow.md` | End-to-end pipeline run: mode selection, gate progression, resuming |
+| `docs/skills/batch-workflow.md` | Batch production across multiple topics via `run_batch` |
+| `docs/skills/distribution-workflow.md` | Distributing finished content to platforms via the D-gates |
