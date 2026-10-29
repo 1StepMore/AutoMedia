@@ -127,6 +127,9 @@ SUBTITLE_EXPECT_FIELDS: tuple[str, ...] = ("min_cues", "monotonic", "within")
 COVERAGE_EXPECT_FIELDS: tuple[str, ...] = ("keywords", "min_ratio", "over")
 """Closed field set of a ``keyword_coverage`` expect block (Phase 1.1)."""
 
+TEXT_SIMILARITY_EXPECT_FIELDS: tuple[str, ...] = ("reference", "min_ratio", "over")
+"""Closed field set of a ``text_similarity`` expect block."""
+
 
 @dataclass(frozen=True)
 class MediaExpect:
@@ -312,6 +315,47 @@ _EXPECT_PARSE: tuple[tuple[str, Callable[[object, str], Any]], ...] = (
 
 
 @dataclass(frozen=True)
+class TextSimilarityExpect:
+    """Character-bigram similarity between produced text and a reference.
+
+    The candidate text (the concatenation of ``over``, default: the block's
+    ``artifact_exists`` path) is compared with ``reference`` after stripping
+    punctuation and whitespace; ``min_ratio`` is the required Dice coefficient.
+    Bigrams are used so the metric works for unsegmented Chinese without a
+    tokenizer, and OCR/ASR letter substitutions show up as a low ratio.
+    """
+
+    reference: str
+    min_ratio: float
+    over: list[str] | None = None
+
+    @classmethod
+    def from_dict(cls, data: object, where: str = "text_similarity") -> TextSimilarityExpect:
+        """Parse a similarity block; unknown keys and bad values raise :class:`SchemaError`."""
+        data = _reject_unknown(data, TEXT_SIMILARITY_EXPECT_FIELDS, where)
+        prefix = f"{where}."
+        if "reference" not in data:
+            raise SchemaError(f"{where}: missing required field 'reference'")
+        reference = _expect_str(data["reference"], prefix + "reference")
+        if not reference.strip():
+            raise SchemaError(prefix + "reference must be a non-empty path")
+        if "min_ratio" not in data:
+            raise SchemaError(f"{where}: missing required field 'min_ratio'")
+        min_ratio = float(_expect_number(data["min_ratio"], prefix + "min_ratio"))
+        if not 0 <= min_ratio <= 1:
+            raise SchemaError(prefix + "min_ratio must satisfy 0 <= min_ratio <= 1")
+        over = None
+        if "over" in data:
+            over = _expect_str_list(data["over"], prefix + "over")
+            if not over:
+                raise SchemaError(prefix + "over must not be empty")
+            for index, path in enumerate(over):
+                if not path.strip():
+                    raise SchemaError(f"{prefix}over[{index}]: must be a non-empty string")
+        return cls(reference=reference, min_ratio=min_ratio, over=over)
+
+
+@dataclass(frozen=True)
 class Expect:
     """Conjoined assertions for one step (guide §2.3).  Every assertion present
     in the block must hold; absent fields are not evaluated."""
@@ -337,6 +381,7 @@ class Expect:
     text: TextExpect | None = None
     subtitle: SubtitleExpect | None = None
     keyword_coverage: CoverageExpect | None = None
+    text_similarity: TextSimilarityExpect | None = None
 
     @classmethod
     def from_dict(cls, data: object, where: str = "expect") -> Expect:
@@ -370,6 +415,11 @@ class Expect:
         kwargs["keyword_coverage"] = (
             CoverageExpect.from_dict(data["keyword_coverage"], prefix + "keyword_coverage")
             if "keyword_coverage" in data
+            else None
+        )
+        kwargs["text_similarity"] = (
+            TextSimilarityExpect.from_dict(data["text_similarity"], prefix + "text_similarity")
+            if "text_similarity" in data
             else None
         )
         if "artifact_exists" in data and "artifact_glob" in data:

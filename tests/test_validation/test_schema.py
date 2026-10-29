@@ -173,10 +173,37 @@ class TestAcceptsValid:
             "text",
             "subtitle",
             "keyword_coverage",
+            "text_similarity",
         )
         assert "intent" in validation.SCENARIO_FIELDS
         assert "check" in validation.STEP_FIELDS
         assert "standard" in validation.STEP_FIELDS
+
+
+class TestTextSimilaritySchema:
+    def test_parses_reference_and_ratio(self) -> None:
+        expect = Expect.from_dict({"text_similarity": {"reference": "script.md", "min_ratio": 0.6}})
+        assert expect.text_similarity is not None
+        assert expect.text_similarity.reference == "script.md"
+        assert expect.text_similarity.min_ratio == 0.6
+
+    def test_requires_reference(self) -> None:
+        with pytest.raises(SchemaError, match="reference"):
+            Expect.from_dict({"text_similarity": {"min_ratio": 0.6}})
+
+    def test_requires_min_ratio(self) -> None:
+        with pytest.raises(SchemaError, match="min_ratio"):
+            Expect.from_dict({"text_similarity": {"reference": "script.md"}})
+
+    def test_rejects_ratio_above_one(self) -> None:
+        with pytest.raises(SchemaError, match="min_ratio"):
+            Expect.from_dict({"text_similarity": {"reference": "script.md", "min_ratio": 1.5}})
+
+    def test_rejects_unknown_field(self) -> None:
+        with pytest.raises(SchemaError, match="algorithm"):
+            Expect.from_dict(
+                {"text_similarity": {"reference": "s.md", "min_ratio": 0.5, "algorithm": "x"}}
+            )
 
 
 class TestRejectsUnknownFields:

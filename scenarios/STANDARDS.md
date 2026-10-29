@@ -75,6 +75,7 @@ valid standard in this framework. Keys are stable and lowercase-hyphenated.
 | text.article | text.article | A text/Markdown artifact must meet the declared paragraph, character, and heading thresholds measured by the read-only text probe | scenarios/README.md | Text assertions | defined-unreferenced |
 | subtitle.srt | subtitle.srt | An SRT artifact must contain the declared minimum cue count, non-overlapping cue timing when `monotonic` is asserted, and end within the referenced media duration when `within` is declared | scenarios/README.md | Subtitle assertions | defined-unreferenced |
 | quality.keyword-coverage | quality.keyword-coverage | The concatenated text of the declared artifacts must contain the required keywords at or above `min_ratio`; missing keywords are reported with the observed ratio | scenarios/README.md | Keyword coverage assertions | defined-unreferenced |
+| text.similarity | text.similarity | Produced text must match a declared reference file by normalized character-bigram similarity at or above `min_ratio`; the observed ratio is reported with the reference path | scenarios/README.md | Text similarity assertions | defined-unreferenced |
 
 > **Preset note:** the `mode.*` rows spell the copy gates out as
 > **G0,G1,G2,G3,G6**. **G4 (WeChat Checklist) and G5 (HTML Hard) are registered

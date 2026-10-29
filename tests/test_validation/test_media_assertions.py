@@ -204,6 +204,58 @@ class TestTextSubtitleAndKeyword:
         assert result.passed is False
         assert any("monotonic" in failure for failure in result.failures)
 
+    def test_text_similarity_passes_faithful_transcript(self, tmp_path: Path) -> None:
+        (tmp_path / "script.txt").write_text(
+            "别只盯着短视频，播客才是品牌影响力的慢变量。戴耳机通勤时，声音最贴身。",
+            encoding="utf-8",
+        )
+        (tmp_path / "sub.srt").write_text(
+            "1\n00:00:00,000 --> 00:00:02,000\n"
+            "别只盯着短视频，播客才是品牌影响力的慢变量\n\n"
+            "2\n00:00:02,000 --> 00:00:04,000\n戴耳机通勤时，声音最贴身\n",
+            encoding="utf-8",
+        )
+        expect = Expect.from_dict(
+            {
+                "artifact_exists": "sub.srt",
+                "text_similarity": {"reference": "script.txt", "min_ratio": 0.8},
+            }
+        )
+        result = evaluate_expect(expect, {"success": True}, cwd=tmp_path)
+        assert result.passed is True, result.failures
+
+    def test_text_similarity_fails_garbled_transcript(self, tmp_path: Path) -> None:
+        (tmp_path / "script.txt").write_text(
+            "别只盯着短视频，播客才是品牌影响力的慢变量。戴耳机通勤时，声音最贴身。",
+            encoding="utf-8",
+        )
+        (tmp_path / "sub.srt").write_text(
+            "1\n00:00:00,000 --> 00:00:02,000\n太别指定者短视评播课才是评牌影响力的慢编量\n",
+            encoding="utf-8",
+        )
+        expect = Expect.from_dict(
+            {
+                "artifact_exists": "sub.srt",
+                "text_similarity": {"reference": "script.txt", "min_ratio": 0.6},
+            }
+        )
+        result = evaluate_expect(expect, {"success": True}, cwd=tmp_path)
+        assert result.passed is False
+        assert "text_similarity" in result.failures[0]
+        assert "observed ratio" in result.failures[0]
+
+    def test_text_similarity_missing_reference_is_a_failure(self, tmp_path: Path) -> None:
+        (tmp_path / "sub.srt").write_text("hello", encoding="utf-8")
+        expect = Expect.from_dict(
+            {
+                "artifact_exists": "sub.srt",
+                "text_similarity": {"reference": "missing.txt", "min_ratio": 0.5},
+            }
+        )
+        result = evaluate_expect(expect, {"success": True}, cwd=tmp_path)
+        assert result.passed is False
+        assert "cannot read reference" in result.failures[0]
+
     def test_keyword_coverage_ratio(self, tmp_path: Path) -> None:
         (tmp_path / "a.md").write_text("alpha beta", encoding="utf-8")
         (tmp_path / "b.md").write_text("gamma", encoding="utf-8")

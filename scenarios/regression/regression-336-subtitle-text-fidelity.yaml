@@ -1,0 +1,19 @@
+name: regression-336-subtitle-text-fidelity
+description: Subtitle grading compares the SRT words with the narrated script, so a garbled transcription fails even when its cue count and timing are structurally valid.
+intent: Pin issue #336 - produce-subtitle asserted only min_cues and monotonic timing, so a tiny-model transcript full of substitutions (播客→播课, 品牌→评牌) still passed. The assertion set must read the text against the script that was spoken.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#336"
+requires_env: []
+steps:
+  - name: text_similarity separates faithful from garbled subtitles
+    kind: cli
+    check: "Run the committed regression-336 helper: it grades a faithful SRT and a garbled SRT against the same script at min_ratio 0.8 and asserts the faithful one passes while the garbled one fails."
+    standard: text.similarity
+    command: python3 scripts/regression_336_text_similarity.py
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - REG336_TEXT_FIDELITY_GUARDED

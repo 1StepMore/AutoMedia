@@ -156,6 +156,9 @@ CHECK_TYPE_EVALUATORS: dict[str, CheckTypeEvaluator] = {
     "quality.keyword-coverage": CheckTypeEvaluator(
         "quality.keyword-coverage", ("artifact_exists", "keyword_coverage")
     ),
+    "text.similarity": CheckTypeEvaluator(
+        "text.similarity", ("artifact_exists", "text_similarity")
+    ),
     "unconfigured": CheckTypeEvaluator("unconfigured", ()),
 }
 """Every standard check type the framework can grade, bound to its evaluator keys."""
@@ -399,6 +402,9 @@ def evaluate_expect(
 
     if expect.keyword_coverage is not None:
         failures.extend(_keyword_coverage_failures(expect, step, base))
+
+    if expect.text_similarity is not None:
+        failures.extend(_text_similarity_failures(expect, step, base))
 
     return ExpectResult(passed=not failures, failures=failures)
 
@@ -786,6 +792,95 @@ def _keyword_coverage_failures(expect: Expect, step: Step | None, base: Path) ->
             "expect.keyword_coverage: missing keyword(s) "
             f"{_fmt(missing)}; observed ratio {hits}/{total} = {ratio:.2f} "
             f"< min {coverage.min_ratio}"
+        )
+    return failures
+
+
+_SUBTITLE_SUFFIXES = frozenset({".srt", ".vtt"})
+
+
+def _comparable_text(path: Path) -> str:
+    """Read a file for similarity; subtitles contribute dialogue lines only."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix.lower() not in _SUBTITLE_SUFFIXES:
+        return text
+    lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if (
+            not stripped
+            or "-->" in stripped
+            or stripped.isdigit()
+            or stripped.upper().startswith("WEBVTT")
+        ):
+            continue
+        lines.append(stripped)
+    return "\n".join(lines)
+
+
+def _similarity_chars(text: str) -> str:
+    """Keep letters/digits only: drops punctuation, markdown, and whitespace."""
+    return "".join(char for char in text if char.isalnum()).lower()
+
+
+def _bigrams(text: str) -> set[str]:
+    """Character bigrams; a one-character text yields its single character."""
+    normalized = _similarity_chars(text)
+    if len(normalized) < 2:
+        return {normalized} if normalized else set()
+    return {normalized[index : index + 2] for index in range(len(normalized) - 1)}
+
+
+def _dice_ratio(candidate: str, reference: str) -> float:
+    """Dice coefficient over character bigrams (0.0-1.0)."""
+    candidate_grams = _bigrams(candidate)
+    reference_grams = _bigrams(reference)
+    if not candidate_grams or not reference_grams:
+        return 0.0
+    overlap = len(candidate_grams & reference_grams)
+    return 2 * overlap / (len(candidate_grams) + len(reference_grams))
+
+
+def _text_similarity_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
+    """Grade produced text against a reference by character-bigram similarity."""
+    similarity = expect.text_similarity
+    if similarity is None:
+        return []
+    paths = similarity.over
+    if paths is None:
+        if expect.artifact_exists is None:
+            return ["expect.text_similarity: no artifact_exists path and no 'over' list"]
+        paths = [expect.artifact_exists]
+    if expect.artifact_glob is not None:
+        read_base = _artifact_glob_root(step, base)
+    elif step is not None and step.kind == "file" and step.command:
+        command_path = _resolve_path(step.command, base)
+        read_base = command_path if command_path.is_dir() else command_path.parent
+    else:
+        read_base = base
+    chunks: list[str] = []
+    failures: list[str] = []
+    for raw in paths:
+        resolved = _resolve_path(raw, read_base)
+        try:
+            chunks.append(_comparable_text(resolved))
+        except OSError as exc:
+            failures.append(f"expect.text_similarity: cannot read {raw!r}: {exc}")
+    reference_path = _resolve_path(similarity.reference, base)
+    try:
+        reference = _comparable_text(reference_path)
+    except OSError as exc:
+        failures.append(
+            f"expect.text_similarity: cannot read reference {similarity.reference!r}: {exc}"
+        )
+        return failures
+    if failures:
+        return failures
+    ratio = _dice_ratio("\n".join(chunks), reference)
+    if ratio < similarity.min_ratio:
+        failures.append(
+            "expect.text_similarity: observed ratio "
+            f"{ratio:.2f} < min {similarity.min_ratio} against {similarity.reference!r}"
         )
     return failures
 
