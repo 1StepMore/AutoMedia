@@ -1,0 +1,2288 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated media production pipeline documentation">
+      
+      
+      
+        <link rel="canonical" href="https://1stepmore.github.io/AutoMedia/dev/project-analysis-20261029/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>AutoMedia 项目理解与问题分析报告 - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#automedia" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AutoMedia 项目理解与问题分析报告
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/1StepMore/AutoMedia" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../agent-reference/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/1StepMore/AutoMedia" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-006-graph-engineering-dag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-006 Graph Engineering DAG
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-007-gate-engine-verdict-aggregate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-007 Gate Engine Verdict Aggregate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="automedia">AutoMedia 项目理解与问题分析报告<a class="headerlink" href="#automedia" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>分析日期</strong>:2026-10-29
+<strong>分析对象</strong>:AutoMedia <code>main</code> 分支(HEAD <code>9063f89</code>)
+<strong>分析方法</strong>:代码实读(管线/门禁/引擎、MCP/CLI/配置/安全、测试/文档/CI 三条线)+ 与 <code>docs/dev/codebase-audit-20261022.md</code> 等既有报告交叉核对。所有结论标注 <code>文件:行号</code> 证据。
+<strong>校订</strong>:2026-10-29 于同一 HEAD <code>9063f89</code> 逐条复核。计数类断言已改为 git 跟踪树的实测值;引错的文件/行号已对齐;被推翻的结论(并发用量统计互踩、<code>publish_content</code> fail-open、<code>features/</code> 零调用点、弃用别名"名字交叉")已替换为实测结论并保留推翻理由,便于读者判断可信度。
+<strong>基线</strong>:本报告是对 <strong>HEAD <code>9063f89</code></strong> 的快照,所有 <code>文件:行号</code> 均指该 commit 的内容。复核时 <code>src/</code> 与 HEAD 无差异(故代码引用可直接核对);<code>docs/</code>、<code>scripts/</code>、<code>AGENTS.md</code>、<code>README.md</code> 在工作区另有未提交改动,若按工作区文件核对会出现行号偏移。
+<strong>性质</strong>:只读分析快照,不含实施建议排期。</p>
+</blockquote>
+<hr />
+<h2 id="_1">一、这个项目是做什么的<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>AutoMedia 是一个<strong>自动化内容生产流水线</strong>:给定一个选题,自动完成写稿 → 质量核验 → 配音 → 视频生成 → 字幕渲染 → 多平台分发的全流程。核心规模(均按 git 跟踪树实测):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">维度</th>
+<th style="text-align: left;">数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">核心源码</td>
+<td style="text-align: left;">71,608 行 / 271 文件(<code>src/automedia/</code>,git 跟踪)</td>
+</tr>
+<tr>
+<td style="text-align: left;">全仓源码</td>
+<td style="text-align: left;">172,456 行 / 629 文件</td>
+</tr>
+<tr>
+<td style="text-align: left;">测试</td>
+<td style="text-align: left;">5,454 个测试函数 / 308 文件(git 跟踪树实测;README 宣称 5,200+/290+,为下界断言,一致)</td>
+</tr>
+<tr>
+<td style="text-align: left;">质量门禁</td>
+<td style="text-align: left;">33 个(pre-gate、CW、G0-G6、V0-V7、H0、L1-L4、D1-D7、P1-P4)</td>
+</tr>
+<tr>
+<td style="text-align: left;">接口</td>
+<td style="text-align: left;">MCP 68 工具 / CLI 19 命令 / SDK,三者收敛到同一 <code>run_full_pipeline()</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">平台适配</td>
+<td style="text-align: left;">20 个适配器模块 = 11 个真实 API 自动化 + 1 个飞书通知器 + 8 个有意的 manual-stub</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>口径说明</strong>:以上 LOC / 文件数 / 测试数取自 <strong>HEAD <code>9063f89</code> 的 git 树</strong>(<code>git show HEAD:&lt;path&gt;</code> 逐文件统计),与 <code>scripts/check-doc-consistency.py</code> 的 <code>compute_repo_stats()</code> 口径一致。工作区磁盘上另有 2 个未跟踪测试(如被 <code>*secret*</code> 忽略的 <code>tests/test_check_secrets.py</code>),故 <code>find</code> 口径会得到 5,456/309;对外数字以跟踪树为准,否则同一 commit 在不同机器上会报不同值。本报告所有 <code>文件:行号</code> 引用同样基于 HEAD <code>9063f89</code>(核对时 <code>src/</code> 工作区与 HEAD 无差异)。</p>
+</blockquote>
+<p>关键认知:<strong>它的核心资产不是"生成能力"(那是 LLM 的事),而是"判定能力"</strong>——33 道 gate 把"什么叫合格内容"写成可执行代码,再用 9 种 mode(<code>auto</code>/<code>text_only</code>/<code>video_only</code>/<code>repurpose</code> 等)编排成不同形态的产线。</p>
+<hr />
+<h2 id="_2">二、设计理念<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h3 id="21">2.1 宣言层(项目自己写的理念)<a class="headerlink" href="#21" title="Permanent link">&para;</a></h3>
+<p>来源:<code>docs/dev/founder-expectations.md</code>(创始人验收期望,F01-F45)、<code>docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md</code>、AGENTS.md。</p>
+<ol>
+<li><strong>Agent 优先(Agent-oriented by default, human-capable by design)</strong>。三类用户中"直接执行者"默认是 AI coding agent:一切能力先做成 MCP 工具,CLI/SDK 是人类兜底;人类是"指挥者"(director),通过 agent 间接下达意图。agent 是测试员,人类是导演——这就是 <code>automedia validate</code> 验证层(160 个场景)存在的原因。</li>
+<li><strong>三入口同源</strong>。SDK / CLI / MCP 全部委托 <code>run_full_pipeline()</code>,没有分叉实现。这是本项目架构上做得最正确的一件事(<code>src/</code> 内有 6 处真实调用点:<code>cli/commands/run.py:335,489</code>、<code>cron/runner.py:247</code>、<code>mcp/tools/pipeline.py:224,320</code>、<code>mcp/tools/strategy.py:220</code>,全部走同一实现)。</li>
+<li><strong>门禁 = 可执行的验收标准</strong>。每道门有 <code>failure_mode</code>(<code>stop</code> 停线 / <code>retry</code> 触发重写),引擎提供四级递增恢复:Level 0 瞬态重试(tenacity)→ Level 1 质量反馈重试 → Level 2 从 CW 重生成 → HITL 人工兜底。</li>
+<li><strong>诚实信号(fail-honest)</strong>。<code>missing_input_result()</code> 让门在输入不存在时报告 <code>skipped</code> 而非 <code>pass</code>;<code>AdapterRegistry.is_stub</code> 默认 <code>True</code>(不自动化直到证明可以);HITL 超时默认 <code>reject</code>(fail-closed);detector 宁可 <code>raise</code> 不编造;"刻意不写假数据"写进整改回执。</li>
+<li><strong>红线制度</strong>。AGENTS.md §5 的 9 条 MUST/MUST NOT(如禁止 agent <code>--force</code> 归档、禁止生产数据入库、禁止改 allowlist)由测试套件强制(<code>pytest -m redline</code>,实测 22 个标记用例)。注:README 两处仍写"10 条",与 AGENTS.md 的 9 条不一致,且该计数不在文档门禁覆盖范围内(见 §4.5.4)。</li>
+<li><strong>单一权威声明</strong>。<code>pipelines/gate_plan.py</code>(<code>MODE_GATE_NAMES</code>)是 9 个 mode 门序的唯一权威;<code>dag.py</code> 只描述依赖边并在 import 时自校验;runner 的 <code>_MODE_MAP</code> 只是同一对象的别名导出;测试钉死拓扑序与计划一致(2026-10 由 #314 落地,取代从前的三处副本)。</li>
+<li><strong>深模块(Ousterhout)</strong>。<code>prompts/</code>(109 行接口藏 4,573 行模板 + 4 层覆盖链)、<code>engines/</code>、<code>accounts/</code>、<code>asset_library/</code> 是范本;配置 6 层合并(内建默认 → 项目 → 用户 → override 规则 → override prompts → 环境变量);调度外部化(不自建 scheduler,外部 crond 调 <code>automedia cron run --due</code>)。</li>
+<li><strong>文档即代码</strong>。<code>scripts/check-doc-consistency.py</code> 从运行中的 server 派生 MCP 工具数、从 typer app 派生 CLI 命令数、从 loader 派生场景数、从 git 跟踪树派生 LOC/文件数/测试数——README/AGENTS.md 里的所有 headline 数字都是<strong>被门禁校验的下界断言</strong>,不允许手工漂移(#280/#308 的产物)。</li>
+</ol>
+<h3 id="22-vs">2.2 落地核对(理念 vs 现状)<a class="headerlink" href="#22-vs" title="Permanent link">&para;</a></h3>
+<p>上述 8 条理念中,1/2/4/5/6/8 已真实落地且机制化;3(四级恢复)完整实现但集中在两个超长函数里(见 §四);7(深模块)呈现两极分化——<code>prompts/</code>、<code>engines/</code>、<code>accounts/</code> 是教科书级,而编排层 <code>runner.py</code>(2,165 行)/<code>gate_engine.py</code>(1,569 行)是"大实现 + 大接口"的反例。项目自 2026-09 起有完整的"诊断 → 报告 → 整改回执 → 门禁化"循环(health-assessment → remediation-report → audit),<strong>10-22 审计发现的全部 P0 已在一周内修复</strong>(见 §三)。</p>
+<hr />
+<h2 id="_3">三、与既有审计的对照:一周内的修复情况<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p><code>docs/dev/codebase-audit-20261022.md</code>(尚未入库)列出 20 项新增问题。经本轮逐项核对,截至 2026-10-29(HEAD <code>9063f89</code>),其 P0 级已全部修复:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">10-22 审计问题</th>
+<th style="text-align: left;">当前状态</th>
+<th style="text-align: left;">证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">P0-2 e2e 测试不被收集、<code>make test-e2e</code> 空转 exit 0</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;">Makefile <code>test-e2e</code> 加 <code>-o addopts=""</code>(<code>Makefile:31-32</code>);nightly 在 <code>full-test</code> 作业内加了专门的 e2e 步骤(<code>nightly.yml:113-117</code>,非独立作业);<code>tests/test_e2e_collection_guard.py</code> 加了两条元测试钉死"收集数 &gt; 0"与"Makefile 目标清空 addopts"</td>
+</tr>
+<tr>
+<td style="text-align: left;">P0-3 <code>resume_from</code> 用占位符替代真实草稿</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>runner.py:1328-1343</code> 从 <code>01_content/drafts/</code> 回灌草稿(<code>pipeline.resume.draft_rehydrated</code>),缺失时告警;<code>video_only</code> 的媒体旁白路径也会避开占位符改用 <code>source_content</code>(<code>_media_narration_text</code>,<code>runner.py:1941-1958</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">P0-4 <code>gate_engine.max_retries/retry_delay/max_regenerations</code> 配置不被读取</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>_engine_retry_settings</code>(<code>runner.py:1396-1400</code>)读取,<code>runner.py:1419-1424</code> 传入 GateEngine</td>
+</tr>
+<tr>
+<td style="text-align: left;">P0-1 V7 MD5 校验构造性恒真</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>_expected_md5_records</code>(<code>runner.py:2017-2021</code>)只记 expected;<code>six_step_hard.py:88-91</code> 校验时从磁盘现算 actual</td>
+</tr>
+<tr>
+<td style="text-align: left;">P0-1 V 门输入零生产者 → 恒 skipped</td>
+<td style="text-align: left;">🔄 结构性缓解</td>
+<td style="text-align: left;"><code>#315</code> 让 gate 报告 <code>skip_reason</code> 与输入是否存在(已有);<code>missing_input_result</code> 在 V0-V7 全部 8 门接入,但 V1/V3/V4/V6 的输入键在 <code>_produce_media_assets</code> 里被<strong>刻意不写</strong>(<code>runner.py:2032-2036</code>:「刻意<strong>不写</strong>的键…写了就是假数据」,涉 <code>entries</code>/<code>source_keywords</code>/<code>voice_id</code>/<code>avg_brightness</code>),故这几门在真实 run 中仍恒 skipped;"33 gates"的口径问题仍在(见 §4.7)</td>
+</tr>
+<tr>
+<td style="text-align: left;">P1-1 门序三处副本</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>#314</code> 抽出 <code>gate_plan.py</code> 单一权威(<code>runner.py:60</code> 的 <code>_MODE_MAP</code> 是指向同一对象的别名);<code>#324/#325</code> 清理 DAG 不可满足边并让声明序成为断言;<code>tests/test_gate_plan.py:71-75</code> 钉死拓扑序与计划一致</td>
+</tr>
+<tr>
+<td style="text-align: left;">P1-2 目录布局无单一真相源、<code>05_publish</code>/<code>06_publish</code> 撞号</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>#312</code> <code>core/layout.py</code> 单一真相源;<code>05_publish</code> 仅作为 <code>LEGACY_PATHS</code> 别名保留读取路径(<code>layout.py:102-114</code>),不再有写入</td>
+</tr>
+<tr>
+<td style="text-align: left;">P2-1 GateHook 只读契约违反</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>#321</code> 深拷贝上下文(<code>gates/_context.py:31-40</code> 的 <code>_detached</code> 递归拷贝)、逐 hook 异常隔离(<code>gate_engine.py:377-429</code> 的三个 <code>_dispatch_*</code>);死代码 <code>run_sub_pipeline</code>/<code>MetricsHook</code> 已删(grep 零命中)</td>
+</tr>
+<tr>
+<td style="text-align: left;">P2-2 RFC-001 老化 70 天无机制</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>#309</code> <code>scripts/check_rfc_aging.py</code> 有 findings 时返回 1 并 <code>sys.exit(main())</code>,CI 步骤为阻塞式(<code>ci.yml:45-49</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">P4-2 LOC/文件数/测试数无门禁</td>
+<td style="text-align: left;">✅ 已修</td>
+<td style="text-align: left;"><code>#308</code> <code>scan_size_claims</code> 已接入文档门禁主路径(<code>scripts/check-doc-consistency.py:767</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>解读</strong>:这个项目的修复节奏是"审计快照 → 一周内批量修复 → 把修复门禁化"。这本身是优点,但也说明其质量保证模式是<strong>反应式</strong>的——靠周期性人工审计驱动,而非持续防线(详见 §5.2)。</p>
+<hr />
+<h2 id="_4">四、现存问题(本轮独立发现与核实)<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p>以下问题均为 2026-10-29 当前代码仍然存在的,按严重度组织。</p>
+<h3 id="41">4.1 编排层代码形状(结构性债务)<a class="headerlink" href="#41" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong><code>GateEngine._run</code> 517 行、8 层控制流嵌套</strong>(<code>gate_engine.py:933-1449</code>,AST 实测缩进最深达 10 级)。外层 while → 失败分支 → 内层质量重试 while → try → except;结果缝合处同样深。异常处理三段式(permanent/transient/Exception)在内层(:1154/:1190/:1223)与外层(:1332/:1357/:1387)<strong>各重复一套</strong>,<code>error_result</code> 字典构造出现 6 次(<code>:1165/:1201/:1235/:1343/:1368/:1399</code>),<code>if early_stop: return</code> 模式 11 处。这是全仓最该拆分的函数。</li>
+<li><strong>超长函数与巨型签名</strong>:<code>_build_pipeline_context</code> 197 行 / 19 个参数(<code>runner.py:1171-1367</code>);<code>_run_pipeline</code> 172 行(<code>runner.py:789-960</code>,23 个参数);<code>_select_gates</code> 4 层配置源叠加(<code>runner.py:1045-1133</code>)。</li>
+<li><strong><code>GateContext</code> 是 god object</strong>:73 个 dataclass 字段塞进一个 dataclass+dict 双协议类,门级私有键靠 <code># type: ignore</code> 绕过类型检查(<code>gate_engine.py:846</code>、<code>:1482-1486</code>;<code>runner.py</code> 内本身无 <code>type: ignore</code>)。V 门的输入契约(生产者必须用 <code>ctx[k]=v</code> 显式下标赋值而非字段赋值才能被 <code>was_written()</code> 识别)是<strong>无类型强制的隐式约定</strong>——<code>_result.py:233-259</code> 自述"skip 判据曾恒真导致条件化成死代码",证明这个双语义已造成过真实 bug。</li>
+<li><strong>类型系统被绕过处</strong>:<code>_build_gates_log</code> 把 <code>"awaiting_hitl"</code> cast 进一个不含该值的 Literal(<code>GateLogEntry.status</code> 声明 4 种值,<code>gate_engine.py:146</code>;实际出现第 5 种,cast 在 <code>runner.py:1802</code>),下游 gate-report 用"未知状态→review"兜底(<code>gate_report.py:120</code> 的 <code>_VERDICT_MAP.get(entry.status, "review")</code>)。</li>
+<li><strong>残留耦合</strong>:只读聚合器 <code>state_view.py:25</code> 与 <code>cli/commands/pipeline.py:28</code> 仍 import runner 的<strong>私有名</strong> <code>_MODE_MAP</code>(应为 <code>gate_plan.MODE_GATE_NAMES</code>,且前者拖着整个 runner 的 import 链);<code>VALID_MODES</code> 在 <code>runner.py:76</code> 与 <code>gate_plan.py:176</code> 各一份;<code>_filter_gates_by_tier</code> 在一次 run 中最多执行 6 次(<code>_compose_gate_list</code> 内的 2 处 × 最多 4 次调用 + <code>runner.py:1127</code> + <code>:1765</code>,幂等但冗余)。</li>
+</ol>
+<h3 id="42-bug">4.2 潜在 bug 与竞态<a class="headerlink" href="#42-bug" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong><code>md5_tracker</code> 的编码 bug(对本仓库路径直接相关)</strong>:<code>core/md5_tracker.py:30</code> 用 <code>open(path)</code> 无 encoding 读、<code>:53-54</code> 用 <code>open(path,"w")</code> 无 encoding 写且 <code>ensure_ascii=False</code>。路径含非 ASCII 时(如 <code>D:\贯维\AutoMedia\...</code> 或中文项目名),Windows 下写入编码随 locale(GBK/cp936)漂移,跨环境读取会 <code>UnicodeDecodeError</code> 或乱码。此外 <code>record_md5</code> 是<strong>无锁的读-改-写 + 非原子写</strong>(无 tmp+rename),并发或中途崩溃可损坏 <code>pipeline_md5.json</code>。
+   <strong>不是孤立遗漏</strong>:<code>omni/md5_integration.py:60</code> 与 <code>:69</code> 的 <code>load_state</code>/<code>save_state</code> 是同一份缺陷的第二个副本(同样无 <code>encoding=</code>、同样 <code>ensure_ascii=False</code>、同样非原子),写的是同名 <code>pipeline_md5.json</code>(<code>~/.automedia/</code>)。只修 <code>md5_tracker</code> 会留下第二个可损坏的状态文件;应一并修,并考虑把读改写收敛到一个带 tmp+rename 的共用原语。其余写点在 <code>src/</code> 内均已显式 <code>encoding="utf-8"</code>。</li>
+<li><strong><code>project_id</code> 键控的进程级注册表</strong>(并发面比"全局单例"窄得多):<code>llm_client.py:133</code> 的 <code>_usage_tracker</code> 虽为模块级单例,但内部是 <code>threading.local()</code>(<code>llm_client.py:46-49</code>)——<strong>每次 run 开头 <code>reset_usage_tracking()</code>(<code>runner.py:822</code>)只清当前线程</strong>,已实测:A 线程累计 100 token,后台 B 线程 reset 后 A 仍是 100,不会互踩。真正残留的是按 project_id 键控的两处:<code>_hitl_waiters</code>(<code>gate_types.py:40-43</code>)与 <code>_engine_registry</code>(<code>gate_engine.py:91-92</code>),二者均有锁保护(<code>gate_types.py:38</code>、<code>gate_engine.py:92</code>),只有在<strong>同一 project_id 并发 run</strong>(典型是并发 <code>resume_project_id</code> 同一项目)时才互相覆盖。</li>
+<li><strong><code>owes_video</code> 启发式漏判</strong>(<code>runner.py:937-942</code>):仅当调用方显式传 <code>platforms</code> 参数时才认定 auto 模式欠视频。注意 <code>mode</code> 在此之前已按品牌档案重新派生(<code>runner.py:987-992</code>),所以"品牌是多媒体平台但不传 <code>platforms</code>"这条路径确实存在:<code>mode</code> 变成 <code>auto</code>、<code>owes_video</code> 为 <code>False</code>,无视频产出也报 <code>success</code> 而非降级 <code>partial</code>——恰是该机制要防的"假绿"残留缺口。</li>
+<li><strong>HITL 阻塞语义分叉</strong>:<code>wait_for_hitl=True</code> 但 <code>progress=None</code> 时,<code>_resolve_awaiting_hitl</code>(<code>gate_engine.py:349-367</code>)不阻塞、直接单次文件轮询后 park,与 <code>GateEngine.__init__</code> 的参数文档"block at a gate returning <code>awaiting_hitl</code>"(<code>gate_engine.py:270-272</code>)不符。</li>
+<li><strong>门配置四层叠加是"每层从 preset 重算"而非增量</strong>(<code>runner.py:1058/1068/1081/1091</code> 共 4 次 <code>_compose_gate_list</code>):platform modifiers → YAML overrides → workflow gates 逐层重放 include/exclude,<strong>前一层 include 的门会被后一层静默丢掉</strong>。已实测:<code>text_only</code> 基础上先 include <code>G4</code> 得到 <code>[…, G4]</code>,再 include <code>G5</code> 后 <code>G4</code> 消失。override_failure_mode 又单独再 merge 一轮(<code>runner.py:1063-1100</code>),且 <code>_collect_gate_failure_overrides</code>(<code>runner.py:1678-1738</code>)内部重复加载 brand/YAML。两套合并语义并存,配置组合行为难以推理。</li>
+<li><strong>媒体阶段"一次性"有两个真相源</strong>:引擎本地 <code>_media_stage_done</code>(<code>gate_engine.py:948</code>)与上下文标志 <code>gate_context["_media_stage_done"]</code>(<code>runner.py:2152</code>)互相独立,<code>_produce_media_assets</code> 在 <code>finally</code> 里置位——<strong>即使媒体生产中途异常也标记完成</strong>,finalize 的幂等兜底不会重试;正确性依赖"先 engine 后 finalize"的调用顺序(<code>gate_engine.py:980-988</code>、<code>runner.py:1466-1472</code> 注释自述),顺序一改即破坏。</li>
+<li><strong>顶层 catch-all 返回而非抛出</strong>(<code>runner.py:959-960</code>):<code>except Exception</code> 把编程错误(AttributeError 等)折叠成 <code>status="failed"</code> 的正常返回,<code>error</code> 字段只有 <code>str(exc)</code> 无 traceback(<code>runner.py</code> 内 grep <code>traceback</code> 零命中)——对 SDK 调用方,bug 与业务失败同形,编程错误被静默产品化。</li>
+</ol>
+<h3 id="43">4.3 安全层<a class="headerlink" href="#43" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>路径 allowlist 的强制靠每个工具自觉调用,存在明确缺口</strong>:<ul>
+<li><code>analyze_content</code>(<code>effects/mcp.py:39-43</code>)接受任意 <code>base_dir</code> 却<strong>零校验</strong>,直接 glob 并读取项目文件——已实测:指向 allowlist 外的 <code>/tmp/...</code> 目录仍返回 <code>status: ok</code> 与完整统计。这是唯一完全漏网的文件读取工具(其余读盘工具至少调用了一次校验);</li>
+<li><code>distribute_content</code>(<code>mcp/tools_distribution.py:84-95</code>)与 <code>run_pipeline</code> 的 <code>source_path</code>(<code>mcp/tools/pipeline.py:176-182</code>)是 <strong>fail-open</strong>:校验失败仅告警/丢弃后继续执行(实测 <code>/etc</code> → 告警后回落默认目录继续);</li>
+<li><code>publish_content</code>(<code>mcp/tools/publishing.py:62-67</code>)的形态相反,但同样有问题:它<strong>先</strong>校验 <code>base_dir</code> 再回退,而 <code>base_dir=""</code> 时 <code>_require_allowed("")</code> 抛 <code>PermissionError</code>(属 <code>OSError</code>,被 <code>:182</code> 捕获),于是默认调用直接返回 <code>File I/O error: Path '' is not within any allowed directory</code>——<strong>默认参数下工具不可用</strong>(fail-closed 的可用性缺陷,不是绕过)。叠加出厂 allowlist(<code>mcp_allowlist.yaml:41-49</code>)只含 <code>./projects/</code>,而默认扫描目录是 <code>.automedia/output/projects</code>(<code>tools/_shared.py:243-248</code>),即使补上校验也会因为路径不匹配而拒绝;</li>
+<li><code>init_config</code>(<code>mcp/tools/setup.py:49-52</code>)接受任意 <code>project_dir</code> 写 <code>.automedia/</code> 目录,无校验(任意目录写原语),已实测可在 <code>/tmp</code> 下创建 <code>.automedia/config.yaml</code>;</li>
+<li>6 个 MCP resource(<code>mcp/resources.py</code>,注册于 <code>server.py:1180-1205</code>)整体豁免 allowlist。
+核心比较函数本身是正确的(双侧 realpath、空表 fail-closed:<code>allowlist.py:145-171</code>),问题在<strong>没有集中式文件访问 choke point</strong>,新增工具漏加一行检查不会被发现;<code>_require_allowed</code> 在 <code>src/automedia/mcp</code> 内共 15 处工具侧调用点(<code>omni.py:50,184</code>;<code>pipeline.py:178,526,580,633</code>;<code>projects.py:49,87,127</code>;<code>publishing.py:63</code>;<code>review.py:91</code>;<code>topics.py:62,315,360</code>;<code>tools_distribution.py:88</code>),全部靠人工逐个添加,没有任何机制强制覆盖 68 个工具。</li>
+</ul>
+</li>
+<li><strong>凭据加密的密钥派生过弱</strong>:<code>accounts/store.py:83</code> 用无盐、无拉伸的裸 <code>SHA-256(master_key)</code> 派生 AES 密钥——对低熵口令可离线单次哈希爆破,标准做法是 PBKDF2/scrypt/argon2。nonce 用法正确(每次 <code>os.urandom(12)</code>,<code>:193</code>),缺省密钥快速失败正确,但:明文索引 <code>accounts.index.json</code> 存无盐指纹(<code>:100</code>;短 API key 可离线字典确认);无 KID/密钥迁移路径(换 master key 后所有旧记录 InvalidTag 且无重加密工具);密文文件写入非原子(<code>:205-206</code>;对照索引写入 <code>_save_index_atomic</code> <code>:141-149</code> 是原子的,tmp+rename 只做对了一半)。</li>
+<li><strong><code>keyring</code> 被产品代码直接 import</strong>(<code>core/credential_loader.py:33</code>)但未在任何 extras 声明——<code>pyproject.toml</code> 内 grep <code>keyring</code> 零命中,<code>uv.lock</code> 内也没有。用户无法 <code>pip install automedia[keyring]</code>,装了 base 包的人 keyring 支持静默缺失(只留一条 warning)。</li>
+</ol>
+<h3 id="44">4.4 配置层<a class="headerlink" href="#44" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>环境变量的朴素下划线分割</strong>(<code>config_loader.py:188-195</code>):<code>AUTOMEDIA_FOO_BAR_BAZ</code> → <code>{"foo":{"bar":{"baz"}}}</code> 按下划线切分,导致 (a) 任意 <code>AUTOMEDIA_*</code> 变量(含 <code>AUTOMEDIA_MASTER_KEY</code> 等敏感项)都会漏进合并配置成为嵌套键——已实测 <code>AUTOMEDIA_MASTER_KEY=x</code> 在合并结果里生成 <code>{"master":{"key":"x"}}</code>(MCP <code>get_config</code> 仍会因键名含 <code>key</code> 而打码,所以是配置污染而非泄露);(b) <strong>绝大多数真实配置键(如 <code>content.min_title_length</code>)无法用环境变量设置</strong>——已实测 <code>AUTOMEDIA_CONTENT_MIN_TITLE_LENGTH=10</code> 生成 <code>{"min":{"title":{"length":"10"}}}</code> 这个垃圾键,真实的 <code>content.min_title_length</code> 仍是默认值;只有 6 个 LLM 键 + tavily 走了手工重映射表(<code>:141-186</code>)。这是"看起来通用、实际只对白名单生效"的机制。</li>
+<li><strong>Layer 2 吞掉项目目录下所有 YAML</strong>(<code>config_loader.py:68-82</code>):<code>.automedia/</code> 下每个 yaml 按文件名排序依次 deep_merge,后者赢——文件名不携带优先级语义,排查配置来源需知道 sorted 顺序。</li>
+<li><strong>ComfyUI 迁移块用对象身份判别</strong>(<code>config_loader.py:391-408</code>):<code>new_comfyui is default_comfyui</code> 依赖 deep_merge 的拷贝实现细节(<code>deep_merge</code> 用 <code>base.copy()</code> 浅拷贝),任何人"优化"deep_merge 都会静默改变迁移语义。</li>
+<li>实际心智模型接近 <strong>8 层</strong>:6 层 + Layer 6 内部 <code>os.environ &gt; .env overlay</code> 两级 + Layer 2 内部多文件排序。</li>
+</ol>
+<h3 id="45">4.5 接口一致性与重复<a class="headerlink" href="#45" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>CLI 与 MCP 存在真实双实现</strong>:<code>cli/commands/omni.py:146-252</code>(<code>omni_localize</code>,107 行)与 <code>mcp/tools/omni.py:146-320</code>(<code>localize_output</code>,175 行)是同一个"扫 drafts → OLAdapter 翻译 → L4 门 → 写 06_publish/{lang}/"循环的两份平行实现,且已漂移:MCP 版返回 <code>l4_verdicts</code> 列表(<code>:196-295</code>)并<strong>先做 allowlist 校验</strong>(<code>:184</code>),CLI 版只把失败拼进 <code>warnings_list</code>、<strong>完全无校验</strong>。改 L4 行为必须改两处。</li>
+<li><strong>分层倒置</strong>:CLI <code>commands/cron.py:144,405,469,554</code> 反向 import MCP 层内部模块 <code>mcp/tools/_shared._read_pipeline_schedules</code>(下划线私有名,经 <code>tools/__init__.py:20</code> 再导出)。</li>
+<li><strong>弃用别名是三层薄包装(不是名字交叉)</strong>:<code>server.py:353-361</code> 定义一个同名新函数转发到 <code>tools.add_pool_topic</code>;注册处 <code>server.py:635-642</code> 用新名注册它,<code>:645-652</code> 用旧名注册 <code>tools/topics.py:383-391</code> 的旧函数——实测两个工具分别指向 <code>server.add_pool_topic</code> 与 <code>tools.topics.pool_add_topic</code>,<strong>映射本身是对的</strong>,问题是"一个能力三处定义 + 一层无意义转发"。</li>
+<li><strong>AGENTS.md 参数表漂移</strong>:<code>add_pool_topic | topic, category, source</code> 实际签名是 <code>title, category, pool_db_path</code>(<code>tools/topics.py:334-338</code>);<code>add_cron_schedule | schedule, command</code> 实际是 <code>name, expression, brand, category, count, platform, mode</code>(<code>cron_tools.py:35-43</code>)。计数类断言有门禁,参数表没有。同类漂移:<code>AGENTS.md</code> §5 是 9 条红线,README 两处仍写"10 条"(<code>README.md:300,554</code>),也不在门禁覆盖内(门禁只扫 README/AGENTS/index/doc-inventory 的<strong>数字型</strong>断言,不扫参数表与条目数)。</li>
+<li><strong>MCP server.py 对 FastMCP 私有 API 的三处依赖</strong>(<code>_tool_manager._tools</code> 反向构建注册表、monkey-patch <code>ToolManager.call_tool</code> 注入 correlation id,<code>server.py:431-465,1158-1164</code>)——上游升级地雷;68 个手写 <code>mcp.tool(...)</code> 注册(1,288 行单文件)。</li>
+</ol>
+<h3 id="46">4.6 工程卫生<a class="headerlink" href="#46" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>工作区物理污染</strong>:<code>.gitignore</code> 覆盖大体到位,但复核时 <code>git status</code> 有 5 个未跟踪条目(<code>docs/dev/</code> 下 3 份分析文档 + <code>pkg-AutoMedia/</code> + <code>pkg-AutoMedia.zip</code>)——其中后两者<strong>既未被忽略也未入库</strong>,是真正的脏文件;<code>docs/dev/</code> 下的分析文档则应入库或显式忽略。(该计数会随工作进展漂移,写死数字没有意义,故此处只记录构成。)物理堆积方面,根目录有 <strong>15 个按日期命名的测试项目目录</strong>(<code>20261027_*</code> 至 <code>20261029_*</code>,每个含完整 11 个产物子目录),加上 <code>projects/</code> 下 7 个评审项目与回归夹具,全仓共 <strong>24 个含 <code>00_project_info.json</code> 的项目目录</strong>;另有 <code>build/</code>、<code>dist/</code>、<code>site/</code>、<code>logs/</code>(内容均为 <code>*.log</code>,已被忽略,只是视觉噪音)。每次 <code>ls</code>/glob/搜索都要穿过它们——纯粹的 agent 体验税,且按日期命名的测试目录会污染"按日期找项目"的启发式。</li>
+<li><strong>评审类文档游离于索引之外</strong>:<code>docs/dev/</code> 下的 codebase-audit / health-assessment / remediation-report / capability-gap 等文档未被 <code>docs/index.md</code> 收录(grep 零命中;<code>docs/doc-inventory.md</code> 虽列出其中三份,但那是自动生成的清单,不是导航),且 codebase-audit-20261022.md 尚未入库——项目最有价值的历史诊断对外不可见,入库即面临过期风险(其 §二 的实测数字已是 7 天前)。</li>
+<li><strong>依赖上界策略不一致</strong>:部分有上界(<code>typer&lt;1</code>、<code>pydantic&lt;3</code>、<code>cryptography&lt;51</code>),部分裸奔(anthropic、rich、pymupdf、sentence-transformers、torch 无上界);<code>httpx</code> 核心 <code>&gt;=0.27</code>(<code>pyproject.toml:34</code>)与 all extra <code>&gt;=0.28</code>(<code>:74</code>)floor 不统一;<code>[tool.uv].constraint-dependencies</code> 的 anyio CVE 兜底只保护 uv.lock 用户,<strong>pip 用户不受保护</strong>——两种安装方式两种安全水位。</li>
+<li><strong>coverage 门禁只在 3.11 生效</strong>:<code>--cov-fail-under=70</code> 只跑在 matrix 的 3.11 上,3.12/3.13 的 Pytest 步骤是 <code>continue-on-error</code>(<code>ci.yml:118</code>);Windows 的 <code>test-windows-smoke</code> 作业本身<strong>不是</strong> advisory(作业与步骤都无 <code>continue-on-error</code>),但它只跑一个精选子集(<code>ci.yml:245-274</code>),不是全量。pre-commit 的 pytest 钩子每次提交跑全量 <code>pytest tests/ -x -q</code>(<code>.pre-commit-config.yaml:61</code>)——反馈回路成本高。</li>
+</ol>
+<h3 id="47-10-22">4.7 领域层的死重与同构(继承自 10-22 审计,现状未变)<a class="headerlink" href="#47-10-22" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>G4</code>(wechat_checklist, 221 行)/<code>G5</code>(html_hard, 229 行)注册、有 DAG 节点(<code>pipelines/dag.py:87-88</code>)、有 failure_modes 条目(<code>gates/failure_modes.py:119-157</code>),但<strong>无任何 preset 执行它们</strong>(<code>gate_plan.py:16-21</code> 明示)——有意的开放核设计,但在 preset 路径上是死实现;</li>
+<li><code>features/</code>(256 行)自述 MARKER,但<strong>并非零调用点</strong>:<code>_filter_gates_by_tier</code>(<code>runner.py:447-473</code>)会 import 并调用 <code>check_tier</code>,当 <code>AUTOMEDIA_FEATURE_TIER</code> 设成低于某门所属层级时该门会被真实剔除——开放核的声明式执法是接上的,只是默认无 override 时恒放行;<code>decision/</code>(308 行)里 <code>audit.py</code> 与 <code>review_audit.py</code> 是两份几乎相同的日志器(112 行),但 <code>decision/pydantic/</code> 才是被 3 个 MCP 工具实际使用的结构化输出层,不宜整体当作死重;<code>hitl/executor.py</code> 的 <code>_pending</code> 内存 dict 进程重启即丢;</li>
+<li>D1-D7 同构家族(7 个门,合计 2,273 行,前 3 个检查步骤与尾部的写盘/登记结构基本同形,仅 prompt 文本与阈值不同)、P1-P4 同一 3 步骨架 ×4(每门都是 rewrite → fact-check → humanize)——平台行为只能人肉 diff,不能比较(#287 已消除 D2/P2 的字面复制:<code>d2_twitter.py:23</code> 直接复用 <code>p2_twitter.split_into_tweets</code>,骨架同构仍在)。</li>
+</ul>
+<hr />
+<h2 id="_5">五、综合评估<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<h3 id="51">5.1 优势(值得保护,不要在重构中抹掉)<a class="headerlink" href="#51" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>诚实信号的一等公民设计</strong>:<code>missing_input_result</code> → <code>skipped</code>、<code>skip_reason</code> 报告、<code>is_stub</code> 默认 True、HITL 超时默认 reject。这是整个仓库最有价值的契约。</li>
+<li><strong>三入口同源 + 单一权威声明</strong>(gate_plan / layout / platforms / 文档数字全部代码派生)。文档数字被门禁锁定后,"README 说谎"这类问题在这仓库已结构性不可能。</li>
+<li><strong>深模块范本</strong>:<code>prompts/</code>、<code>engines/</code>、<code>accounts/</code>、<code>asset_library/</code> 是小接口大实现的教科书,重构应复制它们而非拉平它们。</li>
+<li><strong>红线测试化</strong>(<code>pytest -m redline</code>)、<strong>合成数据纪律</strong>(<code>tests/fixtures/synth/</code>)、<strong>AGPL 合规提示</strong>、<strong>issue 驱动原子提交</strong>(ADR-005)——工程纪律在同类项目中罕见。</li>
+</ol>
+<h3 id="52">5.2 核心风险:质量保证是反应式的<a class="headerlink" href="#52" title="Permanent link">&para;</a></h3>
+<p>10-22 审计的核心判断("局部诚实 + 全局幻觉")在一周内被大面积修复,证明团队的执行力;但同样一批问题在 2026-09-17 的健康度报告里已有前兆,而<strong>发现它们的都是一次性人工审计快照,不是持续防线</strong>。已建成的防线(文档一致性门禁、0-收集即失败的元测试、RFC 老化检查)方向正确但覆盖面窄——本报告 §四 列出的 allowlist 强制点缺口、<code>project_id</code> 注册表覆盖、编码 bug 等,现有任何 CI 检查都无法捕捉。(本轮复核本身也印证了这一点:初稿中"并发用量统计互踩""<code>publish_content</code> fail-open""<code>features/</code> 零调用点"三条均为读码推断而非实测,复核时被推翻——没有实测的静态审计同样会产出"局部诚实 + 全局幻觉"。)</p>
+<h3 id="53">5.3 问题优先级建议(按信号危害排序,仅判断不含排期)<a class="headerlink" href="#53" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">优先级</th>
+<th style="text-align: left;">问题</th>
+<th style="text-align: left;">理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">高</td>
+<td style="text-align: left;">allowlist 强制点缺口(§4.3.1)与 fail-open</td>
+<td style="text-align: left;">安全声明的边界与实际执行不符,是最典型的"看起来已验证"</td>
+</tr>
+<tr>
+<td style="text-align: left;">高</td>
+<td style="text-align: left;"><code>md5_tracker</code> + <code>omni/md5_integration</code> 编码/原子性(§4.2.1)</td>
+<td style="text-align: left;">中文路径下当前仓库就会踩,且两处副本写的是同名状态文件;损害 MD5 完整性验证本身的可信度</td>
+</tr>
+<tr>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;"><code>GateEngine._run</code> 拆分与异常模板去重(§4.1.1)</td>
+<td style="text-align: left;">最大、最集中的维护摩擦区;RFC-001 停摆期间它又长了</td>
+</tr>
+<tr>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;"><code>owes_video</code> 漏判、HITL 语义分叉、门配置重算式合并(§4.2.3-5)</td>
+<td style="text-align: left;">三处"静默地看起来能用"的残留</td>
+</tr>
+<tr>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;">CLI/MCP 双实现与分层倒置(§4.5.1-2)</td>
+<td style="text-align: left;">已经开始漂移,只会更糟</td>
+</tr>
+<tr>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;">凭据 KDF 与索引明文(§4.3.2)</td>
+<td style="text-align: left;">离线爆破面</td>
+</tr>
+<tr>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;"><code>publish_content</code> 默认参数不可用(§4.3.1)</td>
+<td style="text-align: left;">工具在出厂配置下直接返回错误,属可用性缺陷而非安全问题;但会被 README 的能力声明掩盖</td>
+</tr>
+<tr>
+<td style="text-align: left;">低</td>
+<td style="text-align: left;"><code>project_id</code> 注册表同 id 覆盖(§4.2.2)</td>
+<td style="text-align: left;">只在并发 resume 同一项目时触发,且有锁保护,危害面远小于初稿判断</td>
+</tr>
+<tr>
+<td style="text-align: left;">低</td>
+<td style="text-align: left;">死重模块、同构家族、工作区卫生、文档索引收录(§4.6-4.7)</td>
+<td style="text-align: left;">认知税与 AX 税,无功能危害</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54">5.4 一句话结论<a class="headerlink" href="#54" title="Permanent link">&para;</a></h3>
+<p><strong>这是一个把"内容生产的验收标准"编译成 33 道可执行门禁的系统,工程纪律显著强于同类项目,且具备罕见的自我诊断-修复闭环;它当前的主要债务不在功能完整性(一周内刚清完 P0),而在三处:编排层(gate_engine/runner)的形状、安全边界的"自觉执行"模式、以及两处共享状态文件与门配置合并语义的未定义行为——它们共同的特征是"信号看起来都对,直到非 ASCII 路径、默认参数或多层 include/exclude 叠加出现为止"。</strong></p>
+<hr />
+<h2 id="_6">附录:证据文件索引<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">主题</th>
+<th style="text-align: left;">关键文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">管线编排</td>
+<td style="text-align: left;"><code>src/automedia/pipelines/runner.py</code>(2,165 行)、<code>gate_engine.py</code>(1,569 行)、<code>gate_plan.py</code>、<code>dag.py</code>、<code>state_view.py</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">门禁</td>
+<td style="text-align: left;"><code>src/automedia/gates/</code>(43 文件)、<code>failure_modes.py</code>、<code>_context.py</code>、<code>_result.py</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">MCP/CLI</td>
+<td style="text-align: left;"><code>src/automedia/mcp/server.py</code>(1,288 行)、<code>mcp/allowlist.py</code>、<code>mcp/tools/</code>、<code>cli/app.py</code>、<code>cli/commands/</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">配置/安全</td>
+<td style="text-align: left;"><code>core/config_loader.py</code>、<code>core/llm_client.py</code>、<code>accounts/store.py</code>、<code>core/md5_tracker.py</code>、<code>omni/md5_integration.py</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">文档门禁</td>
+<td style="text-align: left;"><code>scripts/check-doc-consistency.py</code>(844 行)</td>
+</tr>
+<tr>
+<td style="text-align: left;">既有诊断</td>
+<td style="text-align: left;"><code>docs/dev/codebase-audit-20261022.md</code>、<code>project-health-assessment-20260917.md</code>、<code>remediation-report-20260917.md</code>、<code>founder-expectations.md</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/1StepMore/AutoMedia" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
