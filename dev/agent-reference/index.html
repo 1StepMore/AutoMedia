@@ -1419,6 +1419,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#per-run-sandbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-run sandbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-evidence-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2226,6 +2237,20 @@ agent decides alone is final, nothing the director has not seen is accepted.</p>
 - <code>automedia validate matrix</code>: per-scenario surface coverage + status matrix; non-recursive
 - <code>automedia validate sign</code>: record the director's verdict in the run dir's <code>signed.txt</code></p>
 <p>MCP tools: <code>list_validation_scenarios</code>, <code>run_validation_scenario</code>, <code>run_validation_suite</code>, <code>get_validation_report</code>, <code>validation_coverage_audit</code>, <code>validation_matrix</code>.</p>
+<h3 id="per-run-sandbox">Per-run sandbox<a class="headerlink" href="#per-run-sandbox" title="Permanent link">&para;</a></h3>
+<p>Every run installs a sandbox (<code>automedia.validation.sandbox</code>) before the env
+gate: <code>AUTOMEDIA_CONFIG_DIR</code> and <code>AUTOMEDIA_PROJECTS_DIR</code> point at a fresh
+<code>config/</code> + <code>projects/</code> pair under one <code>automedia-validation-*</code> temp root, and
+the root is removed when the run ends. This is what makes validation
+non-destructive: accounts, brand profiles, <code>active_pipelines.json</code>, and project
+dirs land in scratch space instead of <code>~/.automedia</code> and the repo root, and a
+second identical run starts from a clean slate (#333/#334). An explicitly
+exported directory is honoured (only the missing half is filled in);
+<code>AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1</code> preserves the root for inspection. The
+run record carries <code>sandbox: {root, config_dir, projects_dir, temporary}</code> at
+the top level and on each scenario. CLI steps expand <code>${VAR}</code> in <code>command</code>,
+tool/post-call arguments, and artifact paths, so scenarios reference the
+sandbox by name instead of hardcoding a path.</p>
 <h3 id="the-evidence-contract">The evidence contract<a class="headerlink" href="#the-evidence-contract" title="Permanent link">&para;</a></h3>
 <p>The single schema authority is <code>scenarios/STANDARDS.md</code>; <code>scenarios/README.md</code>
 is the onboarding guide. How to read a scenario:</p>
@@ -2254,7 +2279,7 @@ is the onboarding guide. How to read a scenario:</p>
 - Director sign-off: the director appends run name, date, and verdict to <code>signed.txt</code> in the run dir; the agent grades, the human disposes.</p>
 <h3 id="where-things-live">Where things live<a class="headerlink" href="#where-things-live" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>scenarios/</code>: committed scenario library (158 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
+<li><code>scenarios/</code>: committed scenario library (159 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
 <li><code>scenarios/STANDARDS.md</code>: the single schema authority — standard keys (14 core plus 33 <code>gate.*</code> and 9 <code>mode.*</code>); unknown keys rejected at load.</li>
 <li><code>scenarios/baseline/</code>: committed pre-flight baseline run record and coverage audit.</li>
 <li><code>validation-runs/</code>: gitignored immutable run records with a <code>latest.txt</code> pointer.</li>
