@@ -101,6 +101,24 @@ class TestWriteModelConfig:
         monkeypatch.setattr(init_mod, "_USER_CFG_DIR", cfg_dir)
         monkeypatch.setattr(init_mod, "_MODEL_CONFIG_FILE", cfg_dir / "model_config.yaml")
 
+        if os.name == "nt":
+            # Windows chmod can only toggle the read-only bit, so st_mode can
+            # never equal 0o600 for a writable file; assert the chmod call
+            # itself instead of the resulting mode.
+            chmod_calls: list[tuple[str, int]] = []
+            real_chmod = os.chmod
+
+            def _spy_chmod(path: object, mode: int) -> None:
+                chmod_calls.append((str(path), mode))
+                real_chmod(path, mode)
+
+            monkeypatch.setattr(os, "chmod", _spy_chmod)
+            init_mod._write_model_config({"llm": {"text_generation": {"provider": "x"}}})
+            assert (str(cfg_dir / "model_config.yaml"), 0o600) in chmod_calls, (
+                f"expected os.chmod(..., 0o600) for the config file, got {chmod_calls}"
+            )
+            return
+
         init_mod._write_model_config({"llm": {"text_generation": {"provider": "x"}}})
         mode = os.stat(cfg_dir / "model_config.yaml").st_mode & 0o777
         assert mode == 0o600, f"Expected 0o600, got {oct(mode)}"
@@ -199,6 +217,9 @@ class TestWriteModelConfig:
         )
         monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR", raising=False)
         monkeypatch.setenv("HOME", str(fake_home))
+        # Path.home() resolves via USERPROFILE on Windows and HOME on POSIX;
+        # both must point at the fake home for the guard to see it as "real".
+        monkeypatch.setenv("USERPROFILE", str(fake_home))
 
         with pytest.raises(ValueError, match="real user config directory"):
             init_mod._write_model_config({"llm": {"text_generation": {"provider": "deepseek"}}})
