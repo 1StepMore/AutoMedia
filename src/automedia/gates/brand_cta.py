@@ -22,7 +22,7 @@ from typing import Any
 
 from structlog import get_logger
 
-from automedia.gates._context import GateContext
+from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX, GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
@@ -445,6 +445,14 @@ class G3BrandCTA(BaseGate):
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 6-point brand & CTA compliance check and return structured result."""
         content: str = gate_context.get("content", "")
+        if content.lstrip().startswith(CONTENT_PLACEHOLDER_PREFIX):
+            return {
+                "passed": True,
+                "gate": "G3",
+                "checks": [],
+                "status": "skipped",
+                "reason": "no article content in this mode (runner placeholder)",
+            }
         brand_profile: dict[str, Any] | None = gate_context.get("brand_profile", {})
         video_script: str | None = gate_context.get("video_script")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")

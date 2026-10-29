@@ -550,3 +550,34 @@ class TestG2EnableLlmFalse:
         failed = [c for c in result["checks"] if not c["passed"]]
         assert len(failed) == 1
         assert failed[0]["name"] == "clarity"
+
+
+class TestG2ContentPlaceholderSkip:
+    """G2 treats the runner's no-article placeholder as "nothing to review"."""
+
+    def test_placeholder_content_is_skipped(self) -> None:
+        from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX
+
+        ctx = _make_context(content=f"{CONTENT_PLACEHOLDER_PREFIX} qa_only mode]")
+        result = G2CopyReview().execute(ctx)
+
+        assert result["passed"] is True
+        assert result["status"] == "skipped"
+        assert result["checks"] == []
+
+    def test_placeholder_wins_over_mock_results(self) -> None:
+        from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX
+
+        ctx = _make_context(
+            content=f"{CONTENT_PLACEHOLDER_PREFIX} qa_only mode]",
+            mock_results=_fail_check("clarity"),
+        )
+        result = G2CopyReview().execute(ctx)
+
+        assert result["status"] == "skipped"
+
+    def test_runner_prefix_matches_gate_constant(self) -> None:
+        from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX
+        from automedia.pipelines.runner import _CONTENT_PLACEHOLDER_PREFIX
+
+        assert _CONTENT_PLACEHOLDER_PREFIX == CONTENT_PLACEHOLDER_PREFIX

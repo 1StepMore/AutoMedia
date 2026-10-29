@@ -113,7 +113,7 @@ is the onboarding guide. How to read a scenario:
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (157 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (158 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: the single schema authority — standard keys (14 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.
