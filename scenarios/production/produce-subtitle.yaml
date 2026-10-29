@@ -16,6 +16,10 @@
 #     the audio it transcribes.
 #   - monotonic and cue count come from parsing the SRT; `within` re-probes the
 #     mp3 so a subtitle track that overruns its audio fails.
+#   - text_fidelity (issue #336): the SRT text is compared with the script the
+#     pipeline actually narrated (`01_content/drafts/*_draft.md`) by normalized
+#     character-bigram similarity. Structural assertions alone passed a subtitle
+#     full of ASR substitutions; this cell asserts the words, not just timing.
 
 name: produce-subtitle
 description: "short-video produces a ≥10-cue monotonic SRT whose last cue ends within the produced narration."
@@ -53,6 +57,14 @@ steps:
     timeout_seconds: 120
     expect:
       exit_code: 0
+  - name: locate the script the narration reads
+    kind: cli
+    check: The draft the pipeline narrated is pinned so the subtitle text can be compared with what was actually spoken.
+    standard: text.similarity
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-subtitle "01_content/drafts/*_draft.md" --link /tmp/automedia/prod-subtitle/script.md
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
   - name: locate the narration the subtitle describes
     kind: cli
     check: The narration produced by the same run is pinned so the subtitle can be checked against it.
@@ -70,6 +82,17 @@ steps:
     expect:
       artifact_exists: /tmp/automedia/prod-subtitle/narration.srt
       subtitle:
-        min_cues: 2
+        min_cues: 10
         monotonic: true
         within: /tmp/automedia/prod-subtitle/narration.mp3
+  - name: subtitle text matches the narrated script
+    kind: file
+    check: The SRT's words track the draft that was narrated (normalized character-bigram similarity ≥ 0.60), so an ASR pass full of substitutions fails even when its cue count and timing are valid.
+    standard: text.similarity
+    command: /tmp/automedia/prod-subtitle/narration.srt
+    timeout_seconds: 120
+    expect:
+      artifact_exists: /tmp/automedia/prod-subtitle/narration.srt
+      text_similarity:
+        reference: /tmp/automedia/prod-subtitle/script.md
+        min_ratio: 0.60

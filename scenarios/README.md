@@ -157,6 +157,7 @@ or value.
 | `text` | Text/Markdown assertions measured by the read-only text probe: paragraphs, characters, headings |
 | `subtitle` | SRT assertions: cue count, monotonic timing, and `within` media duration |
 | `keyword_coverage` | Required keywords and ratio over the artifact text (or an explicit `over` list) |
+| `text_similarity` | Produced text vs a `reference` file by normalized character-bigram similarity, at or above `min_ratio` |
 | `gate_records_pass` | The artifact's JSON carries non-empty gate or pass records |
 | `min_score` | The output carries a numeric quality score at least this large |
 | `error_expected` | Opt in to a deliberately failing call: the error envelope (or non-zero exit) counts as a pass, not a failure |
@@ -177,6 +178,7 @@ unreadable image is a failed observation, never a silent pass.
 | `text.article` | `artifact_exists` or file-step command, `text` | Text meets paragraph/character/heading thresholds |
 | `subtitle.srt` | `artifact_exists` or file-step command, `subtitle` | SRT cues meet count, overlap, and media-duration checks |
 | `quality.keyword-coverage` | `artifact_exists` / `over`, `keyword_coverage` | Required keywords appear at or above `min_ratio` |
+| `text.similarity` | `artifact_exists` / `over`, `text_similarity` | Produced text matches the reference at or above `min_ratio` |
 
 `media.same_size=True` and `media.min_count` require `artifact_glob`;
 `artifact_exists` and `artifact_glob` are mutually exclusive in one block.
