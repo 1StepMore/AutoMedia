@@ -161,9 +161,11 @@ scheduled jobs.
   `AUTOMEDIA_LOG_LEVEL` to control verbosity
 - **Alerts**: Configure a Feishu webhook via `FEISHU_WEBHOOK_URL` for
   pipeline failure notifications
-- **Metrics**: The GateHook metrics collector (`automedia/hooks/metrics.py`)
-  tracks gate pass/fail rates. Integrate with your monitoring stack via
-  log scraping
+- **Metrics**: The built-in gate hooks write per-run evidence you can
+  scrape: `CostTracker` appends LLM usage deltas to
+  `<project_dir>/cost_log.jsonl`, and `PipelineHistoryHook` records every
+  gate lifecycle event to `<project_dir>/.automedia/history.db`
+  (rendered by `automedia history`). No metrics aggregator ships today
 - **Project tracking**: `list_projects` and `get_pipeline_status` in the
   MCP API let you query project state without filesystem access
 

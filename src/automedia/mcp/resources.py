@@ -226,11 +226,41 @@ def getting_started_resource() -> str:
 
     all_done = all(s["done"] for s in steps)
 
+    # Operator how-tos for the agent-as-user role: pure MCP clients never
+    # read the repository, so surface the four docs/skills guides here.
+    skills = [
+        {
+            "name": "brand-strategy",
+            "path": "docs/skills/brand-strategy.md",
+            "purpose": "Generate brand positioning and messaging with run_brand_strategy",
+        },
+        {
+            "name": "pipeline-workflow",
+            "path": "docs/skills/pipeline-workflow.md",
+            "purpose": (
+                "Run one project end to end: strategy, topic, run_pipeline, progress, archive"
+            ),
+        },
+        {
+            "name": "distribution-workflow",
+            "path": "docs/skills/distribution-workflow.md",
+            "purpose": (
+                "Publish or distribute finished content (distribute_content vs publish_content)"
+            ),
+        },
+        {
+            "name": "batch-workflow",
+            "path": "docs/skills/batch-workflow.md",
+            "purpose": "Produce multiple topics sequentially with run_batch",
+        },
+    ]
+
     return json.dumps(
         {
             "status": "ok",
             "all_done": all_done,
             "steps": steps,
+            "operator_skills": skills,
         },
         indent=2,
         ensure_ascii=False,

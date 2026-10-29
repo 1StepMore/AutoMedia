@@ -502,6 +502,11 @@ Access blocked by the MCP path or key allowlist.
 | Tool | Condition | Resolution |
 |------|-----------|------------|
 | `get_config` | The requested config key contains a secret keyword (`key`, `secret`, `password`, `token`) | Use a non-secret key or access the value through other means |
+| `run_pipeline` | Explicit `source_path` not in `mcp_allowlist.yaml` | Pass a path under an allowed directory, or omit `source_path` |
+| `distribute_content` | Explicit `base_dir` not in `mcp_allowlist.yaml` | Pass an allowed directory, or omit `base_dir` for the default |
+| `analyze_content` | Explicit `base_dir` not in `mcp_allowlist.yaml` | Pass an allowed directory, or omit `base_dir` for the working directory |
+| `init_config` | Explicit `project_dir` not in `mcp_allowlist.yaml` | Pass an allowed directory, or omit `project_dir` for the working directory |
+| `publish_content` | Effective projects directory (explicit `base_dir` or the resolved default) not in `mcp_allowlist.yaml` | Pass an allowed `base_dir`, or point `AUTOMEDIA_PROJECTS_DIR` inside an allowed directory |
 | Various file tools | File path not in `mcp_allowlist.yaml` | Have the user add the path to the allowlist |
 
 ### UNKNOWN

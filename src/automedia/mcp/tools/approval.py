@@ -1,4 +1,14 @@
-"""Director mode approval/rejection MCP tools."""
+"""Director mode approval/rejection MCP tools.
+
+RESERVED / NOT WIRED (remediation plan A3): the ``pause_on_approval``
+mechanism these tools serve never fires — nothing writes
+``requires_approval`` into the gate context, so no gate ever pauses for
+director approval and ``get_pending_approvals`` always returns an empty
+list.  They are kept registered as the future surface for gate-level
+director review (wired alongside form A "deliverable gate reports").
+The LIVE approval path is ``review_decision`` (same-process H0 pause) or
+the ``automedia hitl approve/reject`` CLI (cross-process parked runs).
+"""
 
 from __future__ import annotations
 

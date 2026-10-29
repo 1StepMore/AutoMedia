@@ -107,18 +107,23 @@ automedia run --project-id <project_id> --resume-from H0
 `--resume-from H0` requires `--project-id`; without a project id the runner
 starts a brand-new project instead of the parked one.
 
-The director preset defines 8 review nodes for gate-level oversight:
+The director preset (`automedia/hitl/presets/director.py`) defines 8 review
+nodes:
 
-| Review Node | Gate | What's Reviewed |
+| Review Node | Area | What's Reviewed |
 |-------------|------|----------------|
-| topic | Pre-gate | Topic selection and validation |
-| content | CW | Written content draft quality |
-| brand | G3 | Brand CTA compliance |
-| wechat | G4 | WeChat-specific formatting checks |
-| vision | V1 | Vision QA — image/video quality |
-| tts | V4 | TTS audio quality and brand asset check |
-| subtitle | V6 | Subtitle rendering accuracy |
-| publish | L1 | Publish log review before platform distribution |
+| `topic_selection` | Pre-gate | Topic selection before content generation |
+| `cw_output` | CW | Written content draft quality |
+| `g2_copy_review` | G2 | Copy review results |
+| `v0_lint` | V0 | HTML lint output |
+| `v1_vision_qa` | V1 | Vision quality assurance |
+| `v2_subtitle` | V2 | Subtitle rendering |
+| `l2_archive` | L2 | Archive validation |
+| `l3_publish` | L3 | Publish per platform |
+
+These node definitions describe the preset **file**; the runner consumes
+only each node's name and `autoset` flag, and `requires_approval` is not
+wired into gate execution (remediation plan A3).
 
 ### Usage
 
@@ -130,9 +135,8 @@ automedia run --topic "..." --brand my-brand --director
 automedia run --topic "..." --brand my-brand --director --wait-for-review
 
 # Or via MCP
-# Call run_pipeline with director=true, then poll get_pending_approvals
-# Approve passing gates: approve_gate(gate_name="V1")
-# Reject failing gates: reject_gate(gate_name="V1")
+# Call run_pipeline with director=true; when the run pauses at H0,
+# decide with review_decision(project_id, gate_name="H0", action=...)
 ```
 
 The director mode is also accessible via `python`:
@@ -156,33 +160,29 @@ human sign-off before content goes live.
 
 ---
 
-## NodeExecutor
+## NodeExecutor (dormant scaffold)
 
-The `NodeExecutor` routes execution based on the active HITL configuration:
+`NodeExecutor` is part of the unwired Decision-Layer scaffold: it has **no
+production call site** — nothing in the pipeline constructs an executor
+today.  The LIVE HITL path is the H0 gate plus the `review_decision` MCP
+tool (same-process) or `automedia hitl approve/reject` (cross-process).
+The class remains importable for a future decision-agent integration:
 
 ```python
 from automedia.hitl import HITLConfig, NodeExecutor
-from automedia.decision.diagnostic import DiagnosticAgent
 
 # Load the semi-automated preset
 cfg = HITLConfig(preset_name="semi-automated")
-executor = NodeExecutor(cfg)
-
-agent = DiagnosticAgent()
+executor = NodeExecutor(cfg)  # dormant: no production caller constructs this
 
 # Agent-mode node → artifact returned immediately
-result = executor.execute("build_scale_routing", agent, context)
-
-# Human-mode node → returns None, stored as pending
-result = executor.execute("brand_questionnaire", agent, context)
-# result is None; suggestion stored internally
-
-# Approve the pending node
-artifact = executor.approve_node("brand_questionnaire")
-
-# Or skip it (artifact marked with human_skipped=True)
-artifact = executor.skip_node("brand_questionnaire")
+# Human-mode node → returns None, stored as pending until approve/skip
 ```
+
+Do not build on this section until the decision layer is wired (remediation
+plan A4): the decision-agent classes earlier drafts referenced
+(`BaseDecisionAgent`, a `DiagnosticAgent`, `decision.orchestrator`) do not
+exist in the codebase.
 
 ### Pending Node Lifecycle
 
@@ -224,10 +224,13 @@ automedia hitl pending
 # Deliver a decision to a pipeline parked in another process
 automedia hitl approve <project_id>
 automedia hitl reject <project_id>
-
-# Record human approval for a node
-# (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)
 ```
+
+> **Note (runtime honesty):** `hitl preset --set` records
+> `active_preset.yaml` for display and onboarding checks only. The pipeline
+> runner hardcodes its preset choice (`"director"` when director mode is
+> requested, otherwise `"automated"`), so activating a preset does not
+> change runtime behavior today.
 
 ---
 
@@ -257,14 +260,13 @@ Multiple override files can coexist — they are applied in alphabetical order.
 
 ## Integration with HITL SDK
 
-```python
-from automedia.hitl import HITLConfig, NodeExecutor
-from automedia.decision.base import BaseDecisionAgent
+There is no Decision-Layer SDK integration today: the `BaseDecisionAgent`
+class this section used to reference does not exist in the codebase, and
+`NodeExecutor` itself is a dormant scaffold with no production call site
+(see "NodeExecutor" above and remediation plan A4).  The live integration
+points are:
 
-cfg = HITLConfig(preset_name="semi-automated")
-executor = NodeExecutor(cfg)
-
-agent = BaseDecisionAgent()
-result = executor.execute("my_node", agent, context)
-# Human-approved nodes block until manually approved via CLI
-```
+- **H0 gate pause** → `review_decision` MCP tool (same-process) or
+  `automedia hitl approve/reject` CLI (cross-process parked runs);
+- **Preset override merge** (`HITLConfig`) → display and onboarding checks;
+  the runner hardcodes its preset choice today.

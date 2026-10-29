@@ -1003,8 +1003,10 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Approve a gate output and resume pipeline execution. "
-            "Finds the active engine for project_id and calls resume() "
+            "RESERVED / not wired (A3): the pause_on_approval mechanism never "
+            "fires today, so no gate is ever awaiting this approval. Use "
+            "review_decision for the live H0 pause. When wired: approves a "
+            "gate output and resumes pipeline execution via engine.resume() "
             "with approved=True. Takes project_id, gate_name, and optional "
             "modifications dict. Returns approved status."
         ),
@@ -1012,8 +1014,10 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Reject a gate output and resume pipeline execution. "
-            "Finds the active engine for project_id and calls resume() "
+            "RESERVED / not wired (A3): the pause_on_approval mechanism never "
+            "fires today, so no gate is ever awaiting this rejection. Use "
+            "review_decision for the live H0 pause. When wired: rejects a "
+            "gate output and resumes pipeline execution via engine.resume() "
             "with approved=False. Takes project_id, gate_name, and optional "
             "reason string. Returns rejected status."
         ),
@@ -1021,9 +1025,11 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "List gates currently awaiting approval in active pipelines. "
-            "When project_id is provided, filters to that project only. "
-            "Returns a list of pending approvals with gate_name and status."
+            "RESERVED / not wired (A3): returns an empty list today because "
+            "the pause_on_approval mechanism never fires. Use "
+            "get_pipeline_progress to see a run parked at the H0 review "
+            "gate. When wired: lists gates currently awaiting approval in "
+            "active pipelines, filtered to project_id when provided."
         ),
     )(get_pending_approvals)
 

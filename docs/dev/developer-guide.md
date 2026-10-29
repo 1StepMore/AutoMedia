@@ -198,7 +198,7 @@ External Call Layer
 | `gates/` | 33 Gate implementations including H0 + failure mode knowledge base (`failure_modes.py`) |
 | `detectors/` | Pluggable AI-writing-taste detector framework (`base.py` BaseDetector ABC, `registry.py` DetectorRegistry, `deterministic.py` built-in detector reusing G1's 9 regex checks, `adapters.py` env-gated external detectors) |
 | `adapters/` | Platform publish adapter registry (`registry.py`) + base class (`base.py`) |
-| `hooks/` | GateHook Protocol (`protocol.py`), MD5 tracking (`md5_tracker.py`) |
+| `hooks/` | GateHook Protocol (`protocol.py`), cost tracker (`cost_tracker.py`), pipeline history (`pipeline_history.py`); MD5 tracking lives in `core/md5_tracker.py` |
 | `manifests/` | Built-in YAML default config (`defaults.yaml`), schema definitions |
 | `pool/` | Topic pool SQLite database (`db.py`), collection/scoring/dedup |
 | `cron/` | Scheduled job YAML definitions (`jobs.yaml`), pipeline schedule runner (`runner.py`) |
