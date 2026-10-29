@@ -106,3 +106,22 @@ Track 3 裁决项 ×9 ──────────── 每项独立批准；
 - 不动 SDK 排除边界、`gate_plan` 单一权威、验证层 5 状态语义等已验证有效的结构。
 - 不为 G4/G5 建 preset（简报界定 1：出现第二个客户前不做规则集类设计）。
 - 不给 CostTracker 建读端——属新增查询能力，暂缓；"写而未读"已在审计矩阵#9 记录，待有成本可见性需求时按新增能力流程裁决。
+
+## 七、执行记录（2026-10-30）
+
+发起人裁决：Track 0–2 全部开始；A1 按推荐（改写）随 Track 1 处理；A2 选"文档显式化"；A3 选"明示休眠"；A4–A7 建议已给出（A7→A6→A5→A4），待确认；A8 推迟、A9 条件触发（未触发）。本机 pre-commit 曾因 WindowsApps `python3` 存根损坏而空转，已修复（复制 python.exe → python3.exe）；全量 pytest 在本机仍有 43 个既有 Windows 环境失败（修复存根前为 211，其中 168 个由坏存根造成），提交以 `SKIP=pytest` 豁免单钩子、其余钩子照跑，43 个失败的修复已立项。
+
+| 批次 | 状态 | 提交 |
+|---|---|---|
+| 环境修复（python3 存根 + Windows 权限测试） | ✅ | `91a578a` |
+| 先前文档批次落地 + 报告入库 + 本计划入库（T0-5） | ✅ | `c00bbed` |
+| T0-1/T0-2/T0-3/T0-6/T0-7(llms.txt) + A2 glossary 部分 | ✅ | `fa1e006` |
+| T2-1 md5 编码+原子写 | ✅ | `ff8b6f7` |
+| T2-3 review_decision STALE + mark_finished 摘除 | ✅ | `d1a3a48` |
+| T2-2 allowlist 收口 + 沙箱自备 allowlist | ✅ | `af54d1e` |
+| T1-1/T1-2 幽灵符号 + A3 明示休眠 + T0-7 resource | ✅ | `be94da6` |
+| T1-4/A1 project-validation skill 改写 | ⬜ 待做 | — |
+| T2-1 遗留：record_md5 跨进程读改写竞态（原子写已把损害限定为丢失更新） | ⬜ 记录在案 | — |
+| A4–A7（待发起人按建议确认后执行） | ⬜ 待确认 | — |
+| A8 introspection 工具 / A9 allowlist 默认目录错配 | ⬜ 推迟/条件 | — |
+| 43 个 Windows 既有测试失败修复（已立项） | ⬜ 已立项 | — |
