@@ -1,0 +1,19 @@
+name: regression-335-qa-only-content-gates
+description: G2 and G3 skip the runner's no-article placeholder in qa_only mode instead of failing on copy checks that cannot apply.
+intent: Pin issue #335 - qa_only injects "[content skipped in qa_only mode]" as content, and G2 reviewed the marker as prose (tone/evidence/specificity failed), turning the journey red. Gates that review article copy must treat the marker as "no article" and skip.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#335"
+requires_env: []
+steps:
+  - name: G2 and G3 skip the placeholder content
+    kind: cli
+    check: "Run the committed regression-335 helper: it builds a GateContext whose content is the runner placeholder and asserts both G2CopyReview and G3BrandCTA return passed=True with status=skipped."
+    standard: tool.contract
+    command: python3 scripts/regression_335_check.py
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - REG335_PLACEHOLDER_GATES_SKIPPED

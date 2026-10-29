@@ -24,6 +24,9 @@ from structlog import get_logger
 
 log = get_logger(__name__)
 
+#: Runner-injected ``content`` marker for modes with no article; copy gates skip it.
+CONTENT_PLACEHOLDER_PREFIX = "[content skipped in"
+
 
 def _detached(value: Any) -> Any:  # noqa: ANN401 — recursive copy of arbitrary context values
     if isinstance(value, dict):

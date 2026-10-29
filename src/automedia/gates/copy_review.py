@@ -20,7 +20,7 @@ from typing import Any, cast
 
 from structlog import get_logger
 
-from automedia.gates._context import GateContext
+from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX, GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
@@ -532,6 +532,14 @@ class G2CopyReview(BaseGate):
         deterministic path for test compatibility.
         """
         content: str = gate_context.get("content", "")
+        if content.lstrip().startswith(CONTENT_PLACEHOLDER_PREFIX):
+            return {
+                "passed": True,
+                "gate": "G2",
+                "checks": [],
+                "status": "skipped",
+                "reason": "no article content in this mode (runner placeholder)",
+            }
         brand_profile: dict[str, Any] | None = gate_context.get("brand_profile")
         mock_results: dict[str, dict[str, Any]] | None = gate_context.get("_mock_results")
         config: dict[str, Any] = gate_context.get("config", {})

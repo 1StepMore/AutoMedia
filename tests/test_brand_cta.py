@@ -585,3 +585,16 @@ def test_none_brand_profile_skips_gracefully() -> None:
     result = G3BrandCTA().execute(ctx)
     assert result["gate"] == "G3"
     assert result["passed"] is True
+
+
+def test_placeholder_content_is_skipped() -> None:
+    """G3 treats the runner's no-article placeholder as "nothing to check"."""
+    from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX
+
+    ctx = _make_context(content=f"{CONTENT_PLACEHOLDER_PREFIX} qa_only mode]")
+    result = G3BrandCTA().execute(ctx)
+
+    assert result["gate"] == "G3"
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    assert result["checks"] == []
