@@ -9,6 +9,8 @@ missing. No network is used.
 from __future__ import annotations
 
 import os
+import sys
+import types
 import wave
 from pathlib import Path
 from typing import Any, ClassVar
@@ -121,6 +123,42 @@ class TestFasterWhisperCheckAvailable:
         monkeypatch.setenv(MODEL_ENV_VAR, str(tmp_path))
         available, message = FasterWhisperASREngine({}).check_available()
         assert available is True, message
+
+
+class TestFasterWhisperDecodeProbe:
+    def test_incompatible_av_reports_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        module = types.ModuleType("faster_whisper")
+
+        def _boom(_audio: object) -> None:
+            raise TypeError("open() got an unexpected keyword argument 'metadata_errors'")
+
+        module.decode_audio = _boom  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "faster_whisper", module)
+        available, message = FasterWhisperASREngine({}).check_available()
+        assert available is False
+        assert "cannot decode audio" in message
+
+    def test_missing_decode_audio_reports_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = types.ModuleType("faster_whisper")
+        monkeypatch.setitem(sys.modules, "faster_whisper", module)
+        available, message = FasterWhisperASREngine({}).check_available()
+        assert available is False
+        assert "decode_audio" in message
+
+    def test_successful_decode_stays_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        module = types.ModuleType("faster_whisper")
+        seen: list[object] = []
+
+        def _decode(audio: object) -> None:
+            seen.append(audio)
+
+        module.decode_audio = _decode  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "faster_whisper", module)
+        available, message = FasterWhisperASREngine({}).check_available()
+        assert available is True, message
+        assert len(seen) == 1
 
 
 class TestFasterWhisperTranscribeErrors:

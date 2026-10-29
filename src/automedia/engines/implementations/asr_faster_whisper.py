@@ -23,7 +23,9 @@ then ``"zh"``.
 
 from __future__ import annotations
 
+import io
 import os
+import wave
 from typing import Any, ClassVar
 
 from typing_extensions import override
@@ -38,6 +40,35 @@ MODEL_ENV_VAR = "AUTOMEDIA_FASTER_WHISPER_MODEL"
 DEFAULT_MODEL = "tiny"
 DEFAULT_LANGUAGE = "zh"
 DEFAULT_COMPUTE_TYPE = "int8"
+
+_PROBE_SAMPLE_RATE = 16_000
+_PROBE_FRAMES = 160  # 10 ms of silence
+
+
+def _probe_decode(faster_whisper_module: object) -> tuple[bool, str]:
+    """Decode 10 ms of silence to prove the installed ``av`` bridge works.
+
+    An import probe alone cannot see the incompatible combination where
+    ``av`` dropped the ``metadata_errors`` kwarg that ``faster_whisper``
+    still passes to ``av.open``: import succeeds, and every real
+    transcription raises ``TypeError``.  Decoding an in-memory WAV exercises
+    that exact code path without loading a model or touching the network.
+    """
+    decode_audio = getattr(faster_whisper_module, "decode_audio", None)
+    if decode_audio is None:
+        return False, "faster-whisper does not expose decode_audio"
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(_PROBE_SAMPLE_RATE)
+        wav_file.writeframes(b"\x00\x00" * _PROBE_FRAMES)
+    buffer.seek(0)
+    try:
+        decode_audio(buffer)
+    except Exception as exc:
+        return False, f"faster-whisper cannot decode audio with the installed av: {exc}"
+    return True, ""
 
 
 class FasterWhisperASREngine(BaseASREngine):
@@ -74,17 +105,21 @@ class FasterWhisperASREngine(BaseASREngine):
 
     @override
     def check_available(self) -> tuple[bool, str]:
-        """Check that ``faster-whisper`` imports and any local model exists.
+        """Check that ``faster-whisper`` imports, can decode, and the model resolves.
 
-        Model presence is validated lazily at transcription time for bare
+        Model *files* are validated lazily at transcription time for bare
         size names (the library downloads them on first use).  A configured
         *path* that does not exist is reported unavailable rather than
         failing mid-pipeline.
         """
         try:
-            import faster_whisper  # noqa: F401  # import probe only
+            import faster_whisper
         except Exception as exc:  # pragma: no cover - environment dependent
             return False, f"faster-whisper is not installed: {exc}"
+
+        decodable, decode_message = _probe_decode(faster_whisper)
+        if not decodable:
+            return False, decode_message
 
         configured = self._configured_model()
         if configured:

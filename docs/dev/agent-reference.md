@@ -113,7 +113,7 @@ is the onboarding guide. How to read a scenario:
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (156 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (157 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: the single schema authority — standard keys (14 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.
@@ -144,6 +144,16 @@ Key `AUTOMEDIA_*` environment variables:
 | `AUTOMEDIA_SKIP_ASSET_PULL` | Set to `1`/`true`/`yes` to skip the project-init asset pull | (unset) |
 
 The `AUTOMEDIA_LLM_*` vars map to `llm.text_generation.*` config keys in `automedia/core/config_loader.py`. See `.env.example` for the complete list.
+
+Optional engine extras and their version constraints:
+
+- `[tts-piper]` installs Piper TTS.
+- `[asr-faster]` installs `faster-whisper` **and** `av<19`. The upper bound is
+  required: av 19 removed the `metadata_errors` kwarg that faster-whisper 1.2.x
+  still passes to `av.open`, so `transcribe()` raises `TypeError` even though
+  `import faster_whisper` succeeds. `FasterWhisperASREngine.check_available()`
+  therefore decodes 10 ms of silence in memory, reporting the incompatible
+  combination as unavailable instead of failing mid-pipeline (issue #332).
 
 ## Documentation Index
 
