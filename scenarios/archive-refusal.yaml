@@ -26,6 +26,17 @@ steps:
     expect:
       success: false
       error_expected: true
+  - name: the refused project is untouched on disk
+    kind: cli
+    check: "the refused draft project still exists at its original path with status still draft and no archive artifacts created — the refusal is side-effect-free, not just an error envelope (plan A6 artifact-side deepening)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib, sys; proj = pathlib.Path("/tmp/automedia/w2t3-archive-project/validation-synthetic"); info = json.loads((proj / "00_project_info.json").read_text(encoding="utf-8")); archived = [p.name for p in proj.parent.rglob("*") if "archive" in p.name.lower()]; sys.exit("refusal mutated the project: status=%s archived=%s" % (info.get("status"), archived)) if (info.get("status") != "draft" or archived) else print("refusal-side-effect-free: status=draft, no archive artifacts")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "refusal-side-effect-free"
 cleanup_steps:
   - name: remove the synthetic project tree
     kind: cli

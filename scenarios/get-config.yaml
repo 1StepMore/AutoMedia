@@ -8,9 +8,12 @@ hard: true
 steps:
   - name: get_config returns the merged config
     kind: tool
-    check: "get_config returns success: true carrying the redacted merged config dict."
+    check: "get_config returns success: true carrying the redacted merged config dict — the response shape itself (success + config keys), not just the envelope (plan A6 deepening; secret redaction is redteam-credential-exfiltration's scope)."
     standard: tool.contract
     tool: get_config
     arguments: {}
     expect:
       success: true
+      output_has:
+        - success
+        - config
