@@ -44,7 +44,7 @@ steps:
       success: true
   - name: distribute_content dry_run over all platforms
     kind: tool
-    check: "distribute_content(all=true, dry_run=true) returns success: true carrying dry_run: true and a per-platform would_succeed/would_fail status for all 20 platforms — the dry-run path calls adapter.validate() only, never publish(), so zero posts (verified distribution.py:152-177)."
+    check: "distribute_content(all=true, dry_run=true) returns success: true AND the dry-run contract shape itself: top-level dry_run, platforms (the per-platform would_succeed/would_fail status map), and summary keys (verified response: {success, platforms: {<20>: would_fail}, summary: \"0/20 platforms would succeed\", dry_run: true}). The would_fail vocabulary per platform rides in the step trace; the dry-run path calls adapter.validate() only, never publish(), so zero posts (verified distribution.py:152-177)."
     standard: tool.contract
     tool: distribute_content
     arguments:
@@ -54,6 +54,10 @@ steps:
       base_dir: /tmp/automedia/w3t5-dryrun-projects
     expect:
       success: true
+      output_has:
+        - dry_run
+        - platforms
+        - summary
 cleanup_steps:
   - name: remove the synthetic project tree
     kind: cli

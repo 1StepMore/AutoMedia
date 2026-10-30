@@ -56,6 +56,15 @@
 #     by the static audit (issue #78 A2), NOT step assertions; the #99
 #     reachability guard binds them to the preset. This journey is load-tested
 #     by the A3/A4 wave and run-tested by Wave-3's real-run validation.
+#   - GATE-VERDICT DEEPENING (plan A6, 2026-10-30): step 5 asserts the
+#     per-gate report of the run itself — every preset gate appears in the
+#     newest 05_review/gate-report/gate-report-*.json with verdict pass|skip
+#     (H0 is "skip" under --skip-review by design; gate_report.py _VERDICT_MAP).
+#     This upgrades the journey from "the CLI exited 0" to "each gate in the
+#     preset executed and none failed", closing the gate_records_pass gap
+#     above: the report rows are list-shaped but use "verdict" (not the
+#     status vocabulary gate_records_pass checks), so a dedicated probe is
+#     the honest assertion, not a vacuous gate_records_pass: true.
 
 name: text-only-journey
 description: A real text_only pipeline run from the CLI produces a project with a non-trivial draft artifact, and the real-LLM quality-evaluation surface answers.
@@ -118,3 +127,14 @@ steps:
     timeout_seconds: 300
     expect:
       success: true
+  - name: gate report shows every preset gate executed and none failed
+    kind: cli
+    check: "The run's own per-gate report (newest 05_review/gate-report/gate-report-*.json, written by runner._write_run_gate_report for every run) contains a row for each preset gate (CW, G0-G3, G6, H0) and no verdict outside pass|skip — proving each gate in the text_only preset executed and none failed, beyond the CLI exit code (plan A6 deepening; see the header note for why gate_records_pass is not used)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json,glob,os,sys; reports=sorted(glob.glob(os.environ["AUTOMEDIA_PROJECTS_DIR"]+"/*/05_review/gate-report/gate-report-*.json"), key=os.path.getmtime); d=json.load(open(reports[-1])); rows={r.get("gate"): r.get("verdict") for r in d.get("gates", [])}; need=["CW","G0","G1","G2","G3","G6","H0"]; bad=[k for k,v in rows.items() if v not in ("pass","skip")]; missing=[k for k in need if k not in rows]; sys.exit("gate-report bad verdicts: %s missing: %s rows: %s" % (bad,missing,rows)) if (bad or missing) else print("gate-report-ok:", ",".join("%s=%s" % (k,rows[k]) for k in need))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "gate-report-ok:"
