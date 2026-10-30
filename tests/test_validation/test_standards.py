@@ -42,64 +42,6 @@ KNOWN_KEYS = {
     "builtin.unconfigured",
 }
 
-# Canonical pipeline surfaces (issue #78 A1): one standard key per gate (33)
-# and per pipeline mode (9).  Gate names EXACTLY as the gates registry names
-# them (pre-gate, CW, G0-G6, V0-V7, H0, L1-L4, D1-D7, P1-P4); mode names
-# exactly as ``_MODE_MAP`` keys runner.py.  The real handbook must define
-# exactly these and no more.
-ALL_GATE_KEYS: set[str] = {
-    f"gate.{name}"
-    for name in (
-        "pre-gate",
-        "CW",
-        "G0",
-        "G1",
-        "G2",
-        "G3",
-        "G4",
-        "G5",
-        "G6",
-        "V0",
-        "V1",
-        "V2",
-        "V3",
-        "V4",
-        "V5",
-        "V6",
-        "V7",
-        "H0",
-        "L1",
-        "L2",
-        "L3",
-        "L4",
-        "D1",
-        "D2",
-        "D3",
-        "D4",
-        "D5",
-        "D6",
-        "D7",
-        "P1",
-        "P2",
-        "P3",
-        "P4",
-    )
-}
-ALL_MODE_KEYS: set[str] = {
-    f"mode.{name}"
-    for name in (
-        "auto",
-        "text_only",
-        "text_with_cover",
-        "video_only",
-        "qa_only",
-        "image-carousel",
-        "social-thread",
-        "short-video",
-        "repurpose",
-    )
-}
-
 
 def test_fixture_handbooks_are_committed() -> None:
     """Guard: tests must run against the fixtures, never a real handbook."""
@@ -107,34 +49,41 @@ def test_fixture_handbooks_are_committed() -> None:
     assert KEYS_HEADING_FIXTURE.is_file()
 
 
-def test_real_handbook_defines_all_gate_and_mode_keys(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Issue #78 A1: the REAL ``scenarios/STANDARDS.md`` defines exactly the
-    canonical 33 ``gate.*`` + 9 ``mode.*`` keys — the loader cross-checks
-    every step's ``standard:`` against this handbook, so a scenario step
-    citing ``gate.G1`` fails to load until the key exists here.  The set is
-    pinned exactly (no extra, no missing) so the reconciliation cannot
-    silently drift."""
-    assert len(ALL_GATE_KEYS) == 33
-    assert len(ALL_MODE_KEYS) == 9
+def test_real_handbook_matches_cited_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The handbook vocabulary IS the citation set (plan A5, 2026-10-30).
+
+    Replaces issue #78 A1's reconciliation (which pinned all 33 ``gate.*`` +
+    9 ``mode.*`` keys as reserved vocabulary): 50 keys sat
+    defined-unreferenced for their whole life while the library cited 15
+    keys the handbook's own status column under-counted as 6 — decorative
+    vocabulary both ways.  Since the A5 pruning the table carries exactly
+    the keys cited by ``scenarios/**/*.yaml``, pinned in BOTH directions:
+    a scenario citing a key not in the handbook fails to load (loader),
+    and a handbook key no scenario cites (or a citation with no handbook
+    row) fails HERE.  Gate/mode coverage is declared per scenario through
+    ``proves_gates:`` / ``proves_modes:`` headers, not standard keys.
+    """
+    import re
+
     monkeypatch.delenv("AUTOMEDIA_VALIDATION_SCENARIOS_DIR", raising=False)
     registry = StandardsRegistry.from_default()
-    known = registry.known_keys()
-    gate_keys = {key for key in known if key.startswith("gate.")}
-    mode_keys = {key for key in known if key.startswith("mode.")}
-    assert gate_keys == ALL_GATE_KEYS, (
-        f"handbook gate.* keys differ from canonical 33: "
-        f"missing={sorted(ALL_GATE_KEYS - gate_keys)}, "
-        f"extra={sorted(gate_keys - ALL_GATE_KEYS)}"
+    known = set(registry.known_keys())
+
+    scenarios_dir = standards_module._resolve_scenarios_dir()
+    cited: set[str] = set()
+    for path in scenarios_dir.rglob("*.yaml"):
+        for match in re.finditer(
+            r"standard:\s*[\"']?([A-Za-z0-9._-]+)", path.read_text(encoding="utf-8")
+        ):
+            cited.add(match.group(1))
+
+    assert known == cited, (
+        "handbook vocabulary and scenario citations diverged: "
+        f"unreferenced-handbook-keys={sorted(known - cited)}, "
+        f"uncited-keys={sorted(cited - known)}.  A new citation needs a "
+        "handbook row in the same PR; a retired citation needs its row "
+        "removed (scenarios/STANDARDS.md, plan A5)."
     )
-    assert mode_keys == ALL_MODE_KEYS, (
-        f"handbook mode.* keys differ from canonical 9: "
-        f"missing={sorted(ALL_MODE_KEYS - mode_keys)}, "
-        f"extra={sorted(mode_keys - ALL_MODE_KEYS)}"
-    )
-    for key in ALL_GATE_KEYS | ALL_MODE_KEYS:
-        assert registry.validate_standard(key) is True
 
 
 def test_known_keys_parsed_from_fixture() -> None:
