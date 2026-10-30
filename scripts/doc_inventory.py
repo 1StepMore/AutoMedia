@@ -63,8 +63,14 @@ _ARCHIVED_ROOT = _DOCS_ROOT / "archived"
 _INSTRUCTION_FILES: tuple[str, ...] = ("AGENTS.md", "README.md")
 
 
-def _git_tracked_files() -> list[Path] | None:
-    """Repo-absolute paths of every git-tracked file in the inventory's scope.
+def _git_tracked_files() -> list[tuple[Path, str | None]] | None:
+    """``(repo-absolute path, blob sha | None)`` for every git-tracked file in scope.
+
+    The blob sha is what the inventory MEASURES (``git cat-file -s``): the
+    committed byte size, independent of the checkout's line-ending smudge.
+    A ``text=auto eol=lf`` checkout rewrites CRLF blobs to LF on disk, so a
+    working-tree ``stat().st_size`` yields different numbers on a maintainer
+    machine and on CI for the same commit — the gate was unreproducible.
 
     Returns ``None`` when git cannot be consulted (no ``.git``, git not
     installed), so :func:`_walked_files` can fall back to a filesystem walk.
@@ -74,15 +80,37 @@ def _git_tracked_files() -> list[Path] | None:
         return None
     try:
         proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
-            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "--", *_TRACKED_PATHSPECS],
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "-s", "--", *_TRACKED_PATHSPECS],
             capture_output=True,
         )
     except OSError:
         return None
     if proc.returncode != 0:
         return None
-    names = proc.stdout.decode("utf-8", errors="surrogateescape").split("\0")
-    return [REPO_ROOT / name for name in names if name]
+    entries: list[tuple[Path, str | None]] = []
+    for record in proc.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+        if not record:
+            continue
+        meta, _, name = record.partition("\t")
+        sha = meta.split()[1] if len(meta.split()) >= 2 else None
+        entries.append((REPO_ROOT / name, sha))
+    return entries
+
+
+def _blob_size(path: Path, sha: str | None) -> int:
+    """Committed byte size for *path* (``git cat-file -s``); falls back to stat."""
+    git = shutil.which("git")
+    if sha is not None and git is not None:
+        try:
+            proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+                [git, "-C", str(REPO_ROOT), "cat-file", "-s", sha],
+                capture_output=True,
+            )
+            if proc.returncode == 0:
+                return int(proc.stdout.decode().strip())
+        except (OSError, ValueError):
+            pass
+    return path.stat().st_size
 
 
 def _filesystem_files() -> list[Path]:
@@ -100,7 +128,7 @@ def _is_inventoried(path: Path) -> bool:
     return path != _DOCS_ROOT
 
 
-def _with_ancestor_dirs(files: list[Path]) -> list[Path]:
+def _with_ancestor_dirs(files: list[tuple[Path, str | None]]) -> list[tuple[Path, str | None]]:
     """The files plus every directory strictly under ``docs/`` containing one.
 
     Directory rows show the tree shape.  They are derived from the file set
@@ -108,18 +136,18 @@ def _with_ancestor_dirs(files: list[Path]) -> list[Path]:
     for one would not exist in a clean clone.
     """
     dirs: set[Path] = set()
-    for path in files:
+    for path, _sha in files:
         if _DOCS_ROOT not in path.parents:
             continue
         for parent in path.parents:
             if parent == _DOCS_ROOT:
                 break
             dirs.add(parent)
-    return [*files, *dirs]
+    return [*files, *((directory, None) for directory in dirs)]
 
 
-def _walked_files() -> list[Path]:
-    """Every inventoried path, sorted deterministically by POSIX path string.
+def _walked_files() -> list[tuple[Path, str | None]]:
+    """Every inventoried ``(path, blob sha | None)``, sorted by POSIX path string.
 
     ``docs/archived/`` is excluded per plan, and the output file itself
     (``docs/doc-inventory.md``) is excluded — its size would otherwise depend
@@ -133,11 +161,11 @@ def _walked_files() -> list[Path]:
             "inventory may include untracked files (see _git_tracked_files).",
             file=sys.stderr,
         )
-        candidates = _filesystem_files()
+        candidates = [(path, None) for path in _filesystem_files()]
     else:
-        candidates = [path for path in tracked if path.is_file()]
-    files = [path for path in candidates if _is_inventoried(path)]
-    return sorted(_with_ancestor_dirs(files), key=lambda p: p.as_posix())
+        candidates = [(path, sha) for path, sha in tracked if path.is_file()]
+    files = [(path, sha) for path, sha in candidates if _is_inventoried(path)]
+    return sorted(_with_ancestor_dirs(files), key=lambda entry: entry[0].as_posix())
 
 
 def _rel_label(path: Path) -> str:
@@ -154,12 +182,12 @@ def generate() -> str:
     lines = [MARKER, "", "## Doc Inventory", ""]
     lines.append("| Path | Size (bytes) | Type |")
     lines.append("|------|-------------:|------|")
-    for path in _walked_files():
+    for path, sha in _walked_files():
         label = _rel_label(path)
         if path.is_dir():
             lines.append(f"| {label} | — | dir |")
         else:
-            lines.append(f"| {label} | {path.stat().st_size} | file |")
+            lines.append(f"| {label} | {_blob_size(path, sha)} | file |")
     lines.append("")
     return "\n".join(lines)
 
