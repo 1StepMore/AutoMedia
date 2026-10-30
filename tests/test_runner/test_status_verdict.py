@@ -141,3 +141,86 @@ class TestPipelineStatusFollowsVerdict:
 
         assert result.status == "success"
         assert [e.gate_name for e in result.gates_log if e.status == "failed"] == []
+
+
+class TestOwedVideoDowngradeHint:
+    """欠视频的运行产出为零时降级 partial，且提示区分两种空转形态（issue #342）。
+
+    中文说明：``video_only`` 不带源材料跑媒体阶段时零产物——修复前唯一信号
+    是 ``log.info`` 加 V 门整排 ``skipped``，报告里与"正常跳过"无法区分。降级
+    到 ``partial`` 的行为本身早已存在（#152）；这里锁定的是它的两条提示路径：
+    "媒体阶段什么都没产出"与"产出了音频但没视频"必须可辨。
+    """
+
+    @pytest.fixture()
+    def project(self, tmp_path: Path) -> MagicMock:
+        proj = MagicMock()
+        proj.project_id = "proj-owed-video"
+        proj.project_dir = str(tmp_path)
+        return proj
+
+    def _finalize(self, project: MagicMock, gate_context: dict[str, Any]) -> Any:
+        with (
+            patch(
+                "automedia.core.llm_client.get_usage_summary",
+                return_value={"total_tokens": 0},
+            ),
+            patch("automedia.pipelines.runner.log") as mock_log,
+        ):
+            result = _finalize_pipeline(
+                success=True,
+                results=[],
+                mode="video_only",
+                gate_context=gate_context,
+                project=project,
+                config={},
+                brand="b",
+                topic="t",
+                start=0.0,
+                workflow=None,
+                owes_video=True,
+            )
+        events = [
+            call
+            for call in mock_log.warning.call_args_list
+            if call.args and call.args[0] == "pipeline.video_not_produced"
+        ]
+        return result, events
+
+    @staticmethod
+    def _latest_report_json(project_dir: str) -> dict[str, Any]:
+        import json
+        import os
+
+        report_dir = os.path.join(project_dir, "05_review", "gate-report")
+        files = sorted(f for f in os.listdir(report_dir) if f.endswith(".json"))
+        with open(os.path.join(report_dir, files[-1]), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_zero_artifacts_downgrade_names_the_media_stage(self, project: MagicMock) -> None:
+        """媒体阶段零产物（无正文等）⇒ partial，提示指向媒体阶段本身，
+        gate-report 带上 ``no_content`` 注记（issue #342 主体）。"""
+        result, events = self._finalize(project, {"mode": "video_only"})
+
+        assert result.status == "partial"
+        assert events, "video_not_produced event was not logged"
+        assert "no artifacts at all" in events[0].kwargs["hint"]
+
+        report = self._latest_report_json(project.project_dir)
+        assert report["media_stage"]["notes"][0]["event"] == "no_content"
+
+    def test_audio_without_video_downgrade_names_the_video_engine(self, project: MagicMock) -> None:
+        """产出了音频但没视频 ⇒ partial，提示保持指向视频引擎配置。"""
+        ctx: dict[str, Any] = {
+            "mode": "video_only",
+            "audio_path": "/proj/03_audio/narration.mp3",
+            "required_files": ["/proj/03_audio/narration.mp3"],
+        }
+        result, events = self._finalize(project, ctx)
+
+        assert result.status == "partial"
+        assert events
+        assert "no video artifact was produced" in events[0].kwargs["hint"]
+
+        report = self._latest_report_json(project.project_dir)
+        assert report["media_stage"]["produced_files"] == ["/proj/03_audio/narration.mp3"]

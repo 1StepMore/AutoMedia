@@ -79,7 +79,7 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import click
 
@@ -295,11 +295,37 @@ def _cli_subcommands() -> dict[str, set[str]]:
 
 
 def _skill_names(directory: str) -> set[str]:
-    """Derived truth for ``scan_skill_list``: ``*.md`` stems under *directory*, minus README."""
+    """Derived truth for ``scan_skill_list``: TRACKED ``*.md`` stems, minus README.
+
+    中文说明：必须以 **git 追踪**的文件为准（与树尺寸统计同一原则）——
+    维护者本机可能存在刻意 gitignore 的 local-only 技能文件（如
+    ``issue-triage`` / ``pr-review-merge``），磁盘 glob 会把它们算进真值，
+    令 CI（干净检出）与本机对同一份 AGENTS.md 得出相反的结论，门因此
+    不可复现。无 git 或目录未追踪时回退到磁盘 glob，保持旧行为。
+    """
     path = REPO_ROOT / directory
     if not path.is_dir():
         return set()
-    return {p.stem for p in path.glob("*.md") if p.stem.lower() != "readme"}
+    import subprocess
+
+    try:
+        result = subprocess.run(  # noqa: S603 — read-only git query inside the gate
+            ["git", "ls-files", "--", directory],  # noqa: S607 — same trusted query
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {p.stem for p in path.glob("*.md") if p.stem.lower() != "readme"}
+    tracked = result.stdout.splitlines()
+    return {
+        PurePosixPath(line).stem
+        for line in tracked
+        if line.startswith(f"{directory}/")
+        and line.endswith(".md")
+        and PurePosixPath(line).stem.lower() != "readme"
+    }
 
 
 # --------------------------------------------------------------------------- #

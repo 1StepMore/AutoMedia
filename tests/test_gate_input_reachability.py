@@ -89,7 +89,10 @@ def test_declared_inputs_are_read_from_the_real_gates() -> None:
 
     assert requirements["V0"].required_keys == ("lint_result",)
     assert requirements["V1"].required_keys == ("entries",)
-    assert requirements["V2"].required_keys == ("transcription", "audio_path")
+    # ``transcription`` is V2's sole skip criterion (issue #343): the media
+    # stage registers audio_path even when transcription fails, so keying the
+    # skip on it would run V2 on partial input instead of skipping honestly.
+    assert requirements["V2"].required_keys == ("transcription",)
 
 
 def test_produced_keys_are_read_from_the_real_pipeline() -> None:

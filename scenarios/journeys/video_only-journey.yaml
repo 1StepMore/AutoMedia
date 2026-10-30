@@ -90,10 +90,15 @@ proves_modes:
 steps:
   - name: video_only pipeline completes
     kind: cli
-    check: "A real video_only pipeline run for a fixed topic and brand completes and prints the completion marker (T3 of the True Test: topic to output in one sitting, no docs)."
+    check: "A real video_only pipeline run for a fixed topic and brand, fed the synthetic source fixture, completes and prints the completion marker (T3 of the True Test: topic to output in one sitting, no docs)."
     standard: founder-expectations.true-test
     # Issue #100: unattended run — H0 would block its 86400s timeout with no CLI approval path, so skip review.
-    command: automedia run --topic "Turning blog posts into video essays" --brand my-brand --mode video_only --skip-review
+    # Issue #342: video_only owes a video — without source material there is nothing to
+    # narrate and the whole media track is honestly empty, so the run must be fed the
+    # synthetic fixture. --allow-partial keeps the step green on hosts without working
+    # media tooling: such a run reports partial WITH an explicit media_stage note in the
+    # gate report instead of a bare row of skipped V gates.
+    command: automedia run --topic "Turning blog posts into video essays" --brand my-brand --mode video_only --skip-review --source-path scenarios/fixtures/sample-draft.md --allow-partial
     timeout_seconds: 1500
     expect:
       exit_code: 0

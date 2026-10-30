@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 import warnings
@@ -1474,7 +1475,7 @@ def _finalize_pipeline(
     assets = _collect_assets(gate_context)
     _record_gate_md5s(project.project_dir, results)
     gates_log = _build_gates_log(results)
-    _write_run_gate_report(project.project_dir, gates_log, results)
+    _write_run_gate_report(project.project_dir, gates_log, results, gate_context)
 
     end = time.monotonic()
     # The parked state is checked FIRST and short-circuits the success/partial
@@ -1499,13 +1500,29 @@ def _finalize_pipeline(
     video_produced = bool(gate_context.get("video_path"))
     if status == "success" and owes_video and not video_produced:
         status = "partial"
+        # Two distinct shapes hide behind "no video": the media stage produced
+        # *something* (audio/subtitles) but not a video, versus it produced
+        # *nothing at all* (no narratable content, media tooling unavailable,
+        # or a media-stage failure — the notes in the gate report's
+        # ``media_stage`` block say which).  The hint names the shape so an
+        # operator can tell an engine-config problem from a content problem
+        # without re-reading logs (issue #342).
+        if not gate_context.get("required_files"):
+            hint = (
+                "the media stage produced no artifacts at all (no narratable "
+                "content, media tooling unavailable, or a media-stage failure — "
+                "see media_stage notes in the gate report); configure media "
+                "tooling / provide source material, or use a text-only mode"
+            )
+        else:
+            hint = (
+                "no video artifact was produced, so this mode's V gates were skipped; "
+                "configure a video engine or use a text-only mode"
+            )
         log.warning(
             "pipeline.video_not_produced",
             mode=mode,
-            hint=(
-                "no video artifact was produced, so this mode's V gates were skipped; "
-                "configure a video engine or use a text-only mode"
-            ),
+            hint=hint,
         )
 
     log.info(
@@ -1815,10 +1832,30 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     return entries
 
 
+def _media_stage_report_block(
+    gate_context: GateContext | dict[str, Any],
+) -> dict[str, Any] | None:
+    """Build the gate-report ``media_stage`` block from the run's context.
+
+    中文说明：``None`` 表示"本运行没有可报告的媒体阶段事实"（媒体阶段没跑、
+    也没产出、也没注记——例如纯文本模式）；只要阶段产出过产物或登记过注记，
+    就如实带出。注记是"视频轨为什么空"的唯一可读来源（issue #342）。
+    """
+    raw_notes = gate_context.get("_media_stage_notes")
+    notes: list[dict[str, Any]] = (
+        [dict(n) for n in raw_notes if isinstance(n, dict)] if isinstance(raw_notes, list) else []
+    )
+    produced = [p for p in (gate_context.get("required_files") or []) if isinstance(p, str)]
+    if not notes and not produced:
+        return None
+    return {"notes": notes, "produced_files": produced}
+
+
 def _write_run_gate_report(
     project_dir: str,
     gates_log: list[GateLogEntry],
     gate_results: list[dict[str, Any]],
+    gate_context: GateContext | dict[str, Any] | None = None,
 ) -> None:
     """Write the per-run gate report under ``05_review/gate-report/``.
 
@@ -1828,8 +1865,9 @@ def _write_run_gate_report(
     """
     from automedia.pipelines.gate_report import render_gate_report, write_gate_report
 
+    media_stage = _media_stage_report_block(gate_context) if gate_context is not None else None
     try:
-        rendered = render_gate_report(project_dir, gates_log, gate_results)
+        rendered = render_gate_report(project_dir, gates_log, gate_results, media_stage=media_stage)
         write_gate_report(project_dir, cast(dict[str, Any], cast(object, rendered)))
     except Exception as exc:  # report is derived output, never critical
         log.warning(
@@ -1886,9 +1924,13 @@ def _collect_video_assets(
 #: has no content-producing gate.  A media stage must never narrate it.
 _CONTENT_PLACEHOLDER_PREFIX = "[content skipped in"
 
-#: External commands the audio track needs.  Probed with ``shutil.which``
-#: before use so a missing tool degrades to "nothing produced" (the V gates
-#: then report ``skipped``) instead of raising from inside a subprocess call.
+#: External commands the audio track needs.  Availability is probed with a
+#: **real smoke call** (``<cli> --help``) before use so a broken tool degrades
+#: to "nothing produced" (the V gates then report ``skipped``) instead of
+#: raising from inside a subprocess call.  A bare ``shutil.which`` is not
+#: enough: a command that exists but crashes on import (issue #343's
+#: PYTHONPATH-poisoned ``whisper``) would pass an existence check and blow up
+#: the real transcription later.
 _MEDIA_TTS_COMMAND = "edge-tts"
 _MEDIA_ASR_COMMAND = "whisper"
 
@@ -1900,19 +1942,73 @@ _MEDIA_MODALITY_COMMANDS: tuple[tuple[str, str], ...] = (
     ("asr", _MEDIA_ASR_COMMAND),
 )
 
+#: Wall-clock ceiling for one CLI smoke probe.  ``--help`` on a cold
+#: interpreter imports the tool's whole dependency tree (``whisper`` pulls
+#: torch), so the ceiling is generous — but a probe that cannot finish within
+#: it cannot be trusted to finish a 600 s transcription either.
+_CLI_SMOKE_PROBE_TIMEOUT_S = 60.0
+
+
+def _cli_smoke_probe(cli_command: str) -> bool:
+    """CLI 冒烟探测：命令存在**且** ``<cli> --help`` 能跑通才算可用。
+
+    中文说明：``shutil.which`` 只回答"文件在不在 PATH 上"，回答不了"能不能
+    跑"——issue #343 的实机样本是 ``whisper`` CLI 存在，却从被污染的
+    ``PYTHONPATH`` 里捡到了不兼容的 numpy，一执行就 ``ImportError``。探测与
+    执行必须同环境：这里故意**继承**当前进程的环境变量（不清洗
+    ``PYTHONPATH``），因为真正的转写调用也会带着同一份环境跑——探测说能跑，
+    实跑就真能跑；探测崩了，实跑也会崩。
+
+    Args:
+        cli_command: 待探测的 CLI 命令名（如 ``"whisper"``）。
+
+    Returns:
+        ``True`` 仅当命令存在且 ``--help`` 以 0 退出；探测超时/不可执行
+        也算不可用。绝不上抛异常。
+    """
+    if shutil.which(cli_command) is None:
+        return False
+    try:
+        completed = subprocess.run(  # noqa: S603 — probes the trusted tool named in _MEDIA_MODALITY_COMMANDS
+            [cli_command, "--help"],
+            capture_output=True,
+            text=True,
+            timeout=_CLI_SMOKE_PROBE_TIMEOUT_S,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        log.warning(
+            "pipeline.media_stage.cli_smoke_probe_failed",
+            cli=cli_command,
+            error=str(exc),
+            hint="command exists but could not be executed — treating as unavailable",
+        )
+        return False
+    if completed.returncode != 0:
+        log.warning(
+            "pipeline.media_stage.cli_smoke_probe_failed",
+            cli=cli_command,
+            returncode=completed.returncode,
+            stderr=(completed.stderr or "")[-500:],
+            hint="command exists but --help exits non-zero — treating as unavailable",
+        )
+        return False
+    return True
+
 
 def _media_modality_available(
     modality: str,
     config: dict[str, Any] | None,
     cli_command: str,
 ) -> bool:
-    """媒体能力可用性：优先问引擎，引擎不可用时回退到 CLI 探测。
+    """媒体能力可用性：优先问引擎，引擎不可用时回退到 CLI 冒烟探测。
 
-    中文说明：只看 ``shutil.which`` 会把"引擎已安装、只是没有同名 CLI"错判成
-    不可用（例如 ``whisper`` CLI 缺失但 ``faster-whisper`` 引擎已装）。因此先让
+    中文说明：只做存在性检查会同时漏掉两个方向的错判——把"引擎已安装、只是
+    没有同名 CLI"错判成不可用（例如 ``whisper`` CLI 缺失但 ``faster-whisper``
+    引擎已装），也会把"CLI 存在但一跑就崩"错判成可用（issue #343）。因此先让
     ``resolve_engine`` 解析并实例化配置的引擎——它内部已执行
     ``check_available``；任何异常（引擎未注册、依赖缺失、配置错误）都不外抛，
-    回退到旧的 CLI 探测，保证旧路径仍然可用。
+    回退到 :func:`_cli_smoke_probe` 的真实冒烟探测，保证旧路径仍然可用。
 
     Args:
         modality: 引擎模态（``"tts"`` / ``"asr"``）。
@@ -1920,7 +2016,7 @@ def _media_modality_available(
         cli_command: 该模态对应的旧版 CLI 命令名（回退探测用）。
 
     Returns:
-        True 表示引擎或 CLI 至少一条路径可用；绝不上抛异常。
+        True 表示引擎或 CLI 至少一条路径**真能跑**；绝不上抛异常。
     """
     try:
         from automedia.engines import resolve_engine
@@ -1935,7 +2031,7 @@ def _media_modality_available(
             modality=modality,
             error=str(exc),
         )
-    return shutil.which(cli_command) is not None
+    return _cli_smoke_probe(cli_command)
 
 
 def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
@@ -1956,6 +2052,31 @@ def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
     if content and not content.startswith(_CONTENT_PLACEHOLDER_PREFIX):
         return content
     return str(gate_context.get("source_content", "") or "").strip()
+
+
+def _note_media_stage(
+    gate_context: GateContext | dict[str, Any],
+    event: str,
+    **detail: Any,  # noqa: ANN401 — forensic detail fields vary per event
+) -> None:
+    """登记一条媒体阶段结果注记，供 gate-report 的 ``media_stage`` 段呈现。
+
+    中文说明：媒体阶段"零产物"的每条原因（无正文 / 工具缺失 / TTS 失败 /
+    转写失败）都写进 ``_media_stage_notes``，``_write_run_gate_report`` 会把它
+    带进 gate-report。此前唯一信号是 ``log.info`` 加上 V 门整排 ``skipped``，
+    而 ``video_only`` 的 V 门本就缺乏诚实生产者——两条信号叠加后，"视频轨
+    空转"在报告里与"正常跳过"无法区分（issue #342）。
+
+    Args:
+        gate_context: 门之间共享的上下文（注记写入 ``_media_stage_notes``）。
+        event: 事件名（如 ``"no_content"``），与日志事件词汇保持一致。
+        **detail: 附带的取证字段（如 ``error`` / ``missing``）。
+    """
+    notes = gate_context.get("_media_stage_notes")
+    if not isinstance(notes, list):
+        notes = []
+        gate_context["_media_stage_notes"] = notes
+    notes.append({"event": event, **detail})
 
 
 def _produce_carousel_images(gate_context: GateContext | dict[str, Any]) -> None:
@@ -2024,10 +2145,16 @@ def _expected_md5_records(paths: list[str]) -> dict[str, dict[str, str]]:
 def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     """音频轨 → 图片 → 视频 → 产物清单，供 V 门真实校验。
 
-    中文说明：写入是**分段原子**的——每一段的输入必须完整产出才写该段对应的
-    上下文键，否则整段不写。理由：``missing_input_result`` 的语义是"全部必需键
-    都没产出才跳过"，只写一半会让门拿着残缺输入去失败（例如写了 ``audio_path``
-    却没有 ``transcription``），而"引擎/命令没装"不是质量缺陷，不该停机。
+    中文说明：写入是**分段原子**的，段的划分以"上下文键的消费者"为准——
+    音频段（``audio_path``，消费者 V7 清单与视频段）在 TTS 落盘的瞬间登记；
+    转写段（``transcription`` / ``whisper_text`` / ``subtitles_path`` /
+    ``srt_text``，消费者 V2/V5）只在转写与 SRT 都完整时整体写入。转写失败
+    **只降级 V2/V5**（如实报 ``skipped``），不回扔已产出的音频、不阻断视频段
+    ——``_collect_video_assets`` 的最小输入是"图片 + 音频"，字幕是可选的
+    （issue #343）。理由：``missing_input_result`` 的语义是"全部必需键都没
+    产出才跳过"，只写一半会让门拿着残缺输入去失败；转写段完整才写，正是
+    为了让 V2/V5 跳过而不是失败（V2 的跳过判据是 ``transcription`` 本身，
+    见 ``gates/pre_send_whisper.py``）。
 
     刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``entries``（V1，
     无抽帧与视觉 QA 裁决）、``lint_result``（V0，无 lint 执行器）、``segments``
@@ -2041,6 +2168,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     text = _media_narration_text(gate_context)
     project_dir = str(gate_context.get("project_dir", "") or "")
     if not text or not project_dir:
+        _note_media_stage(gate_context, "no_content", mode=str(gate_context.get("mode", "")))
         log.info(
             "pipeline.media_stage.no_content",
             mode=str(gate_context.get("mode", "")),
@@ -2054,6 +2182,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         if not _media_modality_available(modality, gate_context.get("config"), cli_command)
     ]
     if len(missing) == len(_MEDIA_MODALITY_COMMANDS):
+        _note_media_stage(gate_context, "tools_missing", missing=missing)
         log.info(
             "pipeline.media_stage.tools_missing",
             missing=missing,
@@ -2065,34 +2194,69 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
 
     audio = AudioPipeline(config=gate_context.get("config"))
     audio_dir = os.path.join(project_dir, AUDIO)
-    audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
-    transcription = audio.transcribe_audio(audio_path)
+    try:
+        audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
+    except Exception as exc:
+        _note_media_stage(gate_context, "tts_failed", error=str(exc))
+        log.warning(
+            "pipeline.media_stage.tts_failed",
+            error=str(exc),
+            hint=(
+                "TTS failed — no audio to register and no video to build; "
+                "V gates will report skipped"
+            ),
+        )
+        return
+
+    # 音频段：TTS 落盘即登记——下游转写失败不再连坐音频（issue #343）。
+    gate_context["audio_path"] = audio_path
+
+    # 转写段：失败只降级 V2/V5（如实跳过），不外抛、不丢音频、不阻断视频。
+    transcription: dict[str, Any] = {}
+    srt_path = ""
+    try:
+        transcription = audio.transcribe_audio(audio_path)
+        srt_path = audio.generate_srt(transcription, os.path.join(audio_dir, "narration.srt"))
+    except Exception as exc:
+        _note_media_stage(gate_context, "transcription_failed", error=str(exc))
+        log.warning(
+            "pipeline.media_stage.transcription_failed",
+            error=str(exc),
+            hint="audio kept — V2/V5 will report skipped; video continues without subtitles",
+        )
+
     transcript_text = str(transcription.get("text", "") or "").strip()
-    srt_path = audio.generate_srt(transcription, os.path.join(audio_dir, "narration.srt"))
     srt_text = ""
-    if os.path.isfile(srt_path):
+    if srt_path and os.path.isfile(srt_path):
         with open(srt_path, encoding="utf-8") as fh:
             srt_text = fh.read().strip()
-    if not transcript_text or not srt_text:
+
+    complete_audio = bool(transcript_text) and bool(srt_text)
+    if complete_audio:
+        # 转写段（原子）：V2（transcription + audio_path）与 V5（whisper_text
+        # + srt_text）的全部输入一次性写齐。
+        gate_context["transcription"] = transcript_text
+        gate_context["whisper_text"] = transcript_text
+        gate_context["subtitles_path"] = srt_path
+        gate_context["srt_text"] = srt_text
+        log.info(
+            "pipeline.media_stage.audio_track_produced",
+            audio_path=audio_path,
+            srt_path=srt_path,
+        )
+    else:
+        _note_media_stage(
+            gate_context,
+            "incomplete_audio_track",
+            transcription_len=len(transcript_text),
+            srt_len=len(srt_text),
+        )
         log.warning(
             "pipeline.media_stage.incomplete_audio_track",
             transcription_len=len(transcript_text),
             srt_len=len(srt_text),
-            hint="Audio produced but transcription/SRT is empty — not writing V gate inputs",
+            hint="audio registered — V2/V5 will report skipped; video continues without subtitles",
         )
-        return
-
-    # 音频段：V2（transcription + audio_path）与 V5（whisper_text + srt_text）。
-    gate_context["audio_path"] = audio_path
-    gate_context["transcription"] = transcript_text
-    gate_context["whisper_text"] = transcript_text
-    gate_context["subtitles_path"] = srt_path
-    gate_context["srt_text"] = srt_text
-    log.info(
-        "pipeline.media_stage.audio_track_produced",
-        audio_path=audio_path,
-        srt_path=srt_path,
-    )
 
     # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
     from automedia.pipelines.image_pipeline import ImagePipeline
@@ -2103,7 +2267,9 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     if frame:
         gate_context["fallback_frame"] = frame
 
-    produced: list[str] = [audio_path, srt_path]
+    produced: list[str] = [audio_path]
+    if complete_audio:
+        produced.append(srt_path)
 
     # 视频段：需要图片 + 音频（``_collect_video_assets`` 的判据），且引擎可用。
     assets = _collect_video_assets(gate_context)
@@ -2160,6 +2326,7 @@ def _produce_media_assets(gate_context: GateContext | dict[str, Any]) -> None:
         if mode == "auto" or mode in _VIDEO_PRODUCING_MODES:
             _produce_video_track(gate_context)
     except Exception as exc:
+        _note_media_stage(gate_context, "media_stage_failed", error=str(exc))
         log.warning("pipeline.media_stage_failed", error=str(exc))
     finally:
         gate_context["_media_stage_done"] = True
