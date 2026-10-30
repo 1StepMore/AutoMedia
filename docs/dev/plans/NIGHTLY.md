@@ -26,7 +26,7 @@
 
 **两条附加硬要求**（都是踩出来的，不是猜的）：
 
-1. **产物必须落在持久目录**（repo 内的项目目录），**不许落在 `/tmp`**。理由：唯一一次真跑（journey）产物就落在 `/tmp/automedia/journey-projects/`，重启即失——那不是产出，是临时文件。
+1. **产物落在 Agent 指定的持久目录**（位置不限：repo 内、repo 外、`/tmp` 均可）。判据只认「产物确实落盘且能被扫描器发现」，**不限定位置**；扫描器通过 `AUTOMEDIA_PROJECTS_DIR` 环境变量发现产物目录。理由：owner 2026-10-30 裁定——强制产物落在 repo 内对实际使用极不方便，Agent（as user / as tester）应当能自由选择产物位置；AutoInfo 与本地化套件的判据本就无此限制。
 2. **HITL 不许阻塞**：非交互运行必须返回 `awaiting_hitl` + 专用退出码，**不许无限等待人工**。理由：不眠计划跑在没人看着的夜里，阻塞 = 当晚白跑。
 
 **⚠️ 抗作弊**：`cost_log.jsonl` 非空是「真模型」的唯一机械凭据——**没有它就不算真跑**，无论正文写得多好。理由：假产出是本计划要修的痼疾（AutoInfo 曾在零语料域照样落盘 101–113 字节空壳并计入"已产出"）。
@@ -155,7 +155,7 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 1. **打穿图文轨**：`image-carousel` 走一次真跑，让 `02_images/` 出现真图片。它是三轨里离文本轨最近的一条（复用已有正文链路，只多一步出图）。
 2. **打穿视频轨**：`video_only`/`short-video` 走一次真跑，让 `03_video/` 出真视频，**并让 V 门（V0–V7）真执行给出结论**（当前 V0/V1/V3/V4/V6 显式 `skipped`）。
 → **2026-10-15 状态：环境侧已打通（`whisper`/`edge-tts` 修好，实测真出片 7,807,842B），结构性卡点只剩 G3 品牌身份门（#202，等 owner 裁定）；V 门排在 G3 之后 ⇒ G3 不裁定则本条不可达。**
-3. **持久落盘体检**：确认跑出来的项目落在 repo 内的项目目录，**不是 `/tmp`**。
+3. **持久落盘体检**：✅ **2026-10-30 关闭** —— 产物位置改由 Agent 自由决定（owner 裁定，见下方「修订请求」），扫描器认 `AUTOMEDIA_PROJECTS_DIR`；不再要求落在 repo 内。
 4. **HITL 不阻塞**：验证非交互运行返回 `awaiting_hitl` + 专用退出码。
 5. **（当前唯一未达标轨）打穿视频轨（复跑口径）**：视频轨需要**一次带真模型 cost_log 的 `video_only`（或 `short-video`）端到端跑**，达标需同时满足：`cost_log.jsonl` 非空 + `01_content/drafts/` 有 ≥500B 的 md + `03_video/` 有 ≥10KB 视频 + 该项目 gate-report `failed=0/errored=0` + V2/V5/V7 真跑且 pass（V0/V1/V3/V4/V6 允许 skip 但属已登记能力债 #193）。现有唯一候选 `20261003_turning-blog-posts-into-video-essays` 因缺 `cost_log`/draft 不达标。
   → **2026-10-19 状态：✅ 已闭合**（证据 `20261018_每周一次内容复盘小团队反救火手册`；门序 `pre-gate/CW/G0/G1/G2/G3/G6/V2/V5/V7` 全 pass、`status=success`、真实 `output.mp4` 7,867,543B；main 上固化依赖 PR #238 合并）。
@@ -193,3 +193,4 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 | 日期 | 目标条款 | 理由 + 证据 | 裁定 |
 |:---|:---|:---|:---|
 | 2026-10-06 | 视频轨 DoD 判据（本文 §【冻结区】完成定义表「视频轨」行）+ 其实现 `scripts/nightly_gap.py`（旧判据见提交 `47f5a9f` 的 `:72`；现行带 gate 证据的实现在提交 `e310ebb` / `9df04b6`） | 判据只看文件大小——`"video_ok": vid_max >= MIN_VIDEO_BYTES`，不读任何 gate 判定——因此一个 **V 门全部 skipped** 的项目，只要 `03_video/` 里有 ≥10KB 文件就会被判达标。这与 L1 §2.2「不得 skipped」冲突：skipped 的门不构成证据。证据：issue #181 记录的项目 `20261003_turning-blog-posts-into-video-essays`，其 gate-report 中 V0/V1/V3/V4/V6 为 skip（8 门 pass 3 / fail 0 / skip 5），而差距矩阵仍判绿。**诚实标注两点**：(1) 该证据项目目录现已不存在，我无法复现；当前 70 个项目里 0 个含 ≥10KB 视频，视频轨今天正确判 ❌（2/3 未达标），故**这不是正在发生的误判**。(2) L1 总纲在仓库外（`Hermes-Workspace/00-Records/dev-assets/NIGHTLY-PLAN-L1.md`），我未能读取 §2.2 原文，上述冲突依据来自 issue #181 的引述。**真正的缺陷是判据本身无法区分「V 门跑过」与「V 门被跳过」**，与当前是否误判无关。建议判据增取 gate 证据（如 gate-report 中至少一个 V 门为 pass）；但这会改动 DoD，属冻结区，按规矩等 owner / code profile 裁定，期间按原样执行。**（2026-10-07 更正两处：(1) 该证据项目目录**存在**且已复核——`03_video/output.mp4` = 5,117,183 B、gate-report 为 V2/V5/V7 `pass` / V0/V1/V3/V4/V6 `skip`，「目录现已不存在」一句有误；(2) L1 §2.2 原文已在仓库外文件读取并同步修订。）** | **已裁定（owner 2026-10-07）：采纳「带能力债的达标」**——冻结区判据已改为「文件 + gate 证据（V2/V5/V7 必须 pass；V0/V1/V3/V4/V6 计为登记能力债，登记见 #193）」；实现见本仓 `scripts/nightly_gap.py`（分支 `fix/181-video-gate-evidence`） |
+| 2026-10-30 | 附加硬要求 1「产物必须落在持久目录（repo 内的项目目录），不许落在 `/tmp`」 | 强制产物落在 repo 内对实际使用极不方便：Agent（as user / as tester）应当能自由选择产物位置。**AutoInfo 与本地化套件（e2e-test-suite）的判据本就无此限制**，AutoMedia 这条是孤例。证据：journey 场景忘设 `AUTOMEDIA_PROJECTS_DIR` 时项目会落 repo 根，10-28 已积 73 个；而一条完全合规的真视频证据（`03_video/output.mp4` 16.7MB、`V2/V5/V7` 全 pass、`failed=0`）实际落在 `/tmp/automedia/prod-video/`，仅因位置被判据否决。 | **已裁定（owner 2026-10-30）：采纳「产物位置由 Agent 自由决定」**——附加硬要求 1 改为「产物落在 Agent 指定的持久目录（位置不限，repo 内 / repo 外 / `/tmp` 均可）；判据只认产物确实落盘且能被扫描器发现；扫描器通过 `AUTOMEDIA_PROJECTS_DIR` 发现产物目录」。实现：`scripts/nightly_gap.py`（`PROJECTS_DIR_ENV` 常量 + `scan_projects()` 认 env）、`99-Tools/nightly/nightly_batch.sh`（am 步骤改用 `${AUTOMEDIA_PROJECTS_DIR:-…}`） |

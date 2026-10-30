@@ -5,7 +5,9 @@
 **冻结区**：coding agent 只跑、不改。
 
 DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 次真模型端到端跑，
-且产物落在**持久目录**（repo 内，非 /tmp）。
+且产物落在**持久目录**。产物位置由 **Agent 自由决定**（owner 2026-10-30 裁定，
+见 NIGHTLY.md「修订请求」）——不限定 repo 内、也不禁止 `/tmp`；
+扫描器通过 `AUTOMEDIA_PROJECTS_DIR` 环境变量发现产物目录。
 
 三轨判定（全部机械化，尽量少主观）：
   文本轨   cost_log.jsonl 非空，且 01_content/drafts/ 里有 ≥1 个 ≥500B 的 md
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -38,6 +41,9 @@ VIDEO_GATES_MUST_RUN = ("V2", "V5", "V7")  # 有诚实生产者：必须真跑�
 VIDEO_GATES_CAPABILITY_DEBT = ("V0", "V1", "V3", "V4", "V6")  # 无诚实生产者：允许 skip，但须登记
 VIDEO_GATE_DEBT_ISSUE = "#193"
 GATE_REPORT_GLOB = "05_review/gate-report/gate-report-*.json"
+
+#: Agent 用它声明「我把产物放在哪」。扫描器认这个位置，**不限定必须在 repo 内**。
+PROJECTS_DIR_ENV = "AUTOMEDIA_PROJECTS_DIR"
 IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 VID_EXT = {".mp4", ".mov", ".webm", ".mkv"}
 
@@ -153,15 +159,23 @@ def _text_evidence_ok(cost_lines: int, draft_max: int) -> bool:
 
 
 def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> list[dict]:
-    """Scan REPO root and (optionally) an additional root for project dirs.
+    """Scan REPO root plus every location the Agent declared.
 
-    The runner convention puts journey projects in /tmp/automedia/journey-projects/
-    while the scanner previously only looked at REPO. Passing extra_root lets
-    the nightly batch find projects that live outside the repo.
+    The Agent picks where products land (owner 2026-10-30 ruling: free choice,
+    no repo-internal requirement). Locations scanned:
+      1. ``REPO`` — the repo root, where in-repo projects live
+      2. ``extra_root`` — an explicit ``--scan-root`` argument
+      3. ``$AUTOMEDIA_PROJECTS_DIR`` — where the Agent said it put the products
     """
     roots = [root or REPO]
-    if extra_root and extra_root.is_dir():
-        roots.append(extra_root)
+    # 产物位置由 Agent 自由决定（owner 2026-10-30 裁定）：除显式传入的 extra_root，
+    # 也认 ``AUTOMEDIA_PROJECTS_DIR`` 声明的位置——不限 repo 内、也不禁止 /tmp。
+    for cand in (extra_root, os.environ.get(PROJECTS_DIR_ENV, "").strip()):
+        if not cand:
+            continue
+        p = Path(cand)
+        if p.is_dir() and p not in roots:
+            roots.append(p)
     out: list[dict] = []
     seen: set[str] = set()
     for r in roots:
@@ -324,13 +338,15 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
     ap.add_argument("--scan-root", default="",
-                    help="Additional project root to scan (e.g. /tmp/automedia/journey-projects)")
+                    help="Additional project root to scan (defaults to $AUTOMEDIA_PROJECTS_DIR)")
     ap.add_argument("--skip-validate", action="store_true")
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
     args = ap.parse_args(argv)
 
-    extra = Path(args.scan_root) if args.scan_root else None
+    explicit = Path(args.scan_root) if args.scan_root else None
+    env_dir = os.environ.get(PROJECTS_DIR_ENV, "").strip()
+    extra = explicit or (Path(env_dir) if env_dir else None)
     projects = scan_projects(extra_root=extra)
     text = [p["project"] for p in projects if p["text_ok"]]
     image = [p["project"] for p in projects if p["image_ok"]]
