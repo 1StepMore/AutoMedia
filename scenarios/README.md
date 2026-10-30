@@ -448,3 +448,24 @@ that enforces it for a repo-infrastructure bug (a CI workflow, a release gate, a
 pre-commit hook). That satisfies both rules without weakening either — the
 field still demands a lock, and the layering decision above is untouched. It is
 a reframing, not an escape hatch: there is no way to leave it blank.
+
+---
+
+## Threshold governance (plan A7)
+
+Every numeric assertion threshold a scenario carries — `min_passing` /
+`pass_ratio`, `expect.min_score`, `expect.artifact_size_min`, the
+`expect.text.min_*` / `expect.subtitle.min_cues` / `expect.media.*` bounds,
+`expect.keyword_coverage.min_ratio`, `expect.text_similarity.min_ratio` — is
+snapshotted to `baseline/threshold-snapshot.json` by
+`scripts/snapshot_scenario_thresholds.py`, and
+`tests/test_validation/test_threshold_snapshot.py` fails when the snapshot
+no longer matches the library.
+
+**A lowered threshold is a gate bent to reality** — exactly the signal the
+framework's own honesty rules say needs a director's adjudication.  So a
+threshold change requires two things in the same PR: the regenerated
+snapshot, and a row in [`THRESHOLD_WAIVERS.md`](THRESHOLD_WAIVERS.md)
+naming the scenario, the field, the old → new values, and the reason.
+The produce-article `min_chars` 800 → 500 adjustment is recorded there as
+the backfilled case that motivated this rule.

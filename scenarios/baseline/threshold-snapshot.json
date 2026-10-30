@@ -1,0 +1,100 @@
+{
+  "_comment": "AUTO-GENERATED: numeric assertion thresholds per scenario. Regenerate: python scripts/snapshot_scenario_thresholds.py. A changed value requires a row in scenarios/THRESHOLD_WAIVERS.md (director adjudication record, plan A7).",
+  "scenarios": {
+    "e2e-topic-to-article": {
+      "steps": {
+        "03:article structure": {
+          "expect.text.min_chars": 800,
+          "expect.text.min_paragraphs": 5
+        },
+        "04:article topic coverage": {
+          "expect.keyword_coverage.min_ratio": 0.66
+        }
+      }
+    },
+    "partial-pass-cli-contract": {
+      "min_passing": 2
+    },
+    "partial-pass-omni-extraction": {
+      "min_passing": 2,
+      "steps": {
+        "00:committed draft artifact exists and is non-trivial": {
+          "expect.artifact_size_min": 1024
+        }
+      }
+    },
+    "partial-pass-progress-surface": {
+      "min_passing": 2
+    },
+    "produce-article": {
+      "steps": {
+        "03:article structure": {
+          "expect.text.min_chars": 500,
+          "expect.text.min_paragraphs": 5
+        }
+      }
+    },
+    "produce-audio": {
+      "steps": {
+        "03:audio properties": {
+          "expect.media.min_bitrate_kbps": 128.0,
+          "expect.media.min_duration_s": 20.0
+        }
+      }
+    },
+    "produce-carousel": {
+      "steps": {
+        "02:carousel image set": {
+          "expect.media.min_count": 3,
+          "expect.media.min_height": 900,
+          "expect.media.min_width": 1200
+        }
+      }
+    },
+    "produce-cover": {
+      "steps": {
+        "03:cover properties": {
+          "expect.media.min_height": 630,
+          "expect.media.min_width": 1200
+        }
+      }
+    },
+    "produce-subtitle": {
+      "steps": {
+        "05:subtitle timing": {
+          "expect.subtitle.min_cues": 10
+        },
+        "06:subtitle text matches the narrated script": {
+          "expect.text_similarity.min_ratio": 0.6
+        }
+      }
+    },
+    "produce-video": {
+      "steps": {
+        "03:video properties": {
+          "expect.media.min_duration_s": 30.0,
+          "expect.media.min_height": 1080,
+          "expect.media.min_width": 1920
+        }
+      }
+    },
+    "quality-draft-eval": {
+      "min_passing": 1,
+      "pass_ratio": 0.5,
+      "steps": {
+        "00:produced draft artifact exists and is non-trivial": {
+          "expect.artifact_size_min": 1024
+        }
+      }
+    },
+    "quality-translation-eval": {
+      "min_passing": 1,
+      "pass_ratio": 0.5,
+      "steps": {
+        "00:produced translation artifact exists and is non-trivial": {
+          "expect.artifact_size_min": 1024
+        }
+      }
+    }
+  }
+}
