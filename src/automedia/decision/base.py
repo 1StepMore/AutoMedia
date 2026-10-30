@@ -1,5 +1,10 @@
 """DecisionArtifact — structured artifact dataclass.
 
+DORMANT SCAFFOLD (plan A4): this dataclass has NO production producer or
+consumer today (remediation plan / infrastructure-audit-20261030 §3.3); it
+is kept as the type for a future decision-agent integration.  Do not build
+new surfaces on it until the decision layer is wired.
+
 Public API
 ----------
 - ``DecisionArtifact`` — structured artifact dataclass.

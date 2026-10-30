@@ -1,5 +1,10 @@
 """Force-provenance audit logging.
 
+DORMANT (plan A4): ``--force-provenance`` was retired from the runner
+(runner.py marks the parameter deprecated/no-longer-used), so nothing
+produces these events today.  The live review audit trail is
+``decision/review_audit.py`` (MCP ``review_decision``).
+
 Records all ``--force-provenance`` bypass events with timestamp and
 user info to ``~/.automedia/audit/force_provenance.log``.
 """

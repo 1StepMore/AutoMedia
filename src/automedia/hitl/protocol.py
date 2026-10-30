@@ -1,5 +1,7 @@
 """HITL Framework — Protocols for dependency inversion.
 
+DORMANT (plan A4): no production class implements ``NodeProvider`` today.
+
 Defines the ``NodeProvider`` protocol that the Decision layer (or any
 other source) implements to supply node metadata to the HITL framework
 without creating a hard import dependency.

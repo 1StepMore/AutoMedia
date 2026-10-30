@@ -1,114 +1,107 @@
 # Project Validation
 
-version: 1.0.0
+version: 2.0.0
 
-Maintain founder expectations alignment after code changes.
+Validate code changes against the project's living verification surfaces.
 Load this skill as part of completion criteria when modifying `src/automedia/` files.
+
+## What Changed in v2.0.0 (2026-10-30)
+
+v1.0.0 routed validation through `docs/dev/project-validation-framework.md`'s
+impact map against `founder-expectations.md`. That flow no longer works: the
+expectations file is a frozen historical snapshot (agent-reference §Skills:
+"do not refresh"), its impact-map patterns predate the `mcp/tools/` package
+split, and no automation executes the framework. The living verification
+surfaces are the agent-tester validation library, the test suite, and the
+doc gates — this skill now routes through them (remediation plan A1).
 
 ## When to Use
 
-After completing any code change in `src/automedia/`, load this skill to:
+After completing any code change in `src/automedia/`:
 
-1. Determine which D3 founder expectations are affected by your change
-2. Run the relevant validation steps
-3. Record the result in the validation framework's review history
-
-This ensures the project never silently drifts away from founder expectations.
-
-## Usage
-
-```
-skill(name="project-validation", user_message="<list of changed files>")
-```
+1. Run the targeted tests for the subsystem you touched
+2. Run the validation scenarios that cover the changed surface
+3. Run the doc gate when any claim-bearing file changed
 
 ## Workflow
 
-### Step 1: Identify Changed Files
-
-List the files you modified, created, or deleted.
-
-### Step 2: Match Against Impact Map
-
-Open `docs/dev/project-validation-framework.md` and find the `impact_map` section.
-Match your changed files against each `pattern` entry.
-
-For each match:
-- Note the `affects` list (which D3 expectations are touched)
-- Execute the `steps` list (validation actions)
-
-### Step 3: Run Validation
-
-For each affected expectation, run the corresponding steps:
-
-**Common validation commands:**
+### Step 1: Targeted Tests
 
 ```bash
-# Test-specific
-pytest tests/test_gates/ -v                     # Gate changes
-pytest tests/test_adapters/ -v                  # Adapter changes
-pytest tests/test_mcp/ -v                       # MCP changes
-pytest tests/test_cli/ -v                       # CLI changes
-pytest tests/test_pipeline/ -v                  # Pipeline changes
-pytest tests/ -k account                        # Account changes
-
-# CLI sanity
-automedia --help                                # All commands listed
-
-# MCP sanity
-timeout 5 python -m automedia.mcp.server 2>&1   # Server starts clean
-python -c "
-import json, sys
-from automedia.mcp.server import create_server
-print('MCP server imports OK')
-"                                               # Imports clean
-
-# SDK sanity
-python -c "from automedia import run_full_pipeline; print('SDK OK')"
-
-# Config sanity
-python -c "
-from automedia.core.config_loader import load_config
-cfg = load_config()
-print(f'Config layers: {len(cfg._history) if hasattr(cfg, \"_history\") else \"OK\"}')
-"
+pytest tests/test_gates/ -v          # Gate changes
+pytest tests/test_mcp/ -v            # MCP tool changes
+pytest tests/test_cli/ -v            # CLI changes
+pytest tests/test_pipeline/ -v       # Runner/engine changes
+pytest tests/test_validation/ -v     # Validation-layer changes
 ```
 
-### Step 4: Record in Review History
+### Step 2: Affected Validation Scenarios
 
-If validation reveals a status change (expectation went from passing to failing, or vice versa), update the review history table in `docs/dev/project-validation-framework.md §5`.
+The CI `validation-affected` job maps changed files to scenarios; run the
+same mapping locally:
 
-Add a row:
+```bash
+python scripts/validation_run_affected.py        # CI's exact affected-surface runner
+automedia validate list                          # full library load check
+automedia validate run --category surface        # or scope by category
 ```
-| {date} | L1 | {files changed} | {affected expectations} | {PASS/FAIL} | {verdict} |
+
+If your change touched an MCP tool, CLI command, gate, or mode, the
+coverage audit demands a scenario for it:
+
+```bash
+automedia validate coverage        # missing surfaces fail (exit 1)
 ```
 
-### Step 5: If Something Fails
+New surface without a scenario = hard red in CI (`missing_hard_count`).
+Add or extend a scenario in the matching `scenarios/<category>/` directory;
+cite a `standard:` key that exists in `scenarios/STANDARDS.md` (the
+vocabulary is pinned to the citation set — see `test_standards.py`).
 
-- If a validation step fails, it means your change broke an expectation.
-- Fix the root cause before declaring the task complete.
-- If the expectation itself is outdated (the project evolved), update `founder-expectations.md` instead.
+If your change alters a numeric assertion threshold in a scenario, you MUST
+regenerate `scenarios/baseline/threshold-snapshot.json` and add a waiver row
+to `scenarios/THRESHOLD_WAIVERS.md` in the same PR (plan A7;
+`test_threshold_snapshot.py` enforces both halves).
+
+### Step 3: Doc Gates (when docs or counts changed)
+
+```bash
+python scripts/check-doc-consistency.py            # counts, params, trees, links
+python scripts/doc_inventory.py --check            # after adding/removing docs
+python scripts/check_rfc_aging.py                  # after touching docs/dev/rfcs
+```
+
+### Step 4: If Something Fails
+
+- A failing test or scenario means the change broke a verified behavior:
+  fix the root cause before declaring the task complete.
+- A coverage gap means the new surface is unproven: add the scenario, not
+  an allowlist entry.
+- Never weaken a scenario threshold to make it pass without a waiver row —
+  that is the exact failure mode A7 exists to prevent.
 
 ## Mapping Reference
 
-Quick reference — for the full mapping table with steps, see `docs/dev/project-validation-framework.md §2`.
+Subsystem → first-line verification surface (v2; the v1 founder-expectation
+IDs were retired with the frozen snapshot):
 
-| If You Changed | You Affect |
+| If You Changed | Verify With |
 |---------------|------------|
-| `gates/**/*.py` | F24, F25, F26, F27 |
-| `mcp/tools.py` | F05, F12, F42, F17 |
-| `pipelines/runner.py` | F07, F11, F17, F21 |
-| `pipelines/gate_engine.py` | F19, F20, F24 |
-| `adapters/platforms/**/*.py` | F29, F30, F31, F34, F35 |
-| `adapters/publish_engine.py` | F29, F34, F35 |
-| `cli/commands/**/*.py` | F02, F03, F06, F17 |
-| `core/config_loader.py` | F01, F03, F04 |
-| `accounts/**/*.py` | F04, F35 |
-| `hitl/**/*.py` | F28 |
-| `hooks/**/*.py` | F43 |
-| `cron/**/*.py` | F37 |
+| `gates/**` | gate tests + `proves_gates` scenarios + `gate_plan.py`/`failure_modes.py` wiring tests |
+| `mcp/tools/**`, `mcp/tools_distribution.py` | `tests/test_mcp/` + `scenarios/surface/**` |
+| `pipelines/runner.py`, `gate_engine.py`, `gate_plan.py` | `tests/test_runner/`, `tests/test_gate_plan.py` + `scenarios/journeys/**` |
+| `adapters/**` | `tests/test_distribution/`, adapter tests + `scenarios/publish/**` |
+| `cli/commands/**` | `tests/test_cli/` + `scenarios/cli/**` |
+| `core/config_loader.py` | `tests/test_config_loader.py` |
+| `accounts/**` | `tests/test_accounts*` |
+| `hitl/**`, `decision/**` | `tests/test_hitl/`, `tests/test_decision*/` |
+| `hooks/**` | `tests/test_gate_hooks.py`, `tests/test_hooks/` |
+| `cron/**` | `tests/test_cron*` |
+| `validation/**`, `scenarios/**` | `tests/test_validation/` + `automedia validate run --scenario <changed>` |
 
 ## See Also
 
-- `docs/dev/project-validation-framework.md` — Full framework with mapping table, cadence, freshness checks
-- `docs/dev/founder-expectations.md` — D3: 48 founder expectations
-- `docs/dev/evaluation-matrix-principles.md` — 8-dimension diagnostic toolkit
+- `docs/dev/agent-reference.md` §Validation Layer — the evidence contract
+- `scenarios/README.md` — scenario authoring + threshold governance (A7)
+- `.opencode/skills/validation-runner.md` — the RED→GREEN regression flywheel
+- `docs/dev/founder-expectations.md` — frozen historical snapshot (context only, do not refresh or validate against it)

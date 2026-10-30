@@ -1,5 +1,11 @@
 """HITL Node Executor — routes execution to agent or human based on config.
 
+DORMANT SCAFFOLD (plan A4): NodeExecutor has no production call site — no
+pipeline constructs an executor today.  The LIVE HITL path is the H0 gate
+plus ``review_decision`` (same-process) or ``automedia hitl approve/reject``
+(cross-process parked runs).  Kept for the future decision-agent
+integration; see docs/user/hitl-framework.md.
+
 In *agent* mode the node runs immediately and returns a ``DecisionArtifact``.
 In *human* mode the agent's suggestion is stored as pending; the caller must
 call ``approve_node()`` or ``skip_node()`` to release it.

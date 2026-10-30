@@ -1,5 +1,10 @@
 """Schema validation for Decision Artifacts.
 
+DORMANT SCAFFOLD (plan A4): no production caller — this module is the only
+reader of ``manifests/schemas/*.json``.  Structured MCP outputs use the
+pydantic models in ``decision/pydantic/`` instead.  Kept for the future
+decision-agent integration; do not build new surfaces on it.
+
 Validates structured output against JSON Schema files.
 Schemas are stored in ``manifests/schemas/``.
 """

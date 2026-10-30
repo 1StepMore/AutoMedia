@@ -238,7 +238,7 @@ For detailed mode-by-mode troubleshooting of each gate, see `docs/dev/gate-failu
 
 ### H0 — Human Review Gate (Pre-Publish)
 
-H0 is a pre-publish HITL gate. Failure means the pipeline is paused waiting for human review. Approve via the decision layer SDK (`from automedia.hitl import NodeExecutor; executor.approve_node(...)`) or pass `auto_publish=True` to skip HITL.
+H0 is a pre-publish HITL gate. Failure means the pipeline is paused (or parked) awaiting human review. Approve via the MCP `review_decision` tool (same-process pauses), the `automedia hitl approve <project_id>` CLI (cross-process parked runs), or `--wait-for-review` (interactive stdin). Skip review with `automedia run --skip-review`. The `NodeExecutor` route is a dormant scaffold with no production call site — see docs/user/hitl-framework.md.
 
 ### CW — Content Writer Gate
 
