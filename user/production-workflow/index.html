@@ -2542,15 +2542,14 @@ cat<span class="w"> </span>20260707_*/pipeline_md5.json
   Project dir: /var/automedia/projects/20260707_ai-video-tools
   Duration   : 342.5s
 
-  Gates executed: 21
+  Gates executed: 16
     ✓ pre-gate (0.32s)
     ✓ CW (8.00s)
     ✓ G0 (12.50s)
     ✓ G1 (8.20s)
     ✓ G2 (5.10s)
     ✓ G3 (3.40s)
-    ✓ G4 (2.10s)
-    ✓ G5 (1.80s)
+    ✓ G6 (4.20s)
     ✓ V0 (0.90s)
     ✓ V1 (45.60s)
     ✓ V2 (30.20s)
@@ -2559,10 +2558,7 @@ cat<span class="w"> </span>20260707_*/pipeline_md5.json
     ✓ V5 (2.30s)
     ✓ V6 (60.10s)
     ✓ V7 (5.40s)
-    ✓ L1 (0.50s)
-    ✓ L2 (1.20s)
-    ✓ L3 (0.80s)
-    ✓ L4 (1.50s)
+    ✓ H0 (0.40s)
 
   Assets produced: 7
     - [article] 01_content/drafts/wechat/wechat_draft.html
@@ -2573,6 +2569,13 @@ cat<span class="w"> </span>20260707_*/pipeline_md5.json
     - [report] 04_review/qa_report.json
     - [log] 06_publish/publish_log.json
 </code></pre></div>
+<blockquote>
+<p>The list above is the <code>auto</code> preset as declared in
+<code>pipelines/gate_plan.py</code> (<code>MODE_GATE_NAMES["auto"]</code>). <code>G4</code>, <code>G5</code>, and
+<code>L1</code>-<code>L4</code> are registered gates but belong to <strong>no</strong> preset, so they never
+appear here; the L-gates run through their own lifecycle commands. Timings
+are illustrative — the gate set is not.</p>
+</blockquote>
 <h3 id="awaiting-review">Awaiting Review<a class="headerlink" href="#awaiting-review" title="Permanent link">&para;</a></h3>
 <p>A run that shows <code>status="awaiting_review"</code> is parked at the H0 review gate,
 not failed. The CLI prints <code>Pipeline finished: awaiting_review</code> and exits 3.</p>

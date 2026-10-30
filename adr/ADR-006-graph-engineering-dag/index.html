@@ -2011,6 +2011,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#status-appendix-2026-10-29-what-changed-after-this-adr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status Appendix (2026-10-29) — what changed after this ADR
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2126,6 +2137,33 @@
 <li>Auto-resume anchors only on <code>completed</code> with <code>passed: true</code>. A gate that exhausted retries lands as <code>completed</code> with <code>passed: false</code> and must not anchor.</li>
 <li>If the DAG edges change (for example a gate moves tracks), re-run the equivalence test for all 9 modes: the byte-exact invariant is the contract that keeps the DAG additive.</li>
 </ul>
+<hr />
+<h2 id="status-appendix-2026-10-29-what-changed-after-this-adr">Status Appendix (2026-10-29) — what changed after this ADR<a class="headerlink" href="#status-appendix-2026-10-29-what-changed-after-this-adr" title="Permanent link">&para;</a></h2>
+<p>This ADR is immutable history: the Context and Decision sections above describe
+the mechanism <strong>as committed on 2026-08-30</strong>. Two later changes moved the
+authority and shrank the <code>auto</code> preset. Read those sections as the design
+rationale, not as a description of today's code.</p>
+<p><strong>1. Gate-order authority moved out of <code>runner.py</code> (issue #314).</strong>
+The <code>_MODE_MAP</code> module-level list this ADR calls canonical is no longer the
+source of truth. <code>src/automedia/pipelines/gate_plan.py</code> now declares
+<code>MODE_GATE_NAMES</code> (9 modes) and is the ONE authority; <code>runner.py</code> re-exports it
+(<code>_MODE_MAP: dict[str, list[str]] = gate_plan.MODE_GATE_NAMES</code>). <code>dag.py</code>
+still describes the dependency edges among the same gates, and a test still
+pins the DAG's topological order to the plan for every mode — the equivalence
+invariant survives, it just points at a different module.</p>
+<p><strong>2. The <code>auto</code> preset shrank from 22 gates to 16.</strong>
+<code>MODE_GATE_NAMES["auto"]</code> is now:</p>
+<div class="highlight"><pre><span></span><code>pre-gate, CW, G0, G1, G2, G3, G6, V0, V1, V2, V3, V4, V5, V6, V7, H0
+</code></pre></div>
+<p><code>G4</code>, <code>G5</code>, and <code>L1</code>-<code>L4</code> remain registered in <code>FAILURE_MODES</code> (33 gates total)
+but belong to <strong>no</strong> preset; the L-gates run through their own lifecycle
+commands. The figure "22 auto-mode gates" quoted in the Decision section above
+is therefore historical. Note the shape change is not just a count: <code>G6</code> and
+<code>H0</code> are now always in the <code>auto</code> preset, and <code>G4</code>/<code>G5</code> are always out.</p>
+<p><strong>3. Surface counts also moved.</strong> This ADR records 64→65 MCP tools and 18→19
+CLI commands; the current surface is 68 MCP tools and 19 CLI commands.</p>
+<p>For the live answer to "which gates run in mode X", read <code>gate_plan.py</code> or
+<code>automedia pipeline export-dag</code> — never this document.</p>
 
 
 

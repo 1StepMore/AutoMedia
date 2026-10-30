@@ -1,0 +1,2273 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated media production pipeline documentation">
+      
+      
+      
+        <link rel="canonical" href="https://1stepmore.github.io/AutoMedia/dev/AutoMedia-development-brief-v2/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>AutoMedia 开发简报 - AutoMedia</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#automedia" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoMedia
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AutoMedia 开发简报
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/1StepMore/AutoMedia" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/user-introduction/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/hitl-framework/" class="md-tabs__link">
+          
+  
+  
+  Core Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/api-reference/" class="md-tabs__link">
+          
+  
+  
+  API & CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/production-workflow/" class="md-tabs__link">
+          
+  
+  
+  Runbook
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../agent-reference/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
+          
+  
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+          
+  
+  
+  Architecture Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AutoMedia
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/1StepMore/AutoMedia" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/user-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hitl-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HITL Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/omni-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Omni Triad Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/asset-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API & CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API & CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/windows-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/production-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gate-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cron-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Gotchas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-validation-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Validation Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../founder-expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Founder Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation-matrix-principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Matrix Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forward-compat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forward Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-module-rfc-001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Module RFC-001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../override-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Override Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brand Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribution Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-001 Singleton Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-002 HITL Decision Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-003 Platform Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-004 MCP Server Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-005 Issue-Driven Commits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-006-graph-engineering-dag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-006 Graph Engineering DAG
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/ADR-007-gate-engine-verdict-aggregate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-007 Gate Engine Verdict Aggregate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="automedia">AutoMedia 开发简报<a class="headerlink" href="#automedia" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>性质</strong>：方向简报（由首席助手基于最终发起人的 expectation 形成）
+<strong>用途</strong>：交给 coding agent 核对代码现状 → 由其形成自己的开发方案
+<strong>本简报不含实现路径</strong>——怎么实现由 coding agent 决定</p>
+<p><strong>版本</strong>：<strong>v2</strong>（2026-09-15）— 相对 v1 的两处实质变更：
+① 新增「<strong>三·补、本次 demo 的范围界定</strong>」（界定 1/2/3）
+② §五 修正为<strong>两档</strong>（v1 把终局标准与 demo 标准混列，末条与界定 1 直接矛盾）</p>
+<p><strong>权威路径</strong>：<code>D:\Hermes-Workspace\00-Records\商业化评估-20260914\AutoMedia开发简报.md</code>
+（<strong>全盘唯一副本</strong>；位于 Hermes-Workspace，<strong>不在 AutoMedia 仓库内</strong>，搜仓库找不到）
+⚠️ 若你手上这份<strong>没有「三·补」、或 §五 未分档</strong> → 那是 v1 旧版，请以本路径的磁盘版为准。</p>
+</blockquote>
+<hr />
+<h2 id="_1">零、商业定位（读懂这张卡即可，代码背景你已熟悉）<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">项</th>
+<th style="text-align: left;">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>卖什么</strong></td>
+<td style="text-align: left;">内容符合标准的<strong>保证能力</strong>（不是"帮你写内容"）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>卖给谁</strong></td>
+<td style="text-align: left;">有品牌标准、需要稳定产出的组织</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>当前阶段</strong></td>
+<td style="text-align: left;">demo——<strong>采集端与生产端真跑通</strong>；不搞付费端等空中楼阁</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>商业目标</strong></td>
+<td style="text-align: left;"><strong>赚钱</strong>（项目为现金流服务，非技术练习）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>与 AutoInfo 关系</strong></td>
+<td style="text-align: left;">共用部分技术底座，但商业逻辑不同（我们卖"生产能力"）；并行推进</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="expectation">一、Expectation（最终发起人的期望，最高优先）<a class="headerlink" href="#expectation" title="Permanent link">&para;</a></h2>
+<h3 id="_2">终局形态<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p><strong>内核（能力本身）+ 私有部署优先</strong>，兼容 SaaS 与服务：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">层</th>
+<th style="text-align: left;">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>内核</strong></td>
+<td style="text-align: left;">可配置的标准 + 执行引擎（这是能力本体，不随交付方式变）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>外壳 1</strong></td>
+<td style="text-align: left;">私有部署（先做——兼容性最强、最快能签单）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>外壳 2</strong></td>
+<td style="text-align: left;">SaaS（有客户后加多租户/计费）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>外壳 3</strong></td>
+<td style="text-align: left;">服务（用同一内核帮客户做，无需产品化）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_3">首个成果<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p><strong>能对外演示的完整 demo</strong>——<strong>采集端与生产端真跑通</strong>（不是概念演示，是实际运行的层级）。</p>
+<h3 id="_4">商业模式<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>卖<strong>"内容符合标准"的保证能力</strong>，不是"帮你写内容"。</p>
+<h3 id="_5">目标客户（假设）<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<p>品牌代理 / 内容团队——有品牌标准、需要稳定产出的组织。</p>
+<h3 id="_6">时间<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p><strong>不设时间节点</strong>。持续开发，与 AutoInfo 并行推进。</p>
+<hr />
+<h2 id="_7">二、为什么（商业依据）<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">事实</th>
+<th style="text-align: left;">数据来源</th>
+<th style="text-align: left;">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">"AI 写作工具"定位已死</td>
+<td style="text-align: left;">Jasper 营收 $120M→$55M，估值 $1.5B→$55M</td>
+<td style="text-align: left;">❌ 不做"帮你写"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>质量门控是空白</strong></td>
+<td style="text-align: left;">现有玩家只有企业级（Writer $30 万/年）或开源单体</td>
+<td style="text-align: left;">✅ <strong>我们的位置</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>无人串成完整流水线</strong></td>
+<td style="text-align: left;">没有一家把"采集→生成→强制质检→发布"做成默认流程</td>
+<td style="text-align: left;">✅ <strong>我们的位置</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">理论已被公开</td>
+<td style="text-align: left;">Explorium 五门理论、CheckApp 开源</td>
+<td style="text-align: left;">⚠️ 窗口有限</td>
+</tr>
+<tr>
+<td style="text-align: left;">国内价格地板低</td>
+<td style="text-align: left;">¥57-99/月</td>
+<td style="text-align: left;">→ <strong>出海优先</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">企业级能收溢价</td>
+<td style="text-align: left;">Writer NRR 160%、$30 万/年合同</td>
+<td style="text-align: left;">✅ 质量/一致性可定价</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_8">三、🎯 目标形态（这两个项目应该成为的样子）<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>这一章是最终目标图景（项目的"应该成为的样子"）。</strong>
+<strong>首个里程碑</strong>：让采集端与生产端在这些形态的框架下<strong>真跑通</strong>（可对外演示的完整 demo）。
+<strong>最终目标</strong>：以下形态<strong>全部达成</strong>。coding agent 应据此形成自己的实现方案。</p>
+</blockquote>
+<h3 id="a">形态 A：门控的产出是「可交付的合规报告」<a class="headerlink" href="#a" title="Permanent link">&para;</a></h3>
+<p><strong>应该成为的样子</strong>：
+- 门控跑完，产出的不是"通过/不通过"，而是<strong>客户可直接使用/交付的报告</strong>
+- 报告要让<strong>非技术客户</strong>看懂三件事：<strong>哪条不达标 / 为什么不达标（依据）/ 怎么改</strong>
+- 报告可以<strong>直接交给第三方</strong>（客户方、监管方、上级）而不需要额外解释
+- 报告能体现"<strong>达标度</strong>"而不仅是"过没过"（客户要看趋势和改进）</p>
+<h3 id="b">形态 B：标准与实现分离<a class="headerlink" href="#b" title="Permanent link">&para;</a></h3>
+<p><strong>应该成为的样子</strong>：
+- <strong>标准是可配置的数据</strong>，不是写死在代码里的逻辑
+- 换一个客户 / 换一个行业，改的是<strong>配置</strong>，不是<strong>代码</strong>
+- 引擎是通用的——<strong>同一套引擎服务所有客户</strong>，差异全部在标准层
+- 标准能表达"为什么"（依据）和"怎么改"（修复指引），而不只是"规则本身"</p>
+<h3 id="c">形态 C：能连续无人值守运行<a class="headerlink" href="#c" title="Permanent link">&para;</a></h3>
+<p><strong>应该成为的样子</strong>：
+- 从"能跑一次"到"<strong>能连续跑、出错能定位、中途失败能断点恢复</strong>"
+- 任一环节失败不影响其他环节（隔离性）
+- 有客观证据表明它能长时间稳定运行（而不是"理论上应该稳定"）</p>
+<h3 id="d">形态 D：客户能找到我们<a class="headerlink" href="#d" title="Permanent link">&para;</a></h3>
+<p><strong>应该成为的样子</strong>：
+- 有可被搜索发现的内容资产（目标客户会搜的问题，我们能回答）
+- 有<strong>多语言分发能力</strong>（这是我们的独有优势）
+- 落地页能让人一句话说清我们做什么（不是"AI 内容工具"）</p>
+<h3 id="e">形态 E：有可展示的信任凭证<a class="headerlink" href="#e" title="Permanent link">&para;</a></h3>
+<p><strong>应该成为的样子</strong>：
+- 有<strong>前后对比案例</strong>——同一篇内容，用系统前后的差异可量化展示
+- 案例既是销售证据，也是"可交付报告"的自然延伸</p>
+<h2 id="demo-2026-09-15">三·补、本次 demo 的范围界定（2026-09-15 补充）<a class="headerlink" href="#demo-2026-09-15" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>背景</strong>：coding agent 核对代码后提出三个范围疑问。以下为发起人侧的界定，<strong>优先于任何更宽的解读</strong>。</p>
+</blockquote>
+<h3 id="1-demo">界定 1：「合规/标准」= <strong>通用内容质量</strong>（本次 demo）<a class="headerlink" href="#1-demo" title="Permanent link">&para;</a></h3>
+<p><strong>本次 demo 采用现有门控所代表的通用内容质量标准，不实现「客户/行业自定义规则集」。</strong></p>
+<ul>
+<li>第一章已定首个成果 = <strong>采集端与生产端真跑通</strong>；第三章形态 A–E 明确标注为"<strong>最终目标：全部达成</strong>"，是终局图景，<strong>不是首个 demo 的验收项</strong></li>
+<li>因此不存在"二选一"的冲突，<strong>这是排序问题</strong>：形态 B 的触发条件是「出现第二个客户 / 换行业」——那时才有真实差异需要表达。在拿到第一个真实客户前设计规则集，属于猜测性设计</li>
+<li>亦不触及红线：现有门控不阻碍"demo 跑通"这一目标，不落入"阻碍赚钱"三条判据 → <strong>本次不改动现有门控</strong></li>
+</ul>
+<p><strong>现状事实（供核对，非方向指引）</strong>：现有门控的检查项以函数形式写在 Gate 类内；同时代码中<strong>已存在一条「品牌配置 → 门控」的数据通路</strong>（<code>brand_profiles.yaml</code> → <code>GateContext.brand_profile</code> → 各 gate 读取，如 <code>G3BrandCTA</code> 读 <code>brand_name</code>/<code>aliases</code>/<code>blocked_words</code>/<code>cta_principles</code>）。<strong>不存在</strong>"行业/客户规则集"概念（无规则集加载器）；<code>brand_profile</code> 的 <code>industry</code> 字段仅作描述性上下文，不驱动任何门控判定。形态 B 是否等同于"重写架构"，<strong>由 coding agent 实跑后自行判断</strong>。</p>
+<h3 id="2">界定 2：「采集端」= <strong>选题发现</strong>（现有能力），不新建抓取子系统<a class="headerlink" href="#2" title="Permanent link">&para;</a></h3>
+<p><strong>本次 demo 的采集端 = 选题发现（现有 <code>HotCollector</code>），不新建 RSS / 网页 / 社媒趋势抓取子系统。</strong></p>
+<ul>
+<li>选题发现已是<strong>真实调用外部信源</strong>（真实外部搜索 API + 真实聚合/生成层），非 mock → 已满足"真跑通"</li>
+<li>新建抓取子系统属<strong>新能力</strong>，其价值取决于客户要什么信源 → 同界定 1，留到有客户后定</li>
+<li>待修项（内存态池子 / 落库 / 定时触发）属"让现有能力真跑通"，是 demo 范围内的<strong>修</strong>，不是新建</li>
+</ul>
+<p><strong>现状事实（供核对，非方向指引）</strong>：</p>
+<ul>
+<li><code>HotCollector.collect_all()</code> = 关键词搜索层 + 聚合/生成层 + seed 话题 → 标题去重</li>
+<li><code>HotCollector.ingest_file()</code> = 文档摄取（docx/pdf/pptx/xlsx/csv/json/xml/html/epub/eml/msg）</li>
+<li><code>PoolDB</code> = SQLite，方法集完整（增删查改 / 评分 / 标记 / 简报挂载 / 计数）</li>
+<li><strong><code>PoolDB(":memory:")</code> 出现于 <code>mcp/tools.py</code> 三处</strong> → 走 MCP 路径时池子为内存态，不落盘</li>
+<li><code>cron/jobs.yaml</code> 定义 4 个 job 模板（含 <code>depends_on</code> 链）；<code>automedia cron run &lt;job&gt;</code> 有真实实现</li>
+<li><strong>但 jobs.yaml 目前只被"校验"读取，无 scheduler 消费它定时触发</strong> → 定时需外部调度器调用 CLI</li>
+</ul>
+<h3 id="3-demo">界定 3：<strong>视频显式排除在首个 demo 之外</strong><a class="headerlink" href="#3-demo" title="Permanent link">&para;</a></h3>
+<p><strong>视频不是本次 demo 的必要部分。</strong></p>
+<ul>
+<li><strong>AutoMedia 自身不含视频生产</strong>：<code>pipelines/</code> 只有音频与图片两条，无视频 pipeline；视频渲染依赖<strong>外部 CLI 工具</strong> <code>hyperframes</code></li>
+<li><strong>本机当前无该外部工具</strong>（<code>which hyperframes</code> 为空）→ 视频模式实际跑不了</li>
+<li><strong>架构上视频本就是独立可选轨</strong>：文本轨门控集<strong>不含任何 V 门</strong>；视频轨 V0–V7 独立成组。且外部工具缺失时，V 门<strong>优雅降级为 skipped，不判失败</strong></li>
+</ul>
+<p>→ 因此「视频链跑不通」的准确表述是「<strong>外部渲染依赖未就绪</strong>」，而非 AutoMedia 核心链断裂。把视频纳入 demo，会把工作量从"验证现有链"变成"部署调试外部渲染工具"，与第一章的 demo 定位不符。<strong>首个 demo 以文本轨（+可选图片轨）为准。</strong></p>
+<hr />
+<h2 id="_9">四、边界（明确不做）<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<ul>
+<li>❌ 不做通用"AI 写作/生成"功能（已商品化）</li>
+<li>❌ 不增加门控数量（已有 33 个，够用；客户看不见更多门是没意义的）</li>
+<li>❌ 不增加平台适配数量（已有 11 个真实 API 自动化）</li>
+<li>❌ 不做付费端/计费系统（等有客户再设计）</li>
+<li>❌ 不为技术洁癖而重构（<strong>重构必须有商业理由</strong>——若现有设计阻碍目标形态达成，那就是商业理由）</li>
+<li>❌ <strong>首个 demo 不含视频生产</strong>（外部渲染依赖未就绪；视频为独立可选轨，见"三·补"界定 3）</li>
+<li>❌ <strong>首个 demo 不做客户/行业自定义规则集</strong>（现有门控即通用内容质量标准，见"三·补"界定 1）</li>
+</ul>
+<hr />
+<h2 id="_10">五、验收标准<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>⚠️ <strong>本档分两档</strong>。原版本把「终局标准」与「首个 demo 标准」混列，造成口径冲突——末条"同一内核对不同客户可配"与"三·补"界定 1（本次 demo 不做规则集）直接矛盾。以下为修正版，<strong>取代原混列版本</strong>。</p>
+</blockquote>
+<h3 id="a-demo">五·A 首个 demo 验收标准 ← <strong>现在按这一档验收</strong><a class="headerlink" href="#a-demo" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>demo 真跑通</strong>：采集端 + 生产端实际运行</li>
+</ul>
+<blockquote>
+<p>范围以"三·补"为准：<strong>文本轨（+可选图片轨）/ 通用内容质量门控 / 采集端 = 选题发现</strong>。</p>
+</blockquote>
+<h3 id="b-demo">五·B 终局验收标准 ← <strong>有客户后逐项达成；不是首个 demo 的门槛</strong><a class="headerlink" href="#b-demo" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>非技术客户能看懂报告</strong>：哪不达标、为什么、怎么改</li>
+<li><strong>报告可作为交付物</strong>给第三方（含依据）</li>
+<li><strong>能说清"我们为某行业提供合规流水线"</strong>（不是"我们有个工具"）</li>
+<li><strong>同一内核对不同客户可配</strong>（定制客户 A/C 的内容），不需要改代码</li>
+</ul>
+<hr />
+<h2 id="_11">六、红线<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
+<ul>
+<li>现有能力<strong>不得减少</strong>（33 个门控 / 20 个平台适配 / 4,580 测试函数 / Omni Triad）</li>
+<li>任何触及现有能力的改动，需满足"<strong>阻碍赚钱</strong>"判据（阻碍交付 / 阻碍获客 / 阻碍维持），且<strong>逐项批准</strong></li>
+<li>底线：项目为赚钱服务——<strong>如果现有设计确实挡了财路，那是要面对的问题，不是要保护的资产</strong></li>
+</ul>
+<hr />
+<h2 id="_12">附录：现状事实（供核对，非方向指引）<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>⚠️ 以下仅为客观事实描述，<strong>不含任何改造建议</strong>。coding agent 应自行核对并判断。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">项</th>
+<th style="text-align: left;">事实</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">代码规模</td>
+<td style="text-align: left;">62,461 LOC 核心 / ~183,000 LOC 总 / 737+ Python 文件</td>
+</tr>
+<tr>
+<td style="text-align: left;">测试</td>
+<td style="text-align: left;">4,580 个测试函数（247 文件）</td>
+</tr>
+<tr>
+<td style="text-align: left;">质量门</td>
+<td style="text-align: left;">33 个（文案 / 视频 / 生命周期 / 分发 / 再利用）</td>
+</tr>
+<tr>
+<td style="text-align: left;">接口</td>
+<td style="text-align: left;">SDK + CLI（19 命令）+ MCP（68 工具）</td>
+</tr>
+<tr>
+<td style="text-align: left;">平台适配</td>
+<td style="text-align: left;">20 个（11 个真实 API 自动化 + 8 个 manual-stub + 1 通知）</td>
+</tr>
+<tr>
+<td style="text-align: left;">品牌配置</td>
+<td style="text-align: left;">已有 <code>brand_profile.yaml</code>、品牌 schema、品牌 MCP 工具</td>
+</tr>
+<tr>
+<td style="text-align: left;">报告基础</td>
+<td style="text-align: left;">已有 <code>pipelines/gate_report.py</code>、<code>validation/report.py</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">检查逻辑</td>
+<td style="text-align: left;">检查项以函数形式写在 Gate 类内（如 <code>G3BrandCTA</code> 内 6 个 check 函数）</td>
+</tr>
+<tr>
+<td style="text-align: left;">其他</td>
+<td style="text-align: left;">Director 模式（HITL 审批）、6 层配置、AES-256-GCM 凭证库、Omni Triad 集成</td>
+</tr>
+<tr>
+<td style="text-align: left;">CLI 实测</td>
+<td style="text-align: left;"><code>automedia --help</code> 正常（exit=0）</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/1StepMore/AutoMedia" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

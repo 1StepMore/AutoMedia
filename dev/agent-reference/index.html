@@ -2164,17 +2164,21 @@ under 200 lines. Read the section you need — none of it is required up front.<
 <h2 id="directory-layout">Directory Layout<a class="headerlink" href="#directory-layout" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (62,461 LOC)
-│       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow
-│       ├── pipelines/          # runner.py (shared entry point), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
+│   └── automedia/              # Core Python package (22 subpackages; size claims live in AGENTS.md)
+│       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow, md5_tracker
+│       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
-│       ├── hooks/              # Readonly observer protocol: protocol, md5_tracker, metrics
-│       ├── cli/                # Typer CLI: app.py + 19 command modules
-│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist
+│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
+│       ├── effects/            # Content analytics: stats (word count, sentiment, readability, brand mentions, SEO) + cli/mcp entry points
+│       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
+│       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
+│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json)
+│       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
+│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (19 commands)
+│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
-│       ├── platform/           # Platform logic: xiaohongshu, zhihu_draft
 │       ├── omni/               # Omni Triad: ol_adapter, opp_adapter, orf_adapter, registry, config, allowlist
 │       ├── decision/           # Decision Layer (PRD-3)
 │       ├── hitl/               # HITL framework: config, executor, presets
@@ -2194,7 +2198,7 @@ under 200 lines. Read the section you need — none of it is required up front.<
 <li>Set class-level <code>_gate_name</code> (e.g. <code>"G6"</code>) and <code>_failure_mode</code> (<code>"stop"</code> or <code>"retry"</code>)</li>
 <li>Implement <code>execute(self, gate_context: dict) -&gt; dict</code></li>
 <li>Add a failure mode entry in <code>automedia/gates/failure_modes.py</code></li>
-<li>Add the gate name to the gate lists in <code>automedia/pipelines/runner.py</code> (<code>_AUTO_GATE_NAMES</code>, etc.)</li>
+<li>Add the gate name to the mode gate lists in <code>automedia/pipelines/gate_plan.py</code> (<code>MODE_GATE_NAMES</code> / <code>_AUTO_GATE_NAMES</code>, etc.) — this module is the single authority; <code>runner.py</code> only re-exports it.</li>
 <li>Write an ADR entry in <code>docs/adr/</code> documenting the design decision</li>
 <li>Create tests in <code>tests/test_gates/</code></li>
 </ol>
@@ -2212,8 +2216,8 @@ under 200 lines. Read the section you need — none of it is required up front.<
 </ol>
 <h3 id="add-a-new-mcp-tool">Add a New MCP Tool<a class="headerlink" href="#add-a-new-mcp-tool" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Define a module-level handler function in <code>automedia/mcp/server.py</code></li>
-<li>Register inside <code>create_server()</code> via <code>mcp.tool()</code></li>
+<li>Define the handler function in the matching module under <code>automedia/mcp/tools/</code> (one module per domain: <code>pipeline.py</code>, <code>topics.py</code>, <code>cron_tools.py</code>, <code>brands.py</code>, …)</li>
+<li>Import it into <code>create_server()</code> in <code>automedia/mcp/server.py</code> and register it via <code>mcp.tool()</code> — <code>server.py</code> only wires registration, it holds no handlers</li>
 </ol>
 <h3 id="add-a-new-environment-variable">Add a New Environment Variable<a class="headerlink" href="#add-a-new-environment-variable" title="Permanent link">&para;</a></h3>
 <ol>
@@ -2451,12 +2455,56 @@ is the onboarding guide. How to read a scenario:</p>
 <td>Override system reference (rules, prompts, platform scoping)</td>
 </tr>
 <tr>
-<td><code>CHANGELOG.md</code></td>
-<td>Version history</td>
-</tr>
-<tr>
 <td><code>docs/dev/agent-troubleshooting.md</code></td>
 <td>Agent troubleshooting guide for pipeline, config, MCP, and gate issues</td>
+</tr>
+<tr>
+<td><code>docs/dev/founder-expectations.md</code></td>
+<td>Timestamped founder expectation baseline — <strong>historical snapshot, do not refresh</strong></td>
+</tr>
+<tr>
+<td><code>docs/dev/evaluation-matrix-principles.md</code></td>
+<td>How the evaluation matrix is scored</td>
+</tr>
+<tr>
+<td><code>docs/dev/forward-compat.md</code></td>
+<td>Forward-compatibility rules for schema evolution</td>
+</tr>
+<tr>
+<td><code>docs/dev/project-validation-framework.md</code></td>
+<td>Structural validation framework</td>
+</tr>
+<tr>
+<td><code>docs/dev/validation-loop-log.md</code></td>
+<td>Running log of validation loop iterations</td>
+</tr>
+<tr>
+<td><code>docs/dev/plans/NIGHTLY.md</code></td>
+<td>Nightly re-run plan + latest gap report</td>
+</tr>
+<tr>
+<td><code>docs/dev/deep-module-rfc-001.md</code></td>
+<td>Deep-module refactor RFC for <code>runner.py</code> (see its Status header)</td>
+</tr>
+<tr>
+<td><code>docs/user/deployment.md</code></td>
+<td>Deployment options comparison (Docker, native pip, systemd, Windows)</td>
+</tr>
+<tr>
+<td><code>docs/user/windows-deployment.md</code></td>
+<td>Windows setup: WSL2, Docker Desktop, native</td>
+</tr>
+<tr>
+<td><code>docs/user/user-introduction.md</code></td>
+<td>Getting-started walkthrough for new users</td>
+</tr>
+<tr>
+<td><code>docs/skills/</code></td>
+<td>User-facing MCP how-to skills (see §User-Facing Skills)</td>
+</tr>
+<tr>
+<td><code>CHANGELOG.md</code></td>
+<td>Version history</td>
 </tr>
 <tr>
 <td><code>docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md</code></td>
@@ -2473,12 +2521,14 @@ is the onboarding guide. How to read a scenario:</p>
 </tbody>
 </table>
 <h2 id="skills">Skills<a class="headerlink" href="#skills" title="Permanent link">&para;</a></h2>
-<p>Agent skills live in <code>.opencode/skills/</code> (canonical), with native copies synced to <code>.claude/skills/</code> and <code>.codex/skills/</code>. Cline references <code>.opencode/skills/</code> directly. When updating a skill, edit the canonical file and sync the copies.</p>
+<p>Agent skills live in <code>.opencode/skills/</code> (canonical). <code>.claude/skills/</code> and <code>.codex/skills/</code> hold synced copies (currently 4 of the 6 — <code>issue-triage</code> and <code>pr-review-merge</code> are canonical-only). Cline references <code>.opencode/skills/</code> directly. When updating a skill, edit the canonical file and sync the copies.</p>
 <ul>
 <li><code>project-validation</code>: Post-change validation against founder expectations</li>
 <li><code>doc-sync</code>: Documentation impact mapping when code changes affect docs (CLI/MCP tools, gates, config, API, pipelines, adapters)</li>
 <li><code>validation-runner</code>: Dev-side validation workflow; author regression scenarios on every bug fix; RED to GREEN evidence</li>
 <li><code>deep-modules</code>: Deep-module refactoring practice (Ousterhout, methodology §3.1)</li>
+<li><code>issue-triage</code>: Triage incoming issues into the repository's label/priority conventions</li>
+<li><code>pr-review-merge</code>: PR review and merge workflow</li>
 </ul>
 <h2 id="user-facing-skills">User-Facing Skills<a class="headerlink" href="#user-facing-skills" title="Permanent link">&para;</a></h2>
 <p>Skills for agents who USE AutoMedia (calling MCP tools to produce content) live in <code>docs/skills/</code>. They are not auto-discovered as OpenCode commands; they target users, not codebase maintainers.</p>
@@ -2493,6 +2543,18 @@ is the onboarding guide. How to read a scenario:</p>
 <tr>
 <td><code>docs/skills/brand-strategy.md</code></td>
 <td>How to call <code>run_brand_strategy</code> MCP tool: parameters, output structure, error handling</td>
+</tr>
+<tr>
+<td><code>docs/skills/pipeline-workflow.md</code></td>
+<td>End-to-end pipeline run: mode selection, gate progression, resuming</td>
+</tr>
+<tr>
+<td><code>docs/skills/batch-workflow.md</code></td>
+<td>Batch production across multiple topics via <code>run_batch</code></td>
+</tr>
+<tr>
+<td><code>docs/skills/distribution-workflow.md</code></td>
+<td>Distributing finished content to platforms via the D-gates</td>
 </tr>
 </tbody>
 </table>

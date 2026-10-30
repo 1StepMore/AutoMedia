@@ -1585,6 +1585,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-adjudication-2026-10-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Adjudication (2026-10-29)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Adjudication (2026-10-29)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-was-re-verified-against-the-tree-at-adjudication-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was re-verified against the tree at adjudication time
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicitly-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicitly out of scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2104,11 +2154,17 @@
 
 
 <h1 id="rfc-001-deep-module-refactor-automediapipelinesrunnerpy-friction-zone-scan">RFC-001: Deep-Module Refactor — <code>automedia/pipelines/runner.py</code> Friction-Zone Scan<a class="headerlink" href="#rfc-001-deep-module-refactor-automediapipelinesrunnerpy-friction-zone-scan" title="Permanent link">&para;</a></h1>
-<p><strong>Status:</strong> Proposed
+<p><strong>Status:</strong> Accepted (2026-10-29 — Proposal A; see §6 Adjudication)
 <strong>Date:</strong> 2026-08-13
+<strong>Adjudicated:</strong> 2026-10-29
 <strong>Scope:</strong> Document-only scan per the deep-module methodology (see
 <code>docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md</code> §3.1 — "Deep Modules（深模块）",
 after <em>Philosophy of Software Design</em>, John Ousterhout).</p>
+<blockquote>
+<p><strong>Reading note:</strong> §1-§5 are the original 2026-08-13 scan and are left as
+written. Several metrics in them have since moved; <strong>§6 Adjudication</strong> holds
+the re-verified numbers and the decision. Read §6 for the current state.</p>
+</blockquote>
 <hr />
 <h2 id="1-context-why-this-zone">1. Context — Why This Zone<a class="headerlink" href="#1-context-why-this-zone" title="Permanent link">&para;</a></h2>
 <p>§3.1 defines a <em>deep module</em> as <strong>small interface + large implementation</strong>,
@@ -2383,6 +2439,132 @@ per PR #55.</p>
 <p>No code was modified in producing this document. Every file, function, and
 symbol named above was verified to exist against the current tree
 (<code>git rev-parse HEAD</code> = <code>6c7ca2a</code>).</p>
+<hr />
+<h2 id="6-adjudication-2026-10-29">6. Adjudication (2026-10-29)<a class="headerlink" href="#6-adjudication-2026-10-29" title="Permanent link">&para;</a></h2>
+<p><strong>Status changed: <code>Proposed</code> → <code>Accepted</code> (Proposal A, phased).</strong></p>
+<p>This RFC sat at <code>Proposed</code> for 77 days. The aging gate
+(<code>scripts/check_rfc_aging.py</code>, <code>PROPOSED_MAX_AGE_DAYS = 90</code>) would have turned
+CI red on 2026-11-11, and it was right to: a <code>Proposed</code> RFC is a zero-cost
+state, so it gets forgotten while the friction zone keeps moving underneath it.</p>
+<h3 id="what-was-re-verified-against-the-tree-at-adjudication-time">What was re-verified against the tree at adjudication time<a class="headerlink" href="#what-was-re-verified-against-the-tree-at-adjudication-time" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric in §1</th>
+<th>RFC (2026-08-13)</th>
+<th>Actual (2026-10-29)</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runner.py</code> lines</td>
+<td>2,309</td>
+<td><strong>2,165</strong></td>
+<td>shrank, −6%</td>
+</tr>
+<tr>
+<td>top-level functions</td>
+<td>37</td>
+<td>37</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>function-level lazy imports</td>
+<td>44</td>
+<td><strong>45</strong></td>
+<td>+1</td>
+</tr>
+<tr>
+<td><code>run_full_pipeline</code> parameters</td>
+<td>23</td>
+<td><strong>23</strong></td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td><code>run_full_pipeline(</code> call sites</td>
+<td>68 across 34 files</td>
+<td><strong>60 across 12 files</strong></td>
+<td>§1 over-counted; grep matched the definition and doc prose</td>
+</tr>
+</tbody>
+</table>
+<p>The premise is <strong>weaker than when written but not resolved</strong>: the file is still
+the largest module in <code>automedia/</code> and still mixes the same sub-concerns. Two
+merges since this RFC removed adjacent friction without executing any of the
+three proposals:</p>
+<ul>
+<li><strong>#314</strong> lifted the per-mode gate lists into <code>pipelines/gate_plan.py</code>. Gate
+  <em>membership</em> now has one authority; gate <em>selection/composition logic</em>
+  (<code>_compose_gate_list</code>, <code>_collect_platform_gate_modifiers</code>,
+  <code>validate_gate_modifiers</code>) still lives in <code>runner.py</code>.</li>
+<li><strong>#318</strong> deleted <code>_filter_gates_for_platform</code> — it was dead code. One
+  sub-concern from §2.1 is therefore gone rather than extracted.</li>
+</ul>
+<h3 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h3>
+<p><strong>Adopt Proposal A</strong> (extract sub-process modules behind an unchanged public
+surface), in the phased order below. Proposal B (<code>PipelineRunSpec</code>) stays a
+follow-up gated on A landing. <strong>Proposal C is rejected</strong>: the stage-protocol
+layer adds indirection without removing interface surface, which is the
+anti-pattern §3.1 warns about, and no new pipeline modes have appeared to
+justify it.</p>
+<p>Phasing (each phase is an independent, revertible commit pair):</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Extract</th>
+<th>Into</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td><code>_verify_resume_integrity</code>, <code>_record_gate_md5s</code></td>
+<td><code>pipelines/integrity.py</code></td>
+<td>pure, no engine dependency — safest first cut</td>
+</tr>
+<tr>
+<td>A2</td>
+<td><code>_compose_gate_list</code>, <code>_collect_platform_gate_modifiers</code>, <code>validate_gate_modifiers</code></td>
+<td><code>pipelines/gate_selection.py</code></td>
+<td>finishes what #314 started; <code>gate_plan.py</code> supplies the lists</td>
+</tr>
+<tr>
+<td>A3</td>
+<td><code>_build_pipeline_context</code>, <code>_resolve_source_material</code></td>
+<td><code>pipelines/context.py</code></td>
+<td></td>
+</tr>
+<tr>
+<td>A4</td>
+<td><code>_collect_assets</code>, <code>_collect_video_assets</code></td>
+<td><code>pipelines/assets.py</code></td>
+<td></td>
+</tr>
+<tr>
+<td>A5</td>
+<td><code>_finalize_pipeline</code>, <code>_build_gates_log</code>, <code>_handle_pipeline_error</code></td>
+<td><code>pipelines/finalize.py</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Invariant for every phase:</strong> <code>run_full_pipeline</code>'s signature, <code>VALID_MODES</code>,
+<code>validate_gate_modifiers</code>' public name, the 45 lazy-import sites, and the
+<code>__init__</code> lazy <code>__getattr__</code> maps stay byte-identical. No new eager import may
+cross a package boundary. <code>tests/test_runner/</code> must pass unmodified — if a test
+needs editing, the extraction changed behaviour and the phase is wrong.</p>
+<h3 id="explicitly-out-of-scope">Explicitly out of scope<a class="headerlink" href="#explicitly-out-of-scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Do <strong>not</strong> delete the deprecated <code>decision_mode</code> / <code>force_provenance</code>
+  parameters here; that is Proposal B's job and needs its own migration.</li>
+<li>Do <strong>not</strong> touch <code>gate_plan.py</code>'s <code>MODE_GATE_NAMES</code> — A2 consumes it.</li>
+<li>Do <strong>not</strong> renumber or edit ADR-006; it records the 2026-08-30 state.</li>
+</ul>
+<p>Any deviation from this adjudication (dropping A, adopting C) needs a new ADR,
+not an edit to this RFC.</p>
 
 
 

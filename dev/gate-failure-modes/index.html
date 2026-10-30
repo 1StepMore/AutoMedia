@@ -1181,6 +1181,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cw-content-writer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CW: Content Writer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#g0-fact-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2345,6 +2356,38 @@ AutoMedia in production.</p>
 <p><strong>Quick diagnosis:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># View topic scores in the topic pool</span>
 automedia<span class="w"> </span>pool<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+</code></pre></div>
+<h2 id="cw-content-writer">CW: Content Writer<a class="headerlink" href="#cw-content-writer" title="Permanent link">&para;</a></h2>
+<p>The boundary gate between topic selection and content operations. It asks the
+LLM for a full article from the selected topic, writes it to
+<code>01_content/drafts/</code>, and attaches an inline SEO score. Every downstream copy
+gate (G0-G3, G6) consumes its output, so a CW failure stops the run
+(<code>failure_mode="stop"</code>).</p>
+<p><strong>Common failure causes:</strong></p>
+<ul>
+<li><code>topic</code> missing or empty in gate context — nothing to write about</li>
+<li><code>project_dir</code> missing, or <code>01_content/drafts/</code> not writable</li>
+<li>LLM provider error: bad API key, wrong model name, unreachable endpoint,
+  rate limit</li>
+<li>LLM returns an empty or whitespace-only response (prompt drift, over-tight
+  max-tokens)</li>
+<li>Draft file write fails on a full disk or permission change mid-run</li>
+</ul>
+<p><strong>Remediation:</strong></p>
+<ul>
+<li>Verify the topic reached the pipeline: <code>automedia run --topic "..."</code></li>
+<li>Check LLM config: <code>automedia doctor</code> (provider, model, key presence)</li>
+<li>Confirm the project dir is writable and has free space</li>
+<li>Re-run just this stage with <code>--resume-from CW</code> once the input is fixed</li>
+<li>If responses are consistently empty, inspect the writer prompt template
+  (<code>prompts/content_writer.j2</code>) for drift</li>
+</ul>
+<p><strong>Quick diagnosis:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Inspect what CW produced</span>
+ls<span class="w"> </span>-la<span class="w"> </span>&lt;project_dir&gt;/01_content/drafts/
+
+<span class="c1"># Confirm the LLM path is healthy</span>
+automedia<span class="w"> </span>doctor
 </code></pre></div>
 <h2 id="g0-fact-check">G0: Fact Check<a class="headerlink" href="#g0-fact-check" title="Permanent link">&para;</a></h2>
 <p>Five-step verification of content consistency with source data: source tracing,

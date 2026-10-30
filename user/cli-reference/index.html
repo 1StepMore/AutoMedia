@@ -1412,6 +1412,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#cron-run-due-the-external-crond-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cron run --due — the external crond contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#cron-check-health" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1640,6 +1651,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#automedia-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia mcp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="automedia mcp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Clients
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arguments-and-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments and Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#automedia-history" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1652,7 +1702,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#arguments-and-flags" class="md-nav__link">
+  <a href="#arguments-and-flags_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Arguments and Flags
@@ -1680,7 +1730,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#arguments-and-flags_1" class="md-nav__link">
+  <a href="#arguments-and-flags_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Arguments and Flags
@@ -2841,7 +2891,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).</p>
 </tr>
 <tr>
 <td><code>automedia pool</code></td>
-<td>Topic pool management (list, add, score)</td>
+<td>Topic pool management (list, add, prune, attach-brief)</td>
 </tr>
 <tr>
 <td><code>automedia projects</code></td>
@@ -2881,7 +2931,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).</p>
 </tr>
 <tr>
 <td><code>automedia omni</code></td>
-<td>Omni Triad operations (extract, translate, convert)</td>
+<td>Omni Triad operations (start, start-all, ingest, localize, format-output)</td>
 </tr>
 <tr>
 <td><code>automedia pipeline</code></td>
@@ -3807,6 +3857,9 @@ error and the command exits with status 1.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run a specific job</span>
 automedia<span class="w"> </span>cron<span class="w"> </span>run<span class="w"> </span>&lt;job-name&gt;
 
+<span class="c1"># Run every schedule entry that is due right now (external crond contract)</span>
+automedia<span class="w"> </span>cron<span class="w"> </span>run<span class="w"> </span>--due
+
 <span class="c1"># Full system health check</span>
 automedia<span class="w"> </span>cron<span class="w"> </span>check-health
 </code></pre></div>
@@ -3836,8 +3889,16 @@ automedia<span class="w"> </span>cron<span class="w"> </span>check-health
 <td>Check pending publish content</td>
 </tr>
 <tr>
+<td><code>watchdog</code></td>
+<td>4-step system health check (alias for <code>check-health</code>)</td>
+</tr>
+<tr>
 <td><code>run-pipeline</code></td>
 <td>Execute scheduled pipeline runs from cron/jobs.yaml</td>
+</tr>
+<tr>
+<td><code>run-distribute</code></td>
+<td>Execute scheduled distribution commands from cron/jobs.yaml</td>
 </tr>
 </tbody>
 </table>
@@ -3854,7 +3915,7 @@ automedia<span class="w"> </span>cron<span class="w"> </span>check-health
 <tr>
 <td><code>job_name</code></td>
 <td><code>str</code></td>
-<td>Job name (required)</td>
+<td>Job name. Optional when <code>--due</code> is given.</td>
 </tr>
 </tbody>
 </table>
@@ -3870,6 +3931,12 @@ automedia<span class="w"> </span>cron<span class="w"> </span>check-health
 </thead>
 <tbody>
 <tr>
+<td><code>--due</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Dispatch <strong>every</strong> schedule entry due now</td>
+</tr>
+<tr>
 <td><code>--timeout</code></td>
 <td><code>int</code></td>
 <td><code>120</code></td>
@@ -3877,6 +3944,25 @@ automedia<span class="w"> </span>cron<span class="w"> </span>check-health
 </tr>
 </tbody>
 </table>
+<h3 id="cron-run-due-the-external-crond-contract"><code>cron run --due</code> — the external crond contract<a class="headerlink" href="#cron-run-due-the-external-crond-contract" title="Permanent link">&para;</a></h3>
+<p>AutoMedia ships <strong>no scheduler</strong>. An external crond calls this command on a
+fixed tick (e.g. every minute); <code>--due</code> reads the canonical schedule store and
+dispatches every entry whose next fire time has passed:</p>
+<div class="highlight"><pre><span></span><code>* * * * * cd /srv/automedia &amp;&amp; automedia cron run --due
+</code></pre></div>
+<p>Two schedule sources are consulted, both from the canonical store:</p>
+<ol>
+<li>The static <code>jobs:</code> list (project <code>.automedia/</code>, falling back to the packaged
+   <code>cron/jobs.yaml</code>) — dispatched to their in-process handlers.</li>
+<li>The <code>pipeline_schedules:</code> list — <code>kind == "pipeline"</code> entries go through the
+   pool→pipeline bridge; <code>kind == "distribute"</code> entries go through the
+   distribution path.</li>
+</ol>
+<p>Exit code is <code>1</code> if any dispatched entry failed, <code>0</code> otherwise. Text mode
+prints <code>cron --due: N entries due, M failed.</code>; JSON mode returns
+<code>{"status", "due", "failed", "now"}</code>.</p>
+<p>Use <code>automedia cron run &lt;job-name&gt;</code> to force-run one named job regardless of
+its schedule.</p>
 <h3 id="cron-check-health">cron check-health<a class="headerlink" href="#cron-check-health" title="Permanent link">&para;</a></h3>
 <p>Run a 4-step health check:</p>
 <ol>
@@ -3965,7 +4051,8 @@ automedia<span class="w"> </span>init<span class="w"> </span>--template<span cla
 <p>Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.</p>
 <p>When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the <code>llm</code> field. These warnings are advisory and do not affect the exit code.</p>
 <h2 id="automedia-omni"><code>automedia omni</code><a class="headerlink" href="#automedia-omni" title="Permanent link">&para;</a></h2>
-<p>Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF).</p>
+<p>Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF),
+plus launching the adapter MCP servers.</p>
 <p>Each CLI subcommand has a corresponding MCP tool with a different name (see the
 <a href="#mcp-cli-naming-equivalences">MCP-CLI Naming Equivalences</a> table at the top of this page):</p>
 <table>
@@ -3973,24 +4060,44 @@ automedia<span class="w"> </span>init<span class="w"> </span>--template<span cla
 <tr>
 <th>CLI Subcommand</th>
 <th>MCP Equivalent</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td><code>automedia omni start</code></td>
+<td>—</td>
+<td>Start one Omni adapter server (<code>--mode parallel\|proxy\|sdk</code>)</td>
+</tr>
+<tr>
+<td><code>automedia omni start-all</code></td>
+<td>—</td>
+<td>Start the main server plus OPP/OL/ORF adapters in parallel; blocks until Ctrl+C</td>
+</tr>
+<tr>
 <td><code>automedia omni ingest</code></td>
 <td><code>extract_brief</code></td>
+<td>OPP document extraction</td>
 </tr>
 <tr>
 <td><code>automedia omni localize</code></td>
 <td><code>localize_content</code></td>
+<td>OL translation</td>
 </tr>
 <tr>
 <td><code>automedia omni format-output</code></td>
 <td><code>format_output</code></td>
+<td>ORF format conversion</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Extract content brief</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Launch every adapter server in parallel (blocks; Ctrl+C to stop)</span>
+automedia<span class="w"> </span>omni<span class="w"> </span>start-all
+
+<span class="c1"># Start a single adapter server</span>
+automedia<span class="w"> </span>omni<span class="w"> </span>start<span class="w"> </span>--mode<span class="w"> </span>sdk
+
+<span class="c1"># Extract content brief</span>
 automedia<span class="w"> </span>omni<span class="w"> </span>ingest<span class="w"> </span>--file<span class="w"> </span>document.md
 
 <span class="c1"># Localization translation</span>
@@ -4181,6 +4288,79 @@ automedia<span class="w"> </span>onboard
 automedia<span class="w"> </span>onboard<span class="w"> </span>list
 </code></pre></div>
 <p>The LLM step preserves an existing fallback chain in <code>model_config.yaml</code> and offers fallback guidance during the flow.</p>
+<h2 id="automedia-mcp"><code>automedia mcp</code><a class="headerlink" href="#automedia-mcp" title="Permanent link">&para;</a></h2>
+<p>Generate ready-to-paste MCP client configuration for the MCP server.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># All supported clients at once</span>
+automedia<span class="w"> </span>mcp<span class="w"> </span>discover
+
+<span class="c1"># One client</span>
+automedia<span class="w"> </span>mcp<span class="w"> </span>discover<span class="w"> </span>--client<span class="w"> </span>claude
+automedia<span class="w"> </span>mcp<span class="w"> </span>discover<span class="w"> </span>--client<span class="w"> </span>opencode
+automedia<span class="w"> </span>mcp<span class="w"> </span>discover<span class="w"> </span>--client<span class="w"> </span>codexcli
+
+<span class="c1"># Raw JSON (no labels) — pipe into a config file</span>
+automedia<span class="w"> </span>mcp<span class="w"> </span>discover<span class="w"> </span>--client<span class="w"> </span>claude<span class="w"> </span>--json
+</code></pre></div>
+<h3 id="supported-clients">Supported Clients<a class="headerlink" href="#supported-clients" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Value</th>
+<th>Where the snippet goes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Desktop / Claude Code</td>
+<td><code>claude</code></td>
+<td><code>claude_desktop_config.json</code> or <code>CLAUDE.md</code></td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>opencode</code></td>
+<td><code>.opencode/package.json</code> under <code>mcpServers</code></td>
+</tr>
+<tr>
+<td>Codex CLI</td>
+<td><code>codexcli</code></td>
+<td><code>~/.codex/config.json</code> or project <code>.codex/config.json</code></td>
+</tr>
+<tr>
+<td>all</td>
+<td><code>all</code></td>
+<td>Prints every configuration above, keyed by client</td>
+</tr>
+</tbody>
+</table>
+<h3 id="arguments-and-flags">Arguments and Flags<a class="headerlink" href="#arguments-and-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument / Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--client, -c</code></td>
+<td><code>str</code></td>
+<td><code>all</code></td>
+<td>Target client: <code>claude</code>, <code>opencode</code>, <code>codexcli</code>, or <code>all</code></td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Emit raw JSON without wrapper labels</td>
+</tr>
+</tbody>
+</table>
+<p>The generated snippet always points at <code>python -m automedia.mcp.server</code> using
+the interpreter that runs the CLI. An unknown <code>--client</code> value exits with
+code <code>1</code> and lists the valid options.</p>
 <h2 id="automedia-history"><code>automedia history</code><a class="headerlink" href="#automedia-history" title="Permanent link">&para;</a></h2>
 <p>Show pipeline execution history for a project.</p>
 <p>Displays a table of Timestamp, Action, and Details columns from the per-project
@@ -4191,7 +4371,7 @@ automedia<span class="w"> </span><span class="nb">history</span><span class="w">
 <span class="c1"># Machine-readable JSON output</span>
 automedia<span class="w"> </span><span class="nb">history</span><span class="w"> </span>&lt;project_id&gt;<span class="w"> </span>--base-dir<span class="w"> </span>./projects<span class="w"> </span>--json
 </code></pre></div>
-<h3 id="arguments-and-flags">Arguments and Flags<a class="headerlink" href="#arguments-and-flags" title="Permanent link">&para;</a></h3>
+<h3 id="arguments-and-flags_1">Arguments and Flags<a class="headerlink" href="#arguments-and-flags_1" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4224,7 +4404,7 @@ automedia<span class="w"> </span>rollback<span class="w"> </span>&lt;project_id&
 </code></pre></div>
 <p>Refuses to roll back a project that has no pipeline history or is already
 archived.</p>
-<h3 id="arguments-and-flags_1">Arguments and Flags<a class="headerlink" href="#arguments-and-flags_1" title="Permanent link">&para;</a></h3>
+<h3 id="arguments-and-flags_2">Arguments and Flags<a class="headerlink" href="#arguments-and-flags_2" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>

@@ -813,15 +813,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#nodeexecutor" class="md-nav__link">
+  <a href="#nodeexecutor-dormant-scaffold" class="md-nav__link">
     <span class="md-ellipsis">
       
-        NodeExecutor
+        NodeExecutor (dormant scaffold)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="NodeExecutor">
+    <nav class="md-nav" aria-label="NodeExecutor (dormant scaffold)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2237,58 +2237,62 @@ automedia<span class="w"> </span>run<span class="w"> </span>--project-id<span cl
 </code></pre></div>
 <p><code>--resume-from H0</code> requires <code>--project-id</code>; without a project id the runner
 starts a brand-new project instead of the parked one.</p>
-<p>The director preset defines 8 review nodes for gate-level oversight:</p>
+<p>The director preset (<code>automedia/hitl/presets/director.py</code>) defines 8 review
+nodes:</p>
 <table>
 <thead>
 <tr>
 <th>Review Node</th>
-<th>Gate</th>
+<th>Area</th>
 <th>What's Reviewed</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>topic</td>
+<td><code>topic_selection</code></td>
 <td>Pre-gate</td>
-<td>Topic selection and validation</td>
+<td>Topic selection before content generation</td>
 </tr>
 <tr>
-<td>content</td>
+<td><code>cw_output</code></td>
 <td>CW</td>
 <td>Written content draft quality</td>
 </tr>
 <tr>
-<td>brand</td>
-<td>G3</td>
-<td>Brand CTA compliance</td>
+<td><code>g2_copy_review</code></td>
+<td>G2</td>
+<td>Copy review results</td>
 </tr>
 <tr>
-<td>wechat</td>
-<td>G4</td>
-<td>WeChat-specific formatting checks</td>
+<td><code>v0_lint</code></td>
+<td>V0</td>
+<td>HTML lint output</td>
 </tr>
 <tr>
-<td>vision</td>
+<td><code>v1_vision_qa</code></td>
 <td>V1</td>
-<td>Vision QA — image/video quality</td>
+<td>Vision quality assurance</td>
 </tr>
 <tr>
-<td>tts</td>
-<td>V4</td>
-<td>TTS audio quality and brand asset check</td>
+<td><code>v2_subtitle</code></td>
+<td>V2</td>
+<td>Subtitle rendering</td>
 </tr>
 <tr>
-<td>subtitle</td>
-<td>V6</td>
-<td>Subtitle rendering accuracy</td>
+<td><code>l2_archive</code></td>
+<td>L2</td>
+<td>Archive validation</td>
 </tr>
 <tr>
-<td>publish</td>
-<td>L1</td>
-<td>Publish log review before platform distribution</td>
+<td><code>l3_publish</code></td>
+<td>L3</td>
+<td>Publish per platform</td>
 </tr>
 </tbody>
 </table>
+<p>These node definitions describe the preset <strong>file</strong>; the runner consumes
+only each node's name and <code>autoset</code> flag, and <code>requires_approval</code> is not
+wired into gate execution (remediation plan A3).</p>
 <h3 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run pipeline in director mode (CLI)</span>
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--director
@@ -2297,9 +2301,8 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>--brand<span class="w"> </span>my-brand<span class="w"> </span>--director<span class="w"> </span>--wait-for-review
 
 <span class="c1"># Or via MCP</span>
-<span class="c1"># Call run_pipeline with director=true, then poll get_pending_approvals</span>
-<span class="c1"># Approve passing gates: approve_gate(gate_name="V1")</span>
-<span class="c1"># Reject failing gates: reject_gate(gate_name="V1")</span>
+<span class="c1"># Call run_pipeline with director=true; when the run pauses at H0,</span>
+<span class="c1"># decide with review_decision(project_id, gate_name="H0", action=...)</span>
 </code></pre></div>
 <p>The director mode is also accessible via <code>python</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_full_pipeline</span>
@@ -2317,30 +2320,25 @@ automedia<span class="w"> </span>run<span class="w"> </span>--topic<span class="
 <p>Suitable for teams that want full pipeline automation but require a
 human sign-off before content goes live.</p>
 <hr />
-<h2 id="nodeexecutor">NodeExecutor<a class="headerlink" href="#nodeexecutor" title="Permanent link">&para;</a></h2>
-<p>The <code>NodeExecutor</code> routes execution based on the active HITL configuration:</p>
+<h2 id="nodeexecutor-dormant-scaffold">NodeExecutor (dormant scaffold)<a class="headerlink" href="#nodeexecutor-dormant-scaffold" title="Permanent link">&para;</a></h2>
+<p><code>NodeExecutor</code> is part of the unwired Decision-Layer scaffold: it has <strong>no
+production call site</strong> — nothing in the pipeline constructs an executor
+today.  The LIVE HITL path is the H0 gate plus the <code>review_decision</code> MCP
+tool (same-process) or <code>automedia hitl approve/reject</code> (cross-process).
+The class remains importable for a future decision-agent integration:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.hitl</span><span class="w"> </span><span class="kn">import</span> <span class="n">HITLConfig</span><span class="p">,</span> <span class="n">NodeExecutor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">automedia.decision.diagnostic</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiagnosticAgent</span>
 
 <span class="c1"># Load the semi-automated preset</span>
 <span class="n">cfg</span> <span class="o">=</span> <span class="n">HITLConfig</span><span class="p">(</span><span class="n">preset_name</span><span class="o">=</span><span class="s2">"semi-automated"</span><span class="p">)</span>
-<span class="n">executor</span> <span class="o">=</span> <span class="n">NodeExecutor</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
-
-<span class="n">agent</span> <span class="o">=</span> <span class="n">DiagnosticAgent</span><span class="p">()</span>
+<span class="n">executor</span> <span class="o">=</span> <span class="n">NodeExecutor</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>  <span class="c1"># dormant: no production caller constructs this</span>
 
 <span class="c1"># Agent-mode node → artifact returned immediately</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"build_scale_routing"</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
-
-<span class="c1"># Human-mode node → returns None, stored as pending</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"brand_questionnaire"</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
-<span class="c1"># result is None; suggestion stored internally</span>
-
-<span class="c1"># Approve the pending node</span>
-<span class="n">artifact</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">approve_node</span><span class="p">(</span><span class="s2">"brand_questionnaire"</span><span class="p">)</span>
-
-<span class="c1"># Or skip it (artifact marked with human_skipped=True)</span>
-<span class="n">artifact</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">skip_node</span><span class="p">(</span><span class="s2">"brand_questionnaire"</span><span class="p">)</span>
+<span class="c1"># Human-mode node → returns None, stored as pending until approve/skip</span>
 </code></pre></div>
+<p>Do not build on this section until the decision layer is wired (remediation
+plan A4): the decision-agent classes earlier drafts referenced
+(<code>BaseDecisionAgent</code>, a <code>DiagnosticAgent</code>, <code>decision.orchestrator</code>) do not
+exist in the codebase.</p>
 <h3 id="pending-node-lifecycle">Pending Node Lifecycle<a class="headerlink" href="#pending-node-lifecycle" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>execute("human_node", agent, context)
     │
@@ -2375,10 +2373,14 @@ automedia<span class="w"> </span>hitl<span class="w"> </span>pending
 <span class="c1"># Deliver a decision to a pipeline parked in another process</span>
 automedia<span class="w"> </span>hitl<span class="w"> </span>approve<span class="w"> </span>&lt;project_id&gt;
 automedia<span class="w"> </span>hitl<span class="w"> </span>reject<span class="w"> </span>&lt;project_id&gt;
-
-<span class="c1"># Record human approval for a node</span>
-<span class="c1"># (use the Decision Layer SDK: automedia.decision.orchestrator.approve_node)</span>
 </code></pre></div>
+<blockquote>
+<p><strong>Note (runtime honesty):</strong> <code>hitl preset --set</code> records
+<code>active_preset.yaml</code> for display and onboarding checks only. The pipeline
+runner hardcodes its preset choice (<code>"director"</code> when director mode is
+requested, otherwise <code>"automated"</code>), so activating a preset does not
+change runtime behavior today.</p>
+</blockquote>
 <hr />
 <h2 id="override-mechanism">Override Mechanism<a class="headerlink" href="#override-mechanism" title="Permanent link">&para;</a></h2>
 <p>Users can fine-tune preset behaviour with override YAML files:</p>
@@ -2396,16 +2398,17 @@ Multiple override files can coexist — they are applied in alphabetical order.<
 </code></pre></div>
 <hr />
 <h2 id="integration-with-hitl-sdk">Integration with HITL SDK<a class="headerlink" href="#integration-with-hitl-sdk" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia.hitl</span><span class="w"> </span><span class="kn">import</span> <span class="n">HITLConfig</span><span class="p">,</span> <span class="n">NodeExecutor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">automedia.decision.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseDecisionAgent</span>
-
-<span class="n">cfg</span> <span class="o">=</span> <span class="n">HITLConfig</span><span class="p">(</span><span class="n">preset_name</span><span class="o">=</span><span class="s2">"semi-automated"</span><span class="p">)</span>
-<span class="n">executor</span> <span class="o">=</span> <span class="n">NodeExecutor</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
-
-<span class="n">agent</span> <span class="o">=</span> <span class="n">BaseDecisionAgent</span><span class="p">()</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"my_node"</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
-<span class="c1"># Human-approved nodes block until manually approved via CLI</span>
-</code></pre></div>
+<p>There is no Decision-Layer SDK integration today: the <code>BaseDecisionAgent</code>
+class this section used to reference does not exist in the codebase, and
+<code>NodeExecutor</code> itself is a dormant scaffold with no production call site
+(see "NodeExecutor" above and remediation plan A4).  The live integration
+points are:</p>
+<ul>
+<li><strong>H0 gate pause</strong> → <code>review_decision</code> MCP tool (same-process) or
+  <code>automedia hitl approve/reject</code> CLI (cross-process parked runs);</li>
+<li><strong>Preset override merge</strong> (<code>HITLConfig</code>) → display and onboarding checks;
+  the runner hardcodes its preset choice today.</li>
+</ul>
 
 
 

@@ -2359,22 +2359,22 @@
 <p>Plain-language definitions of AutoMedia terms for AI coding agents. Each entry points to the file or module that implements the concept. For the full codebase map, see <a href="https://github.com/1StepMore/AutoMedia/blob/main/AGENTS.md">AGENTS.md</a>.</p>
 <h2 id="g0-g6-copy-gates">G0-G6 (copy gates)<a class="headerlink" href="#g0-g6-copy-gates" title="Permanent link">&para;</a></h2>
 <p>Copy quality gates that run in the middle of the pipeline: fact check (G0), humanizer (G1), copy review (G2), brand CTA (G3), WeChat checklist (G4), HTML check (G5), tone check (G6).</p>
-<p><strong>See:</strong> <code>automedia/gates/</code>, gate lists in <code>automedia/pipelines/runner.py</code></p>
+<p><strong>See:</strong> <code>automedia/gates/</code>, gate lists in <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="v0-v7-videoquality-gates">V0-V7 (video/quality gates)<a class="headerlink" href="#v0-v7-videoquality-gates" title="Permanent link">&para;</a></h2>
 <p>Video and production-quality gates that run after the copy gates: lint (V0), vision QA (V1), pre-send whisper (V2), content semantic (V3), TTS brand asset (V4), MP3 vs SRT (V5), subtitle render (V6), six-step hard check (V7).</p>
-<p><strong>See:</strong> <code>automedia/gates/lint.py</code>, <code>automedia/pipelines/runner.py</code></p>
+<p><strong>See:</strong> <code>automedia/gates/lint.py</code>, <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="l1-l4-lifecycle-gates">L1-L4 (lifecycle gates)<a class="headerlink" href="#l1-l4-lifecycle-gates" title="Permanent link">&para;</a></h2>
 <p>Lifecycle gates at the end of the pipeline: publish log schema (L1), archive validation (L2), platform integrity (L3), translation quality (L4).</p>
-<p><strong>See:</strong> <code>automedia/gates/publish_log_schema.py</code>, <code>automedia/pipelines/runner.py</code></p>
+<p><strong>See:</strong> <code>automedia/gates/publish_log_schema.py</code>, <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="d1-d7-distribution-gates">D1-D7 (distribution gates)<a class="headerlink" href="#d1-d7-distribution-gates" title="Permanent link">&para;</a></h2>
-<p>Standalone gates that rewrite content for specific platforms (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok). They are invoked via CLI/MCP <code>distribute</code>, not as part of a normal pipeline run.</p>
-<p><strong>See:</strong> <code>automedia/cli/commands/distribute.py</code>, <code>automedia/pipelines/runner.py</code></p>
+<p>Standalone gates that rewrite content for specific platforms (WeChat, Twitter/X, Zhihu, Xiaohongshu, Bilibili, YouTube, TikTok). They are invoked via the <code>automedia distribute</code> CLI command (cron reuses the same command), not as part of a normal pipeline run. Note the two "distribute" surfaces are <strong>not</strong> the same capability: the MCP <code>distribute_content</code> tool publishes directly through the platform adapters and does <strong>not</strong> run these gates — same name, different semantics.</p>
+<p><strong>See:</strong> <code>automedia/cli/commands/distribute.py</code>, gate lists in <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="p1-p4-repurpose-gates">P1-P4 (repurpose gates)<a class="headerlink" href="#p1-p4-repurpose-gates" title="Permanent link">&para;</a></h2>
 <p>Sub-pipelines that run at the end of <code>repurpose</code> pipeline mode to produce deep repurposed versions (WeChat, Twitter/X, Newsletter, Bilibili).</p>
-<p><strong>See:</strong> <code>automedia/pipelines/runner.py</code></p>
+<p><strong>See:</strong> <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="pre-gate">pre-gate<a class="headerlink" href="#pre-gate" title="Permanent link">&para;</a></h2>
 <p>The topic selection gate that runs before content writing. It validates that the topic is suitable before any generation happens.</p>
-<p><strong>See:</strong> <code>automedia/gates/topic_selection.py</code>, <code>automedia/pipelines/runner.py</code></p>
+<p><strong>See:</strong> <code>automedia/gates/topic_selection.py</code>, <code>automedia/pipelines/gate_plan.py</code></p>
 <h2 id="cw-content-writer">CW (content writer)<a class="headerlink" href="#cw-content-writer" title="Permanent link">&para;</a></h2>
 <p>The content writing gate, the first real generation step. It writes the article draft with inline SEO scoring.</p>
 <p><strong>See:</strong> <code>automedia/gates/content_writer.py</code></p>
@@ -2388,7 +2388,7 @@
 <p>The sequential executor that runs the ordered gate list for a pipeline. It supports pause and resume, which is what director mode uses for human approval.</p>
 <p><strong>See:</strong> <code>automedia/pipelines/gate_engine.py</code></p>
 <h2 id="auto_gate_dag-dagpy">AUTO_GATE_DAG / dag.py<a class="headerlink" href="#auto_gate_dag-dagpy" title="Permanent link">&para;</a></h2>
-<p>The canonical gate dependency graph defined in <code>automedia/pipelines/dag.py</code>: 26 nodes (the 22 auto-mode gates plus P1-P4) with <code>depends_on</code> edges. It is an additive, order-equivalent representation of <code>_MODE_MAP</code> — <code>topological_order(AUTO_GATE_DAG, mode_gates)</code> reproduces every mode list byte-for-byte. It also answers structural questions <code>_MODE_MAP</code> cannot, like "which gates are downstream of G0?".</p>
+<p>The canonical gate dependency graph defined in <code>automedia/pipelines/dag.py</code>: 26 nodes (the 22 copy/video/lifecycle gates — pre-gate, CW, G0-G6, V0-V7, H0, L1-L4 — plus P1-P4) with <code>depends_on</code> edges. Note the DAG is a structural superset of every preset: <code>auto</code> mode executes 16 of these 22 (<code>G4</code>, <code>G5</code> and <code>L1</code>-<code>L4</code> belong to no preset). It is an additive, order-equivalent representation of <code>MODE_GATE_NAMES</code> — <code>topological_order(AUTO_GATE_DAG, mode_gates)</code> reproduces every mode list byte-for-byte. It also answers structural questions <code>MODE_GATE_NAMES</code> cannot, like "which gates are downstream of G0?".</p>
 <p><strong>See:</strong> <code>automedia/pipelines/dag.py</code></p>
 <h2 id="automedia-pipeline-state">automedia pipeline state<a class="headerlink" href="#automedia-pipeline-state" title="Permanent link">&para;</a></h2>
 <p>A read-only per-gate audit view for a project. It aggregates <code>history.db</code> and <code>pipeline_md5.json</code> into a passed/failed/pending/skipped/awaiting_review status per gate (with asset md5 and recorded timestamp), grouped by track (copy, video, qa, lifecycle). <code>awaiting_review</code> means the run parked at the H0 human-review gate and is waiting for a decision; every other unfinished gate stays <code>pending</code>. Also exposed as the MCP <code>get_pipeline_state</code> tool.</p>
@@ -2403,7 +2403,7 @@
 <p>The per-run gate report written to <code>&lt;project_dir&gt;/05_review/gate-report/gate-report-&lt;timestamp&gt;.{md,json}</code> at the end of every production run, whether it passed or failed. It renders one row per gate: the verdict (pass/fail/review), the blocking reason when one exists, per-check detail where present, and the gate duration. The Markdown file is human-readable; the JSON side-by-side is what the MCP <code>get_gate_report</code> tool reads. "review" is the report vocabulary for a crashed gate or an H0 the run's hitl mode covered.</p>
 <p><strong>See:</strong> <code>automedia/pipelines/gate_report.py</code></p>
 <h2 id="get_gate_report">get_gate_report<a class="headerlink" href="#get_gate_report" title="Permanent link">&para;</a></h2>
-<p>MCP tool (one of 67) that returns the latest gate-report JSON for a project by reading <code>&lt;project_dir&gt;/05_review/gate-report/gate-report-*.json</code>. The project's base_dir must be allowlisted in <code>mcp_allowlist.yaml</code>, otherwise the request is denied fail-closed. Read-only: it never writes to the project.</p>
+<p>MCP tool (one of 68) that returns the latest gate-report JSON for a project by reading <code>&lt;project_dir&gt;/05_review/gate-report/gate-report-*.json</code>. The project's base_dir must be allowlisted in <code>mcp_allowlist.yaml</code>, otherwise the request is denied fail-closed. Read-only: it never writes to the project.</p>
 <p><strong>See:</strong> <code>automedia/mcp/tools/pipeline.py</code> (registered in <code>automedia/mcp/server.py</code>)</p>
 <h2 id="gate_diffs-automediagate_diffs">gate_diffs (.automedia/gate_diffs/)<a class="headerlink" href="#gate_diffs-automediagate_diffs" title="Permanent link">&para;</a></h2>
 <p>Per-gate before/after content records captured when a content gate rewrites the draft on a failing quality retry. G1 (humanizer) and G2 (copy review) writes land in <code>&lt;project_dir&gt;/.automedia/gate_diffs/&lt;gate&gt;_&lt;seq&gt;.json</code>, with the record's texts and an <code>applied: true|false</code> flag saying whether the rewrite was promoted into the content flow. Only the texts are stored; a unified diff is rendered on demand (the Director review view), never persisted.</p>

@@ -884,6 +884,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#public-api-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public API surface
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run_full_pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1276,6 +1287,72 @@
     <span class="md-ellipsis">
       
         sanitize_path()
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipelineprogress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineProgress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-gateengine-alias" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline (GateEngine alias)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platformmediaspec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlatformMediaSpec
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decisionartifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DecisionArtifact
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#__version__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __version__
       
     </span>
   </a>
@@ -2370,6 +2447,115 @@
 
 
 <h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<h2 id="public-api-surface">Public API surface<a class="headerlink" href="#public-api-surface" title="Permanent link">&para;</a></h2>
+<p>Everything importable from the package root. This list is the contract: it
+matches <code>automedia.__all__</code> exactly (19 symbols).</p>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Kind</th>
+<th>Documented in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_full_pipeline</code></td>
+<td>function</td>
+<td><a href="#run_full_pipeline"><code>run_full_pipeline()</code></a></td>
+</tr>
+<tr>
+<td><code>get_platform_media_spec</code></td>
+<td>function</td>
+<td><a href="#platformmediaspec"><code>PlatformMediaSpec</code></a></td>
+</tr>
+<tr>
+<td><code>PipelineResult</code></td>
+<td>dataclass</td>
+<td><a href="#pipelineresult">PipelineResult</a></td>
+</tr>
+<tr>
+<td><code>AssetInfo</code></td>
+<td>dataclass</td>
+<td><a href="#assetinfo">AssetInfo</a></td>
+</tr>
+<tr>
+<td><code>GateLogEntry</code></td>
+<td>dataclass</td>
+<td><a href="#gatelogentry">GateLogEntry</a></td>
+</tr>
+<tr>
+<td><code>PipelineProgress</code></td>
+<td>class</td>
+<td><a href="#pipelineprogress">PipelineProgress</a></td>
+</tr>
+<tr>
+<td><code>Pipeline</code></td>
+<td>alias</td>
+<td><a href="#pipeline-gateengine-alias"><code>Pipeline</code></a></td>
+</tr>
+<tr>
+<td><code>GateEngine</code></td>
+<td>class</td>
+<td><a href="#gateengine">GateEngine</a></td>
+</tr>
+<tr>
+<td><code>GateRegistry</code></td>
+<td>singleton</td>
+<td><a href="#gateregistry">GateRegistry</a></td>
+</tr>
+<tr>
+<td><code>GateHook</code></td>
+<td>protocol</td>
+<td><a href="#gatehook-protocol">GateHook Protocol</a></td>
+</tr>
+<tr>
+<td><code>PlatformMediaSpec</code></td>
+<td>dataclass</td>
+<td><a href="#platformmediaspec"><code>PlatformMediaSpec</code></a></td>
+</tr>
+<tr>
+<td><code>DecisionArtifact</code></td>
+<td>dataclass</td>
+<td><a href="#decisionartifact">DecisionArtifact</a></td>
+</tr>
+<tr>
+<td><code>AutoMediaError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>PipelineError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>GateError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>AdapterError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>ConfigError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>AccountError</code></td>
+<td>exception</td>
+<td><a href="#exceptions">Exceptions</a></td>
+</tr>
+<tr>
+<td><code>__version__</code></td>
+<td><code>str</code></td>
+<td><a href="#__version__"><code>__version__</code></a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="run_full_pipeline"><code>run_full_pipeline()</code><a class="headerlink" href="#run_full_pipeline" title="Permanent link">&para;</a></h2>
 <p>Core entry function, executes the full content production pipeline.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_full_pipeline</span>
@@ -2943,6 +3129,245 @@ error.</p>
 
 <span class="n">safe_path</span> <span class="o">=</span> <span class="n">sanitize_path</span><span class="p">(</span><span class="s2">"/valid/path"</span><span class="p">)</span>  <span class="c1"># Validate and normalize path</span>
 <span class="c1"># Rejects "..", "~", "//" patterns</span>
+</code></pre></div>
+<h2 id="pipelineprogress">PipelineProgress<a class="headerlink" href="#pipelineprogress" title="Permanent link">&para;</a></h2>
+<p>Thread-safe observable progress tracker. The pipeline mutates it from a worker
+thread while an MCP query thread reads it; every mutation is behind a lock, so
+<code>get_progress()</code> never returns torn state. <code>get_pipeline_progress</code> and
+<code>automedia run</code> are both built on it.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineProgress</span>
+
+<span class="n">progress</span> <span class="o">=</span> <span class="n">PipelineProgress</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="s2">"a4c8e2f61b90"</span><span class="p">)</span>
+<span class="n">progress</span><span class="o">.</span><span class="n">set_gate_names</span><span class="p">([</span><span class="s2">"pre-gate"</span><span class="p">,</span> <span class="s2">"CW"</span><span class="p">,</span> <span class="s2">"G0"</span><span class="p">,</span> <span class="s2">"H0"</span><span class="p">])</span>
+
+<span class="n">progress</span><span class="o">.</span><span class="n">get_progress</span><span class="p">()</span>
+<span class="c1"># {</span>
+<span class="c1">#   "project_id": "a4c8e2f61b90",</span>
+<span class="c1">#   "current_gate": None,</span>
+<span class="c1">#   "gates_done": [],</span>
+<span class="c1">#   "gates_remaining": ["pre-gate", "CW", "G0", "H0"],</span>
+<span class="c1">#   "total_gates": 4,</span>
+<span class="c1">#   "events": [],</span>
+<span class="c1">#   "error": None,</span>
+<span class="c1">#   "is_running": False,</span>
+<span class="c1">#   "is_failed": False,</span>
+<span class="c1">#   "elapsed_s": 0.0,</span>
+<span class="c1">#   "token_usage": None,</span>
+<span class="c1">#   "estimated_cost_usd": None,</span>
+<span class="c1"># }</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_gate_names(names)</code></td>
+<td>Declare the ordered gate list; sets <code>total_gates</code></td>
+</tr>
+<tr>
+<td><code>get_progress()</code></td>
+<td>JSON-compatible snapshot (shape above)</td>
+</tr>
+<tr>
+<td><code>get_current_gate()</code></td>
+<td>Name of the running gate, or <code>None</code></td>
+</tr>
+<tr>
+<td><code>cancel()</code> / <code>pause()</code> / <code>resume()</code></td>
+<td>Cooperative run control</td>
+</tr>
+<tr>
+<td><code>is_cancelled()</code> / <code>is_paused()</code></td>
+<td>Control-state queries</td>
+</tr>
+<tr>
+<td><code>mark_retry_gate(name)</code> / <code>mark_skip_gate(name)</code></td>
+<td>Queue a per-gate override</td>
+</tr>
+<tr>
+<td><code>mark_finished()</code></td>
+<td>Flag the run as complete</td>
+</tr>
+</tbody>
+</table>
+<h2 id="pipeline-gateengine-alias"><code>Pipeline</code> (GateEngine alias)<a class="headerlink" href="#pipeline-gateengine-alias" title="Permanent link">&para;</a></h2>
+<p><code>Pipeline</code> is an exported alias for <code>GateEngine</code>, kept for the documented
+<code>Pipeline</code> name. Both names resolve to the same class:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">GateEngine</span>
+<span class="k">assert</span> <span class="n">Pipeline</span> <span class="ow">is</span> <span class="n">GateEngine</span>   <span class="c1"># True</span>
+</code></pre></div>
+<p>Use whichever reads better; behaviour is identical. See
+<a href="#gateengine">GateEngine</a>.</p>
+<h2 id="platformmediaspec"><code>PlatformMediaSpec</code><a class="headerlink" href="#platformmediaspec" title="Permanent link">&para;</a></h2>
+<p>Per-platform media requirements (dimensions, aspect ratio, duration, codec,
+bitrate, fps), resolved with brand overrides layered on top of the built-in
+table.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlatformMediaSpec</span><span class="p">,</span> <span class="n">get_platform_media_spec</span>
+
+<span class="n">spec</span> <span class="o">=</span> <span class="n">get_platform_media_spec</span><span class="p">(</span><span class="s2">"xiaohongshu"</span><span class="p">)</span>
+<span class="c1"># PlatformMediaSpec(width=1080, height=1440, aspect_ratio="3:4", ...)</span>
+
+<span class="c1"># Brand config can override any field for a platform</span>
+<span class="n">spec</span> <span class="o">=</span> <span class="n">get_platform_media_spec</span><span class="p">(</span>
+    <span class="s2">"wechat"</span><span class="p">,</span>
+    <span class="n">brand_config</span><span class="o">=</span><span class="p">{</span><span class="s2">"platforms"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"wechat"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"media"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"max_duration_s"</span><span class="p">:</span> <span class="mi">300</span><span class="p">}}}},</span>
+<span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>width</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Video/image width in pixels (<code>0</code> = n/a)</td>
+</tr>
+<tr>
+<td><code>height</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Video/image height in pixels (<code>0</code> = n/a)</td>
+</tr>
+<tr>
+<td><code>aspect_ratio</code></td>
+<td><code>str</code></td>
+<td><code>"free"</code></td>
+<td>e.g. <code>"16:9"</code>, <code>"9:16"</code>, <code>"1:1"</code>, <code>"3:4"</code>, <code>"free"</code></td>
+</tr>
+<tr>
+<td><code>max_duration_s</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Maximum content duration in seconds (<code>0</code> = n/a)</td>
+</tr>
+<tr>
+<td><code>format</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>e.g. <code>"mp4"</code>, <code>"jpg"</code>, <code>"markdown"</code>, <code>"html"</code></td>
+</tr>
+<tr>
+<td><code>codec</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Video/audio codec</td>
+</tr>
+<tr>
+<td><code>bitrate</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Target bitrate in kbps</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Frames per second</td>
+</tr>
+</tbody>
+</table>
+<p><code>get_platform_media_spec(platform, brand_config=None)</code> resolves in three steps:
+built-in <code>PLATFORM_MEDIA_SPECS</code> lookup → <code>DEFAULT_SPEC</code> fallback for unknown
+platforms → brand overrides from <code>brand_config["platforms"][platform]["media"]</code>.</p>
+<h2 id="decisionartifact">DecisionArtifact<a class="headerlink" href="#decisionartifact" title="Permanent link">&para;</a></h2>
+<p>Structured artifact produced by the Decision Layer agents (PRD-3) — briefs,
+brand DNA, market reports, persona maps, competitor matrices, strategy docs,
+asset blueprints, content calendars.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">DecisionArtifact</span>
+
+<span class="n">artifact</span> <span class="o">=</span> <span class="n">DecisionArtifact</span><span class="p">(</span>
+    <span class="n">artifact_type</span><span class="o">=</span><span class="s2">"brief"</span><span class="p">,</span>
+    <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"..."</span><span class="p">,</span> <span class="s2">"audience"</span><span class="p">:</span> <span class="s2">"..."</span><span class="p">},</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">"yaml"</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">artifact</span><span class="o">.</span><span class="n">artifact_type</span>   <span class="c1"># "brief"</span>
+<span class="n">artifact</span><span class="o">.</span><span class="n">created_at</span>      <span class="c1"># ISO-8601 timestamp (naive UTC)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>artifact_type</code></td>
+<td><code>str</code></td>
+<td>(required)</td>
+<td><code>brief</code>, <code>brand_dna</code>, <code>market_report</code>, <code>persona_map</code>, <code>competitor_matrix</code>, <code>strategy_doc</code>, <code>asset_blueprint</code>, <code>content_calendar</code></td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td><code>dict[str, Any]</code></td>
+<td>(required)</td>
+<td>Structured payload</td>
+</tr>
+<tr>
+<td><code>format</code></td>
+<td><code>str</code></td>
+<td><code>"yaml"</code></td>
+<td><code>yaml</code>, <code>markdown</code>, or <code>csv</code></td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>dict[str, Any]</code></td>
+<td><code>{}</code></td>
+<td>Provenance: source agent, timestamp, version</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td><code>datetime</code></td>
+<td>now (UTC)</td>
+<td>Creation timestamp</td>
+</tr>
+</tbody>
+</table>
+<h2 id="exceptions">Exceptions<a class="headerlink" href="#exceptions" title="Permanent link">&para;</a></h2>
+<p>Every AutoMedia exception derives from <code>AutoMediaError</code>, so a single
+<code>except AutoMediaError</code> catches all of them. Catching a subclass narrows the
+failure to one subsystem.</p>
+<div class="highlight"><pre><span></span><code>AutoMediaError
+├── PipelineError      # pipeline execution failures
+├── GateError          # quality-gate execution failures
+├── AdapterError       # platform adapter publish failures
+├── ConfigError        # configuration loading/validation
+│   └── BrandNotFoundError
+├── AccountError       # account / credential management
+└── ModuleLoadError    # a required Python module cannot be imported
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">automedia</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoMediaError</span><span class="p">,</span> <span class="n">GateError</span><span class="p">,</span> <span class="n">run_full_pipeline</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">run_full_pipeline</span><span class="p">(</span><span class="n">topic</span><span class="o">=</span><span class="s2">"..."</span><span class="p">,</span> <span class="n">brand</span><span class="o">=</span><span class="s2">"my-brand"</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">GateError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="o">...</span>                      <span class="c1"># one gate failed</span>
+<span class="k">except</span> <span class="n">AutoMediaError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="o">...</span>                      <span class="c1"># anything else AutoMedia raised</span>
+</code></pre></div>
+<p>The six names exported from the package root are <code>AutoMediaError</code>,
+<code>PipelineError</code>, <code>GateError</code>, <code>AdapterError</code>, <code>ConfigError</code>, and <code>AccountError</code>.
+<code>BrandNotFoundError</code> and <code>ModuleLoadError</code> live in <code>automedia.exceptions</code> and
+are importable from there.</p>
+<h2 id="__version__"><code>__version__</code><a class="headerlink" href="#__version__" title="Permanent link">&para;</a></h2>
+<p>The installed package version, kept in sync with <code>pyproject.toml</code> and
+<code>CHANGELOG.md</code> by release-please.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">automedia</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">automedia</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>   <span class="c1"># e.g. "1.12.0"</span>
 </code></pre></div>
 
 

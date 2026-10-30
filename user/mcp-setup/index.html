@@ -3313,6 +3313,31 @@ tool-specific fields.</p>
 <td>Use a non-secret key or access the value through other means</td>
 </tr>
 <tr>
+<td><code>run_pipeline</code></td>
+<td>Explicit <code>source_path</code> not in <code>mcp_allowlist.yaml</code></td>
+<td>Pass a path under an allowed directory, or omit <code>source_path</code></td>
+</tr>
+<tr>
+<td><code>distribute_content</code></td>
+<td>Explicit <code>base_dir</code> not in <code>mcp_allowlist.yaml</code></td>
+<td>Pass an allowed directory, or omit <code>base_dir</code> for the default</td>
+</tr>
+<tr>
+<td><code>analyze_content</code></td>
+<td>Explicit <code>base_dir</code> not in <code>mcp_allowlist.yaml</code></td>
+<td>Pass an allowed directory, or omit <code>base_dir</code> for the working directory</td>
+</tr>
+<tr>
+<td><code>init_config</code></td>
+<td>Explicit <code>project_dir</code> not in <code>mcp_allowlist.yaml</code></td>
+<td>Pass an allowed directory, or omit <code>project_dir</code> for the working directory</td>
+</tr>
+<tr>
+<td><code>publish_content</code></td>
+<td>Effective projects directory (explicit <code>base_dir</code> or the resolved default) not in <code>mcp_allowlist.yaml</code></td>
+<td>Pass an allowed <code>base_dir</code>, or point <code>AUTOMEDIA_PROJECTS_DIR</code> inside an allowed directory</td>
+</tr>
+<tr>
 <td>Various file tools</td>
 <td>File path not in <code>mcp_allowlist.yaml</code></td>
 <td>Have the user add the path to the allowlist</td>

@@ -2864,7 +2864,7 @@ sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w
 <p>If an MCP tool call returns "tool not found":</p>
 <ol>
 <li>Verify the server is running: check that <code>python -m automedia.mcp.server</code> is still running</li>
-<li>Check the tool name against the 65 tools listed in AGENTS.md section 9</li>
+<li>Check the tool name against the 68 tools listed in AGENTS.md section 9</li>
 <li>Restart the server: kill the process and start it again</li>
 </ol>
 <h3 id="testing-mcp-tools-directly">Testing MCP tools directly<a class="headerlink" href="#testing-mcp-tools-directly" title="Permanent link">&para;</a></h3>
@@ -2886,7 +2886,7 @@ get_pipeline_progress<span class="o">(</span><span class="nv">project_id</span><
 <h2 id="4-gate-failures">4. Gate Failures<a class="headerlink" href="#4-gate-failures" title="Permanent link">&para;</a></h2>
 <p>For detailed mode-by-mode troubleshooting of each gate, see <code>docs/dev/gate-failure-modes.md</code>. This section summarizes common patterns.</p>
 <h3 id="h0-human-review-gate-pre-publish">H0 — Human Review Gate (Pre-Publish)<a class="headerlink" href="#h0-human-review-gate-pre-publish" title="Permanent link">&para;</a></h3>
-<p>H0 is a pre-publish HITL gate. Failure means the pipeline is paused waiting for human review. Approve via the decision layer SDK (<code>from automedia.hitl import NodeExecutor; executor.approve_node(...)</code>) or pass <code>auto_publish=True</code> to skip HITL.</p>
+<p>H0 is a pre-publish HITL gate. Failure means the pipeline is paused (or parked) awaiting human review. Approve via the MCP <code>review_decision</code> tool (same-process pauses), the <code>automedia hitl approve &lt;project_id&gt;</code> CLI (cross-process parked runs), or <code>--wait-for-review</code> (interactive stdin). Skip review with <code>automedia run --skip-review</code>. The <code>NodeExecutor</code> route is a dormant scaffold with no production call site — see docs/user/hitl-framework.md.</p>
 <h3 id="cw-content-writer-gate">CW — Content Writer Gate<a class="headerlink" href="#cw-content-writer-gate" title="Permanent link">&para;</a></h3>
 <p>The CW gate uses the LLM to generate draft content. Failures here are usually LLM-related.</p>
 <p><strong>Failure patterns:</strong>
