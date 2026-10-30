@@ -37,7 +37,7 @@
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 9341 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 21843 | file |
+| docs/dev/plans/NIGHTLY.md | 23366 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
 | docs/dev/project-analysis-20261029.md | 29923 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |

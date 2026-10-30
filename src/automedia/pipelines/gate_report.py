@@ -92,6 +92,12 @@ class GateReport(TypedDict):
     summary: dict[str, Any]
     blocked_by_gate: str | None
     blocked_by: str  # human-readable "blocked by" sentence
+    # Media-stage facts for this run (issue #342): ``notes`` are the recorded
+    # outcomes of the media stage (``no_content`` / ``tools_missing`` /
+    # ``tts_failed`` / ``transcription_failed`` / …), ``produced_files`` the
+    # artifact ledger.  ``None`` when the run has no media-stage facts at all
+    # (text-only modes) — the key stays present so the schema is stable.
+    media_stage: dict[str, Any] | None
     markdown: str
 
 
@@ -241,6 +247,9 @@ def _render_markdown(report: GateReport) -> str:
     )
     if report["blocked_by_gate"]:
         lines.append(f"- **Blocked by**: {report['blocked_by']}")
+    media_line = _media_stage_line(report.get("media_stage"))
+    if media_line:
+        lines.append(f"- Media stage: {media_line}")
     lines.append("")
 
     if not report["gates"]:
@@ -333,6 +342,9 @@ def _render_html(report: GateReport) -> str:
     ]
     if report["blocked_by_gate"]:
         parts.append(f"<li><strong>Blocked by</strong>: {_esc(report['blocked_by'])}</li>")
+    media_line = _media_stage_line(report.get("media_stage"))
+    if media_line:
+        parts.append(f"<li>Media stage: {_esc(media_line)}</li>")
     parts.append("</ul>")
 
     if not report["gates"]:
@@ -401,12 +413,35 @@ def _render_html(report: GateReport) -> str:
     return "\n".join(parts)
 
 
+def _media_stage_line(media_stage: dict[str, Any] | None) -> str:
+    """One-line media-stage summary for the Markdown / HTML views ("" when none).
+
+    中文说明：报告里 V 门整排 ``skip`` 无法区分"正常跳过"与"视频轨空转"
+    （issue #342）；这一行把媒体阶段的事实顶到摘要里——有产物报产物数，
+    有注记报注记事件名。
+    """
+    if not media_stage:
+        return ""
+    raw_notes = media_stage.get("notes")
+    notes = [n for n in raw_notes if isinstance(n, dict)] if isinstance(raw_notes, list) else []
+    events = [str(n.get("event", "")) for n in notes if n.get("event")]
+    produced = media_stage.get("produced_files")
+    produced_count = len(produced) if isinstance(produced, list) else 0
+    parts: list[str] = []
+    if produced_count:
+        parts.append(f"{produced_count} artifact(s) produced")
+    if events:
+        parts.append("notes: " + "; ".join(events))
+    return " — ".join(parts)
+
+
 def render_gate_report(
     project_dir: str,
     gates_log: list[GateLogEntry],
     gate_results: list[dict[str, Any]] | None = None,
     *,
     hitl_mode: bool = False,
+    media_stage: Mapping[str, Any] | None = None,
 ) -> GateReport:
     """Render a per-run gate report from already-captured pipeline data.
 
@@ -428,6 +463,13 @@ def render_gate_report(
         OFFLINE-only context flag: set ``True`` when the run's director/hitl
         mode was active so the H0 row renders as ``review``.  Ignored when
         ``gate_results`` are present.
+    media_stage:
+        Optional media-stage facts for this run (``{"notes": [...],
+        "produced_files": [...]}``), built by the runner from the run's gate
+        context.  Rendered as a summary line so an empty video track is
+        distinguishable from a healthy skip in the report (issue #342).
+        ``None`` (offline renders from persisted history rows) keeps the key
+        at ``None`` and omits the summary line.
 
     Returns
     -------
@@ -470,6 +512,7 @@ def render_gate_report(
         "summary": summary,
         "blocked_by_gate": blocked_gate,
         "blocked_by": blocked_by,
+        "media_stage": dict(media_stage) if media_stage else None,
         "markdown": "",
     }
     report["markdown"] = _render_markdown(report)

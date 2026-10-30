@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
@@ -32,6 +33,8 @@ _IMAGE_PATH = "automedia.pipelines.image_pipeline.ImagePipeline"
 _ENGINE_PATH = "automedia.engines.resolve_engine"
 _AUDIO_ENGINE_PATH = "automedia.pipelines.audio_pipeline.resolve_engine_chain"
 _WHICH_PATH = "shutil.which"
+_SMOKE_PATH = "automedia.pipelines.runner._cli_smoke_probe"
+_RUNNER_SUBPROCESS_RUN = "automedia.pipelines.runner.subprocess.run"
 
 
 class _FakeAudioPipeline:
@@ -183,7 +186,10 @@ class TestNothingProducedPaths:
         assert ctx.was_written("video_path") is False
         assert ctx.was_written("required_files") is False
         # 且 V 门确实会跳过
-        assert missing_input_result("V2", ctx, ("transcription", "audio_path")) is not None
+        assert missing_input_result("V2", ctx, ("transcription",)) is not None
+        # 且零产物的原因被登记，gate-report 据此显式呈现（issue #342）
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list) and notes[0]["event"] == "no_content"
 
     def test_missing_tools_writes_nothing(self, tmp_path: Path) -> None:
         ctx = _video_context(tmp_path)
@@ -193,6 +199,9 @@ class TestNothingProducedPaths:
         assert ctx.was_written("audio_path") is False
         assert ctx.was_written("required_files") is False
         assert missing_input_result("V5", ctx, ("whisper_text", "srt_text")) is not None
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list) and notes[0]["event"] == "tools_missing"
+        assert notes[0]["missing"] == ["edge-tts", "whisper"]
 
 
 class TestFullChain:
@@ -202,6 +211,7 @@ class TestFullChain:
         ctx = _video_context(tmp_path)
         with (
             patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
             patch(_AUDIO_PATH, _FakeAudioPipeline),
             patch(_IMAGE_PATH, _FakeImagePipeline),
             patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
@@ -228,7 +238,7 @@ class TestFullChain:
         """这三门所需的键全部产出 ⇒ ``missing_input_result`` 返回 ``None``。"""
         ctx = self._run(tmp_path)
 
-        assert missing_input_result("V2", ctx, ("transcription", "audio_path")) is None
+        assert missing_input_result("V2", ctx, ("transcription",)) is None
         assert missing_input_result("V5", ctx, ("whisper_text", "srt_text")) is None
         assert (
             missing_input_result("V7", ctx, ("required_files", "file_sizes", "md5_records")) is None
@@ -277,6 +287,7 @@ class TestIdempotence:
         ctx = _video_context(tmp_path)
         with (
             patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
             patch(_AUDIO_PATH, _FakeAudioPipeline),
             patch(_IMAGE_PATH, _FakeImagePipeline),
             patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
@@ -293,6 +304,7 @@ class TestIdempotence:
         ctx = _video_context(tmp_path)
         with (
             patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
             patch(_AUDIO_PATH, side_effect=RuntimeError("boom")),
         ):
             _produce_media_assets(ctx)
@@ -366,21 +378,193 @@ class TestEngineAvailabilityFallback:
         assert events, "tools_missing event was not logged"
         assert events[0].kwargs["missing"] == ["edge-tts", "whisper"]
 
-    def test_engine_available_but_empty_transcript_writes_no_partial_keys(
+    def test_engine_available_but_empty_transcript_registers_audio_only(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """转写为空 ⇒ 不写任何 V 门输入键（避免只写一半的残缺上下文）。"""
+        """转写为空 ⇒ 音频仍登记（不连坐），转写段键一个不写（issue #343）。
+
+        中文说明：修复前这里 ``return`` 掉了整段——已落盘的 ``narration.mp3``
+        既不进 ``audio_path`` 也不进 V7 清单，视频段因拿不到音频输入而被连带
+        阻断。修复后音频即时登记；转写段的键（V2/V5 的输入）仍然一个不写，
+        让 V2/V5 如实跳过而不是拿残缺输入失败。
+        """
         ctx = _video_context(tmp_path)
         self._patch_engines_available(monkeypatch, asr_text="")
 
         _produce_media_assets(ctx)
 
-        for key in (
-            "audio_path",
-            "transcription",
-            "whisper_text",
-            "subtitles_path",
-            "srt_text",
-            "required_files",
-        ):
+        # 音频已落盘并登记
+        assert os.path.isfile(str(ctx.get("audio_path")))
+        assert ctx.was_written("audio_path") is True
+        # 转写段（V2/V5 的输入）不写：V2/V5 如实跳过，而非拿残缺输入失败
+        for key in ("transcription", "whisper_text", "subtitles_path", "srt_text"):
             assert ctx.was_written(key) is False
+        assert missing_input_result("V2", ctx, ("transcription",)) is not None
+        assert missing_input_result("V5", ctx, ("whisper_text", "srt_text")) is not None
+        # V7 清单登记了音频本体
+        assert ctx.get("required_files") == [ctx.get("audio_path")]
+        # 零产出的原因被登记进 gate-report 的取证通道（issue #342）
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list) and notes[0]["event"] == "incomplete_audio_track"
+
+
+class _BrokenTranscribeAudioPipeline:
+    """TTS 成功、转写必崩的最小替身（issue #343 的实机样本形态）。"""
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config = config
+
+    def generate_tts(self, text: str, voice: str = "", output_path: str = "") -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake-mp3")
+        return os.path.abspath(output_path)
+
+    def transcribe_audio(self, audio_path: str, language: str = "zh") -> dict[str, Any]:
+        raise RuntimeError("ImportError: compiled module files seem incompatible")
+
+    def generate_srt(self, transcription: dict[str, Any], output_path: str) -> str:
+        raise AssertionError("transcription failed — SRT must not be attempted")
+
+
+class TestTranscriptionFailureKeepsAudio:
+    """转写失败 ⇒ 音频保留、V2/V5 跳过、视频段仍拿到音频输入（issue #343）。"""
+
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> GateContext:
+        def _resolve(modality: str, config: dict[str, Any] | None = None) -> Any:
+            return _FakeVideoEngine()
+
+        ctx = _video_context(tmp_path)
+        monkeypatch.setattr(shutil, "which", lambda _cmd: "/usr/bin/fake")
+        monkeypatch.setattr(_SMOKE_PATH, lambda _cmd: True)
+        monkeypatch.setattr(_AUDIO_PATH, _BrokenTranscribeAudioPipeline)
+        monkeypatch.setattr(_IMAGE_PATH, _FakeImagePipeline)
+        monkeypatch.setattr(_ENGINE_PATH, _resolve)
+        _produce_media_assets(ctx)
+        return ctx
+
+    def test_audio_registered_and_transcription_keys_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ctx = self._run(tmp_path, monkeypatch)
+
+        assert os.path.isfile(str(ctx.get("audio_path")))
+        assert ctx.was_written("audio_path") is True
+        for key in ("transcription", "whisper_text", "subtitles_path", "srt_text"):
+            assert ctx.was_written(key) is False
+
+    def test_video_segment_still_receives_audio_input(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """视频段不再被转写失败连带阻断：``_FakeVideoEngine.render`` 断言它
+        拿到了图片与音频，写出了 ``video_path``。"""
+        ctx = self._run(tmp_path, monkeypatch)
+
+        assert os.path.isfile(str(ctx.get("video_path")))
+        assert sorted(ctx.get("required_files")) == sorted(
+            [ctx.get("audio_path"), ctx.get("video_path")]
+        )
+
+    def test_failure_is_recorded_in_the_media_notes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ctx = self._run(tmp_path, monkeypatch)
+
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list)
+        assert any(n.get("event") == "transcription_failed" for n in notes)
+
+
+class _BrokenTtsAudioPipeline:
+    """构造成功、TTS 必崩的最小替身（命中 ``tts_failed`` 分支）。"""
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config = config
+
+    def generate_tts(self, text: str, voice: str = "", output_path: str = "") -> str:
+        raise RuntimeError("edge-tts exploded")
+
+    def transcribe_audio(self, audio_path: str, language: str = "zh") -> dict[str, Any]:
+        raise AssertionError("TTS failed — transcription must not be attempted")
+
+
+class TestTtsFailureStopsTheTrack:
+    """TTS 失败 ⇒ 无音频可登记，视频段无从谈起，但失败必须留痕。"""
+
+    def test_tts_failure_registers_note_and_no_keys(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ctx = _video_context(tmp_path)
+        monkeypatch.setattr(shutil, "which", lambda _cmd: "/usr/bin/fake")
+        monkeypatch.setattr(_SMOKE_PATH, lambda _cmd: True)
+        with patch(_AUDIO_PATH, _BrokenTtsAudioPipeline):
+            _produce_media_assets(ctx)
+
+        assert ctx.was_written("audio_path") is False
+        assert ctx.was_written("required_files") is False
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list) and notes[0]["event"] == "tts_failed"
+        assert ctx.get("_media_stage_done") is True
+
+
+class TestCliSmokeProbe:
+    """CLI 冒烟探测：存在**且**真能跑才算可用（issue #343）。"""
+
+    def test_missing_command_is_unavailable_without_running_it(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.runner import _cli_smoke_probe
+
+        def _boom(*_args: Any) -> None:
+            raise AssertionError("probe must not execute a missing command")
+
+        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(_RUNNER_SUBPROCESS_RUN, _boom)
+        assert _cli_smoke_probe("whisper") is False
+
+    def test_existing_but_crashing_command_is_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """issue #343 的实机形态：命令在 PATH 上，一跑就 ImportError。"""
+        from automedia.pipelines.runner import _cli_smoke_probe
+
+        monkeypatch.setattr(shutil, "which", lambda _cmd: "/usr/bin/whisper")
+        monkeypatch.setattr(
+            _RUNNER_SUBPROCESS_RUN,
+            MagicMock(return_value=MagicMock(returncode=1, stderr="ImportError: numpy")),
+        )
+        assert _cli_smoke_probe("whisper") is False
+
+    def test_failing_probe_call_is_unavailable_not_raised(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.runner import _cli_smoke_probe
+
+        monkeypatch.setattr(shutil, "which", lambda _cmd: "/usr/bin/whisper")
+        monkeypatch.setattr(
+            _RUNNER_SUBPROCESS_RUN, MagicMock(side_effect=subprocess.TimeoutExpired("whisper", 60))
+        )
+        assert _cli_smoke_probe("whisper") is False
+
+    def test_healthy_command_is_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from automedia.pipelines.runner import _cli_smoke_probe
+
+        monkeypatch.setattr(shutil, "which", lambda _cmd: "/usr/bin/whisper")
+        monkeypatch.setattr(
+            _RUNNER_SUBPROCESS_RUN,
+            MagicMock(return_value=MagicMock(returncode=0, stderr="")),
+        )
+        assert _cli_smoke_probe("whisper") is True
+
+    def test_engine_answer_short_circuits_the_cli_probe(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """引擎可用时根本不去碰 CLI——探测顺序不回退（引擎层优先）。"""
+        from automedia.pipelines import runner as runner_mod
+
+        def _boom(*_args: Any) -> None:
+            raise AssertionError("engine availability must not fall through to the CLI probe")
+
+        monkeypatch.setattr(_ENGINE_PATH, lambda _modality, _config=None: _FakeTTSEngine())
+        monkeypatch.setattr(_SMOKE_PATH, _boom)
+        assert runner_mod._media_modality_available("tts", None, "edge-tts") is True

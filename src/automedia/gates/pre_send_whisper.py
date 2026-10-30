@@ -117,7 +117,9 @@ class V2PreSendWhisper(BaseGate):
     """V2 Pre-Send Whisper Gate — full audio transcription + MD5 (Red Line 7).
 
     ``gate_context`` expected keys:
-        - ``transcription``: str — Whisper transcription result
+        - ``transcription``: str — Whisper transcription result (the sole
+          skip criterion: absent means this pipeline never produced a
+          transcription for V2 to inspect — issue #343)
         - ``audio_path``: str — path to audio file for MD5 check
         - ``expected_md5``: str — expected MD5 hash (empty to skip)
         - ``full_audio``: bool — whether full audio was transcribed (Red Line 7)
@@ -142,9 +144,13 @@ class V2PreSendWhisper(BaseGate):
                 "reason": "HyperFrames not installed — video QA skipped",
             }
 
-        # ``transcription`` + ``audio_path`` come from the TTS/Whisper stages of
-        # the video pipeline.  Absent means there is no audio to transcribe.
-        skipped = missing_input_result("V2", gate_context, ("transcription", "audio_path"))
+        # ``transcription`` is the head input this gate verifies — three of its
+        # four checks read it, and ``md5_integrity`` is only meaningful next to
+        # one.  It is therefore the sole skip criterion (issue #343): the media
+        # stage registers ``audio_path`` the moment TTS lands, so a transcription
+        # failure must downgrade V2 to an honest skip, not fail it on partial
+        # input — and never discard the audio either.
+        skipped = missing_input_result("V2", gate_context, ("transcription",))
         if skipped is not None:
             return skipped
 

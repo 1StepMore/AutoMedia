@@ -345,3 +345,58 @@ class TestSkippedVerdict:
         """``GateLogEntry`` carries ``skipped`` verbatim (no silent coercion)."""
         entry = GateLogEntry(gate_name="V0", status="skipped", duration_s=0.0)
         assert entry.status == "skipped"
+
+
+# ---------------------------------------------------------------------------
+# Media-stage section (issue #342) — an empty video track must be readable
+# from the report, not look like a healthy skip
+# ---------------------------------------------------------------------------
+
+
+class TestMediaStageSection:
+    def test_absent_by_default(self, project_dir: Path) -> None:
+        """Offline renders (no media_stage) keep the key at None and print nothing."""
+        report = render_gate_report(str(project_dir), [_entry("V0", "skipped", 0.0)])
+
+        assert report["media_stage"] is None
+        assert "Media stage" not in report["markdown"]
+
+    def test_notes_and_produced_files_round_trip(self, project_dir: Path) -> None:
+        media_stage = {
+            "notes": [
+                {"event": "tts_failed", "error": "network unreachable"},
+                {"event": "transcription_failed", "error": "boom"},
+            ],
+            "produced_files": [],
+        }
+        report = render_gate_report(
+            str(project_dir), [_entry("V2", "skipped", 0.0)], media_stage=media_stage
+        )
+
+        assert report["media_stage"] == media_stage
+        line = next(ln for ln in report["markdown"].splitlines() if ln.startswith("- Media stage:"))
+        assert "tts_failed" in line
+        assert "transcription_failed" in line
+
+    def test_produced_artifacts_are_counted(self, project_dir: Path) -> None:
+        media_stage = {
+            "notes": [],
+            "produced_files": ["/proj/03_audio/narration.mp3"],
+        }
+        report = render_gate_report(
+            str(project_dir), [_entry("V7", "passed", 1.0)], media_stage=media_stage
+        )
+
+        assert "1 artifact(s) produced" in report["markdown"]
+        assert "1 artifact(s) produced" in report["markdown"]
+
+    def test_html_view_carries_the_same_line(self, project_dir: Path) -> None:
+        media_stage = {"notes": [{"event": "no_content"}], "produced_files": []}
+        report = render_gate_report(
+            str(project_dir), [_entry("V0", "skipped", 0.0)], media_stage=media_stage
+        )
+        # write_gate_report renders the HTML from the same report dict
+        artifacts = write_gate_report(str(project_dir), report)
+        html_text = artifacts.html_path.read_text(encoding="utf-8")
+        assert "Media stage" in html_text
+        assert "no_content" in html_text
