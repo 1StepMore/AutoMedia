@@ -122,6 +122,11 @@ Track 3 裁决项 ×9 ──────────── 每项独立批准；
 | T1-1/T1-2 幽灵符号 + A3 明示休眠 + T0-7 resource | ✅ | `be94da6` |
 | T1-4/A1 project-validation skill 改写 | ⬜ 待做 | — |
 | T2-1 遗留：record_md5 跨进程读改写竞态（原子写已把损害限定为丢失更新） | ⬜ 记录在案 | — |
-| A4–A7（待发起人按建议确认后执行） | ⬜ 待确认 | — |
+| A7 阈值留痕门禁（快照脚本 + 豁免台账 + 双半测试，produce-article 800→500 补记） | ✅ 发起人按建议批准 | `f1081a0` |
+| A6 场景深度前两个（publish-dry-run 形状断言 + journey 门级报告探针；真跑 3/3 通过） | ✅ 同上 | `ddf1295` |
+| A5 STANDARDS 词表裁剪（65 行→15 引用集，双向钉定取代 #78 A1 保留词表钉定） | ✅ 同上 | `7939190` |
+| A4 decision/hitl 五文件 dormant 标注 + agent-troubleshooting H0 指引修正 | ✅ 同上 | `eb51c7f` |
+| A1 project-validation skill v2.0.0 改写（validate 薄封装，三副本同步） | ✅ 同上 | `eb51c7f` |
+| A6 剩余三个场景（journey gate_records_pass 已由探针替代；analyze/get_config data_has、archive artifact 断言待后续批次） | ⬜ 后续 | — |
 | A8 introspection 工具 / A9 allowlist 默认目录错配 | ⬜ 推迟/条件 | — |
 | 43 个 Windows 既有测试失败修复（已立项） | ⬜ 已立项 | — |
