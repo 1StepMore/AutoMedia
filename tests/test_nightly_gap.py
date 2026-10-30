@@ -330,7 +330,7 @@ def test_main_md_header_has_bench(tmp_path: Path, monkeypatch) -> None:
 
     _project(tmp_path, video_bytes=0, reports=None)
     real_scan = nightly_gap.scan_projects
-    monkeypatch.setattr(nightly_gap, "scan_projects", lambda root=None: real_scan(root=tmp_path))
+    monkeypatch.setattr(nightly_gap, "scan_projects", lambda root=None, extra_root=None: real_scan(root=tmp_path))
     out = tmp_path / "gap.md"
     rc = nightly_gap.main(["--skip-validate", "--md-out", str(out)])
     assert rc == 1

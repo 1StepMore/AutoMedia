@@ -152,41 +152,54 @@ def _text_evidence_ok(cost_lines: int, draft_max: int) -> bool:
     return cost_lines > 0 and draft_max >= MIN_DRAFT_BYTES
 
 
-def scan_projects(root: Path | None = None) -> list[dict]:
-    root = root or REPO
+def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> list[dict]:
+    """Scan REPO root and (optionally) an additional root for project dirs.
+
+    The runner convention puts journey projects in /tmp/automedia/journey-projects/
+    while the scanner previously only looked at REPO. Passing extra_root lets
+    the nightly batch find projects that live outside the repo.
+    """
+    roots = [root or REPO]
+    if extra_root and extra_root.is_dir():
+        roots.append(extra_root)
     out: list[dict] = []
-    for d in sorted(root.iterdir()):
-        if not d.is_dir() or not PROJECT_RE.match(d.name):
-            continue
-        drafts = _files(d / "01_content" / "drafts")
-        images = _files(d / "02_images")
-        videos = _files(d / "03_video")
-        cost = d / "cost_log.jsonl"
-        cost_lines = 0
-        if cost.is_file():
-            cost_lines = sum(1 for ln in cost.read_text(errors="ignore").splitlines() if ln.strip())
-        draft_max = _biggest(drafts, {".md"})
-        img_max = _biggest(images, IMG_EXT)
-        vid_max = _biggest(videos, VID_EXT)
-        ev = video_gate_evidence(d)
-        # DoD 表里图文轨/视频轨均以「同上 +」开头，故继承文本轨这两条（#195）。
-        text_evidence = _text_evidence_ok(cost_lines, draft_max)
-        out.append(
-            {
-                "project": d.name,
-                "cost_log_lines": cost_lines,
-                "draft_count": len(drafts),
-                "draft_max_bytes": draft_max,
-                "image_max_bytes": img_max,
-                "video_max_bytes": vid_max,
-                "has_pipeline_md5": (d / "pipeline_md5.json").is_file(),
-                "text_ok": text_evidence,
-                "image_ok": text_evidence and img_max >= MIN_IMAGE_BYTES,
-                "video_ok": text_evidence and vid_max >= MIN_VIDEO_BYTES and ev["ok"],
-                "text_evidence_ok": text_evidence,
-                "video_gates": ev,
-            }
-        )
+    seen: set[str] = set()
+    for r in roots:
+        for d in sorted(r.iterdir()):
+            if not d.is_dir() or not PROJECT_RE.match(d.name):
+                continue
+            if d.name in seen:
+                continue
+            seen.add(d.name)
+            drafts = _files(d / "01_content" / "drafts")
+            images = _files(d / "02_images")
+            videos = _files(d / "03_video")
+            cost = d / "cost_log.jsonl"
+            cost_lines = 0
+            if cost.is_file():
+                cost_lines = sum(1 for ln in cost.read_text(errors="ignore").splitlines() if ln.strip())
+            draft_max = _biggest(drafts, {".md"})
+            img_max = _biggest(images, IMG_EXT)
+            vid_max = _biggest(videos, VID_EXT)
+            ev = video_gate_evidence(d)
+            # DoD 表里图文轨/视频轨均以「同上 +」开头，故继承文本轨这两条（#195）。
+            text_evidence = _text_evidence_ok(cost_lines, draft_max)
+            out.append(
+                {
+                    "project": d.name,
+                    "cost_log_lines": cost_lines,
+                    "draft_count": len(drafts),
+                    "draft_max_bytes": draft_max,
+                    "image_max_bytes": img_max,
+                    "video_max_bytes": vid_max,
+                    "has_pipeline_md5": (d / "pipeline_md5.json").is_file(),
+                    "text_ok": text_evidence,
+                    "image_ok": text_evidence and img_max >= MIN_IMAGE_BYTES,
+                    "video_ok": text_evidence and vid_max >= MIN_VIDEO_BYTES and ev["ok"],
+                    "text_evidence_ok": text_evidence,
+                    "video_gates": ev,
+                }
+            )
     return out
 
 
@@ -310,12 +323,15 @@ def _bench_line() -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--scan-root", default="",
+                    help="Additional project root to scan (e.g. /tmp/automedia/journey-projects)")
     ap.add_argument("--skip-validate", action="store_true")
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
     args = ap.parse_args(argv)
 
-    projects = scan_projects()
+    extra = Path(args.scan_root) if args.scan_root else None
+    projects = scan_projects(extra_root=extra)
     text = [p["project"] for p in projects if p["text_ok"]]
     image = [p["project"] for p in projects if p["image_ok"]]
     video = [p["project"] for p in projects if p["video_ok"]]
