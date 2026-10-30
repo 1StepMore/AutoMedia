@@ -127,6 +127,6 @@ Track 3 裁决项 ×9 ──────────── 每项独立批准；
 | A5 STANDARDS 词表裁剪（65 行→15 引用集，双向钉定取代 #78 A1 保留词表钉定） | ✅ 同上 | `7939190` |
 | A4 decision/hitl 五文件 dormant 标注 + agent-troubleshooting H0 指引修正 | ✅ 同上 | `eb51c7f` |
 | A1 project-validation skill v2.0.0 改写（validate 薄封装，三副本同步） | ✅ 同上 | `eb51c7f` |
-| A6 剩余三个场景（journey gate_records_pass 已由探针替代；analyze/get_config data_has、archive artifact 断言待后续批次） | ⬜ 后续 | — |
+| A6 剩余三个场景（get-config 形状断言、archive-refusal 副作用零断言、injection 扩展 localize 面；三场景真跑 1/1、3/3、6/6） | ✅ 发起人按建议批准 | `886bc15` |
 | A8 introspection 工具 / A9 allowlist 默认目录错配 | ⬜ 推迟/条件 | — |
 | 43 个 Windows 既有测试失败修复（已立项） | ⬜ 已立项 | — |
