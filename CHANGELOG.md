@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.13.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.12.0...automedia-v1.13.0) (2026-10-31)
+
+
+### Features
+
+* **gap:** 产物位置改由 Agent 自由决定——扫描器认 AUTOMEDIA_PROJECTS_DIR ([2df31ad](https://github.com/1StepMore/AutoMedia/commit/2df31ad64206fd25edc03ab7b38c403b917d63e3))
+* **validation:** gate scenario threshold changes behind a waiver ledger (A7) ([f1081a0](https://github.com/1StepMore/AutoMedia/commit/f1081a0ce580f68705164f092d8af00f55aca59f))
+
+
+### Bug Fixes
+
+* **core:** pin UTF-8 and atomic writes for pipeline_md5.json (T2-1) ([ff8b6f7](https://github.com/1StepMore/AutoMedia/commit/ff8b6f70faf08e12eb1e47581f2da7d3d443b885))
+* **engines:** pin asr-faster below av 19 and probe decoding ([#332](https://github.com/1StepMore/AutoMedia/issues/332)) ([#338](https://github.com/1StepMore/AutoMedia/issues/338)) ([05b6af0](https://github.com/1StepMore/AutoMedia/commit/05b6af05b6b6e7e0fe83cdb4b634ed9ca9a8b86a))
+* **gap:** scan_projects 支持 extra_root + --scan-root CLI 参数 ([cc2083b](https://github.com/1StepMore/AutoMedia/commit/cc2083b4303aafb3c13b3cd8aa67d1cd53f7dc8b))
+* **gates:** skip copy review when the mode has no article ([#335](https://github.com/1StepMore/AutoMedia/issues/335)) ([#339](https://github.com/1StepMore/AutoMedia/issues/339)) ([29d9b6a](https://github.com/1StepMore/AutoMedia/commit/29d9b6a325fb17b918f48ed0fcf88baf91bcc25c))
+* **hitl:** never report a successful review for a finished pipeline (T2-3) ([d1a3a48](https://github.com/1StepMore/AutoMedia/commit/d1a3a48c2ed6075ac14eff2ba2b7b34ece52c1c4))
+* **mcp:** declare the distribute-vs-publish boundary on all three surfaces ([#346](https://github.com/1StepMore/AutoMedia/issues/346)) ([4bc6754](https://github.com/1StepMore/AutoMedia/commit/4bc67548bc08058eec7970ce6aaa1e36a42d525a))
+* **mcp:** fail-closed allowlist for caller-supplied paths (T2-2) ([af54d1e](https://github.com/1StepMore/AutoMedia/commit/af54d1e356b3ec75365e883b004726042e634ef1))
+* **media:** smoke-probe CLI availability; keep audio when transcription fails ([#344](https://github.com/1StepMore/AutoMedia/issues/344)) ([5a79027](https://github.com/1StepMore/AutoMedia/commit/5a79027971b86f1434109690e89c20e7e6c9da74))
+* **validation:** grade subtitle text against the narrated script ([#336](https://github.com/1StepMore/AutoMedia/issues/336)) ([#341](https://github.com/1StepMore/AutoMedia/issues/341)) ([9063f89](https://github.com/1StepMore/AutoMedia/commit/9063f89461f143afa604a316b8c297f091a629a2))
+* **validation:** sandbox every run's config and projects dirs ([#333](https://github.com/1StepMore/AutoMedia/issues/333), [#334](https://github.com/1StepMore/AutoMedia/issues/334)) ([#340](https://github.com/1StepMore/AutoMedia/issues/340)) ([759e798](https://github.com/1StepMore/AutoMedia/commit/759e798d843dc345778fe290cf328465ed5ca95f))
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#328](https://github.com/1StepMore/AutoMedia/issues/328)) ([83f2b1b](https://github.com/1StepMore/AutoMedia/commit/83f2b1b36f04bba6fd47900b7501167fa9f3f938))
+* **deps:** bump litellm from 1.91.5 to 1.100.4 ([#331](https://github.com/1StepMore/AutoMedia/issues/331)) ([bab036c](https://github.com/1StepMore/AutoMedia/commit/bab036c0d0a0901e9e24342be99af175d8b7571d))
+
+
+### Documentation
+
+* **decision,hitl:** mark dormant scaffolds; rewrite project-validation skill (A4, A1) ([eb51c7f](https://github.com/1StepMore/AutoMedia/commit/eb51c7f2e74605d1bbf683011c98de16da6c7f2b))
+* **hitl:** mark dormant surfaces honestly; fix ghost references (T1-1, T1-2, A2/A3) ([be94da6](https://github.com/1StepMore/AutoMedia/commit/be94da6d472a7f3b092b8bf98fb193d4af9a756c))
+* **plan:** mark the A6 completion in the execution log ([9a661c1](https://github.com/1StepMore/AutoMedia/commit/9a661c1664bc4a7fc22c898b94d9e3fc60cb11c4))
+* **plan:** record the 2026-10-30 execution log in the remediation plan ([7b2e8d9](https://github.com/1StepMore/AutoMedia/commit/7b2e8d92d569883683657a566945478348159814))
+* **plan:** record the A1/A4-A7 execution log in the remediation plan ([6872abd](https://github.com/1StepMore/AutoMedia/commit/6872abd79b60b69b5aa6423191cc4b83180bebba))
+* **validation:** prune the standards vocabulary to the citation set (A5) ([7939190](https://github.com/1StepMore/AutoMedia/commit/793919049dd92fc07b264db9bce036302c9ed5ce))
+
 ## [1.12.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.11.1...automedia-v1.12.0) (2026-10-27)
 
 
