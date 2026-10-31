@@ -112,14 +112,14 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `format_output` | content, target_format, **options | Convert format via ORF |
 | `evaluate_content_quality` | content, criteria, brand, pattern, platform | Score content quality |
 | `analyze_content` | project_id, base_dir | Content analytics stats |
-| `distribute_content` | project_id, platforms, all, dry_run, base_dir | Distribute via D-gates |
+| `distribute_content` | project_id, platforms, all, dry_run, base_dir | Publish to platforms directly via PublishEngine — does NOT run the D gates (CLI `automedia distribute` runs them) |
 | `connect_account` | platform, auth_type, credentials, label | Register a platform account |
 | `list_accounts` | platform, status | List registered accounts |
 | `get_account_health` | account_id | Check account health |
 | `disconnect_account` | account_id | Remove an account |
 | `add_pool_topic` | title, category, pool_db_path | Add topic to pool |
 | `pool_add_topic` | title, category, pool_db_path | Deprecated: use add_pool_topic |
-| `publish_content` | project_id, platform, account_id, base_dir, mode | Publish a project |
+| `publish_content` | project_id, platform, account_id, base_dir, mode | Publish one platform (honors brand automation levels) |
 | `run_batch` | topics, brand, mode | Run pipeline sequentially |
 | `batch_run` | topics, brand, mode | Deprecated: use run_batch |
 | `add_cron_schedule` | name, expression, brand, category, count, platform, mode | Add a cron schedule |

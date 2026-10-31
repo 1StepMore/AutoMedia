@@ -24,6 +24,14 @@ MOCK_TOOL_REGISTRY: dict[str, dict[str, Any]] = {
     "archive_project": {"description": "Archive a project", "parameters": {}},
     "research_topics": {"description": "Research topics", "parameters": {}},
     "publish_content": {"description": "Publish content", "parameters": {}},
+    "distribute_content": {
+        "description": (
+            "Publish a project's content to one or more platforms. Publishes "
+            "DIRECTLY via PublishEngine — this tool does NOT run the D1-D7 "
+            "distribution gates."
+        ),
+        "parameters": {},
+    },
     "search_assets": {"description": "Search assets", "parameters": {}},
     "select_topic": {"description": "Select a topic", "parameters": {}},
     "register_platform_adapter": {"description": "Register adapter", "parameters": {}},
@@ -184,3 +192,52 @@ class TestGenerateInstructions:
         result = generate_instructions(_tool_registry)
         for name in _tool_registry:
             assert name in result, f"Tool {name!r} missing from generated instructions"
+
+
+class TestDistributionVsPublishingBoundary:
+    """``distribute_content`` 与 ``automedia distribute`` 同名不同义（issue #345）。
+
+    中文说明：CLI ``automedia distribute`` 跑 D 门（平台化改写、只写盘），
+    MCP ``distribute_content`` 直接发布（外呼平台 API）。三个表面（工具描述、
+    server instructions、CLI 帮助）都必须显式声明这条边界，否则 agent 用户
+    会把"生成各平台文案"误解成"向平台发布"。
+    """
+
+    def test_real_tool_description_declares_no_d_gates(self) -> None:
+        """注册的 ``distribute_content`` 描述首句显式声明：直发、不跑 D 门。"""
+        from automedia.mcp.server import _tool_registry, create_server
+
+        create_server()
+        desc = _tool_registry["distribute_content"]["description"]
+        assert "does NOT run the D1-D7 distribution gates" in desc
+        assert "PublishEngine" in desc
+        assert "automedia distribute" in desc
+        assert "publish_content" in desc
+
+    def test_real_tool_description_is_honest_about_publishing(self) -> None:
+        """描述不能再说"Distribute"而不提发布——副作用必须可见。"""
+        from automedia.mcp.server import _tool_registry, create_server
+
+        create_server()
+        desc = _tool_registry["distribute_content"]["description"]
+        assert "Publish" in desc
+
+    def test_instructions_carry_the_boundary_warning(self) -> None:
+        """生成的 instructions 头部包含三条表面的语义对照。"""
+        from automedia.mcp.server import _tool_registry, create_server
+
+        create_server()
+        result = generate_instructions(_tool_registry)
+        assert "Distribution vs publishing" in result
+        assert "does not run the D gates" in result or "never runs the D gates" in result
+        assert "PUBLISHES DIRECTLY" in result
+
+    def test_distribute_content_listed_under_publishing_not_other(self) -> None:
+        """``distribute_content`` 归入 PUBLISHING 分类，不再落进 OTHER TOOLS。"""
+        result = generate_instructions(MOCK_TOOL_REGISTRY)
+        tool_idx = result.index("distribute_content()")
+        if "OTHER TOOLS" in result:
+            assert tool_idx < result.index("OTHER TOOLS"), (
+                "distribute_content must be categorized (Publishing), not left in OTHER TOOLS"
+            )
+        assert "PUBLISHING" in result.upper()

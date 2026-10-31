@@ -221,13 +221,18 @@ def distribute_cmd(
     For each selected platform, runs the corresponding Distribution gate (D-gate)
     to rewrite the project's base content into the platform's required format and
     writes the result under ``04_distribution/<platform>/`` in the project
-    directory.
+    directory.  No external calls are made — publishing is a separate step.
 
     Use ``--platforms`` to select specific platforms or ``--all`` to target every
     available platform.  Add ``--dry-run`` to preview the plan without executing.
 
     Use ``--cron`` to schedule the distribution.  Use ``--cron-list`` to view
     scheduled distributions and ``--cron-remove`` to delete one.
+
+    Note (issue #345): the MCP tool ``distribute_content`` is a DIFFERENT surface
+    with a similar name — it publishes directly via PublishEngine (external
+    platform API calls) and never runs these D gates.  Single-platform publishing
+    with brand automation levels is the MCP tool ``publish_content``.
     """
     # ------------------------------------------------------------------
     # Canonical schedule store (single source shared with the MCP tools)

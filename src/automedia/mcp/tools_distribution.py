@@ -2,6 +2,11 @@
 
 Shared distribution logic lives in :mod:`automedia.adapters.distribution`;
 this module provides the MCP tool wrapper that delegates to it.
+
+语义边界（issue #345）：本工具**直接发布**（PublishEngine 外呼平台 API），
+**不跑** D1-D7 分发门。跑 D 门（平台化改写、只写盘、不外呼）的是 CLI
+``automedia distribute``——两个"分发"名字相近，副作用完全不同，工具描述
+与 server instructions 都显式声明了这条边界。
 """
 
 from __future__ import annotations
@@ -22,11 +27,14 @@ def distribute_content(
     dry_run: bool = False,
     base_dir: str | None = None,
 ) -> dict[str, Any]:
-    """Distribute (publish) a project's content to one or more platforms.
+    """Publish a project's content to one or more platforms — directly.
 
-    Delegates to :func:`automedia.adapters.distribution.distribute_to_platforms`
-    which discovers the project by ID and publishes through
-    :class:`~automedia.adapters.publish_engine.PublishEngine`.
+    中文说明：走 :func:`automedia.adapters.distribution.distribute_to_platforms`
+    经 :class:`~automedia.adapters.publish_engine.PublishEngine` **直接发布**
+    （外呼平台 API）。**不跑** D1-D7 分发门——那是 CLI ``automedia distribute``
+    的语义（平台化改写、只写盘）。单平台发布（含品牌自动化级别）用
+    ``publish_content``。与 CLI 同名相近但语义不同，调用前先想清楚要的是
+    "改写产物"还是"发布上线"。
 
     Parameters
     ----------
