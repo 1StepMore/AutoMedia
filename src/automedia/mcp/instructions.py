@@ -84,6 +84,7 @@ _TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
     (
         "Publishing",
         [
+            "distribute_content",
             "publish_content",
             "list_platforms",
             "register_platform_adapter",
@@ -150,6 +151,15 @@ def generate_instructions(tool_registry: dict[str, dict[str, Any]]) -> str:
         "project management, Omni Triad document processing, brand strategy, "
         "cron schedule management, content quality evaluation, "
         "override management, and server health.",
+        "",
+        "Distribution vs publishing (issue #345) — same-ish names, different effects:",
+        "  - CLI 'automedia distribute' runs the D1-D7 distribution gates: it",
+        "    rewrites content per platform and writes 04_distribution/<platform>/",
+        "    on disk. No external calls.",
+        "  - MCP 'distribute_content' PUBLISHES DIRECTLY via PublishEngine",
+        "    (external platform API calls). It never runs the D gates.",
+        "  - MCP 'publish_content' publishes ONE platform, honoring the brand",
+        "    profile's automation levels (review → draft).",
         "",
     ]
 

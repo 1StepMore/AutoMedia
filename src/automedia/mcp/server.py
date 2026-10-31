@@ -732,7 +732,12 @@ def create_server() -> FastMCP:
 
     mcp.tool(
         description=(
-            "Distribute a project's content to one or more platforms. "
+            "Publish a project's content to one or more platforms. "
+            "Publishes DIRECTLY via PublishEngine — this tool does NOT run the "
+            "D1-D7 distribution gates (the CLI 'automedia distribute' runs those "
+            "gates: platform rewrites written to disk, no external calls; "
+            "publish_content publishes a single platform with brand automation "
+            "levels). "
             "Takes project_id, optional comma-separated platforms (e.g. 'wechat,zhihu'), "
             "all (bool) to distribute to every registered platform, dry_run (bool) "
             "to validate without publishing, and optional base_dir. "
