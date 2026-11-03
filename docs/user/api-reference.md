@@ -74,15 +74,17 @@ result = run_full_pipeline(
 
 | mode | Executed Gates | Use Case |
 |------|-----------|----------|
-| `auto` | pre-gate + CW + G0-G6 + V0-V7 + H0 + L1-L4 | Full pipeline production |
-| `text_only` | CW + G0-G6 + H0 + L1-L4 | Text-only production |
-| `text_with_cover` | CW + G0-G6 + H0 + L1-L4 | Text plus cover image |
-| `video_only` | V0-V7 + H0 + L1-L4 | Video-only production |
-| `image-carousel` | CW + G0-G6 + L1-L4 | Carousel image output |
-| `social-thread` | CW + G0-G6 + L1-L4 | Thread-style social posts |
-| `short-video` | pre-gate + CW + G0-G6 + V0-V7 + H0 + L1-L4 | Short-form video |
+| `auto` | pre-gate + CW + G0-G6 + V0-V7 + H0 | Full pipeline production |
+| `text_only` | CW + G0-G6 + H0 | Text-only production |
+| `text_with_cover` | CW + G0-G6 + H0 | Text plus cover image |
+| `video_only` | V0-V7 | Video-only production |
+| `image-carousel` | CW + G0-G6 | Carousel image output |
+| `social-thread` | CW + G0-G6 | Thread-style social posts |
+| `short-video` | pre-gate + CW + G0-G6 + V0-V7 + H0 | Short-form video |
 | `qa_only` | G0 + G2 + G3 + V1 + V6 | Quality review only |
-| `repurpose` | CW + G0-G6 + V0-V7 + H0 + L1-L4 + P1-P4 | Full pipeline + deep platform repurpose |
+| `repurpose` | pre-gate + CW + G0-G6 + V0-V7 + H0 + P1-P4 | Full pipeline + deep platform repurpose |
+
+`L1`-`L4` are registered gates but belong to no mode preset; they run through their own lifecycle commands. The authoritative lists live in `automedia/pipelines/gate_plan.py` (`MODE_GATE_NAMES`).
 
 ### Return Value
 

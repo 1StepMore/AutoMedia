@@ -158,9 +158,9 @@ class TestRender:
         with (
             patch.object(engine, "check_available", return_value=(True, "ready")),
             patch.object(engine, "_node_cmd", return_value=mock),
+            pytest.raises(EngineExecutionError, match="remotion render failed"),
         ):
-            with pytest.raises(EngineExecutionError, match="remotion render failed"):
-                engine.render(
-                    {"scenes": [{"index": 1, "text": "x", "start": 0.0, "duration": 1.0}]},
-                    str(tmp_path / "out.mp4"),
-                )
+            engine.render(
+                {"scenes": [{"index": 1, "text": "x", "start": 0.0, "duration": 1.0}]},
+                str(tmp_path / "out.mp4"),
+            )

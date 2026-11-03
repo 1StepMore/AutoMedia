@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
@@ -428,7 +430,7 @@ class TestAccountAdd:
         # values must not be echoed — only keys
         assert "abc123" not in result.output
 
-    def test_add_rejects_malformed_cred(self) -> None:
+    def test_add_rejects_malformed_cred(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ["account", "add", "zhihu", "--cred", "novalue"])
         assert result.exit_code == 1
         assert "key=value" in result.output
@@ -536,7 +538,9 @@ class TestRotateRealStore:
         # find the account id and rotate
         import yaml as _yaml
 
-        idx = _yaml.safe_load((tmp_path / "accounts" / "accounts.index.json").read_text(encoding="utf-8"))
+        idx = _yaml.safe_load(
+            (tmp_path / "accounts" / "accounts.index.json").read_text(encoding="utf-8")
+        )
         account_id = next(iter(idx["accounts"]))
         enc_file = tmp_path / "accounts" / "zhihu" / f"{account_id}.json.enc"
         assert enc_file.is_file()

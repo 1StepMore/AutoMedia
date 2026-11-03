@@ -153,7 +153,11 @@ class TestConcatAudio:
 
 class TestBuildSceneTimeline:
     def test_narration_aligned_cut_points(self, tmp_path: Any) -> None:
-        text = "第一场讲背景，内容足够长。第二场讲方法，也有不少的字。第三场给出最终的结论与展望。"
+        text = (
+            "第一场讲背景，内容足够长。"
+            "第二场讲方法，也有不少的字。"
+            "第三场给出最终的结论与展望。"
+        )
         durations = {
             "narration-segment-01.mp3": 4.0,
             "narration-segment-02.mp3": 6.0,
@@ -291,7 +295,7 @@ class TestProvisioningConsumesTimeline:
             ],
             "scene_media": [str(scene_png), ""],
         }
-        project = self._provision(tmp_path, assets)
+        self._provision(tmp_path, assets)
 
         comp1 = (tmp_path / "proj" / "compositions" / "01-scene.html").read_text(encoding="utf-8")
         comp2 = (tmp_path / "proj" / "compositions" / "02-scene.html").read_text(encoding="utf-8")
@@ -302,7 +306,8 @@ class TestProvisioningConsumesTimeline:
         assert "x: -2140" in comp1
         assert "scale: 1.04" in comp1
         assert "blur(4px)" in comp1
-        # scene 1 carries its media (relative to compositions/), scene 2 falls back to the graphic block
+        # scene 1 carries its media (relative to compositions/); scene 2
+        # falls back to the graphic block
         assert "../images/scene-01.png" in comp1
         assert "media graphic" in comp2
         # scene count footer
@@ -339,7 +344,7 @@ class TestProvisioningConsumesTimeline:
                 },
             ],
         }
-        project = self._provision(tmp_path, assets)
+        self._provision(tmp_path, assets)
         index_html = (tmp_path / "proj" / "index.html").read_text(encoding="utf-8")
         assert 'data-composition-src="compositions/01-scene.html"' in index_html
         assert 'data-composition-src="compositions/03-scene.html"' in index_html

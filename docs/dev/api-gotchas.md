@@ -166,15 +166,18 @@ Different modes execute different Gate subsets:
 
 | mode | Gates Included |
 |------|----------------|
-| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 |
-| `text_only` | CW → G0-G6 → H0 → L1-L4 |
-| `text_with_cover` | CW → G0-G6 → H0 → L1-L4 (+ cover image) |
-| `video_only` | V0-V7 → H0 → L1-L4 |
-| `image-carousel` | CW → G0-G6 → L1-L4 (+ carousel images) |
-| `social-thread` | CW → G0-G6 → L1-L4 (thread format) |
-| `short-video` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 |
+| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 |
+| `text_only` | CW → G0-G6 → H0 |
+| `text_with_cover` | CW → G0-G6 → H0 (+ cover image) |
+| `video_only` | V0-V7 |
+| `image-carousel` | CW → G0-G6 (+ carousel images) |
+| `social-thread` | CW → G0-G6 (thread format) |
+| `short-video` | pre-gate → CW → G0-G6 → V0-V7 → H0 |
 | `qa_only` | G0 → G2 → G3 → V1 → V6 |
-| `repurpose` | CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4 |
+| `repurpose` | pre-gate → CW → G0-G6 → V0-V7 → H0 → P1-P4 |
+
+`L1`-`L4` are registered but belong to no preset — the lifecycle commands run
+them. Lists come from `automedia/pipelines/gate_plan.py` (`MODE_GATE_NAMES`).
 
 **Gotcha:** `qa_only` only runs 5 gates, far fewer than the full pipeline's
 33 gates. Do not use `qa_only` results to judge whether the entire pipeline

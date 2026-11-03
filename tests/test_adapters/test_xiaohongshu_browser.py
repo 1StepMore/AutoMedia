@@ -151,17 +151,21 @@ class TestLoadSession:
     def test_no_accounts_gives_capture_hint(self) -> None:
         registry = MagicMock()
         registry.list.return_value = []
-        with patch("automedia.accounts.registry.AccountRegistry", return_value=registry):
-            with pytest.raises(BrowserPublishError, match="login-capture"):
-                load_session()
+        with (
+            patch("automedia.accounts.registry.AccountRegistry", return_value=registry),
+            pytest.raises(BrowserPublishError, match="login-capture"),
+        ):
+            load_session()
 
     def test_account_without_storage_state_hinted(self) -> None:
         registry = MagicMock()
         registry.list.return_value = [{"account_id": "acc_x", "platform": "xiaohongshu"}]
         registry.get_credentials.return_value = {"cookie_string": "a=1"}
-        with patch("automedia.accounts.registry.AccountRegistry", return_value=registry):
-            with pytest.raises(BrowserPublishError, match="storage_state"):
-                load_session()
+        with (
+            patch("automedia.accounts.registry.AccountRegistry", return_value=registry),
+            pytest.raises(BrowserPublishError, match="storage_state"),
+        ):
+            load_session()
 
 
 class TestPrepareNote:

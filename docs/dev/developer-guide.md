@@ -300,17 +300,17 @@ The pipeline supports nine modes, each running a different subset of gates. The 
 
 | Mode | Gates Executed | Use Case |
 |------|---------------|----------|
-| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks |
-| `text_only` | CW → G0-G6 → H0 → L1-L4 | Draft-only output: content writing and copy gates, no video/rendering gates |
-| `text_with_cover` | CW → G0-G6 → H0 → L1-L4 | Text output plus a single cover image |
-| `video_only` | V0-V7 → H0 → L1-L4 | Video-only: reuse an existing draft, run all video and lifecycle gates |
-| `image-carousel` | CW → G0-G6 → L1-L4 | Carousel-image output for social platforms |
-| `social-thread` | CW → G0-G6 → L1-L4 | Thread-style posts for social platforms |
-| `short-video` | pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4 | Short-form video (e.g. TikTok/Reels) |
+| `auto` | pre-gate → CW → G0-G6 → V0-V7 → H0 | Full production pipeline: topic validation, content writing, all copy and video gates |
+| `text_only` | CW → G0-G6 → H0 | Draft-only output: content writing and copy gates, no video/rendering gates |
+| `text_with_cover` | CW → G0-G6 → H0 | Text output plus a single cover image |
+| `video_only` | V0-V7 | Video-only: reuse an existing draft, run all video gates |
+| `image-carousel` | CW → G0-G6 | Carousel-image output for social platforms |
+| `social-thread` | CW → G0-G6 | Thread-style posts for social platforms |
+| `short-video` | pre-gate → CW → G0-G6 → V0-V7 → H0 | Short-form video (e.g. TikTok/Reels) |
 | `qa_only` | G0 → G2 → G3 → V1 → V6 | Selective QA pass on existing content: targeted copy and video checks |
-| `repurpose` | CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4 | Full pipeline followed by platform-specific deep repurpose gates |
+| `repurpose` | pre-gate → CW → G0-G6 → V0-V7 → H0 → P1-P4 | Full pipeline followed by platform-specific deep repurpose gates |
 
-Gate lists are defined in `src/automedia/pipelines/runner.py` as `_AUTO_GATE_NAMES`, `_TEXT_ONLY_GATE_NAMES`, `_VIDEO_ONLY_GATE_NAMES`, `_QA_ONLY_GATE_NAMES`, and `_REPURPOSE_GATE_NAMES`.
+Gate lists are defined in `src/automedia/pipelines/gate_plan.py` (`MODE_GATE_NAMES`), the single authority; `runner.py` re-exports that plan. `L1`-`L4` are registered but belong to no preset — they run through their own lifecycle commands.
 
 ## Configuration Hierarchy
 
@@ -422,7 +422,7 @@ Beyond RL8 (automated), the remaining red lines rely on developer discipline and
 
 ### Gate List
 
-33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Gate order: pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of `repurpose` mode.
+33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Preset gate order: pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of `repurpose` mode. L1-L4 are registered but belong to no preset; they run through their own lifecycle commands.
 
 | Phase | Gate | Name | Failure Mode |
 |-------|------|------|-------------|
@@ -476,19 +476,19 @@ Sub-pipeline gates that run at the end of `repurpose` mode, performing deep cont
 
 ### Pipeline Modes
 
-Nine modes select different gate subsets, defined in `automedia/pipelines/runner.py`:
+Nine modes select different gate subsets, defined in `automedia/pipelines/gate_plan.py` (`MODE_GATE_NAMES`):
 
 | Mode | Gates | Use Case |
 |------|-------|----------|
-| `auto` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Full production pipeline |
-| `text_only` | CW `→` G0-G6 `→` H0 `→` L1-L4 | Draft-only output |
-| `text_with_cover` | CW `→` G0-G6 `→` H0 `→` L1-L4 | Text + cover image |
-| `video_only` | V0-V7 `→` H0 `→` L1-L4 | Video-only, reuse existing draft |
-| `image-carousel` | CW `→` G0-G6 `→` L1-L4 | Carousel-image output |
-| `social-thread` | CW `→` G0-G6 `→` L1-L4 | Thread-style posts |
-| `short-video` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 | Short-form video |
+| `auto` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 | Full production pipeline |
+| `text_only` | CW `→` G0-G6 `→` H0 | Draft-only output |
+| `text_with_cover` | CW `→` G0-G6 `→` H0 | Text + cover image |
+| `video_only` | V0-V7 | Video-only, reuse existing draft |
+| `image-carousel` | CW `→` G0-G6 | Carousel-image output |
+| `social-thread` | CW `→` G0-G6 | Thread-style posts |
+| `short-video` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 | Short-form video |
 | `qa_only` | G0 `→` G2 `→` G3 `→` V1 `→` V6 | Selective QA pass |
-| `repurpose` | CW `→` G0-G6 `→` V0-V7 `→` H0 `→` L1-L4 `→` P1-P4 | Full pipeline + deep repurpose for platform distribution |
+| `repurpose` | pre-gate `→` CW `→` G0-G6 `→` V0-V7 `→` H0 `→` P1-P4 | Full pipeline + deep repurpose for platform distribution |
 
 ## Account & Publishing Layer (PRD-4)
 
