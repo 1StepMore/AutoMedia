@@ -69,6 +69,7 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
 | [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
 | [Restricted Hardware & Remote Engines](user/hardware-and-remote-engines.md) | Minimum hardware per capability, degradation switches, remote engine setup |
+| [Video Engines](user/video-engines.md) | Remotion vs HyperFrames tracks, selection switch, WSL dependency guide |
 | [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
 | [Architecture Decision Records](adr/README.md) | ADR-001..ADR-007 index + template, canonical source in docs/adr/ |

@@ -158,6 +158,28 @@ engines:
       workflow_path: null
   video:
     default: hyperframes
+    # Ordered chain (#351): remotion (true-motion, needs Node/WSL + workspace)
+    # first, hyperframes (deterministic HTML line, ffmpeg fallback) second —
+    # resolve_engine_chain skips whichever is unavailable. Selection guide:
+    # docs/user/video-engines.md.
+    chain: [remotion, hyperframes]
+    remotion:
+      # Persistent remotion workspace (one `npm i remotion @remotion/cli`
+      # install reused by every render). Inside WSL the default resolves to
+      # ~/.automedia/remotion-workspace. Install via npm mirror in CN:
+      #   npm i remotion @remotion/cli react react-dom       #     --registry=https://registry.npmmirror.com
+      project_dir: null
+      # WSL distro executing Node on a Windows host ("" = native node).
+      # Unset on Windows picks the default distro automatically.
+      wsl_dist: null
+      # Chromium for the renderer (Remotion's own Chrome-for-Testing download
+      # is unreachable from some networks). Playwright's chromium works:
+      # ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome
+      browser_executable: null
+      fps: 30
+      width: 1920
+      height: 1080
+      timeout: 900
     hyperframes:
       quality: high
       # Multi-scene motion templates (#351): narration is split into scenes at

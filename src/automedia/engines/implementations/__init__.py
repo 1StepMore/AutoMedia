@@ -16,4 +16,5 @@ from automedia.engines.implementations import (
     tts_edge,  # noqa: F401
     tts_piper,  # noqa: F401
     video_hyperframes,  # noqa: F401
+    video_remotion,  # noqa: F401
 )

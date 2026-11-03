@@ -117,6 +117,10 @@ A devcontainer configuration is also available at `.devcontainer/devcontainer.js
 
 > **Tip:** All external dependencies come pre-installed in the [Docker image](#quick-start-with-docker). Use that to skip local setup.
 
+> **Video rendering?** Two tracks — Remotion (true motion) and HyperFrames
+> (deterministic, light) — selected by `engines.video.chain`. See
+> [Video Engines](docs/user/video-engines.md).
+>
 > **Restricted hardware (4 GB laptop, WSL, 4G)?** You don't need all of the
 > above — the minimum set depends on the pipeline mode you run. See
 > [Restricted Hardware & Remote Engines](docs/user/hardware-and-remote-engines.md)

@@ -5,7 +5,7 @@
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
 | AGENTS.md | 15836 | file |
-| README.md | 33633 | file |
+| README.md | 33827 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -33,7 +33,7 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gap-register.md | 16269 | file |
+| docs/dev/gap-register.md | 16457 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 9878 | file |
@@ -48,7 +48,7 @@
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
-| docs/index.md | 6486 | file |
+| docs/index.md | 6602 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5555 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
@@ -65,4 +65,5 @@
 | docs/user/omni-integration.md | 13187 | file |
 | docs/user/production-workflow.md | 10963 | file |
 | docs/user/user-introduction.md | 8446 | file |
+| docs/user/video-engines.md | 4629 | file |
 | docs/user/windows-deployment.md | 14121 | file |

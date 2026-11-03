@@ -98,6 +98,7 @@ class TestDefaultsYamlChains:
         assert engines["tts"]["chain"] == ["azure", "piper", "edge-tts"]
         assert engines["asr"]["chain"] == ["whisper", "faster-whisper"]
         assert engines["image"]["chain"] == ["comfyui", "local"]
+        assert engines["video"]["chain"] == ["remotion", "hyperframes"]
 
     def test_no_tmp_paths_in_engine_defaults(self) -> None:
         defaults_path = (
