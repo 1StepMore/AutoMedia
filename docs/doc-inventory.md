@@ -33,7 +33,7 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gap-register.md | 16980 | file |
+| docs/dev/gap-register.md | 17175 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
@@ -48,7 +48,7 @@
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
-| docs/index.md | 6719 | file |
+| docs/index.md | 6825 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5555 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
@@ -58,7 +58,7 @@
 | docs/user/account-management.md | 3314 | file |
 | docs/user/api-reference.md | 21116 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 32519 | file |
+| docs/user/cli-reference.md | 32577 | file |
 | docs/user/deployment.md | 8996 | file |
 | docs/user/hardware-and-remote-engines.md | 8478 | file |
 | docs/user/hitl-framework.md | 10052 | file |
@@ -68,4 +68,5 @@
 | docs/user/production-workflow.md | 10963 | file |
 | docs/user/user-introduction.md | 8446 | file |
 | docs/user/video-engines.md | 4629 | file |
+| docs/user/web-ui.md | 1641 | file |
 | docs/user/windows-deployment.md | 14121 | file |

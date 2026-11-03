@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>AutoMedia — local UI</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0b0f14; color: #d8e2ea; margin: 0; }
+  header { padding: 14px 22px; background: #101822; border-bottom: 1px solid #1d2a38; }
+  header b { color: #35e08c; }
+  nav { padding: 10px 22px; display: flex; gap: 10px; }
+  nav button { background: #16222f; color: #d8e2ea; border: 1px solid #23354a; border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+  nav button.active { background: #35e08c22; border-color: #35e08c; color: #35e08c; }
+  main { padding: 18px 22px; max-width: 1100px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  td, th { border: 1px solid #1d2a38; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #101822; }
+  input { background: #101822; color: #d8e2ea; border: 1px solid #23354a; border-radius: 4px; padding: 6px; width: 100%; }
+  .btn { background: #1f8a5f; color: white; border: 0; border-radius: 6px; padding: 8px 18px; cursor: pointer; }
+  .ok { color: #35e08c; } .bad { color: #ff6464; }
+  pre { background: #101822; padding: 10px; border-radius: 6px; overflow: auto; max-height: 420px; font-size: 12px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header><b>AutoMedia</b> <span style="opacity:.6">local UI · loopback only · 无鉴权，勿暴露端口</span></header>
+<nav>
+  <button data-z="config" class="active">配置</button>
+  <button data-z="run">跑一次</button>
+  <button data-z="results">结果</button>
+  <button data-z="accounts">账号</button>
+</nav>
+<main>
+  <section id="z-config"><h3>配置 / 依赖体检</h3><div id="config-body">loading…</div></section>
+  <section id="z-run" class="hidden">
+    <h3>跑一次流水线</h3>
+    <p><input id="run-topic" placeholder="主题 (topic)" /></p>
+    <p><input id="run-mode" value="text_only" placeholder="模式" /></p>
+    <p><input id="run-brand" placeholder="品牌（默认 default）" /></p>
+    <p><button class="btn" onclick="startRun()">启动</button> <span id="run-status"></span></p>
+    <pre id="run-progress">（启动后此处轮询实时进度）</pre>
+  </section>
+  <section id="z-results" class="hidden"><h3>项目结果</h3><div id="results-body">loading…</div></section>
+  <section id="z-accounts" class="hidden">
+    <h3>账号</h3><div id="accounts-body">loading…</div>
+    <p style="opacity:.7">登录采集/连接账号请在终端执行：<code>automedia account login-capture &lt;platform&gt;</code></p>
+  </section>
+</main>
+<script>
+const zones = ["config", "run", "results", "accounts"];
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  zones.forEach(z => document.getElementById("z-" + z).classList.toggle("hidden", z !== b.dataset.z));
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  load(b.dataset.z);
+});
+function load(z) {
+  if (z === "config") fetch("/api/config").then(r => r.json()).then(d => {
+    document.getElementById("config-body").innerHTML =
+      "<pre>" + JSON.stringify(d.config, null, 2) + "</pre>" +
+      "<table><tr><th>依赖</th><th>状态</th></tr>" +
+      d.dependencies.map(x => `<tr><td>${x.name}</td><td class="${x.installed ? "ok" : "bad"}">${x.installed ? "✓" : "✗"}</td></tr>`).join("") +
+      "</table>";
+  });
+  if (z === "results") fetch("/api/projects").then(r => r.json()).then(d => {
+    document.getElementById("results-body").innerHTML = d.projects.length
+      ? "<table><tr><th>项目</th><th>状态</th><th>主题</th></tr>" +
+        d.projects.map(p => `<tr><td><a href="#" onclick="openProject('${p.id}');return false;">${p.id}</a></td><td>${p.status || ""}</td><td>${p.topic || ""}</td></tr>`).join("") +
+        "</table><pre id='proj-detail'></pre>"
+      : "（暂无项目）";
+  });
+  if (z === "accounts") fetch("/api/accounts").then(r => r.json()).then(d => {
+    document.getElementById("accounts-body").innerHTML = d.accounts.length
+      ? "<table><tr><th>ID</th><th>平台</th><th>标签</th><th>类型</th><th>状态</th></tr>" +
+        d.accounts.map(a => `<tr><td>${a.account_id}</td><td>${a.platform}</td><td>${a.label || ""}</td><td>${a.auth_type}</td><td>${a.status}</td></tr>`).join("") +
+        "</table>"
+      : "（无账号）";
+  });
+}
+function openProject(id) {
+  fetch("/api/projects/" + id).then(r => r.json()).then(d => {
+    document.getElementById("proj-detail").textContent = JSON.stringify(d, null, 2);
+  });
+}
+let pollTimer = null;
+function startRun() {
+  const payload = {
+    topic: document.getElementById("run-topic").value,
+    mode: document.getElementById("run-mode").value,
+    brand: document.getElementById("run-brand").value,
+  };
+  document.getElementById("run-status").textContent = "启动中…";
+  fetch("/api/run", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById("run-status").textContent = d.message || d.detail || d.error;
+      if (d.started && !pollTimer) pollTimer = setInterval(pollProgress, 2000);
+    });
+}
+function pollProgress() {
+  fetch("/api/run/progress").then(r => r.json()).then(d => {
+    document.getElementById("run-progress").textContent = JSON.stringify(d.progress, null, 2);
+    if (d.finished) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      document.getElementById("run-status").textContent = "完成: " + (d.status || "");
+    }
+  });
+}
+load("config");
+</script>
+</body>
+</html>

@@ -204,4 +204,6 @@ path — the pipeline itself reports anything it genuinely cannot do.
   distribution), CLI reference in [docs/user/cli-reference.md](docs/user/cli-reference.md).
 - Restricted hardware / remote engines:
   [docs/user/hardware-and-remote-engines.md](docs/user/hardware-and-remote-engines.md).
+- Prefer clicking over typing: `automedia ui` serves a local web UI —
+  [docs/user/web-ui.md](docs/user/web-ui.md).
 - Windows/WSL: [docs/user/windows-deployment.md](docs/user/windows-deployment.md).

@@ -56,6 +56,7 @@ openai = ["openai>=2.45.0,<4"]
 anthropic = ["anthropic>=0.116.0"]
 rich = ["rich>=15.0.0"]
 mcp = ["mcp>=1.0,<2"]
+webui = ["fastapi>=0.115", "uvicorn>=0.30"]
 
 # Local, offline engine backends. Optional on purpose: the engines import
 # their dependency lazily and report unavailable when it is absent.
@@ -100,7 +101,7 @@ where = ["src"]
 include = ["automedia", "automedia.*"]
 
 [tool.setuptools.package-data]
-automedia = ["**/*.yaml", "**/*.j2", "**/*.html", "**/*.json"]
+automedia = ["**/*.yaml", "**/*.j2", "**/*.html", "**/*.json", "**/*.tsx", "**/*.ts"]
 
 [tool.uv]
 # The lock covers exactly the environment the uv-driven jobs (nightly) run:

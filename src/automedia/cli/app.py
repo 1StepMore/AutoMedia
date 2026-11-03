@@ -176,6 +176,11 @@ LazyTyperGroup.register_sub_app(
     help_text="Human-in-the-loop review operations.",
 )
 LazyTyperGroup.register_sub_app(
+    "ui",
+    "automedia.cli.commands.ui",
+    help_text="Minimal local web UI (loopback only).",
+)
+LazyTyperGroup.register_sub_app(
     "mcp",
     "automedia.cli.commands.mcp",
     help_text="MCP server management.",

@@ -32,6 +32,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia adapter` | Platform adapter audit + templates (`list` with `--real`/`--stub`/`--json`, `create`) |
 | `automedia cron` | Execute scheduled cron jobs and pipeline runs |
 | `automedia account` | Platform account management |
+| `automedia ui` | Minimal local web UI (loopback only) |
 | `automedia archive` | Archive a project |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies |
