@@ -373,7 +373,7 @@ result = run_full_pipeline(
 | `automedia effects` | Compute content analytics stats for a project |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs + pipeline runs |
-| `automedia account` | Platform account management (connect, list, health, disconnect) |
+| `automedia account` | Platform account management (connect, login-capture, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |
@@ -714,7 +714,6 @@ make clean          # Clean build artifacts
 | `scripts/setup.ps1` | One-command venv + install + init + doctor (Windows) |
 | `scripts/run-tests.sh` | pytest with coverage |
 | `scripts/mcp-server.sh` | MCP launcher with SIGTERM handler |
-| `scripts/doctor.sh` | Dependency checker (python, ffmpeg, bun, whisper, edge-tts, chrome, comfyui) |
 
 ## Testing
 

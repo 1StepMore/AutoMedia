@@ -543,7 +543,7 @@ emitted by any MCP tool.  They are reserved for future use.
 | File | Role |
 |------|------|
 | `src/automedia/mcp/mcp_error.py` | `MCPErrorCode` enum + `error_response()` / `success_response()` helpers |
-| `src/automedia/mcp/tools.py` | All MCP tool implementations with `error_response()` call sites |
+| `src/automedia/mcp/tools/` | All MCP tool implementations with `error_response()` call sites (one module per tool area) |
 | `src/automedia/mcp/accounts.py` | Account management tools with `error_response()` call sites |
 
 ---

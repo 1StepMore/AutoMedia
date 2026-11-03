@@ -10,7 +10,7 @@ is needed). Humans who prefer terminals can simply follow the agent column.
 | 0. Identify system | run the detection command | nothing |
 | 1. Pick capability tier | propose a tier from the table | **decide** what AutoMedia will produce |
 | 2. Install dependencies | run installs, verify with `automedia doctor` | approve installs (`doctor --fix` asks) |
-| 3. Configure | run `automedia onboard`, write YAML | **provide LLM API key**, answer brand questions |
+| 3. Configure | run `automedia onboard start`, write YAML | **provide LLM API key**, answer brand questions |
 | 4. First run | `automedia run --topic … --mode …` | watch, then review the draft |
 | 5. Direct (HITL) | surface pending approvals | **approve/reject at H0**, decide publishing |
 
@@ -96,7 +96,7 @@ One command walks all 8 config steps (writes plain YAML under `~/.automedia/`,
 re-runnable per step with `--step <name>`):
 
 ```bash
-automedia onboard
+automedia onboard start
 # non-interactive minimal alternative:
 automedia init --template minimal
 ```
@@ -165,8 +165,8 @@ them proactively; humans: this is your whole job description.
 
 | Checkpoint | Why a human | How |
 |---|---|---|
-| LLM API key | secret entry | paste into env / `automedia onboard` step 1 |
-| Brand profile | taste, tone, CTA principles | `automedia onboard` step 2 |
+| LLM API key | secret entry | paste into env / `automedia onboard start --step llm` |
+| Brand profile | taste, tone, CTA principles | `automedia onboard start --step brand` |
 | H0 review gate | approve/reject the draft before publishing | `automedia hitl` (CLI) or `review_decision` (MCP) |
 | Director-mode approvals | gate-by-gate approval | `approve_gate` / `reject_gate` / `get_pending_approvals` (MCP) |
 | Publishing | credentials + automation level per brand | `automedia account connect`, then `automedia distribute` |

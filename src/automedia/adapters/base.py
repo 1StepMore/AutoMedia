@@ -10,8 +10,14 @@ from typing import Any, TypedDict
 class PublishResult(TypedDict, total=False):
     """Result produced by adapter ``publish()``.
 
-    ``status`` (``"ok"``, ``"error"``, or ``"draft_created"``) is always
-    present.  Platform-specific keys are optional.
+    ``status`` (``"ok"``, ``"error"``, ``"draft_created"``, or
+    ``"ready_for_confirmation"``) is always present.  Platform-specific keys
+    are optional.
+
+    ``"ready_for_confirmation"`` (#353): a browser-automation flow filled the
+    platform's publish form and stopped before the human confirmation step
+    (publish was NOT clicked). The result carries a ``screenshot`` path for
+    the human reviewer.
 
     When ``status == "draft_created"`` the result includes ``draft_url``
     and ``draft_id`` for draft-only publishing flows.
@@ -34,6 +40,7 @@ class PublishResult(TypedDict, total=False):
     tweet_id: str
     tweet_ids: list[str]
     draft_text: str
+    screenshot: str
     message_preview: str
 
 

@@ -147,7 +147,7 @@ The `automedia doctor` command checks system dependencies and config health:
 automedia doctor
 ```
 
-It verifies that `python`, `bun`, `ffmpeg`, `whisper`, `edge-tts`, `chrome`, and `comfyui` (optional) are available on `$PATH`. The implementation is in `automedia/core/doctor.py`.
+It verifies that `python`, `bun`, `ffmpeg`, `whisper`, `edge-tts`, `hyperframes`, `chrome`, and `comfyui` (optional) are available on `$PATH`. The implementation is in `automedia/core/doctor.py`.
 
 If a dependency is missing, install it. For example:
 

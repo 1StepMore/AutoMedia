@@ -42,7 +42,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).
 | `automedia onboard` | Onboarding wizard |
 | `automedia history` | Show pipeline execution history for a project |
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
-| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix) |
+| `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix, sign) |
 
 
 ## Global
@@ -584,7 +584,7 @@ System dependency and runtime environment health check.
 automedia doctor
 ```
 
-Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.
+Checks: python, bun, ffmpeg, whisper, edge-tts, hyperframes, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.
 
 When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the `llm` field. These warnings are advisory and do not affect the exit code.
 
@@ -732,12 +732,20 @@ previous decision has been delivered but not yet consumed.
 Guided configuration wizard.
 
 ```bash
-# Launch configuration wizard
-automedia onboard
+# Launch configuration wizard (all steps)
+automedia onboard start
 
-# List available wizards
+# Re-run a single step
+automedia onboard start --step <name>
+
+# Show which configs are set
+automedia onboard status
+
+# List all configurable items and their current values
 automedia onboard list
 ```
+
+`--step` accepts `llm`, `brand`, `pipeline`, `platforms`, `hitl`, `cron`, `omni`, `prompts`, or `all`.
 
 The LLM step preserves an existing fallback chain in `model_config.yaml` and offers fallback guidance during the flow.
 
@@ -860,6 +868,7 @@ automedia validate matrix
 | `diff` | Diff the latest two runs, or against an explicit baseline |
 | `coverage` | Run the coverage audit over the scenario library; exits 1 when `missing` is non-empty on any surface |
 | `matrix` | Render the validation matrix: coverage grid + run-record assertion cards + diff classification |
+| `sign` | Record the director's sign-off on a run (appends to `signed.txt`; missing run/empty or multi-line verdict exits 1) |
 
 ### validate run Flags
 

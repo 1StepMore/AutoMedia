@@ -169,7 +169,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `automedia effects` | Content analytics stats |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
-| `automedia account` | Account management (connect, list, health, disconnect) |
+| `automedia account` | Account management (connect, login-capture, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: --force unless published) |
 | `automedia init` | Initialize configuration |
 | `automedia doctor` | Check dependencies and environment health |

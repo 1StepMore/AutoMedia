@@ -33,7 +33,7 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gap-register.md | 16457 | file |
+| docs/dev/gap-register.md | 16718 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 9878 | file |
@@ -63,6 +63,7 @@
 | docs/user/hitl-framework.md | 10052 | file |
 | docs/user/mcp-setup.md | 27758 | file |
 | docs/user/omni-integration.md | 13187 | file |
+| docs/user/platform-capability-matrix.md | 4060 | file |
 | docs/user/production-workflow.md | 10963 | file |
 | docs/user/user-introduction.md | 8446 | file |
 | docs/user/video-engines.md | 4629 | file |

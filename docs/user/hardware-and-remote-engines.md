@@ -39,7 +39,7 @@ The primary switch is therefore **the mode itself**
 hardware saving available.
 
 > Note: the `pipeline.{text,image,video,audio}.enabled` keys written by
-> `automedia onboard` step 3 are currently **onboarding/display metadata** —
+> `automedia onboard start --step pipeline` are currently **onboarding/display metadata** —
 > the runtime gates media production on the mode, not on those flags. Do not
 > rely on them to disable a track.
 
@@ -61,7 +61,7 @@ Notes:
   text-based images with Pillow — a core dependency, zero external tools. On a
   machine with no ComfyUI, set `engines.image.default: local` and skip ComfyUI
   entirely.
-- **Video tier without hyperframes**: `VideoHyperframesEngine` falls back to an
+- **Video tier without hyperframes**: `HyperFramesVideoEngine` falls back to an
   ffmpeg slideshow (`_FALLBACK_FRAMERATE = 0.5`) when the hyperframes CLI or
   Chrome is unavailable. The output is a static-frame video — real motion
   requires hyperframes + Chrome.

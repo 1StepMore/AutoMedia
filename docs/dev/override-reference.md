@@ -22,7 +22,7 @@ global, platform, and brand scope.
 
 ## Prompt Template Reference
 
-11 built-in Jinja2 templates are shipped with AutoMedia in
+13 built-in Jinja2 templates are shipped with AutoMedia in
 `src/automedia/prompts/`.  Each can be overridden by placing a `.j2` file
 with the same stem in `~/.automedia/overrides/prompts/`.
 
@@ -30,14 +30,17 @@ with the same stem in `~/.automedia/overrides/prompts/`.
 |----------|-----------|---------|
 | `brand_strategy` | `brand_name`, `industry`, `target_audience`, `context` | Generate brand positioning, audience analysis, and messaging via LLM |
 | `content_quality` | `content`, `criteria`, `brand` | Score content quality against specified criteria (clarity, accuracy, brand voice, etc.) |
-| `content_writer` | `topic`, `brand` | Write a full article draft for Chinese social media (WeChat, Xiaohongshu, Bilibili) |
+| `content_writer` | *(template body is static; topic/brand arrive in the user message)* | Write a full article draft for Chinese social media (WeChat, Xiaohongshu, Bilibili) |
 | `copy_review_g2` | `content`, `brand_guidelines` | Evaluate tone, style, and brand compliance (Gate G2) |
 | `fact_check_g0` | `content` | Verify factual claims against known knowledge (Gate G0) |
 | `fact_check_g0_plausibility` | `content`, `topic` | Plausibility check when no source material is available (Gate G0) |
+| `fact_check_g0_rewrite` | `content`, `failure_reason` | One-shot surgical rewrite of the sentences a failing G0 flagged (Gate G0) |
 | `humanizer_g1` | `content` | Detect AI writing patterns, assess natural readability (Gate G1) |
 | `image_prompt` | `topic`, `brand`, `image_index` | Generate Stable Diffusion / ComfyUI image prompts for cover art |
 | `pipeline_strategy` | `topic`, `brand`, `mode`, `context` | Design content production strategy — structure, platform distribution, angles |
+| `tone_check_g6` | `content`, `tone_guidelines` | Evaluate content against the brand's tone guidelines (Gate G6) |
 | `topic_research` | `category`, `count`, `trending_data` | Research trending topics within a category, recommend angles |
+| `zhihu_rewrite` | *(template body is static; topic/brand/draft arrive in the user message)* | Rewrite a draft into a Zhihu answer or article (D3) |
 | `platforms/wechat/content_writer` | `topic`, `brand`, `tone`, `platform`, `audience`, `brand_guidelines` | WeChat-specific long-form article writer (platform-scoped override of `content_writer`) |
 
 ### Usage in Python
@@ -270,5 +273,5 @@ Each template entry contains:
   `src/automedia/core/overrides.py`
 - **Rule loading**: `OverridesLoader.load_rules(brand=None)`
 - **Prompt loading**: `OverridesLoader.load_prompts(brand=None, platform=None)`
-- **MCP tool**: `list_overridable_templates` in `src/automedia/mcp/tools.py`
+- **MCP tool**: `list_overridable_templates` in `src/automedia/mcp/tools/prompts_meta.py`
 - **Config merge**: 6-layer hierarchy in `src/automedia/core/config_loader.py`

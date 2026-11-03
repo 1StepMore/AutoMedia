@@ -13,7 +13,7 @@ AutoMedia/
 │       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
-│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
+│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_azure, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
 │       ├── effects/            # Content analytics: stats (word count, sentiment, readability, brand mentions, SEO) + cli/mcp entry points
 │       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
 │       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
