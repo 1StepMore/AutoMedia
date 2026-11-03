@@ -272,3 +272,126 @@ class TestAccountHelp:
         assert result.exit_code == 0
         assert "account" in result.output
         assert "Manage platform accounts" in result.output
+
+
+# =========================================================================
+# login-capture: interactive browser login → encrypted cookie store (#353)
+# =========================================================================
+
+
+class TestLoginCaptureHelpers:
+    """Pure helpers behind ``automedia account login-capture``."""
+
+    def test_login_targets_cover_xiaohongshu(self) -> None:
+        from automedia.cli.commands.account import _LOGIN_TARGETS
+
+        assert _LOGIN_TARGETS["xiaohongshu"]["session_cookie"] == "web_session"
+        assert _LOGIN_TARGETS["xiaohongshu"]["url"].startswith("https://")
+
+    def test_cookie_string_serialization(self) -> None:
+        from automedia.cli.commands.account import _cookie_string
+
+        cookies = [
+            {"name": "a", "value": "1", "domain": ".x.com"},
+            {"name": "b", "value": "2", "domain": ".x.com"},
+            {"name": "", "value": "skip-me"},
+        ]
+        assert _cookie_string(cookies) == "a=1; b=2"
+
+    def test_login_signal_detects_session_cookie(self) -> None:
+        from automedia.cli.commands.account import _login_signal
+
+        hit = [{"name": "web_session", "value": "04009..."}]
+        assert _login_signal("xiaohongshu", hit) is True
+        assert _login_signal("xiaohongshu", [{"name": "other", "value": "x"}]) is False
+        # empty session value does not count as logged in
+        assert _login_signal("xiaohongshu", [{"name": "web_session", "value": ""}]) is False
+        # unknown platform has no signal — relies on the Enter fallback
+        assert _login_signal("unknown-platform", hit) is False
+
+    def test_login_confirmed_needs_cookie_and_modal_gone(self) -> None:
+        """XHS hands web_session to anonymous visitors too — the login modal
+        must be gone before we treat the capture as a real login (#353)."""
+        from automedia.cli.commands.account import _login_confirmed
+
+        hit = [{"name": "web_session", "value": "04009..."}]
+
+        class _Page:
+            def __init__(self, modal_present: bool) -> None:
+                self._modal_present = modal_present
+
+            def evaluate(self, _script: str) -> bool:
+                return not self._modal_present
+
+        # cookie present + modal gone → confirmed
+        assert _login_confirmed("xiaohongshu", _Page(modal_present=False), hit) is True
+        # cookie present but login modal still on screen → NOT confirmed
+        # (this is exactly the anonymous-visitor web_session trap)
+        assert _login_confirmed("xiaohongshu", _Page(modal_present=True), hit) is False
+        # cookie absent → never confirmed
+        assert _login_confirmed("xiaohongshu", _Page(modal_present=False), []) is False
+
+        # page evaluation blowing up degrades to the cookie-only signal
+        class _BrokenPage:
+            def evaluate(self, _script: str) -> bool:
+                raise RuntimeError("page navigated away")
+
+        assert _login_confirmed("xiaohongshu", _BrokenPage(), hit) is True
+
+
+class TestLoginCaptureCommand:
+    def test_captured_storage_state_registered_encrypted(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        fake_cookies = [
+            {"name": "web_session", "value": "04009abc", "domain": ".xiaohongshu.com"},
+            {"name": "a1", "value": "5", "domain": ".xiaohongshu.com"},
+        ]
+        fake_state = {
+            "cookies": fake_cookies,
+            "origins": [{"origin": "https://www.xiaohongshu.com", "localStorage": []}],
+        }
+        registry = MagicMock()
+        registry.register.return_value = {"account_id": "acc_xhs_test", "platform": "xiaohongshu"}
+        # everything mocked — this test must never open a real browser or
+        # touch the real account store
+        with (
+            patch.object(account_mod, "_capture_browser_cookies", return_value=fake_state) as cap,
+            patch.object(account_mod, "_get_registry", return_value=registry),
+        ):
+            result = runner.invoke(
+                app,
+                ["account", "login-capture", "xiaohongshu", "--label", "test-capture"],
+            )
+
+        assert result.exit_code == 0, result.output
+        cap.assert_called_once()
+        registry.register.assert_called_once()
+        args, kwargs = registry.register.call_args
+        assert args[0] == "xiaohongshu"
+        assert kwargs["auth_type"] == "cookie"
+        assert kwargs["label"] == "test-capture"
+        creds = args[1]
+        assert creds["storage_state"] == fake_state
+        assert creds["cookies"] == fake_cookies
+        assert creds["cookie_string"] == "web_session=04009abc; a1=5"
+        assert "user_agent" in creds and "captured_at" in creds
+        # cookie values must never appear in the output
+        assert "04009abc" not in result.output
+
+    def test_unknown_platform_without_url_refused(self) -> None:
+        result = runner.invoke(app, ["account", "login-capture", "no-such-platform", "--url", ""])
+        assert result.exit_code == 1
+        assert "No known login URL" in result.output
+
+    def test_playwright_missing_prints_install_hint(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        with patch.object(
+            account_mod,
+            "_capture_browser_cookies",
+            side_effect=ImportError("No module named 'playwright'"),
+        ):
+            result = runner.invoke(app, ["account", "login-capture", "xiaohongshu"])
+        assert result.exit_code == 1
+        assert "playwright install chromium" in result.output

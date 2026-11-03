@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import sys
+import threading
+import time
+from collections.abc import Sequence
+from datetime import datetime
+from typing import Any, Protocol
 
 import typer
 from rich.console import Console
@@ -22,6 +27,209 @@ def _get_registry() -> AccountRegistry:
     if _registry is None:
         _registry = AccountRegistry()
     return _registry
+
+
+# ---------------------------------------------------------------------------
+# Interactive login capture (browser automation → encrypted cookie store)
+# ---------------------------------------------------------------------------
+
+#: Per-platform login entry point and the cookie whose appearance proves a
+#: logged-in session. Platforms without an entry rely on the user pressing
+#: Enter after logging in.
+_LOGIN_TARGETS: dict[str, dict[str, str]] = {
+    "xiaohongshu": {
+        "url": "https://www.xiaohongshu.com",
+        "session_cookie": "web_session",
+    },
+}
+
+#: A plain, current desktop-Chrome UA. Stored alongside the cookies so the
+#: publish engine can reuse the same identity the session was issued to.
+_CAPTURE_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+
+
+def _cookie_string(cookies: Sequence[dict[str, Any]]) -> str:
+    """Serialize Playwright cookies into a ``name=value; …`` header string."""
+    return "; ".join(f"{c['name']}={c['value']}" for c in cookies if c.get("name"))
+
+
+class _EvaluablePage(Protocol):
+    """Minimal shape of a Playwright Page used by the login check."""
+
+    def evaluate(self, script: str) -> bool: ...
+
+
+def _login_signal(platform: str, cookies: Sequence[dict[str, Any]]) -> bool:
+    """Return True when the platform's session cookie has appeared.
+
+    Weak signal only: some platforms (e.g. Xiaohongshu) hand a ``web_session``
+    cookie to anonymous visitors too, so callers combine this with
+    :func:`_login_confirmed` (the login UI being gone) when both are
+    available.
+    """
+    marker = _LOGIN_TARGETS.get(platform, {}).get("session_cookie")
+    if not marker:
+        return False
+    return any(c.get("name") == marker and c.get("value") for c in cookies)
+
+
+def _login_confirmed(
+    platform: str, page: _EvaluablePage, cookies: Sequence[dict[str, Any]]
+) -> bool:
+    """Strong login signal: session cookie present AND the login UI is gone.
+
+    Falls back to the cookie-only signal when the page cannot be inspected.
+    """
+    if not _login_signal(platform, cookies):
+        return False
+    try:
+        modal_gone = page.evaluate(
+            """() => {
+                const sel = ['.login-container', '.sign-container', '.login-modal'];
+                return !sel.some((s) => document.querySelector(s));
+            }"""
+        )
+    except Exception:
+        return True
+    return bool(modal_gone)
+
+
+def _capture_browser_cookies(platform: str, url: str, timeout_s: int) -> dict[str, Any]:
+    """Open a headed Chromium, wait for the user to log in, return a storage state.
+
+    Returns Playwright's ``storage_state()`` (cookies **plus** localStorage
+    origins — some platforms bind the session to localStorage, so a
+    cookies-only replay shows the login modal again).
+
+    Blocks until the strong login signal (see :func:`_login_confirmed`) or —
+    for platforms without a known signal cookie — until the user presses
+    Enter in the terminal. Raises ``TimeoutError`` if neither happens within
+    *timeout_s*.
+    """
+    from playwright.sync_api import sync_playwright
+
+    console.print(
+        f"[bold]Opening a browser window — log in to {platform} inside it (QR or password).[/bold]"
+    )
+    console.print(f"  Waiting up to {timeout_s}s for a confirmed login…")
+
+    enter_pressed = threading.Event()
+
+    def _wait_for_enter() -> None:
+        try:
+            input()
+            enter_pressed.set()
+        except EOFError:
+            pass
+
+    signal_known = platform in _LOGIN_TARGETS
+    if not signal_known:
+        typer.echo(
+            "  (No known session cookie for this platform — "
+            "press Enter here after you finish logging in.)"
+        )
+        threading.Thread(target=_wait_for_enter, daemon=True).start()
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=False)
+        context = browser.new_context(user_agent=_CAPTURE_UA)
+        page = context.new_page()
+        page.goto(url, wait_until="domcontentloaded")
+
+        deadline = time.monotonic() + timeout_s
+        state: dict[str, Any] = {}
+
+        try:
+            while time.monotonic() < deadline:
+                cookies = context.cookies()
+                if _login_confirmed(platform, page, cookies) or (
+                    not signal_known and enter_pressed.is_set()
+                ):
+                    state = context.storage_state()
+                    break
+                page.wait_for_timeout(2000)
+            else:
+                raise TimeoutError(
+                    f"Login not detected within {timeout_s}s — "
+                    "no confirmed login (session cookie + login UI gone)"
+                )
+        finally:
+            context.close()
+            browser.close()
+
+    if not state.get("cookies"):
+        raise RuntimeError("Browser closed without capturing any session state")
+    return state
+
+
+@app.command("login-capture")
+def login_capture(
+    platform: str = typer.Argument(..., help="Platform name, e.g. xiaohongshu"),
+    url: str = typer.Option(
+        "", "--url", help="Login page URL (defaults to the platform's known entry point)"
+    ),
+    label: str = typer.Option("", "--label", help="Human-readable account label"),
+    timeout: int = typer.Option(
+        300, "--timeout", help="Max seconds to wait for the interactive login"
+    ),
+) -> None:
+    """Capture a login session via a real browser into the encrypted account store.
+
+    A headed Chromium window opens on this machine; log in inside it (QR scan
+    or password). When the platform's session cookie appears, the cookies are
+    stored (AES-256-GCM) and the browser closes automatically. Cookie values
+    are never printed.
+    """
+    target = _LOGIN_TARGETS.get(platform, {})
+    login_url = url or target.get("url", "")
+    if not login_url:
+        console.print(f"[red]No known login URL for {platform!r} — pass one with --url.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        state = _capture_browser_cookies(platform, login_url, timeout)
+    except TimeoutError as exc:
+        console.print(f"[red]Login capture failed:[/red] {exc}")
+        raise typer.Exit(1) from exc
+    except ImportError as exc:
+        console.print(
+            "[red]playwright is not installed.[/red] Run:\n"
+            "  pip install playwright\n"
+            "  playwright install chromium\n"
+            f"({exc})"
+        )
+        raise typer.Exit(1) from exc
+
+    account_label = label or f"browser-{platform}-{datetime.now().strftime('%Y%m%d-%H%M')}"
+    state_cookies = state.get("cookies", [])
+    credentials: dict[str, Any] = {
+        # Full Playwright storage state (cookies + localStorage origins) —
+        # the replay-proof form. `cookies`/`cookie_string` stay for callers
+        # that only need the header form.
+        "storage_state": state,
+        "cookies": state_cookies,
+        "cookie_string": _cookie_string(state_cookies),
+        "user_agent": _CAPTURE_UA,
+        "login_url": login_url,
+        "captured_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    try:
+        meta = _get_registry().register(
+            platform, credentials, label=account_label, auth_type="cookie"
+        )
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+
+    console.print(
+        f"[green]Login captured[/green]: account [bold]{meta['account_id']}[/bold] "
+        f"({platform}, {len(state_cookies)} cookies, auth=cookie) — encrypted at rest."
+    )
+    console.print("  Cookie values are stored encrypted; nothing was printed.")
 
 
 @app.command()

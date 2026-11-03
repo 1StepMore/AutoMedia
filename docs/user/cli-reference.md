@@ -75,7 +75,8 @@ automedia account disconnect acc_wechat_a1b2c3d4
 # Force disconnect without confirmation
 automedia account disconnect acc_wechat_a1b2c3d4 --yes
 
-
+# Capture a login session with a real browser (cookie auth, encrypted at rest)
+automedia account login-capture xiaohongshu
 ```
 
 ### Subcommands
@@ -86,6 +87,7 @@ automedia account disconnect acc_wechat_a1b2c3d4 --yes
 | `list` | List registered accounts, supports `--platform` and `--status` filtering |
 | `health` | Check an account's health status and last check time |
 | `disconnect` | Remove a platform account (requires confirmation unless `--yes`) |
+| `login-capture` | Open a headed browser for interactive login, store session cookies into the encrypted account store (requires `pip install playwright && playwright install chromium`) |
 
 
 ### account connect Arguments

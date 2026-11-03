@@ -57,7 +57,7 @@
 | docs/user | — | dir |
 | docs/user/api-reference.md | 21116 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 31191 | file |
+| docs/user/cli-reference.md | 31502 | file |
 | docs/user/deployment.md | 8996 | file |
 | docs/user/hardware-and-remote-engines.md | 8245 | file |
 | docs/user/hitl-framework.md | 10052 | file |
