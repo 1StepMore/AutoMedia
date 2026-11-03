@@ -139,6 +139,21 @@ class TestRunPipelineParks:
         assert "resume_project_id" in seen
         assert seen["resume_project_id"] is None
 
+    def test_run_pipeline_skips_h0_human_review(self) -> None:
+        """MCP is agent-driven: ``skip_review=True`` so H0 never fails/pauses."""
+        seen: dict[str, Any] = {}
+
+        def _stub(topic: str, brand: str, **kwargs: Any) -> PipelineResult:
+            seen.update(kwargs)
+            return PipelineResult(project_id=f"ok-{topic}", topic=topic, status="success")
+
+        with patch("automedia.pipelines.runner.run_full_pipeline", side_effect=_stub):
+            result = run_pipeline(topic="skip review", brand="test-brand", mode="text_only")
+            _wait_for_terminal(result["project_id"])
+
+        assert seen.get("skip_review") is True
+        assert seen.get("block_on_hitl") is False
+
     def test_run_pipeline_returns_started_immediately(self) -> None:
         """The tool contract stays async: it returns a run handle right away."""
         seen: dict[str, Any] = {}

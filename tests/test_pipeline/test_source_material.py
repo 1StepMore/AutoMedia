@@ -180,15 +180,44 @@ class TestResolveSourceMaterial:
 class TestMCPRunPipelineSourceParams:
     """Verify MCP run_pipeline accepts and passes source_path/source_url."""
 
-    def test_run_pipeline_accepts_source_path(self) -> None:
+    @pytest.fixture(autouse=True)
+    def _scoped_allowlist(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> Path:
+        """Scope the MCP allowlist to a temp dir so the source_path gate passes.
+
+        ``run_pipeline`` fail-closes on caller-supplied paths outside
+        ``mcp_allowlist.yaml``; these tests exercise parameter pass-through,
+        not the allowlist contract (covered by ``tests/test_mcp``).
+        """
+        from automedia.mcp.allowlist import _reset_allowlist_cache
+        from automedia.pipelines.gate_engine import PipelineResult
+
+        allowed = tmp_path / "sources"
+        allowed.mkdir()
+        allowlist = tmp_path / "allowlist.yaml"
+        allowlist.write_text(f"allowed_directories:\n  - {allowed}\n", encoding="utf-8")
+        monkeypatch.setenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", str(allowlist))
+        _reset_allowlist_cache()
+
+        def _stub_run(topic: str, brand: str, **kwargs: Any) -> PipelineResult:
+            return PipelineResult(project_id="stubproj0001", topic=topic, status="success")
+
+        monkeypatch.setattr("automedia.pipelines.runner.run_full_pipeline", _stub_run)
+        yield allowed
+        _reset_allowlist_cache()
+
+    def test_run_pipeline_accepts_source_path(self, _scoped_allowlist: Path) -> None:
         """run_pipeline accepts source_path param and returns started."""
         from automedia.mcp.server import run_pipeline
 
+        source = _scoped_allowlist / "test.md"
+        source.write_text("# synthetic brief\n", encoding="utf-8")
         result = run_pipeline(
             topic="test topic",
             brand="TestBrand",
             mode="auto",
-            source_path="/tmp/test.md",
+            source_path=str(source),
         )
         assert isinstance(result, dict)
         assert result["status"] == "started"

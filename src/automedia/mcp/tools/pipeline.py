@@ -135,10 +135,12 @@ def run_pipeline(
         on immediate failure.
 
         The returned ``project_id`` is the async run handle used with
-        ``get_pipeline_progress``.  A run that parks at the H0 review gate
-        is non-blocking: this call returns immediately and the background
-        run ends with status ``"awaiting_review"`` (surfaced by
-        ``list_active_pipelines``) rather than implying completion.
+        ``get_pipeline_progress``.  MCP runs are agent-driven, so the H0
+        human-review gate is skipped (``skip_review=True``); if another
+        approval gate parks the run it is non-blocking — this call returns
+        immediately and the background run ends with status
+        ``"awaiting_review"`` (surfaced by ``list_active_pipelines``) rather
+        than implying completion.
     """
     # Parse platforms string into list for downstream consumers
     parsed_platforms: list[str] = (
@@ -241,9 +243,10 @@ def run_pipeline(
                 director=director,
                 progress=progress,
                 platforms=parsed_platforms,
-                # MCP is agent-driven: never block on a human.  A run that
-                # reaches H0 parks so the agent gets "awaiting_review" back
-                # and can hand off instead of waiting out the review budget.
+                # MCP is agent-driven: never block on a human.  The H0 review
+                # gate is skipped outright so an unattended run neither waits
+                # out the review budget nor fails on an undecided pause.
+                skip_review=True,
                 block_on_hitl=False,
                 resume_project_id=project_id or None,
             )
