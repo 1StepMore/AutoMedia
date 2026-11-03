@@ -110,12 +110,13 @@ A devcontainer configuration is also available at `.devcontainer/devcontainer.js
 - Python 3.11+
 - FFmpeg
 - Bun
+- HyperFrames CLI (video rendering; falls back to an ffmpeg slideshow)
 - edge-tts CLI
 - Whisper (faster-whisper or openai-whisper)
 - Chrome/Chromium (headless mode for video rendering)
 - ComfyUI (optional, for custom video generation)
 
-> **Tip:** All external dependencies come pre-installed in the [Docker image](#quick-start-with-docker). Use that to skip local setup.
+> **Tip:** The [Docker image](#quick-start-with-docker) bundles FFmpeg, Bun, edge-tts, faster-whisper, and Chromium. HyperFrames and ComfyUI are still yours to install. Use it to skip most local setup.
 
 > **Video rendering?** Two tracks — Remotion (true motion) and HyperFrames
 > (deterministic, light) — selected by `engines.video.chain`. See
@@ -262,9 +263,10 @@ All extras (`pyproject.toml` → `[project.optional-dependencies]`):
 
 | Extra | Adds | Use when |
 |-------|------|----------|
-| `.[all]` | every extra below | Full functionality (recommended) |
+| `.[all]` | `[openai]`, `[anthropic]`, `[rich]`, `[mcp]`, `[omni]` + http client | Full functionality (recommended) |
 | `.[dev]` | `[openai]`, `[anthropic]`, `[rich]`, `[mcp]` + http client + pytest/ruff/mypy/pre-commit | Working on AutoMedia itself |
 | `.[mcp]` | `mcp` Python SDK | MCP server only |
+| `.[webui]` | fastapi + uvicorn | `automedia ui` (local web UI) |
 | `.[openai]` | OpenAI provider | Using OpenAI models |
 | `.[anthropic]` | Anthropic provider | Using Claude models |
 | `.[rich]` | Rich terminal rendering | Prettier CLI output |
@@ -275,8 +277,9 @@ All extras (`pyproject.toml` → `[project.optional-dependencies]`):
 | `.[omni-ml]` | sentence-transformers, torch | Local vector search / semantic assets |
 | `.[omni]` | `[omni-core]` + `[omni-pdf]` + `[omni-ml]` | All three Omni capabilities |
 
-Note: `.[dev]` is **not** a superset of `.[all]` — it omits the `omni` extras.
-Use `.[all]` when you need full capability.
+Note: neither `.[dev]` nor `.[all]` is a superset of the other extras —
+`.[dev]` omits the `omni` extras, and `.[all]` omits `[tts-piper]`,
+`[asr-faster]`, and `[webui]`. Name the extras you need explicitly.
 
 ### Development installation
 
@@ -376,7 +379,7 @@ result = run_full_pipeline(
 | `automedia effects` | Compute content analytics stats for a project |
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs + pipeline runs |
-| `automedia account` | Platform account management (connect, login-capture, list, health, disconnect) |
+| `automedia account` | Platform account management (connect, add, login-capture, rotate, list, health, disconnect, remove) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
 | `automedia demo` | Credential-free sample run (fake LLM + local images, isolated sandbox) |
 | `automedia ui` | Minimal local web UI (loopback only) |
@@ -762,6 +765,11 @@ MIT License. See `LICENSE` for details.
 | `docs/user/omni-integration.md` | English | Omni Triad integration |
 | `docs/user/hitl-framework.md` | English | HITL framework |
 | `docs/user/asset-library.md` | English | Asset library |
+| `docs/user/account-management.md` | English | Account add/rotate/remove + master-key lifecycle |
+| `docs/user/platform-capability-matrix.md` | English | Per-platform automation tier (API / browser / manual) |
+| `docs/user/video-engines.md` | English | Remotion vs HyperFrames tracks and the selection switch |
+| `docs/user/hardware-and-remote-engines.md` | English | Restricted-hardware tiers and remote-engine setup |
+| `docs/user/web-ui.md` | English | Local loopback-only web UI |
 | `docs/glossary.md` | English | AutoMedia term glossary for agents |
 | `docs/adr/ADR-005-issue-driven-commits.md` | English | ADR-005: Issue-Driven Atomic Commit Discipline |
 | `docs/adr/ADR-006-graph-engineering-dag.md` | English | ADR-006: Graph Engineering DAG |

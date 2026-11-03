@@ -899,13 +899,13 @@ class TestValidateCoverage:
         data = json.loads(result.output)
         summary: dict[str, Any] = data["summary"]
         # The live app.py now registers 19 commands (pipeline is the 19th).
-        assert summary["cli_declared"] == 19
+        assert summary["cli_declared"] == 21
         # server.py registers 59 + 6 validation tools (W4-T2 + matrix + the
         # gap R-09 run_validation_suite tool) + get_pipeline_state
         # + get_gate_report + review_decision (productization-roadmap todo 9);
         # gap T-12 excludes the 4 deprecated aliases -> 64 live declared.
         assert summary["mcp_declared"] == 64
-        assert summary["cli_missing"] == 19  # synthetic library covers none
+        assert summary["cli_missing"] == 21  # synthetic library covers none
 
     def test_coverage_reports_evidence_buckets_and_exits_1(
         self, scenarios_dir: Path, tmp_path: Path

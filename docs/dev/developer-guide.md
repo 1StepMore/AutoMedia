@@ -13,13 +13,14 @@ AutoMedia depends on the following external tools at runtime. Make sure they are
 
 - Python 3.11+
 - FFmpeg
-- Bun (for HyperFrames rendering)
+- Bun
+- HyperFrames CLI (for HyperFrames rendering)
 - edge-tts CLI
 - Whisper (faster-whisper or openai-whisper)
 - Chrome/Chromium (headless mode)
 - ComfyUI (optional, image generation)
 
-> **Tip:** All external dependencies come pre-installed in the Docker image. Use `docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor` to verify without local setup.
+> **Tip:** The Docker image bundles FFmpeg, Bun, edge-tts, faster-whisper, and Chromium (HyperFrames and ComfyUI are not included). Use `docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor` to verify without local setup.
 
 #### Python 3.11+
 

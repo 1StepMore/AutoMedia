@@ -369,9 +369,9 @@ class TestValidationCoverageAudit:
         """W4-T1's validate command: declared 19, phantom ∅ (covered via list)."""
         payload = _call_tool(server, "validation_coverage_audit", {})
         summary = payload["summary"]
-        assert summary["cli_declared"] == 19
-        assert summary["cli_used"] == 19
-        assert summary["cli_covered"] == 19
+        assert summary["cli_declared"] == 21
+        assert summary["cli_used"] == 21
+        assert summary["cli_covered"] == 21
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
         assert payload["phantom_cli"] == []

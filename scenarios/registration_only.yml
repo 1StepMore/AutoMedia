@@ -7,7 +7,7 @@
 # `uncovered` only when it is neither behaviourally covered nor actively
 # exempt, and fails loudly on a malformed entry.
 version: 1
-reviewed: "2026-09-13"
+reviewed: "2026-11-04"
 release: "wave2"
 entries:
   - surface: cli
@@ -129,4 +129,34 @@ entries:
     name: validate sign
     owner: validation-maintainer
     reason: "Mutates a run dir's signed.txt; covered by the signoff unit tests."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account add
+    owner: validation-maintainer
+    reason: "Writes an encrypted credential; needs a synthetic master key + isolated store (unit-tested in test_account_cli.py)."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account rotate
+    owner: validation-maintainer
+    reason: "Mutates the credential store; requires a seeded registered account (unit-tested with a real tmp store)."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account remove
+    owner: validation-maintainer
+    reason: "Mutates the credential store; requires a seeded registered account."
+    expires: "2026-12-31"
+  - surface: cli
+    name: account login-capture
+    owner: validation-maintainer
+    reason: "Opens a headed browser for interactive QR login — cannot run unattended in the scenario suite; the publish flow consumes its storage_state."
+    expires: "2026-12-31"
+  - surface: cli
+    name: demo
+    owner: validation-maintainer
+    reason: "Runs a full pipeline into the user's demo dir — exercised end-to-end by test_demo.py in a tmp sandbox; behavioral scenario would pollute the runner home."
+    expires: "2026-12-31"
+  - surface: cli
+    name: ui
+    owner: validation-maintainer
+    reason: "Starts a local uvicorn server; routes exercised by TestClient in test_ui.py, behavioral scenario would need a live port."
     expires: "2026-12-31"
