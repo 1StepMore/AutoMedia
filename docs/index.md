@@ -36,6 +36,8 @@ AutoMedia automates content production from **topic selection** through **draft 
 
 ## Quick Start
 
+> Full onboarding walkthrough (agent + human): [ONBOARDING](../ONBOARDING.md)
+
 ```bash
 # Install
 pip install -e .
@@ -66,10 +68,12 @@ automedia run --topic "..." --brand my-brand --mode text_only
 | [HITL Framework](user/hitl-framework.md) | Human-in-the-loop review gates |
 | [Omni Triad Integration](user/omni-integration.md) | OPP, OL, ORF adapter docs |
 | [Asset Library](user/asset-library.md) | Persistent searchable asset storage |
+| [Restricted Hardware & Remote Engines](user/hardware-and-remote-engines.md) | Minimum hardware per capability, degradation switches, remote engine setup |
 | [Glossary](glossary.md) | Plain-language AutoMedia term definitions for agents |
 | [七阶段AI开发流程方法论](dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md) | 7-phase AI development methodology for shipping with coding agents |
 | [Architecture Decision Records](adr/README.md) | ADR-001..ADR-007 index + template, canonical source in docs/adr/ |
 | [Agent Reference](dev/agent-reference.md) | On-demand deep reference split out of AGENTS.md (layout, task patterns, validation contract) |
+| [GAP Register](dev/gap-register.md) | **Single source of truth for open gaps** — deduplicates the dated audit snapshots (which stay frozen) |
 | [Validation Schema Authority](https://github.com/1StepMore/AutoMedia/blob/main/scenarios/STANDARDS.md) | `scenarios/STANDARDS.md` — the single schema authority for validation `standard:` keys |
 
 ---

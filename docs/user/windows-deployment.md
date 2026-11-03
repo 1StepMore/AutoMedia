@@ -7,6 +7,9 @@ description: Set up AutoMedia on Windows — WSL2, Docker Desktop, and native Wi
 
 AutoMedia runs on Windows through three paths. Pick the one that fits your setup:
 
+> Low-spec machine? See [Restricted Hardware & Remote Engines](hardware-and-remote-engines.md)
+> for per-tier minimums and how to point ComfyUI (or other engines) at a remote host.
+
 - **WSL2 (recommended)** — Full Linux environment on Windows. Best compatibility.
 - **Docker Desktop** — Containerized setup, no manual dependency install.
 - **Native Windows** — Runs directly on Windows with Python via winget.

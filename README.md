@@ -117,6 +117,11 @@ A devcontainer configuration is also available at `.devcontainer/devcontainer.js
 
 > **Tip:** All external dependencies come pre-installed in the [Docker image](#quick-start-with-docker). Use that to skip local setup.
 
+> **Restricted hardware (4 GB laptop, WSL, 4G)?** You don't need all of the
+> above — the minimum set depends on the pipeline mode you run. See
+> [Restricted Hardware & Remote Engines](docs/user/hardware-and-remote-engines.md)
+> for per-tier minimums, degradation switches, and remote-engine setup.
+
 #### Python 3.11+
 
 AutoMedia requires Python 3.11 or newer.
@@ -297,6 +302,9 @@ See [Windows Deployment](docs/user/windows-deployment.md) for WSL2, Docker Deskt
 
 ## Quick Start
 
+> Step-by-step onboarding for both agents and humans — including dependency
+> tiers and where a human must step in — lives in [ONBOARDING.md](ONBOARDING.md).
+
 ```bash
 # Initialize configuration
 automedia init
@@ -316,11 +324,12 @@ automedia run --topic "..." --brand my-brand --mode text_only
 New to this codebase? Here's your orientation path:
 
 ```
-Step 1: Read AGENTS.md       → Codebase map, constraints, red lines (9 MUST/MUST NOT)
-Step 2: Review agent config  → .opencode/ (OpenCode), .claude/ (Claude Code)
-Step 3: Start MCP server     → python -m automedia.mcp.server
-Step 4: Verify setup         → automedia doctor
-Step 5: Try a pipeline       → automedia run --topic "..." --brand my-brand --mode text_only
+Step 1: Read ONBOARDING.md   → Executable onboarding: system ID, dependency tiers, HITL map
+Step 2: Read AGENTS.md       → Codebase map, constraints, red lines (9 MUST/MUST NOT)
+Step 3: Review agent config  → .opencode/ (OpenCode), .claude/ (Claude Code)
+Step 4: Start MCP server     → python -m automedia.mcp.server
+Step 5: Verify setup         → automedia doctor
+Step 6: Try a pipeline       → automedia run --topic "..." --brand my-brand --mode text_only
 ```
 
 **Files every agent should read:**
@@ -612,7 +621,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `cli/` | Typer CLI application (19 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
-| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (30 templates for 10 platforms) |
+| `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (60 templates for 20 platforms) |
 | `asset_library/` | Vector store, document ingest, similarity search |
 
 ## Configuration

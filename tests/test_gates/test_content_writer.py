@@ -617,7 +617,7 @@ class TestSourceMaterialInjection:
 
     def test_platform_variants_carry_hard_constraint(self) -> None:
         variants = sorted((_PROMPTS_DIR / "platforms").glob("*/content_writer.j2"))
-        assert len(variants) == 10, f"expected 10 platform variants, found {len(variants)}"
+        assert len(variants) == 20, f"expected 20 platform variants, found {len(variants)}"
 
         for path in variants:
             text = path.read_text(encoding="utf-8")

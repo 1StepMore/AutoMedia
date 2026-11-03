@@ -160,7 +160,7 @@ Declarative open-core tier markers: every gate (33 total) is assigned to core, p
 
 ## Platform-scoped prompt templates
 
-Jinja2 prompt templates resolved per platform with a 3-layer lookup (brand > platform > global). Templates live under `automedia/prompts/platforms/` for 10 platforms.
+Jinja2 prompt templates resolved per platform with a 3-layer lookup (brand > platform > global). Templates live under `automedia/prompts/platforms/` for 20 platforms.
 
 **See:** `automedia/prompts/__init__.py`, `automedia/prompts/platforms/`
 

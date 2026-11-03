@@ -243,15 +243,43 @@ class Doctor:
         return None
 
     @staticmethod
+    def _comfyui_endpoint_config() -> dict[str, str]:
+        """Return ``host``/``port``/``protocol`` kwargs from the merged config.
+
+        Falls back to the local defaults when the config is unavailable, so the
+        doctor keeps working in bare environments.
+        """
+        try:
+            from automedia.core.config_loader import load_config
+
+            config = load_config()
+        except Exception:
+            return {}
+        comfyui_cfg = ((config.get("engines") or {}).get("image") or {}).get("comfyui") or {}
+        endpoint: dict[str, str] = {}
+        if comfyui_cfg.get("host"):
+            endpoint["host"] = str(comfyui_cfg["host"])
+        if comfyui_cfg.get("port"):
+            endpoint["port"] = str(comfyui_cfg["port"])
+        if comfyui_cfg.get("protocol"):
+            endpoint["protocol"] = str(comfyui_cfg["protocol"])
+        return endpoint
+
+    @staticmethod
     def _check_comfyui_http(
         host: str = "127.0.0.1",
-        port: int = 8188,
+        port: int | str = 8188,
         timeout: int = 5,
+        protocol: str = "http",
     ) -> tuple[bool, str | None]:
         """Check whether ComfyUI is reachable via its HTTP API.
 
         Tries a ``GET`` to the root endpoint and returns ``(installed, version)``.
         Gracefully degrades when *httpx* is not installed.
+
+        The endpoint honors ``engines.image.comfyui.{host, port, protocol}``
+        from the merged config so a remote (or Dockerized) ComfyUI is probed
+        where it actually lives, mirroring the image engine itself.
         """
         try:
             import httpx
@@ -261,7 +289,7 @@ class Doctor:
             warn_missing_optional("httpx", feature="cannot check ComfyUI")
             return False, None
 
-        base_url = f"http://{host}:{port}"
+        base_url = f"{protocol}://{host}:{port}"
         try:
             with httpx.Client(timeout=httpx.Timeout(timeout)) as client:
                 resp = client.get(base_url)
@@ -581,7 +609,12 @@ class Doctor:
 
             # --- Special case: ComfyUI is an HTTP service ------------------
             if name == "comfyui":
-                installed, version = self._check_comfyui_http()
+                comfyui_cfg = self._comfyui_endpoint_config()
+                installed, version = self._check_comfyui_http(
+                    host=comfyui_cfg.get("host", "127.0.0.1"),
+                    port=comfyui_cfg.get("port", 8188),
+                    protocol=comfyui_cfg.get("protocol", "http"),
+                )
                 results.append(
                     {
                         "name": name,

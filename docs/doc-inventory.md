@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 15779 | file |
-| README.md | 33074 | file |
+| AGENTS.md | 15836 | file |
+| README.md | 33633 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -20,7 +20,7 @@
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
-| docs/dev/agent-reference.md | 16988 | file |
+| docs/dev/agent-reference.md | 17402 | file |
 | docs/dev/agent-troubleshooting.md | 27229 | file |
 | docs/dev/api-gotchas.md | 10896 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -33,9 +33,10 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
+| docs/dev/gap-register.md | 16057 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
-| docs/dev/override-reference.md | 9341 | file |
+| docs/dev/override-reference.md | 9878 | file |
 | docs/dev/plans | — | dir |
 | docs/dev/plans/NIGHTLY.md | 23366 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
@@ -47,7 +48,7 @@
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
-| docs/index.md | 6104 | file |
+| docs/index.md | 6486 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5555 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
@@ -58,9 +59,10 @@
 | docs/user/asset-library.md | 11894 | file |
 | docs/user/cli-reference.md | 31191 | file |
 | docs/user/deployment.md | 8996 | file |
+| docs/user/hardware-and-remote-engines.md | 8245 | file |
 | docs/user/hitl-framework.md | 10052 | file |
 | docs/user/mcp-setup.md | 27758 | file |
 | docs/user/omni-integration.md | 13187 | file |
 | docs/user/production-workflow.md | 10963 | file |
 | docs/user/user-introduction.md | 8446 | file |
-| docs/user/windows-deployment.md | 13939 | file |
+| docs/user/windows-deployment.md | 14121 | file |

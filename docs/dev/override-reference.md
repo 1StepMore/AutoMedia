@@ -105,12 +105,21 @@ to most general:
 
 ### Prompt Resolution
 
+`automedia.prompts.load_prompt(name, platform=…)` resolves in this order:
+
 | Priority | Scope | Path |
 |----------|-------|------|
-| 1 (highest) | Brand | `~/.automedia/overrides/prompts/<brand>/<name>.j2` |
-| 2 | Platform | `~/.automedia/overrides/prompts/<platform>/<name>.j2` |
-| 3 | Global | `~/.automedia/overrides/prompts/<name>.j2` |
-| 4 (fallback) | Built-in | `src/automedia/prompts/<name>.j2` |
+| 0 (highest) | Workflow inline | `workflow_prompts` kwargs passed to `load_prompt` |
+| 1 | User platform | `~/.automedia/overrides/prompts/<platform>/<name>.j2` |
+| 2 | User global | `~/.automedia/overrides/prompts/<name>.j2` |
+| 3 | Built-in platform variant | `src/automedia/prompts/platforms/<platform>/<name>.j2` |
+| 4 (fallback) | Built-in generic | `src/automedia/prompts/<name>.j2` |
+
+The built-in platform-variant layer (3) ships 20 platforms × the
+`content_writer` / `copy_review_g2` / `humanizer_g1` triplet; a platform
+without a triplet silently falls through to layer 4. Brand-scoped prompt
+overrides are a separate mechanism (`OverridesLoader.load_prompts` in
+`automedia/core/overrides.py`) used outside `load_prompt`.
 
 ### Rule Resolution
 

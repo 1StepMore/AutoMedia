@@ -193,7 +193,7 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
-- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index)
+- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md)
 - **Maintainer skills:** `.opencode/skills/` — `project-validation`, `doc-sync`, `validation-runner`, `deep-modules` (two further maintainer skills are kept local-only on purpose — gitignored, never shipped; see .gitignore).
 - **User-facing skills:** `docs/skills/` — `brand-strategy`, `pipeline-workflow`, `batch-workflow`, `distribution-workflow`
 

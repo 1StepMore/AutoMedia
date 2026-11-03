@@ -1,6 +1,8 @@
 """``automedia onboard`` — comprehensive onboarding wizard.
 
-Walks through ALL customizable AutoMedia settings:
+Opens with a dependency pre-flight (system identification + which()-level
+media tool awareness, never blocking), then walks through ALL customizable
+AutoMedia settings:
 1. LLM provider + API key
 2. Brand profile (brand_name, CTA, languages, blocked words)
 3. Pipeline mode + enabled tracks
@@ -12,6 +14,9 @@ Walks through ALL customizable AutoMedia settings:
 
 Each step can be re-run individually with ``--step <name>``.
 All config files are plain YAML — agents can read/write them directly.
+
+The capability → dependency map referenced by the pre-flight lives in
+``ONBOARDING.md`` at the repo root.
 """
 
 from __future__ import annotations
@@ -45,6 +50,63 @@ _STEPS = [
     "prompts",
     "all",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Pre-flight: system identification + dependency awareness (never blocks)
+# ---------------------------------------------------------------------------
+
+#: Media tools probed at which()-level during pre-flight. Only the video tier
+#: needs all of them — text-only modes need none (see ONBOARDING.md for the
+#: capability → dependency map).
+_MEDIA_TOOLS = ("ffmpeg", "bun", "hyperframes", "edge-tts")
+
+_OS_LABELS = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}
+
+
+def _detect_os() -> str:
+    """Return a human-readable OS label, distinguishing WSL from plain Linux."""
+    import platform
+
+    from automedia.core.doctor import Doctor
+
+    os_name = platform.system()
+    if os_name == "Linux" and Doctor._is_wsl():
+        return "Linux (WSL)"
+    return _OS_LABELS.get(os_name, os_name)
+
+
+def _preflight() -> None:
+    """Step 0 — OS-aware dependency awareness before the configuration steps.
+
+    Informational only: missing tools never block the wizard (a text-only
+    pipeline needs none of them). Full audits with per-OS install commands
+    live in ``automedia doctor``; network probes stay there too, so the
+    wizard start stays instant.
+    """
+    import shutil
+
+    from automedia.core.doctor import Doctor
+
+    _print_header("Preflight: Environment Check")
+    typer.echo(f"  Detected system: {_detect_os()}")
+
+    missing = [tool for tool in _MEDIA_TOOLS if shutil.which(tool) is None]
+    if Doctor()._resolve_chrome() is None:
+        missing.append("chrome")
+
+    if missing:
+        typer.secho(
+            "  Not found on PATH (only media pipelines need these): " + ", ".join(sorted(missing)),
+            fg=typer.colors.YELLOW,
+        )
+        typer.echo("  Text-only modes need none of them.")
+    else:
+        typer.secho("  All media tools found on PATH.", fg=typer.colors.GREEN)
+
+    typer.echo("  Full audit + per-OS install commands: automedia doctor --install-missing")
+    typer.echo("  Interactive install:                      automedia doctor --fix")
+    typer.echo("")
 
 
 def _print_header(title: str) -> None:
@@ -240,6 +302,20 @@ def _step_pipeline() -> None:
         "image-carousel / social-thread / short-video)",
         default="auto",
     )
+
+    # Media dependency awareness for the chosen mode — the mode IS the runtime
+    # switch for media production (see ONBOARDING.md §Step 3).
+    if mode in ("video_only", "short-video", "auto"):
+        typer.echo(
+            "  Note: this mode produces video. It needs ffmpeg + hyperframes + "
+            "headless Chrome (else a static ffmpeg slideshow) and a TTS "
+            "(edge-tts CLI or Piper). Verify with 'automedia doctor'."
+        )
+    elif mode in ("text_with_cover", "image-carousel"):
+        typer.echo(
+            "  Note: this mode generates images. Without ComfyUI the local "
+            "Pillow engine renders text images instead."
+        )
     text_enabled = typer.prompt(
         "Enable text track", default=pipeline.get("text", {}).get("enabled", True)
     )
@@ -490,6 +566,8 @@ def start(
     typer.echo("║     AutoMedia Onboarding Wizard                 ║")
     typer.echo("║     Press Enter to accept defaults               ║")
     typer.echo("╚══════════════════════════════════════════════════╝")
+
+    _preflight()
 
     if "llm" in steps:
         _step_llm()

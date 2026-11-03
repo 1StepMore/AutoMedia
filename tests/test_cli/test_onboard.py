@@ -215,3 +215,55 @@ class TestOnboardLlmWriteGuards:
         backups = sorted(tmp_path.glob("model_config.yaml.bak-*"))
         assert len(backups) == 1
         assert backups[0].read_text(encoding="utf-8") == before
+
+
+class TestOnboardPreflight:
+    """Dependency pre-flight that opens the wizard (#352)."""
+
+    def test_detect_os_returns_label(self) -> None:
+        import automedia.cli.commands.onboard as onboard_mod
+
+        label = onboard_mod._detect_os()
+        assert label
+        assert any(token in label for token in ("Windows", "Linux", "macOS", "WSL"))
+
+    def test_start_runs_preflight_before_steps(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`onboard start` prints the environment check ahead of step 1."""
+        import automedia.cli.commands.onboard as onboard_mod
+
+        monkeypatch.setattr(onboard_mod, "_USER_CFG_DIR", tmp_path)
+        result = runner.invoke(
+            app,
+            ["onboard", "start", "--step", "llm"],
+            input="deepseek\ndeepseek-chat\nsk-key\n\n0.7\n2048\nn\n",
+        )
+        assert result.exit_code == 0
+        out = result.output
+        assert "Preflight: Environment Check" in out
+        assert "Detected system:" in out
+        assert out.index("Preflight") < out.index("Step 1/8")
+        assert "automedia doctor --install-missing" in out
+
+    def test_preflight_missing_tools_are_informational(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Missing media tools must not block the wizard nor fail the step."""
+        import shutil
+
+        import automedia.cli.commands.onboard as onboard_mod
+
+        monkeypatch.setattr(
+            onboard_mod.shutil.which if hasattr(onboard_mod, "shutil") else shutil,
+            "which",
+            lambda name: None,
+        )
+        monkeypatch.setattr(onboard_mod, "_USER_CFG_DIR", tmp_path)
+        result = runner.invoke(
+            app,
+            ["onboard", "start", "--step", "llm"],
+            input="deepseek\ndeepseek-chat\nsk-key\n\n0.7\n2048\nn\n",
+        )
+        assert result.exit_code == 0
+        assert "Text-only modes need none of them" in result.output

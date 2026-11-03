@@ -179,6 +179,7 @@ Optional engine extras and their version constraints:
 
 | File | Content |
 |------|---------|
+| `ONBOARDING.md` | Executable onboarding for agents and humans (system ID, dependency tiers, HITL map, minimal viable path) |
 | `docs/dev/developer-guide.md` | Full developer guide (enforcement mechanisms, PRD-4 summary, ADRs) |
 | `docs/user/api-reference.md` | SDK API reference |
 | `docs/user/cli-reference.md` | CLI command reference |
@@ -189,6 +190,7 @@ Optional engine extras and their version constraints:
 | `docs/glossary.md` | Plain-language AutoMedia term glossary for agents |
 | `docs/adr/README.md` | ADR index + template (`docs/adr/TEMPLATE.md`), immutable decision records |
 | `docs/dev/gate-failure-modes.md` | Gate failure troubleshooting |
+| `docs/dev/gap-register.md` | **Single source of truth for open gaps** — supersede the dated audit snapshots for living state (snapshots stay frozen) |
 | `docs/user/production-workflow.md` | Production operations guide |
 | `docs/dev/cron-troubleshooting.md` | Cron job debugging |
 | `docs/dev/api-gotchas.md` | Common API pitfalls |
@@ -203,6 +205,7 @@ Optional engine extras and their version constraints:
 | `docs/dev/deep-module-rfc-001.md` | Deep-module refactor RFC for `runner.py` (see its Status header) |
 | `docs/user/deployment.md` | Deployment options comparison (Docker, native pip, systemd, Windows) |
 | `docs/user/windows-deployment.md` | Windows setup: WSL2, Docker Desktop, native |
+| `docs/user/hardware-and-remote-engines.md` | Restricted-hardware minimums, degradation switches, remote ComfyUI endpoint config |
 | `docs/user/user-introduction.md` | Getting-started walkthrough for new users |
 | `docs/skills/` | User-facing MCP how-to skills (see §User-Facing Skills) |
 | `CHANGELOG.md` | Version history |
