@@ -52,7 +52,7 @@ like drift; the derived truth lives in `scripts/check-doc-consistency.py`.
 | ID | Gap | 首见 | 状态 | 证据 / 处置 |
 |---|---|---|---|---|
 | GAP-SEC-1 | MCP file-ops allowlist self-enforced (fail-open risk): call sites were patched to `_require_allowed`, but the default allowlist directory mismatch (A9) remains conditional. | project-analysis-20261029 §4.3.1 → infrastructure-audit-20261030 §3.3.6 / A9 | **open** (A9 remainder) | `tools_distribution.py`, `effects/mcp.py` now enforce; A9 deferred pending the condition that triggers it. |
-| GAP-SEC-2 | Credential store KDF is a single SHA-256 over `AUTOMEDIA_MASTER_KEY`; no keyring integration by default; no documented backup/recovery story. | project-analysis-20261029 §4.3 | **open** | `accounts/store.py:13` (SHA-256 → AES-256 key). Master-key lifecycle docs land with GAP-PROD-4. |
+| GAP-SEC-2 | Credential store KDF is a single SHA-256 over `AUTOMEDIA_MASTER_KEY`; `AccountStore` has no keyring integration. | project-analysis-20261029 §4.3 | **open** (backup/recovery doc closed) | `accounts/store.py:13` (SHA-256 → AES-256 key); the keyring loop lives in `core/credential_loader.py` (env > keyring > YAML), not in the account store. Backup/recovery/rotation story documented in `docs/user/account-management.md` (GAP-PROD-4). |
 
 ## GAP-ARCH — architecture
 

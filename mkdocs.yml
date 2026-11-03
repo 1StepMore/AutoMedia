@@ -47,9 +47,14 @@ nav:
     - API Reference: user/api-reference.md
     - CLI Reference: user/cli-reference.md
     - MCP Setup: user/mcp-setup.md
+    - Account & Credential Management: user/account-management.md
+    - Local Web UI: user/web-ui.md
+    - Platform Capability Matrix: user/platform-capability-matrix.md
   - Deployment:
     - Deployment Options: user/deployment.md
     - Windows Deployment: user/windows-deployment.md
+    - Video Engines: user/video-engines.md
+    - Restricted Hardware & Remote Engines: user/hardware-and-remote-engines.md
   - Runbook:
     - Production Workflow: user/production-workflow.md
     - Gate Failure Modes: dev/gate-failure-modes.md
