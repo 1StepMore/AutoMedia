@@ -270,6 +270,46 @@ class AccountRegistry:
                 return True
         return False
 
+    # ------------------------------------------------------------------
+    # Credential rotation (#354)
+    # ------------------------------------------------------------------
+
+    def rotate_credentials(
+        self, account_id: str, credentials: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Replace an account's credential payload, keeping its identity.
+
+        The account_id, label, auth_type, status and timestamps survive the
+        rotation — only the encrypted payload and its fingerprint change.
+        Used by ``automedia account rotate`` for cookie refreshes and key
+        renewals without losing the account's history.
+
+        Returns
+        -------
+        dict
+            The updated account metadata entry, or ``None`` when
+            *account_id* does not exist.
+
+        Raises
+        ------
+        ValueError
+            When *credentials* is empty.
+        """
+        if not credentials:
+            raise ValueError("Credentials payload must be non-empty.")
+        index = self._store._load_index()
+        if account_id not in index["accounts"]:
+            return None
+        info = index["accounts"][account_id]
+        return self._store.save(
+            info["platform"],
+            account_id,
+            credentials,
+            info.get("label", ""),
+            info.get("auth_type", "api_key"),
+            info.get("tags") or None,
+        )
+
 
 __all__ = [
     "AccountRegistry",

@@ -77,6 +77,15 @@ automedia account disconnect acc_wechat_a1b2c3d4 --yes
 
 # Capture a login session with a real browser (cookie auth, encrypted at rest)
 automedia account login-capture xiaohongshu
+
+# Non-interactive registration (script/agent friendly)
+automedia account add zhihu --cred token=abc --auth-type api_key --label "Main"
+
+# Rotate credentials without losing the account identity
+automedia account rotate acc_zhihu_a1b2c3d4 --cred token=new-token
+
+# Remove an account (alias of disconnect)
+automedia account remove acc_zhihu_a1b2c3d4 --yes
 ```
 
 ### Subcommands
@@ -88,6 +97,9 @@ automedia account login-capture xiaohongshu
 | `health` | Check an account's health status and last check time |
 | `disconnect` | Remove a platform account (requires confirmation unless `--yes`) |
 | `login-capture` | Open a headed browser for interactive login, store session cookies into the encrypted account store (requires `pip install playwright && playwright install chromium`) |
+| `add` | Register an account non-interactively (`--cred k=v` repeatable or `--from-json <file>`) |
+| `rotate` | Replace an account's credentials, keeping its identity and history |
+| `remove` | Remove a platform account (alias of `disconnect`) |
 
 
 ### account connect Arguments

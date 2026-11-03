@@ -395,3 +395,163 @@ class TestLoginCaptureCommand:
             result = runner.invoke(app, ["account", "login-capture", "xiaohongshu"])
         assert result.exit_code == 1
         assert "playwright install chromium" in result.output
+
+
+# =========================================================================
+# account add / rotate / remove (#354)
+# =========================================================================
+
+
+class TestAccountAdd:
+    def test_add_registers_with_cred_pairs(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        registry = MagicMock()
+        registry.register.return_value = {"account_id": "acc_zhihu_new", "platform": "zhihu"}
+        with (
+            patch.object(account_mod, "_get_registry", return_value=registry),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "account", "add", "zhihu",
+                    "--cred", "token=abc123",
+                    "--cred", "secret=xyz",
+                    "--auth-type", "api_key",
+                    "--label", "Main",
+                ],
+            )
+        assert result.exit_code == 0, result.output
+        args, kwargs = registry.register.call_args
+        assert args[0] == "zhihu" and args[1] == {"token": "abc123", "secret": "xyz"}
+        assert kwargs["auth_type"] == "api_key" and kwargs["label"] == "Main"
+        # values must not be echoed — only keys
+        assert "abc123" not in result.output
+
+    def test_add_rejects_malformed_cred(self) -> None:
+        result = runner.invoke(app, ["account", "add", "zhihu", "--cred", "novalue"])
+        assert result.exit_code == 1
+        assert "key=value" in result.output
+
+    def test_add_rejects_both_cred_and_json(self, tmp_path: Path) -> None:
+        json_file = tmp_path / "creds.json"
+        json_file.write_text('{"token": "t"}', encoding="utf-8")
+        result = runner.invoke(
+            app,
+            ["account", "add", "zhihu", "--cred", "a=b", "--from-json", str(json_file)],
+        )
+        assert result.exit_code == 1
+        assert "not both" in result.output
+
+    def test_add_from_json(self, tmp_path: Path) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        json_file = tmp_path / "creds.json"
+        json_file.write_text('{"cookie": "a=1; b=2"}', encoding="utf-8")
+        registry = MagicMock()
+        registry.register.return_value = {"account_id": "acc_x", "platform": "xiaohongshu"}
+        with patch.object(account_mod, "_get_registry", return_value=registry):
+            result = runner.invoke(
+                app, ["account", "add", "xiaohongshu", "--from-json", str(json_file)]
+            )
+        assert result.exit_code == 0, result.output
+        assert registry.register.call_args[0][1] == {"cookie": "a=1; b=2"}
+
+
+class TestAccountRotate:
+    def test_rotate_replaces_credentials_keeps_identity(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        registry = MagicMock()
+        registry.rotate_credentials.return_value = {"fingerprint": "cafe1234567890abcd"}
+        with patch.object(account_mod, "_get_registry", return_value=registry):
+            result = runner.invoke(
+                app,
+                ["account", "rotate", "acc_xiaohongshu_1", "--cred", "web_session=newsession"],
+            )
+        assert result.exit_code == 0, result.output
+        registry.rotate_credentials.assert_called_once_with(
+            "acc_xiaohongshu_1", {"web_session": "newsession"}
+        )
+        # the new credential value is never echoed
+        assert "newsession" not in result.output
+        # the (short) fingerprint prefix is shown for audit
+        assert "cafe12345678" in result.output
+
+    def test_rotate_unknown_account(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        registry = MagicMock()
+        registry.rotate_credentials.return_value = None
+        with patch.object(account_mod, "_get_registry", return_value=registry):
+            result = runner.invoke(app, ["account", "rotate", "acc_missing", "--cred", "a=b"])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+
+class TestAccountRemove:
+    def test_remove_deletes_with_yes(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        registry = MagicMock()
+        registry.get.return_value = {"platform": "zhihu", "label": "L"}
+        with patch.object(account_mod, "_get_registry", return_value=registry):
+            result = runner.invoke(app, ["account", "remove", "acc_z", "--yes"])
+        assert result.exit_code == 0, result.output
+        registry.delete.assert_called_once_with("acc_z")
+
+    def test_remove_unknown_account(self) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        registry = MagicMock()
+        registry.get.return_value = None
+        with patch.object(account_mod, "_get_registry", return_value=registry):
+            result = runner.invoke(app, ["account", "remove", "acc_missing", "--yes"])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+
+class TestRotateRealStore:
+    """End-to-end against a real (tmp) encrypted store — ciphertext only."""
+
+    def test_rotate_reencrypts_never_plaintext(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import automedia.cli.commands.account as account_mod
+
+        monkeypatch.setenv("AUTOMEDIA_MASTER_KEY", "test-master-key-rotate")
+        # store.py binds get_user_config_dir at import — patch its namespace too
+        monkeypatch.setattr("automedia.core.paths.get_user_config_dir", lambda: tmp_path)
+        monkeypatch.setattr("automedia.accounts.store.get_user_config_dir", lambda: tmp_path)
+        monkeypatch.setattr(account_mod, "_registry", None)  # reset the lazy singleton
+
+        result = runner.invoke(
+            app,
+            ["account", "add", "zhihu", "--cred", "token=old-secret-value"],
+        )
+        assert result.exit_code == 0, result.output
+        listing = runner.invoke(app, ["account", "list"]).output
+        assert "acc_zhihu_" in listing
+
+        # find the account id and rotate
+        import yaml as _yaml
+
+        idx = _yaml.safe_load((tmp_path / "accounts" / "accounts.index.json").read_text(encoding="utf-8"))
+        account_id = next(iter(idx["accounts"]))
+        enc_file = tmp_path / "accounts" / "zhihu" / f"{account_id}.json.enc"
+        assert enc_file.is_file()
+        blob = enc_file.read_text(encoding="utf-8")
+        assert "old-secret-value" not in blob  # ciphertext at rest
+
+        result = runner.invoke(
+            app, ["account", "rotate", account_id, "--cred", "token=new-secret-value"]
+        )
+        assert result.exit_code == 0, result.output
+        blob2 = enc_file.read_text(encoding="utf-8")
+        assert "new-secret-value" not in blob2
+
+        # the registry decrypts back the rotated payload
+        from automedia.accounts.registry import AccountRegistry
+
+        creds = AccountRegistry().get_credentials(account_id)
+        assert creds == {"token": "new-secret-value"}

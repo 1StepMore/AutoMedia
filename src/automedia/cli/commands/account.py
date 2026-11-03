@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import sys
 import threading
 import time
@@ -232,6 +233,47 @@ def login_capture(
     console.print("  Cookie values are stored encrypted; nothing was printed.")
 
 
+def _parse_cred_payload(cred: list[str], from_json: str) -> dict[str, str]:
+    """Build the credential payload from --cred k=v pairs or a JSON file.
+
+    Values are never echoed; only keys are shown on errors.
+    """
+    payload: dict[str, str] = {}
+    if cred:
+        for pair in cred:
+            key, sep, value = pair.partition("=")
+            if not sep or not key.strip():
+                hint = key.strip() or "<empty>"
+                raise ValueError(f"invalid --cred entry {hint}=… (expected key=value)")
+            payload[key.strip()] = value
+    if from_json:
+        if payload:
+            raise ValueError("use either --cred or --from-json, not both")
+        import json
+
+        try:
+            with open(from_json, encoding="utf-8") as fh:
+                loaded = json.load(fh)
+        except OSError as exc:
+            raise ValueError(f"cannot read {from_json}: {exc}") from exc
+        if not isinstance(loaded, dict) or not all(isinstance(k, str) for k in loaded):
+            raise ValueError("credential JSON must be an object with string keys")
+        payload = {k: str(v) for k, v in loaded.items()}
+    if not payload:
+        raise ValueError("no credentials given — use --cred key=value or --from-json <file>")
+    return payload
+
+
+def _register_or_exit(
+    platform: str, payload: dict[str, str], label: str, auth_type: str
+) -> dict[str, Any]:
+    try:
+        return _get_registry().register(platform, payload, label=label, auth_type=auth_type)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+
+
 @app.command()
 def connect(
     platform: str = typer.Argument(..., help="Platform name (wechat, zhihu, ...)"),
@@ -267,8 +309,8 @@ def connect(
         raise typer.Exit(1) from e
 
 
-@app.command()
-def list(
+@app.command("list")
+def list_accounts(
     platform: str | None = typer.Option(None, "--platform", "-p", help="Filter by platform"),
     status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
 ) -> None:
@@ -345,3 +387,72 @@ def disconnect(
 
     _get_registry().delete(account_id)
     console.print(f"[green]Account disconnected: {account_id}[/green]")
+
+
+@app.command()
+def add(
+    platform: str = typer.Argument(..., help="Platform name (wechat, zhihu, ...)"),
+    cred: builtins.list[str] = typer.Option(
+        [], "--cred", help="Credential as key=value (repeatable, non-interactive)"
+    ),
+    from_json: str = typer.Option(
+        "", "--from-json", help="Credential payload as a JSON object file"
+    ),
+    auth_type: str = typer.Option("api_key", "--auth-type", help="Authentication type"),
+    label: str = typer.Option("", "--label", help="Human-readable label"),
+) -> None:
+    """Register an account non-interactively (script/agent friendly)."""
+    try:
+        payload = _parse_cred_payload(list(cred), from_json)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+    meta = _register_or_exit(platform, payload, label, auth_type)
+    console.print(
+        f"[green]Account registered:[/green] [bold]{meta['account_id']}[/bold] "
+        f"({platform}, auth={auth_type}, keys: {', '.join(sorted(payload))})"
+    )
+
+
+@app.command()
+def rotate(
+    account_id: str = typer.Argument(..., help="Account ID to rotate credentials for"),
+    cred: builtins.list[str] = typer.Option(
+        [], "--cred", help="New credential as key=value (repeatable)"
+    ),
+    from_json: str = typer.Option("", "--from-json", help="New credential payload as a JSON file"),
+) -> None:
+    """Replace an account's credentials, keeping its identity and history."""
+    try:
+        payload = _parse_cred_payload(list(cred), from_json)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+    meta = _get_registry().rotate_credentials(account_id, payload)
+    if meta is None:
+        console.print(f"[red]Account not found: {account_id}[/red]")
+        raise typer.Exit(1)
+    console.print(
+        f"[green]Credentials rotated[/green]: [bold]{account_id}[/bold] "
+        f"(new fingerprint {str(meta.get('fingerprint', ''))[:12]}…; "
+        "identity/label/history preserved)"
+    )
+
+
+@app.command()
+def remove(
+    account_id: str = typer.Argument(..., help="Account ID to remove"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+) -> None:
+    """Remove a platform account (alias of ``disconnect``)."""
+    info = _get_registry().get(account_id)
+    if not info:
+        console.print(f"[red]Account not found: {account_id}[/red]")
+        raise typer.Exit(1)
+    if not yes:
+        confirm = typer.confirm(f"Remove account {account_id} ({info.get('platform', '')})?")
+        if not confirm:
+            console.print("[yellow]Aborted.[/yellow]")
+            return
+    _get_registry().delete(account_id)
+    console.print(f"[green]Account removed: {account_id}[/green]")

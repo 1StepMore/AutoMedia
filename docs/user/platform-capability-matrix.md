@@ -72,6 +72,8 @@ copies from the project dir when publishing manually.
 
 ## Related
 
+- [Account & Credential Management](account-management.md) (master key, add/rotate/remove)
+
 - [CLI reference — account login-capture](cli-reference.md)
 - [Video engines](video-engines.md) (media artifacts the publishers consume)
 - Issue #353 (browser publish engine + this matrix)
