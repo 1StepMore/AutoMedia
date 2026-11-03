@@ -171,6 +171,11 @@ LazyTyperGroup.register_sub_app(
     help_text="Execute scheduled cron jobs + pipeline runs.",
 )
 LazyTyperGroup.register_sub_app(
+    "demo",
+    "automedia.cli.commands.demo",
+    help_text="Produce a complete sample project with zero credentials.",
+)
+LazyTyperGroup.register_sub_app(
     "hitl",
     "automedia.cli.commands.hitl",
     help_text="Human-in-the-loop review operations.",

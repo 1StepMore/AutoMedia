@@ -310,6 +310,9 @@ See [Windows Deployment](docs/user/windows-deployment.md) for WSL2, Docker Deskt
 > tiers and where a human must step in — lives in [ONBOARDING.md](ONBOARDING.md).
 
 ```bash
+# Zero-credential sample run (presentation / smoke test)
+automedia demo
+
 # Initialize configuration
 automedia init
 

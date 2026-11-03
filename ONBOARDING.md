@@ -196,6 +196,20 @@ path — the pipeline itself reports anything it genuinely cannot do.
 
 ---
 
+## Zero-credential demo (sample output in one command)
+
+```bash
+automedia demo
+```
+
+Produces a complete, gate-checked sample project (deterministic fake-LLM
+text + Pillow-rendered images) under `~/.automedia/demo/` — no LLM key, no
+network, none of your real configuration touched. Everything inside is
+**synthetic demo data** for presentations and smoke tests. See
+[docs/user/cli-reference.md](docs/user/cli-reference.md).
+
+---
+
 ## Where to go next
 
 - Agent: [AGENTS.md](AGENTS.md) is your map; [docs/dev/agent-reference.md](docs/dev/agent-reference.md)
