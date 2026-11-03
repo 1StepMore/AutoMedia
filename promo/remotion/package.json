@@ -1,0 +1,31 @@
+{
+  "name": "automedia-remotion-line",
+  "version": "1.0.0",
+  "description": "Remotion Hello World Test",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render DemoFilm18 out/demo.mp4"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.8.2",
+    "@remotion/cli": "^4.0.537",
+    "@remotion/renderer": "^4.0.537",
+    "@remotion/three": "^4.0.537",
+    "@remotion/transitions": "^4.0.537",
+    "buffer": "^6.0.3",
+    "gsap": "^3.15.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "remotion": "^4.0.537",
+    "three": "^0.186.1",
+    "url": "^0.11.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "typescript": "^5.9.3"
+  }
+}

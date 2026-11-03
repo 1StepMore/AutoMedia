@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<style>
+@font-face{font-family:'NSSC';src:url('NotoSansSC-VF.ttf') format('truetype');font-weight:100 900;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;font-family:'NSSC',system-ui,sans-serif;background:#06100c;color:#e8f5ee}
+#stage{position:relative;width:1920px;height:1080px;background:radial-gradient(1200px 800px at 20% 0%,#0c2018 0%,#06100c 60%,#040a08 100%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(#0f2a1e22 1px,transparent 1px),linear-gradient(90deg,#0f2a1e22 1px,transparent 1px);background-size:60px 60px}
+.scene{position:absolute;inset:0;padding:110px 140px;opacity:0}
+.kicker{font-size:34px;font-weight:700;color:#00e08a;letter-spacing:2px;margin-bottom:26px}
+.accent{color:#00e08a}
+.dim{color:#8fb3a3}
+h1.big{font-size:96px;line-height:1.12;font-weight:900;letter-spacing:1px}
+.el{will-change:transform,opacity}
+/* S1 */
+#s1{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0}
+#s1 .row{display:flex;align-items:center;gap:54px;font-size:104px;font-weight:900}
+#s1 .box{padding:18px 46px;border:3px solid #1f5f45;border-radius:24px;background:#0b1f17}
+#s1 .arrow{font-size:96px;color:#00e08a}
+#s1 .sub{margin-top:46px;font-size:42px;color:#bfe6d4;font-weight:600}
+#s1 .tag{margin-top:22px;font-size:30px;color:#5f8a78}
+/* S2 */
+#s2 h1{margin-bottom:44px}
+.bullets{display:flex;flex-direction:column;gap:26px}
+.bullet{display:flex;align-items:center;gap:26px;font-size:52px;font-weight:700}
+.dot{width:22px;height:22px;border-radius:50%;background:#00e08a;flex:none}
+.kicknote{margin-top:40px;font-size:34px;color:#9ecbb8}
+/* phone / cards */
+.cardwrap{display:flex;align-items:center;gap:90px}
+.phone{width:520px;height:820px;border-radius:44px;border:10px solid #1b3a2e;background:#0a1712;padding:38px 34px;box-shadow:0 30px 80px #0008;position:relative}
+.phone .bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:150px;height:12px;border-radius:8px;background:#1e3b2f}
+.ptitle{font-size:44px;font-weight:900;line-height:1.25;margin-top:20px;color:#eafff5}
+.pline{font-size:30px;line-height:1.5;color:#cfe9dc;margin-top:22px}
+.ptags{margin-top:26px;font-size:26px;color:#4fe0a0;line-height:1.5}
+.article{flex:1;background:#0a1712;border:3px solid #17402f;border-radius:26px;padding:52px 56px;box-shadow:0 30px 80px #0008}
+.atitle{font-size:56px;font-weight:900;line-height:1.2;margin-bottom:34px}
+.asec{display:flex;gap:22px;font-size:40px;font-weight:700;color:#d7f0e4;margin-top:26px}
+.anum{color:#00e08a}
+.rows{display:flex;flex-direction:column;gap:18px;margin-top:10px}
+.rw{display:flex;gap:26px;align-items:center;background:#0a1712;border:2px solid #163627;border-radius:16px;padding:20px 28px;font-size:33px}
+.rw .no{color:#00e08a;font-weight:900;width:64px;flex:none}
+.rw .cam{color:#9ecbb8;flex:1.1}
+.rw .vo{color:#eafff5;flex:1.6}
+/* S6 */
+#s6{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0}
+#s6 .h{font-size:120px;font-weight:900}
+#s6 .p{margin-top:40px;font-size:46px;color:#bfe6d4}
+#s6 .b{margin-top:60px;font-size:34px;color:#00e08a;letter-spacing:4px;font-weight:800}
+.wipe{position:absolute;inset:0;background:#040a08;opacity:0;pointer-events:none}
+</style></head>
+<body><div id="stage"><div class="grid"></div>
+
+<div id="s1" class="scene">
+  <div class="el row"><div class="box" id="s1L">1 篇内容</div><div class="arrow" id="s1A">→</div><div class="box" id="s1R">3 个平台</div></div>
+  <div class="el sub" id="s1S">AutoMedia · 内容自动化 · 演示</div>
+  <div class="el tag" id="s1T">同一篇稿，一次生产，三处复用</div>
+</div>
+
+<div id="s2" class="scene">
+  <div class="el kicker" id="s2k">① 输入 · 一篇原文</div>
+  <h1 class="big el" id="s2t">中小企业做内容营销，<br>为什么<span class="accent">越做越累</span>？</h1>
+  <div class="bullets">
+    <div class="el bullet" id="s2b1"><span class="dot"></span>迷信爆款 —— 每条都想涨粉十万</div>
+    <div class="el bullet" id="s2b2"><span class="dot"></span>迷信日更 —— 发得越多，质量越塌</div>
+    <div class="el bullet" id="s2b3"><span class="dot"></span>全靠一个人 —— 人一走，账号断更</div>
+  </div>
+  <div class="el kicknote" id="s2n">问题不在做得少，在每条都从零硬写。</div>
+</div>
+
+<div id="s3" class="scene">
+  <div class="el kicker" id="s3k">② 输出 · 小红书笔记</div>
+  <div class="cardwrap"><div class="el phone" id="s3p">
+    <div class="bar"></div>
+    <div class="ptitle" id="s3t">做内容越做越累？<br>因为你一直在“从零硬写” 😮‍💨</div>
+    <div class="pline" id="s3l1">💥 坑1：每条都想爆 → 要的是稳定被看见</div>
+    <div class="pline" id="s3l2">📅 坑2：迷信日更 → 一周3条精品 > 7条凑数</div>
+    <div class="pline" id="s3l3">🙋 坑3：全靠一个人 → 人走就断更</div>
+    <div class="ptags" id="s3g">#内容营销 #中小企业 #自媒体运营 #降本增效</div>
+  </div></div>
+</div>
+
+<div id="s4" class="scene">
+  <div class="el kicker" id="s4k">③ 输出 · 公众号推文</div>
+  <div class="cardwrap"><div class="el article" id="s4a">
+    <div class="atitle">内容越做越累？<br>不是你不努力，是方法错了</div>
+    <div class="asec" id="s4s1"><span class="anum">一</span> 三个坑：爆款 / 日更 / 靠一个人</div>
+    <div class="asec" id="s4s2"><span class="anum">二</span> 建一条产线：选题库 → 模板 → 复用</div>
+    <div class="asec" id="s4s3"><span class="anum">三</span> 一次生产，多平台复用三个版本</div>
+  </div></div>
+</div>
+
+<div id="s5" class="scene">
+  <div class="el kicker" id="s5k">④ 输出 · 视频号口播脚本</div>
+  <div class="rows">
+    <div class="el rw" id="s5r1"><span class="no">镜1</span><span class="cam">老板揉眼睛、桌上堆满文档</span><span class="vo">内容天天做，人快累废了，效果还一般？</span></div>
+    <div class="el rw" id="s5r2"><span class="no">镜2</span><span class="cam">屏幕出现“从零硬写”</span><span class="vo">问题不在做得少，在每条都在从零硬写。</span></div>
+    <div class="el rw" id="s5r3"><span class="no">镜3</span><span class="cam">三个坑依次弹出</span><span class="vo">迷信爆款、迷信日更、全靠一个人。</span></div>
+    <div class="el rw" id="s5r4"><span class="no">镜4</span><span class="cam">流水线动画：选题库→模板</span><span class="vo">真正省力，是给内容建一条产线。</span></div>
+    <div class="el rw" id="s5r5"><span class="no">镜5</span><span class="cam">一条内容裂成三块</span><span class="vo">一条内容，顺手改成三个平台。</span></div>
+    <div class="el rw" id="s5r6"><span class="no">镜6</span><span class="cam">结尾字幕 + 品牌</span><span class="vo">内容是复用出来的，不是每条都原创。</span></div>
+  </div>
+</div>
+
+<div id="s6" class="scene">
+  <div class="el h" id="s6h">做一次 · <span class="accent">用三处</span></div>
+  <div class="el p" id="s6p">把重复活交给流水线，人去做值钱的判断</div>
+  <div class="el b" id="s6b">壹目贯维 · 内容自动化</div>
+</div>
+
+<div class="wipe" id="wipe"></div>
+</div>
+<script>
+const DUR=52.22;
+const $=id=>document.getElementById(id);
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+function pr(u,t0,d){return clamp((u-t0)/d);}
+function show(el,v){el.style.opacity=v;}
+function slideY(el,p,from){el.style.opacity=p;el.style.transform=`translateY(${(1-p)*from}px)`;}
+function slideX(el,p,from){el.style.opacity=p;el.style.transform=`translateX(${(1-p)*from}px)`;}
+function sceneVis(id,v){$(id).style.opacity=v;}
+
+function render(t){
+ // default hide all scenes
+ ['s1','s2','s3','s4','s5','s6'].forEach(s=>sceneVis(s,0));
+ // S1 0-5
+ if(t>=0&&t<=8.0){sceneVis('s1',1);let u=t;
+   slideX($('s1L'),eo(pr(u,0.2,0.9)),-80);
+   show($('s1A'),eo(pr(u,0.9,0.7)));
+   slideX($('s1R'),eo(pr(u,1.4,0.9)),80);
+   let ps=eo(pr(u,2.2,0.9)); $('s1S').style.opacity=ps; $('s1S').style.transform=`translateY(${(1-ps)*30}px)`;
+   let pt=eo(pr(u,2.8,0.9)); $('s1T').style.opacity=pt;
+   let sc=eo(pr(u,7.4,0.6)); sceneVis('s1',1-sc);
+ }
+ // S2 5-11 原文
+ if(t>=7.6&&t<=17.7){sceneVis('s2',1);let u=t-7.6;
+   show($('s2k'),eo(pr(u,0.1,0.6)));
+   let p=eo(pr(u,0.3,0.9));$('s2t').style.opacity=p;$('s2t').style.transform=`translateY(${(1-p)*40}px)`;
+   [['s2b1',0.9],['s2b2',1.25],['s2b3',1.6]].forEach(([id,d])=>slideX($(id),eo(pr(u,d,0.7)),-60));
+   let pn=eo(pr(u,2.3,0.7));$('s2n').style.opacity=pn;
+   let sc=eo(pr(u,9.4,0.6));sceneVis('s2',1-sc);
+ }
+ // S3 11-19 小红书
+ if(t>=17.3&&t<=29.2){sceneVis('s3',1);let u=t-17.3;
+   show($('s3k'),eo(pr(u,0.1,0.6)));
+   let pp=eo(pr(u,0.2,0.9));$('s3p').style.opacity=pp;$('s3p').style.transform=`translateY(${(1-pp)*60}px) scale(${0.96+0.04*pp})`;
+   let pt=eo(pr(u,0.8,0.6));$('s3t').style.opacity=pt;
+   [['s3l1',1.4],['s3l2',1.9],['s3l3',2.4]].forEach(([id,d])=>slideY($(id),eo(pr(u,d,0.6)),24));
+   show($('s3g'),eo(pr(u,3.0,0.7)));
+   let sc=eo(pr(u,11.2,0.6));sceneVis('s3',1-sc);
+ }
+ // S4 19-27 公众号
+ if(t>=28.8&&t<=35.0){sceneVis('s4',1);let u=t-28.8;
+   show($('s4k'),eo(pr(u,0.1,0.6)));
+   let pa=eo(pr(u,0.2,0.9));$('s4a').style.opacity=pa;$('s4a').style.transform=`translateY(${(1-pa)*50}px)`;
+   [['s4s1',1.0],['s4s2',1.6],['s4s3',2.2]].forEach(([id,d])=>slideX($(id),eo(pr(u,d,0.6)),-50));
+   let sc=eo(pr(u,5.8,0.6));sceneVis('s4',1-sc);
+ }
+ // S5 27-35 视频号脚本
+ if(t>=34.6&&t<=44.5){sceneVis('s5',1);let u=t-34.6;
+   show($('s5k'),eo(pr(u,0.1,0.6)));
+   for(let i=1;i<=6;i++){let d=0.4+ (i-1)*0.42; slideX($('s5r'+i),eo(pr(u,d,0.6)),-40);}
+   let sc=eo(pr(u,9.2,0.6));sceneVis('s5',1-sc);
+ }
+ // S6 35-42 片尾
+ if(t>=44.2&&t<=52.3){sceneVis('s6',1);let u=t-44.2;
+   let p1=eio(pr(u,0.2,0.9));$('s6h').style.opacity=p1;$('s6h').style.transform=`scale(${0.9+0.1*p1})`;
+   let p2=eo(pr(u,1.1,0.8));$('s6p').style.opacity=p2;$('s6p').style.transform=`translateY(${(1-p2)*30}px)`;
+   let p3=eo(pr(u,1.9,0.8));$('s6b').style.opacity=p3;
+ }
+}
+window.__seek=t=>{render(t);return true;};
+window.__DUR=DUR;
+render(0);
+</script></body></html>

@@ -1,0 +1,192 @@
+{
+ "created": "2026-11-03",
+ "package": "hyperframes-remotion-kit",
+ "file_count": 37,
+ "files": [
+  {
+   "path": "00-README.md",
+   "md5": "d0cc7cb5cdc92de9119a606d06b63050",
+   "bytes": 2319
+  },
+  {
+   "path": "docs/tts.md",
+   "md5": "f1d4baf252c31f0f0a170c820725e78f",
+   "bytes": 562
+  },
+  {
+   "path": "docs/两条线怎么选.md",
+   "md5": "493badc4069484b7d656418827e6e687",
+   "bytes": 893
+  },
+  {
+   "path": "docs/时间轴-旁白分段对齐法.md",
+   "md5": "ad0f2055df4b321893948bf83230afa1",
+   "bytes": 1020
+  },
+  {
+   "path": "docs/给Agent的使用说明.md",
+   "md5": "8827bc8a9708b7352f7c252109aa6d08",
+   "bytes": 1580
+  },
+  {
+   "path": "docs/运动语法-禁则.md",
+   "md5": "54f19d5e89b5910af28259e13123e112",
+   "bytes": 1381
+  },
+  {
+   "path": "hyperframes/NotoSansSC-VF.ttf",
+   "md5": "504abdda545478632820c606a577b4a3",
+   "bytes": 17773244
+  },
+  {
+   "path": "hyperframes/README.md",
+   "md5": "2bd61537656ce6f10688de649aba1f3d",
+   "bytes": 1523
+  },
+  {
+   "path": "hyperframes/compose.html",
+   "md5": "c929512d5f0cd37f683358e422763698",
+   "bytes": 10412
+  },
+  {
+   "path": "hyperframes/narration_full.mp3",
+   "md5": "00010501bbb79e187cffdf97d18a1e94",
+   "bytes": 244580
+  },
+  {
+   "path": "hyperframes/package.json",
+   "md5": "e8a104b25af595734ba5a7afd2b2f2d4",
+   "bytes": 198
+  },
+  {
+   "path": "hyperframes/render_frames.js",
+   "md5": "50b685769f4327d217bfee96d13a441f",
+   "bytes": 1705
+  },
+  {
+   "path": "hyperframes/timeline.json",
+   "md5": "d8df58ca33f1d6a1cd7f133c5f483b0b",
+   "bytes": 418
+  },
+  {
+   "path": "reference/README.md",
+   "md5": "11de34b03a00a3d70f9477a2568b79de",
+   "bytes": 332
+  },
+  {
+   "path": "reference/demo-hyperframes.mp4",
+   "md5": "5e7179ba01ab8c78427225193ee65ddf",
+   "bytes": 3120352
+  },
+  {
+   "path": "reference/demo-remotion.mp4",
+   "md5": "50889eeda486e3042c4d4b5ab2211411",
+   "bytes": 15707151
+  },
+  {
+   "path": "remotion/README.md",
+   "md5": "4bb0462bd546083fd364525117ec5712",
+   "bytes": 1686
+  },
+  {
+   "path": "remotion/package.json",
+   "md5": "e3fb0efe24287b508542762f96884b2e",
+   "bytes": 810
+  },
+  {
+   "path": "remotion/public/narration_full.mp3",
+   "md5": "00010501bbb79e187cffdf97d18a1e94",
+   "bytes": 244580
+  },
+  {
+   "path": "remotion/remotion.config.js",
+   "md5": "ef8793a1c952c091b6e4b05b09fd87c3",
+   "bytes": 757
+  },
+  {
+   "path": "remotion/src/DemoFilm18.tsx",
+   "md5": "568ccc1284cff5a578117afc19b1a054",
+   "bytes": 20364
+  },
+  {
+   "path": "remotion/src/Root.tsx",
+   "md5": "aaabf3386639961ef6ddd7047c11c409",
+   "bytes": 435
+  },
+  {
+   "path": "remotion/src/index.ts",
+   "md5": "d92d9dee1ab16aa44a75ae7fbfb843ca",
+   "bytes": 109
+  },
+  {
+   "path": "remotion/src/kit/README.md",
+   "md5": "688b7fd9b888b7afc943532568db1495",
+   "bytes": 7314
+  },
+  {
+   "path": "remotion/src/kit/animations.tsx",
+   "md5": "99dfa8aa4ccf2fd5cffba67421a4df33",
+   "bytes": 12021
+  },
+  {
+   "path": "remotion/src/kit/chart.tsx",
+   "md5": "31828924bd1687bdb8ad405a72e5ef55",
+   "bytes": 3847
+  },
+  {
+   "path": "remotion/src/kit/decor.tsx",
+   "md5": "f8ed62897a55e11cd7fd5831a911ba2e",
+   "bytes": 7621
+  },
+  {
+   "path": "remotion/src/kit/fonts.tsx",
+   "md5": "341a3d66ccf02c2f4c5a4956eceb643b",
+   "bytes": 5554
+  },
+  {
+   "path": "remotion/src/kit/guards.ts",
+   "md5": "142a38196d8b2a4ffe80989bfa4878a6",
+   "bytes": 2458
+  },
+  {
+   "path": "remotion/src/kit/index.ts",
+   "md5": "7e4d55868fedfbe4d84cf932fc5a1658",
+   "bytes": 1313
+  },
+  {
+   "path": "remotion/src/kit/layers.tsx",
+   "md5": "f7b26cdae20d4d5fbbaabf2989f84ff7",
+   "bytes": 9941
+  },
+  {
+   "path": "remotion/src/kit/motion.tsx",
+   "md5": "fba7f63aba5a0325705a1c9eda88d86c",
+   "bytes": 5115
+  },
+  {
+   "path": "remotion/src/kit/style-palettes.ts",
+   "md5": "7c92decf9ec14f97079d049662449efa",
+   "bytes": 11970
+  },
+  {
+   "path": "remotion/src/kit/text.tsx",
+   "md5": "d3dbf9d558d0c9ebaad41eabd83c6215",
+   "bytes": 13400
+  },
+  {
+   "path": "remotion/src/kit/theme.ts",
+   "md5": "5f65f8244b29b9f8a47b1f765a818bdf",
+   "bytes": 3225
+  },
+  {
+   "path": "remotion/src/kit/timecode.ts",
+   "md5": "5c755dac292e601bc5ad5e9f196ba9bf",
+   "bytes": 2273
+  },
+  {
+   "path": "remotion/tsconfig.json",
+   "md5": "d2d0d41721af07a8e796fadcb9196131",
+   "bytes": 422
+  }
+ ]
+}

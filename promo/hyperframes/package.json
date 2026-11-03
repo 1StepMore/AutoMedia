@@ -1,0 +1,11 @@
+{
+  "name": "automedia-hyperframes-line",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "render": "node render_frames.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}
