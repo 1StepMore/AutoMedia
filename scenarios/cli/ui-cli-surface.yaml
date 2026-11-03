@@ -1,0 +1,19 @@
+name: ui-cli-surface
+description: automedia ui --help exits 0 and names the loopback-only local web UI contract, proving the ui command is registered.
+intent: Prove the ui CLI surface is callable and exposes its real contract (loopback-only local server) without starting a server.
+category: cli
+user_level: L0
+meta: true
+requires_env: []
+steps:
+  - name: ui --help shows the loopback contract
+    kind: cli
+    check: "automedia ui --help exits 0 and prints usage text with the loopback/port options."
+    standard: founder-expectations.F02
+    command: automedia ui --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "loopback"
+        - "--port"

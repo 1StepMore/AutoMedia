@@ -13,13 +13,13 @@ AutoMedia/
 │       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
-│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_azure, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
+│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_azure, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes, video_remotion)
 │       ├── effects/            # Content analytics: stats (word count, sentiment, readability, brand mentions, SEO) + cli/mcp entry points
 │       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
 │       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
-│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json)
+│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json), remotion/ (React composition sources)
 │       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
-│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (19 commands)
+│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (21 commands)
 │       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
@@ -133,7 +133,7 @@ is the onboarding guide. How to read a scenario:
 - Director sign-off: the director appends run name, date, and verdict to `signed.txt` in the run dir; the agent grades, the human disposes.
 
 ### Where things live
-- `scenarios/`: committed scenario library (160 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
+- `scenarios/`: committed scenario library (162 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).
 - `scenarios/STANDARDS.md`: the single schema authority — standard keys (23 core plus 33 `gate.*` and 9 `mode.*`); unknown keys rejected at load.
 - `scenarios/baseline/`: committed pre-flight baseline run record and coverage audit.
 - `validation-runs/`: gitignored immutable run records with a `latest.txt` pointer.

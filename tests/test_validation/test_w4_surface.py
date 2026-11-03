@@ -210,8 +210,10 @@ class TestValidateCliRealLibrary:
         assert summary["mcp_missing"] == 0
         assert summary["mcp_phantom"] == 0
         assert summary["mcp_boundary_only"] == 1
-        assert summary["cli_declared"] == 19
-        assert summary["cli_covered"] == 19
+        # 21 declared commands (#360 demo, #358 ui added with their own
+        # surface scenarios)
+        assert summary["cli_declared"] == 21
+        assert summary["cli_covered"] == 21
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
         # Issue #99: 33 declared; 27 preset/command-covered; 6 classified, not

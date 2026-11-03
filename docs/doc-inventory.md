@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 15851 | file |
-| README.md | 33812 | file |
+| AGENTS.md | 16024 | file |
+| README.md | 33964 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -20,15 +20,15 @@
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
-| docs/dev/agent-reference.md | 17413 | file |
+| docs/dev/agent-reference.md | 17468 | file |
 | docs/dev/agent-troubleshooting.md | 27244 | file |
-| docs/dev/api-gotchas.md | 10896 | file |
+| docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
 | docs/dev/deep-module-rfc-001.md | 16703 | file |
-| docs/dev/developer-guide.md | 25408 | file |
+| docs/dev/developer-guide.md | 25377 | file |
 | docs/dev/doc-update-audit-20261029.md | 17929 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
@@ -56,9 +56,9 @@
 | docs/skills/pipeline-workflow.md | 7760 | file |
 | docs/user | — | dir |
 | docs/user/account-management.md | 3314 | file |
-| docs/user/api-reference.md | 21116 | file |
+| docs/user/api-reference.md | 21255 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 32577 | file |
+| docs/user/cli-reference.md | 33718 | file |
 | docs/user/deployment.md | 8996 | file |
 | docs/user/hardware-and-remote-engines.md | 8478 | file |
 | docs/user/hitl-framework.md | 10052 | file |

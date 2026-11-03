@@ -1,0 +1,19 @@
+name: demo-cli-surface
+description: automedia demo --help exits 0 and names the credential-free sample run contract (synthetic sandbox, no network), proving the demo command is registered.
+intent: Prove the demo CLI surface is callable and exposes its real contract (zero-credential sample production) without running a demo project.
+category: cli
+user_level: L0
+meta: true
+requires_env: []
+steps:
+  - name: demo --help shows the sample-run contract
+    kind: cli
+    check: "automedia demo --help exits 0 and prints usage text naming the demo run options."
+    standard: founder-expectations.F02
+    command: automedia demo --help
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "demo"
+        - "credentials"
