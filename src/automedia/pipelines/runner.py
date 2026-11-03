@@ -1907,13 +1907,20 @@ def _collect_video_assets(
     if not images or not audio_path:
         return {}
 
-    return {
+    assets: dict[str, Any] = {
         "images": images,
         "audio": audio_path,
         "subtitles": subtitles_path or "",
         "template_dir": "",  # empty string = use shipped default hyperframes templates
         "content": content,
     }
+    # Narration-aligned scene timeline (#351): per-scene durations/text plus
+    # per-scene media drive the multi-scene composition.
+    timeline_scenes = gate_context.get("video_timeline_scenes") or []
+    if timeline_scenes:
+        assets["scenes"] = timeline_scenes
+        assets["scene_media"] = list(gate_context.get("scene_media") or [])
+    return assets
 
 
 # ---------------------------------------------------------------------------
@@ -2194,19 +2201,63 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
 
     audio = AudioPipeline(config=gate_context.get("config"))
     audio_dir = os.path.join(project_dir, AUDIO)
-    try:
-        audio_path = audio.generate_tts(text, output_path=os.path.join(audio_dir, "narration.mp3"))
-    except Exception as exc:
-        _note_media_stage(gate_context, "tts_failed", error=str(exc))
-        log.warning(
-            "pipeline.media_stage.tts_failed",
-            error=str(exc),
-            hint=(
-                "TTS failed — no audio to register and no video to build; "
-                "V gates will report skipped"
-            ),
-        )
-        return
+
+    # —— 场景时间轴（#351）：旁白按句号分段 → 逐段 TTS → ffprobe 定切点。
+    # 增强=false 时走旧路径（整段 TTS、场景均分）。降级如实注记。
+    hf_cfg = (((gate_context.get("config") or {}).get("engines") or {}).get("video") or {}).get(
+        "hyperframes"
+    ) or {}
+    enhanced = bool(hf_cfg.get("enhanced", True))
+
+    timeline: dict[str, Any] = {}
+    if enhanced:
+        from automedia.pipelines.video_timeline import build_scene_timeline
+
+        timeline = build_scene_timeline(text, audio_pipeline=audio, audio_dir=audio_dir)
+        timeline_mode = str(timeline.get("timeline_mode", "unavailable"))
+        if timeline_mode == "unavailable":
+            _note_media_stage(gate_context, "tts_failed", error=str(timeline.get("reason", "")))
+            log.warning(
+                "pipeline.media_stage.tts_failed",
+                error=str(timeline.get("reason", "")),
+                hint="No narration could be produced — V gates will report skipped",
+            )
+            return
+        if timeline_mode != "narration_aligned":
+            log.warning(
+                "pipeline.timeline_degraded",
+                mode=timeline_mode,
+                reason=str(timeline.get("reason", "")),
+                hint="Cut points are approximate; video still renders multi-scene",
+            )
+        else:
+            log.info(
+                "pipeline.timeline_built",
+                scenes=len(timeline.get("scenes", [])),
+                total_duration=timeline.get("total_duration"),
+            )
+        audio_path = str(timeline.get("narration_path") or "")
+        gate_context["video_timeline_mode"] = timeline_mode
+        gate_context["video_timeline_scenes"] = [
+            {k: sc[k] for k in ("id", "index", "start", "duration", "text")}
+            for sc in timeline.get("scenes", [])
+        ]
+    else:
+        try:
+            audio_path = audio.generate_tts(
+                text, output_path=os.path.join(audio_dir, "narration.mp3")
+            )
+        except Exception as exc:
+            _note_media_stage(gate_context, "tts_failed", error=str(exc))
+            log.warning(
+                "pipeline.media_stage.tts_failed",
+                error=str(exc),
+                hint=(
+                    "TTS failed — no audio to register and no video to build; "
+                    "V gates will report skipped"
+                ),
+            )
+            return
 
     # 音频段：TTS 落盘即登记——下游转写失败不再连坐音频（issue #343）。
     gate_context["audio_path"] = audio_path
@@ -2261,11 +2312,37 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
     from automedia.pipelines.image_pipeline import ImagePipeline
 
-    frame = ImagePipeline(config=gate_context.get("config")).generate_fallback_frame(
-        str(gate_context.get("topic", "")), project_dir
-    )
+    image_pipeline = ImagePipeline(config=gate_context.get("config"))
+    frame = image_pipeline.generate_fallback_frame(str(gate_context.get("topic", "")), project_dir)
     if frame:
         gate_context["fallback_frame"] = frame
+
+    # 每场素材（#351）：优先复用封面/正文图，不足的场用图片链生成文字面板。
+    timeline_scenes: list[dict[str, Any]] = list(gate_context.get("video_timeline_scenes") or [])
+    scene_media: list[str] = []
+    if timeline_scenes:
+        existing_media = [
+            p
+            for p in [
+                str(gate_context.get("cover_image", "") or ""),
+                *list(gate_context.get("carousel_images", []) or []),
+            ]
+            if p and os.path.isfile(p)
+        ]
+        for i in range(len(timeline_scenes)):
+            src = existing_media[i] if i < len(existing_media) else ""
+            if not src and frame:
+                dest = os.path.join(os.path.dirname(frame), f"scene-{i + 1:02d}.png")
+                try:
+                    shutil.copy2(frame, dest)
+                    src = dest
+                except OSError as exc:
+                    log.warning("pipeline.scene_media_copy_failed", error=str(exc))
+            if src:
+                scene_media.append(src)
+        if scene_media:
+            gate_context["scene_media"] = scene_media
+            log.info("pipeline.scene_media_ready", count=len(scene_media))
 
     produced: list[str] = [audio_path]
     if complete_audio:
@@ -2273,6 +2350,14 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
 
     # 视频段：需要图片 + 音频（``_collect_video_assets`` 的判据），且引擎可用。
     assets = _collect_video_assets(gate_context)
+    if not assets:
+        # 显式报告（#351）：连最小输入（图片+音频）都不满足时，说明视频引擎
+        # 实际未被启用——如实登记，而不是让 V 门静默 skip。
+        _note_media_stage(
+            gate_context,
+            "video_engine_unavailable",
+            reason="no video assets collected (images + audio required)",
+        )
     if assets:
         from automedia.engines import resolve_engine
         from automedia.engines.base import BaseVideoEngine
@@ -2287,8 +2372,12 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)
         except (EngineExecutionError, EngineNotFoundError) as exc:
+            # 显式报告（#351）：引擎不可用/渲染失败必须进 gate-report，
+            # 禁止静默退化成整排 skipped 的 V 门。
+            _note_media_stage(gate_context, "video_render_failed", error=str(exc)[:300])
             log.warning("pipeline.video_production_failed", error=str(exc))
         except Exception as exc:
+            _note_media_stage(gate_context, "video_render_failed", error=str(exc)[:300])
             log.warning("pipeline.video_production_unexpected_error", error=str(exc))
 
     # 产物段：V7 的输入——登记清单、尺寸和生成时的 expected md5；

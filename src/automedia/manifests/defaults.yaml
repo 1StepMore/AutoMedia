@@ -160,6 +160,11 @@ engines:
     default: hyperframes
     hyperframes:
       quality: high
+      # Multi-scene motion templates (#351): narration is split into scenes at
+      # sentence boundaries, each segment is TTS'd separately, and scene cut
+      # points come from ffprobe-measured segment durations (cut = sentence
+      # end). Set false for the legacy single-track / evenly-split behaviour.
+      enhanced: true
       # Absolute path to the hyperframes executable (e.g. /usr/local/bin/hyperframes)
       # or to a per-project install's dist/cli.js (invoked via node). Unset by default.
       cli_path: null

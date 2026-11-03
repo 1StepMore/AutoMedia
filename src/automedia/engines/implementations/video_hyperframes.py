@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -618,6 +619,35 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Default template provisioning
     # ------------------------------------------------------------------
 
+    def _locate_gsap(self, assets: dict[str, Any], resolved_cli_dir: str | None) -> str | None:
+        """Find a local gsap.min.js — explicit config > CLI bundle > None.
+
+        ``assets["gsap_path"]`` wins when provided. Otherwise the hyperframes
+        CLI's own bundled copy is used (``<cli dir>/../lib/node_modules/
+        hyperframes/dist/vendor/npm/gsap@*/dist/gsap.min.js`` glob), so a
+        machine with hyperframes installed renders offline. ``None`` keeps
+        the CDN reference in the templates.
+        """
+        explicit: Any = assets.get("gsap_path")
+        if explicit and os.path.isfile(str(explicit)):
+            return str(explicit)
+
+        cli_base = self._resolve_cli_base() or []
+        candidates: list[str] = []
+        for part in cli_base:
+            if os.path.isfile(part) or part.endswith(".js"):
+                cli_dir = os.path.dirname(os.path.abspath(part))
+                candidates.append(os.path.join(cli_dir, "..", "lib", "node_modules", "hyperframes"))
+                candidates.append(os.path.join(cli_dir, "..", "..", "hyperframes"))
+        import glob as _glob
+
+        for base in candidates:
+            for hit in _glob.glob(
+                os.path.join(base, "dist", "vendor", "npm", "gsap@*", "dist", "gsap.min.js")
+            ):
+                return hit
+        return None
+
     def _provision_default_hyperframes_project(self, temp_dir: str, assets: dict[str, Any]) -> None:
         """Provision a complete hyperframes project from shipped default templates.
 
@@ -637,15 +667,36 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             if _src_path.is_file():
                 shutil.copy2(str(_src_path), temp_dir)
 
+        # 1b. Vendor GSAP when a local copy is available (#351): CDN access is
+        # unreliable in some networks (jsdelivr resets connections), and the
+        # hyperframes render blocks on timeline-script failures. Priority:
+        # assets["gsap_path"] > the CLI's own bundled copy > CDN fallback.
+        gsap_src = "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"
+        gsap_local = self._locate_gsap(assets, resolved_cli_dir=None)
+        if gsap_local is not None:
+            vendor_dir = os.path.join(temp_dir, "assets", "vendor")
+            os.makedirs(vendor_dir, exist_ok=True)
+            shutil.copy2(gsap_local, os.path.join(vendor_dir, "gsap.min.js"))
+            gsap_src = "assets/vendor/gsap.min.js"
+            logger.info("Provisioned project vendors gsap from %s", gsap_local)
+
         # 2. Detect audio duration and set up scene parameters
         images: list[str] = assets.get("images", [])
         audio_path: str | None = assets.get("audio")
         content_text: str = assets.get("content", "")
-        num_scenes: int = len(images)
+        timeline_scenes: list[dict[str, Any]] = list(assets.get("scenes") or [])
+        scene_media: list[str] = list(assets.get("scene_media") or [])
+        num_scenes: int = len(timeline_scenes) if timeline_scenes else len(images)
         total_duration: float = 0.0
         audio_basename: str = ""
 
-        if audio_path and os.path.isfile(audio_path):
+        if timeline_scenes:
+            # Narration-aligned timeline (#351): the timeline's per-scene
+            # durations ARE the truth (measured where ffprobe lives) — do not
+            # re-probe locally, a machine without ffprobe would fall back to
+            # defaults and desync audio from the scene cuts.
+            total_duration = sum(float(s.get("duration", 0.0)) for s in timeline_scenes)
+        if audio_path and os.path.isfile(audio_path) and total_duration <= 0:
             audio_basename = os.path.basename(audio_path)
             audio_dir: str = os.path.join(temp_dir, "assets", "audio")
             os.makedirs(audio_dir, exist_ok=True)
@@ -655,28 +706,62 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 total_duration = detected
             else:
                 total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
+        elif audio_path and os.path.isfile(audio_path):
+            audio_basename = os.path.basename(audio_path)
+            audio_dir: str = os.path.join(temp_dir, "assets", "audio")
+            os.makedirs(audio_dir, exist_ok=True)
+            shutil.copy2(audio_path, audio_dir)
         else:
-            total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
+            total_duration = total_duration or num_scenes * self._DEFAULT_SCENE_DURATION
 
-        # 3. Build scene list with proportional timing
-        duration_per_scene: float = max(3.0, total_duration / num_scenes) if num_scenes > 0 else 0.0
+        # 3. Build the scene list. Two sources:
+        #    - narration-aligned timeline (assets["scenes"], #351): real
+        #      per-scene durations (cut points = sentence ends) and per-scene
+        #      text; scene media comes from assets["scene_media"].
+        #    - legacy proportional split over the images (no timeline).
         scenes: list[dict[str, Any]] = []
-        for i in range(num_scenes):
-            start: float = round(i * duration_per_scene, 1)
-            dur: float = round(duration_per_scene, 1)
-            if i == num_scenes - 1:
-                dur = round(total_duration - start, 1)
-            scenes.append(
-                {
-                    "id": f"scene-{i + 1}",
-                    "index": i + 1,
-                    "start": start,
-                    "duration": dur,
-                    "name": f"Scene {i + 1}",
-                    "image": os.path.basename(images[i]) if images else "",
-                    "content": content_text,
-                }
+        if timeline_scenes:
+            for s in timeline_scenes:
+                text_s = str(s.get("text", "") or "")
+                title_s = re.split(r"[。！？!?；;\n]", text_s, maxsplit=1)[0].strip()
+                scenes.append(
+                    {
+                        "id": str(s.get("id", f"scene-{s.get('index', len(scenes) + 1)}")),
+                        "index": int(s.get("index", len(scenes) + 1)),
+                        "start": float(s.get("start", 0.0)),
+                        "duration": float(s.get("duration", 0.0)) or 3.0,
+                        "name": title_s[:24] or f"Scene {s.get('index', '')}",
+                        "content": text_s,
+                        "media_src": "",
+                    }
+                )
+            media_dir: str = os.path.join(temp_dir, "images")
+            os.makedirs(media_dir, exist_ok=True)
+            for i, scene in enumerate(scenes):
+                media = scene_media[i] if i < len(scene_media) else ""
+                if media and os.path.isfile(media):
+                    shutil.copy2(media, os.path.join(media_dir, os.path.basename(media)))
+                    scene["media_src"] = f"../images/{os.path.basename(media)}"
+        else:
+            duration_per_scene: float = (
+                max(3.0, total_duration / num_scenes) if num_scenes > 0 else 0.0
             )
+            for i in range(num_scenes):
+                start: float = round(i * duration_per_scene, 1)
+                dur: float = round(duration_per_scene, 1)
+                if i == num_scenes - 1:
+                    dur = round(total_duration - start, 1)
+                scenes.append(
+                    {
+                        "id": f"scene-{i + 1}",
+                        "index": i + 1,
+                        "start": start,
+                        "duration": dur,
+                        "name": f"Scene {i + 1}",
+                        "content": content_text,
+                        "media_src": f"../images/{os.path.basename(images[i])}" if images else "",
+                    }
+                )
 
         # 4. Create compositions directory
         compositions_dir: str = os.path.join(temp_dir, "compositions")
@@ -690,6 +775,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             total_duration=total_duration,
             audio_basename=audio_basename,
             scenes=scenes,
+            gsap_src=gsap_src,
         )
         with open(os.path.join(temp_dir, "index.html"), "w", encoding="utf-8") as _f:
             _f.write(index_html)
@@ -721,12 +807,18 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         _scene_tpl = jinja2.Template(
             _templates.joinpath("scene.html.j2").read_text(encoding="utf-8"),
         )
+        brand_line = str(assets.get("brand_line", "") or "AutoMedia")
         for scene in scenes:
             scene_html: str = _scene_tpl.render(
                 scene_id=scene["id"],
                 duration=scene["duration"],
                 title=scene["name"],
                 content=scene["content"],
+                media_src=scene.get("media_src", ""),
+                brand_line=brand_line,
+                scene_index=scene["index"],
+                total_scenes=len(scenes),
+                gsap_src="../" + gsap_src if gsap_src.startswith("assets/") else gsap_src,
             )
             scene_path: str = os.path.join(
                 compositions_dir,

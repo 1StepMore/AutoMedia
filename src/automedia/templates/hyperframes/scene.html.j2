@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, height=1080" />
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script src="{{ gsap_src }}"></script>
   <style>
+    /* Motion-grammar tokens (promo/docs/运动语法-禁则.md):
+       entrance cubic-bezier(0,0,0.2,1)-class, single action ≈21 frames,
+       seam = 18 frames, one accent colour, no idle wobble, no crossfade,
+       no from-rest entry, no bounce/elastic. */
     :root {
       --bg: #030a04;
       --surface: #0a1b10;
@@ -12,33 +16,104 @@
       --text-2: #4bd17a;
       --text-3: #2f8a4d;
       --accent: #00ff88;
-      --bad: #ff6464;
+      --hair: rgba(140, 255, 154, 0.10);
       --font-sans: system-ui, sans-serif;
+      --seam: 0.6s;   /* 18 frames @30fps */
+      --stamp: 0.7s;  /* 21 frames @30fps */
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
-    body { background: var(--bg); color: var(--text-1); font-family: var(--font-sans); }
-    .scene-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-    .content-area { text-align: center; max-width: 1600px; padding: 60px; }
-    .scene-title { font-size: 52px; font-weight: 600; color: var(--accent); margin-bottom: 24px; }
-    .scene-text { font-size: 32px; color: var(--text-2); line-height: 1.5; }
+    html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+    body { font-family: var(--font-sans); color: var(--text-1); }
+    #root { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; }
+    .stage { position: absolute; inset: 0; }
+
+    /* 发丝网格 — 12 栏竖向 hairline 打底 */
+    .hair-grid { position: absolute; inset: 0; display: flex; opacity: 0.5; }
+    .hair-grid i { flex: 1; border-right: 1px solid var(--hair); }
+    .hair-grid i:last-child { border-right: none; }
+
+    /* 素材位：全幅媒体面板（图片）或合成图形块 */
+    .media { position: absolute; inset: 0; }
+    .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .media.graphic {
+      background:
+        radial-gradient(1200px 600px at 78% 30%, rgba(0, 255, 136, 0.14), transparent 60%),
+        linear-gradient(160deg, var(--surface) 0%, var(--bg) 70%);
+    }
+    .media.graphic::after {
+      content: ""; position: absolute; left: 150px; bottom: 300px; width: 220px; height: 6px;
+      background: var(--accent);
+    }
+    .media-veil { position: absolute; inset: 0;
+      background: linear-gradient(90deg, rgba(3, 10, 4, 0.92) 0%, rgba(3, 10, 4, 0.55) 55%, rgba(3, 10, 4, 0.25) 100%); }
+
+    /* 文本层 */
+    .copy { position: absolute; left: 150px; right: 420px; top: 300px; max-width: 1350px; }
+    .scene-title {
+      font-size: 88px; font-weight: 700; line-height: 1.15; color: var(--accent);
+      margin-bottom: 44px; max-width: 1250px;
+    }
+    .scene-text { font-size: 40px; line-height: 1.6; color: var(--text-1); max-width: 1200px; }
+    .scene-foot {
+      position: absolute; left: 150px; right: 150px; bottom: 72px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 24px; color: var(--text-3); letter-spacing: 0.08em;
+    }
+    .scene-foot .idx { color: var(--accent); }
   </style>
 </head>
 <body>
-  <div id="scene" class="scene-wrapper" data-composition-id="{{ scene_id }}"
+  <div id="root" class="scene-wrapper" data-composition-id="{{ scene_id }}"
        data-start="0" data-duration="{{ duration }}"
        data-width="1920" data-height="1080">
-    <div class="content-area">
-      <div id="title" class="clip scene-title" data-start="0" data-duration="{{ duration }}" data-track-index="0">{{ title }}</div>
-      <div id="text" class="clip scene-text" data-start="0.5" data-duration="{{ duration - 0.5 }}" data-track-index="1">{{ content }}</div>
+    <div class="stage">
+      <div class="media{% if not media_src %} graphic{% endif %}">
+        {% if media_src %}<img src="{{ media_src }}" alt="" />{% endif %}
+        {% if media_src %}<div class="media-veil"></div>{% endif %}
+      </div>
+      <div class="hair-grid">{% for _ in range(13) %}<i></i>{% endfor %}</div>
+      <div class="copy">
+        <div id="title" class="scene-title">{{ title }}</div>
+        <div id="text" class="scene-text">{{ content }}</div>
+      </div>
+      <div id="foot" class="scene-foot">
+        <span>{{ brand_line }}</span>
+        <span class="idx">{{ "%02d" % scene_index }} / {{ "%02d" % total_scenes }}</span>
+      </div>
     </div>
   </div>
 
   <script>
     window.__timelines = window.__timelines || {};
     const tl = gsap.timeline({ paused: true });
-    tl.from("#title", { opacity: 0, y: -30, duration: 0.8, ease: "power3.out" }, 0);
-    tl.from("#text", { opacity: 0, y: 20, duration: 0.6, ease: "power3.out" }, 0.5);
+    const DUR = {{ duration }};
+    const SEAM = 0.6;              /* 速度匹配接缝：入场带位移、出场在运动中切 */
+    const STAMP = 0.7;             /* 压印字效：单次动作 ≈21 帧 */
+    const EASE_IN = "power2.in", EASE_OUT = "power3.out";
+
+    /* 场景横移：入场从 +220 收进（不从静止入场），结尾向左出画（在运动中切） */
+    tl.fromTo(".stage", { x: 220 }, { x: 0, duration: SEAM, ease: EASE_OUT }, 0);
+    tl.to(".stage", { x: -2140, duration: SEAM, ease: EASE_IN }, Math.max(DUR - SEAM, SEAM));
+
+    /* 镜头推近：每场 scale 1.00 → 1.04，inOut cubic，不来回 */
+    tl.fromTo(".stage", { scale: 1.0 }, { scale: 1.04, duration: DUR, ease: "sine.inOut" }, 0);
+
+    /* 压印字效：缩放 1.16→1 + 模糊 4→0（transform/合成器属性，禁 reflow tween） */
+    tl.fromTo("#title",
+      { scale: 1.16, filter: "blur(4px)", opacity: 0 },
+      { scale: 1, filter: "blur(0px)", opacity: 1, duration: STAMP, ease: "power3.out" },
+      SEAM * 0.5);
+    tl.fromTo("#text",
+      { scale: 1.16, filter: "blur(4px)", opacity: 0 },
+      { scale: 1, filter: "blur(0px)", opacity: 1, duration: STAMP, ease: "power3.out" },
+      SEAM * 0.5 + 0.15);
+
+    /* 素材面板：一次性 1.06→1 收拢（非 idle wobble） */
+    tl.fromTo(".media", { scale: 1.06 }, { scale: 1, duration: SEAM + STAMP, ease: EASE_OUT }, 0);
+
+    /* 片脚：单次淡入 */
+    tl.fromTo("#foot", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EASE_OUT }, SEAM * 0.5);
+
     window.__timelines["{{ scene_id }}"] = tl;
   </script>
 </body>
