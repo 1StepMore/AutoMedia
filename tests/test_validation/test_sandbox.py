@@ -113,6 +113,26 @@ class TestSandboxAllowlistProvisioning:
         # Cache reset on exit: the tmp dirs are no longer allowed.
         assert check_path_allowed(str(sandbox.projects_dir)) is False
 
+    def test_sandbox_allowlist_grants_committed_scenarios(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Partial-pass scenarios extract ``scenarios/fixtures/`` through MCP.
+
+        The sandbox overrides ``AUTOMEDIA_MCP_ALLOWLIST_PATH``, so it must
+        carry ``./scenarios/`` itself or the shipped allowlist is bypassed and
+        ``extract_brief`` flips the scenario to ``failed``.
+        """
+        from automedia.mcp.allowlist import check_path_allowed
+
+        monkeypatch.delenv("AUTOMEDIA_MCP_ALLOWLIST_PATH", raising=False)
+        monkeypatch.delenv(CONFIG_ENV, raising=False)
+        monkeypatch.delenv(PROJECTS_ENV, raising=False)
+        monkeypatch.chdir(Path(__file__).resolve().parents[2])
+
+        with validation_sandbox():
+            fixture = Path.cwd() / "scenarios" / "fixtures" / "sample-draft.md"
+            assert check_path_allowed(str(fixture)) is True
+
     def test_explicit_dirs_branch_also_provisions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

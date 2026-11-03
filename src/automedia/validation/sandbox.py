@@ -57,6 +57,7 @@ def _write_sandbox_allowlist(directory: Path, config_dir: Path, projects_dir: Pa
             str(config_dir),
             str(projects_dir),
             "/tmp/automedia/",  # noqa: S108 — pinned scenario fixture path
+            "./scenarios/",  # committed validation fixtures (partial-pass scenarios)
         }
     )
     payload = {

@@ -222,6 +222,7 @@ def run_pipeline_from_strategy(
             brand=brand,
             mode=mode,
             workflow=workflow or None,
+            skip_review=True,
             block_on_hitl=False,
         )
 
