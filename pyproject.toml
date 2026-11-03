@@ -122,6 +122,9 @@ constraint-dependencies = ["anyio>=4.14.2"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+# promo/ is verbatim imported reference material (md5-pinned against its
+# manifest) — lint/format hooks must never mutate it.
+extend-exclude = ["promo"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "S", "SIM", "ANN", "C4", "PERF", "RUF"]

@@ -12,6 +12,7 @@ from automedia.engines.implementations import (
     asr_whisper,  # noqa: F401
     image_comfyui,  # noqa: F401
     image_local,  # noqa: F401
+    tts_azure,  # noqa: F401
     tts_edge,  # noqa: F401
     tts_piper,  # noqa: F401
     video_hyperframes,  # noqa: F401

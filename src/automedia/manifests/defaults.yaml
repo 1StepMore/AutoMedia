@@ -86,12 +86,24 @@ gate_engine:
 engines:
   tts:
     default: piper
-    # Ordered fallback chain (highest priority first). Piper is the offline
-    # guarantee and matches ``default`` above; Edge-TTS is the cloud fallback
-    # for machines with no Piper voice model installed.
-    chain: [piper, edge-tts]
+    # Ordered fallback chain (highest priority first). Azure (commercial,
+    # reliable narration) leads the chain but is transparently skipped
+    # unless AUTOMEDIA_AZURE_SPEECH_KEY/_REGION are set; Piper is the
+    # offline guarantee and matches ``default`` above; Edge-TTS is the
+    # cloud fallback for machines with no Piper voice model installed.
+    chain: [azure, piper, edge-tts]
     fallback:
       - edge-tts
+    azure:
+      # Azure Speech REST (httpx, no SDK). Credentials come from
+      # AUTOMEDIA_AZURE_SPEECH_KEY / AUTOMEDIA_AZURE_SPEECH_REGION (env
+      # first; the speech_key/region keys below are a non-env fallback for
+      # air-gapped config-file deployments — keep secrets out of git).
+      voice: zh-CN-YunjianNeural
+      output_format: audio-24khz-48kbitrate-mono-mp3
+      speech_normalization: true
+      speech_key: null
+      region: null
     piper:
       # Absolute path to a Piper .onnx voice model (with its .onnx.json next
       # to it). Leave null and set AUTOMEDIA_PIPER_MODEL_PATH (or the legacy

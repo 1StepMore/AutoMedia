@@ -191,7 +191,9 @@ def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> l
             cost = d / "cost_log.jsonl"
             cost_lines = 0
             if cost.is_file():
-                cost_lines = sum(1 for ln in cost.read_text(errors="ignore").splitlines() if ln.strip())
+                cost_lines = sum(
+                    1 for ln in cost.read_text(errors="ignore").splitlines() if ln.strip()
+                )
             draft_max = _biggest(drafts, {".md"})
             img_max = _biggest(images, IMG_EXT)
             vid_max = _biggest(videos, VID_EXT)
@@ -337,8 +339,11 @@ def _bench_line() -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
-    ap.add_argument("--scan-root", default="",
-                    help="Additional project root to scan (defaults to $AUTOMEDIA_PROJECTS_DIR)")
+    ap.add_argument(
+        "--scan-root",
+        default="",
+        help="Additional project root to scan (defaults to $AUTOMEDIA_PROJECTS_DIR)",
+    )
     ap.add_argument("--skip-validate", action="store_true")
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")

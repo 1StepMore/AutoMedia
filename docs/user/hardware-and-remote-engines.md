@@ -100,6 +100,7 @@ All of these live in `.automedia/config.yaml` (merged from
 |---|---|---|---|
 | image | `comfyui` | **remote-capable** | `engines.image.comfyui.{host, port, protocol}` in `.automedia/config.yaml`, or env `AUTOMEDIA_ENGINES_IMAGE_COMFYUI_HOST` / `_PORT` / `_PROTOCOL` |
 | image | `local` (Pillow) | local-only (by design — it is the offline fallback) | — |
+| tts | `azure` | cloud service — commercial, reliable narration | `AUTOMEDIA_AZURE_SPEECH_KEY` + `AUTOMEDIA_AZURE_SPEECH_REGION` env (or `engines.tts.azure.speech_key/region`); leads the TTS chain when configured |
 | tts | `edge-tts` | cloud service (nothing to configure) | requires the `edge-tts` CLI on PATH |
 | tts | `piper` | local-only (`.onnx` model on disk) | `AUTOMEDIA_PIPER_MODEL_PATH` / `engines.tts.piper.model_path` |
 | asr | `whisper` / `faster-whisper` | local-only | `AUTOMEDIA_FASTER_WHISPER_MODEL` (size name or local CTranslate2 dir) |

@@ -95,7 +95,7 @@ class TestDefaultsYamlChains:
         defaults = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
         engines = defaults["engines"]
 
-        assert engines["tts"]["chain"] == ["piper", "edge-tts"]
+        assert engines["tts"]["chain"] == ["azure", "piper", "edge-tts"]
         assert engines["asr"]["chain"] == ["whisper", "faster-whisper"]
         assert engines["image"]["chain"] == ["comfyui", "local"]
 
