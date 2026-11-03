@@ -5,7 +5,7 @@
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
 | AGENTS.md | 15851 | file |
-| README.md | 33739 | file |
+| README.md | 33812 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -33,7 +33,7 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gap-register.md | 17175 | file |
+| docs/dev/gap-register.md | 17365 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |

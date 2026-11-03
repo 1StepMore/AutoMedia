@@ -14,7 +14,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in
 | Layer | Command | Description |
 |-------|---------|-------------|
 | MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 68 tools |
-| CLI | `automedia <subcommand>` | 19 commands via typer |
+| CLI | `automedia <subcommand>` | 21 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
 ## 3. Directory Layout
@@ -22,7 +22,7 @@ Full tree: [agent-reference §Directory Layout](docs/dev/agent-reference.md#dire
 ```
 src/automedia/
 ├── core/ pipelines/ gates/   # config_loader · runner.py + gate_plan.py + dag.py (26 nodes) · 33 gates
-├── cli/ mcp/   # Typer CLI (19 commands) · FastMCP server (68 tools)
+├── cli/ mcp/   # Typer CLI (21 commands) · FastMCP server (68 tools)
 ├── engines/ validation/ effects/   # media engine backends · validation layer · content analytics
 ├── detectors/ hooks/ adapters/ accounts/ omni/ decision/ hitl/ pool/ cron/ prompts/ manifests/ asset_library/
 ├── features/ templates/   # open-core tier markers · hyperframes render templates
@@ -158,7 +158,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `validation_coverage_audit` | — | Static coverage audit |
 | `validation_matrix` | — | Validation matrix render |
 
-## 10. CLI Commands Quick Reference (19 commands)
+## 10. CLI Commands Quick Reference (21 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -171,6 +171,8 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `automedia cron` | Execute scheduled cron jobs |
 | `automedia account` | Account management (connect, login-capture, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: --force unless published) |
+| `automedia demo` | Credential-free sample run (fake LLM + local images, isolated sandbox) |
+| `automedia ui` | Minimal local web UI (loopback only) |
 | `automedia init` | Initialize configuration |
 | `automedia doctor` | Check dependencies and environment health |
 | `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |

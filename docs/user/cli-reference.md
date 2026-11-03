@@ -601,6 +601,37 @@ Checks: python, bun, ffmpeg, whisper, edge-tts, hyperframes, comfyui, chrome. Mi
 
 When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the `llm` field. These warnings are advisory and do not affect the exit code.
 
+## `automedia demo`
+
+Produce a complete sample project with zero credentials — deterministic fake
+LLM, local Pillow image engine, isolated sandbox (fresh `AUTOMEDIA_CONFIG_DIR`
+and projects dir under `~/.automedia/demo`). Everything produced is synthetic
+demo data for presentations and smoke tests.
+
+```bash
+automedia demo                       # text_with_cover sample run
+automedia demo --mode text_only      # pick the pipeline mode
+automedia demo --keep-env            # leave demo env vars set for follow-up commands
+```
+
+The run stops at H0 (awaiting_review) exactly like a production run, so
+presentations show the real HITL behavior. A `DEMO.md` marker in the project
+directory states that the content is synthetic.
+
+## `automedia ui`
+
+Minimal local web UI over the SDK — config + dependency view, one pipeline
+run with live progress, project results, account metadata.
+
+```bash
+automedia ui                # http://127.0.0.1:8765 (loopback only)
+automedia ui --port 9000
+```
+
+Requires the `[webui]` extra (`pip install '.[webui]'`). Binds 127.0.0.1
+only, no authentication — do not expose the port. See
+[web-ui](web-ui.md).
+
 ## `automedia omni`
 
 Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF),

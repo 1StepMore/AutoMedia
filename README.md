@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (19 commands) / MCP Server (68 tools)
+- **Three-layer API**: SDK / CLI (21 commands) / MCP Server (68 tools)
 - **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -365,7 +365,7 @@ result = run_full_pipeline(
 )
 ```
 
-### CLI (19 commands)
+### CLI (21 commands)
 
 | Command | Description |
 |---------|-------------|
@@ -378,6 +378,8 @@ result = run_full_pipeline(
 | `automedia cron` | Execute scheduled cron jobs + pipeline runs |
 | `automedia account` | Platform account management (connect, login-capture, list, health, disconnect) |
 | `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
+| `automedia demo` | Credential-free sample run (fake LLM + local images, isolated sandbox) |
+| `automedia ui` | Minimal local web UI (loopback only) |
 | `automedia init` | Initialize AutoMedia configuration |
 | `automedia doctor` | Check system dependencies and environment health |
 | `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
@@ -600,7 +602,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  68 tools      |     |  19 commands       |
+  |  68 tools      |     |  21 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+
@@ -625,7 +627,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
 | `pool/` | Topic pool SQLite DB, collector, scorer, dedup |
 | `cron/` | Scheduled job definitions (triggered by external crond) |
 | `mcp/` | MCP server implementation (stdio transport, path allowlist) |
-| `cli/` | Typer CLI application (19 command modules) |
+| `cli/` | Typer CLI application (21 command modules) |
 | `hitl/` | Human-in-the-loop framework (automated, semi-automated, director presets) |
 | `omni/` | Omni Triad adapters (OPP extraction, OL localization, ORF conversion) |
 | `prompts/` | Built-in Jinja2 prompt templates with platform-scoped resolution (60 templates for 20 platforms) |
