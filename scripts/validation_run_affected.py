@@ -180,6 +180,52 @@ def _run_suite(scenarios_dir: Path, runs_root: Path) -> int:
     return code
 
 
+def _tail(value: object, limit: int = 1200) -> str:
+    """Last ``limit`` characters of a captured stream, marked when truncated."""
+    text = value if isinstance(value, str) else ""
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return "…(truncated)… " + text[-limit:]
+
+
+def _print_step_detail(record: dict[str, object]) -> None:
+    """Print the step-level evidence needed to triage a failed scenario.
+
+    The affected-area job used to print only the scenario-level summary, so a
+    red scenario was unattributable from the CI log (issue #366): a missing
+    binary, a timeout, an expect-string mismatch and a wrong exit code all
+    looked identical. Each non-passed step now reports its surface/target,
+    expect failures, exit code and the tail of stdout/stderr.
+    """
+    steps = record.get("steps")
+    if not isinstance(steps, list):
+        return
+    for step in steps:
+        if not isinstance(step, dict) or str(step.get("status")) == "passed":
+            continue
+        print(
+            f"  step {step.get('step_index')}: {step.get('name')} "
+            f"[{step.get('status')}] surface={step.get('surface')} "
+            f"target={step.get('target')} duration={step.get('duration')}s"
+        )
+        for failure in step.get("failures") or []:
+            print(f"    expect: {failure}")
+        output = step.get("output")
+        if isinstance(output, dict):
+            if "exit_code" in output:
+                print(f"    exit_code: {output.get('exit_code')}")
+            if output.get("error"):
+                print(f"    error: {output.get('error')}")
+            for stream in ("stdout", "stderr"):
+                captured = _tail(output.get(stream))
+                if not captured:
+                    continue
+                print(f"    {stream} (tail):")
+                for line in captured.splitlines():
+                    print(f"      {line}")
+
+
 def _report(records: Sequence[dict[str, object]]) -> int:
     """Print per-scenario status lines + summary; apply the pinned exit policy."""
     statuses: dict[str, int] = {}
@@ -198,6 +244,7 @@ def _report(records: Sequence[dict[str, object]]) -> int:
         print(f"{name}: {status}{detail}")
         if status == "failed":
             failed.append(name)
+            _print_step_detail(record)
 
     order = ("passed", "failed", "recovered", "partial-pass", "unconfigured")
     summary_line = ", ".join(f"{s}: {statuses.get(s, 0)}" for s in order)
