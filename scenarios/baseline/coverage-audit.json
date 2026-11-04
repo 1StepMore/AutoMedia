@@ -495,14 +495,14 @@
   "boundary_only_gates": [],
   "boundary_only_modes": [],
   "error_boundary_scenarios": [
-    "meta\\validation-suite-boundary.yaml",
-    "surface\\control\\approve-gate-boundary.yaml",
-    "surface\\control\\cancel-pipeline-boundary.yaml",
-    "surface\\control\\pause-pipeline-boundary.yaml",
-    "surface\\control\\reject-gate-boundary.yaml",
-    "surface\\control\\resume-pipeline-boundary.yaml",
-    "surface\\control\\retry-gate-boundary.yaml",
-    "surface\\control\\skip-gate-boundary.yaml"
+    "meta/validation-suite-boundary.yaml",
+    "surface/control/approve-gate-boundary.yaml",
+    "surface/control/cancel-pipeline-boundary.yaml",
+    "surface/control/pause-pipeline-boundary.yaml",
+    "surface/control/reject-gate-boundary.yaml",
+    "surface/control/resume-pipeline-boundary.yaml",
+    "surface/control/retry-gate-boundary.yaml",
+    "surface/control/skip-gate-boundary.yaml"
   ],
   "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (run_validation_suite) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = ∅ means '∅ excluding boundary-only (listed)'. Director waiver required for this classification (guide §5.1: error-boundary probes are never silently counted as coverage).",
   "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist — phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom → ∅.",
@@ -700,7 +700,7 @@
   "missing_count": 4,
   "missing_hard_count": 0,
   "allowlist": {
-    "path": "scenarios\\boundary_only_allowlist.yml",
+    "path": "scenarios/boundary_only_allowlist.yml",
     "version": 1,
     "reviewed": "2026-09-13",
     "release": "wave2",
