@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.14.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.13.0...automedia-v1.14.0) (2026-11-04)
+
+
+### Features
+
+* **accounts:** add/rotate/remove surface + master-key lifecycle docs ([#354](https://github.com/1StepMore/AutoMedia/issues/354)) ([83b8526](https://github.com/1StepMore/AutoMedia/commit/83b8526e8b6a39e6fcc6f8bf3b919755f8b42477))
+* **accounts:** interactive browser login-capture into the encrypted credential store ([82dc594](https://github.com/1StepMore/AutoMedia/commit/82dc59441a7211ef771c4126225e99da3d38a211)), closes [#353](https://github.com/1StepMore/AutoMedia/issues/353)
+* **adapters:** Xiaohongshu browser publish + Easy/Hard platform capability matrix ([#353](https://github.com/1StepMore/AutoMedia/issues/353)) ([df22e39](https://github.com/1StepMore/AutoMedia/commit/df22e395e3ac960df0381a6e52138ae5fd7b8a50))
+* **cli:** credential-free demo mode for onboarding and smoke tests ([#360](https://github.com/1StepMore/AutoMedia/issues/360)) ([578f69b](https://github.com/1StepMore/AutoMedia/commit/578f69bcf50d3c6c531565fd8c6e2b444fb2a591))
+* **engines:** Azure Speech TTS engine with fallback-chain integration ([#356](https://github.com/1StepMore/AutoMedia/issues/356)) ([2eadb52](https://github.com/1StepMore/AutoMedia/commit/2eadb52fb961ae3dcaa96f77c80b62d2156bbaa6))
+* light productization batch — onboarding, platform prompts, remote engines, gap register ([e9d5f76](https://github.com/1StepMore/AutoMedia/commit/e9d5f76661ea3e300d384be7309ac0f961f8d783))
+* **ui:** minimal local web UI over the SDK ([#358](https://github.com/1StepMore/AutoMedia/issues/358)) ([6b3d4b1](https://github.com/1StepMore/AutoMedia/commit/6b3d4b1cfbef74c8de5404de2b4eac3c725f9451))
+* **video:** narration-aligned multi-scene hyperframes with motion-grammar templates ([#351](https://github.com/1StepMore/AutoMedia/issues/351)) ([bc1048a](https://github.com/1StepMore/AutoMedia/commit/bc1048a2a19d10f23a308ca8a4a145f80da94f23))
+* **video:** remotion-track engine with WSL renderer + engine selection switch ([#351](https://github.com/1StepMore/AutoMedia/issues/351)) ([96cce09](https://github.com/1StepMore/AutoMedia/commit/96cce09d3817c07450e6368fe565dce314af77f5))
+
+
+### Bug Fixes
+
+* **mcp:** skip H0 human-review gate for agent-driven pipeline runs ([#347](https://github.com/1StepMore/AutoMedia/issues/347)) ([c5f88cd](https://github.com/1StepMore/AutoMedia/commit/c5f88cd57f828f9a34c997185ee6a462b9fd79bb))
+* **prompts:** make content_writer length mode-driven, not a fixed range ([#349](https://github.com/1StepMore/AutoMedia/issues/349)) ([#370](https://github.com/1StepMore/AutoMedia/issues/370)) ([bd95b9a](https://github.com/1StepMore/AutoMedia/commit/bd95b9a64635900c980a555cf6184b6a01c834e0))
+* **types:** clear the mypy errors blocking the CI lint job ([584733b](https://github.com/1StepMore/AutoMedia/commit/584733bd8fa178f6955de03f7289989ee23b4de0))
+* **validation:** keep the coverage audit platform-independent and guard it ([#365](https://github.com/1StepMore/AutoMedia/issues/365)) ([#367](https://github.com/1StepMore/AutoMedia/issues/367)) ([ea9d019](https://github.com/1StepMore/AutoMedia/commit/ea9d019e05c044c6a2dcb5bc6ae189735c307b43))
+* **validation:** strip ANSI styling from captured CLI output ([#366](https://github.com/1StepMore/AutoMedia/issues/366)) ([#369](https://github.com/1StepMore/AutoMedia/issues/369)) ([efdf0d4](https://github.com/1StepMore/AutoMedia/commit/efdf0d41fb86532fe7a747ab6ca5e792a4550a6e))
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#348](https://github.com/1StepMore/AutoMedia/issues/348)) ([17d24e4](https://github.com/1StepMore/AutoMedia/commit/17d24e4e76e2bdb6a7cfd47d6d0c29074a5a97c5))
+
+
+### Documentation
+
+* register demo/ui in CLI command tables (consistency gate) ([76b5f5f](https://github.com/1StepMore/AutoMedia/commit/76b5f5fd6c6c5dfdad8d25d20dd94dc67bb93273))
+* register the new user docs in mkdocs nav + GAP-SEC-2 status correction ([efbf07f](https://github.com/1StepMore/AutoMedia/commit/efbf07fa12868ed7a7c87f0bf5e4947028a538df))
+
 ## [1.13.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.12.0...automedia-v1.13.0) (2026-10-31)
 
 
