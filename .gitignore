@@ -33,6 +33,7 @@ docs/production-e2e-test-design.md
 .omo/
 .trae/
 /.hermes/
+/.workbuddy/
 
 # Local-agent-only maintainer skills (not for AutoMedia users).
 # The canonical copies live in .opencode/skills/; the per-agent synced copies must be
