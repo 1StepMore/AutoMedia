@@ -1,7 +1,6 @@
 # AutoMedia — Agent Codebase Context
 
-First file an AI coding agent reads. This is the map; deep detail lives in
-[docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below.
+First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below.
 
 ## 1. Project Overview
 - **Language:** Python 3.11+
@@ -171,8 +170,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `automedia cron` | Execute scheduled cron jobs |
 | `automedia account` | Account management (connect, add, login-capture, rotate, list, health, disconnect, remove) |
 | `automedia archive` | Archive a project (Red Line 8: --force unless published) |
-| `automedia demo` | Credential-free sample run (fake LLM + local images, isolated sandbox) |
-| `automedia ui` | Minimal local web UI (loopback only) |
+| `automedia demo` / `ui` | Credential-free sample run (fake LLM + local images, isolated sandbox); minimal local web UI (loopback only) |
 | `automedia init` | Initialize configuration |
 | `automedia doctor` | Check dependencies and environment health |
 | `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
