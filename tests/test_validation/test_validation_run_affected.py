@@ -79,3 +79,43 @@ def test_affected_subset_persists_nothing(
     assert code == 0
     capsys.readouterr()
     assert not runs_root.exists()
+
+
+_RED_SCENARIO = """\
+name: runner-red
+description: A failing synthetic scenario for the step-detail diagnostic.
+intent: Prove a failed scenario reports step-level evidence (#366).
+user_level: L0
+category: baseline
+requires_env: []
+steps:
+  - name: exits 3 and writes to stderr
+    kind: cli
+    check: the step fails its exit-code expectation
+    standard: founder-expectations.F02
+    command: 'sh -c "echo boom: bad option >&2; exit 3"'
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+"""
+
+
+def test_failed_scenario_prints_step_detail(
+    scenarios_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A red scenario must be attributable from the log alone (issue #366).
+
+    Before this, CI printed only the scenario-level summary, so a missing
+    binary, a timeout, an expect mismatch and a wrong exit code were
+    indistinguishable.
+    """
+    (scenarios_dir / "red.yaml").write_text(_RED_SCENARIO, encoding="utf-8")
+    code = main(["red.yaml"])
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "runner-red: failed" in out
+    assert "step 1: exits 3 and writes to stderr [failed]" in out
+    assert "exit_code: 3" in out
+    assert "expect: expect.exit_code" in out
+    assert "boom: bad option" in out
+
