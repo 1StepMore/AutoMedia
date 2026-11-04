@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shlex
 import subprocess
 from collections.abc import Sequence
@@ -52,6 +53,27 @@ from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Step
 
 _JSON_PARSE_LIMIT: int = 4 * 1024 * 1024
 """Artifacts larger than this get existence/size facts only — no JSON read."""
+
+_ANSI_ESCAPE_RE = re.compile(
+    r"\x1b\[[0-9;?]*[ -/]*[@-~]"  # CSI: colours, cursor movement, erase
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC: window title, hyperlinks
+    r"|\x1b[@-Z\\-_]"  # two-byte escapes (e.g. save/restore cursor)
+)
+"""Terminal escape sequences stripped from captured CLI streams."""
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI styling so an expectation matches the text a human sees.
+
+    Rich/typer colourise help output whenever the child believes it has a
+    colour-capable stream, and its highlighter splits a token across style
+    spans: ``\\x1b[1;36m-\\x1b[0m\\x1b[1;36m-port\\x1b[0m`` renders as
+    ``--port`` but the raw string contains no ``--port``. That is why
+    ``ui-cli-surface`` passed on a developer box and failed on every CI run
+    (issue #366): the substring check saw the escapes, not the option name.
+    Stripping here keeps every CLI expectation environment-independent.
+    """
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 @dataclass
@@ -222,8 +244,8 @@ class CLIAdapter:
                     "success": False,
                     "error": f"command timed out after {timeout:g}s",
                     "exit_code": None,
-                    "stdout": exc.stdout if isinstance(exc.stdout, str) else "",
-                    "stderr": exc.stderr if isinstance(exc.stderr, str) else "",
+                    "stdout": _plain(exc.stdout) if isinstance(exc.stdout, str) else "",
+                    "stderr": _plain(exc.stderr) if isinstance(exc.stderr, str) else "",
                 },
             )
         except OSError as exc:
@@ -242,8 +264,8 @@ class CLIAdapter:
             {
                 "success": proc.returncode == 0,
                 "exit_code": proc.returncode,
-                "stdout": proc.stdout or "",
-                "stderr": proc.stderr or "",
+                "stdout": _plain(proc.stdout or ""),
+                "stderr": _plain(proc.stderr or ""),
             },
         )
 

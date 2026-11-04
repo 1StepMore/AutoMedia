@@ -182,6 +182,28 @@ jobs:
 
           committed_path = Path("scenarios/baseline/coverage-audit.json")
           committed = json.loads(committed_path.read_text(encoding="utf-8"))
+
+          # Platform guard (#365): this artifact is regenerated on Linux and
+          # compared with the committed copy, so a version written by a Windows
+          # checkout (``scenarios\\x.yaml``) fails forever and hides real drift.
+          # Name the cause instead of reporting it as a content mismatch.
+          def _windows_paths(value):
+              if isinstance(value, str):
+                  return [value] if "\\" in value else []
+              if isinstance(value, list):
+                  return [found for item in value for found in _windows_paths(item)]
+              if isinstance(value, dict):
+                  return [found for item in value.values() for found in _windows_paths(item)]
+              return []
+
+          windows_paths = _windows_paths(committed)
+          if windows_paths:
+              print("FAIL: committed coverage-audit.json carries Windows path separators")
+              print("      (regenerate it on Linux — coverage_audit() emits POSIX paths):")
+              for found in windows_paths[:5]:
+                  print(f"  {found!r}")
+              sys.exit(1)
+
           fresh = coverage_audit()
           committed.pop("generated_at", None)
           fresh.pop("generated_at", None)

@@ -710,9 +710,12 @@ def _display_path(path: Path) -> str:
     (gap Tr-03), so the allowlist path must not embed the checkout location.
     """
     try:
-        return str(path.resolve().relative_to(_repo_root()))
+        # ``as_posix`` keeps the committed artifact identical whichever platform
+        # generated it: a Windows checkout used to write ``scenarios\\x.yaml``,
+        # which the Linux drift check then read as permanent drift (#365).
+        return path.resolve().relative_to(_repo_root()).as_posix()
     except ValueError:
-        return str(path)
+        return path.as_posix()
 
 
 def _import_aliases(src: str) -> dict[str, str]:
@@ -871,7 +874,7 @@ def _scenario_file_map(root: Path) -> dict[str, str]:
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
         name = doc.get("name") if isinstance(doc, dict) else None
         if isinstance(name, str):
-            mapping[name] = str(path.relative_to(root))
+            mapping[name] = path.relative_to(root).as_posix()
     return mapping
 
 
