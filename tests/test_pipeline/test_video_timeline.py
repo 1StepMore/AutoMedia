@@ -153,11 +153,7 @@ class TestConcatAudio:
 
 class TestBuildSceneTimeline:
     def test_narration_aligned_cut_points(self, tmp_path: Any) -> None:
-        text = (
-            "第一场讲背景，内容足够长。"
-            "第二场讲方法，也有不少的字。"
-            "第三场给出最终的结论与展望。"
-        )
+        text = "第一场讲背景，内容足够长。第二场讲方法，也有不少的字。第三场给出最终的结论与展望。"
         durations = {
             "narration-segment-01.mp3": 4.0,
             "narration-segment-02.mp3": 6.0,

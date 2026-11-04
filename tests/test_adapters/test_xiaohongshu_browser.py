@@ -6,6 +6,8 @@ out-of-band (single attempt, stops before the publish confirmation).
 
 from __future__ import annotations
 
+import sys
+import types
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -17,6 +19,23 @@ from automedia.adapters.platforms.xiaohongshu_browser import (
     load_session,
     prepare_xiaohongshu_note,
 )
+
+# playwright is an optional runtime extra. These tests fake its API end to end,
+# so give patch() a module to resolve when the package is not installed (plain
+# `.[dev]` installs and CI) instead of skipping the module and losing coverage.
+try:
+    import playwright.sync_api  # noqa: F401
+except ModuleNotFoundError:
+
+    def _sync_playwright() -> None:
+        return None
+
+    _playwright_sync_api = types.ModuleType("playwright.sync_api")
+    _playwright_sync_api.sync_playwright = _sync_playwright
+    _playwright = types.ModuleType("playwright")
+    _playwright.sync_api = _playwright_sync_api
+    sys.modules["playwright"] = _playwright
+    sys.modules["playwright.sync_api"] = _playwright_sync_api
 
 
 class _FakeLocator:

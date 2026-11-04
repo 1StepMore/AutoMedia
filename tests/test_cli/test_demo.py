@@ -36,9 +36,7 @@ def demo_sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 class TestDemoCommand:
-    def test_demo_produces_complete_project_without_credentials(
-        self, demo_sandbox: Path
-    ) -> None:
+    def test_demo_produces_complete_project_without_credentials(self, demo_sandbox: Path) -> None:
         result = runner.invoke(app, ["demo"])
         assert result.exit_code == 0, result.output
         assert "Demo complete" in result.output

@@ -98,9 +98,7 @@ class TestRunRoute:
             return fake_result
 
         with patch("automedia.run_full_pipeline", side_effect=fake_run):
-            resp = client.post(
-                "/api/run", json={"topic": "T", "mode": "text_only", "brand": ""}
-            )
+            resp = client.post("/api/run", json={"topic": "T", "mode": "text_only", "brand": ""})
             assert resp.json()["started"] is True
             # wait for the worker thread
             import time

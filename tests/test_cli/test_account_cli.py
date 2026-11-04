@@ -416,11 +416,17 @@ class TestAccountAdd:
             result = runner.invoke(
                 app,
                 [
-                    "account", "add", "zhihu",
-                    "--cred", "token=abc123",
-                    "--cred", "secret=xyz",
-                    "--auth-type", "api_key",
-                    "--label", "Main",
+                    "account",
+                    "add",
+                    "zhihu",
+                    "--cred",
+                    "token=abc123",
+                    "--cred",
+                    "secret=xyz",
+                    "--auth-type",
+                    "api_key",
+                    "--label",
+                    "Main",
                 ],
             )
         assert result.exit_code == 0, result.output
