@@ -244,6 +244,22 @@ class TestCLIAdapter:
         assert result.output["exit_code"] == 2
         assert "oops" in result.output["stderr"]
 
+    def test_ansi_styling_is_stripped(self) -> None:
+        """Colourised output must still match plain-text expectations (#366).
+
+        CI's help renderer emitted ``\\x1b[1;36m-\\x1b[0m\\x1b[1;36m-port``
+        for ``--port`` — visually the option name, but the raw string had no
+        ``--port``, so `ui-cli-surface` passed locally and failed on every CI
+        run. Stripping the styling keeps expectations environment-independent.
+        """
+        result = CLIAdapter().run(
+            cli_step(r"printf '\033[1;36m-\033[0m\033[1;36m-port\033[0m loopback\n'")
+        )
+        assert result.ok is True
+        assert "--port" in result.output["stdout"]
+        assert "loopback" in result.output["stdout"]
+        assert "\x1b" not in result.output["stdout"]
+
     def test_timeout_is_enforced_and_captured(self) -> None:
         result = CLIAdapter().run(cli_step("python3 -c 'import time; time.sleep(5)'", timeout=0.5))
         assert result.ok is False
