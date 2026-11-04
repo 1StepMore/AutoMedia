@@ -708,7 +708,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 total_duration = num_scenes * self._DEFAULT_SCENE_DURATION
         elif audio_path and os.path.isfile(audio_path):
             audio_basename = os.path.basename(audio_path)
-            audio_dir: str = os.path.join(temp_dir, "assets", "audio")
+            audio_dir = os.path.join(temp_dir, "assets", "audio")
             os.makedirs(audio_dir, exist_ok=True)
             shutil.copy2(audio_path, audio_dir)
         else:

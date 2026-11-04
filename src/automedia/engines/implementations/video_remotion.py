@@ -240,7 +240,7 @@ class VideoRemotionEngine(BaseVideoEngine):
 
         # media + audio into the workspace public dir (remotion staticFile root)
         # staticFile() resolves against the public dir — store BARE names
-        public_files: dict[str, str] = {}
+        public_files: dict[int, str] = {}
         for i, media in enumerate(scene_media):
             if media and os.path.isfile(media):
                 dest = f"media-{i + 1:02d}{os.path.splitext(media)[1] or '.png'}"

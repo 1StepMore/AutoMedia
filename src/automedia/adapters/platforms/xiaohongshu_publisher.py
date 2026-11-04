@@ -145,4 +145,4 @@ class XiaohongshuPublisher(BasePlatformAdapter):
             platform="xiaohongshu",
             status=result.get("status"),
         )
-        return result  # type: ignore[return-value] — ready_for_confirmation is a documented PublishResult status
+        return result

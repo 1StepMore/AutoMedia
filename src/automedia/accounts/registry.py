@@ -276,7 +276,7 @@ class AccountRegistry:
 
     def rotate_credentials(
         self, account_id: str, credentials: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    ) -> AccountInfo | None:
         """Replace an account's credential payload, keeping its identity.
 
         The account_id, label, auth_type, status and timestamps survive the

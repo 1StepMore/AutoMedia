@@ -14,6 +14,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from automedia.accounts.models import AccountInfo
 from automedia.accounts.registry import AccountRegistry
 
 app = typer.Typer(help="Manage platform accounts for publishing.")
@@ -266,7 +267,7 @@ def _parse_cred_payload(cred: list[str], from_json: str) -> dict[str, str]:
 
 def _register_or_exit(
     platform: str, payload: dict[str, str], label: str, auth_type: str
-) -> dict[str, Any]:
+) -> AccountInfo:
     try:
         return _get_registry().register(platform, payload, label=label, auth_type=auth_type)
     except ValueError as e:

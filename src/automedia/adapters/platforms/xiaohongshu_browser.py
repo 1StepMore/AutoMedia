@@ -21,6 +21,8 @@ import logging
 import os
 from typing import Any, Protocol
 
+from automedia.adapters.base import PublishResult
+
 
 class _EvaluablePage(Protocol):
     """Minimal page shape used by the login check."""
@@ -31,6 +33,9 @@ class _EvaluablePage(Protocol):
 class _Locator(Protocol):
     """Minimal locator shape used by selector probing."""
 
+    @property
+    def first(self) -> _Locator: ...
+
     def wait_for(self, state: str, timeout: int) -> None: ...
 
     def fill(self, value: str) -> None: ...
@@ -39,7 +44,7 @@ class _Locator(Protocol):
 
     def type(self, value: str, delay: int) -> None: ...
 
-    def set_input_files(self, files: list[str]) -> None: ...
+    def set_input_files(self, files: str | list[str]) -> None: ...
 
 
 class _LocatablePage(Protocol):
@@ -144,7 +149,7 @@ def _first_attached(
             loc.wait_for(state="attached", timeout=timeout_ms)
             return loc
         except Exception as exc:
-            logger.debug("attached probe failed", selector=sel, error=str(exc))
+            logger.debug("attached probe failed: selector=%s error=%s", sel, exc)
             continue
     return None
 
@@ -160,7 +165,7 @@ def _first_visible(
             loc.wait_for(state="visible", timeout=timeout_ms)
             return loc
         except Exception as exc:
-            logger.debug("selector probe failed", selector=sel, error=str(exc))
+            logger.debug("selector probe failed: selector=%s error=%s", sel, exc)
             continue
     return None
 
@@ -174,7 +179,7 @@ def prepare_xiaohongshu_note(
     headless: bool = True,
     account_id: str | None = None,
     timeout_ms: int = _TIMEOUT_MS_DEFAULT,
-) -> dict[str, Any]:
+) -> PublishResult:
     """Fill the Xiaohongshu note form and stop before publishing.
 
     Returns a :class:`~automedia.adapters.base.PublishResult`-shaped dict
@@ -182,7 +187,7 @@ def prepare_xiaohongshu_note(
     Raises nothing — failures come back as ``status="error"`` with a
     ``reason`` carrying the manual-takeover hint.
     """
-    result: dict[str, Any] = {
+    result: PublishResult = {
         "platform": "xiaohongshu",
         "status": "error",
         "reason": "",
@@ -229,7 +234,7 @@ def prepare_xiaohongshu_note(
                 tab.dispatch_event("click")
                 page.wait_for_timeout(2500)
             except Exception as exc:
-                logger.debug("note-tab click failed", error=str(exc))
+                logger.debug("note-tab click failed: %s", exc)
 
             # File inputs are intentionally invisible (opacity-0) — wait for
             # ATTACHED, not visible, then hand the file straight over.
@@ -250,7 +255,7 @@ def prepare_xiaohongshu_note(
                     page.locator("text=我知道了").first.click(timeout=3000)
                     page.wait_for_timeout(800)
                 except Exception as exc:
-                    logger.debug("onboarding dialog absent", error=str(exc))
+                    logger.debug("onboarding dialog absent: %s", exc)
 
             title_loc = _first_visible(page, _TITLE_SELECTORS, timeout_ms // 3)
             if title_loc is not None:
@@ -285,7 +290,7 @@ def prepare_xiaohongshu_note(
             context.close()
             browser.close()
     except Exception as exc:
-        logger.warning("xiaohongshu browser publish failed", error=str(exc))
+        logger.warning("xiaohongshu browser publish failed: %s", exc)
         result["status"] = "error"
         result["reason"] = (
             f"browser publish failed: {exc} — take over manually at {CREATOR_PUBLISH_URL}"

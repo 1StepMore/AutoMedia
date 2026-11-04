@@ -127,7 +127,7 @@ def create_app() -> FastAPI:
                 )
                 _run_state["status"] = str(getattr(result, "status", ""))
             except Exception as exc:  # surfaced to the UI verbatim
-                logger.warning("ui.run_failed", error=str(exc))
+                logger.warning("ui.run_failed: %s", exc)
                 _run_state["status"] = f"failed: {exc}"
             finally:
                 _run_state["running"] = False

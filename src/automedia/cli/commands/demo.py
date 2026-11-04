@@ -45,9 +45,7 @@ def _demo_dirs() -> tuple[Path, Path]:
 
 @app.command()
 def demo(
-    mode: str = typer.Option(
-        "text_with_cover", "--mode", help="Pipeline mode for the demo run."
-    ),
+    mode: str = typer.Option("text_with_cover", "--mode", help="Pipeline mode for the demo run."),
     keep_env: bool = typer.Option(
         False, "--keep-env", help="Leave the demo env vars set (for follow-up commands)."
     ),
