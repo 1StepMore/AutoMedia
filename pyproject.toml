@@ -79,6 +79,10 @@ dev = [
     "automedia-pipeline[httpx]",
     "automedia-pipeline[rich]",
     "automedia-pipeline[mcp]",
+    # tests/test_cli/test_ui.py exercises the shipped `automedia ui` surface, so
+    # the webui extra has to be present wherever the suite runs — otherwise the
+    # TestClient fixture dies at setup with ModuleNotFoundError: fastapi (#362).
+    "automedia-pipeline[webui]",
     "pytest>=8",
     "pytest-cov>=5",
     "ruff>=0.15.21",

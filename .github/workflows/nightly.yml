@@ -172,6 +172,19 @@ jobs:
           python-version: "3.13"
       - name: Assert uv.lock matches pyproject.toml
         run: |
+          # Platform guard (#363), FIRST: a lock generated through a regional
+          # mirror makes the drift check below fail *every* night, which once
+          # hid a genuinely stale lock for four days. GitHub runs this step with
+          # `-e`, so the guard has to run before the check to ever be reached.
+          noncanonical=$(awk -F'"' '/^source = \{ registry/{print $2}' uv.lock \
+            | sort -u | grep -vx 'https://pypi.org/simple' || true)
+          if [ -n "$noncanonical" ]; then
+            echo "FAIL: uv.lock pins a non-canonical package index:"
+            echo "$noncanonical"
+            echo "Regenerate with: UV_NO_CONFIG=1 UV_INDEX_URL=https://pypi.org/simple uv lock"
+            exit 1
+          fi
+
           # Canonical index, and no user config: a runner whose uv config points
           # at a regional mirror rewrites every URL in the lockfile, which reads
           # as drift when the resolution is actually identical.
