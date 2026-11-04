@@ -2,23 +2,29 @@
 """nightly_gap.py — 不眠计划 · AutoMedia 差距计算器（L2-a）
 
 把「当前产出 vs 完成定义（DoD）」算成机器可读矩阵。
-**冻结区**：coding agent 只跑、不改。
+**冻结区**：docs/NIGHTLY.md 的 DoD 文本另案处理；本脚本的判据按 issue #361
+的授权修订（2026-11-04，owner 登记）。
 
 DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 次真模型端到端跑，
 且产物落在**持久目录**。产物位置由 **Agent 自由决定**（owner 2026-10-30 裁定，
 见 NIGHTLY.md「修订请求」）——不限定 repo 内、也不禁止 `/tmp`；
 扫描器通过 `AUTOMEDIA_PROJECTS_DIR` 环境变量发现产物目录。
 
-三轨判定（全部机械化，尽量少主观）：
+三轨判定（全部机械化，尽量少主观；#361 起必须叠加门链结论）：
+  共同前提 门链通过：最新 gate-report 无 fail/review 行，且跑批 status 位
+           不是 partial/failed——门说「这篇不能用」，矩阵就不许说「达标」
   文本轨   cost_log.jsonl 非空，且 01_content/drafts/ 里有 ≥1 个 ≥500B 的 md
   图文轨   文本轨两条（同上）+ 02_images/ 里有 ≥1 个 ≥1KB 的图片
   视频轨   文本轨两条（同上）+ 03_video/ 里有 ≥1 个 ≥10KB 的视频，
           且该项目有可解析 gate-report：
           有诚实生产者的 V2/V5/V7 必须真跑且 pass；
           V0/V1/V3/V4/V6 计为已登记能力债（#193），任何新增 skip 判红
+三态（#361）：每条轨 pass / fail / unverified。unverified = 该轨毫无证据
+  （没有视频文件 / 没有图 / 没有跑过的项目）——不作能力宣称，也绝不当作 pass；
+  「没跑过」与「跑过没过」必须分开报告。
 
-用法：python3 scripts/nightly_gap.py [--json-out F] [--md-out F]
-退出码：0 = 三轨全达标 / 1 = 仍有差距 / 2 = 用法或环境错误
+用法：python3 scripts/nightly_gap.py [--json-out F] [--md-out F] [--scan-root DIR]
+退出码：0 = 三轨全达标 / 1 = 仍有差距（未达标或未验证）/ 2 = 用法或环境错误
 """
 
 from __future__ import annotations
@@ -41,6 +47,13 @@ VIDEO_GATES_MUST_RUN = ("V2", "V5", "V7")  # 有诚实生产者：必须真跑�
 VIDEO_GATES_CAPABILITY_DEBT = ("V0", "V1", "V3", "V4", "V6")  # 无诚实生产者：允许 skip，但须登记
 VIDEO_GATE_DEBT_ISSUE = "#193"
 GATE_REPORT_GLOB = "05_review/gate-report/gate-report-*.json"
+#: 跑批结论里判「这次跑批没成」的状态位（issue #361）。success/awaiting_review 不拦。
+BLOCKING_PIPELINE_STATUSES = ("partial", "failed")
+#: gate-report 行里判「门链失败」的词（issue #361）。review = 门崩溃待复核，同样没通过；
+#: skip 是「刻意没评」（模式本就没有该输入），不拦文本/图文轨——视频轨另有 must-run 规则。
+BLOCKING_GATE_VERDICTS = ("fail", "failed", "review", "error")
+#: 轨名 → 每项目三态字段的映射（报告层用）。
+TRACK_STATE_KEYS = {"文本轨": "text_state", "图文轨": "image_state", "视频轨": "video_state"}
 
 #: Agent 用它声明「我把产物放在哪」。扫描器认这个位置，**不限定必须在 repo 内**。
 PROJECTS_DIR_ENV = "AUTOMEDIA_PROJECTS_DIR"
@@ -64,6 +77,101 @@ def _read_gate_report(path: Path) -> dict | None:
     except Exception:
         return None
     return data if isinstance(data, dict) else None
+
+
+def _best_gate_report(project_dir: Path) -> tuple[Path, dict] | None:
+    """挑该项目 generated_at 最新、且可解析的那份 gate-report。
+
+    门链结论（#361）与视频轨 V 门证据（#181）必须读**同一份**报告，否则
+    「门链看旧报告、V 门看新报告」会拼出两个真相。
+    """
+    best: tuple[str, Path, dict] | None = None  # (generated_at, 路径, 解析结果)
+    for f in sorted(project_dir.glob(GATE_REPORT_GLOB)):
+        data = _read_gate_report(f)
+        if data is None:
+            continue  # 某份 JSON 解析失败就跳过该份
+        ts = str(data.get("generated_at") or "")
+        if best is None or ts > best[0]:
+            best = (ts, f, data)
+    return None if best is None else (best[1], best[2])
+
+
+def _pipeline_status(project_dir: Path) -> str:
+    """读 ``00_project_info.json`` 里的跑批结论状态位（issue #361）。
+
+    生产写入方（``core/project.py``）目前并不落 status 字段——真跑批结论的
+    持久化形态是 gate-report 本身；这里兼容读取 ``status`` / ``pipeline_status``
+    / ``pipeline.status`` 三种位置，主要服务 #361 的验收夹具（改状态位即可
+    复现 partial），也让未来 runner 落盘 status 时判据自动生效。
+    """
+    try:
+        info = json.loads((project_dir / "00_project_info.json").read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    if not isinstance(info, dict):
+        return ""
+    candidates = [info.get("status"), info.get("pipeline_status")]
+    nested = info.get("pipeline")
+    if isinstance(nested, dict):
+        candidates.append(nested.get("status"))
+    for v in candidates:
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ""
+
+
+def gate_chain_evidence(project_dir: Path) -> dict:
+    """门链结论（issue #361）：三轨达标都必须叠加「这次跑批没有失败」。
+
+    两个来源，按优先级：
+      1. ``00_project_info.json`` 的 status 位（partial/failed ⇒ 直接不达标）；
+      2. 最新 gate-report（与 :func:`video_gate_evidence` 同一份）里有无
+         fail/review 行，``blocked_by_gate`` 直接点名卡在哪道门。
+
+    没有任何 gate-report ⇒ 同样不许达标（``no gate-report``）：达标主张
+    需要「门链没有失败」的证据，缺报告只是没人证明它通过。
+    """
+    out: dict = {
+        "ok": False,
+        "reason": "",
+        "blocker": "",
+        "report": "",
+        "pipeline_status": _pipeline_status(project_dir),
+    }
+    if out["pipeline_status"] in BLOCKING_PIPELINE_STATUSES:
+        out["reason"] = f"pipeline status={out['pipeline_status']}"
+        return out
+
+    best = _best_gate_report(project_dir)
+    if best is None:
+        has_files = bool(sorted(project_dir.glob(GATE_REPORT_GLOB)))
+        out["reason"] = "gate-report unreadable" if has_files else "no gate-report"
+        return out
+    path, data = best
+    out["report"] = path.relative_to(project_dir).as_posix()
+
+    blocker = ""
+    entries = data.get("gates")
+    for item in entries if isinstance(entries, list) else []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("gate") or "").strip()
+        verdict = str(item.get("verdict") or "").strip()
+        status = str(item.get("status") or "").strip()
+        if verdict in BLOCKING_GATE_VERDICTS or status in ("failed", "error"):
+            blocker = name
+            break
+    if not blocker:
+        blocked_by = str(data.get("blocked_by_gate") or "").strip()
+        if blocked_by:
+            blocker = blocked_by
+    if blocker:
+        out["blocker"] = blocker
+        out["reason"] = f"卡在 {blocker}"
+        return out
+
+    out["ok"] = True
+    return out
 
 
 def video_gate_evidence(project_dir: Path) -> dict:
@@ -99,21 +207,15 @@ def video_gate_evidence(project_dir: Path) -> dict:
         out["reason"] = "no gate-report"
         return out
 
-    best: tuple[str, Path, dict] | None = None  # (generated_at, 路径, 解析结果)
-    for f in files:
-        data = _read_gate_report(f)
-        if data is None:
-            continue  # 某份 JSON 解析失败就跳过该份
-        ts = str(data.get("generated_at") or "")
-        if best is None or ts > best[0]:
-            best = (ts, f, data)
+    best = _best_gate_report(project_dir)
     if best is None:
         out["reason"] = "gate-report unreadable"
         return out
+    report_path, data = best
 
-    out["report"] = best[1].relative_to(project_dir).as_posix()
+    out["report"] = report_path.relative_to(project_dir).as_posix()
     seen: set[str] = set()
-    entries = best[2].get("gates")
+    entries = data.get("gates")
     for item in entries if isinstance(entries, list) else []:
         if not isinstance(item, dict):
             continue
@@ -198,8 +300,15 @@ def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> l
             img_max = _biggest(images, IMG_EXT)
             vid_max = _biggest(videos, VID_EXT)
             ev = video_gate_evidence(d)
+            chain = gate_chain_evidence(d)
             # DoD 表里图文轨/视频轨均以「同上 +」开头，故继承文本轨这两条（#195）。
+            # #361 起三轨达标还必须叠加门链结论：门说不行，产物再多也不算数。
             text_evidence = _text_evidence_ok(cost_lines, draft_max)
+            text_ok = text_evidence and chain["ok"]
+            image_ok = text_ok and img_max >= MIN_IMAGE_BYTES
+            video_ok = text_ok and vid_max >= MIN_VIDEO_BYTES and ev["ok"]
+            # 三态（#361）：unverified = 该轨毫无证据（没跑过/没产物），
+            # 不作能力宣称，也绝不当作 pass；「没跑过」≠「跑过没过」。
             out.append(
                 {
                     "project": d.name,
@@ -209,14 +318,39 @@ def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> l
                     "image_max_bytes": img_max,
                     "video_max_bytes": vid_max,
                     "has_pipeline_md5": (d / "pipeline_md5.json").is_file(),
-                    "text_ok": text_evidence,
-                    "image_ok": text_evidence and img_max >= MIN_IMAGE_BYTES,
-                    "video_ok": text_evidence and vid_max >= MIN_VIDEO_BYTES and ev["ok"],
+                    "text_ok": text_ok,
+                    "image_ok": image_ok,
+                    "video_ok": video_ok,
                     "text_evidence_ok": text_evidence,
+                    "text_state": _tri_state(cost_lines > 0 or draft_max > 0, text_ok),
+                    "image_state": _tri_state(img_max > 0, image_ok),
+                    "video_state": _tri_state(vid_max > 0, video_ok),
+                    "gate_chain": chain,
                     "video_gates": ev,
                 }
             )
     return out
+
+
+def _tri_state(has_evidence: bool, ok: bool) -> str:
+    """单项目单轨的三态归约（issue #361）：unverified / fail / pass。"""
+    if not has_evidence:
+        return "unverified"
+    return "pass" if ok else "fail"
+
+
+def _track_red_reason(p: dict, track: str) -> str:
+    """单项目在该轨的判红原因：门链结论优先（#361 要求写明卡在哪道门）。"""
+    chain_reason = p["gate_chain"]["reason"]
+    if chain_reason:
+        return chain_reason
+    if track == "文本轨":
+        return "缺文本证据（draft < 500B 或 cost_log 空）"
+    if track == "图文轨":
+        if not p["text_evidence_ok"]:
+            return "缺文本证据（draft < 500B 或 cost_log 空）"
+        return f"图片 <{MIN_IMAGE_BYTES}B"
+    return _video_red_reason(p)
 
 
 def _automedia_cmd(python: str) -> list[str]:
@@ -297,7 +431,9 @@ def _video_track_note(projects: list[dict], track: dict) -> str:
             f"  - 能力债（登记，不计入达标）："
             f"{'/'.join(VIDEO_GATES_CAPABILITY_DEBT)}（无诚实生产者，{VIDEO_GATE_DEBT_ISSUE}）"
         )
-    red = [p for p in projects if not p["video_ok"]]
+    # #361：只列「跑过没过」的候选——没有视频文件的项目是 unverified，
+    # 混进判红名单会把「没跑过」伪装成「能力不行」。
+    red = [p for p in projects if p["video_state"] == "fail"]
     near = sorted(
         (p for p in red if _is_near_miss(p)),
         key=lambda p: p["video_max_bytes"],
@@ -353,23 +489,40 @@ def main(argv: list[str] | None = None) -> int:
     env_dir = os.environ.get(PROJECTS_DIR_ENV, "").strip()
     extra = explicit or (Path(env_dir) if env_dir else None)
     projects = scan_projects(extra_root=extra)
-    text = [p["project"] for p in projects if p["text_ok"]]
-    image = [p["project"] for p in projects if p["image_ok"]]
-    video = [p["project"] for p in projects if p["video_ok"]]
+
+    def _track(key: str) -> dict:
+        """单轨三态聚合（issue #361）：有 pass 即 pass；否则有证据即 fail；
+        全体项目都无该轨证据 ⇒ unverified（不作能力宣称）。"""
+        state = "unverified"
+        if any(p[key] == "fail" for p in projects):
+            state = "fail"
+        if any(p[key] == "pass" for p in projects):
+            state = "pass"
+        passing = [p["project"] for p in projects if p[key] == "pass"]
+        return {
+            "ok": state == "pass",
+            "state": state,
+            "evidence": passing[:5],
+            "count": len(passing),
+        }
+
     tracks = {
-        "文本轨": {"ok": bool(text), "evidence": text[:5], "count": len(text)},
-        "图文轨": {"ok": bool(image), "evidence": image[:5], "count": len(image)},
-        "视频轨": {"ok": bool(video), "evidence": video[:5], "count": len(video)},
+        "文本轨": _track("text_state"),
+        "图文轨": _track("image_state"),
+        "视频轨": _track("video_state"),
     }
-    gap = [k for k, v in tracks.items() if not v["ok"]]
+    fail_tracks = [k for k, v in tracks.items() if v["state"] == "fail"]
+    unverified_tracks = [k for k, v in tracks.items() if v["state"] == "unverified"]
+    gap = [k for k, v in tracks.items() if v["state"] != "pass"]
     vs = {} if args.skip_validate else validate_summary(args.python)
 
+    n_pass, n_fail, n_unv = 3 - len(gap), len(fail_tracks), len(unverified_tracks)
     result = {
-        "schema": "nightly-gap/1",
+        "schema": "nightly-gap/2",
         "project": "AutoMedia",
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "total_units": 3,
-        "passing_units": 3 - len(gap),
+        "passing_units": n_pass,
         "gap": gap,
         "tracks": tracks,
         "projects": projects,
@@ -388,7 +541,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     }
     if gap:
-        result["exit_reason"] = f"{len(gap)} / 3 条轨未达标"
+        result["exit_reason"] = f"未达标 {n_fail} · 未验证 {n_unv}（共 3 轨）"
 
     if args.json_out:
         Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
@@ -396,11 +549,24 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-    verdict = (
-        "- 判定：**三轨全达标（机器可判部分完成）**"
-        if not gap
-        else f"- 判定：**{len(gap)} / 3 条轨未达标**"
-    )
+    # 判定行区分三态（#361）：「未达标」与「未验证」不许混报，更不许都算绿。
+    if not gap:
+        verdict = "- 判定：**三轨全达标（机器可判部分完成）**"
+    else:
+        seg = []
+        if fail_tracks:
+            names = "、".join(fail_tracks)
+            first_failer = next(
+                (p for p in projects if p[TRACK_STATE_KEYS[fail_tracks[0]]] == "fail"), None
+            )
+            red = _track_red_reason(first_failer, fail_tracks[0]) if first_failer else ""
+            seg.append(
+                f"{n_fail} 条未达标（{names}，{red}）" if red else f"{n_fail} 条未达标（{names}）"
+            )
+        if unverified_tracks:
+            seg.append(f"{n_unv} 条未验证（{'、'.join(unverified_tracks)}）")
+        seg.append(f"{n_pass} 条达标")
+        verdict = f"- 判定：**{' · '.join(seg)}**"
     md = [
         "# AutoMedia 差距矩阵",
         "",
@@ -411,10 +577,22 @@ def main(argv: list[str] | None = None) -> int:
         _bench_line(),
     ]
     for name, v in tracks.items():
-        mark = "✅" if v["ok"] else "❌"
-        ev = "、".join(v["evidence"]) if v["evidence"] else "无"
-        md.append(f"- {mark} **{name}**：{v['count']} 个达标；证据：{ev}")
-        if name == "视频轨":
+        state = v["state"]
+        key = TRACK_STATE_KEYS[name]
+        if state == "pass":
+            ev = "、".join(v["evidence"]) if v["evidence"] else "无"
+            md.append(f"- ✅ **{name}**：{v['count']} 个达标；证据：{ev}")
+        elif state == "fail":
+            reds = [
+                f"{p['project']}: {_track_red_reason(p, name)}"
+                for p in projects
+                if p[key] == "fail"
+            ][:5]
+            reds_line = "；".join(reds) or "无项目"
+            md.append(f"- ❌ **{name}**：未达标；判红原因（前 5 个）：{reds_line}")
+        else:
+            md.append(f"- ⏳ **{name}**：未验证（无证据，不作能力宣称）")
+        if name == "视频轨" and state == "fail":
             md.append(_video_track_note(projects, v))
     if vs and "error" not in vs:
         md += [

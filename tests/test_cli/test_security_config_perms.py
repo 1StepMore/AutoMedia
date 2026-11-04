@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 import tempfile
 from pathlib import Path
 
+import pytest
 import yaml
+
+# os.chmod on Windows only toggles the read-only flag and st_mode always
+# reports a writable file as 0o666-ish, so neither the exact-0o600 assertion
+# nor the no-world/group-readable bit checks carry meaning there.
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX permission-bit assertions; Windows chmod/st_mode cannot express them",
+)
 
 
 def _write_config_file(path: Path, data: dict) -> None:
