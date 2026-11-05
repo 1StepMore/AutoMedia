@@ -426,13 +426,13 @@
   ],
   "unreachable_note": "Unreachable gates (registered, in NO preset and on NO command path): G4, G5. Preset reachability is the union of _MODE_MAP; command-path reachability is COMMAND_PATH_REACHABLE_GATES. These are excluded from missing_* and from the evidence-half missing/missing_count so an unexecutable gate is reported here instead of failing the audit forever (the issue #101 false-alarm class).",
   "input_reachable_gates": [
+    "V1",
     "V2",
     "V5",
     "V7"
   ],
   "input_unreachable_gates": [
     "V0",
-    "V1",
     "V3",
     "V4",
     "V6"
@@ -468,9 +468,6 @@
     "V0": [
       "lint_result"
     ],
-    "V1": [
-      "entries"
-    ],
     "V3": [
       "source_keywords",
       "content_keywords",
@@ -487,7 +484,7 @@
       "pixel_valid"
     ]
   },
-  "input_reachability_note": "3 of the 8 gates that DECLARE required inputs have them produced by this pipeline; 25 gates declare no required inputs (reachability not asserted). 5 will always report skipped because no module produces a required key: V0(lint_result), V1(entries), V3(source_keywords,content_keywords,source_texts), V4(voice_id,segments), V6(avg_brightness,contrast,opacity,pixel_valid).",
+  "input_reachability_note": "4 of the 8 gates that DECLARE required inputs have them produced by this pipeline; 25 gates declare no required inputs (reachability not asserted). 4 will always report skipped because no module produces a required key: V0(lint_result), V3(source_keywords,content_keywords,source_texts), V4(voice_id,segments), V6(avg_brightness,contrast,opacity,pixel_valid).",
   "boundary_only_mcp": [
     "run_validation_suite"
   ],
@@ -527,8 +524,8 @@
     "gates_missing": 4,
     "gates_phantom": 0,
     "gates_unreachable": 2,
-    "gates_input_reachable": 3,
-    "gates_input_unreachable": 5,
+    "gates_input_reachable": 4,
+    "gates_input_unreachable": 4,
     "gates_input_unknown": 25,
     "gates_boundary_only": 0,
     "modes_declared": 9,
