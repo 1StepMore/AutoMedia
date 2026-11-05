@@ -68,11 +68,12 @@ function load(z) {
       : "（暂无项目）";
   });
   if (z === "accounts") fetch("/api/accounts").then(r => r.json()).then(d => {
-    document.getElementById("accounts-body").innerHTML = d.accounts.length
+    const warning = d.warning ? `<p class="bad">${d.warning}</p>` : "";
+    document.getElementById("accounts-body").innerHTML = warning + (d.accounts.length
       ? "<table><tr><th>ID</th><th>平台</th><th>标签</th><th>类型</th><th>状态</th></tr>" +
         d.accounts.map(a => `<tr><td>${a.account_id}</td><td>${a.platform}</td><td>${a.label || ""}</td><td>${a.auth_type}</td><td>${a.status}</td></tr>`).join("") +
         "</table>"
-      : "（无账号）";
+      : (d.warning ? "" : "（无账号）"));
   });
 }
 function openProject(id) {
@@ -97,7 +98,17 @@ function startRun() {
 }
 function pollProgress() {
   fetch("/api/run/progress").then(r => r.json()).then(d => {
-    document.getElementById("run-progress").textContent = JSON.stringify(d.progress, null, 2);
+    const p = d.progress || {};
+    const done = (p.gates_done || []).length;
+    const mark = { passed: "✓", failed: "✗", skipped: "–", running: "…", awaiting_hitl: "⏸" };
+    const events = (p.events || []).slice(-8)
+      .map(e => `${e.gate_name || "?"} ${mark[e.status] || e.status} ${e.duration_s ? e.duration_s.toFixed(1) + "s" : ""}`)
+      .join("\n");
+    document.getElementById("run-progress").textContent =
+      `当前门: ${p.current_gate || "—"}\n` +
+      `进度: ${done}/${p.total_gates || 0}   耗时: ${(p.elapsed_s || 0).toFixed(0)}s\n` +
+      (p.error ? `错误: ${p.error}\n` : "") +
+      (events ? `\n最近事件:\n${events}` : "");
     if (d.finished) {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       document.getElementById("run-status").textContent = "完成: " + (d.status || "");

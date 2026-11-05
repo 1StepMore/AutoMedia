@@ -37,6 +37,24 @@ _INDEX_HTML_PATH = Path(__file__).parent / "ui_static" / "index.html"
 
 _PROJECT_INFO_NAME = "00_project_info.json"
 
+_SECRET_MARKERS = ("key", "secret", "password", "token")
+
+
+def _redact(value: object) -> object:
+    """Recursively redact values whose mapping key names look secret-bearing."""
+    if isinstance(value, dict):
+        return {
+            k: (
+                "…"
+                if isinstance(k, str) and any(m in k.lower() for m in _SECRET_MARKERS)
+                else _redact(v)
+            )
+            for k, v in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_redact(v) for v in value]
+    return value
+
 #: Run-state shared between the run thread and the progress endpoint.
 _run_state: dict[str, Any] = {
     "running": False,
@@ -89,10 +107,7 @@ def create_app() -> FastAPI:
         ]
         try:
             cfg = load_config()
-            redacted = {
-                k: ("…" if any(s in k for s in ("key", "secret", "password", "token")) else v)
-                for k, v in cfg.items()
-            }
+            redacted = _redact(cfg)
         except Exception:
             redacted = {}
         return {"config": redacted, "dependencies": deps}
@@ -115,6 +130,7 @@ def create_app() -> FastAPI:
             finished=False,
             status="",
             progress=progress.get_progress(),
+            tracker=progress,
         )
 
         def _worker() -> None:
@@ -138,7 +154,11 @@ def create_app() -> FastAPI:
 
     @web.get("/api/run/progress")
     def run_progress() -> dict[str, Any]:
-        return dict(_run_state)
+        state = dict(_run_state)
+        tracker = state.pop("tracker", None)
+        if tracker is not None:
+            state["progress"] = tracker.get_progress()
+        return state
 
     @web.get("/api/projects")
     def projects() -> dict[str, Any]:
@@ -169,6 +189,13 @@ def create_app() -> FastAPI:
     def accounts() -> dict[str, Any]:
         from automedia.accounts.registry import AccountRegistry
 
+        try:
+            accounts_list = AccountRegistry().list()
+        except ValueError:
+            return {
+                "accounts": [],
+                "warning": "AUTOMEDIA_MASTER_KEY 未配置，账号功能不可用",
+            }
         items = [
             {
                 "account_id": a["account_id"],
@@ -177,7 +204,7 @@ def create_app() -> FastAPI:
                 "auth_type": a.get("auth_type", ""),
                 "status": a.get("status", ""),
             }
-            for a in AccountRegistry().list()
+            for a in accounts_list
         ]
         return {"accounts": items}
 
