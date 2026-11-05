@@ -2202,6 +2202,10 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         gate_context: 门之间共享的上下文；就地写回产物路径与 V7 的产物清单。
     """
     text = _media_narration_text(gate_context)
+    # V5 的字幕基准（#392）：TTS 实际念的旁白原文。``text`` 已由
+    # ``_media_narration_text`` 选定（CW 正文或源材料）；缺失时 V5 如实
+    # 退化为 ASR 基准。
+    gate_context["narration_text"] = text
     project_dir = str(gate_context.get("project_dir", "") or "")
     if not text or not project_dir:
         _note_media_stage(gate_context, "no_content", mode=str(gate_context.get("mode", "")))
