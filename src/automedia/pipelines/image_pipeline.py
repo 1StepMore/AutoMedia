@@ -17,6 +17,9 @@ from typing import TYPE_CHECKING, Any, cast
 from structlog import get_logger
 
 if TYPE_CHECKING:
+    from PIL.ImageDraw import ImageDraw
+    from PIL.ImageFont import FreeTypeFont
+
     from automedia.engines.base import BaseImageEngine
 
 from automedia.core.layout import BODY_IMAGES, COVER, FALLBACK_IMAGES, IMAGES
@@ -38,6 +41,24 @@ COVER_SPECS: dict[str, tuple[int, int]] = {
 
 BODY_IMAGE_SIZE: tuple[int, int] = (1600, 1200)  # 4:3 landscape
 BODY_IMAGE_MIN_SIDE: int = 800
+
+#: CJK-capable fonts for the deterministic text panel, most common first.
+#: ``load_default()`` cannot draw Chinese at all, so a missing font is reported
+#: rather than silently producing tofu boxes.
+_PANEL_FONT_CANDIDATES: tuple[str, ...] = (
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/simsun.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+)
+
+_PANEL_BG: tuple[int, int, int] = (17, 24, 39)
+_PANEL_FG: tuple[int, int, int] = (243, 244, 246)
+_PANEL_MUTED: tuple[int, int, int] = (148, 163, 184)
+_PANEL_ACCENT: tuple[int, int, int] = (56, 189, 248)
 ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 
 
@@ -388,48 +409,202 @@ class ImagePipeline:
         self,
         topic: str,
         project_dir: str,
+        *,
+        size: tuple[int, int] | None = None,
     ) -> str:
         """Generate a single fallback frame for video pipelines.
 
-        .. note::
-            Reserved for future use — not currently called from any
-            production pipeline code.
+        Tries the image engine with a prompt that is actually a picture
+        description, then falls back to a deterministic text panel (#377).
+        The old prompt — ``f"{topic} fallback frame"`` — was passed straight to
+        an SD model: for a Chinese topic it reads as random tokens, which is how
+        watermark-bearing stock photos of bedrooms ended up in a video about
+        content scheduling.
 
         Parameters
         ----------
         topic:
-            Content topic.
+            Content topic (also rendered as the panel heading).
         project_dir:
             Root project directory; frame is written to ``fallback/``.
+        size:
+            Target ``(width, height)``; defaults to :data:`BODY_IMAGE_SIZE`.
 
         Returns
         -------
         str
             Path to the fallback frame image, or ``""`` on failure.
         """
-        from automedia.engines.errors import EngineExecutionError
-
         fallback_dir = os.path.join(project_dir, IMAGES, "fallback")
         os.makedirs(fallback_dir, exist_ok=True)
 
-        w, h = BODY_IMAGE_SIZE  # 4:3 landscape default
+        w, h = size or BODY_IMAGE_SIZE
         output_path = os.path.join(fallback_dir, "fallback_frame.png")
         try:
             path = self._generate_with_chain(
-                f"{topic} fallback frame",
+                _generate_image_prompt(topic, "", 0),
                 w,
                 h,
                 output_path,
             )
-        except EngineExecutionError as exc:
+        except Exception as exc:
             logger.warning(
-                "Fallback frame generation failed: %s — continuing without images",
-                exc,
+                "Fallback frame generation failed: %s — rendering a text panel instead", exc
             )
-            return ""
+            return self.render_text_panel(topic, w, h, output_path, heading=topic)
 
         logger.info("Generated fallback frame → %s", path)
         return path
+
+    # ------------------------------------------------------------------
+    # Per-scene assets (#377)
+    # ------------------------------------------------------------------
+
+    def generate_scene_image(
+        self,
+        scene_text: str,
+        width: int,
+        height: int,
+        output_path: str,
+        *,
+        topic: str = "",
+        brand: str = "",
+        index: int = 0,
+    ) -> str:
+        """Generate one real image for a scene; raise when no engine can.
+
+        The prompt comes from :func:`_generate_image_prompt` (the same
+        LLM-backed builder the cover/body images use), not from the narration
+        itself: a Chinese sentence handed to an SD model is noise, which is how
+        the old ``"{topic} fallback frame"`` prompt produced bedrooms and
+        luggage racks for a video about scheduling.
+        """
+        prompt = _generate_image_prompt(topic or scene_text, brand, index)
+        logger.info("Generating scene image (%sx%s): %s", width, height, prompt[:80])
+        return self._generate_with_chain(prompt, width, height, output_path)
+
+    def render_text_panel(
+        self,
+        text: str,
+        width: int,
+        height: int,
+        output_path: str,
+        *,
+        heading: str = "",
+        index: int = 0,
+    ) -> str:
+        """Render *text* onto a deterministic panel image (#377).
+
+        No diffusion model, no stock photo, no third-party watermark: the same
+        input always yields the same picture, and the words on screen are the
+        words in the narration.  Returns ``""`` when Pillow or a CJK font is
+        missing — the caller then keeps whatever frame it already had.
+        """
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError:
+            logger.warning("Pillow not installed — cannot render a text panel")
+            return ""
+
+        font = self._load_panel_font(max(24, width // 20))
+        if font is None:
+            logger.warning("No CJK font found — cannot render a readable text panel")
+            return ""
+
+        image = Image.new("RGB", (width, height), _PANEL_BG)
+        draw = ImageDraw.Draw(image)
+        margin = max(40, width // 18)
+
+        # Accent bar + heading (topic or scene label) keep panels distinguishable.
+        draw.rectangle([margin, margin, margin + 8, margin + 96], fill=_PANEL_ACCENT)
+        heading_font = self._load_panel_font(max(20, width // 34))
+        if heading:
+            draw.text((margin + 28, margin + 6), heading, font=heading_font, fill=_PANEL_MUTED)
+
+        body_font, lines = self._fit_panel_text(
+            draw, text, body_font_size=int(font.size), panel_width=width
+        )
+        if body_font is None:  # pragma: no cover - font was loaded above
+            return ""
+        line_height = int(body_font.size * 1.5)
+        block_height = line_height * len(lines)
+        y = max(margin + 120, (height - block_height) // 2)
+        for line in lines:
+            draw.text((margin + 28, y), line, font=body_font, fill=_PANEL_FG)
+            y += line_height
+
+        if index:
+            draw.text(
+                (margin + 28, height - margin - 24),
+                f"{index:02d}",
+                font=heading_font,
+                fill=_PANEL_MUTED,
+            )
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        image.save(output_path)
+        logger.info("Rendered text panel → %s", output_path)
+        return os.path.abspath(output_path)
+
+    @staticmethod
+    def _load_panel_font(size: int) -> FreeTypeFont | None:
+        """Load the first available CJK font at *size*; ``None`` when none exist."""
+        from PIL import ImageFont
+
+        for candidate in _PANEL_FONT_CANDIDATES:
+            if os.path.isfile(candidate):
+                try:
+                    return ImageFont.truetype(candidate, size)
+                except OSError:  # pragma: no cover - corrupt/unreadable font
+                    continue
+        return None
+
+    def _fit_panel_text(
+        self,
+        draw: ImageDraw,
+        text: str,
+        *,
+        body_font_size: int,
+        panel_width: int,
+    ) -> tuple[FreeTypeFont | None, list[str]]:
+        """Wrap *text* to the panel width, shrinking the font until it fits."""
+        max_width = panel_width - 2 * max(40, panel_width // 18) - 28
+        max_lines = 6
+        size = body_font_size
+        while size >= 20:
+            font = self._load_panel_font(size)
+            if font is None:  # pragma: no cover - guarded by the caller
+                break
+            lines = self._wrap_by_pixels(draw, text, font, max_width)
+            if len(lines) <= max_lines:
+                return font, lines
+            size = int(size * 0.85)
+        fallback_font = self._load_panel_font(20)
+        if fallback_font is None:  # pragma: no cover - guarded by the caller
+            return None, []
+        return fallback_font, self._wrap_by_pixels(draw, text, fallback_font, max_width)[:max_lines]
+
+    @staticmethod
+    def _wrap_by_pixels(
+        draw: ImageDraw, text: str, font: FreeTypeFont, max_width: float
+    ) -> list[str]:
+        """Greedy character wrap — correct for CJK, acceptable for Latin."""
+        lines: list[str] = []
+        current = ""
+        for char in text.replace("\r", ""):
+            if char == "\n":
+                lines.append(current)
+                current = ""
+                continue
+            candidate = current + char
+            if draw.textlength(candidate, font=font) <= max_width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = char
+        if current:
+            lines.append(current)
+        return [line for line in lines if line.strip()]
 
 
 # ---------------------------------------------------------------------------

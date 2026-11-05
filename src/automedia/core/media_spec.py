@@ -10,7 +10,7 @@ a media spec silently missing (issue #283).
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -132,7 +132,7 @@ def resolve_media_specs(
 
 
 def get_active_media_spec(
-    gate_context: dict[str, Any],
+    gate_context: Any,  # noqa: ANN401 — heterogeneous gate-context bag
     platform: str | None = None,
 ) -> PlatformMediaSpec:
     """Get active media spec from gate context, optionally for a specific platform.
@@ -148,14 +148,47 @@ def get_active_media_spec(
     Returns:
         A PlatformMediaSpec for the given or first active platform.
     """
-    media_specs: dict[str, PlatformMediaSpec] = gate_context.get("media_specs", {})
+    media_specs = cast("dict[str, PlatformMediaSpec]", gate_context.get("media_specs") or {})
 
     if platform is not None:
         return media_specs.get(platform, DEFAULT_SPEC)
 
     # No platform specified — use first platform's spec or DEFAULT_SPEC
-    brand_platforms: list[str] = gate_context.get("brand_platforms", [])
+    brand_platforms = cast("list[str]", gate_context.get("brand_platforms") or [])
     if brand_platforms:
         return media_specs.get(brand_platforms[0], DEFAULT_SPEC)
 
     return DEFAULT_SPEC
+
+
+def get_video_media_spec(gate_context: Any) -> PlatformMediaSpec:  # noqa: ANN401 — gate context bag
+    """Resolve the media spec the **video** output must satisfy (#378).
+
+    ``brand_platforms`` is ordered by the brand profile, and the first entry is
+    not necessarily a video platform (``wechat`` resolves to a 900x383 JPG).
+    Taking that spec for a ``short-video`` run would render a 900x383 video, so
+    walk the list and take the first platform that asks for a video container.
+
+    Falls back to ``DEFAULT_SPEC`` (1080p16:9) when the brand declares no video
+    platform — a run without a platform must still pick *some* size, and the
+    engine config can always override it.
+
+    Args:
+        gate_context: Dict with ``media_specs`` (resolved specs) and
+            ``brand_platforms`` (ordered platform names).
+
+    Returns:
+        The spec of the first video-capable platform, else ``DEFAULT_SPEC``.
+    """
+    media_specs = cast("dict[str, PlatformMediaSpec]", gate_context.get("media_specs") or {})
+    platforms = gate_context.get("brand_platforms") or []
+    for platform in cast("list[str]", platforms):
+        spec = media_specs.get(platform)
+        if spec is not None and _is_video_spec(spec):
+            return spec
+    return DEFAULT_SPEC
+
+
+def _is_video_spec(spec: PlatformMediaSpec) -> bool:
+    """Whether *spec* describes a video container (mp4 and friends)."""
+    return spec.format in {"mp4", "mov", "webm"} or spec.fps > 0

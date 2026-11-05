@@ -32,7 +32,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_VOICE: str = "zh-CN-YunxiNeural"
-DEFAULT_WHISPER_MODEL: str = "tiny"
+#: Last-resort ASR model when the config names none.  ``tiny`` is fast but its
+#: Chinese output is unusable even as a validation signal (see #376), and the
+#: transcript is never shown to a viewer anymore — subtitles come from the
+#: script (``generate_srt_from_script``).
+DEFAULT_WHISPER_MODEL: str = "small"
 DEFAULT_LANGUAGE: str = "zh"
 
 
@@ -370,6 +374,175 @@ class AudioPipeline:
         return os.path.abspath(output_path)
 
     # ------------------------------------------------------------------
+    # Script-derived subtitles (#376)
+    # ------------------------------------------------------------------
+
+    #: Longest caption cue, in characters.  Two lines of 9 CJK characters fit a
+    #: phone screen without shrinking the type; longer cues get split.
+    _SRT_CUE_MAX_CHARS: int = 18
+
+    #: Shortest acceptable cue.  A hard wrap can leave a 2-character tail
+    #: ("做法") flashing for a third of a second; such fragments are merged
+    #: back into their predecessor.
+    _SRT_CUE_MIN_CHARS: int = 6
+
+    def generate_srt_from_script(
+        self,
+        script: str,
+        total_duration: float,
+        output_path: str,
+    ) -> str:
+        """Build subtitles from the **script text**, allocating time by length.
+
+        The project rule is "subtitles come from the script; Whisper is for
+        validation only".  Feeding a ``tiny`` Whisper transcript straight into
+        the SRT produced captions like 「新浩新浩 导映短视频脚本…」 — wrong
+        characters and Traditional forms that every viewer would see (#376).
+
+        Cue text therefore comes from the script verbatim; only the *timing* is
+        estimated, in proportion to each cue's character count.
+
+        Parameters
+        ----------
+        script:
+            Narration text as spoken (markdown markers are stripped).
+        total_duration:
+            Measured audio duration in seconds; cues are distributed over it.
+        output_path:
+            Destination ``.srt`` path.
+
+        Returns
+        -------
+        str
+            Absolute path to the SRT, or ``""`` when there is nothing to write.
+        """
+        cues = self.split_caption_cues(script)
+        if not cues or total_duration <= 0:
+            logger.warning(
+                "generate_srt_from_script: nothing to write (cues=%d, duration=%.2f)",
+                len(cues),
+                total_duration,
+            )
+            return ""
+        return self._write_timed_cues(self._distribute_cues(cues, 0.0, total_duration), output_path)
+
+    def generate_srt_from_scenes(
+        self,
+        scenes: list[dict[str, Any]],
+        output_path: str,
+    ) -> str:
+        """Build subtitles from narration-aligned scenes.
+
+        Uses each scene's measured ``start``/``duration`` (the ffprobe cut
+        points) and splits its text into cues proportionally — the most
+        accurate timing available without an ASR pass.
+        """
+        timed: list[tuple[float, float, str]] = []
+        for scene in scenes:
+            text = str(scene.get("text", "") or "")
+            start = float(scene.get("start", 0.0) or 0.0)
+            duration = float(scene.get("duration", 0.0) or 0.0)
+            cues = self.split_caption_cues(text)
+            if not cues or duration <= 0:
+                continue
+            timed.extend(self._distribute_cues(cues, start, duration))
+        if not timed:
+            logger.warning("generate_srt_from_scenes: no timed cues produced")
+            return ""
+        return self._write_timed_cues(timed, output_path)
+
+    def split_caption_cues(self, text: str) -> list[str]:
+        """Split narration into caption-sized cues, preserving the words.
+
+        Sentence punctuation ends a cue; over-long sentences are hard-wrapped
+        at :data:`_SRT_CUE_MAX_CHARS`.  Markdown heading/bullet markers are
+        dropped — they are structure, not narration.
+        """
+        cleaned_lines: list[str] = []
+        for raw_line in (text or "").splitlines():
+            line = raw_line.strip()
+            # Markdown headings are section labels, not narration — the
+            # narrator does not read them either (runner._strip_narration_markup).
+            if not line or line.startswith("#"):
+                continue
+            line = re.sub(r"^(?:[-*>]\s*)+", "", line).strip()
+            if line:
+                cleaned_lines.append(line)
+        cleaned = "\n".join(cleaned_lines).strip()
+        if not cleaned:
+            return []
+
+        cues: list[str] = []
+        for sentence in re.findall(r"[^。！？!?；;\n]+[。！？!?；;]?", cleaned):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            while len(sentence) > self._SRT_CUE_MAX_CHARS:
+                # Prefer breaking *after* a comma so a cue never splits a
+                # phrase — and never swallows the comma itself.
+                split_at = sentence.rfind("，", 0, self._SRT_CUE_MAX_CHARS + 1)
+                if split_at > 0:
+                    cues.append(sentence[: split_at + 1].strip())
+                    sentence = sentence[split_at + 1 :].strip()
+                else:
+                    cues.append(sentence[: self._SRT_CUE_MAX_CHARS].strip())
+                    sentence = sentence[self._SRT_CUE_MAX_CHARS :].strip()
+            if sentence:
+                cues.append(sentence)
+
+        # Fold sub-second tails back into the previous cue so the caption does
+        # not flash a two-character fragment.
+        merged: list[str] = []
+        for cue in cues:
+            if (
+                merged
+                and len(cue) < self._SRT_CUE_MIN_CHARS
+                and len(merged[-1]) + len(cue) <= self._SRT_CUE_MAX_CHARS + 6
+            ):
+                merged[-1] += cue
+                continue
+            merged.append(cue)
+        return merged
+
+    @staticmethod
+    def _distribute_cues(
+        cues: list[str],
+        start: float,
+        duration: float,
+    ) -> list[tuple[float, float, str]]:
+        """Allocate *duration* across *cues* in proportion to their length."""
+        weights = [max(1, len(cue)) for cue in cues]
+        total = sum(weights)
+        timed: list[tuple[float, float, str]] = []
+        cursor = start
+        for cue, weight in zip(cues, weights, strict=True):
+            span = duration * weight / total
+            timed.append((cursor, cursor + span, cue))
+            cursor += span
+        return timed
+
+    @staticmethod
+    def _write_timed_cues(
+        timed: list[tuple[float, float, str]],
+        output_path: str,
+    ) -> str:
+        """Serialise ``(start, end, text)`` cues to an SRT file."""
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        lines: list[str] = []
+        for idx, (start, end, text) in enumerate(timed, start=1):
+            lines.append(str(idx))
+            lines.append(
+                f"{AudioPipeline._seconds_to_srt_time(start)} --> "
+                f"{AudioPipeline._seconds_to_srt_time(end)}"
+            )
+            lines.append(text)
+            lines.append("")
+        with open(output_path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines))
+        logger.info("Script-derived SRT: wrote %d cues → %s", len(timed), output_path)
+        return os.path.abspath(output_path)
+
+    # ------------------------------------------------------------------
     # SRT proofreading (brand name check + sentence optimization)
     # ------------------------------------------------------------------
 
@@ -485,11 +658,17 @@ class AudioPipeline:
 
     @staticmethod
     def _seconds_to_srt_time(seconds: float) -> str:
-        """Convert seconds to SRT timestamp format ``HH:MM:SS,mmm``."""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        millis = round((seconds - int(seconds)) * 1000)
+        """Convert seconds to SRT timestamp format ``HH:MM:SS,mmm``.
+
+        Rounds to whole milliseconds *before* decomposing: rounding the
+        fractional part alone could emit ``,1000`` (e.g. 11.9996s →
+        ``00:00:11,1000``), which is not a valid SRT timestamp and some players
+        reject the cue.
+        """
+        total_ms = max(0, round(seconds * 1000))
+        hours, rem = divmod(total_ms, 3_600_000)
+        minutes, rem = divmod(rem, 60_000)
+        secs, millis = divmod(rem, 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
     @staticmethod

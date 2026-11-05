@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import subprocess
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -470,3 +472,88 @@ class TestHelperFunctions:
 
     def test_is_similar_length_diff_exceeds_max(self) -> None:
         assert _is_similar("AB", "ABCDEFG", max_dist=2) is False
+
+
+# ---------------------------------------------------------------------------
+# Script-derived subtitles (#376)
+# ---------------------------------------------------------------------------
+
+
+class TestScriptDerivedSrt:
+    """Subtitles come from the script; Whisper is validation only.
+
+    The old path wrote the raw ``tiny`` Whisper transcript into the SRT, so
+    Chinese captions carried wrong characters and Traditional forms
+    (「新浩新浩 导映短视频脚本…」) straight into the video.
+    """
+
+    _SCRIPT = (
+        "三个人管六个账号，排期全靠一张嘴？难怪总在最后一刻赶稿。"
+        "我是壹目贯维，一家AI内容生产服务商。"
+    )
+
+    def test_text_is_the_script_verbatim(self, tmp_path: Any) -> None:
+        out = str(tmp_path / "n.srt")
+        path = AudioPipeline().generate_srt_from_script(self._SCRIPT, 12.0, out)
+        content = Path(path).read_text(encoding="utf-8")
+        # Strip sequence numbers and timestamps, keep the words.
+        spoken = "".join(
+            line
+            for line in content.splitlines()
+            if line.strip() and not line.strip().isdigit() and "-->" not in line
+        )
+        assert spoken == self._SCRIPT
+
+    def test_timestamps_are_monotonic_and_end_at_duration(self, tmp_path: Any) -> None:
+        path = AudioPipeline().generate_srt_from_script(self._SCRIPT, 12.0, str(tmp_path / "n.srt"))
+        spans = _parse_srt_spans(Path(path).read_text(encoding="utf-8"))
+        assert spans[0][0] == 0.0
+        assert abs(spans[-1][1] - 12.0) < 0.01
+        for (_, end), (start, _) in itertools.pairwise(spans):
+            assert abs(end - start) < 0.01
+
+    def test_timestamps_never_emit_four_digit_millis(self, tmp_path: Any) -> None:
+        path = AudioPipeline().generate_srt_from_script(
+            self._SCRIPT, 11.9996, str(tmp_path / "n.srt")
+        )
+        content = Path(path).read_text(encoding="utf-8")
+        assert ",1000" not in content
+
+    def test_markdown_headings_are_not_captioned(self, tmp_path: Any) -> None:
+        script = "## 抖音短视频脚本：小团队内容排期\n\n### 黄金开头\n\n真正的口播从这一句开始。"
+        path = AudioPipeline().generate_srt_from_script(script, 5.0, str(tmp_path / "h.srt"))
+        content = Path(path).read_text(encoding="utf-8")
+        assert "抖音短视频脚本" not in content
+        assert "黄金开头" not in content
+        assert "真正的口播从这一句开始。" in content
+
+    def test_scene_timings_are_used_verbatim(self, tmp_path: Any) -> None:
+        scenes = [
+            {"text": "第一句口播。", "start": 0.0, "duration": 3.0},
+            {"text": "第二句口播。", "start": 3.0, "duration": 4.0},
+        ]
+        path = AudioPipeline().generate_srt_from_scenes(scenes, str(tmp_path / "s.srt"))
+        spans = _parse_srt_spans(Path(path).read_text(encoding="utf-8"))
+        assert spans[0] == (0.0, 3.0)
+        assert spans[-1][1] == 7.0
+
+    def test_empty_script_returns_empty_string(self, tmp_path: Any) -> None:
+        assert AudioPipeline().generate_srt_from_script("", 12.0, str(tmp_path / "e.srt")) == ""
+        assert AudioPipeline().generate_srt_from_script("文字", 0.0, str(tmp_path / "z.srt")) == ""
+
+
+def _parse_srt_spans(content: str) -> list[tuple[float, float]]:
+    """Extract ``(start, end)`` seconds from every SRT cue."""
+    spans: list[tuple[float, float]] = []
+    for line in content.splitlines():
+        if "-->" not in line:
+            continue
+        start_s, end_s = (part.strip() for part in line.split("-->"))
+
+        def _to_seconds(stamp: str) -> float:
+            hh, mm, rest = stamp.split(":")
+            ss, ms = rest.split(",")
+            return int(hh) * 3600 + int(mm) * 60 + int(ss) + int(ms) / 1000
+
+        spans.append((_to_seconds(start_s), _to_seconds(end_s)))
+    return spans

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
-from automedia.core.layout import AUDIO, DRAFTS, VIDEO
+from automedia.core.layout import AUDIO, DRAFTS, IMAGES, VIDEO
 from automedia.core.overrides import OverridesLoader
 from automedia.core.platforms import platform_categories
 from automedia.pipelines import gate_plan
@@ -1914,6 +1915,19 @@ def _collect_video_assets(
         "template_dir": "",  # empty string = use shipped default hyperframes templates
         "content": content,
     }
+    # Target frame size from the active platform's media spec (#378).  The
+    # engine used to default to 1920x1080 unconditionally, so a douyin run
+    # shipped a landscape video.  When no platform declares a *video* spec the
+    # size is left unset on purpose: the engine config (or its own default) is
+    # the operator's override and must not be shadowed by a generic 1080p.
+    from automedia.core.media_spec import DEFAULT_SPEC, get_video_media_spec
+
+    spec = get_video_media_spec(gate_context)
+    if spec is not DEFAULT_SPEC and spec.width > 0 and spec.height > 0:
+        assets["width"] = spec.width
+        assets["height"] = spec.height
+        if spec.fps > 0:
+            assets["fps"] = spec.fps
     # Narration-aligned scene timeline (#351): per-scene durations/text plus
     # per-scene media drive the multi-scene composition.
     timeline_scenes = gate_context.get("video_timeline_scenes") or []
@@ -2041,6 +2055,28 @@ def _media_modality_available(
     return _cli_smoke_probe(cli_command)
 
 
+def _strip_narration_markup(text: str) -> str:
+    """Drop markdown structure so the narrator reads prose, not headings.
+
+    中文说明：CW 产出的是 Markdown 稿（``## 抖音短视频脚本：…`` /
+    ``### 黄金开头``）。整段交给 TTS，旁白会真的把标题念出来（"抖音短视频脚本
+    冒号…黄金开头"），字幕也跟着出现结构词。标题是给人看的分节标记，不是口播
+    内容，因此在进入旁白之前剔除；列表/引用标记只去掉符号、保留文字。
+    """
+    lines: list[str] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Horizontal rules and empty bullet scaffolding carry no words.
+        if not line.strip("-*_ "):
+            continue
+        line = re.sub(r"^(?:[-*>]\s*)+", "", line).strip()
+        if line:
+            lines.append(line)
+    return "\n".join(lines).strip()
+
+
 def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
     """媒体旁白文本：CW 产出的内容 → 源材料 → 空字符串（表示"无从产出"）。
 
@@ -2057,8 +2093,8 @@ def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
     """
     content = str(gate_context.get("content", "") or "").strip()
     if content and not content.startswith(_CONTENT_PLACEHOLDER_PREFIX):
-        return content
-    return str(gate_context.get("source_content", "") or "").strip()
+        return _strip_narration_markup(content)
+    return _strip_narration_markup(str(gate_context.get("source_content", "") or "").strip())
 
 
 def _note_media_stage(
@@ -2263,18 +2299,49 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     gate_context["audio_path"] = audio_path
 
     # 转写段：失败只降级 V2/V5（如实跳过），不外抛、不丢音频、不阻断视频。
-    transcription: dict[str, Any] = {}
+    # 字幕段（#376）：SRT 文本必须来自**脚本原文**，Whisper 只做校验。
+    # 此前直接把 tiny Whisper 的转写当 SRT，中文错字 + 繁体（"新浩新浩 导映
+    # 短视频脚本…"）会原样烧进成片。时间轴优先用逐场实测切点，其次按字符数
+    # 在音频总时长上等比分配。
+    from automedia.pipelines.video_timeline import probe_audio_duration
+
+    script_srt = os.path.join(audio_dir, "narration.srt")
     srt_path = ""
     try:
+        scene_timeline = list(gate_context.get("video_timeline_scenes") or [])
+        if scene_timeline:
+            srt_path = audio.generate_srt_from_scenes(scene_timeline, script_srt)
+        else:
+            measured = probe_audio_duration(audio_path) or 0.0
+            srt_path = audio.generate_srt_from_script(text, measured, script_srt)
+    except Exception as exc:
+        _note_media_stage(gate_context, "srt_from_script_failed", error=str(exc)[:200])
+        log.warning("pipeline.media_stage.srt_from_script_failed", error=str(exc))
+
+    # 转写段：只作校验信号（V2/V5）。失败不连坐音频与字幕（issue #343）。
+    transcription: dict[str, Any] = {}
+    try:
         transcription = audio.transcribe_audio(audio_path)
-        srt_path = audio.generate_srt(transcription, os.path.join(audio_dir, "narration.srt"))
     except Exception as exc:
         _note_media_stage(gate_context, "transcription_failed", error=str(exc))
         log.warning(
             "pipeline.media_stage.transcription_failed",
             error=str(exc),
-            hint="audio kept — V2/V5 will report skipped; video continues without subtitles",
+            hint="audio kept — V2/V5 will report skipped",
         )
+
+    # 兜底：脚本不可用（无正文 / 无时长）时才退回转写文本，并如实记账。
+    if not srt_path and transcription:
+        try:
+            srt_path = audio.generate_srt(transcription, script_srt)
+            _note_media_stage(gate_context, "srt_from_transcript", reason="script text unavailable")
+            log.warning(
+                "pipeline.media_stage.srt_from_transcript",
+                hint="script text unavailable — subtitles fall back to the ASR transcript",
+            )
+        except Exception as exc:
+            _note_media_stage(gate_context, "srt_write_failed", error=str(exc)[:200])
+            log.warning("pipeline.media_stage.srt_write_failed", error=str(exc))
 
     transcript_text = str(transcription.get("text", "") or "").strip()
     srt_text = ""
@@ -2310,17 +2377,26 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         )
 
     # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
-    from automedia.pipelines.image_pipeline import ImagePipeline
+    from automedia.pipelines.image_pipeline import BODY_IMAGE_SIZE, ImagePipeline
 
     image_pipeline = ImagePipeline(config=gate_context.get("config"))
     frame = image_pipeline.generate_fallback_frame(str(gate_context.get("topic", "")), project_dir)
     if frame:
         gate_context["fallback_frame"] = frame
 
-    # 每场素材（#351）：优先复用封面/正文图，不足的场用图片链生成文字面板。
+    # 每场素材（#351 / #377）：优先复用封面/正文图；不足的场**逐场**出图，
+    # 出图失败才降级为本地文字面板。此前是把同一张 fallback 帧复制 N 份，
+    # 等于全片只有一张与选题无关的图（#377）。
     timeline_scenes: list[dict[str, Any]] = list(gate_context.get("video_timeline_scenes") or [])
     scene_media: list[str] = []
     if timeline_scenes:
+        from automedia.core.media_spec import get_video_media_spec
+
+        scene_spec = get_video_media_spec(gate_context)
+        scene_w = scene_spec.width or BODY_IMAGE_SIZE[0]
+        scene_h = scene_spec.height or BODY_IMAGE_SIZE[1]
+        scene_dir = os.path.join(project_dir, IMAGES, "scenes")
+        os.makedirs(scene_dir, exist_ok=True)
         existing_media = [
             p
             for p in [
@@ -2329,20 +2405,72 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             ]
             if p and os.path.isfile(p)
         ]
-        for i in range(len(timeline_scenes)):
+        topic = str(gate_context.get("topic", "") or "")
+        brand = str(gate_context.get("brand", "") or "")
+        panels = 0
+        generated = 0
+        reused = 0
+        for i, scene in enumerate(timeline_scenes):
             src = existing_media[i] if i < len(existing_media) else ""
-            if not src and frame:
-                dest = os.path.join(os.path.dirname(frame), f"scene-{i + 1:02d}.png")
+            if src:
+                reused += 1
+            if not src:
+                scene_text = str(scene.get("text", "") or "")
+                dest = os.path.join(scene_dir, f"scene-{i + 1:02d}.png")
                 try:
-                    shutil.copy2(frame, dest)
-                    src = dest
-                except OSError as exc:
-                    log.warning("pipeline.scene_media_copy_failed", error=str(exc))
+                    src = image_pipeline.generate_scene_image(
+                        scene_text,
+                        scene_w,
+                        scene_h,
+                        dest,
+                        topic=topic,
+                        brand=brand,
+                        index=i,
+                    )
+                    generated += 1
+                except Exception as exc:
+                    _note_media_stage(
+                        gate_context,
+                        "scene_image_failed",
+                        scene=i + 1,
+                        error=str(exc)[:200],
+                    )
+                    log.warning(
+                        "pipeline.scene_image_failed",
+                        scene=i + 1,
+                        error=str(exc)[:200],
+                    )
+                    src = image_pipeline.render_text_panel(
+                        scene_text,
+                        scene_w,
+                        scene_h,
+                        dest,
+                        heading=topic,
+                        index=i + 1,
+                    )
+                    panels += 1
             if src:
                 scene_media.append(src)
         if scene_media:
             gate_context["scene_media"] = scene_media
-            log.info("pipeline.scene_media_ready", count=len(scene_media))
+            # 素材来源记账（#377）：文字面板的画面一定与文案同源；生成图则
+            # 无法在不调视觉模型的情况下自证与选题相关——把来源写进
+            # gate-report，读报告的人就知道这一片画面是"生成"还是"面板"。
+            _note_media_stage(
+                gate_context,
+                "scene_media",
+                count=len(scene_media),
+                generated=generated,
+                panels=panels,
+                reused=reused,
+            )
+            log.info(
+                "pipeline.scene_media_ready",
+                count=len(scene_media),
+                generated=generated,
+                panels=panels,
+                reused=reused,
+            )
 
     produced: list[str] = [audio_path]
     if complete_audio:
@@ -2371,6 +2499,25 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             gate_context["video_path"] = video_path
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)
+            # Degraded render must be visible, not just logged (#383): a
+            # slideshow is a still frame plus audio, and calling it "video
+            # produced" let a demo ship an mp4 nobody had really rendered.
+            if getattr(video_engine, "last_render_degraded", False):
+                reason = str(getattr(video_engine, "last_render_reason", "") or "")[:300]
+                gate_context["video_degraded"] = "slideshow"
+                gate_context["video_degraded_reason"] = reason
+                _note_media_stage(
+                    gate_context,
+                    "video_render_degraded",
+                    renderer="slideshow",
+                    reason=reason,
+                )
+                log.warning(
+                    "pipeline.video_degraded",
+                    renderer="slideshow",
+                    reason=reason,
+                    path=video_path,
+                )
         except (EngineExecutionError, EngineNotFoundError) as exc:
             # 显式报告（#351）：引擎不可用/渲染失败必须进 gate-report，
             # 禁止静默退化成整排 skipped 的 V 门。

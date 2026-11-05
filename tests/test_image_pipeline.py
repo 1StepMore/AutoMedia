@@ -57,6 +57,11 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         "automedia.engines.resolve_engine",
         _mock_resolve,
     )
+    # Prompt building asks an LLM; never let a unit test reach the network.
+    monkeypatch.setattr(
+        "automedia.pipelines.image_pipeline._generate_image_prompt",
+        lambda *args, **kwargs: "a clean flat illustration, no text, no watermark",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -347,3 +352,53 @@ class TestVisionQADegradation:
         assert result["std_luminance"] > 0
         assert result["min_luminance"] == 0
         assert result["max_luminance"] == 255
+
+
+# ---------------------------------------------------------------------------
+# Text panel fallback (#377)
+# ---------------------------------------------------------------------------
+
+
+class TestTextPanel:
+    """A scene without a generated image gets a deterministic text panel.
+
+    The old behaviour copied one ``fallback_frame.png`` into all six scenes, so
+    the video showed the same unrelated picture (with whatever watermark the
+    diffusion model produced) for its whole length.
+    """
+
+    def test_renders_requested_size(self, tmp_path: Any) -> None:
+        out = str(tmp_path / "panel.png")
+        path = ImagePipeline().render_text_panel(
+            "三个人管六个账号，排期全靠一张嘴？", 1080, 1920, out
+        )
+        assert path == os.path.abspath(out)
+        with Image.open(path) as img:
+            assert img.size == (1080, 1920)
+
+    def test_is_deterministic(self, tmp_path: Any) -> None:
+        first = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "a.png"))
+        second = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "b.png"))
+        with open(first, "rb") as fh_a, open(second, "rb") as fh_b:
+            assert fh_a.read() == fh_b.read()
+
+    def test_returns_empty_string_without_cjk_font(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No CJK font means no readable panel — the caller must know."""
+        monkeypatch.setattr(
+            "automedia.pipelines.image_pipeline._PANEL_FONT_CANDIDATES", ("/nonexistent.ttf",)
+        )
+        path = ImagePipeline().render_text_panel("文字", 320, 480, str(tmp_path / "p.png"))
+        assert path == ""
+
+    def test_wraps_long_text_into_multiple_lines(self, tmp_path: Any) -> None:
+        long_text = "这是一段很长的口播文案" * 12
+        out = str(tmp_path / "long.png")
+        path = ImagePipeline().render_text_panel(long_text, 1080, 1920, out)
+        assert path
+        with Image.open(path) as img:
+            # Text must not overflow the canvas: the right-most column stays
+            # pure background.
+            right_column = [img.getpixel((1079, y)) for y in range(0, 1920, 60)]
+        assert all(pixel == right_column[0] for pixel in right_column)
