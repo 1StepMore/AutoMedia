@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 from pathlib import Path
 from typing import ClassVar
 
@@ -345,6 +346,10 @@ class TestSaveModelConfig:
         assert data["llm"]["text_generation"]["provider"] == "deepseek"
         assert data["llm"]["text_generation"]["model"] == "deepseek-chat"
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Windows chmod only toggles the read-only flag; mode bits are not expressible",
+    )
     def test_chmod_0600_on_created_file(self, tmp_path: Path) -> None:
         """A newly created config file must be readable/writable by owner only."""
         path = tmp_path / "model_config.yaml"
@@ -556,7 +561,10 @@ class TestUserScopeGuard:
         target.write_text("llm:\n  text_generation:\n    provider: amd\n", encoding="utf-8")
 
         monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR")
+        # ``HOME`` drives POSIX resolution; Windows reads ``USERPROFILE``.  Set
+        # both so the test exercises the same guard on every platform.
         monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.setenv("USERPROFILE", str(fake_home))
 
         with pytest.raises(ValueError, match="real user config directory"):
             save_model_config(
@@ -575,7 +583,10 @@ class TestUserScopeGuard:
         target = fake_home / ".automedia" / "model_config.yaml"
 
         monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR")
+        # ``HOME`` drives POSIX resolution; Windows reads ``USERPROFILE``.  Set
+        # both so the test exercises the same guard on every platform.
         monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.setenv("USERPROFILE", str(fake_home))
 
         save_model_config(
             target,

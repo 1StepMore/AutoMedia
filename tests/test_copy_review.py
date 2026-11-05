@@ -176,6 +176,42 @@ class TestG2RealClarity:
         assert result["passed"] is True
 
 
+class TestG2ClarityChinese:
+    """中文判据：按字符而不是空白分词（#375）。
+
+    中文没有空格分词，``len(sent.split())`` 会把整句算成 1 个"词"，带 markdown
+    空格的脚本行又会被算成几十个"词"。此前中文短视频脚本因此恒定判失败，质量环
+    三次重试后触发 level-2，每轮 5–10 分钟仍然挂。
+    """
+
+    def test_short_chinese_script_passes(self) -> None:
+        content = "三个人管六个账号，排期全靠一张嘴？难怪总在最后一刻赶稿。"
+        result = _check_clarity(content)
+        assert result["passed"] is True, result["detail"]
+
+    def test_chinese_markdown_script_does_not_trip_word_count(self) -> None:
+        """带 `##`/`###` 的脚本行不能被数成"超长英文句"。"""
+        content = (
+            "## 抖音短视频脚本：小团队内容排期的实用做法\n\n"
+            "### 黄金开头\n\n"
+            "三个人管六个账号，排期全靠一张嘴？难怪总在最后一刻赶稿。\n"
+        )
+        result = _check_clarity(content)
+        assert result["passed"] is True, result["detail"]
+
+    def test_genuinely_rambling_chinese_sentence_fails(self) -> None:
+        long = "这是一句非常冗长而且没有断句的中文表述用来测试字符阈值是否生效" * 4
+        result = _check_clarity(long)
+        assert result["passed"] is False
+        assert "70 characters" in result["detail"]
+
+    def test_english_rule_unchanged(self) -> None:
+        long = " ".join(["word"] * 40) + "."
+        result = _check_clarity(long)
+        assert result["passed"] is False
+        assert "35 words" in result["detail"]
+
+
 class TestG2RealTone:
     """Real detection of tone mismatches."""
 
@@ -217,6 +253,26 @@ class TestG2RealSoWhat:
         result = _check_so_what(content)
         assert result["passed"] is False
         assert "why should" in result["detail"].lower()
+
+
+class TestG2SoWhatChinese:
+    """中文价值词表（#375）：英文关键词永远匹配不到中文内容。"""
+
+    def test_chinese_value_words_pass(self) -> None:
+        content = "这套模板能帮团队省下排版时间，效率翻倍，成本还降了一半。"
+        result = _check_so_what(content)
+        assert result["passed"] is True, result["detail"]
+
+    def test_chinese_without_value_words_fails(self) -> None:
+        content = "我们上周发布了新产品。团队为此付出了很多努力。"
+        result = _check_so_what(content)
+        assert result["passed"] is False
+        assert "why should" in result["detail"].lower()
+
+    def test_chinese_question_answer_pattern_passes(self) -> None:
+        content = "为什么排期总在最后一刻崩？因为没有人把重复动作固定下来。"
+        result = _check_so_what(content)
+        assert result["passed"] is True
 
 
 class TestG2RealEvidence:

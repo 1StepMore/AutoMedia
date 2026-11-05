@@ -66,6 +66,15 @@ _CTA_RE = re.compile(
 #: context window already used by :func:`_check_bridge_sentence`.
 _BRAND_IDENTITY_WINDOW_CHARS: int = 200
 
+#: Character window for **script-format** content (short-video, social thread).
+#: A video script opens with ``### 黄金开头`` — a 3-second hook that must not
+#: carry the brand positioning line — so the identity naturally lands in the
+#: *second* block ("我是壹目贯维，一家AI内容生产服务商").  Judging only the first
+#: block failed every real brand running ``short-video`` (#379).  300 characters
+#: covers the hook plus the opening voice-over without letting a brand hide its
+#: identity at the end of the script.
+_BRAND_IDENTITY_SCRIPT_WINDOW_CHARS: int = 300
+
 _EXPECTED_MAP: dict[str, str] = {
     "brand_name_present": "Brand name appears in content",
     "cta_present": "Call-to-action is present in content",
@@ -169,14 +178,35 @@ def _split_paragraphs(content: str) -> list[str]:
     return [block.strip() for block in re.split(r"\n\s*\n", content.strip()) if block.strip()]
 
 
-def _first_identity_window(content: str) -> tuple[str, str]:
+#: ``gate_context["content_format"]`` values that denote a spoken script rather
+#: than an article.  Scripts open with a hook, so the identity window widens.
+_SCRIPT_FORMATS: frozenset[str] = frozenset({"short_video", "social_thread"})
+
+
+def _is_script_format(gate_context: GateContext | dict[str, Any]) -> bool:
+    """True when the content is a spoken script (short-video / social thread)."""
+    return str(gate_context.get("content_format", "") or "") in _SCRIPT_FORMATS
+
+
+def _first_identity_window(content: str, *, script_format: bool = False) -> tuple[str, str]:
     """返回判定品牌身份所用的「正文首段」文本及其人类可读的窗口描述。
 
     中文说明：优先取正文的第一段——跳过开头的纯 Markdown 标题块（H1 标题
     不承载定位句）。若正文没有任何段落切分（整篇只有一个文本块），退化为
     **前 N 个字符**的窗口，``N = :data:`_BRAND_IDENTITY_WINDOW_CHARS```。
     返回的窗口描述用于失败信息，方便排障时知道「在哪个窗口找的」。
+
+    脚本格式（``script_format=True``，短视频 / 社媒串）改用前
+    :data:`_BRAND_IDENTITY_SCRIPT_WINDOW_CHARS` 个字符的窗口：这类稿子的第一段
+    必须是有钩子的开头（前 3 秒），品牌定位句按写作规范落在第二段，用「首段」
+    判定会把所有真实品牌判死（#379）。
     """
+    if script_format:
+        window = content.strip()[:_BRAND_IDENTITY_SCRIPT_WINDOW_CHARS]
+        return (
+            window,
+            f"first {_BRAND_IDENTITY_SCRIPT_WINDOW_CHARS} characters (script format)",
+        )
     paragraphs = _split_paragraphs(content)
     if len(paragraphs) > 1:
         for index, block in enumerate(paragraphs):
@@ -209,6 +239,8 @@ def _locate_identity(content: str, expected: str) -> str:
 def _check_brand_identity(
     content: str,
     brand_profile: dict[str, Any],
+    *,
+    script_format: bool = False,
 ) -> CheckResult:
     """Check 3: 品牌身份是否出现在正文首段。
 
@@ -237,7 +269,7 @@ def _check_brand_identity(
             "detail": "skipped (no declared identity)",
         }
 
-    window, window_desc = _first_identity_window(content)
+    window, window_desc = _first_identity_window(content, script_format=script_format)
     if _normalize_identity(expected) in _normalize_identity(window):
         return {
             "name": name,
@@ -431,6 +463,9 @@ class G3BrandCTA(BaseGate):
             - ``brand_identity``: str — declared brand identity
             - ``blocked_words``: list[str] — forbidden words
         - ``video_script`` (optional): str — for CTA direction sync check
+        - ``content_format`` (optional): str — ``"short_video"`` /
+          ``"social_thread"`` mark spoken scripts, whose identity window is
+          character-based instead of "first paragraph" (#379)
         - ``_mock_results`` (optional): dict mapping check names to
           ``{"passed": bool, "detail": str}`` — drives deterministic results
           for testing.
@@ -468,7 +503,14 @@ class G3BrandCTA(BaseGate):
         check_fns: list[tuple[str, Any]] = [
             ("brand_name_present", lambda: _check_brand_name_present(content, brand_profile)),
             ("cta_present", lambda: _check_cta_present(content)),
-            ("brand_identity", lambda: _check_brand_identity(content, brand_profile)),
+            (
+                "brand_identity",
+                lambda: _check_brand_identity(
+                    content,
+                    brand_profile,
+                    script_format=_is_script_format(gate_context),
+                ),
+            ),
             ("blocked_words_absent", lambda: _check_blocked_words(content, brand_profile)),
             (
                 "cta_direction_sync",

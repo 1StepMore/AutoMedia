@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Literal
 from unittest.mock import patch
@@ -238,6 +239,10 @@ class TestAllowlist:
         traversal = os.path.join(allowed, "..", "..", "etc")
         assert check_path_allowed(traversal, allowlist=allowlist) is False
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="creating symlinks on Windows needs Developer Mode/admin (ci.yml deselects these)",
+    )
     def test_symlink_outside_blocked(self, tmp_path: Path) -> None:
         """Symlink inside allowed dir pointing outside is blocked.
 
@@ -254,6 +259,10 @@ class TestAllowlist:
         # The symlink resolves to outside/ which is NOT under allowed/
         assert check_path_allowed(str(link), allowlist=allowlist) is False
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="creating symlinks on Windows needs Developer Mode/admin (ci.yml deselects these)",
+    )
     def test_symlink_to_allowed_works(self, tmp_path: Path) -> None:
         """Symlink outside → allowed dir is permitted (resolves correctly).
 
