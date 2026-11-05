@@ -7,6 +7,7 @@ used by most gates for deterministic test results.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -15,6 +16,28 @@ from structlog import get_logger
 from automedia.gates._result import CheckResult
 
 log = get_logger(__name__)
+
+#: Characters that make up Chinese/Japanese prose (CJK Unified + Ext-A).
+_CJK_CHAR_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+
+#: Share of CJK characters at which a document is treated as Chinese copy.
+#: A Chinese headline inside an English article must not flip the whole
+#: document onto the CJK judgement rules.
+_CJK_RATIO_THRESHOLD = 0.30
+
+
+def is_cjk_dominant(text: str, threshold: float = _CJK_RATIO_THRESHOLD) -> bool:
+    """Return ``True`` when *text* reads as Chinese (CJK-majority) copy.
+
+    Every judgement vocabulary in this repo started out English-only, which
+    made Chinese content fail forever (#375, #388).  Gates use this to pick the
+    matching rule set instead of piling Chinese into an English regex.
+    """
+    visible = [ch for ch in text if not ch.isspace()]
+    if not visible:
+        return False
+    cjk = sum(1 for ch in visible if _CJK_CHAR_RE.match(ch))
+    return cjk / len(visible) >= threshold
 
 
 def apply_mock_overrides(

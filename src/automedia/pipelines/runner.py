@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -2062,19 +2061,13 @@ def _strip_narration_markup(text: str) -> str:
     ``### 黄金开头``）。整段交给 TTS，旁白会真的把标题念出来（"抖音短视频脚本
     冒号…黄金开头"），字幕也跟着出现结构词。标题是给人看的分节标记，不是口播
     内容，因此在进入旁白之前剔除；列表/引用标记只去掉符号、保留文字。
+
+    实现已迁到 :func:`automedia.pipelines.narration.strip_narration_markup`，
+    那里同时处理 ``[画面：…]`` 这类舞台提示（#390），字幕链路共用同一份规则。
     """
-    lines: list[str] = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        # Horizontal rules and empty bullet scaffolding carry no words.
-        if not line.strip("-*_ "):
-            continue
-        line = re.sub(r"^(?:[-*>]\s*)+", "", line).strip()
-        if line:
-            lines.append(line)
-    return "\n".join(lines).strip()
+    from automedia.pipelines.narration import strip_narration_markup
+
+    return strip_narration_markup(text)
 
 
 def _media_narration_text(gate_context: GateContext | dict[str, Any]) -> str:
