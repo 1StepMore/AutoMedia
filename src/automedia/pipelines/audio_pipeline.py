@@ -456,8 +456,14 @@ class AudioPipeline:
 
         Sentence punctuation ends a cue; over-long sentences are hard-wrapped
         at :data:`_SRT_CUE_MAX_CHARS`.  Markdown heading/bullet markers are
-        dropped — they are structure, not narration.
+        dropped — they are structure, not narration — and so are bracketed
+        production cues such as ``[画面：…]`` (#390): stripping them *before*
+        the sentence split matters, otherwise a cue break lands inside the
+        bracket and the subtitle opens with "音效：".
         """
+        from automedia.pipelines.narration import strip_stage_directions
+
+        text = strip_stage_directions(text or "")
         cleaned_lines: list[str] = []
         for raw_line in (text or "").splitlines():
             line = raw_line.strip()
