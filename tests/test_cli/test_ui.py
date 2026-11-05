@@ -7,12 +7,27 @@ asserts ``automedia ui --help`` stays loopback-documented.
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from automedia.cli.commands.ui import _run_state, create_app
+
+
+@pytest.fixture(autouse=True)
+def _reset_run_state() -> Any:
+    """Keep the module-global run state isolated between tests."""
+    _run_state.update(running=False, finished=True, status="", progress={})
+    _run_state.pop("tracker", None)
+    yield
+    for _ in range(100):
+        if not _run_state["running"]:
+            break
+        time.sleep(0.01)
+    _run_state.update(running=False, finished=True, status="", progress={})
+    _run_state.pop("tracker", None)
 
 
 @pytest.fixture()
@@ -50,6 +65,22 @@ class TestConfigRoute:
         assert data["config"]["llm_api_key"] == "…"  # redacted
         assert data["config"]["mode"] == "text_only"  # non-secret passes through
 
+    def test_config_redacts_nested_secrets(self, client: Any) -> None:
+        cfg = {
+            "mode": "x",
+            "llm": {"text_generation": {"api_key": "sk-secret", "model": "m"}},
+            "list": [{"token": "t"}],
+        }
+        with (
+            patch("automedia.core.config_loader.load_config", return_value=cfg),
+            patch("automedia.core.doctor.Doctor.check_dependencies", return_value=[]),
+        ):
+            data = client.get("/api/config").json()
+        assert data["config"]["llm"]["text_generation"]["api_key"] == "…"
+        assert data["config"]["list"][0]["token"] == "…"
+        assert data["config"]["llm"]["text_generation"]["model"] == "m"
+        assert data["config"]["mode"] == "x"
+
 
 class TestProjectsRoute:
     def test_projects_scan(
@@ -86,6 +117,17 @@ class TestAccountsRoute:
         assert data["accounts"][0]["account_id"] == "acc_x"
         assert "credentials" not in json.dumps(data)
 
+    def test_accounts_without_master_key(self, client: Any) -> None:
+        with patch(
+            "automedia.accounts.registry.AccountRegistry",
+            side_effect=ValueError("AUTOMEDIA_MASTER_KEY environment variable must be set"),
+        ):
+            resp = client.get("/api/accounts")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["accounts"] == []
+        assert data["warning"]
+
 
 class TestRunRoute:
     def test_run_starts_background_worker(self, client: Any) -> None:
@@ -113,6 +155,33 @@ class TestRunRoute:
         assert calls[0]["brand"] == "default"  # empty brand -> default
         assert progress["finished"] is True
         assert progress["status"] == "published"
+
+    def test_progress_updates_while_running(self, client: Any) -> None:
+        def fake_run(**kwargs: Any) -> Any:
+            progress = kwargs["progress"]
+            progress.set_gate_names(["G0", "G1"])
+            progress.on_gate_start("G0")
+            progress.on_gate_end("G0", True, 0.1)
+            time.sleep(0.2)
+            result = MagicMock()
+            result.status = "published"
+            return result
+
+        with patch("automedia.run_full_pipeline", side_effect=fake_run):
+            resp = client.post("/api/run", json={"topic": "T", "mode": "text_only"})
+            assert resp.json()["started"] is True
+
+            deadline = time.time() + 1.0
+            data: dict[str, Any] = {}
+            while time.time() < deadline:
+                data = client.get("/api/run/progress").json()
+                if data["progress"].get("gates_done"):
+                    break
+                time.sleep(0.01)
+
+        assert data["finished"] is False  # observed mid-run, not after completion
+        assert data["progress"]["gates_done"] == ["G0"]
+        assert data["progress"]["total_gates"] == 2
 
     def test_second_run_conflicted(self, client: Any) -> None:
         _run_state.update(running=True, finished=False)
