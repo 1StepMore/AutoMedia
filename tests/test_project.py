@@ -155,7 +155,7 @@ class TestSanitizePath:
 
     def test_relative_path(self):
         result = sanitize_path("relative/path")
-        assert "relative/path" in result
+        assert result.replace("\\", "/").endswith("relative/path")
 
     def test_double_dot_rejected(self):
         with pytest.raises(ValueError, match=r"\.\."):
@@ -296,11 +296,11 @@ class TestProjectInit:
         with pytest.raises(ValueError, match=r"\.\."):
             Project.init("topic", "acme", base_dir="/tmp/../etc")
 
-    def test_base_dir_default_is_cwd(self, monkeypatch):
+    def test_base_dir_default_is_cwd(self, monkeypatch, tmp_path):
         """When base_dir is None, cwd is used."""
-        monkeypatch.chdir("/tmp")
+        monkeypatch.chdir(tmp_path)
         project = Project.init("cwd-test", "acme")
-        assert project.project_dir.startswith("/tmp/")
+        assert project.project_dir.startswith(str(tmp_path))
 
     def test_project_dir_is_absolute(self, tmp_path):
         """project_dir is an absolute path."""

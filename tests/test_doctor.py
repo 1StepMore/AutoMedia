@@ -473,7 +473,12 @@ class TestDoctorChromeRemediation:
         with patch.object(Doctor, "_is_wsl", return_value=False):
             msg = Doctor.chrome_remediation(dep)
         assert msg is not None
-        assert "libnss3" in msg
+        # The instructions are OS-specific (apt/libnss3 on Linux, "works out of
+        # the box" on Windows), so pin the invariant instead of one OS's text:
+        # a non-WSL headless failure must hand back the general instructions and
+        # must never be answered with the WSL "install a Linux Chrome" advice.
+        assert msg == Doctor.get_headless_chrome_instructions()
+        assert "A Windows browser cannot be driven headless" not in msg
 
     def test_healthy_chrome_has_no_remediation(self):
         dep = {

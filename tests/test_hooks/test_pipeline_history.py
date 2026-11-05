@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -38,7 +39,8 @@ class TestDbPath:
     def test_returns_path_under_automedia_dir(self) -> None:
         """_db_path joins project_dir with .automedia/ and HISTORY_DB_FILENAME."""
         result = _db_path("/some/project")
-        expected = "/some/project/.automedia/history.db"
+        # Join through os.path so the expectation carries native separators.
+        expected = os.path.join("/some/project", ".automedia", HISTORY_DB_FILENAME)
         assert result == expected
 
     def test_uses_history_db_filename_constant(self) -> None:
