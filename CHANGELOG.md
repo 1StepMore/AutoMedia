@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.1...automedia-v1.14.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **video:** 修复 vision_entries 抽帧的 subprocess 捕获——真实环境 None.decode 崩溃（[#387](https://github.com/1StepMore/AutoMedia/issues/387) 后续） ([#403](https://github.com/1StepMore/AutoMedia/issues/403)) ([d03f3ce](https://github.com/1StepMore/AutoMedia/commit/d03f3ceff184ea9d75e615365b448130dd46f618))
+
 ## [1.14.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.0...automedia-v1.14.1) (2026-11-05)
 
 
