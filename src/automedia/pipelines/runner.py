@@ -2192,11 +2192,13 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     为了让 V2/V5 跳过而不是失败（V2 的跳过判据是 ``transcription`` 本身，
     见 ``gates/pre_send_whisper.py``）。
 
-    刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``entries``（V1，
-    无抽帧与视觉 QA 裁决）、``lint_result``（V0，无 lint 执行器）、``segments``
-    与 ``voice_id``（V4，TTS 引擎不回传 ``voice_params``）、``avg_brightness``
-    等（V6，``opacity`` 无法从已合成帧反推）、``source_keywords`` 等（V3，无
-    可信的关键词提取实现）。这些门会如实报 ``skipped``。
+    刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``lint_result``
+    （V0，无 lint 执行器）、``segments`` 与 ``voice_id``（V4，TTS 引擎不回传
+    ``voice_params``）、``avg_brightness`` 等（V6，``opacity`` 无法从已合成帧
+    反推）、``source_keywords`` 等（V3，无可信的关键词提取实现）。这些门会
+    如实报 ``skipped``。``entries``（V1）自 #387 起由
+    ``_produce_vision_entries`` 真实生产：按场景切点抽帧 + 面板短路裁决，
+    无视觉模型的场次如实记 ``unjudged``。
 
     Args:
         gate_context: 门之间共享的上下文；就地写回产物路径与 V7 的产物清单。
@@ -2407,8 +2409,10 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         panels = 0
         generated = 0
         reused = 0
+        scene_media_kinds: list[str] = []
         for i, scene in enumerate(timeline_scenes):
             src = existing_media[i] if i < len(existing_media) else ""
+            kind = "reused" if src else ""
             if src:
                 reused += 1
             if not src:
@@ -2424,6 +2428,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                         brand=brand,
                         index=i,
                     )
+                    kind = "generated"
                     generated += 1
                 except Exception as exc:
                     _note_media_stage(
@@ -2445,6 +2450,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                         heading=topic,
                         index=i + 1,
                     )
+                    kind = "panel"
                     if src:
                         panels += 1
                     else:
@@ -2458,9 +2464,13 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                             reason="no CJK font found for the deterministic panel",
                         )
             if src:
+                # 来源记账（#387）：V1 的面板短路判定依赖它——"panel" 表示画面
+                # 与文案同源（构造保证相关），生成图/复用图需要视觉模型才能判。
+                scene_media_kinds.append(kind)
                 scene_media.append(src)
         if scene_media:
             gate_context["scene_media"] = scene_media
+            gate_context["scene_media_kinds"] = scene_media_kinds
             # 素材来源记账（#377）：文字面板的画面一定与文案同源；生成图则
             # 无法在不调视觉模型的情况下自证与选题相关——把来源写进
             # gate-report，读报告的人就知道这一片画面是"生成"还是"面板"。
@@ -2507,6 +2517,9 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             gate_context["video_path"] = video_path
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)
+            # 逐场视觉 entries（#387）：从成片抽帧 + 面板短路裁决；失败只降级
+            # （V1 保持 skip 并记账），不外抛、不丢已产出的视频。
+            _produce_vision_entries(gate_context)
             # Degraded render must be visible, not just logged (#383): a
             # slideshow is a still frame plus audio, and calling it "video
             # produced" let a demo ship an mp4 nobody had really rendered.
@@ -2542,6 +2555,35 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     gate_context["file_sizes"] = {path: os.path.getsize(path) for path in required_files}
     gate_context["md5_records"] = _expected_md5_records(required_files)
     log.info("pipeline.media_stage.artifacts_recorded", count=len(required_files))
+
+
+def _produce_vision_entries(gate_context: GateContext | dict[str, Any]) -> None:
+    """逐场视觉 entries（#387）：抽帧 + 裁决，写进 gate_context 供 V1 真判。
+
+    中文说明：只在成片与场景时间轴齐备时尝试。任何失败都只降级——登记
+    ``vision_entries_failed`` 注记、不写 ``entries``（V1 保持如实 skip），
+    不外抛、不影响已产出的视频。
+    """
+    video_path = str(gate_context.get("video_path", "") or "")
+    scenes = list(gate_context.get("video_timeline_scenes") or [])
+    if not video_path or not scenes:
+        return
+    try:
+        from automedia.pipelines.vision_entries import build_vision_entries
+
+        entries, stats = build_vision_entries(
+            video_path,
+            scenes,
+            list(gate_context.get("scene_media") or []),
+            list(gate_context.get("scene_media_kinds") or []),
+            os.path.join(str(gate_context.get("project_dir", "") or ""), VIDEO, "frames"),
+        )
+        gate_context["entries"] = entries
+        _note_media_stage(gate_context, "vision_entries", **stats)
+        log.info("pipeline.vision_entries_ready", scenes=len(entries), **stats)
+    except Exception as exc:
+        _note_media_stage(gate_context, "vision_entries_failed", error=str(exc)[:200])
+        log.warning("pipeline.vision_entries_failed", error=str(exc))
 
 
 def _produce_media_assets(gate_context: GateContext | dict[str, Any]) -> None:
