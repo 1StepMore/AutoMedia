@@ -452,7 +452,12 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             temp_dir = tempfile.mkdtemp(prefix="ffmpeg_slideshow_")
             temp_video: str = os.path.join(temp_dir, "temp_video.mp4")
 
-            images: list[str] = assets.get("images", [])
+            # Per-scene assets win when the runner produced them (#389): the
+            # slideshow then shows the six real scene pictures instead of
+            # looping one cover/fallback frame for the whole narration, which
+            # is what made every degraded render look like a still image with
+            # a soundtrack.
+            images: list[str] = list(assets.get("scene_media") or assets.get("images", []))
             audio: str | None = assets.get("audio")
             output_framerate: int = self._OUTPUT_FRAMERATE
             video_codec: str = self._VIDEO_CODEC

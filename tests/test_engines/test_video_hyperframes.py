@@ -1600,3 +1600,53 @@ class TestDegradedRenderIsVisible:
 
         assert engine.last_render_degraded is False
         assert engine.last_render_reason == ""
+
+
+class TestFallbackUsesSceneMedia:
+    """The degraded slideshow must use the six scene pictures (#389)."""
+
+    @staticmethod
+    def _slideshow_source(cmd: list[str]) -> str:
+        """Return the ``-i`` argument of the slideshow command."""
+        return cmd[cmd.index("-i") + 1] if "-i" in cmd else ""
+
+    def test_scene_media_wins_over_the_legacy_image_list(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+        assets = dict(sample_assets)
+        assets["images"] = ["/fake/cover/cover.png"]
+        assets["scene_media"] = ["/fake/scenes/scene-01.png", "/fake/scenes/scene-02.png"]
+
+        cmd = _ffmpeg_command_for(mock_all, assets, tmp_path)
+
+        # The slideshow globs the directory of the first frame, so the root
+        # must be the scene directory — not the cover/fallback directory.
+        assert self._slideshow_source(cmd) == os.path.join("/fake/scenes", "*.png")
+
+    def test_legacy_list_still_used_without_scene_media(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+
+        cmd = _ffmpeg_command_for(mock_all, dict(sample_assets), tmp_path)
+
+        assert self._slideshow_source(cmd).endswith("*.png")
+
+
+def _ffmpeg_command_for(
+    mock_all: dict[str, MagicMock],
+    assets: dict[str, Any],
+    tmp_path: Any,
+) -> list[str]:
+    """Run the fallback renderer and return the slideshow (step 1) argv."""
+    HyperFramesVideoEngine().render(assets, str(tmp_path / "out.mp4"))
+    for call_args in mock_all["run"].call_args_list:
+        cmd = call_args.args[0] if call_args.args else call_args.kwargs.get("args", [])
+        if cmd and "ffmpeg" in str(cmd[0]) and "-pattern_type" in cmd:
+            return list(cmd)
+    return []

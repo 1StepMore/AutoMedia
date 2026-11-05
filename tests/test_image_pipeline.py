@@ -58,9 +58,14 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         _mock_resolve,
     )
     # Prompt building asks an LLM; never let a unit test reach the network.
+    # Patch the transport, not the builder, so prompt assembly stays under test.
     monkeypatch.setattr(
-        "automedia.pipelines.image_pipeline._generate_image_prompt",
+        "automedia.pipelines.image_pipeline.llm_complete",
         lambda *args, **kwargs: "a clean flat illustration, no text, no watermark",
+    )
+    monkeypatch.setattr(
+        "automedia.prompts.load_prompt",
+        lambda *args, **kwargs: "TOPIC PROMPT",
     )
 
 
@@ -414,3 +419,62 @@ class TestTextPanel:
             # pure background.
             right_column = [img.getpixel((1079, y)) for y in range(0, 1920, 60)]
         assert all(pixel == right_column[0] for pixel in right_column)
+
+
+# ---------------------------------------------------------------------------
+# Scene prompts are anchored on the scene's own line (#377 / #389 review)
+# ---------------------------------------------------------------------------
+
+
+class TestScenePromptUsesSceneText:
+    """A topic-only prompt gives six interchangeable frames for six scenes."""
+
+    def _capture(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        seen: list[str] = []
+
+        def _fake_llm(prompt: str, **_: Any) -> str:
+            seen.append(prompt)
+            return "a desk with six sticky notes, no text"
+
+        monkeypatch.setattr("automedia.prompts.load_prompt", lambda *a, **k: "TOPIC PROMPT")
+        monkeypatch.setattr("automedia.pipelines.image_pipeline.llm_complete", _fake_llm)
+        return seen
+
+    def test_scene_text_reaches_the_prompt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        seen = self._capture(monkeypatch)
+        _generate_image_prompt(
+            "内容排期", "brand", 0, scene_text="三个人管六个账号，排期全靠一张嘴。"
+        )
+        assert "三个人管六个账号" in seen[0]
+        assert "no text" in seen[0].lower()
+
+    def test_without_scene_text_the_prompt_is_topic_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        seen = self._capture(monkeypatch)
+        _generate_image_prompt("内容排期", "brand", 0)
+        assert seen[0] == "TOPIC PROMPT"
+
+    def test_generate_scene_image_passes_its_text_through(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen = self._capture(monkeypatch)
+        pipeline = ImagePipeline()
+        monkeypatch.setattr(
+            pipeline,
+            "_generate_with_chain",
+            lambda prompt, w, h, out: (seen.append(prompt), out)[1],
+        )
+        pipeline.generate_scene_image(
+            "第二场口播：把选题做成流水线。",
+            320,
+            480,
+            str(tmp_path / "s.png"),
+            topic="内容排期",
+            index=1,
+        )
+        assert any("第二场口播" in prompt for prompt in seen)

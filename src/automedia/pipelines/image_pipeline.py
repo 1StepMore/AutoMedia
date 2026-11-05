@@ -102,12 +102,18 @@ def _generate_image_prompt(
     brand: str,
     image_index: int,
     platform: str = "",
+    scene_text: str = "",
 ) -> str:
     """Generate a detailed SD/ComfyUI image prompt via LLM.
 
     Uses :func:`load_prompt` to render a Jinja2 template for the user message,
     then calls :func:`llm_complete` with a system prompt tailored for SD
     prompt generation.
+
+    ``scene_text`` pins the picture to one narration beat.  Without it every
+    scene of a video shares one topic-level prompt and differs only by
+    ``image_index`` — six variations of the same idea, which is exactly what
+    #377 complained about (related-looking, scene-irrelevant frames).
 
     Falls back to the naive ``f"{topic} body image {image_index + 1}"``
     template on any failure (LLM error, empty response, etc.).
@@ -120,6 +126,11 @@ def _generate_image_prompt(
         Brand identifier for style context.
     image_index:
         Zero-based index of the body image (used for variation).
+    platform:
+        Target platform, when the caller knows it.
+    scene_text:
+        Narration of the scene this image illustrates.  Optional; when given
+        the prompt must depict *this* beat, not the topic in general.
 
     Returns
     -------
@@ -136,6 +147,15 @@ def _generate_image_prompt(
             image_index=image_index,
             platform=platform,
         )
+        if scene_text.strip():
+            # Render what this sentence *shows*, not what the topic is about.
+            user_message += (
+                "\n\nThe image illustrates this exact narration line (translate the "
+                "visual content into English, do not translate the words into the "
+                "picture):\n"
+                f"{scene_text.strip()}\n"
+                "Depict only what this line shows. No text, no captions, no watermark."
+            )
         result: str = llm_complete(
             user_message,
             system_prompt=(
@@ -504,12 +524,19 @@ class ImagePipeline:
         """Generate one real image for a scene; raise when no engine can.
 
         The prompt comes from :func:`_generate_image_prompt` (the same
-        LLM-backed builder the cover/body images use), not from the narration
-        itself: a Chinese sentence handed to an SD model is noise, which is how
-        the old ``"{topic} fallback frame"`` prompt produced bedrooms and
-        luggage racks for a video about scheduling.
+        LLM-backed builder the cover/body images use), anchored on
+        *scene_text*: a Chinese sentence handed verbatim to an SD model is
+        noise (how ``"{topic} fallback frame"`` produced bedrooms and luggage
+        racks for a video about scheduling), but a topic-only prompt yields six
+        interchangeable frames.  The scene line goes through the LLM so the
+        picture depicts this beat.
         """
-        prompt = _generate_image_prompt(topic or scene_text, brand, index)
+        prompt = _generate_image_prompt(
+            topic or scene_text,
+            brand,
+            index,
+            scene_text=scene_text,
+        )
         logger.info("Generating scene image (%sx%s): %s", width, height, prompt[:80])
         return self._generate_with_chain(prompt, width, height, output_path)
 
