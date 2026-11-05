@@ -126,6 +126,66 @@ class TestV1RealLogic:
         assert result["passed"] is False
 
 
+class TestV1UnjudgedAccounting:
+    """#387：生产者对无视觉模型的场次记 ``unjudged``——V1 记账不默认 pass。"""
+
+    @staticmethod
+    def _unjudged_entry(idx: int = 0, base_dir: str = "/tmp") -> dict[str, Any]:
+        entry = _good_entry(idx, base_dir)
+        entry["checked"] = False
+        entry["qa_passed"] = False
+        entry["verdict"] = "unjudged: no vision-capable model configured"
+        return entry
+
+    def test_all_unjudged_reports_gate_level_skip(self, tmp_path: Any) -> None:
+        entries = [self._unjudged_entry(i, str(tmp_path)) for i in range(3)]
+        result = V1VisionQA().execute(_make_context(entries=entries))
+        assert result["status"] == "skipped"
+        assert result["passed"] is True
+        assert "none judgeable" in result["reason"]
+        assert "checks" not in result
+
+    def test_panel_short_circuit_passes_for_real(self, tmp_path: Any) -> None:
+        """面板短路：checked=True + qa_passed=True → V1 真实判定通过。"""
+        entry = _good_entry(0, str(tmp_path))
+        entry["verdict"] = "panel (by construction: the panel text is this scene's copy)"
+        result = V1VisionQA().execute(_make_context(entries=[entry]))
+        assert result["passed"] is True
+        chk = next(c for c in result["checks"] if c["name"] == "red_line_6")
+        assert chk["passed"] is True
+
+    def test_mixed_panel_and_unjudged_accounts_in_red_line_6(self, tmp_path: Any) -> None:
+        panel = _good_entry(0, str(tmp_path))
+        panel["verdict"] = "panel (by construction)"
+        unjudged = self._unjudged_entry(1, str(tmp_path))
+        result = V1VisionQA().execute(_make_context(entries=[panel, unjudged]))
+        assert result["passed"] is True
+        chk = next(c for c in result["checks"] if c["name"] == "red_line_6")
+        assert chk["passed"] is True
+        assert chk.get("status") == "skipped"
+        assert "recorded unjudged" in chk["detail"]
+        assert "not counted as pass" in chk["detail"]
+
+    def test_judged_failure_still_fails_gate(self, tmp_path: Any) -> None:
+        """负样本验收：已判定且不通过 → 门必须 fail。"""
+        entry = _good_entry(0, str(tmp_path))
+        entry["qa_passed"] = False
+        entry["verdict"] = "vlm: frame is an unrelated stock photo"
+        result = V1VisionQA().execute(_make_context(entries=[entry]))
+        assert result["passed"] is False
+        chk = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert chk["passed"] is False
+
+    def test_unjudged_entry_does_not_fail_all_entries_passed(self, tmp_path: Any) -> None:
+        panel = _good_entry(0, str(tmp_path))
+        panel["verdict"] = "panel (by construction)"
+        unjudged = self._unjudged_entry(1, str(tmp_path))
+        result = V1VisionQA().execute(_make_context(entries=[panel, unjudged]))
+        chk = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert chk["passed"] is True
+        assert "unjudged" in chk["detail"]
+
+
 class TestV1ResultStructure:
     def test_result_has_all_required_keys(self) -> None:
         result = V1VisionQA().execute(_make_context(mock_results=_all_pass_mock()))
