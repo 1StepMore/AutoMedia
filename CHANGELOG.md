@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.0...automedia-v1.14.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **gates:** level-2 media stage, Chinese copy judgement, script identity window ([#374](https://github.com/1StepMore/AutoMedia/issues/374), [#375](https://github.com/1StepMore/AutoMedia/issues/375), [#379](https://github.com/1StepMore/AutoMedia/issues/379)) ([#385](https://github.com/1StepMore/AutoMedia/issues/385)) ([72dd49e](https://github.com/1StepMore/AutoMedia/commit/72dd49e4fe6b55a91c60584ef55f74a9605bd0aa))
+* **gates:** 判定 V5 字幕以旁白原文为基准，ASR 降为独立诊断项（[#392](https://github.com/1StepMore/AutoMedia/issues/392)） ([#400](https://github.com/1StepMore/AutoMedia/issues/400)) ([5717715](https://github.com/1StepMore/AutoMedia/commit/5717715f405f5195c01e88752324b5df652903e9))
+* **gates:** 识别中文 CTA + 旁白/字幕剔除舞台提示（[#388](https://github.com/1StepMore/AutoMedia/issues/388), [#390](https://github.com/1StepMore/AutoMedia/issues/390)） ([#396](https://github.com/1StepMore/AutoMedia/issues/396)) ([2367ab9](https://github.com/1StepMore/AutoMedia/commit/2367ab96d66c0f711c2c119f1894de398bfdfdab))
+* **media:** platform frame size, script subtitles, per-scene assets, visible degradation ([#376](https://github.com/1StepMore/AutoMedia/issues/376), [#377](https://github.com/1StepMore/AutoMedia/issues/377), [#378](https://github.com/1StepMore/AutoMedia/issues/378), [#383](https://github.com/1StepMore/AutoMedia/issues/383)) ([#386](https://github.com/1StepMore/AutoMedia/issues/386)) ([5ceb9a9](https://github.com/1StepMore/AutoMedia/commit/5ceb9a9786f41a2b8c2512d1ebdb1cd310aafa6b))
+* **ui:** 进度实时更新 + 递归脱敏嵌套密钥 + 缺 master key 时账号区不再 500 ([#384](https://github.com/1StepMore/AutoMedia/issues/384)) ([79b2d16](https://github.com/1StepMore/AutoMedia/commit/79b2d16d42daf72495bd769b04efe39ab2332a11))
+* **video:** 发现本地 GSAP，HyperFrames 不再因 CDN 不可达而整轮渲染失败 ([#399](https://github.com/1StepMore/AutoMedia/issues/399)) ([d343ec2](https://github.com/1StepMore/AutoMedia/commit/d343ec25a742db44d45ae252f88c94db685b6942))
+* **video:** 给 V1 真实 entries 生产者——逐场抽帧、面板短路、未判定如实记账（[#387](https://github.com/1StepMore/AutoMedia/issues/387)） ([#402](https://github.com/1StepMore/AutoMedia/issues/402)) ([3f4d392](https://github.com/1StepMore/AutoMedia/commit/3f4d392ccbea9395bb342c824584070979f7cc64))
+
 ## [1.14.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.13.0...automedia-v1.14.0) (2026-11-04)
 
 
