@@ -43,6 +43,11 @@ from automedia.engines.registry import EngineRegistry
 # Helpers
 # ===================================================================
 
+#: ``tempfile.mkdtemp`` is mocked to return a POSIX path.  The engine joins
+#: sub-directories onto it with ``os.path.join``, which yields backslashes on
+#: Windows — so assert through the same join instead of a literal "/".
+_TMP_IMAGES = os.path.join("/tmp/hyperframes_test", "images")
+
 
 def _ok_result() -> MagicMock:
     """Return a :class:`~unittest.mock.MagicMock` mimicking a successful
@@ -534,18 +539,18 @@ class TestRenderHyperFrames:
 
         # images/ sub-directory
         mock_all["makedirs"].assert_any_call(
-            "/tmp/hyperframes_test/images",
+            _TMP_IMAGES,
             exist_ok=True,
         )
 
         # each image file
         mock_all["copy2"].assert_any_call(
             "/fake/img1.png",
-            "/tmp/hyperframes_test/images",
+            _TMP_IMAGES,
         )
         mock_all["copy2"].assert_any_call(
             "/fake/img2.png",
-            "/tmp/hyperframes_test/images",
+            _TMP_IMAGES,
         )
 
         # audio
@@ -589,7 +594,7 @@ class TestRenderHyperFrames:
         assert len(copy_calls) == 1  # only the image
         assert copy_calls[0] == call(
             "/fake/img1.png",
-            "/tmp/hyperframes_test/images",
+            _TMP_IMAGES,
         )
         # Default provisioning was called (no template_dir in minimal_assets)
         m_provision.assert_called_once()
@@ -1512,3 +1517,136 @@ class TestFFmpegRenderIntegration:
         width, height, duration = _probe_video(output)
         assert (width, height) == (1920, 1080)
         assert abs(duration - 4.0) <= 1.0
+
+
+# ===================================================================
+# Frame size from the platform spec (#378)
+# ===================================================================
+
+
+class TestTargetSize:
+    """Platform spec beats engine config, config beats the 1080p default."""
+
+    def test_assets_win_over_config(self) -> None:
+        engine = HyperFramesVideoEngine(engine_config={"width": 1920, "height": 1080})
+        assert engine._target_size({"width": 1080, "height": 1920}) == (1080, 1920)
+
+    def test_config_used_when_assets_carry_no_size(self) -> None:
+        engine = HyperFramesVideoEngine(engine_config={"width": 1440, "height": 1440})
+        assert engine._target_size({}) == (1440, 1440)
+
+    def test_default_is_landscape_1080p(self) -> None:
+        assert HyperFramesVideoEngine()._target_size({}) == (1920, 1080)
+
+    def test_apply_frame_size_rewrites_project_config(self, tmp_path: Any) -> None:
+        project_config = tmp_path / "hyperframes.json"
+        project_config.write_text(
+            json.dumps(
+                {"project": {"entry": "index.html", "width": 1920, "height": 1080, "fps": 30}}
+            ),
+            encoding="utf-8",
+        )
+        HyperFramesVideoEngine()._apply_frame_size(
+            str(project_config), {"width": 1080, "height": 1920}
+        )
+        data = json.loads(project_config.read_text(encoding="utf-8"))
+        assert data["project"]["width"] == 1080
+        assert data["project"]["height"] == 1920
+        # Unrelated keys survive.
+        assert data["project"]["entry"] == "index.html"
+
+    def test_apply_frame_size_sets_fps_when_spec_provides_one(self, tmp_path: Any) -> None:
+        project_config = tmp_path / "hyperframes.json"
+        project_config.write_text(json.dumps({"project": {"fps": 24}}), encoding="utf-8")
+        HyperFramesVideoEngine()._apply_frame_size(
+            str(project_config), {"width": 1080, "height": 1920, "fps": 60}
+        )
+        assert json.loads(project_config.read_text(encoding="utf-8"))["project"]["fps"] == 60
+
+
+class TestDegradedRenderIsVisible:
+    """A silent FFmpeg fallback must be recorded, not just logged (#383)."""
+
+    def test_fallback_sets_degraded_flag_and_keeps_the_reason(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+        mock_all["run"].side_effect = [
+            _fail_result(code=1),
+            _ok_result(),
+            _ok_result(),
+        ]
+
+        engine = HyperFramesVideoEngine()
+        engine.render(sample_assets, str(tmp_path / "out.mp4"))
+
+        assert engine.last_render_degraded is True
+        assert "render error" in engine.last_render_reason
+        assert "exit code 1" in engine.last_render_reason
+
+    def test_primary_path_clears_the_flag(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        engine = HyperFramesVideoEngine()
+        engine.last_render_degraded = True  # stale value from an earlier run
+        engine.render(sample_assets, str(tmp_path / "out.mp4"))
+
+        assert engine.last_render_degraded is False
+        assert engine.last_render_reason == ""
+
+
+class TestFallbackUsesSceneMedia:
+    """The degraded slideshow must use the six scene pictures (#389)."""
+
+    @staticmethod
+    def _slideshow_source(cmd: list[str]) -> str:
+        """Return the ``-i`` argument of the slideshow command."""
+        return cmd[cmd.index("-i") + 1] if "-i" in cmd else ""
+
+    def test_scene_media_wins_over_the_legacy_image_list(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+        assets = dict(sample_assets)
+        assets["images"] = ["/fake/cover/cover.png"]
+        assets["scene_media"] = ["/fake/scenes/scene-01.png", "/fake/scenes/scene-02.png"]
+
+        cmd = _ffmpeg_command_for(mock_all, assets, tmp_path)
+
+        # The slideshow globs the directory of the first frame, so the root
+        # must be the scene directory — not the cover/fallback directory.
+        assert self._slideshow_source(cmd) == os.path.join("/fake/scenes", "*.png")
+
+    def test_legacy_list_still_used_without_scene_media(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+
+        cmd = _ffmpeg_command_for(mock_all, dict(sample_assets), tmp_path)
+
+        assert self._slideshow_source(cmd).endswith("*.png")
+
+
+def _ffmpeg_command_for(
+    mock_all: dict[str, MagicMock],
+    assets: dict[str, Any],
+    tmp_path: Any,
+) -> list[str]:
+    """Run the fallback renderer and return the slideshow (step 1) argv."""
+    HyperFramesVideoEngine().render(assets, str(tmp_path / "out.mp4"))
+    for call_args in mock_all["run"].call_args_list:
+        cmd = call_args.args[0] if call_args.args else call_args.kwargs.get("args", [])
+        if cmd and "ffmpeg" in str(cmd[0]) and "-pattern_type" in cmd:
+            return list(cmd)
+    return []

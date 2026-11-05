@@ -129,7 +129,13 @@ engines:
       compute_type: int8
       language: zh
     whisper:
-      model: tiny
+      # Validation-only ASR (#376): subtitles are generated from the script
+      # text (audio_pipeline.generate_srt_from_script), so this transcript is
+      # never shown to a viewer — but V5 diffs it against the SRT, and a
+      # "tiny" Chinese transcript is far too noisy for that signal (it turned
+      # 抖音短视频脚本 into 「导映短视频脚本」). Raise to "medium" where CPU
+      # time allows; drop to "tiny" only if V5 is disabled.
+      model: small
       language: zh
   image:
     default: comfyui

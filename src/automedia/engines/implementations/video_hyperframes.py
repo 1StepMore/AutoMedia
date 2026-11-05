@@ -63,6 +63,15 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     engine_name: ClassVar[str] = "hyperframes"
     modality: ClassVar[str] = "video"
 
+    #: Whether the last :meth:`render` produced a video by falling back to the
+    #: FFmpeg slideshow instead of HyperFrames (#383).  A slideshow is a still
+    #: frame plus audio — technically playable, but never what the configured
+    #: engine was asked to do, so callers must be able to say so out loud.
+    last_render_degraded: bool = False
+
+    #: Why the primary path failed, verbatim (command exit code + stderr tail).
+    last_render_reason: str = ""
+
     # ------------------------------------------------------------------
     # Constants for the FFmpeg fallback slideshow pipeline
     # ------------------------------------------------------------------
@@ -157,6 +166,24 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             "or install ffmpeg for fallback rendering.",
         )
 
+    def _target_size(self, assets: dict[str, Any]) -> tuple[int, int]:
+        """Resolve the output frame size for this render (#378).
+
+        Priority:
+
+        1. ``assets["width"]/["height"]`` — the platform media spec, stamped on
+           the assets by the runner (douyin/weibo/kuaishou are 1080x1920).
+        2. The engine config block (``engines.video.hyperframes.width/height``)
+           — an explicit operator override.
+        3. 1080p landscape.
+
+        Before this, only (2) and (3) existed, so every run produced 16:9 no
+        matter which platform the brand was targeting.
+        """
+        raw_width = assets.get("width") or self._config.get("width", 1920)
+        raw_height = assets.get("height") or self._config.get("height", 1080)
+        return int(raw_width), int(raw_height)
+
     # ------------------------------------------------------------------
     # Render — primary hyperframes path → FFmpeg fallback
     # ------------------------------------------------------------------
@@ -203,18 +230,39 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 details="Cannot render video: no images provided in assets.",
             )
 
+        self.last_render_degraded = False
+        self.last_render_reason = ""
+
         # Try the primary path first
         cli_base: list[str] | None = self._resolve_cli_base()
         if cli_base:
             try:
                 return self._render_with_hyperframes(assets, output_path, cli_base)
-            except EngineExecutionError:
-                logger.warning("hyperframes render failed; checking for ffmpeg fallback.")
+            except EngineExecutionError as exc:
+                # Keep the real failure in the log (#383).  A bare "render
+                # failed" warning left no way to tell a missing browser from a
+                # bad template from a timeout — and the fallback output looked
+                # like a success on disk.
+                self.last_render_degraded = True
+                self.last_render_reason = str(exc)
+                logger.warning(
+                    "hyperframes render failed; falling back to the FFmpeg slideshow "
+                    "(degraded output: still frame + audio). reason=%s",
+                    str(exc),
+                )
 
         # Fallback: FFmpeg slideshow
         ffmpeg_path: str | None = shutil.which("ffmpeg")
         if ffmpeg_path:
-            return self._render_with_ffmpeg(assets, output_path)
+            rendered = self._render_with_ffmpeg(assets, output_path)
+            self.last_render_degraded = self.last_render_degraded or not cli_base
+            if not cli_base:
+                self.last_render_reason = "hyperframes CLI not found; FFmpeg slideshow used"
+            logger.warning(
+                "video rendered as a degraded FFmpeg slideshow (still frame + audio): %s",
+                output_path,
+            )
+            return rendered
 
         # Neither worked and no fallback available
         raise EngineExecutionError(
@@ -404,15 +452,18 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             temp_dir = tempfile.mkdtemp(prefix="ffmpeg_slideshow_")
             temp_video: str = os.path.join(temp_dir, "temp_video.mp4")
 
-            images: list[str] = assets.get("images", [])
+            # Per-scene assets win when the runner produced them (#389): the
+            # slideshow then shows the six real scene pictures instead of
+            # looping one cover/fallback frame for the whole narration, which
+            # is what made every degraded render look like a still image with
+            # a soundtrack.
+            images: list[str] = list(assets.get("scene_media") or assets.get("images", []))
             audio: str | None = assets.get("audio")
             output_framerate: int = self._OUTPUT_FRAMERATE
             video_codec: str = self._VIDEO_CODEC
 
-            # Target resolution comes from the engine config block
-            # (``engines.video.hyperframes``), defaulting to 1080p.
-            width: int = int(self._config.get("width", 1920))
-            height: int = int(self._config.get("height", 1080))
+            # Target resolution: platform spec > engine config > 1080p (#378).
+            width, height = self._target_size(assets)
 
             # Derive the input framerate from the real audio duration so the
             # slideshow's total length matches the narration.  With N images
@@ -648,6 +699,34 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 return hit
         return None
 
+    def _apply_frame_size(self, project_config_path: str, assets: dict[str, Any]) -> None:
+        """Write the resolved frame size into a provisioned project's config.
+
+        Keeps every other key of the shipped ``hyperframes.json`` untouched —
+        only ``project.width`` / ``project.height`` (and ``fps`` when the spec
+        states one) are rewritten.
+        """
+        if not os.path.isfile(project_config_path):
+            return
+        try:
+            with open(project_config_path, encoding="utf-8") as fh:
+                config = json.load(fh)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Could not read %s to set the frame size: %s", project_config_path, exc)
+            return
+
+        width, height = self._target_size(assets)
+        project = config.setdefault("project", {})
+        project["width"] = width
+        project["height"] = height
+        fps = assets.get("fps") or self._config.get("fps")
+        if fps:
+            project["fps"] = int(fps)
+
+        with open(project_config_path, "w", encoding="utf-8") as fh:
+            json.dump(config, fh, ensure_ascii=False, indent=2)
+        logger.info("hyperframes project frame size set to %dx%d", width, height)
+
     def _provision_default_hyperframes_project(self, temp_dir: str, assets: dict[str, Any]) -> None:
         """Provision a complete hyperframes project from shipped default templates.
 
@@ -666,6 +745,13 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             _src_path = _templates.joinpath(_filename)
             if _src_path.is_file():
                 shutil.copy2(str(_src_path), temp_dir)
+
+        # 1a. Apply the target frame size to the project config (#378).  The
+        # shipped ``hyperframes.json`` hardcodes 1920x1080, so copying it
+        # verbatim forced every render to 16:9 — a douyin/weibo run shipped a
+        # landscape video.  A user-supplied ``template_dir`` keeps its own
+        # config: that project owns its composition size.
+        self._apply_frame_size(os.path.join(temp_dir, "hyperframes.json"), assets)
 
         # 1b. Vendor GSAP when a local copy is available (#351): CDN access is
         # unreliable in some networks (jsdelivr resets connections), and the

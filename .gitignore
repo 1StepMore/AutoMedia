@@ -119,3 +119,6 @@ nightly/
 # 文档的渲染副本（.md 是源，.html 由渲染器生成）—— 其它仓同样只跟踪 .md
 /docs/*.html
 /docs/**/*.html
+
+# Local pytest basetemp (Windows runs)
+.pytest-tmp/

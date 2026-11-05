@@ -57,6 +57,16 @@ def _mock_resolve_engine(monkeypatch: pytest.MonkeyPatch) -> None:
         "automedia.engines.resolve_engine",
         _mock_resolve,
     )
+    # Prompt building asks an LLM; never let a unit test reach the network.
+    # Patch the transport, not the builder, so prompt assembly stays under test.
+    monkeypatch.setattr(
+        "automedia.pipelines.image_pipeline.llm_complete",
+        lambda *args, **kwargs: "a clean flat illustration, no text, no watermark",
+    )
+    monkeypatch.setattr(
+        "automedia.prompts.load_prompt",
+        lambda *args, **kwargs: "TOPIC PROMPT",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -347,3 +357,124 @@ class TestVisionQADegradation:
         assert result["std_luminance"] > 0
         assert result["min_luminance"] == 0
         assert result["max_luminance"] == 255
+
+
+# ---------------------------------------------------------------------------
+# Text panel fallback (#377)
+# ---------------------------------------------------------------------------
+
+
+_HAS_CJK_FONT = ImagePipeline.find_cjk_font() is not None
+
+_needs_cjk_font = pytest.mark.skipif(
+    not _HAS_CJK_FONT,
+    reason="no CJK font on this host (slim Linux images have none)",
+)
+
+
+class TestTextPanel:
+    """A scene without a generated image gets a deterministic text panel.
+
+    The old behaviour copied one ``fallback_frame.png`` into all six scenes, so
+    the video showed the same unrelated picture (with whatever watermark the
+    diffusion model produced) for its whole length.
+    """
+
+    @_needs_cjk_font
+    def test_renders_requested_size(self, tmp_path: Any) -> None:
+        out = str(tmp_path / "panel.png")
+        path = ImagePipeline().render_text_panel(
+            "三个人管六个账号，排期全靠一张嘴？", 1080, 1920, out
+        )
+        assert path == os.path.abspath(out)
+        with Image.open(path) as img:
+            assert img.size == (1080, 1920)
+
+    @_needs_cjk_font
+    def test_is_deterministic(self, tmp_path: Any) -> None:
+        first = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "a.png"))
+        second = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "b.png"))
+        with open(first, "rb") as fh_a, open(second, "rb") as fh_b:
+            assert fh_a.read() == fh_b.read()
+
+    def test_returns_empty_string_without_cjk_font(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No CJK font means no readable panel — the caller must know."""
+        monkeypatch.setattr(
+            "automedia.pipelines.image_pipeline._PANEL_FONT_CANDIDATES", ("/nonexistent.ttf",)
+        )
+        monkeypatch.setattr("automedia.pipelines.image_pipeline._PANEL_FONT_DIRS", ())
+        path = ImagePipeline().render_text_panel("文字", 320, 480, str(tmp_path / "p.png"))
+        assert path == ""
+
+    @_needs_cjk_font
+    def test_wraps_long_text_into_multiple_lines(self, tmp_path: Any) -> None:
+        long_text = "这是一段很长的口播文案" * 12
+        out = str(tmp_path / "long.png")
+        path = ImagePipeline().render_text_panel(long_text, 1080, 1920, out)
+        assert path
+        with Image.open(path) as img:
+            # Text must not overflow the canvas: the right-most column stays
+            # pure background.
+            right_column = [img.getpixel((1079, y)) for y in range(0, 1920, 60)]
+        assert all(pixel == right_column[0] for pixel in right_column)
+
+
+# ---------------------------------------------------------------------------
+# Scene prompts are anchored on the scene's own line (#377 / #389 review)
+# ---------------------------------------------------------------------------
+
+
+class TestScenePromptUsesSceneText:
+    """A topic-only prompt gives six interchangeable frames for six scenes."""
+
+    def _capture(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        seen: list[str] = []
+
+        def _fake_llm(prompt: str, **_: Any) -> str:
+            seen.append(prompt)
+            return "a desk with six sticky notes, no text"
+
+        monkeypatch.setattr("automedia.prompts.load_prompt", lambda *a, **k: "TOPIC PROMPT")
+        monkeypatch.setattr("automedia.pipelines.image_pipeline.llm_complete", _fake_llm)
+        return seen
+
+    def test_scene_text_reaches_the_prompt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        seen = self._capture(monkeypatch)
+        _generate_image_prompt(
+            "内容排期", "brand", 0, scene_text="三个人管六个账号，排期全靠一张嘴。"
+        )
+        assert "三个人管六个账号" in seen[0]
+        assert "no text" in seen[0].lower()
+
+    def test_without_scene_text_the_prompt_is_topic_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        seen = self._capture(monkeypatch)
+        _generate_image_prompt("内容排期", "brand", 0)
+        assert seen[0] == "TOPIC PROMPT"
+
+    def test_generate_scene_image_passes_its_text_through(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen = self._capture(monkeypatch)
+        pipeline = ImagePipeline()
+        monkeypatch.setattr(
+            pipeline,
+            "_generate_with_chain",
+            lambda prompt, w, h, out: (seen.append(prompt), out)[1],
+        )
+        pipeline.generate_scene_image(
+            "第二场口播：把选题做成流水线。",
+            320,
+            480,
+            str(tmp_path / "s.png"),
+            topic="内容排期",
+            index=1,
+        )
+        assert any("第二场口播" in prompt for prompt in seen)

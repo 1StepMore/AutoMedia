@@ -61,6 +61,22 @@ class _FakeAudioPipeline:
         path.write_text("1\n00:00:00,000 --> 00:00:01,000\nhello\n", encoding="utf-8")
         return os.path.abspath(output_path)
 
+    def generate_srt_from_script(self, script: str, total_duration: float, output_path: str) -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        body = " ".join(script.split()) or "script"
+        path.write_text(f"1\n00:00:00,000 --> 00:00:01,000\n{body}\n", encoding="utf-8")
+        return os.path.abspath(output_path)
+
+    def generate_srt_from_scenes(self, scenes: list[dict[str, Any]], output_path: str) -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lines: list[str] = []
+        for i, scene in enumerate(scenes, start=1):
+            lines.append(f"{i}\n00:00:0{i - 1},000 --> 00:00:0{i},000\n{scene.get('text', '')}\n")
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return os.path.abspath(output_path)
+
 
 class _FakeImagePipeline:
     """最小图片替身：写出一张假帧。"""
@@ -72,6 +88,32 @@ class _FakeImagePipeline:
         path = Path(project_dir) / "02_images" / "fallback" / "fallback_frame.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"fake-png")
+        return str(path)
+
+    def generate_scene_image(
+        self,
+        scene_text: str,
+        width: int,
+        height: int,
+        output_path: str,
+        **kwargs: Any,
+    ) -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake-scene")
+        return str(path)
+
+    def render_text_panel(
+        self,
+        text: str,
+        width: int,
+        height: int,
+        output_path: str,
+        **kwargs: Any,
+    ) -> str:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake-panel")
         return str(path)
 
 
@@ -172,6 +214,19 @@ class TestNarrationText:
 
     def test_empty_when_nothing_available(self) -> None:
         ctx = _video_context(Path("."), content="[content skipped in video_only mode]")
+        assert _media_narration_text(ctx) == ""
+
+    def test_markdown_headings_are_not_narrated(self) -> None:
+        """标题是分节标记，不是口播内容（念出来就是"抖音短视频脚本冒号…"）。"""
+        script = "## 抖音短视频脚本\n\n### 黄金开头\n\n三个人管六个账号。\n\n- 先定选题池"
+        ctx = _video_context(Path("."), content=script)
+        narration = _media_narration_text(ctx)
+        assert "抖音短视频脚本" not in narration
+        assert "黄金开头" not in narration
+        assert narration == "三个人管六个账号。\n先定选题池"
+
+    def test_only_headings_means_nothing_to_narrate(self) -> None:
+        ctx = _video_context(Path("."), content="## 只有标题\n\n### 还是标题")
         assert _media_narration_text(ctx) == ""
 
 
@@ -568,3 +623,81 @@ class TestCliSmokeProbe:
         monkeypatch.setattr(_ENGINE_PATH, lambda _modality, _config=None: _FakeTTSEngine())
         monkeypatch.setattr(_SMOKE_PATH, _boom)
         assert runner_mod._media_modality_available("tts", None, "edge-tts") is True
+
+
+class _FailingSceneImagePipeline(_FakeImagePipeline):
+    """场景出图恒定失败 ⇒ 必须降级为文字面板，而不是放弃该场。"""
+
+    def generate_scene_image(self, *args: Any, **kwargs: Any) -> str:
+        raise EngineUnavailableError(
+            engine_name="image", reason="no image engine available", install_hint="n/a"
+        )
+
+
+class TestSceneMedia:
+    """每场素材必须独立（#377）。此前是把同一张 fallback 帧复制 N 份。"""
+
+    _CONTENT = "第一句口播在这里。第二句接着讲。第三句收尾。"
+
+    def _run(self, tmp_path: Path, image_pipeline: type) -> GateContext:
+        ctx = _video_context(tmp_path, content=self._CONTENT)
+        with (
+            patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
+            patch(_AUDIO_PATH, _FakeAudioPipeline),
+            patch(_IMAGE_PATH, image_pipeline),
+            patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
+        ):
+            _produce_media_assets(ctx)
+        return ctx
+
+    def test_each_scene_gets_its_own_asset(self, tmp_path: Path) -> None:
+        ctx = self._run(tmp_path, _FakeImagePipeline)
+        scene_media = ctx.get("scene_media")
+        assert isinstance(scene_media, list)
+        assert len(scene_media) >= 2
+        # No file is reused across scenes — every path is distinct.
+        assert len(set(scene_media)) == len(scene_media)
+
+    def test_scene_image_failure_degrades_to_text_panel(self, tmp_path: Path) -> None:
+        ctx = self._run(tmp_path, _FailingSceneImagePipeline)
+        scene_media = ctx.get("scene_media")
+        assert isinstance(scene_media, list) and scene_media
+        # Panel files live under 02_images/scenes/ and are still distinct.
+        assert all("scenes" in p for p in scene_media)
+        assert len(set(scene_media)) == len(scene_media)
+
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list)
+        assert any(note["event"] == "scene_image_failed" for note in notes)
+
+
+class TestVideoAssetsCarryPlatformSize:
+    """``_collect_video_assets`` stamps the platform frame size onto the assets (#378)."""
+
+    def _assets(self, tmp_path: Path, platforms: list[str]) -> dict[str, Any]:
+        from automedia.core.media_spec import PLATFORM_MEDIA_SPECS
+        from automedia.pipelines.runner import _collect_video_assets
+
+        frame = tmp_path / "cover.png"
+        frame.write_bytes(b"fake-png")
+        audio = tmp_path / "a.mp3"
+        audio.write_bytes(b"fake-mp3")
+        ctx: dict[str, Any] = {
+            "cover_image": str(frame),
+            "audio_path": str(audio),
+            "content": "body",
+            "brand_platforms": platforms,
+            "media_specs": {p: PLATFORM_MEDIA_SPECS[p] for p in platforms},
+        }
+        return _collect_video_assets(ctx)
+
+    def test_douyin_assets_are_portrait(self, tmp_path: Path) -> None:
+        assets = self._assets(tmp_path, ["douyin"])
+        assert (assets["width"], assets["height"]) == (1080, 1920)
+        assert assets["fps"] == 30
+
+    def test_no_video_platform_leaves_the_size_to_the_engine(self, tmp_path: Path) -> None:
+        """Without a video platform the size stays unset — the engine config wins."""
+        assets = self._assets(tmp_path, [])
+        assert "width" not in assets and "height" not in assets
