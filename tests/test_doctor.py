@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -473,11 +474,16 @@ class TestDoctorChromeRemediation:
         with patch.object(Doctor, "_is_wsl", return_value=False):
             msg = Doctor.chrome_remediation(dep)
         assert msg is not None
-        # The instructions are OS-specific (apt/libnss3 on Linux, "works out of
-        # the box" on Windows), so pin the invariant instead of one OS's text:
-        # a non-WSL headless failure must hand back the general instructions and
-        # must never be answered with the WSL "install a Linux Chrome" advice.
+        # Assert *content*, not just "equals whatever the helper returns" — a
+        # tautology would pass even if the helper itself regressed.  The text is
+        # OS-specific (apt/libnss3 on Linux, "out of the box" on Windows), so
+        # pin the platform's own marker.
         assert msg == Doctor.get_headless_chrome_instructions()
+        if sys.platform == "win32":
+            assert "out of the box" in msg
+        else:
+            assert "libnss3" in msg
+        # …and never the WSL "install a Linux Chrome" advice.
         assert "A Windows browser cannot be driven headless" not in msg
 
     def test_healthy_chrome_has_no_remediation(self):

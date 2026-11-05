@@ -910,6 +910,12 @@ class GateEngine:
             max_quality_retries=self._max_quality_retries,
             max_regenerations=_local_max_regen,
             wait_for_hitl=self._wait_for_hitl,
+            # The sub-run re-executes the V gates, so it needs the same media
+            # producer as the parent.  Without it the media stage never fired
+            # and every V gate reported ``skipped`` ("no video artifact to
+            # inspect") while the runner's finalize pass produced mp3/srt/mp4
+            # afterwards — i.e. the video was never inspected at all (#374).
+            media_stage=self._media_stage,
         )
         sub_ok, sub_results = sub_engine._run(
             gate_context,
