@@ -52,7 +52,8 @@ def _probe_duration(ffprobe_path: str, video_path: str, run: Runner) -> float | 
                 "-of",
                 "csv=p=0",
                 video_path,
-            ]
+            ],
+            capture_output=True,
         )
     except OSError:
         return None
@@ -76,16 +77,20 @@ def _extract_frame(
         proc = run(
             [ffmpeg_path, "-ss", f"{max(at_seconds, 0.0):.3f}", "-i", video_path,
              *_FFMPEG_FRAME_ARGS, dest],
+            capture_output=True,
         )
     except OSError as exc:
         log.warning("vision_entries.ffmpeg_spawn_failed", dest=dest, error=str(exc))
         return ""
     if proc.returncode != 0 or not os.path.isfile(dest):
+        stderr_tail = (
+            proc.stderr[-200:].decode(errors="replace") if proc.stderr else ""
+        )
         log.warning(
             "vision_entries.frame_extract_failed",
             dest=dest,
             at=round(at_seconds, 3),
-            stderr=str(proc.stderr[-200:] if proc.stderr else ""),
+            stderr=stderr_tail,
         )
         return ""
     return dest
