@@ -2448,7 +2448,18 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                         heading=topic,
                         index=i + 1,
                     )
-                    panels += 1
+                    if src:
+                        panels += 1
+                    else:
+                        # No CJK font on this host: the panel cannot be drawn
+                        # honestly, so the scene loses its image — record it
+                        # instead of shipping a blank frame silently.
+                        _note_media_stage(
+                            gate_context,
+                            "text_panel_unavailable",
+                            scene=i + 1,
+                            reason="no CJK font found for the deterministic panel",
+                        )
             if src:
                 scene_media.append(src)
         if scene_media:

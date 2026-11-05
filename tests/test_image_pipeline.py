@@ -359,6 +359,14 @@ class TestVisionQADegradation:
 # ---------------------------------------------------------------------------
 
 
+_HAS_CJK_FONT = ImagePipeline.find_cjk_font() is not None
+
+_needs_cjk_font = pytest.mark.skipif(
+    not _HAS_CJK_FONT,
+    reason="no CJK font on this host (slim Linux images have none)",
+)
+
+
 class TestTextPanel:
     """A scene without a generated image gets a deterministic text panel.
 
@@ -367,6 +375,7 @@ class TestTextPanel:
     diffusion model produced) for its whole length.
     """
 
+    @_needs_cjk_font
     def test_renders_requested_size(self, tmp_path: Any) -> None:
         out = str(tmp_path / "panel.png")
         path = ImagePipeline().render_text_panel(
@@ -376,6 +385,7 @@ class TestTextPanel:
         with Image.open(path) as img:
             assert img.size == (1080, 1920)
 
+    @_needs_cjk_font
     def test_is_deterministic(self, tmp_path: Any) -> None:
         first = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "a.png"))
         second = ImagePipeline().render_text_panel("同样的输入", 320, 480, str(tmp_path / "b.png"))
@@ -389,9 +399,11 @@ class TestTextPanel:
         monkeypatch.setattr(
             "automedia.pipelines.image_pipeline._PANEL_FONT_CANDIDATES", ("/nonexistent.ttf",)
         )
+        monkeypatch.setattr("automedia.pipelines.image_pipeline._PANEL_FONT_DIRS", ())
         path = ImagePipeline().render_text_panel("文字", 320, 480, str(tmp_path / "p.png"))
         assert path == ""
 
+    @_needs_cjk_font
     def test_wraps_long_text_into_multiple_lines(self, tmp_path: Any) -> None:
         long_text = "这是一段很长的口播文案" * 12
         out = str(tmp_path / "long.png")

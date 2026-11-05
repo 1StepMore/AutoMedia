@@ -50,9 +50,39 @@ _PANEL_FONT_CANDIDATES: tuple[str, ...] = (
     "C:/Windows/Fonts/simhei.ttf",
     "C:/Windows/Fonts/simsun.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJKsc-Regular.otf",
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/truetype/arphic/uming.ttc",
     "/System/Library/Fonts/PingFang.ttc",
+)
+
+#: Directories scanned for a CJK font when the fixed list misses.  Slim Linux
+#: images (the CI runner included) ship CJK fonts under distribution-specific
+#: names, so a name list alone is not enough — and a silently missing font
+#: means no scene panel at all.
+_PANEL_FONT_DIRS: tuple[str, ...] = (
+    "/usr/share/fonts",
+    "/usr/local/share/fonts",
+)
+
+#: Filename fragments that identify a CJK-capable font family.
+_CJK_FONT_HINTS: tuple[str, ...] = (
+    "notosanscjk",
+    "notosanssc",
+    "notoserifcjk",
+    "sourcehansans",
+    "sourcehanserif",
+    "wqy",
+    "droidsansfallback",
+    "arphic",
+    "uming",
+    "ukai",
+    "simhei",
+    "msyh",
+    "pingfang",
 )
 
 _PANEL_BG: tuple[int, int, int] = (17, 24, 39)
@@ -547,17 +577,43 @@ class ImagePipeline:
         return os.path.abspath(output_path)
 
     @staticmethod
+    def find_cjk_font() -> str | None:
+        """Return a CJK-capable font file, or ``None`` when the host has none.
+
+        Checks the fixed name list first, then walks the standard font
+        directories for a filename that looks like a CJK family.  A slim Linux
+        image (the CI runner is one) has no ``NotoSansCJK-Regular.ttc`` but may
+        ship the font under a different name, and a missing font silently costs
+        every scene its panel.
+        """
+        for candidate in _PANEL_FONT_CANDIDATES:
+            if os.path.isfile(candidate):
+                return candidate
+
+        for directory in _PANEL_FONT_DIRS:
+            if not os.path.isdir(directory):
+                continue
+            for root, _dirs, files in os.walk(directory):
+                for filename in files:
+                    lowered = filename.lower()
+                    if not lowered.endswith((".ttf", ".ttc", ".otf")):
+                        continue
+                    if any(hint in lowered for hint in _CJK_FONT_HINTS):
+                        return os.path.join(root, filename)
+        return None
+
+    @staticmethod
     def _load_panel_font(size: int) -> FreeTypeFont | None:
         """Load the first available CJK font at *size*; ``None`` when none exist."""
         from PIL import ImageFont
 
-        for candidate in _PANEL_FONT_CANDIDATES:
-            if os.path.isfile(candidate):
-                try:
-                    return ImageFont.truetype(candidate, size)
-                except OSError:  # pragma: no cover - corrupt/unreadable font
-                    continue
-        return None
+        font_path = ImagePipeline.find_cjk_font()
+        if font_path is None:
+            return None
+        try:
+            return ImageFont.truetype(font_path, size)
+        except OSError:  # pragma: no cover - corrupt/unreadable font
+            return None
 
     def _fit_panel_text(
         self,
