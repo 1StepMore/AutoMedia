@@ -53,8 +53,28 @@ _EXPECTED_MAP: dict[str, str] = {
 # Round 1: Clarity — sentence complexity, jargon, vague words
 # ---------------------------------------------------------------------------
 
-# Overly long sentence threshold (words)
+# Overly long sentence threshold (words).  Applies to space-delimited
+# languages only — see ``_CJK_LONG_SENTENCE_CHARS`` for the Chinese rule.
 _LONG_SENTENCE_THRESHOLD = 35
+
+#: Chinese has no word delimiters, so ``len(sentence.split())`` collapses a
+#: whole sentence into "1 word" and never trips the 35-word rule, while any
+#: markdown spacing inflates the count instead.  Measure characters instead.
+#: 70 CJK characters carry roughly the information of 35 English words, so the
+#: two languages fail at a comparable density.
+_CJK_LONG_SENTENCE_CHARS = 70
+
+#: Share of CJK characters at which a document is treated as Chinese copy.
+#: A Chinese headline inside an English article must not flip the whole
+#: document to the character-based rule.
+_CJK_RATIO_THRESHOLD = 0.30
+
+_CJK_CHAR_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+
+#: Chinese sentence terminators plus newlines.  Deliberately *not* the
+#: English ``(?<=[.!?])\s+`` rule: Chinese copy is written without spaces
+#: after the full stop, so that lookahead never matches.
+_CJK_SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？；!?;])|\n+")
 
 # Jargon / domain-specific buzzwords that bloat copy
 _JARGON_WORDS: list[str] = [
@@ -113,23 +133,49 @@ _VAGUE_RE = re.compile(
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 
+def _is_cjk_dominant(text: str) -> bool:
+    """Return ``True`` when *text* reads as Chinese (CJK-majority) copy."""
+    visible = [ch for ch in text if not ch.isspace()]
+    if not visible:
+        return False
+    cjk = sum(1 for ch in visible if _CJK_CHAR_RE.match(ch))
+    return cjk / len(visible) >= _CJK_RATIO_THRESHOLD
+
+
+def _visible_char_count(sentence: str) -> int:
+    """Count characters that a reader actually reads (no spaces, no ``#``)."""
+    return sum(1 for ch in sentence if not ch.isspace() and ch != "#")
+
+
+def _split_sentences(content: str) -> tuple[list[str], bool]:
+    """Split *content* into sentences; also report whether the CJK rule applied."""
+    if _is_cjk_dominant(content):
+        parts = [s.strip() for s in _CJK_SENTENCE_SPLIT_RE.split(content.strip()) if s.strip()]
+        return parts, True
+    return [s.strip() for s in _SENTENCE_SPLIT_RE.split(content.strip()) if s.strip()], False
+
+
 def _check_clarity(content: str) -> CheckResult:
     """Round 1: Check clarity — sentence complexity, jargon, vague words."""
     name = "clarity"
     if not content.strip():
         return {"name": name, "passed": True, "detail": "empty content"}
 
-    sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(content.strip()) if s.strip()]
+    sentences, is_cjk = _split_sentences(content)
     issues: list[str] = []
 
-    # 1a. Long sentences
+    # 1a. Long sentences — words for space-delimited text, characters for CJK.
     long_count = 0
     for sent in sentences:
-        word_count = len(sent.split())
-        if word_count > _LONG_SENTENCE_THRESHOLD:
+        length = _visible_char_count(sent) if is_cjk else len(sent.split())
+        limit = _CJK_LONG_SENTENCE_CHARS if is_cjk else _LONG_SENTENCE_THRESHOLD
+        if length > limit:
             long_count += 1
     if long_count:
-        issues.append(f"{long_count} sentence(s) exceed {_LONG_SENTENCE_THRESHOLD} words")
+        if is_cjk:
+            issues.append(f"{long_count} sentence(s) exceed {_CJK_LONG_SENTENCE_CHARS} characters")
+        else:
+            issues.append(f"{long_count} sentence(s) exceed {_LONG_SENTENCE_THRESHOLD} words")
 
     # 1b. Jargon
     jargon_matches = _JARGON_RE.findall(content)
@@ -245,6 +291,47 @@ _VALUE_RE = re.compile(
     re.IGNORECASE,
 )
 
+#: Chinese value indicators.  The English list above can never match Chinese
+#: copy — "效率翻倍、省下排版时间" matched nothing, so ``so_what`` failed every
+#: Chinese script forever and the quality loop could not converge (#375).
+#: These are the Chinese equivalents of the same value vocabulary, not a
+#: relaxation: they still require the copy to say what the reader gains.
+_CJK_VALUE_PATTERNS: list[str] = [
+    r"省(?:下|去|掉|时|钱|力|事)",
+    r"节省",
+    r"提升",
+    r"提高",
+    r"降低",
+    r"减少",
+    r"缩短",
+    r"增长",
+    r"翻倍",
+    r"翻番",
+    r"效率",
+    r"成本",
+    r"收益",
+    r"回报",
+    r"转化",
+    r"流量",
+    r"更快",
+    r"更省",
+    r"更好",
+    r"多赚",
+    r"少花",
+    r"避免",
+    r"好处",
+    r"价值",
+    r"帮你",
+    r"让你",
+    r"教你",
+    r"意味着",
+    r"结果是",
+    r"因为",
+    r"所以",
+    r"(?:翻|数|多|\d+\s*)倍",
+]
+_CJK_VALUE_RE = re.compile("|".join(_CJK_VALUE_PATTERNS))
+
 
 def _check_so_what(content: str) -> CheckResult:
     """Round 3: Does the content answer 'So what?' (reader value)."""
@@ -253,6 +340,8 @@ def _check_so_what(content: str) -> CheckResult:
         return {"name": name, "passed": True, "detail": "empty content"}
 
     value_matches = _VALUE_RE.findall(content)
+    # Chinese copy carries its value words in Chinese; count both vocabularies.
+    value_matches += _CJK_VALUE_RE.findall(content)
     if len(value_matches) >= 2:
         return {
             "name": name,
@@ -260,8 +349,9 @@ def _check_so_what(content: str) -> CheckResult:
             "detail": f"found {len(value_matches)} value indicator(s)",
         }
 
-    # Check for question-answer patterns (engagement signals)
-    if re.search(r"\?[^?]{20,}", content, re.DOTALL):
+    # Check for question-answer patterns (engagement signals).  ``？`` is the
+    # Chinese question mark — it must not be treated as plain prose.
+    if re.search(r"[?？][^?？]{10,}", content, re.DOTALL):
         return {"name": name, "passed": True, "detail": "found Q&A engagement pattern"}
 
     return {

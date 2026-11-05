@@ -35,6 +35,7 @@ def _make_context(
     brand_profile: dict[str, Any] | None = None,
     video_script: str | None = None,
     mock_results: dict[str, dict[str, Any]] | None = None,
+    content_format: str | None = None,
 ) -> dict[str, Any]:
     """Build a gate_context dict with sensible defaults."""
     ctx: dict[str, Any] = {
@@ -45,6 +46,8 @@ def _make_context(
         ctx["video_script"] = video_script
     if mock_results is not None:
         ctx["_mock_results"] = mock_results
+    if content_format is not None:
+        ctx["content_format"] = content_format
     return ctx
 
 
@@ -382,6 +385,58 @@ class TestG3BrandIdentityFirstParagraph:
         assert result["passed"] is False
         assert "first 200 characters" in result["detail"]
         assert "character" in result["detail"]
+
+
+class TestG3BrandIdentityScriptFormat:
+    """脚本格式（短视频/社媒串）用字符窗口，而不是「首段」（#379）。
+
+    中文说明：短视频稿的第一段必须是 3 秒钩子，品牌定位句按写作规范落在第二段
+    （"我是壹目贯维，一家AI内容生产服务商"）。用「首段」判定会把所有声明了
+    brand_identity 的真实品牌判死。
+    """
+
+    _SCRIPT = (
+        "## 抖音短视频脚本：小团队内容排期的实用做法\n\n"
+        "### 黄金开头\n\n"
+        "三个人管六个账号，排期全靠一张嘴？难怪总在最后一刻赶稿。\n\n"
+        "### 正文\n\n"
+        "我是壹目贯维，一家AI内容生产服务商。我们把这套排期方法做成了模板。"
+    )
+
+    def test_script_format_identity_in_second_block_passes(self) -> None:
+        ctx = _make_context(
+            content=self._SCRIPT,
+            brand_profile={**_DEFAULT_BRAND_PROFILE, "brand_identity": "AI内容生产服务商"},
+            content_format="short_video",
+        )
+        result = G3BrandCTA().execute(ctx)
+        bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
+        assert bi["passed"] is True, bi["detail"]
+        assert "script format" in bi["detail"]
+
+    def test_same_script_fails_without_the_script_format_marker(self) -> None:
+        """没有 content_format 标记时仍按文章规则判定 —— 放宽是有条件的."""
+        ctx = _make_context(
+            content=self._SCRIPT,
+            brand_profile={**_DEFAULT_BRAND_PROFILE, "brand_identity": "AI内容生产服务商"},
+        )
+        result = G3BrandCTA().execute(ctx)
+        bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
+        assert bi["passed"] is False
+        assert "first body paragraph" in bi["detail"]
+
+    def test_script_format_still_rejects_identity_buried_late(self) -> None:
+        """字符窗口不是无限制：身份埋在 300 字符之后仍然 fail."""
+        late = "这是开场钩子，先讲痛点。" * 40  # ~520 chars of hook first
+        ctx = _make_context(
+            content="## 标题\n\n### 黄金开头\n\n" + late + "\n\n我是壹目贯维，AI内容生产服务商。",
+            brand_profile={**_DEFAULT_BRAND_PROFILE, "brand_identity": "AI内容生产服务商"},
+            content_format="short_video",
+        )
+        result = G3BrandCTA().execute(ctx)
+        bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
+        assert bi["passed"] is False
+        assert "first 300 characters" in bi["detail"]
 
 
 class TestG3BrandIdentitySkipAggregation:

@@ -778,6 +778,36 @@ class _MediaProbeGate(BaseGate):
         return {"passed": True, "gate": self._probe_name}
 
 
+class _ArtifactProbeGate(BaseGate):
+    """Probe that also records whether media artifacts were present on entry.
+
+    Standalone (not a ``_MediaProbeGate`` subclass) because gate classes
+    auto-register by ``_gate_name`` on ``__init_subclass__`` — a subclass
+    would collide with the parent's ``V9``.
+    """
+
+    _gate_name = "V10"
+    _failure_mode = "stop"
+
+    def __init__(self, name: str, order: list[str], seen: list[bool]) -> None:
+        self._probe_name = name
+        self._order = order
+        self._seen = seen
+
+    @property
+    def gate_name(self) -> str:
+        return self._probe_name
+
+    @gate_name.setter
+    def gate_name(self, _value: str) -> None:
+        raise AttributeError("gate_name is read-only")
+
+    def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
+        self._order.append(f"gate:{self._probe_name}")
+        self._seen.append(bool(gate_context.get("required_files")))
+        return {"passed": True, "gate": self._probe_name}
+
+
 class TestMediaStageHook:
     """``media_stage`` fires exactly once, immediately before the first V gate.
 
@@ -852,3 +882,38 @@ class TestMediaStageHook:
 
         assert success is True
         assert order == ["gate:V1", "gate:G0"]
+
+
+class TestLevel2KeepsMediaStage:
+    """A level-2 regeneration re-runs the V gates, so it needs the producer (#374).
+
+    中文说明：文案门触发 level-2 重生时，子引擎从 CW 起重跑整条链路，其中包含
+    全部 V 门。子引擎此前没有继承父引擎的 ``media_stage``，媒体阶段因此不触发，
+    V0–V7 只能按"没有产物"如实 skip —— 视频从未被任何门检查过。
+    """
+
+    def test_level2_sub_run_fires_media_stage(self) -> None:
+        order: list[str] = []
+        saw_artifacts: list[bool] = []
+
+        def _stage(ctx: GateContext | dict[str, Any]) -> None:
+            order.append("media_stage")
+            ctx["required_files"] = ["03_video/output.mp4"]
+
+        engine = GateEngine(
+            [
+                _ArtifactProbeGate("CW", order, saw_artifacts),
+                _ArtifactProbeGate("G2", order, saw_artifacts),
+                _ArtifactProbeGate("V1", order, saw_artifacts),
+            ],
+            media_stage=_stage,
+        )
+
+        ok, _results = engine._handle_level2_regeneration({}, "G2", {"error": "boom"})
+
+        assert ok is True
+        # Media production lands between the text gates and the first V gate,
+        # exactly as it does in the first pass.
+        assert order == ["gate:CW", "gate:G2", "media_stage", "gate:V1"]
+        # And the V gate actually sees the artifacts instead of skipping.
+        assert saw_artifacts[-1] is True

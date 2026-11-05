@@ -31,6 +31,7 @@ import builtins
 import json
 import os
 import stat
+import sys
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -172,6 +173,10 @@ class TestSwallowSemantics:
         assert blocked.is_file()
         assert not (blocked / "audit").exists()
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="POSIX permission-bit assertion; os.geteuid() does not exist on Windows",
+    )
     def test_read_only_config_parent_does_not_raise(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

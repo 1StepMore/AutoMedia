@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 class TestAllowlistUsability:
     """Default allowlist should be usable out of the box."""
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="the shipped /tmp/automedia entry is a POSIX path (ci.yml deselects it too)",
+    )
     def test_allowlist_yaml_parses_correctly(self) -> None:
         """mcp_allowlist.yaml must parse without errors."""
         _reset_allowlist_cache()
