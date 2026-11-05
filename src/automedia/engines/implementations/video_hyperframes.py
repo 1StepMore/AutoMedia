@@ -670,33 +670,118 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Default template provisioning
     # ------------------------------------------------------------------
 
-    def _locate_gsap(self, assets: dict[str, Any], resolved_cli_dir: str | None) -> str | None:
-        """Find a local gsap.min.js — explicit config > CLI bundle > None.
+    @staticmethod
+    def _gsap_in_dir(directory: str) -> str | None:
+        """Return ``gsap.min.js``/``gsap.js`` under *directory*, or ``None``."""
+        for filename in ("gsap.min.js", "gsap.js"):
+            candidate = os.path.join(directory, filename)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
 
-        ``assets["gsap_path"]`` wins when provided. Otherwise the hyperframes
-        CLI's own bundled copy is used (``<cli dir>/../lib/node_modules/
-        hyperframes/dist/vendor/npm/gsap@*/dist/gsap.min.js`` glob), so a
-        machine with hyperframes installed renders offline. ``None`` keeps
-        the CDN reference in the templates.
+    @classmethod
+    def _gsap_in_node_modules(cls, node_modules: str) -> str | None:
+        """Search a ``node_modules`` tree for a bundled or standalone gsap."""
+        import glob as _glob
+
+        vendor_dirs = _glob.glob(
+            os.path.join(node_modules, "hyperframes", "dist", "vendor", "npm", "gsap@*", "dist")
+        )
+        for vendor_dir in sorted(vendor_dirs):
+            hit = cls._gsap_in_dir(vendor_dir)
+            if hit is not None:
+                return hit
+        return cls._gsap_in_dir(os.path.join(node_modules, "gsap", "dist"))
+
+    def _locate_gsap(self, assets: dict[str, Any], resolved_cli_dir: str | None) -> str | None:
+        """Find a local gsap copy so renders work without CDN access.
+
+        Priority: ``assets["gsap_path"]`` > ``self._config["gsap_path"]`` >
+        the hyperframes CLI's bundled copy > a local npm layout (walking up
+        from the resolved CLI) > ``npm root -g`` > the current working
+        directory. Both ``dist/gsap.min.js`` and ``dist/gsap.js`` are
+        accepted. ``None`` keeps the CDN reference in the templates.
         """
+        import glob as _glob
+
+        hit: str | None
         explicit: Any = assets.get("gsap_path")
         if explicit and os.path.isfile(str(explicit)):
-            return str(explicit)
+            hit = str(explicit)
+            logger.info("Using local gsap: %s", hit)
+            return hit
 
+        configured: Any = self._config.get("gsap_path")
+        if configured and os.path.isfile(str(configured)):
+            hit = str(configured)
+            logger.info("Using local gsap: %s", hit)
+            return hit
+
+        searched: list[str] = []
+
+        # Existing CLI-bundled vendor glob (kept unchanged).
         cli_base = self._resolve_cli_base() or []
-        candidates: list[str] = []
         for part in cli_base:
             if os.path.isfile(part) or part.endswith(".js"):
                 cli_dir = os.path.dirname(os.path.abspath(part))
-                candidates.append(os.path.join(cli_dir, "..", "lib", "node_modules", "hyperframes"))
-                candidates.append(os.path.join(cli_dir, "..", "..", "hyperframes"))
-        import glob as _glob
+                for base in (
+                    os.path.join(cli_dir, "..", "lib", "node_modules", "hyperframes"),
+                    os.path.join(cli_dir, "..", "..", "hyperframes"),
+                ):
+                    searched.append(base)
+                    for pattern in ("gsap.min.js", "gsap.js"):
+                        for hit in _glob.glob(
+                            os.path.join(base, "dist", "vendor", "npm", "gsap@*", "dist", pattern)
+                        ):
+                            logger.info("Using local gsap: %s", hit)
+                            return hit
 
-        for base in candidates:
-            for hit in _glob.glob(
-                os.path.join(base, "dist", "vendor", "npm", "gsap@*", "dist", "gsap.min.js")
-            ):
-                return hit
+        # Local npm installs: walk up from the resolved CLI binary.
+        which_path: str | None = shutil.which("hyperframes")
+        if which_path:
+            current = os.path.dirname(os.path.realpath(which_path))
+            for _ in range(7):
+                searched.append(current)
+                hit = self._gsap_in_node_modules(os.path.join(current, "node_modules"))
+                if hit is not None:
+                    logger.info("Using local gsap: %s", hit)
+                    return hit
+                parent = os.path.dirname(current)
+                if parent == current:
+                    break
+                current = parent
+
+        # Global npm root (quietly skip when npm is missing or errors).
+        try:
+            npm_result = subprocess.run(
+                ["npm", "root", "-g"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            npm_result = None
+        if npm_result is not None and npm_result.returncode == 0:
+            npm_root = npm_result.stdout.strip()
+            if npm_root:
+                searched.append(npm_root)
+                hit = self._gsap_in_dir(os.path.join(npm_root, "gsap", "dist"))
+                if hit is not None:
+                    logger.info("Using local gsap: %s", hit)
+                    return hit
+
+        # Finally, the current working directory.
+        cwd = os.getcwd()
+        searched.append(cwd)
+        hit = self._gsap_in_dir(os.path.join(cwd, "node_modules", "gsap", "dist"))
+        if hit is not None:
+            logger.info("Using local gsap: %s", hit)
+            return hit
+
+        logger.warning(
+            "No local gsap found; searched: %s",
+            ", ".join(dict.fromkeys(searched)),
+        )
         return None
 
     def _apply_frame_size(self, project_config_path: str, assets: dict[str, Any]) -> None:

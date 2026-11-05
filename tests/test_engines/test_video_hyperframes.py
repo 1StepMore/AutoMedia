@@ -1650,3 +1650,97 @@ def _ffmpeg_command_for(
         if cmd and "ffmpeg" in str(cmd[0]) and "-pattern_type" in cmd:
             return list(cmd)
     return []
+
+
+class TestLocateGsap:
+    """``_locate_gsap`` discovery order — no network, no real npm."""
+
+    def test_locate_gsap_prefers_config_path(
+        self, tmp_path: Any, monkeypatch: Any
+    ) -> None:
+        configured = tmp_path / "configured-gsap.min.js"
+        from_assets = tmp_path / "asset-gsap.min.js"
+        configured.write_text("gsap")
+        from_assets.write_text("gsap")
+        monkeypatch.chdir(tmp_path)
+        engine = HyperFramesVideoEngine(engine_config={"gsap_path": str(configured)})
+
+        assert engine._locate_gsap({}, None) == str(configured)
+        assert engine._locate_gsap({"gsap_path": str(from_assets)}, None) == str(from_assets)
+
+    def test_locate_gsap_finds_local_node_modules(
+        self, tmp_path: Any, monkeypatch: Any
+    ) -> None:
+        project = tmp_path / "proj"
+        bundled = (
+            project
+            / "node_modules"
+            / "hyperframes"
+            / "dist"
+            / "vendor"
+            / "npm"
+            / "gsap@3.14.2"
+            / "dist"
+            / "gsap.min.js"
+        )
+        bundled.parent.mkdir(parents=True)
+        bundled.write_text("gsap")
+
+        link = project / "node_modules" / ".bin" / "hyperframes"
+        target = project / "node_modules" / "hyperframes" / "bin" / "hyperframes.js"
+        target.parent.mkdir(parents=True)
+        target.write_text("#!/usr/bin/env node")
+        link.parent.mkdir(parents=True)
+        os.symlink(target, link)
+
+        monkeypatch.setattr(
+            shutil, "which", lambda name: str(link) if name == "hyperframes" else None
+        )
+        monkeypatch.chdir(tmp_path)
+
+        assert HyperFramesVideoEngine()._locate_gsap({}, None) == str(bundled)
+
+    def test_locate_gsap_finds_standalone_gsap_package(
+        self, tmp_path: Any, monkeypatch: Any
+    ) -> None:
+        project = tmp_path / "proj"
+        standalone = project / "node_modules" / "gsap" / "dist" / "gsap.min.js"
+        standalone.parent.mkdir(parents=True)
+        standalone.write_text("gsap")
+
+        fake_cli = project / "node_modules" / ".bin" / "hyperframes"
+        fake_cli.parent.mkdir(parents=True)
+        fake_cli.write_text("#!/usr/bin/env node")
+
+        monkeypatch.setattr(
+            shutil, "which", lambda name: str(fake_cli) if name == "hyperframes" else None
+        )
+        monkeypatch.chdir(tmp_path)
+
+        assert HyperFramesVideoEngine()._locate_gsap({}, None) == str(standalone)
+
+    def test_locate_gsap_falls_back_to_npm_root(
+        self, tmp_path: Any, monkeypatch: Any
+    ) -> None:
+        global_root = tmp_path / "global"
+        standalone = global_root / "gsap" / "dist" / "gsap.min.js"
+        standalone.parent.mkdir(parents=True)
+        standalone.write_text("gsap")
+
+        monkeypatch.setattr(shutil, "which", lambda name: None)
+        npm_result = MagicMock(returncode=0, stdout=f"{global_root}\n", stderr="")
+        monkeypatch.setattr(subprocess, "run", MagicMock(return_value=npm_result))
+        monkeypatch.chdir(tmp_path)
+
+        assert HyperFramesVideoEngine()._locate_gsap({}, None) == str(standalone)
+
+    def test_locate_gsap_returns_none_when_absent(
+        self, tmp_path: Any, monkeypatch: Any
+    ) -> None:
+        monkeypatch.setattr(shutil, "which", lambda name: None)
+        monkeypatch.setattr(
+            subprocess, "run", MagicMock(return_value=MagicMock(returncode=1, stdout="", stderr=""))
+        )
+        monkeypatch.chdir(tmp_path)
+
+        assert HyperFramesVideoEngine()._locate_gsap({}, None) is None
