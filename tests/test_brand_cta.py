@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.brand_cta import (
@@ -11,6 +13,8 @@ from automedia.gates.brand_cta import (
     G3BrandCTA,
     _check_brand_identity,
     _check_brand_name_present,
+    _check_bridge_sentence,
+    _check_cta_present,
 )
 
 # ---------------------------------------------------------------------------
@@ -653,3 +657,53 @@ def test_placeholder_content_is_skipped() -> None:
     assert result["passed"] is True
     assert result["status"] == "skipped"
     assert result["checks"] == []
+
+
+class TestG3ChineseCTA:
+    """中文口语 CTA 必须被识别（#388）。
+
+    G3 是 ``failure_mode=stop``：一次漏判整轮就结束，V 轨没有机会执行。
+    而中文短视频的收尾恰恰是「评论区扣个1」「点个关注不迷路」，原来的
+    词表只认「立即咨询」「扫码了解」这类书面写法。
+    """
+
+    _REAL_DRAFT = (
+        "## 想看实操模板？评论区互动获取\n\n"
+        "你有没有发现，小团队做内容排期时，总在最后一刻赶稿。\n\n"
+        "想看这套小团队专属执行排期模板？评论区扣个1。\n\n"
+        "下期讲排版效率，对你有帮助的话，点个关注不迷路。"
+    )
+
+    def test_real_draft_passes_cta_present(self) -> None:
+        result = _check_cta_present(self._REAL_DRAFT)
+        assert result["passed"] is True, result["detail"]
+        assert "扣个1" in result["detail"] or "点个关注" in result["detail"]
+
+    def test_bridge_sentence_sees_the_chinese_cta(self) -> None:
+        """「no CTA found」曾让 bridge 也一起挂 —— 两处必须同源。"""
+        result = _check_bridge_sentence(self._REAL_DRAFT)
+        assert result["passed"] is True, result["detail"]
+
+    @pytest.mark.parametrize(
+        "cta",
+        [
+            "评论区扣1",
+            "扣个1",
+            "点个关注",
+            "关注我不迷路",
+            "私信我领模板",
+            "记得收藏",
+            "转发给同事",
+            "我们下期见",
+        ],
+    )
+    def test_common_chinese_ctas_are_recognised(self, cta: str) -> None:
+        assert _check_cta_present(f"这段先讲痛点，然后再给你方法。{cta}").get("passed") is True
+
+    def test_bare_mention_of_following_is_not_a_cta(self) -> None:
+        """「关注行业动态」不是行动号召，不能因为含「关注」就放行."""
+        result = _check_cta_present("我们持续关注行业动态，本周整理了三份报告。")
+        assert result["passed"] is False
+
+    def test_english_cta_path_unchanged(self) -> None:
+        assert _check_cta_present("Learn more at our site today.")["passed"] is True

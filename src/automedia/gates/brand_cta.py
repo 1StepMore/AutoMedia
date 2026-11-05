@@ -25,7 +25,7 @@ from structlog import get_logger
 from automedia.gates._context import CONTENT_PLACEHOLDER_PREFIX, GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.helpers import apply_mock_overrides
+from automedia.gates.helpers import apply_mock_overrides, is_cjk_dominant
 
 log = get_logger(__name__)
 
@@ -60,6 +60,41 @@ _CTA_RE = re.compile(
     r"(?:" + "|".join(_CTA_PATTERNS) + r")",
     re.IGNORECASE,
 )
+
+#: Chinese colloquial CTAs (#388).  The list above is written for formal
+#: copy — 「立即咨询」「扫码了解」— while short-video scripts end with
+#: 「评论区扣个1」「点个关注不迷路」, which matched nothing.  G3 is
+#: ``failure_mode=stop``, so one miss kills the run before any V gate executes;
+#: the vocabulary has to cover how Chinese creators actually ask.
+#:
+#: Deliberately narrower than "any occurrence of 关注": a beat that merely says
+#: 「关注行业动态」is not asking the viewer to do anything, and a CTA check that
+#: passes on it teaches the writer nothing.
+_CJK_CTA_PATTERNS: list[str] = [
+    # Follow / subscribe
+    r"点(?:个|一下|一波)?关注",
+    r"关注(?:我|我们|一下|一波)",
+    r"关注不迷路",
+    r"记得关注",
+    r"求关注",
+    # Comment / interact
+    r"评论区",
+    r"留言",
+    r"扣个?\s*\d+",
+    r"评论(?:区)?(?:见|聊|告诉我)",
+    # Save / share / like
+    r"收藏(?:一下|起来|本文)?",
+    r"转发(?:给|一下)?",
+    r"点赞",
+    r"双击",
+    r"三连",
+    # Private channel / next episode
+    r"私信(?:我|我们)?",
+    r"下期见",
+    r"我们下期见",
+]
+
+_CJK_CTA_RE = re.compile("|".join(_CJK_CTA_PATTERNS))
 
 #: Window size (characters) used to approximate the "正文首段" when the
 #: content carries no blank-line paragraph separation.  Matches the 200-char
@@ -150,10 +185,36 @@ def _check_brand_name_present(
     }
 
 
-def _check_cta_present(content: str) -> CheckResult:
-    """Check 2: CTA（行动号召）是否存在。"""
-    name = "cta_present"
+def _cta_matches(content: str) -> list[str]:
+    """Return every CTA hit, using the CJK vocabulary for Chinese copy (#388)."""
     matches = _CTA_RE.findall(content)
+    if is_cjk_dominant(content):
+        matches += _CJK_CTA_RE.findall(content)
+    return matches
+
+
+def _first_cta_start(content: str) -> int | None:
+    """Position of the earliest CTA in *content*, or ``None`` when absent."""
+    starts: list[int] = []
+    match = _CTA_RE.search(content)
+    if match:
+        starts.append(match.start())
+    if is_cjk_dominant(content):
+        cjk_match = _CJK_CTA_RE.search(content)
+        if cjk_match:
+            starts.append(cjk_match.start())
+    return min(starts) if starts else None
+
+
+def _check_cta_present(content: str) -> CheckResult:
+    """Check 2: CTA（行动号召）是否存在。
+
+    按语言分流（#388）：英文/书面句式走 :data:`_CTA_RE`，CJK 内容额外走
+    :data:`_CJK_CTA_RE`。把中文塞进英文正则会让词表既难读又互相干扰，
+    而漏判的代价很高——G3 是 ``stop``，一次漏判整轮就结束，V 轨没有机会执行。
+    """
+    name = "cta_present"
+    matches = _cta_matches(content)
     if matches:
         found = sorted({m.strip() for m in matches})
         return {
@@ -402,9 +463,10 @@ def _check_bridge_sentence(
     """
     name = "bridge_sentence"
 
-    # Find first CTA match position
-    cta_match = _CTA_RE.search(content)
-    if not cta_match:
+    # Find first CTA match position (language-aware, #388 — a Chinese CTA the
+    # previous regex could not see made this check report "no CTA found").
+    cta_start = _first_cta_start(content)
+    if cta_start is None:
         return {
             "name": name,
             "passed": False,
@@ -412,7 +474,6 @@ def _check_bridge_sentence(
         }
 
     # Look at the text before the CTA (up to 200 chars)
-    cta_start = cta_match.start()
     preceding_start = max(0, cta_start - 200)
     preceding_text = content[preceding_start:cta_start]
 
