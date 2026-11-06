@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Any
 
@@ -96,7 +97,9 @@ class TestBuildVisionEntries:
         assert stats["frames_failed"] == 1
         assert stats["frames_extracted"] == 1
 
-    def test_missing_ffmpeg_raises(self, tmp_path: Any) -> None:
+    def test_missing_ffmpeg_raises(self, tmp_path: Any, monkeypatch: Any) -> None:
+        """ffmpeg unavailable -> must raise (independent of ffmpeg on the machine)."""
+        monkeypatch.setattr(shutil, "which", lambda name, *a, **k: None)
         with pytest.raises(FileNotFoundError):
             build_vision_entries(
                 str(tmp_path / "output.mp4"),
