@@ -136,9 +136,7 @@ def _check_red_line_6(entries: list[dict[str, Any]]) -> CheckResult:
     unchecked = [i for i, e in enumerate(entries) if not e.get("checked", False)]
     if unchecked:
         unjudged = [
-            i
-            for i in unchecked
-            if str(entries[i].get("verdict", "")).startswith("unjudged")
+            i for i in unchecked if str(entries[i].get("verdict", "")).startswith("unjudged")
         ]
         if len(unjudged) == len(unchecked):
             scenes = [entries[i].get("scene_id", i + 1) for i in unjudged]
@@ -227,8 +225,10 @@ class V1VisionQA(BaseGate):
         # 标记（生产者的如实记账，而非裸数据）时，整门 skip 并记账；裸的
         # 未检查数据仍交给 red_line_6 判 fail。
         judged = [e for e in entries if e.get("checked", False)]
-        all_unjudged = bool(entries) and not judged and all(
-            str(e.get("verdict", "")).startswith("unjudged") for e in entries
+        all_unjudged = (
+            bool(entries)
+            and not judged
+            and all(str(e.get("verdict", "")).startswith("unjudged") for e in entries)
         )
         if all_unjudged:
             paths = "; ".join(

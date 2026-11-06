@@ -55,6 +55,7 @@ def _redact(value: object) -> object:
         return [_redact(v) for v in value]
     return value
 
+
 #: Run-state shared between the run thread and the progress endpoint.
 _run_state: dict[str, Any] = {
     "running": False,

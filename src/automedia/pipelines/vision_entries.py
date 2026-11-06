@@ -75,17 +75,22 @@ def _extract_frame(
     """抽一帧；成功返回 ``dest``，失败返回空串（调用方记账，不外抛）。"""
     try:
         proc = run(
-            [ffmpeg_path, "-ss", f"{max(at_seconds, 0.0):.3f}", "-i", video_path,
-             *_FFMPEG_FRAME_ARGS, dest],
+            [
+                ffmpeg_path,
+                "-ss",
+                f"{max(at_seconds, 0.0):.3f}",
+                "-i",
+                video_path,
+                *_FFMPEG_FRAME_ARGS,
+                dest,
+            ],
             capture_output=True,
         )
     except OSError as exc:
         log.warning("vision_entries.ffmpeg_spawn_failed", dest=dest, error=str(exc))
         return ""
     if proc.returncode != 0 or not os.path.isfile(dest):
-        stderr_tail = (
-            proc.stderr[-200:].decode(errors="replace") if proc.stderr else ""
-        )
+        stderr_tail = proc.stderr[-200:].decode(errors="replace") if proc.stderr else ""
         log.warning(
             "vision_entries.frame_extract_failed",
             dest=dest,
@@ -151,8 +156,10 @@ def build_vision_entries(
         end_path = os.path.join(frames_dir, f"scene-{scene_no}-end.jpg")
 
         mid = _extract_frame(resolved_ffmpeg, video_path, start + length / 2, mid_path, runner)
-        end_at = start + length - end_margin if duration is None else min(
-            start + length, duration - end_margin
+        end_at = (
+            start + length - end_margin
+            if duration is None
+            else min(start + length, duration - end_margin)
         )
         end = _extract_frame(resolved_ffmpeg, video_path, end_at, end_path, runner)
         stats["frames_extracted"] += int(bool(mid)) + int(bool(end))
@@ -167,16 +174,22 @@ def build_vision_entries(
             stats["unjudged"] += 1
         elif kind == "panel":
             # 文字面板：面板文字就是该场文案，相关性由构造保证——只登记。
-            checked, qa_passed, verdict = True, True, (
-                "panel (by construction: the panel text is this scene's copy)"
+            checked, qa_passed, verdict = (
+                True,
+                True,
+                ("panel (by construction: the panel text is this scene's copy)"),
             )
             stats["judged"] += 1
         else:
             # 生成图/复用图：需要视觉模型判相关性；仓库当前没有图像输入的
             # LLM 客户端，如实记未判定，绝不默认 pass（#387）。
-            checked, qa_passed, verdict = False, False, (
-                "unjudged: no vision-capable model configured — frame extracted "
-                "for future VLM judging"
+            checked, qa_passed, verdict = (
+                False,
+                False,
+                (
+                    "unjudged: no vision-capable model configured — frame extracted "
+                    "for future VLM judging"
+                ),
             )
             stats["unjudged"] += 1
 

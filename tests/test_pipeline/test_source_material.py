@@ -181,9 +181,7 @@ class TestMCPRunPipelineSourceParams:
     """Verify MCP run_pipeline accepts and passes source_path/source_url."""
 
     @pytest.fixture(autouse=True)
-    def _scoped_allowlist(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Path:
+    def _scoped_allowlist(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         """Scope the MCP allowlist to a temp dir so the source_path gate passes.
 
         ``run_pipeline`` fail-closes on caller-supplied paths outside
