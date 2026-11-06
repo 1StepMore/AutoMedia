@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     rendered = json.dumps(current, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
     if not args.check:
-        SNAPSHOT_PATH.write_text(rendered, encoding="utf-8")
+        SNAPSHOT_PATH.write_text(rendered, encoding="utf-8", newline="\n")
         scenario_count = len(current["scenarios"])
         print(f"Wrote {SNAPSHOT_PATH} ({scenario_count} scenarios with thresholds)")
         return 0

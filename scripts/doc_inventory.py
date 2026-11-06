@@ -220,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     _OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    _OUTPUT.write_text(generated, encoding="utf-8")
+    _OUTPUT.write_text(generated, encoding="utf-8", newline="\n")
     print(f"Wrote {_OUTPUT}")
     return 0
 

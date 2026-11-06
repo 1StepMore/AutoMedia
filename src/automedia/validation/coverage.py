@@ -433,8 +433,11 @@ def coverage_audit(
     # Freshness metadata (gap Tr-03): the audit is recomputed by CI and
     # drift-checked against the committed copy; `generated_at` is the
     # inherently run-specific field the drift check excludes.
-    result["generated_at"] = datetime.now(UTC).isoformat()
+    # Key order matters: the committed artifact has scenario_count BEFORE
+    # generated_at. Swapping these two lines makes generate() reproduce the
+    # committed bytes exactly -- see governance-remediation-plan.md §B3-2.
     result["scenario_count"] = len(scenarios)
+    result["generated_at"] = datetime.now(UTC).isoformat()
     return result
 
 
