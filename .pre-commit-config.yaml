@@ -98,6 +98,30 @@ repos:
         always_run: true
         pass_filenames: false
 
+      # B6-2 (governance-remediation-plan): the three governance gates.
+      # always_run like the sibling local hooks — a md-only commit can still
+      # change a consensus source (AGENTS.md) or a generated artifact.
+      - id: governance-consensus
+        name: governance consensus hash
+        entry: python -m automedia.governance.consensus
+        language: system
+        always_run: true
+        pass_filenames: false
+
+      - id: check-os-independence
+        name: check OS independence
+        entry: python scripts/check-os-independence.py
+        language: system
+        always_run: true
+        pass_filenames: false
+
+      - id: redlines-render
+        name: redlines.md matches redlines.yaml
+        entry: python scripts/render_redlines.py --check
+        language: system
+        always_run: true
+        pass_filenames: false
+
 ci:
   autofix_prs: true
   autoupdate_schedule: weekly

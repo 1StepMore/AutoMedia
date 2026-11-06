@@ -395,3 +395,29 @@ jobs:
         run: systemd-analyze verify deploy/systemd/automedia-mcp.service deploy/systemd/automedia-cron.service deploy/systemd/automedia-pipeline.service
       - name: Build Docker image (mcp-full profile)
         run: docker compose --profile full build mcp-full
+
+  # B6-1 (governance-remediation-plan): wire the governance gates into CI.
+  # Blocking — no continue-on-error, ever (see the incident note at the top
+  # of the lint-typecheck job: an advisory gate stays broken forever).
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Governance checks run git queries against the checkout.
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Consensus hash
+        run: python -m automedia.governance.consensus
+      - name: Doc consistency
+        run: python scripts/check-doc-consistency.py
+      - name: OS independence
+        run: python scripts/check-os-independence.py
+      - name: Redlines drift
+        run: python scripts/render_redlines.py --check
+      - name: Coverage audit drift
+        run: python scripts/generate_coverage_audit.py --check
