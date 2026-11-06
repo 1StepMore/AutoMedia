@@ -276,7 +276,7 @@ In this case, `check_path_allowed()` returns `True`, and all paths pass
 through. This is not a secure configuration. Configure the allowlist in
 production.
 
-### Archive operation and Red Line 8
+### Archive operation and the archive-force rule
 
 `archive_project()` checks whether the project status is `"published"`. If
 not and `force=True` is not set, it returns

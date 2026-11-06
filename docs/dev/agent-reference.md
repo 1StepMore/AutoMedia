@@ -8,7 +8,7 @@ under 200 lines. Read the section you need — none of it is required up front.
 ```
 AutoMedia/
 ├── src/
-│   └── automedia/              # Core Python package (22 subpackages; size claims live in AGENTS.md)
+│   └── automedia/              # Core Python package (23 subpackages; size claims live in AGENTS.md)
 │       ├── core/               # Foundation: config_loader (6-layer merge), project, credential_loader, doctor, overrides, llm_client, media_spec, workflow, md5_tracker
 │       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
@@ -18,6 +18,7 @@ AutoMedia/
 │       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
 │       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
 │       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json), remotion/ (React composition sources)
+│       ├── governance/         # Governance data: redlines.yaml (single source of truth for agent red lines), entries.yaml (entry-file manifest), consensus.py (cross-OS hash)
 │       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
 │       ├── cli/                # Typer CLI: app.py + command modules under commands/ (21 commands)
 │       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules

@@ -25,6 +25,7 @@ src/automedia/
 ├── engines/ validation/ effects/   # media engine backends · validation layer · content analytics
 ├── detectors/ hooks/ adapters/ accounts/ omni/ decision/ hitl/ pool/ cron/ prompts/ manifests/ asset_library/
 ├── features/ templates/   # open-core tier markers · hyperframes render templates
+├── governance/   # redlines.yaml + entries.yaml — single source of truth for agent red lines
 docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 └── pyproject.toml · .pre-commit-config.yaml · .env.example
 ```
@@ -41,17 +42,27 @@ docs/ · scripts/ · tests/ · deploy/ · .github/workflows/
 
 ## 5. Agent Constraints (Red Lines) — MUST OBEY
 
-These constraints are enforced by the test suite and must never be violated:
+Source of truth: `src/automedia/governance/redlines.yaml`.
+Rendered copy: [docs/dev/redlines.md](docs/dev/redlines.md).
 
-1. **MUST NOT** archive projects using `--force`. Only the user may force-archive (Red Line 8). The MCP `archive_project` tool enforces this — it refuses unless status is `"published"` or `force=True`.
-2. **MUST NOT** commit real production data, topic pool contents, or credentials to git.
-3. **MUST NOT** modify `automedia/mcp/mcp_allowlist.yaml` without explicit user request.
-4. **MUST** use synthetic test fixtures from `tests/fixtures/synth/` for testing. Zero production data in tests.
-5. **MUST** use `automedia archive` command for archiving projects — never manual directory operations.
-6. **MUST** follow the gate naming convention: G0-G6 (copy/content gates), V0-V7 (video/quality gates), L1-L4 (lifecycle gates), D1-D7 (distribution gates), P1-P4 (sub-pipeline repurpose gates). Additional gates include H0, pre-gate, and CW.
-7. **MUST** add new gates to `automedia/gates/failure_modes.py` when creating them.
-8. **MUST NOT** skip pre-commit checks. Run `pre-commit run --all-files` before committing.
-9. **MUST** respect the GateHook readonly contract — hooks observe but never mutate.
+| ID | Constraint |
+|---|---|
+| `RL-ARCHIVE-FORCE` | Never `--force` archive; only the user may. |
+| `RL-NO-PROD-DATA` | No production data, topic pool contents, or credentials in git. |
+| `RL-ALLOWLIST` | Do not edit `mcp_allowlist.yaml` without explicit user request. |
+| `RL-SYNTH-FIXTURES` | Synthetic fixtures only (`tests/fixtures/synth/`). |
+| `RL-ARCHIVE-CMD` | Use `automedia archive`, never manual directory moves. |
+| `RL-GATE-NAMING` | G0-G6, V0-V7, L1-L4, D1-D7, P1-P4; plus H0, pre-gate, CW. |
+| `RL-FAILURE-MODES` | Register new gates in `automedia/gates/failure_modes.py`. |
+| `RL-PRECOMMIT` | Never skip pre-commit; run `pre-commit run --all-files`. |
+| `RL-HOOK-READONLY` | GateHook observes, never mutates. |
+
+Enforcement: the ID set is checked by
+`tests/test_governance/test_redlines_source_of_truth.py` (B1-8), and every
+tracked harness entry file is required to be in the scan set by
+`scripts/check-doc-consistency.py` (B2-4). The constraints themselves remain
+discipline, reviewed in PR. See
+[docs/dev/developer-guide.md §Red Lines](docs/dev/developer-guide.md#red-lines-discipline-constraints-not-automated).
 
 ---
 
@@ -101,7 +112,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `list_active_pipelines` | — | List active / recent pipelines |
 | `list_projects` | base_dir, status | List projects under a directory |
 | `get_project_assets` | project_dir | List project asset files |
-| `archive_project` | project_id, base_dir, force | Archive a project (Red Line 8) |
+| `archive_project` | project_id, base_dir, force | Archive a project (the archive-force rule) |
 | `list_topic_pool` | status, category, pool_db_path | List pool topics with filters |
 | `register_platform_adapter` | platform_name, adapter_class | Register a publish adapter |
 | `list_platforms` | — | List registered platforms |
@@ -169,7 +180,7 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs |
 | `automedia account` | Account management (connect, add, login-capture, rotate, list, health, disconnect, remove) |
-| `automedia archive` | Archive a project (Red Line 8: --force unless published) |
+| `automedia archive` | Archive a project (the archive-force rule: --force unless published) |
 | `automedia demo` / `ui` | Credential-free sample run (fake LLM + local images, isolated sandbox); minimal local web UI (loopback only) |
 | `automedia init` | Initialize configuration |
 | `automedia doctor` | Check dependencies and environment health |

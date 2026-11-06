@@ -1,0 +1,40 @@
+# Single source of truth for agent red lines.
+# NEVER parse this file from a harness — read docs/dev/redlines.md instead.
+version: 1
+
+redlines:
+  - id: RL-ARCHIVE-FORCE
+    text: "MUST NOT archive projects using --force. Only the user may force-archive."
+    rationale: "The MCP archive_project tool enforces this — it refuses unless status is 'published' or force=True."
+
+  - id: RL-NO-PROD-DATA
+    text: "MUST NOT commit real production data, topic pool contents, or credentials to git."
+    rationale: "Synthetic fixtures only; see RL-SYNTH-FIXTURES."
+
+  - id: RL-ALLOWLIST
+    text: "MUST NOT modify src/automedia/mcp/mcp_allowlist.yaml without explicit user request."
+    rationale: "The allowlist is a security boundary, not a convenience file."
+
+  - id: RL-SYNTH-FIXTURES
+    text: "MUST use synthetic test fixtures from tests/fixtures/synth/ for testing."
+    rationale: "Zero production data in tests."
+
+  - id: RL-ARCHIVE-CMD
+    text: "MUST use the automedia archive command for archiving projects — never manual directory operations."
+    rationale: "Manual moves bypass md5 tracking and status transitions."
+
+  - id: RL-GATE-NAMING
+    text: "MUST follow the gate naming convention: G0-G6, V0-V7, L1-L4, D1-D7, P1-P4; plus H0, pre-gate, CW."
+    rationale: "Gate names are referenced by gate_plan.py, dag.py and 33 gate classes."
+
+  - id: RL-FAILURE-MODES
+    text: "MUST add new gates to automedia/gates/failure_modes.py when creating them."
+    rationale: "An unregistered gate defaults to an undefined failure mode."
+
+  - id: RL-PRECOMMIT
+    text: "MUST NOT skip pre-commit checks. Run pre-commit run --all-files before committing."
+    rationale: "The hooks are the local half of the CI gate set."
+
+  - id: RL-HOOK-READONLY
+    text: "MUST respect the GateHook readonly contract — hooks observe but never mutate."
+    rationale: "See automedia/hooks/protocol.py."

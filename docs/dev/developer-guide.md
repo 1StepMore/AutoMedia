@@ -329,7 +329,7 @@ Six layers stack from lowest to highest priority, with higher priority overridin
 - **Gate blocking**: If a Gate with `failure_mode="stop"` fails, the Pipeline stops immediately
 - **GateHook read-only**: Hooks are observers, cannot modify Gate behavior
 - **MD5 tracking**: Each Gate's output is written to `pipeline_md5.json`, Red Line 7
-- **Archive red line**: Only user `--force` can archive, agent must not archive (Red Line 8)
+- **Archive red line**: Only user `--force` can archive, agent must not archive (the archive-force rule)
 - **External scheduling**: External crond calls `automedia cron run`, no built-in scheduler
 
 ## Repository Ownership & Publishing (canonical = 1StepMore/AutoMedia)
@@ -372,7 +372,7 @@ point; that suspension has since been lifted and the canonical repo is restored.
 
 ### RL8 — Archive Constraint (HARD, Automated)
 
-The `archive_project` MCP tool and `automedia archive` CLI command refuse to archive a project unless its status is `"published"` or the `--force` flag is explicitly passed. This enforces Red Line 8, the core constraint that only the user may force-archive.
+The `archive_project` MCP tool and `automedia archive` CLI command refuse to archive a project unless its status is `"published"` or the `--force` flag is explicitly passed. This enforces the archive-force rule, the core constraint that only the user may force-archive.
 
 - **Location:** `automedia/mcp/server.py` (MCP tool), `automedia/cli/commands/archive.py` (CLI command)
 - **How it works:** Checks project status before archiving. Rejects if status is not `published` and `--force` is not set.
@@ -405,21 +405,13 @@ Defined in `automedia/gates/failure_modes.py`. See `docs/dev/gate-failure-modes.
 
 ### Red Lines (Discipline Constraints, Not Automated)
 
-Beyond RL8 (automated), the remaining red lines rely on developer discipline and code review.
+Source of truth: [`src/automedia/governance/redlines.yaml`](../../src/automedia/governance/redlines.yaml).
+Rendered copy: [`docs/dev/redlines.md`](redlines.md). The full text is not
+duplicated here — the rendered table is the only distribution format.
 
-| RL | Constraint | Enforcement |
-|----|-----------|-------------|
-| RL1 | Must not archive non-published projects with `--force` | Automated |
-| RL2 | Must not commit production data, topic pool contents, or credentials to git | Developer discipline |
-| RL3 | Must not modify `mcp_allowlist.yaml` without explicit user request | Developer discipline |
-| RL4 | Tests must use synthetic fixtures from `tests/fixtures/synth/` | Developer discipline |
-| RL5 | Must use `automedia archive` command, never manual directory operations | Developer discipline |
-| RL6 | Follow gate naming convention: G0-G6, V0-V7, L1-L4, D1-D7, P1-P4, H0, CW, pre-gate | Developer discipline |
-| RL7 | Must add new gates to `failure_modes.py` | Developer discipline |
-| RL8 | Must run pre-commit checks before committing | Pre-commit hooks (automated) |
-| RL9 | Respect GateHook readonly contract -- observe but do not modify | Developer discipline |
-
-> Note: RL numbering matches AGENTS.md section 5. Original RL9 (decision provenance) has been removed.
+Enforcement: `RL-ARCHIVE-FORCE` is enforced by the `archive_project` MCP tool
+and `automedia archive` CLI; `RL-PRECOMMIT` by the pre-commit hooks. The rest
+are discipline constraints reviewed in PR.
 
 ### Gate List
 

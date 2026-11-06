@@ -125,7 +125,7 @@ Registered MCP tools:
 | `get_pipeline_status` | Query project status from its info file |
 | `list_projects` | List all projects, optionally filtered by status |
 | `get_project_assets` | List asset files in a project directory |
-| `archive_project` | Archive a project (Red Line 8: refuses unless published or —force) |
+| `archive_project` | Archive a project (the archive-force rule: refuses unless published or —force) |
 | `help_mcp` | Get a categorized listing of all MCP tools with descriptions and parameter schemas |
 | `mcp_help` | ⚠️ Deprecated: use help_mcp |
 | `health_engine` | Check all engine-related dependencies health |
@@ -343,7 +343,7 @@ stdio. If you need authentication, use the HTTP transport above.
 
 ## Security Notes
 
-- The `archive_project` tool follows Red Line 8: archiving is only allowed when project status is `published` or `force=True`
+- The `archive_project` tool follows the archive-force rule: archiving is only allowed when project status is `published` or `force=True`
 - The path allowlist prevents malicious agents from reading files outside the project directory
 - It is recommended to use dedicated API keys and environment variables for the MCP server
 - The HTTP transport requires `AUTOMEDIA_MCP_AUTH_TOKEN` (Bearer token, constant-time comparison) and the server refuses to start without it; stdio is unauthenticated by nature and is intended for local/agent use

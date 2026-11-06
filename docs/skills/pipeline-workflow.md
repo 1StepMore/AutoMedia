@@ -118,7 +118,7 @@ After the content is published (see `distribution-workflow`), archive the projec
 | `base_dir` | No | Base directory to scan for projects (default `"."`) |
 | `force` | No | Force archive even if status is not `"published"` (default `false`) |
 
-`archive_project` enforces Red Line 8: it refuses unless the project status is `"published"` or `force` is `true`. Do NOT call it with `force=true` unless the user explicitly asks. Success returns `{"archived": true, "archive_dir": str}`.
+`archive_project` enforces the archive-force rule: it refuses unless the project status is `"published"` or `force` is `true`. Do NOT call it with `force=true` unless the user explicitly asks. Success returns `{"archived": true, "archive_dir": str}`.
 
 ## Error Handling
 

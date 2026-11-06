@@ -380,7 +380,7 @@ result = run_full_pipeline(
 | `automedia adapter` | Platform adapter management |
 | `automedia cron` | Execute scheduled cron jobs + pipeline runs |
 | `automedia account` | Platform account management (connect, add, login-capture, rotate, list, health, disconnect, remove) |
-| `automedia archive` | Archive a project (Red Line 8: requires `--force` unless published) |
+| `automedia archive` | Archive a project (the archive-force rule: requires `--force` unless published) |
 | `automedia demo` | Credential-free sample run (fake LLM + local images, isolated sandbox) |
 | `automedia ui` | Minimal local web UI (loopback only) |
 | `automedia init` | Initialize AutoMedia configuration |
@@ -420,7 +420,7 @@ python -m automedia.mcp.server
 | `list_active_pipelines` | List active and recently-finished pipelines (running, lost, or finished within the last 5 minutes) |
 | `list_projects` | List all projects under a base directory |
 | `get_project_assets` | List asset files in a project directory |
-| `archive_project` | Archive a project (enforces Red Line 8) |
+| `archive_project` | Archive a project (enforces the archive-force rule) |
 | `list_topic_pool` | List topics in the pool with optional filters |
 | `add_pool_topic` | Add a topic to the topic pool |
 | `pool_add_topic` | ⚠️ Deprecated: use add_pool_topic |
@@ -684,7 +684,7 @@ Gates are quality checks that run at specific points in the pipeline. Each gate 
 
 ## Security
 
-- **Red Line 8**: `archive_project` / `automedia archive` refuses unless status is `"published"` or `force=True`. Agents MUST NOT circumvent.
+- **the archive-force rule**: `archive_project` / `automedia archive` refuses unless status is `"published"` or `force=True`. Agents MUST NOT circumvent.
 - **Path allowlist**: MCP server (`mcp_allowlist.yaml`) restricts file access to configured directories. Empty list = deny all paths. Do not modify without explicit user request.
 - **Encrypted credential store**: Platform credentials encrypted at rest with AES-256-GCM; master key derived from `AUTOMEDIA_MASTER_KEY` via SHA-256. Credentials never appear in logs or MCP responses.
 - **Credential isolation**: Credentials loaded from encrypted store, env vars, or system keyring, never persisted to config files.

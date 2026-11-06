@@ -328,7 +328,7 @@ automedia projects get <project-id>
 
 ## `automedia archive`
 
-Archive a project (Red Line 8 mandatory constraint).
+Archive a project (the archive-force rule mandatory constraint).
 
 ```bash
 # Normal archive (status must be published)

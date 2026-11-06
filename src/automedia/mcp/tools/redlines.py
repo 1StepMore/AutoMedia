@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 from automedia.mcp.tools._shared import success_response
 
 __all__ = ["get_redlines"]
+
+_SOURCE = Path(__file__).resolve().parents[2] / "governance" / "redlines.yaml"
+
+
+@lru_cache(maxsize=1)
+def _load() -> tuple[dict[str, Any], ...]:
+    """Load the single source of truth. Raises if absent — never degrades."""
+    if not _SOURCE.is_file():
+        raise FileNotFoundError(f"redlines source missing: {_SOURCE}")
+    doc = yaml.safe_load(_SOURCE.read_text(encoding="utf-8"))
+    return tuple(doc["redlines"])
 
 
 def get_redlines() -> dict[str, Any]:
@@ -16,18 +31,9 @@ def get_redlines() -> dict[str, Any]:
     -------
     dict
         ``{"redlines": [...], "total": N}`` —
-        never raises. Each entry is a human-readable constraint description
-        sourced from AGENTS.md §5.
+        never raises. Each entry is ``{"id", "text", "rationale"}`` sourced
+        from ``governance/redlines.yaml`` — the single source of truth. This
+        tool performs no independent copy.
     """
-    redlines: list[str] = [
-        "MUST NOT archive projects using --force unless status is 'published'",
-        "MUST NOT commit real production data, topic pool contents, or credentials to git",
-        "MUST NOT modify automedia/mcp/mcp_allowlist.yaml without explicit user request",
-        "MUST use synthetic test fixtures from tests/fixtures/synth/ for testing",
-        "MUST use 'automedia archive' command for archiving — never manual dir operations",
-        "MUST follow gate naming convention: G0-G5, V0-V7, L1-L4, H0, pre-gate, CW",
-        "MUST add new gates to automedia/gates/failure_modes.py",
-        "MUST NOT skip pre-commit checks",
-        "MUST respect GateHook readonly contract — hooks observe but never mutate",
-    ]
-    return success_response({"redlines": redlines, "total": len(redlines)})
+    entries = [{"id": r["id"], "text": r["text"], "rationale": r["rationale"]} for r in _load()]
+    return success_response({"redlines": entries, "total": len(entries)})

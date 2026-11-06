@@ -4,28 +4,33 @@
 AutoMedia is an automated media production pipeline. Python 3.11+ with typer CLI, mcp SDK, Pydantic 2.x.
 
 ## Entry Points
-- MCP Server: `python -m automedia.mcp.server` (50 tools)
-- CLI: `automedia <subcommand>` (12 commands)
+- MCP Server: `python -m automedia.mcp.server` (68 tools)
+- CLI: `automedia <subcommand>` (21 commands)
 - SDK: `from automedia import run_full_pipeline`
 
 ## Agent Constraints
-- **MUST NOT** archive with `--force` (Red Line 8 — only user may force-archive)
-- **MUST NOT** commit real production data or credentials
-- **MUST** use synthetic test fixtures from `tests/fixtures/synth/`
-- **MUST** follow gate naming: G0-G5 (copy), V0-V7 (video), L1-L4 (lifecycle)
+
+Full text: `docs/dev/redlines.md`. Source: `src/automedia/governance/redlines.yaml`.
+
+- `RL-ARCHIVE-FORCE` — never `--force` archive
+- `RL-NO-PROD-DATA` — no production data or credentials in git
+- `RL-SYNTH-FIXTURES` — synthetic fixtures only
+- `RL-GATE-NAMING` — G0-G6, V0-V7, L1-L4, D1-D7, P1-P4
+
+(remaining IDs: `RL-ALLOWLIST`, `RL-ARCHIVE-CMD`, `RL-FAILURE-MODES`, `RL-PRECOMMIT`, `RL-HOOK-READONLY`)
 
 ## Dev Workflow
 ```bash
 pip install -e ".[dev]"    # Install
 pytest                      # Test
 ruff check .                # Lint
-mypy src/automedia/         # Type check
+mypy src/automedia/ --ignore-missing-imports   # Type check
 python -m automedia.mcp.server  # Start MCP server
 ```
 
 ## Key Files
 - `AGENTS.md` — Full agent codebase context (read first)
-- `automedia/` — Core package
-- `tests/` — Test suite (~2,634, 6 pre-existing failures)
+- `src/automedia/` — Core package
+- `tests/` — Test suite
 - `docs/` — Documentation
 - `deploy/` — systemd deployment units

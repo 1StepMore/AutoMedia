@@ -2,7 +2,7 @@
 * @1stepmore
 
 # Core package
-/automedia/ @1stepmore
+/src/automedia/ @1stepmore
 
 # Documentation
 /docs/ @1stepmore

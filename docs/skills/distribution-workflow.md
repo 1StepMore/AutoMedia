@@ -103,5 +103,5 @@ If a tool returns an `error` dict, relay the message to the user and do not fabr
 - `list_platforms` — list all platforms with registered adapters
 - `register_platform_adapter` — register a publish adapter for a platform
 - `get_pipeline_status` — confirm the project exists and its status before distributing
-- `archive_project` — archive a published project (Red Line 8 enforced)
+- `archive_project` — archive a published project (the archive-force rule enforced)
 - `run_pipeline` — produce the content before distributing (see `pipeline-workflow`)
