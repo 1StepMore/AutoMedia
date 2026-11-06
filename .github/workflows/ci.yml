@@ -286,7 +286,6 @@ jobs:
           --ignore=tests/test_cli/test_security_config_perms.py
           --ignore=tests/test_cli/test_validate.py
           tests/test_mcp
-          --deselect=tests/test_mcp/test_allowlist_usability.py::TestAllowlistUsability::test_allowlist_yaml_parses_correctly
           --deselect=tests/test_mcp/test_mcp_server.py::TestAllowlist::test_symlink_outside_blocked
           --deselect=tests/test_mcp/test_mcp_server.py::TestAllowlist::test_symlink_to_allowed_works
           --deselect=tests/test_mcp/test_setup_tools.py::TestInitConfig::test_error_on_invalid_path

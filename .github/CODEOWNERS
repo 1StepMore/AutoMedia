@@ -1,4 +1,6 @@
-# Default owner
+# Fallback only. A new governed path does NOT automatically get an owner --
+# CODEOWNERS cannot be discovered from the filesystem, so the rule below is
+# not asserted by any gate. Add an explicit rule when adding a harness.
 * @1stepmore
 
 # Core package
@@ -9,3 +11,10 @@
 
 # CI/CD configuration
 /.github/ @1stepmore
+
+# Harness entry points — each needs its own owner so a change to one
+# harness's rules is reviewed by whoever owns that harness.
+/.claude/ @1stepmore
+/.codex/ @1stepmore
+/.cursor/ @1stepmore
+/.opencode/ @1stepmore

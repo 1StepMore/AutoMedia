@@ -1,3 +1,10 @@
+# NOTE: hooks use `language: system` + bare `python` on purpose — they must
+# run in the developer's activated venv (which has pytest and the package
+# installed). Do NOT switch to `language: python`: the isolated pre-commit
+# venv only installs the package itself, not pytest.
+# Prerequisite: activate the venv before `pre-commit run`.
+# (B5-3: was `python3`, which on Windows resolves to the system interpreter
+# without the package — all five local hooks died on ModuleNotFoundError.)
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.21
@@ -37,7 +44,7 @@ repos:
     hooks:
       - id: check-secrets
         name: check-secrets (offline credential/URL scan)
-        entry: python3 scripts/check-secrets.py
+        entry: python scripts/check-secrets.py
         language: system
         stages: [pre-commit]
         pass_filenames: true
@@ -54,17 +61,17 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        # python3 -m pytest puts the repo root on sys.path — required for
+        # python -m pytest puts the repo root on sys.path — required for
         # `from tests.mock_llm import ...` (bare pytest lacks it). Runs in the
-        # system interpreter (dev env has pytest; the isolated pre-commit venv
-        # only installs the package itself).
-        entry: python3 -m pytest tests/ -x -q
+        # developer's activated venv (which has pytest; the isolated pre-commit
+        # venv only installs the package itself).
+        entry: python -m pytest tests/ -x -q
         language: system
         types: [python]
         pass_filenames: false
       - id: check-doc-consistency
         name: check-doc-consistency
-        entry: python3 scripts/check-doc-consistency.py
+        entry: python scripts/check-doc-consistency.py
         language: system
         always_run: true
         pass_filenames: false
@@ -79,14 +86,14 @@ repos:
       # finding, so the class cannot silently recur.
       - id: check-rfc-aging
         name: check-rfc-aging
-        entry: python3 scripts/check_rfc_aging.py
+        entry: python scripts/check_rfc_aging.py
         language: system
         always_run: true
         pass_filenames: false
 
       - id: check-workflow-semantics
         name: check-workflow-semantics
-        entry: python3 scripts/check-workflow-semantics.py
+        entry: python scripts/check-workflow-semantics.py
         language: system
         always_run: true
         pass_filenames: false

@@ -4,7 +4,7 @@
       "command": "python",
       "args": ["-m", "automedia.mcp.server"],
       "env": {
-        "AUTOMEDIA_LLM_API_KEY": "sk-your-key-here"
+        "AUTOMEDIA_LLM_API_KEY": "${AUTOMEDIA_LLM_API_KEY}"
       }
     }
   },

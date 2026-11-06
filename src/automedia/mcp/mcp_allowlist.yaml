@@ -39,6 +39,10 @@
 #   See deploy/systemd/automedia-mcp.env for details.
 #
 allowed_directories:
+  # POSIX only. On Windows this resolves to <drive>:\tmp\automedia which is
+  # almost certainly not what you want -- override the whole allowlist with
+  # AUTOMEDIA_MCP_ALLOWLIST_PATH (see line 38) or use the relative entries
+  # below, which resolve against the server's working directory.
   - /tmp/automedia/
   # Development / Local — uncommented for multi-env support
   - ./data/
