@@ -1,0 +1,19 @@
+# Agent entry points that restate red lines, tool counts, or gate names.
+# Every path here MUST be scanned by scripts/check-doc-consistency.py;
+# missing one is a silent coverage hole. Union with _DEFAULT_DOC_FILES.
+version: 1
+
+entries:
+  - path: AGENTS.md
+    restates: [redlines, tool_count, command_count, gate_naming]
+  - path: .claude/rules.md
+    restates: [redlines, tool_count, command_count, gate_naming]
+
+# Not listed on purpose — listing any of these would make a fresh clone fail
+# GOV202, because they are not in the git index:
+#   .omo/**                             historical evidence archive
+#   .opencode/skills/issue-triage.md    gitignored, local-only maintainer skill
+#   .opencode/skills/pr-review-merge.md gitignored, local-only maintainer skill
+#   .trae/**                            gitignored
+#   .workbuddy/**                       gitignored
+#   CHANGELOG.md                        release notes, no live claims

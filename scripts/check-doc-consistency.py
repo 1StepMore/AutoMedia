@@ -76,18 +76,60 @@ import importlib
 import inspect
 import keyword
 import re
+import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import click
+import yaml
 
 from automedia.cli.app import app as _cli_app
 from automedia.mcp.server import create_server
 from automedia.validation.doc_reality import _documented_names, doc_reality_audit
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_ENTRIES = REPO_ROOT / "src" / "automedia" / "governance" / "entries.yaml"
+
+
+def _load_entry_files() -> tuple[str, ...]:
+    """Entry points that restate red lines. Fails loud if the list is gone."""
+    if not _ENTRIES.is_file():
+        raise SystemExit(f"GOV202 entries manifest missing: {_ENTRIES}")
+    doc = yaml.safe_load(_ENTRIES.read_text(encoding="utf-8"))
+    return tuple(e["path"] for e in doc["entries"])
+
+
+# Tracked harness roots only. Gitignored dirs (.trae/, .workbuddy/) are
+# invisible to git grep and cannot be governed from CI.
+_ENTRY_ROOTS = ("AGENTS.md", ".claude/", ".codex/", ".cursor/", ".opencode/")
+
+
+def _uncovered_entry_files(scanned: set[str]) -> list[str]:
+    """Tracked harness entry files that restate red lines but are not scanned."""
+    roots = [r for r in _ENTRY_ROOTS if (REPO_ROOT / r).exists()]
+    result = subprocess.run(  # noqa: S603 — read-only git grep inside the gate
+        [  # noqa: S607 — same trusted query as the ls-files call below
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "grep",
+            "-lE",
+            r"MUST NOT|Red Line|RL-[A-Z][A-Z0-9-]+",
+            "--",
+            *roots,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    # git grep exits 1 for "no match" -- clean, not an error.
+    if result.returncode not in (0, 1):
+        raise SystemExit(f"GOV204 git grep failed: {result.stderr.strip()}")
+    on_disk = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    return sorted(on_disk - scanned)
+
 
 # Files scanned by default. See module docstring for the KNOWN LIMITATION
 # (user docs are reconciled manually and intentionally NOT in this list).
@@ -1120,15 +1162,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"{stats['tracked_files']:,} tracked files"
     )
 
-    files = list(_DEFAULT_DOC_FILES)
+    entry_files = _load_entry_files()
+    files = list(dict.fromkeys([*_DEFAULT_DOC_FILES, *entry_files]))
     if args.check_user_docs:
         files.extend(_USER_DOC_FILES)
 
     all_findings: list[Finding] = []
+    missing: list[str] = []
     for rel in files:
         path = REPO_ROOT / rel
         if not path.exists():
-            print(f"WARNING: {rel} not found — skipped")
+            missing.append(rel)
             continue
         for finding in _scan_file(path, tool_count, command_count, scenario_count):
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
@@ -1139,6 +1183,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         for finding in scan_size_claims(path.read_text(encoding="utf-8"), stats):
             print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
+
+    if missing:
+        for rel in missing:
+            print(f"GOV202 required entry file missing: {rel}")
+        print("      A missing entry file is a coverage hole, not a warning.")
+        return 1
+
+    uncovered = _uncovered_entry_files(set(files))
+    if uncovered:
+        for rel in uncovered:
+            print(f"GOV203 entry file not scanned: {rel}")
+        print("      Add it to src/automedia/governance/entries.yaml.")
+        return 1
 
     # MCP table membership, PER FILE: the doc↔reality audit checks the UNION
     # of AGENTS.md + README.md table names, so one file can silently omit a
