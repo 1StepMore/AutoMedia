@@ -69,7 +69,7 @@ def _path_to_name(scenarios_dir: Path) -> dict[str, str]:
             continue
         name = doc.get("name") if isinstance(doc, dict) else None
         if isinstance(name, str):
-            mapping[str(path.relative_to(scenarios_dir))] = name
+            mapping[path.relative_to(scenarios_dir).as_posix()] = name
     return mapping
 
 

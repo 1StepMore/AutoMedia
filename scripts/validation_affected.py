@@ -125,7 +125,7 @@ def _yaml_relpaths(root: Path, directory: Path) -> set[str]:
     """All ``*.yaml`` files under ``directory``, relative to the scenarios root."""
     if not directory.is_dir():
         return set()
-    return {str(path.relative_to(root)) for path in directory.rglob("*.yaml")}
+    return {path.relative_to(root).as_posix() for path in directory.rglob("*.yaml")}
 
 
 def _scan_yamls(root: Path) -> list[tuple[str, object]]:
@@ -142,7 +142,7 @@ def _scan_yamls(root: Path) -> list[tuple[str, object]]:
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError:
             continue
-        entries.append((str(path.relative_to(root)), doc))
+        entries.append((path.relative_to(root).as_posix(), doc))
     return entries
 
 
@@ -166,7 +166,7 @@ def _fallback_set(root: Path) -> set[str]:
     The batch is the non-recursive root glob (``scenarios/*.yaml`` — the
     deterministic W2 batch); the env-free scan is library-wide.
     """
-    batch = {str(path.relative_to(root)) for path in root.glob("*.yaml")}
+    batch = {path.relative_to(root).as_posix() for path in root.glob("*.yaml")}
     env_free = {rel for rel, doc in _scan_yamls(root) if _is_env_free(doc)}
     return batch | env_free
 
