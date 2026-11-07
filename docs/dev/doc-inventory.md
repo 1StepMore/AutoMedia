@@ -6,6 +6,7 @@
 |------|-------------:|------|
 | AGENTS.md | 11196 | file |
 | README.md | 34812 | file |
+| docs/AGENTS.md | 645 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
