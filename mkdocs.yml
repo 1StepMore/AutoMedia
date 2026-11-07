@@ -4,7 +4,15 @@ site_url: https://1stepmore.github.io/AutoMedia
 repo_url: https://github.com/1StepMore/AutoMedia
 edit_uri: edit/main/docs/
 
-exclude_docs: archived/
+# docs/dev/agent-era-doc-architecture.md is a byte-identical copy of the
+# cross-repo playbook (canonical copy: AutoInfo). Its instance-file link
+# points at agent-era-doc-architecture-autoinfo.md, which exists only where
+# that instance file lives, so the page cannot pass --strict here. Excluded
+# rather than forked; edit the canonical copy and re-sync all six repos
+# (e2e-test-suite#254).
+exclude_docs: |
+  archived/
+  dev/agent-era-doc-architecture.md
 
 theme:
   name: material

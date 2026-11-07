@@ -9,14 +9,27 @@ directory against a committed file.
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INVENTORY = REPO_ROOT / "docs" / "dev" / "doc-inventory.md"
 SCRIPT = REPO_ROOT / "scripts" / "doc_inventory.py"
+DOC_ARCH = REPO_ROOT / "docs" / "dev" / "agent-era-doc-architecture.md"
+
+
+def _load_script() -> ModuleType:
+    """Load the real ``scripts/doc_inventory.py`` module for in-process checks."""
+    spec = importlib.util.spec_from_file_location("doc_inventory", SCRIPT)
+    assert spec is not None and spec.loader is not None, f"script missing: {SCRIPT}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _listed_rows() -> list[tuple[str, str]]:
@@ -64,3 +77,19 @@ def test_check_mode_reports_no_drift() -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_playbook_copy_matches_pinned_hash() -> None:
+    module = _load_script()
+    digest = hashlib.sha256(DOC_ARCH.read_bytes()).hexdigest()
+    assert digest == module.DOC_ARCH_SHA256, (
+        f"{DOC_ARCH.name} must stay byte-identical across the six repos; "
+        "re-sync every copy and bump each pin (e2e-test-suite#254)"
+    )
+
+
+def test_check_mode_fails_when_playbook_pin_drifts(monkeypatch, capsys) -> None:
+    module = _load_script()
+    monkeypatch.setattr(module, "DOC_ARCH_SHA256", "0" * 64)
+    assert module.main(["--check"]) == 1
+    assert "six repositories" in capsys.readouterr().out

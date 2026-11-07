@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 16011 | file |
+| AGENTS.md | 16230 | file |
 | README.md | 34812 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
@@ -20,6 +20,7 @@
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
+| docs/dev/agent-era-doc-architecture.md | 18625 | file |
 | docs/dev/agent-reference.md | 17472 | file |
 | docs/dev/agent-troubleshooting.md | 27244 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
