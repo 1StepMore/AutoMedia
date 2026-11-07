@@ -20,7 +20,7 @@
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
-| docs/dev/agent-reference.md | 17468 | file |
+| docs/dev/agent-reference.md | 17472 | file |
 | docs/dev/agent-troubleshooting.md | 27244 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -48,7 +48,7 @@
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
-| docs/index.md | 6825 | file |
+| docs/index.md | 6871 | file |
 | docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5555 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
