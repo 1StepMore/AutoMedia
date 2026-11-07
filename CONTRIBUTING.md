@@ -198,7 +198,7 @@ Internal paths are `.github/`, `tests/`, `scripts/`, `docs/dev/`, the
 agent-client directories (`.claude/` `.codex/` `.opencode/` `.cursor/`
 `.trae/`), `AGENTS.md`, `CONTRIBUTING.md`, `Makefile`,
 `.pre-commit-config.yaml`, `.gitignore`, and source-generated artifacts such as
-`docs/doc-inventory.md`. Everything else — including `src/**` and hand-written
+`docs/dev/doc-inventory.md`. Everything else — including `src/**` and hand-written
 docs under `docs/user/**` — is user-visible.
 
 ```

@@ -81,7 +81,7 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "synth" / "doccheck"
 
 # Exact first line required on generated inventory files (plan item 1c / 3).
 MARKER = (
-    "<!-- AUTO-GENERATED: docs/doc-inventory.md — do not edit manually. "
+    "<!-- AUTO-GENERATED: docs/dev/doc-inventory.md — do not edit manually. "
     "Regenerate: python scripts/doc_inventory.py -->"
 )
 

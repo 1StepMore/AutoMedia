@@ -211,7 +211,7 @@ Optional engine extras and their version constraints:
 | `CHANGELOG.md` | Version history |
 | `docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md` | 7-phase AI development methodology note (own your process, AFK implementation) |
 | `docs/archived/` | One-off historical reports (migration guides, per-run acceptance, superseded master plans) — not authoritative |
-| `docs/doc-inventory.md` | AUTO-GENERATED doc inventory — regenerate with `python3 scripts/doc_inventory.py`; never hand-edit |
+| `docs/dev/doc-inventory.md` | AUTO-GENERATED doc inventory — regenerate with `python3 scripts/doc_inventory.py`; never hand-edit |
 
 ## Skills
 

@@ -36,7 +36,7 @@ AutoMedia automates content production from **topic selection** through **draft 
 
 ## Quick Start
 
-> Full onboarding walkthrough (agent + human): [ONBOARDING](../ONBOARDING.md)
+> Full onboarding walkthrough (agent + human): [ONBOARDING](https://github.com/1StepMore/AutoMedia/blob/main/ONBOARDING.md)
 
 ```bash
 # Install

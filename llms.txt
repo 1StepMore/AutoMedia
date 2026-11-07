@@ -30,4 +30,4 @@ writing, video generation, subtitle rendering, and multi-platform publishing.
 
 ## Optional
 - [CHANGELOG.md](CHANGELOG.md): version history
-- [docs/doc-inventory.md](docs/doc-inventory.md): generated documentation inventory
+- [docs/dev/doc-inventory.md](docs/dev/doc-inventory.md): generated documentation inventory
