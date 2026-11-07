@@ -418,7 +418,11 @@ def _iter_provider_specs(
     if isinstance(fallbacks, list):
         for fb in fallbacks:
             if isinstance(fb, dict) and fb.get("provider"):
+                primary_provider = primary.get("provider")
+                same_provider = fb.get("provider") == primary_provider
                 merged = dict(primary)
+                if not same_provider and fb.get("api_key") in ("", None):
+                    merged.pop("api_key", None)
                 merged.update(
                     {k: v for k, v in fb.items() if k != "fallback" and v not in ("", None)}
                 )

@@ -66,15 +66,25 @@ class TestCheckLlmChain:
         assert "fallback-model" in (message or "")
         assert "https://example.invalid/v1" in (message or "")
 
-    def test_empty_fallback_key_inherits_primary_and_builds(self) -> None:
-        """Regression #206: ``api_key: ''`` is inherited, not wiped.
+    def test_empty_fallback_key_inherits_primary_key_same_provider(self) -> None:
+        """Regression #206, same provider: ``api_key: ''`` is inherited, not wiped.
 
-        With a non-empty primary key the fallback spec now carries it, so the
-        spec constructs successfully instead of failing silently.
+        With a non-empty primary key and a fallback on the primary provider, the
+        fallback spec carries it, so the spec constructs successfully instead of
+        failing silently.
         """
-        ok, message = Doctor._check_llm_chain(_config(primary_key="sk-primary"))
+        ok, message = Doctor._check_llm_chain(
+            _config(primary_key="sk-primary", fallback_provider="primary-provider")
+        )
         assert ok is True
         assert message is None
+
+    def test_cross_provider_empty_fallback_key_is_reported(self) -> None:
+        """Cross-provider fallback with no key must not inherit the primary's (#407)."""
+        ok, message = Doctor._check_llm_chain(_config(primary_key="sk-primary"))
+        assert ok is False
+        assert _BROKEN_PROVIDER in (message or "")
+        assert "fallback[1]" in (message or "")
 
     def test_fallback_with_resolvable_env_key_builds(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A fallback key resolved from the environment is accepted."""
