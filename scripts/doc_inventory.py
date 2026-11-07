@@ -34,6 +34,7 @@ one doc-consistency step).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,14 @@ MARKER = (
 )
 
 _OUTPUT = REPO_ROOT / "docs" / "dev" / "doc-inventory.md"
+
+#: Pinned SHA-256 of the cross-repo documentation-architecture playbook copy.
+#: All six participating repositories hold this file byte-identical (canonical
+#: copy: AutoInfo); an edit is a six-repo sync plus six pin bumps
+#: (https://github.com/1StepMore/e2e-test-suite/issues/254).
+DOC_ARCH_SHA256 = "725316a1fd83fcf68243ab87144f37add67b45275bd5faa31883c2f0bb061807"
+
+_DOC_ARCH = REPO_ROOT / "docs" / "dev" / "agent-era-doc-architecture.md"
 
 # Walked roots, in this order: the docs tree (excluding archived/) then the
 # two root instruction files.
@@ -177,6 +186,26 @@ def _rel_label(path: Path) -> str:
         return path.as_posix()
 
 
+def _doc_arch_drift() -> str | None:
+    """Return a failure message when the synced playbook copy is missing or drifted."""
+    try:
+        actual = hashlib.sha256(_DOC_ARCH.read_bytes()).hexdigest()
+    except OSError:
+        return (
+            f"FAIL: {_DOC_ARCH} is missing; the playbook copy must be synced from "
+            "the canonical repository (see e2e-test-suite#254)"
+        )
+    if actual != DOC_ARCH_SHA256:
+        return (
+            f"FAIL: {_DOC_ARCH} drifted from the pinned cross-repo copy "
+            f"(expected {DOC_ARCH_SHA256}, got {actual}). This file is synced "
+            "byte-identical across six repositories: edit the canonical copy, "
+            "re-sync all six, and bump every pin together — see "
+            "https://github.com/1StepMore/e2e-test-suite/issues/254"
+        )
+    return None
+
+
 def generate() -> str:
     """Build the inventory markdown in memory (deterministic)."""
     lines = [MARKER, "", "## Doc Inventory", ""]
@@ -202,6 +231,11 @@ def main(argv: list[str] | None = None) -> int:
         "exit 1 on any difference, 0 on a byte match.",
     )
     args = parser.parse_args(argv)
+
+    drift = _doc_arch_drift()
+    if drift is not None:
+        print(drift)
+        return 1
 
     generated = generate()
     if args.check:
