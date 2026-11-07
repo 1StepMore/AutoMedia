@@ -58,6 +58,14 @@ Owner 任务单（2026-11-08）：全自主 P0→P5。AutoMedia 兼任试点仓�
 | 治理G3 | 2026-11-08 | PASS | A1–A14 全部「完成或有编号降级」；`git log main..ops/agent-infra` 与动作清单一一对应；无业务逻辑改动 |
 | 治理G4 | 2026-11-08 | 材料齐（D8 批量汇入 PR） | P4-S1..S5 结论 + CP-01..06 + 签收清单 |
 
+## 状态跟踪表（Runbook §8.3；控制区维护，每完成一个 Gate 更新一行）
+
+| 仓库 | P0 | P1(G1) | P2(G2) | P3(G3) | P4(G4) | P5 | 降级项 | 遗留项 |
+|---|---|---|---|---|---|---|---|---|
+| AutoMedia | ✅ | ✅ | ✅（材料齐，D8 批量） | ✅ | ✅（材料齐，D8 批量） | ✅ | SKIPPED-Owner-D4（A3/A4 适配器）、SKIPPED-D3（A6/CP-05 gh-aw）、SKIPPED-Owner-D2（A9 Gherkin）、既有测试失败×2（Windows CRLF / 本机配置残留键）、py 提交 --no-verify 协议 | 签收 5 项（constitution 终审、SKIPPED 三类、backup 远端、历史凭据轮换、既有失败定性）+ 校准 14 项（CALIBRATION-automedia.md） |
+
+> 试点后续：校准清单 #2/#8/#9 建议在推广其余仓库前由 Owner 拍板；02 稿正文未改动（哈希 `5579f22a…` 保持）。
+
 ## 降级与遗留（全部汇入 Owner 签收，无静默跳过）
 
 | 编号 | 情形 | 处置 | Owner 确认 |
