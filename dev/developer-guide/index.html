@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -1457,6 +1457,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1559,6 +1643,62 @@
     
   
     Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hardware-and-remote-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
   
 
     
@@ -2486,14 +2626,15 @@
 <ul>
 <li>Python 3.11+</li>
 <li>FFmpeg</li>
-<li>Bun (for HyperFrames rendering)</li>
+<li>Bun</li>
+<li>HyperFrames CLI (for HyperFrames rendering)</li>
 <li>edge-tts CLI</li>
 <li>Whisper (faster-whisper or openai-whisper)</li>
 <li>Chrome/Chromium (headless mode)</li>
 <li>ComfyUI (optional, image generation)</li>
 </ul>
 <blockquote>
-<p><strong>Tip:</strong> All external dependencies come pre-installed in the Docker image. Use <code>docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor</code> to verify without local setup.</p>
+<p><strong>Tip:</strong> The Docker image bundles FFmpeg, Bun, edge-tts, faster-whisper, and Chromium (HyperFrames and ComfyUI are not included). Use <code>docker run -it --rm kevinzhow/automedia-pipeline:latest automedia doctor</code> to verify without local setup.</p>
 </blockquote>
 <h4 id="python-311">Python 3.11+<a class="headerlink" href="#python-311" title="Permanent link">&para;</a></h4>
 <table>
@@ -2734,7 +2875,7 @@ Tool             Installed    Version
 </tr>
 <tr>
 <td><code>prompts/</code></td>
-<td>Built-in Jinja2 prompt templates (11 templates) with platform-scoped resolution (30 platform overrides for 10 platforms)</td>
+<td>Built-in Jinja2 prompt templates (13 templates) with platform-scoped resolution (60 platform templates for 20 platforms)</td>
 </tr>
 </tbody>
 </table>
@@ -2858,37 +2999,37 @@ pytest<span class="w"> </span>tests/test_e2e/<span class="w"> </span>-v
 <tbody>
 <tr>
 <td><code>auto</code></td>
-<td>pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4</td>
-<td>Full production pipeline: topic validation, content writing, all copy and video gates, lifecycle checks</td>
+<td>pre-gate → CW → G0-G6 → V0-V7 → H0</td>
+<td>Full production pipeline: topic validation, content writing, all copy and video gates</td>
 </tr>
 <tr>
 <td><code>text_only</code></td>
-<td>CW → G0-G6 → H0 → L1-L4</td>
+<td>CW → G0-G6 → H0</td>
 <td>Draft-only output: content writing and copy gates, no video/rendering gates</td>
 </tr>
 <tr>
 <td><code>text_with_cover</code></td>
-<td>CW → G0-G6 → H0 → L1-L4</td>
+<td>CW → G0-G6 → H0</td>
 <td>Text output plus a single cover image</td>
 </tr>
 <tr>
 <td><code>video_only</code></td>
-<td>V0-V7 → H0 → L1-L4</td>
-<td>Video-only: reuse an existing draft, run all video and lifecycle gates</td>
+<td>V0-V7</td>
+<td>Video-only: reuse an existing draft, run all video gates</td>
 </tr>
 <tr>
 <td><code>image-carousel</code></td>
-<td>CW → G0-G6 → L1-L4</td>
+<td>CW → G0-G6</td>
 <td>Carousel-image output for social platforms</td>
 </tr>
 <tr>
 <td><code>social-thread</code></td>
-<td>CW → G0-G6 → L1-L4</td>
+<td>CW → G0-G6</td>
 <td>Thread-style posts for social platforms</td>
 </tr>
 <tr>
 <td><code>short-video</code></td>
-<td>pre-gate → CW → G0-G6 → V0-V7 → H0 → L1-L4</td>
+<td>pre-gate → CW → G0-G6 → V0-V7 → H0</td>
 <td>Short-form video (e.g. TikTok/Reels)</td>
 </tr>
 <tr>
@@ -2898,12 +3039,12 @@ pytest<span class="w"> </span>tests/test_e2e/<span class="w"> </span>-v
 </tr>
 <tr>
 <td><code>repurpose</code></td>
-<td>CW → G0-G6 → V0-V7 → H0 → L1-L4 → P1-P4</td>
+<td>pre-gate → CW → G0-G6 → V0-V7 → H0 → P1-P4</td>
 <td>Full pipeline followed by platform-specific deep repurpose gates</td>
 </tr>
 </tbody>
 </table>
-<p>Gate lists are defined in <code>src/automedia/pipelines/runner.py</code> as <code>_AUTO_GATE_NAMES</code>, <code>_TEXT_ONLY_GATE_NAMES</code>, <code>_VIDEO_ONLY_GATE_NAMES</code>, <code>_QA_ONLY_GATE_NAMES</code>, and <code>_REPURPOSE_GATE_NAMES</code>.</p>
+<p>Gate lists are defined in <code>src/automedia/pipelines/gate_plan.py</code> (<code>MODE_GATE_NAMES</code>), the single authority; <code>runner.py</code> re-exports that plan. <code>L1</code>-<code>L4</code> are registered but belong to no preset — they run through their own lifecycle commands.</p>
 <h2 id="configuration-hierarchy">Configuration Hierarchy<a class="headerlink" href="#configuration-hierarchy" title="Permanent link">&para;</a></h2>
 <p>Six layers stack from lowest to highest priority, with higher priority overriding lower:</p>
 <ol>
@@ -3048,7 +3189,7 @@ point; that suspension has since been lifted and the canonical repo is restored.
 <p>Note: RL numbering matches AGENTS.md section 5. Original RL9 (decision provenance) has been removed.</p>
 </blockquote>
 <h3 id="gate-list">Gate List<a class="headerlink" href="#gate-list" title="Permanent link">&para;</a></h3>
-<p>33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Gate order: pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0 <code>→</code> L1-L4. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of <code>repurpose</code> mode.</p>
+<p>33 gates across six phases plus standalone distribution gates and repurpose sub-pipelines. Preset gate order: pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0. D-gates (D1-D7) are standalone and invoked via CLI/MCP — not part of the standard pipeline. P-gates (P1-P4) run as sub-pipelines at the end of <code>repurpose</code> mode. L1-L4 are registered but belong to no preset; they run through their own lifecycle commands.</p>
 <table>
 <thead>
 <tr>
@@ -3275,7 +3416,7 @@ point; that suspension has since been lifted and the canonical repo is restored.
 </tbody>
 </table>
 <h3 id="pipeline-modes_1">Pipeline Modes<a class="headerlink" href="#pipeline-modes_1" title="Permanent link">&para;</a></h3>
-<p>Nine modes select different gate subsets, defined in <code>automedia/pipelines/runner.py</code>:</p>
+<p>Nine modes select different gate subsets, defined in <code>automedia/pipelines/gate_plan.py</code> (<code>MODE_GATE_NAMES</code>):</p>
 <table>
 <thead>
 <tr>
@@ -3287,37 +3428,37 @@ point; that suspension has since been lifted and the canonical repo is restored.
 <tbody>
 <tr>
 <td><code>auto</code></td>
-<td>pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0 <code>→</code> L1-L4</td>
+<td>pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0</td>
 <td>Full production pipeline</td>
 </tr>
 <tr>
 <td><code>text_only</code></td>
-<td>CW <code>→</code> G0-G6 <code>→</code> H0 <code>→</code> L1-L4</td>
+<td>CW <code>→</code> G0-G6 <code>→</code> H0</td>
 <td>Draft-only output</td>
 </tr>
 <tr>
 <td><code>text_with_cover</code></td>
-<td>CW <code>→</code> G0-G6 <code>→</code> H0 <code>→</code> L1-L4</td>
+<td>CW <code>→</code> G0-G6 <code>→</code> H0</td>
 <td>Text + cover image</td>
 </tr>
 <tr>
 <td><code>video_only</code></td>
-<td>V0-V7 <code>→</code> H0 <code>→</code> L1-L4</td>
+<td>V0-V7</td>
 <td>Video-only, reuse existing draft</td>
 </tr>
 <tr>
 <td><code>image-carousel</code></td>
-<td>CW <code>→</code> G0-G6 <code>→</code> L1-L4</td>
+<td>CW <code>→</code> G0-G6</td>
 <td>Carousel-image output</td>
 </tr>
 <tr>
 <td><code>social-thread</code></td>
-<td>CW <code>→</code> G0-G6 <code>→</code> L1-L4</td>
+<td>CW <code>→</code> G0-G6</td>
 <td>Thread-style posts</td>
 </tr>
 <tr>
 <td><code>short-video</code></td>
-<td>pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0 <code>→</code> L1-L4</td>
+<td>pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0</td>
 <td>Short-form video</td>
 </tr>
 <tr>
@@ -3327,7 +3468,7 @@ point; that suspension has since been lifted and the canonical repo is restored.
 </tr>
 <tr>
 <td><code>repurpose</code></td>
-<td>CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0 <code>→</code> L1-L4 <code>→</code> P1-P4</td>
+<td>pre-gate <code>→</code> CW <code>→</code> G0-G6 <code>→</code> V0-V7 <code>→</code> H0 <code>→</code> P1-P4</td>
 <td>Full pipeline + deep repurpose for platform distribution</td>
 </tr>
 </tbody>
@@ -3494,7 +3635,7 @@ point; that suspension has since been lifted and the canonical repo is restored.
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

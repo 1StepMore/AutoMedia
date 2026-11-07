@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -896,6 +896,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -998,6 +1082,62 @@
     
   
     Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hardware-and-remote-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
   
 
     
@@ -2210,7 +2350,7 @@ global, platform, and brand scope.</p>
         └── content_writer.j2
 </code></pre></div>
 <h2 id="prompt-template-reference">Prompt Template Reference<a class="headerlink" href="#prompt-template-reference" title="Permanent link">&para;</a></h2>
-<p>11 built-in Jinja2 templates are shipped with AutoMedia in
+<p>13 built-in Jinja2 templates are shipped with AutoMedia in
 <code>src/automedia/prompts/</code>.  Each can be overridden by placing a <code>.j2</code> file
 with the same stem in <code>~/.automedia/overrides/prompts/</code>.</p>
 <table>
@@ -2234,7 +2374,7 @@ with the same stem in <code>~/.automedia/overrides/prompts/</code>.</p>
 </tr>
 <tr>
 <td><code>content_writer</code></td>
-<td><code>topic</code>, <code>brand</code></td>
+<td><em>(template body is static; topic/brand arrive in the user message)</em></td>
 <td>Write a full article draft for Chinese social media (WeChat, Xiaohongshu, Bilibili)</td>
 </tr>
 <tr>
@@ -2253,6 +2393,11 @@ with the same stem in <code>~/.automedia/overrides/prompts/</code>.</p>
 <td>Plausibility check when no source material is available (Gate G0)</td>
 </tr>
 <tr>
+<td><code>fact_check_g0_rewrite</code></td>
+<td><code>content</code>, <code>failure_reason</code></td>
+<td>One-shot surgical rewrite of the sentences a failing G0 flagged (Gate G0)</td>
+</tr>
+<tr>
 <td><code>humanizer_g1</code></td>
 <td><code>content</code></td>
 <td>Detect AI writing patterns, assess natural readability (Gate G1)</td>
@@ -2268,9 +2413,19 @@ with the same stem in <code>~/.automedia/overrides/prompts/</code>.</p>
 <td>Design content production strategy — structure, platform distribution, angles</td>
 </tr>
 <tr>
+<td><code>tone_check_g6</code></td>
+<td><code>content</code>, <code>tone_guidelines</code></td>
+<td>Evaluate content against the brand's tone guidelines (Gate G6)</td>
+</tr>
+<tr>
 <td><code>topic_research</code></td>
 <td><code>category</code>, <code>count</code>, <code>trending_data</code></td>
 <td>Research trending topics within a category, recommend angles</td>
+</tr>
+<tr>
+<td><code>zhihu_rewrite</code></td>
+<td><em>(template body is static; topic/brand/draft arrive in the user message)</em></td>
+<td>Rewrite a draft into a Zhihu answer or article (D3)</td>
 </tr>
 <tr>
 <td><code>platforms/wechat/content_writer</code></td>
@@ -2401,6 +2556,7 @@ contains one or more rule dicts.</p>
 <p>Prompt templates and rules follow a layered resolution from most specific
 to most general:</p>
 <h3 id="prompt-resolution">Prompt Resolution<a class="headerlink" href="#prompt-resolution" title="Permanent link">&para;</a></h3>
+<p><code>automedia.prompts.load_prompt(name, platform=…)</code> resolves in this order:</p>
 <table>
 <thead>
 <tr>
@@ -2411,27 +2567,37 @@ to most general:</p>
 </thead>
 <tbody>
 <tr>
-<td>1 (highest)</td>
-<td>Brand</td>
-<td><code>~/.automedia/overrides/prompts/&lt;brand&gt;/&lt;name&gt;.j2</code></td>
+<td>0 (highest)</td>
+<td>Workflow inline</td>
+<td><code>workflow_prompts</code> kwargs passed to <code>load_prompt</code></td>
 </tr>
 <tr>
-<td>2</td>
-<td>Platform</td>
+<td>1</td>
+<td>User platform</td>
 <td><code>~/.automedia/overrides/prompts/&lt;platform&gt;/&lt;name&gt;.j2</code></td>
 </tr>
 <tr>
-<td>3</td>
-<td>Global</td>
+<td>2</td>
+<td>User global</td>
 <td><code>~/.automedia/overrides/prompts/&lt;name&gt;.j2</code></td>
 </tr>
 <tr>
+<td>3</td>
+<td>Built-in platform variant</td>
+<td><code>src/automedia/prompts/platforms/&lt;platform&gt;/&lt;name&gt;.j2</code></td>
+</tr>
+<tr>
 <td>4 (fallback)</td>
-<td>Built-in</td>
+<td>Built-in generic</td>
 <td><code>src/automedia/prompts/&lt;name&gt;.j2</code></td>
 </tr>
 </tbody>
 </table>
+<p>The built-in platform-variant layer (3) ships 20 platforms × the
+<code>content_writer</code> / <code>copy_review_g2</code> / <code>humanizer_g1</code> triplet; a platform
+without a triplet silently falls through to layer 4. Brand-scoped prompt
+overrides are a separate mechanism (<code>OverridesLoader.load_prompts</code> in
+<code>automedia/core/overrides.py</code>) used outside <code>load_prompt</code>.</p>
 <h3 id="rule-resolution">Rule Resolution<a class="headerlink" href="#rule-resolution" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2610,7 +2776,7 @@ templates at runtime:</p>
   <code>src/automedia/core/overrides.py</code></li>
 <li><strong>Rule loading</strong>: <code>OverridesLoader.load_rules(brand=None)</code></li>
 <li><strong>Prompt loading</strong>: <code>OverridesLoader.load_prompts(brand=None, platform=None)</code></li>
-<li><strong>MCP tool</strong>: <code>list_overridable_templates</code> in <code>src/automedia/mcp/tools.py</code></li>
+<li><strong>MCP tool</strong>: <code>list_overridable_templates</code> in <code>src/automedia/mcp/tools/prompts_meta.py</code></li>
 <li><strong>Config merge</strong>: 6-layer hierarchy in <code>src/automedia/core/config_loader.py</code></li>
 </ul>
 
@@ -2681,7 +2847,7 @@ templates at runtime:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

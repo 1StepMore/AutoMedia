@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -1506,6 +1506,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#automedia-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia demo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automedia-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia ui
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#automedia-omni" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1821,6 +1843,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1923,6 +2029,62 @@
     
   
     Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardware-and-remote-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
   
 
     
@@ -2918,6 +3080,10 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).</p>
 <td>Platform account management</td>
 </tr>
 <tr>
+<td><code>automedia ui</code></td>
+<td>Minimal local web UI (loopback only)</td>
+</tr>
+<tr>
 <td><code>automedia archive</code></td>
 <td>Archive a project</td>
 </tr>
@@ -2959,7 +3125,7 @@ pipeline operations; the Omni adapter layer for extract/translate/convert).</p>
 </tr>
 <tr>
 <td><code>automedia validate</code></td>
-<td>Run the agent-tester validation suite (list, run, report, diff, coverage, matrix)</td>
+<td>Run the agent-tester validation suite (list, run, report, diff, coverage, matrix, sign)</td>
 </tr>
 </tbody>
 </table>
@@ -2986,6 +3152,18 @@ automedia<span class="w"> </span>account<span class="w"> </span>disconnect<span 
 
 <span class="c1"># Force disconnect without confirmation</span>
 automedia<span class="w"> </span>account<span class="w"> </span>disconnect<span class="w"> </span>acc_wechat_a1b2c3d4<span class="w"> </span>--yes
+
+<span class="c1"># Capture a login session with a real browser (cookie auth, encrypted at rest)</span>
+automedia<span class="w"> </span>account<span class="w"> </span>login-capture<span class="w"> </span>xiaohongshu
+
+<span class="c1"># Non-interactive registration (script/agent friendly)</span>
+automedia<span class="w"> </span>account<span class="w"> </span>add<span class="w"> </span>zhihu<span class="w"> </span>--cred<span class="w"> </span><span class="nv">token</span><span class="o">=</span>abc<span class="w"> </span>--auth-type<span class="w"> </span>api_key<span class="w"> </span>--label<span class="w"> </span><span class="s2">"Main"</span>
+
+<span class="c1"># Rotate credentials without losing the account identity</span>
+automedia<span class="w"> </span>account<span class="w"> </span>rotate<span class="w"> </span>acc_zhihu_a1b2c3d4<span class="w"> </span>--cred<span class="w"> </span><span class="nv">token</span><span class="o">=</span>new-token
+
+<span class="c1"># Remove an account (alias of disconnect)</span>
+automedia<span class="w"> </span>account<span class="w"> </span>remove<span class="w"> </span>acc_zhihu_a1b2c3d4<span class="w"> </span>--yes
 </code></pre></div>
 <h3 id="subcommands">Subcommands<a class="headerlink" href="#subcommands" title="Permanent link">&para;</a></h3>
 <table>
@@ -3011,6 +3189,22 @@ automedia<span class="w"> </span>account<span class="w"> </span>disconnect<span 
 <tr>
 <td><code>disconnect</code></td>
 <td>Remove a platform account (requires confirmation unless <code>--yes</code>)</td>
+</tr>
+<tr>
+<td><code>login-capture</code></td>
+<td>Open a headed browser for interactive login, store session cookies into the encrypted account store (requires <code>pip install playwright &amp;&amp; playwright install chromium</code>)</td>
+</tr>
+<tr>
+<td><code>add</code></td>
+<td>Register an account non-interactively (<code>--cred k=v</code> repeatable or <code>--from-json &lt;file&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>rotate</code></td>
+<td>Replace an account's credentials, keeping its identity and history</td>
+</tr>
+<tr>
+<td><code>remove</code></td>
+<td>Remove a platform account (alias of <code>disconnect</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -4048,8 +4242,29 @@ automedia<span class="w"> </span>init<span class="w"> </span>--template<span cla
 <p>System dependency and runtime environment health check.</p>
 <div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>doctor
 </code></pre></div>
-<p>Checks: python, bun, ffmpeg, whisper, edge-tts, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.</p>
+<p>Checks: python, bun, ffmpeg, whisper, edge-tts, hyperframes, comfyui, chrome. Missing items are marked in red, but this does not block execution; the corresponding Gate will report an error at runtime.</p>
 <p>When a model_config.yaml exists, doctor also reports advisory LLM configuration warnings (missing or incomplete fallback chain, primary model/endpoint mismatches) as yellow warnings; in --json mode these appear in the <code>llm</code> field. These warnings are advisory and do not affect the exit code.</p>
+<h2 id="automedia-demo"><code>automedia demo</code><a class="headerlink" href="#automedia-demo" title="Permanent link">&para;</a></h2>
+<p>Produce a complete sample project with zero credentials — deterministic fake
+LLM, local Pillow image engine, isolated sandbox (fresh <code>AUTOMEDIA_CONFIG_DIR</code>
+and projects dir under <code>~/.automedia/demo</code>). Everything produced is synthetic
+demo data for presentations and smoke tests.</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>demo<span class="w">                       </span><span class="c1"># text_with_cover sample run</span>
+automedia<span class="w"> </span>demo<span class="w"> </span>--mode<span class="w"> </span>text_only<span class="w">      </span><span class="c1"># pick the pipeline mode</span>
+automedia<span class="w"> </span>demo<span class="w"> </span>--keep-env<span class="w">            </span><span class="c1"># leave demo env vars set for follow-up commands</span>
+</code></pre></div>
+<p>The run stops at H0 (awaiting_review) exactly like a production run, so
+presentations show the real HITL behavior. A <code>DEMO.md</code> marker in the project
+directory states that the content is synthetic.</p>
+<h2 id="automedia-ui"><code>automedia ui</code><a class="headerlink" href="#automedia-ui" title="Permanent link">&para;</a></h2>
+<p>Minimal local web UI over the SDK — config + dependency view, one pipeline
+run with live progress, project results, account metadata.</p>
+<div class="highlight"><pre><span></span><code>automedia<span class="w"> </span>ui<span class="w">                </span><span class="c1"># http://127.0.0.1:8765 (loopback only)</span>
+automedia<span class="w"> </span>ui<span class="w"> </span>--port<span class="w"> </span><span class="m">9000</span>
+</code></pre></div>
+<p>Requires the <code>[webui]</code> extra (<code>pip install '.[webui]'</code>). Binds 127.0.0.1
+only, no authentication — do not expose the port. See
+<a href="../web-ui/">web-ui</a>.</p>
 <h2 id="automedia-omni"><code>automedia omni</code><a class="headerlink" href="#automedia-omni" title="Permanent link">&para;</a></h2>
 <p>Omni Triad operations: content extraction (OPP), localization translation (OL), format conversion (ORF),
 plus launching the adapter MCP servers.</p>
@@ -4281,12 +4496,19 @@ commands exit 1 when no gate on the project is awaiting a decision, or when a
 previous decision has been delivered but not yet consumed.</p>
 <h2 id="automedia-onboard"><code>automedia onboard</code><a class="headerlink" href="#automedia-onboard" title="Permanent link">&para;</a></h2>
 <p>Guided configuration wizard.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Launch configuration wizard</span>
-automedia<span class="w"> </span>onboard
+<div class="highlight"><pre><span></span><code><span class="c1"># Launch configuration wizard (all steps)</span>
+automedia<span class="w"> </span>onboard<span class="w"> </span>start
 
-<span class="c1"># List available wizards</span>
+<span class="c1"># Re-run a single step</span>
+automedia<span class="w"> </span>onboard<span class="w"> </span>start<span class="w"> </span>--step<span class="w"> </span>&lt;name&gt;
+
+<span class="c1"># Show which configs are set</span>
+automedia<span class="w"> </span>onboard<span class="w"> </span>status
+
+<span class="c1"># List all configurable items and their current values</span>
 automedia<span class="w"> </span>onboard<span class="w"> </span>list
 </code></pre></div>
+<p><code>--step</code> accepts <code>llm</code>, <code>brand</code>, <code>pipeline</code>, <code>platforms</code>, <code>hitl</code>, <code>cron</code>, <code>omni</code>, <code>prompts</code>, or <code>all</code>.</p>
 <p>The LLM step preserves an existing fallback chain in <code>model_config.yaml</code> and offers fallback guidance during the flow.</p>
 <h2 id="automedia-mcp"><code>automedia mcp</code><a class="headerlink" href="#automedia-mcp" title="Permanent link">&para;</a></h2>
 <p>Generate ready-to-paste MCP client configuration for the MCP server.</p>
@@ -4478,6 +4700,10 @@ automedia<span class="w"> </span>validate<span class="w"> </span>matrix
 <td><code>matrix</code></td>
 <td>Render the validation matrix: coverage grid + run-record assertion cards + diff classification</td>
 </tr>
+<tr>
+<td><code>sign</code></td>
+<td>Record the director's sign-off on a run (appends to <code>signed.txt</code>; missing run/empty or multi-line verdict exits 1)</td>
+</tr>
 </tbody>
 </table>
 <h3 id="validate-run-flags">validate run Flags<a class="headerlink" href="#validate-run-flags" title="Permanent link">&para;</a></h3>
@@ -4582,7 +4808,7 @@ automedia<span class="w"> </span>validate<span class="w"> </span>matrix
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

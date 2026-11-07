@@ -6,31 +6,35 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Automated media production pipeline documentation">
+        <meta name="description" content="Minimum hardware per capability, degradation switches, and pointing engines at remote machines — for 4 GB laptops, WSL, and low-bandwidth setups.">
       
       
       
-        <link rel="canonical" href="https://1stepmore.github.io/AutoMedia/doc-inventory/">
+        <link rel="canonical" href="https://1stepmore.github.io/AutoMedia/user/hardware-and-remote-engines/">
       
       
+        <link rel="prev" href="../video-engines/">
+      
+      
+        <link rel="next" href="../production-workflow/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
-        <title>Doc inventory - AutoMedia</title>
+        <title>Restricted Hardware & Remote Engines - AutoMedia</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -49,7 +53,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -72,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#doc-inventory" class="md-skip">
+        <a href="#restricted-hardware-remote-engines" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +90,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+    <a href="../.." title="AutoMedia" class="md-header__button md-logo" aria-label="AutoMedia" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Doc inventory
+              Restricted Hardware & Remote Engines
             
           </span>
         </div>
@@ -193,7 +197,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -214,7 +218,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../user/user-introduction/" class="md-tabs__link">
+        <a href="../user-introduction/" class="md-tabs__link">
           
   
   
@@ -234,7 +238,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../user/hitl-framework/" class="md-tabs__link">
+        <a href="../hitl-framework/" class="md-tabs__link">
           
   
   
@@ -254,7 +258,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../user/api-reference/" class="md-tabs__link">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -270,11 +274,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../user/deployment/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../deployment/" class="md-tabs__link">
           
   
   
@@ -294,7 +300,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../user/production-workflow/" class="md-tabs__link">
+        <a href="../production-workflow/" class="md-tabs__link">
           
   
   
@@ -314,7 +320,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../dev/agent-reference/" class="md-tabs__link">
+        <a href="../../dev/agent-reference/" class="md-tabs__link">
           
   
   
@@ -334,7 +340,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../skills/brand-strategy/" class="md-tabs__link">
+        <a href="../../skills/brand-strategy/" class="md-tabs__link">
           
   
   
@@ -354,7 +360,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
+        <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-tabs__link">
           
   
   
@@ -390,7 +396,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
+    <a href="../.." title="AutoMedia" class="md-nav__button md-logo" aria-label="AutoMedia" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -420,7 +426,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -499,7 +505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/user-introduction/" class="md-nav__link">
+      <a href="../user-introduction/" class="md-nav__link">
         
   
   
@@ -527,7 +533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/developer-guide/" class="md-nav__link">
+      <a href="../../dev/developer-guide/" class="md-nav__link">
         
   
   
@@ -555,7 +561,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../glossary/" class="md-nav__link">
         
   
   
@@ -583,7 +589,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/agent-troubleshooting/" class="md-nav__link">
+      <a href="../../dev/agent-troubleshooting/" class="md-nav__link">
         
   
   
@@ -670,7 +676,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/hitl-framework/" class="md-nav__link">
+      <a href="../hitl-framework/" class="md-nav__link">
         
   
   
@@ -698,7 +704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/omni-integration/" class="md-nav__link">
+      <a href="../omni-integration/" class="md-nav__link">
         
   
   
@@ -726,7 +732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/asset-library/" class="md-nav__link">
+      <a href="../asset-library/" class="md-nav__link">
         
   
   
@@ -813,7 +819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/api-reference/" class="md-nav__link">
+      <a href="../api-reference/" class="md-nav__link">
         
   
   
@@ -841,7 +847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/cli-reference/" class="md-nav__link">
+      <a href="../cli-reference/" class="md-nav__link">
         
   
   
@@ -869,7 +875,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/mcp-setup/" class="md-nav__link">
+      <a href="../mcp-setup/" class="md-nav__link">
         
   
   
@@ -877,6 +883,90 @@
     
   
     MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
   
 
     
@@ -901,26 +991,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -938,7 +1033,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -956,7 +1051,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/deployment/" class="md-nav__link">
+      <a href="../deployment/" class="md-nav__link">
         
   
   
@@ -984,7 +1079,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/windows-deployment/" class="md-nav__link">
+      <a href="../windows-deployment/" class="md-nav__link">
         
   
   
@@ -1000,6 +1095,192 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-actually-triggers-each-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What actually triggers each engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-minimum-hardware-per-capability-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Minimum hardware per capability tier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-degradation-switches-ordered-by-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Degradation switches (ordered by impact)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-remote-engines-what-can-leave-the-machine-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Remote engines: what can leave the machine today
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Remote engines: what can leave the machine today">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automedia-doctor-and-remote-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        automedia doctor and remote engines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-has-no-remote-path-honest-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What has no remote path (honest list)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-wsl-and-low-bandwidth-specifics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. WSL and low-bandwidth specifics
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1071,7 +1352,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user/production-workflow/" class="md-nav__link">
+      <a href="../production-workflow/" class="md-nav__link">
         
   
   
@@ -1099,7 +1380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/gate-failure-modes/" class="md-nav__link">
+      <a href="../../dev/gate-failure-modes/" class="md-nav__link">
         
   
   
@@ -1127,7 +1408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/cron-troubleshooting/" class="md-nav__link">
+      <a href="../../dev/cron-troubleshooting/" class="md-nav__link">
         
   
   
@@ -1155,7 +1436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/api-gotchas/" class="md-nav__link">
+      <a href="../../dev/api-gotchas/" class="md-nav__link">
         
   
   
@@ -1242,7 +1523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/agent-reference/" class="md-nav__link">
+      <a href="../../dev/agent-reference/" class="md-nav__link">
         
   
   
@@ -1270,7 +1551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/project-validation-framework/" class="md-nav__link">
+      <a href="../../dev/project-validation-framework/" class="md-nav__link">
         
   
   
@@ -1298,7 +1579,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/founder-expectations/" class="md-nav__link">
+      <a href="../../dev/founder-expectations/" class="md-nav__link">
         
   
   
@@ -1326,7 +1607,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/evaluation-matrix-principles/" class="md-nav__link">
+      <a href="../../dev/evaluation-matrix-principles/" class="md-nav__link">
         
   
   
@@ -1354,7 +1635,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/forward-compat/" class="md-nav__link">
+      <a href="../../dev/forward-compat/" class="md-nav__link">
         
   
   
@@ -1382,7 +1663,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/deep-module-rfc-001/" class="md-nav__link">
+      <a href="../../dev/deep-module-rfc-001/" class="md-nav__link">
         
   
   
@@ -1410,7 +1691,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/override-reference/" class="md-nav__link">
+      <a href="../../dev/override-reference/" class="md-nav__link">
         
   
   
@@ -1438,7 +1719,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+      <a href="../../dev/%E4%B8%83%E9%98%B6%E6%AE%B5AI%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B-%E7%94%A8CodingAgent%E4%BA%A4%E4%BB%98%E6%88%90%E5%93%81%E7%9A%84%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
         
   
   
@@ -1525,7 +1806,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skills/brand-strategy/" class="md-nav__link">
+      <a href="../../skills/brand-strategy/" class="md-nav__link">
         
   
   
@@ -1553,7 +1834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skills/pipeline-workflow/" class="md-nav__link">
+      <a href="../../skills/pipeline-workflow/" class="md-nav__link">
         
   
   
@@ -1581,7 +1862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skills/distribution-workflow/" class="md-nav__link">
+      <a href="../../skills/distribution-workflow/" class="md-nav__link">
         
   
   
@@ -1609,7 +1890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skills/batch-workflow/" class="md-nav__link">
+      <a href="../../skills/batch-workflow/" class="md-nav__link">
         
   
   
@@ -1696,7 +1977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
+      <a href="../../adr/ADR-001-singleton-registry-unification/" class="md-nav__link">
         
   
   
@@ -1724,7 +2005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
+      <a href="../../adr/ADR-002-hitl-decision-layer-decoupling/" class="md-nav__link">
         
   
   
@@ -1752,7 +2033,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
+      <a href="../../adr/ADR-003-platform-rename-stdlib-conflict/" class="md-nav__link">
         
   
   
@@ -1780,7 +2061,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
+      <a href="../../adr/ADR-004-mcp-server-decomposition/" class="md-nav__link">
         
   
   
@@ -1808,7 +2089,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
+      <a href="../../adr/ADR-005-issue-driven-commits/" class="md-nav__link">
         
   
   
@@ -1836,7 +2117,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-006-graph-engineering-dag/" class="md-nav__link">
+      <a href="../../adr/ADR-006-graph-engineering-dag/" class="md-nav__link">
         
   
   
@@ -1864,7 +2145,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/ADR-007-gate-engine-verdict-aggregate/" class="md-nav__link">
+      <a href="../../adr/ADR-007-gate-engine-verdict-aggregate/" class="md-nav__link">
         
   
   
@@ -1912,328 +2193,280 @@
   
 
 
-  <h1>Doc inventory</h1>
-
-<!-- AUTO-GENERATED: docs/doc-inventory.md — do not edit manually. Regenerate: python scripts/doc_inventory.py -->
-
-<h2 id="doc-inventory">Doc Inventory<a class="headerlink" href="#doc-inventory" title="Permanent link">&para;</a></h2>
+<h1 id="restricted-hardware-remote-engines">Restricted Hardware &amp; Remote Engines<a class="headerlink" href="#restricted-hardware-remote-engines" title="Permanent link">&para;</a></h1>
+<p>AutoMedia's full dependency list (Bun, Chrome, ComfyUI, Whisper, hyperframes, …)
+is what the <strong>video-capable</strong> configuration needs. You do not need all of it.
+This page tells you, for each capability tier, what the machine really needs,
+which switches degrade gracefully, and which engines can be pointed at a
+remote machine instead of running locally.</p>
+<p>Related pages: <a href="../windows-deployment/">Windows Deployment</a> (WSL2/Docker/native),
+<a href="../deployment/">Deployment</a>, <a href="../cli-reference/">CLI reference</a> (<code>automedia doctor</code>).</p>
+<hr />
+<h2 id="1-what-actually-triggers-each-engine">1. What actually triggers each engine<a class="headerlink" href="#1-what-actually-triggers-each-engine" title="Permanent link">&para;</a></h2>
+<p>Engines are not all loaded at once. The pipeline only resolves an engine when
+the selected <strong>mode</strong> asks for that media track
+(<code>src/automedia/pipelines/runner.py</code>, media stage dispatch):</p>
 <table>
 <thead>
 <tr>
-<th>Path</th>
-<th style="text-align: right;">Size (bytes)</th>
-<th>Type</th>
+<th>Mode</th>
+<th>Image engine</th>
+<th>TTS</th>
+<th>ASR</th>
+<th>Video engine</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>AGENTS.md</td>
-<td style="text-align: right;">15779</td>
-<td>file</td>
+<td><code>text_only</code>, <code>qa_only</code>, <code>social-thread</code>, <code>repurpose</code></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
-<td>README.md</td>
-<td style="text-align: right;">33074</td>
-<td>file</td>
+<td><code>text_with_cover</code></td>
+<td>one cover image</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
-<td>docs/adr</td>
-<td style="text-align: right;">—</td>
-<td>dir</td>
+<td><code>image-carousel</code></td>
+<td>one image per slide</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
-<td>docs/adr/ADR-001-singleton-registry-unification.md</td>
-<td style="text-align: right;">4740</td>
-<td>file</td>
+<td><code>video_only</code>, <code>short-video</code></td>
+<td>(frame rendering)</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
 </tr>
 <tr>
-<td>docs/adr/ADR-002-hitl-decision-layer-decoupling.md</td>
-<td style="text-align: right;">4999</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/ADR-003-platform-rename-stdlib-conflict.md</td>
-<td style="text-align: right;">3443</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/ADR-004-mcp-server-decomposition.md</td>
-<td style="text-align: right;">5808</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/ADR-005-issue-driven-commits.md</td>
-<td style="text-align: right;">4300</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/ADR-006-graph-engineering-dag.md</td>
-<td style="text-align: right;">10586</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/ADR-007-gate-engine-verdict-aggregate.md</td>
-<td style="text-align: right;">6365</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/README.md</td>
-<td style="text-align: right;">2185</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/adr/TEMPLATE.md</td>
-<td style="text-align: right;">2267</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev</td>
-<td style="text-align: right;">—</td>
-<td>dir</td>
-</tr>
-<tr>
-<td>docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md</td>
-<td style="text-align: right;">12545</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/AutoMedia-development-brief-v2.md</td>
-<td style="text-align: right;">12165</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/AutoMedia开发简报.md</td>
-<td style="text-align: right;">4642</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/agent-reference.md</td>
-<td style="text-align: right;">16988</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/agent-troubleshooting.md</td>
-<td style="text-align: right;">27229</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/api-gotchas.md</td>
-<td style="text-align: right;">10896</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/capability-gap-assessment-20260915.md</td>
-<td style="text-align: right;">13124</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/codebase-audit-20261022.md</td>
-<td style="text-align: right;">45053</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/competitive-landscape-20260915.md</td>
-<td style="text-align: right;">16144</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/cron-troubleshooting.md</td>
-<td style="text-align: right;">5174</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/deep-module-rfc-001.md</td>
-<td style="text-align: right;">16703</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/developer-guide.md</td>
-<td style="text-align: right;">25408</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/doc-update-audit-20261029.md</td>
-<td style="text-align: right;">17929</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/evaluation-matrix-principles.md</td>
-<td style="text-align: right;">39285</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/forward-compat.md</td>
-<td style="text-align: right;">12882</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/founder-expectations.md</td>
-<td style="text-align: right;">112497</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/gate-failure-modes.md</td>
-<td style="text-align: right;">24315</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/infrastructure-audit-20261030.md</td>
-<td style="text-align: right;">34636</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/override-reference.md</td>
-<td style="text-align: right;">9341</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/plans</td>
-<td style="text-align: right;">—</td>
-<td>dir</td>
-</tr>
-<tr>
-<td>docs/dev/plans/NIGHTLY.md</td>
-<td style="text-align: right;">23366</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/plans/infrastructure-remediation-plan-20261030.md</td>
-<td style="text-align: right;">15934</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/project-analysis-20261029.md</td>
-<td style="text-align: right;">29923</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/project-evaluation-2026-09-06.md</td>
-<td style="text-align: right;">3219</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/project-health-assessment-20260917.md</td>
-<td style="text-align: right;">17689</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/project-validation-framework.md</td>
-<td style="text-align: right;">12572</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/remediation-report-20260917.md</td>
-<td style="text-align: right;">11999</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/validation-loop-log.md</td>
-<td style="text-align: right;">9998</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md</td>
-<td style="text-align: right;">11945</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/glossary.md</td>
-<td style="text-align: right;">13315</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/index.md</td>
-<td style="text-align: right;">6104</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/skills</td>
-<td style="text-align: right;">—</td>
-<td>dir</td>
-</tr>
-<tr>
-<td>docs/skills/batch-workflow.md</td>
-<td style="text-align: right;">5555</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/skills/brand-strategy.md</td>
-<td style="text-align: right;">3228</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/skills/distribution-workflow.md</td>
-<td style="text-align: right;">6248</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/skills/pipeline-workflow.md</td>
-<td style="text-align: right;">7760</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user</td>
-<td style="text-align: right;">—</td>
-<td>dir</td>
-</tr>
-<tr>
-<td>docs/user/api-reference.md</td>
-<td style="text-align: right;">21116</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/asset-library.md</td>
-<td style="text-align: right;">11894</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/cli-reference.md</td>
-<td style="text-align: right;">31191</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/deployment.md</td>
-<td style="text-align: right;">8996</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/hitl-framework.md</td>
-<td style="text-align: right;">10052</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/mcp-setup.md</td>
-<td style="text-align: right;">27758</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/omni-integration.md</td>
-<td style="text-align: right;">13187</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/production-workflow.md</td>
-<td style="text-align: right;">10963</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/user-introduction.md</td>
-<td style="text-align: right;">8446</td>
-<td>file</td>
-</tr>
-<tr>
-<td>docs/user/windows-deployment.md</td>
-<td style="text-align: right;">13939</td>
-<td>file</td>
+<td><code>auto</code></td>
+<td>✓ (when platforms want multimedia)</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
 </tr>
 </tbody>
 </table>
+<p>TTS and ASR live inside the video track (<code>AudioPipeline</code>), so a text-only
+setup never touches Whisper or Piper at all.</p>
+<p>The primary switch is therefore <strong>the mode itself</strong>
+(<code>AUTOMEDIA_DEFAULT_MODE</code> env or the top-level <code>mode</code> key in
+<code>.automedia/config.yaml</code>). Choosing a text mode is the single biggest
+hardware saving available.</p>
+<blockquote>
+<p>Note: the <code>pipeline.{text,image,video,audio}.enabled</code> keys written by
+<code>automedia onboard start --step pipeline</code> are currently <strong>onboarding/display metadata</strong> —
+the runtime gates media production on the mode, not on those flags. Do not
+rely on them to disable a track.</p>
+</blockquote>
+<hr />
+<h2 id="2-minimum-hardware-per-capability-tier">2. Minimum hardware per capability tier<a class="headerlink" href="#2-minimum-hardware-per-capability-tier" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Modes</th>
+<th>Hardware floor</th>
+<th>External tools</th>
+<th>pip extras</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Text</strong></td>
+<td><code>text_only</code>, <code>qa_only</code>, <code>social-thread</code>, <code>repurpose</code></td>
+<td>4 GB RAM, any CPU, online</td>
+<td>none</td>
+<td><code>.[openai,rich]</code> (or your provider extra)</td>
+</tr>
+<tr>
+<td><strong>Image</strong></td>
+<td><code>text_with_cover</code>, <code>image-carousel</code></td>
+<td>+ ~1 GB disk</td>
+<td>ComfyUI (local <strong>or remote</strong>) — or nothing: the <code>local</code> Pillow fallback needs no extra tool</td>
+<td><code>.[openai,rich]</code></td>
+</tr>
+<tr>
+<td><strong>Video</strong></td>
+<td><code>video_only</code>, <code>short-video</code>, <code>auto</code></td>
+<td>8 GB RAM, 4 cores, ~10 GB disk</td>
+<td><code>ffmpeg</code>, <code>bun</code>, <code>hyperframes</code> CLI, headless Chrome, <code>edge-tts</code> CLI (or Piper), Whisper (<code>faster-whisper</code> extra)</td>
+<td><code>.[all]</code> minus omni</td>
+</tr>
+<tr>
+<td><strong>Omni</strong></td>
+<td>document triad (extract/localize/format)</td>
+<td>+ 2 GB disk for torch (<code>omni-ml</code>)</td>
+<td>none</td>
+<td><code>.[omni]</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
+<ul>
+<li><strong>Image tier without ComfyUI</strong>: the image engine chain defaults to
+  <code>[comfyui, local]</code> (<code>engines.image.chain</code>). The <code>local</code> engine renders
+  text-based images with Pillow — a core dependency, zero external tools. On a
+  machine with no ComfyUI, set <code>engines.image.default: local</code> and skip ComfyUI
+  entirely.</li>
+<li><strong>Video tier without hyperframes</strong>: <code>HyperFramesVideoEngine</code> falls back to an
+  ffmpeg slideshow (<code>_FALLBACK_FRAMERATE = 0.5</code>) when the hyperframes CLI or
+  Chrome is unavailable. The output is a static-frame video — real motion
+  requires hyperframes + Chrome.</li>
+<li><strong>ASR model size</strong>: <code>faster-whisper</code> defaults to the <code>tiny</code> model
+  (<code>DEFAULT_MODEL</code> in <code>asr_faster_whisper.py</code>; override with
+  <code>AUTOMEDIA_FASTER_WHISPER_MODEL</code>), which runs comfortably on CPU in 4 GB.
+  Stay at <code>tiny</code>/<code>base</code> on restricted machines — avoid <code>small</code> and up.</li>
+<li><strong>Omni-ml</strong> pulls PyTorch (~2 GB download). On low bandwidth, install
+  <code>.[omni-core]</code> / <code>.[omni-pdf]</code> only, and accept reduced semantic search.</li>
+</ul>
+<hr />
+<h2 id="3-degradation-switches-ordered-by-impact">3. Degradation switches (ordered by impact)<a class="headerlink" href="#3-degradation-switches-ordered-by-impact" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Mode</strong> — <code>AUTOMEDIA_DEFAULT_MODE=text_only</code> runs the whole pipeline with
+   zero media dependencies (see the tier table above).</li>
+<li><strong>Image chain</strong> — <code>engines.image.chain: [local]</code> (skip ComfyUI) or
+   <code>[comfyui, local]</code> (default; Pillow picks up when ComfyUI is unreachable).</li>
+<li><strong>TTS chain</strong> — <code>engines.tts.chain: [edge-tts]</code> uses Microsoft's cloud
+   endpoint: no local model, no local CPU. Piper (local <code>.onnx</code>) is the
+   offline alternative when bandwidth is the constraint instead of CPU.</li>
+<li><strong>ASR chain</strong> — ASR only runs inside the video track / source-audio
+   ingestion. Text-only setups need nothing here.</li>
+<li><strong>Omni extras</strong> — install the narrow extra (<code>omni-core</code>, <code>omni-pdf</code>)
+   instead of <code>.[omni]</code>.</li>
+</ol>
+<p>All of these live in <code>.automedia/config.yaml</code> (merged from
+<code>automedia/manifests/defaults.yaml</code>). See
+<code>docs/dev/agent-reference.md</code> for the config-layer precedence.</p>
+<hr />
+<h2 id="4-remote-engines-what-can-leave-the-machine-today">4. Remote engines: what can leave the machine today<a class="headerlink" href="#4-remote-engines-what-can-leave-the-machine-today" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Modality</th>
+<th>Engine</th>
+<th>Local-only or remote-capable</th>
+<th>How to point it elsewhere</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>image</td>
+<td><code>comfyui</code></td>
+<td><strong>remote-capable</strong></td>
+<td><code>engines.image.comfyui.{host, port, protocol}</code> in <code>.automedia/config.yaml</code>, or env <code>AUTOMEDIA_ENGINES_IMAGE_COMFYUI_HOST</code> / <code>_PORT</code> / <code>_PROTOCOL</code></td>
+</tr>
+<tr>
+<td>image</td>
+<td><code>local</code> (Pillow)</td>
+<td>local-only (by design — it is the offline fallback)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>tts</td>
+<td><code>azure</code></td>
+<td>cloud service — commercial, reliable narration</td>
+<td><code>AUTOMEDIA_AZURE_SPEECH_KEY</code> + <code>AUTOMEDIA_AZURE_SPEECH_REGION</code> env (or <code>engines.tts.azure.speech_key/region</code>); leads the TTS chain when configured</td>
+</tr>
+<tr>
+<td>tts</td>
+<td><code>edge-tts</code></td>
+<td>cloud service (nothing to configure)</td>
+<td>requires the <code>edge-tts</code> CLI on PATH</td>
+</tr>
+<tr>
+<td>tts</td>
+<td><code>piper</code></td>
+<td>local-only (<code>.onnx</code> model on disk)</td>
+<td><code>AUTOMEDIA_PIPER_MODEL_PATH</code> / <code>engines.tts.piper.model_path</code></td>
+</tr>
+<tr>
+<td>asr</td>
+<td><code>whisper</code> / <code>faster-whisper</code></td>
+<td>local-only</td>
+<td><code>AUTOMEDIA_FASTER_WHISPER_MODEL</code> (size name or local CTranslate2 dir)</td>
+</tr>
+<tr>
+<td>video</td>
+<td><code>hyperframes</code></td>
+<td>local-only (CLI + headless Chrome)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>video</td>
+<td>ffmpeg fallback</td>
+<td>local-only</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remote ComfyUI example</strong> — the heavy rendering (SD1.5 + upscale) runs on a
+GPU box, the orchestrating laptop stays light:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># .automedia/config.yaml</span>
+<span class="nt">engines</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">comfyui</span>
+<span class="w">    </span><span class="nt">chain</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">comfyui</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">local</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">comfyui</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.20</span><span class="w">   </span><span class="c1"># the GPU machine</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8188</span>
+<span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+</code></pre></div>
+<p>or, without touching config files:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_ENGINES_IMAGE_COMFYUI_HOST</span><span class="o">=</span><span class="m">192</span>.168.1.20
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_ENGINES_IMAGE_COMFYUI_PORT</span><span class="o">=</span><span class="m">8188</span>
+</code></pre></div>
+<p>Model files (<code>upscale_model</code>, <code>comfyui_models_path</code>) live on the ComfyUI
+machine; leave them unset locally and <code>automedia doctor</code> reports the upscale
+model as <em>unverifiable</em> rather than <em>missing</em>.</p>
+<h3 id="automedia-doctor-and-remote-engines"><code>automedia doctor</code> and remote engines<a class="headerlink" href="#automedia-doctor-and-remote-engines" title="Permanent link">&para;</a></h3>
+<p>The doctor's ComfyUI probe reads the same
+<code>engines.image.comfyui.{host, port, protocol}</code> config, so a remote ComfyUI is
+probed where it actually lives — it is no longer reported missing just
+because nothing listens on <code>127.0.0.1:8188</code>.</p>
+<p>Current doctor exit-code contract: <strong>any</strong> missing row (including the
+optional ComfyUI service) makes <code>automedia doctor</code> exit 1. Read the table
+rather than the exit code when you run a text-only setup on purpose, or
+install the listed tools to go green. Relaxing exit codes for
+engine-optional rows is a tracked gap (see <code>docs/dev/gap-register.md</code>).</p>
+<h3 id="what-has-no-remote-path-honest-list">What has no remote path (honest list)<a class="headerlink" href="#what-has-no-remote-path-honest-list" title="Permanent link">&para;</a></h3>
+<p>Piper, Whisper/faster-whisper, and hyperframes have no remote endpoint
+today. If local CPU/bandwidth cannot fit them, the degradation switches in
+§3 are the answer (cloud edge-tts, tiny ASR model, or a text/image mode).
+A generic "remote engine proxy" is a tracked gap in
+<code>docs/dev/gap-register.md</code>, not a current feature.</p>
+<hr />
+<h2 id="5-wsl-and-low-bandwidth-specifics">5. WSL and low-bandwidth specifics<a class="headerlink" href="#5-wsl-and-low-bandwidth-specifics" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>WSL Chrome trap</strong>: a <code>google-chrome</code> on the WSL PATH may be an exec shim
+  to the Windows-side Chrome, which cannot run headless from WSL. <code>automedia
+  doctor</code> detects this and prints the remediation (install a Linux Chromium,
+  or use hyperframes' bundled headless shell: <code>hyperframes browser ensure</code>).
+  Details: <a href="../windows-deployment/">Windows Deployment</a>.</li>
+<li><strong>Model downloads to budget for</strong>: Whisper <code>base</code> (~150 MB), Piper voice
+  models (~60–120 MB each), SD1.5 + RealESRGAN (multi-GB, lives on the
+  ComfyUI host), PyTorch for omni-ml (~2 GB). On a 4G connection, prefer the
+  cloud TTS (edge-tts) and skip omni-ml.</li>
+<li><strong>Verify before running</strong>: <code>automedia doctor --install-missing</code> prints
+  per-OS install commands for everything missing; <code>automedia doctor --fix</code>
+  attempts the installs interactively (120 s timeout per tool).</li>
+</ul>
 
 
 
 
 
 
+
+  
+  
 
 
 
@@ -2293,10 +2526,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

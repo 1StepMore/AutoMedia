@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -1424,6 +1424,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1526,6 +1610,62 @@
     
   
     Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hardware-and-remote-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
   
 
     
@@ -2665,37 +2805,37 @@ matches <code>automedia.__all__</code> exactly (19 symbols).</p>
 <tbody>
 <tr>
 <td><code>auto</code></td>
-<td>pre-gate + CW + G0-G6 + V0-V7 + H0 + L1-L4</td>
+<td>pre-gate + CW + G0-G6 + V0-V7 + H0</td>
 <td>Full pipeline production</td>
 </tr>
 <tr>
 <td><code>text_only</code></td>
-<td>CW + G0-G6 + H0 + L1-L4</td>
+<td>CW + G0-G6 + H0</td>
 <td>Text-only production</td>
 </tr>
 <tr>
 <td><code>text_with_cover</code></td>
-<td>CW + G0-G6 + H0 + L1-L4</td>
+<td>CW + G0-G6 + H0</td>
 <td>Text plus cover image</td>
 </tr>
 <tr>
 <td><code>video_only</code></td>
-<td>V0-V7 + H0 + L1-L4</td>
+<td>V0-V7</td>
 <td>Video-only production</td>
 </tr>
 <tr>
 <td><code>image-carousel</code></td>
-<td>CW + G0-G6 + L1-L4</td>
+<td>CW + G0-G6</td>
 <td>Carousel image output</td>
 </tr>
 <tr>
 <td><code>social-thread</code></td>
-<td>CW + G0-G6 + L1-L4</td>
+<td>CW + G0-G6</td>
 <td>Thread-style social posts</td>
 </tr>
 <tr>
 <td><code>short-video</code></td>
-<td>pre-gate + CW + G0-G6 + V0-V7 + H0 + L1-L4</td>
+<td>pre-gate + CW + G0-G6 + V0-V7 + H0</td>
 <td>Short-form video</td>
 </tr>
 <tr>
@@ -2705,11 +2845,12 @@ matches <code>automedia.__all__</code> exactly (19 symbols).</p>
 </tr>
 <tr>
 <td><code>repurpose</code></td>
-<td>CW + G0-G6 + V0-V7 + H0 + L1-L4 + P1-P4</td>
+<td>pre-gate + CW + G0-G6 + V0-V7 + H0 + P1-P4</td>
 <td>Full pipeline + deep platform repurpose</td>
 </tr>
 </tbody>
 </table>
+<p><code>L1</code>-<code>L4</code> are registered gates but belong to no mode preset; they run through their own lifecycle commands. The authoritative lists live in <code>automedia/pipelines/gate_plan.py</code> (<code>MODE_GATE_NAMES</code>).</p>
 <h3 id="return-value">Return Value<a class="headerlink" href="#return-value" title="Permanent link">&para;</a></h3>
 <p>Returns a <code>PipelineResult</code> object.</p>
 <h2 id="pipelineresult">PipelineResult<a class="headerlink" href="#pipelineresult" title="Permanent link">&para;</a></h2>
@@ -3440,7 +3581,7 @@ are importable from there.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

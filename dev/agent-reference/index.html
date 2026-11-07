@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -896,6 +896,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/account-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account & Credential Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Web UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/platform-capability-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform Capability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -998,6 +1082,62 @@
     
   
     Windows Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/video-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video Engines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/hardware-and-remote-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricted Hardware & Remote Engines
   
 
     
@@ -2169,13 +2309,13 @@ under 200 lines. Read the section you need — none of it is required up front.<
 │       ├── pipelines/          # runner.py (shared entry point), gate_plan.py (per-mode gate lists — THE authority), dag.py (26-node gate DAG), state_view.py, gate_engine, audio/image pipelines, language_config
 │       ├── gates/              # 33 quality gates: base, failure_modes, G0-G6, V0-V7, H0, L1-L4 (D1-D7 and P1-P4 too)
 │       ├── detectors/          # AI-writing-taste detectors: base, registry, deterministic, adapters
-│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes)
+│       ├── engines/            # Media engine backends: base, errors, registry, implementations/ (asr_whisper, asr_faster_whisper, tts_azure, tts_edge, tts_piper, image_comfyui, image_local, video_hyperframes, video_remotion)
 │       ├── effects/            # Content analytics: stats (word count, sentiment, readability, brand mentions, SEO) + cli/mcp entry points
 │       ├── validation/         # Agent-tester validation layer: engine, schema, coverage, matrix, persist, signoff, standards, doc_reality
 │       ├── features/           # Open-core feature tier marker (declarative only — no license enforcement)
-│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json)
+│       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json), remotion/ (React composition sources)
 │       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
-│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (19 commands)
+│       ├── cli/                # Typer CLI: app.py + command modules under commands/ (21 commands)
 │       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
@@ -2283,7 +2423,7 @@ is the onboarding guide. How to read a scenario:</p>
 - Director sign-off: the director appends run name, date, and verdict to <code>signed.txt</code> in the run dir; the agent grades, the human disposes.</p>
 <h3 id="where-things-live">Where things live<a class="headerlink" href="#where-things-live" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>scenarios/</code>: committed scenario library (160 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
+<li><code>scenarios/</code>: committed scenario library (162 scenarios across cli/, journeys/, publish/, quality/, regression/, surface/, production/, meta/, fixtures/, baseline/).</li>
 <li><code>scenarios/STANDARDS.md</code>: the single schema authority — standard keys (23 core plus 33 <code>gate.*</code> and 9 <code>mode.*</code>); unknown keys rejected at load.</li>
 <li><code>scenarios/baseline/</code>: committed pre-flight baseline run record and coverage audit.</li>
 <li><code>validation-runs/</code>: gitignored immutable run records with a <code>latest.txt</code> pointer.</li>
@@ -2399,6 +2539,10 @@ is the onboarding guide. How to read a scenario:</p>
 </thead>
 <tbody>
 <tr>
+<td><code>ONBOARDING.md</code></td>
+<td>Executable onboarding for agents and humans (system ID, dependency tiers, HITL map, minimal viable path)</td>
+</tr>
+<tr>
 <td><code>docs/dev/developer-guide.md</code></td>
 <td>Full developer guide (enforcement mechanisms, PRD-4 summary, ADRs)</td>
 </tr>
@@ -2437,6 +2581,10 @@ is the onboarding guide. How to read a scenario:</p>
 <tr>
 <td><code>docs/dev/gate-failure-modes.md</code></td>
 <td>Gate failure troubleshooting</td>
+</tr>
+<tr>
+<td><code>docs/dev/gap-register.md</code></td>
+<td><strong>Single source of truth for open gaps</strong> — supersede the dated audit snapshots for living state (snapshots stay frozen)</td>
 </tr>
 <tr>
 <td><code>docs/user/production-workflow.md</code></td>
@@ -2495,6 +2643,10 @@ is the onboarding guide. How to read a scenario:</p>
 <td>Windows setup: WSL2, Docker Desktop, native</td>
 </tr>
 <tr>
+<td><code>docs/user/hardware-and-remote-engines.md</code></td>
+<td>Restricted-hardware minimums, degradation switches, remote ComfyUI endpoint config</td>
+</tr>
+<tr>
 <td><code>docs/user/user-introduction.md</code></td>
 <td>Getting-started walkthrough for new users</td>
 </tr>
@@ -2515,7 +2667,7 @@ is the onboarding guide. How to read a scenario:</p>
 <td>One-off historical reports (migration guides, per-run acceptance, superseded master plans) — not authoritative</td>
 </tr>
 <tr>
-<td><code>docs/doc-inventory.md</code></td>
+<td><code>docs/dev/doc-inventory.md</code></td>
 <td>AUTO-GENERATED doc inventory — regenerate with <code>python3 scripts/doc_inventory.py</code>; never hand-edit</td>
 </tr>
 </tbody>
@@ -2626,7 +2778,7 @@ is the onboarding guide. How to read a scenario:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
