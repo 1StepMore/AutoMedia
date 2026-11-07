@@ -595,7 +595,8 @@ def scan_marker(text: str, marker: str) -> list[Finding]:
 # parameter tables, directory trees, CLI enumerations, skill lists.
 # --------------------------------------------------------------------------- #
 
-# ``| `tool_name` | param, param | description |`` — the AGENTS.md §9 shape.
+# ``| `tool_name` | param, param | description |`` — the MCP tools table shape
+# (lives in docs/dev/agent-reference.md since ops(A1) moved it out of AGENTS.md).
 _TOOL_ROW_RE: re.Pattern[str] = re.compile(r"^\|\s*`([A-Za-z_][A-Za-z0-9_]*)`\s*\|\s*([^|]*)\|")
 
 # ``## `automedia <name>` `` — one section per CLI command in cli-reference.md.
@@ -608,10 +609,10 @@ def scan_tool_params(
     *,
     section_heading: str = "## 9.",
 ) -> list[Finding]:
-    """Compare the AGENTS.md MCP parameter table against real tool signatures.
+    """Compare the MCP tools parameter table against real tool signatures.
 
     Pure function: ``signatures`` maps tool name -> its real parameter names in
-    declaration order (``**kwargs`` rendered as ``**options``). The §9 table is
+    declaration order (``**kwargs`` rendered as ``**options``). The table is
     the most-read table in the repo and was silently wrong for 22 of 68 tools
     because the numeric gate only checks tool *membership*, never *parameters*.
 
@@ -1141,11 +1142,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             all_findings.append(finding)
 
     # MCP table membership, PER FILE: the doc↔reality audit checks the UNION
-    # of AGENTS.md + README.md table names, so one file can silently omit a
+    # of agent-reference + README.md table names, so one file can silently omit a
     # tool the other documents.  Each agent-facing table must independently
     # document every registered tool (source-derived from server.py).
+    # (ops(A1) 2026-11-08: the MCP table moved from AGENTS.md §9 to
+    # docs/dev/agent-reference.md — the membership guard follows the table.)
     registered_tools = set(doc_reality_audit()["mcp_tools"]["declared"])
-    for rel in ("AGENTS.md", "README.md"):
+    for rel in ("docs/dev/agent-reference.md", "README.md"):
         path = REPO_ROOT / rel
         if not path.is_file():
             continue
@@ -1197,15 +1200,30 @@ def main(argv: Sequence[str] | None = None) -> int:
             all_findings.append(finding)
 
     # Structural claims: the four classes the 2026-10-29 audit found unguarded.
-    # Tool PARAMETERS (not just names) in AGENTS.md §9.
+    # Tool PARAMETERS (not just names) in the MCP tools table — ops(A1) moved
+    # that table from AGENTS.md §9 to docs/dev/agent-reference.md, so the two
+    # table-bound scans follow it there; the skill lists stay in AGENTS.md §12.
+    agent_ref_path = REPO_ROOT / "docs" / "dev" / "agent-reference.md"
+    agent_ref_text = agent_ref_path.read_text(encoding="utf-8") if agent_ref_path.is_file() else ""
     agents_text = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else ""
+    if agent_ref_text:
+        for finding in scan_tool_params(
+            agent_ref_text,
+            _tool_param_signatures(),
+            section_heading="## MCP Tools Quick Reference",
+        ):
+            print(
+                f"agent-reference.md:{finding.line}: '{finding.found}' expected {finding.expected}"
+            )
+            all_findings.append(finding)
+        for finding in scan_cli_enumerations(
+            agent_ref_text, _cli_subcommands(), heading="## CLI Commands Quick Reference"
+        ):
+            print(
+                f"agent-reference.md:{finding.line}: '{finding.found}' expected {finding.expected}"
+            )
+            all_findings.append(finding)
     if agents_text:
-        for finding in scan_tool_params(agents_text, _tool_param_signatures()):
-            print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
-            all_findings.append(finding)
-        for finding in scan_cli_enumerations(agents_text, _cli_subcommands(), heading="## 10."):
-            print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
-            all_findings.append(finding)
         for label, directory in (
             ("Maintainer skills", ".opencode/skills"),
             ("User-facing skills", "docs/skills"),
