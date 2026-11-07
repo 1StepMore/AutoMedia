@@ -193,8 +193,7 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
-- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md)
-- **Doc-architecture playbook:** [docs/dev/agent-era-doc-architecture.md](docs/dev/agent-era-doc-architecture.md) — byte-identical copy shared by six repos (canonical copy in AutoInfo); edit the canonical copy and re-sync all six, never this copy (see e2e-test-suite#254)
+- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md); cross-repo playbook copy [docs/dev/agent-era-doc-architecture.md](docs/dev/agent-era-doc-architecture.md) is byte-identical across six repos — edit the canonical copy in AutoInfo, never this one (e2e-test-suite#254)
 - **Maintainer skills:** `.opencode/skills/` — `project-validation`, `doc-sync`, `validation-runner`, `deep-modules` (two further maintainer skills are kept local-only on purpose — gitignored, never shipped; see .gitignore).
 - **User-facing skills:** `docs/skills/` — `brand-strategy`, `pipeline-workflow`, `batch-workflow`, `distribution-workflow`
 
