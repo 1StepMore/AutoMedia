@@ -1093,6 +1093,270 @@ def _run_doc_reality_audit() -> tuple[list[str], list[str]]:
     return blocking, informational
 
 
+# ---------------------------------------------------------------------------
+# Agent governance layer (ops A13; guideline 02 §6.2 C1/C3/C4/C5/C7 + A10).
+# Deterministic, non-LLM checks over the files the governance SOP landed.
+# C6 (generated doc-inventory drift) stays the separate doc_inventory.py
+# --check CI step. All functions here are pure (text -> findings) so the
+# existing test style in tests/test_doc_consistency.py applies.
+# ---------------------------------------------------------------------------
+
+_ROLE_FILES = ("coder.md", "maintainer.md", "tester.md", "user.md")
+_ROLE_DIR = Path(".agents") / "roles"
+# Five handoff-contract elements (guideline 02 §3: Done / return format /
+# tool sources / task boundary / stop-and-escalate). Each heading must carry
+# non-empty content — a heading-only section must not pass (C4 anti-gap).
+_ROLE_ELEMENTS = (
+    "## Done",
+    "## 返回格式",
+    "## 工具与来源指引",
+    "## 任务边界与禁止触碰",
+    "## Stop & Escalate",
+)
+_ROLE_MAX_LINES = 30
+_AGENTS_MAX_LINES = 200
+_SCOPE_MAX_LINES = 15  # directory-level AGENTS.md (A10: describe places only)
+
+# Markdown files this SOP landed or touches (C1 path references + C5 placeholder
+# residue). ci.yml is deliberately NOT in the C5 set: GitHub Actions `${{ }}`
+# expressions are workflow syntax, not SOP placeholder residue.
+_GOVERNANCE_MD_FILES = (
+    "AGENTS.md",
+    ".agents/roles/coder.md",
+    ".agents/roles/maintainer.md",
+    ".agents/roles/tester.md",
+    ".agents/roles/user.md",
+    ".agents/expectations/INDEX.md",
+    ".agents/expectations/checkpoints.md",
+    ".specify/memory/constitution.md",
+    "docs/dev/DEBT.md",
+    "docs/dev/agent-reference.md",
+)
+
+# Path-like backtick token: repo-relative path characters only, must contain
+# a slash, must not carry template suffixes like ``@<version>``.
+_PATH_TOKEN_RE = re.compile(r"^[A-Za-z0-9_./-]+$")
+
+
+def scan_role_contract(text: str, filename: str) -> list[Finding]:
+    """C4: each role contract has all five elements with non-empty content.
+
+    Pure function. A heading-only section (title present, body empty) fails —
+    that is the "有标题无内容" gap class the guideline calls out explicitly.
+    Also enforces the ≤30-line contract budget.
+    """
+    findings: list[Finding] = []
+    lines = text.splitlines()
+    if len(lines) > _ROLE_MAX_LINES:
+        findings.append(
+            Finding(filename, 0, f"{len(lines)} lines", f"<= {_ROLE_MAX_LINES} lines")
+        )
+    total = len(lines)
+    for element in _ROLE_ELEMENTS:
+        start = next((i for i, ln in enumerate(lines) if ln.startswith(element)), None)
+        if start is None:
+            findings.append(Finding(filename, 0, "missing", f"{element} section"))
+            continue
+        body_start = start + 1
+        body_end = next(
+            (i for i in range(body_start, total) if lines[i].startswith("## ")),
+            total,
+        )
+        body = "\n".join(lines[body_start:body_end]).strip()
+        if not body:
+            findings.append(
+                Finding(
+                    filename,
+                    start + 1,
+                    f"{element} heading without content",
+                    "non-empty content under the heading",
+                )
+            )
+    return findings
+
+
+def scan_placeholders(text: str, filename: str) -> list[Finding]:
+    """C5: no ``{{placeholder}}`` residue in backfilled governance files.
+
+    Pure function. The SOP backfills every ``{{...}}`` before landing; a
+    leftover pair means an unbackfilled artifact reached the repo. The empty
+    literal ``{{}}`` is exempt — the docs use it to describe this very rule.
+    """
+    findings: list[Finding] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        for match in re.finditer(r"\{\{([^}]*)\}\}", line):
+            if match.group(1).strip():
+                snippet = line.strip()[:60]
+                findings.append(
+                    Finding(filename, lineno, snippet, "no {{placeholder}} residue")
+                )
+    return findings
+
+
+def scan_path_references(text: str, filename: str, base: Path) -> list[Finding]:
+    """C1 (governance extension): backtick path-like references must resolve.
+
+    Pure function over a file's text against ``base`` (the repo root). Only
+    tokens that look like repo paths are considered: path charset, contains a
+    slash, no spaces, no ``@``/template suffixes. Skipped on purpose:
+
+    - fenced code blocks (``` toggles) — shell/usage examples, not references;
+    - absolute (``/...``) and dot-relative (``./...``) tokens — runtime paths;
+    - single-segment extension-less dirs (``config/``) — illustrative names.
+
+    ``automedia/...`` tokens resolve against ``src/`` (module-rooted paths);
+    everything else resolves against the repo root. Anything else (commands,
+    prose, section headings) is ignored — this guard is for broken file
+    references, not lint.
+    """
+    findings: list[Finding] = []
+    in_fence = False
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        for token in re.findall(r"`([^`]+)`", line):
+            token = token.strip()
+            if not token or "/" not in token or "@" in token or " " in token:
+                continue
+            if token.startswith(("/", "./")):
+                continue
+            if not _PATH_TOKEN_RE.match(token):
+                continue
+            segments = token.rstrip("/").split("/")
+            if len(segments) == 1 and "." not in segments[0]:
+                continue  # illustrative bare-dir name (``config/``), not a reference
+            candidates = (base / token, base / "src" / token, base / "src" / "automedia" / token)
+            if not any(candidate.exists() for candidate in candidates):
+                findings.append(
+                    Finding(filename, lineno, token, "referenced path must exist")
+                )
+    return findings
+
+
+def scan_scope_file(text: str, filename: str) -> list[Finding]:
+    """A10/C: a directory-level AGENTS.md is a ≤15-line scope file."""
+    findings: list[Finding] = []
+    count = len(text.splitlines())
+    if count > _SCOPE_MAX_LINES:
+        findings.append(
+            Finding(filename, 0, f"{count} lines", f"<= {_SCOPE_MAX_LINES} lines (scope file)")
+        )
+    if "## 返回格式" in text or (".agents/roles/" in text and "先读" in text):
+        # role-file markers leaking into a scope file (describe places, never roles)
+        findings.append(
+            Finding(
+                filename,
+                0,
+                "role-contract marker in scope file",
+                "scope files describe places, never roles",
+            )
+        )
+    return findings
+
+
+def scan_expectations_index(text: str, index_rel: str, scenario_count: int) -> list[Finding]:
+    """C7 (Owner D3 adaptation): INDEX stays consistent with scenarios/.
+
+    Pure function. The INDEX is pointer-only; this checks (a) the scenario
+    count claim matches the derived library size (stale-claim guard, same
+    family as test_baseline_count.py), and (b) the declared pointer targets
+    exist.
+    """
+    findings: list[Finding] = []
+    if f"{scenario_count} 场景" not in text:
+        findings.append(
+            Finding(
+                index_rel,
+                0,
+                f"missing '{scenario_count} 场景' claim",
+                "INDEX scenario-count claim must match the derived library size",
+            )
+        )
+    declared = re.findall(r"`([A-Za-z0-9_./-]+/?)`", text)
+    for token in declared:
+        if "/" not in token:
+            continue
+        candidate = REPO_ROOT / token
+        if not candidate.exists():
+            findings.append(
+                Finding(index_rel, 0, token, "INDEX pointer target must exist")
+            )
+    if "checkpoints.md" not in text:
+        findings.append(
+            Finding(
+                index_rel,
+                0,
+                "missing checkpoints.md reference",
+                "INDEX must reference checkpoints.md",
+            )
+        )
+    return findings
+
+
+def run_agent_governance_checks(scenario_count: int) -> list[Finding]:
+    """Wire the governance scans over the real repo tree; returns findings."""
+    findings: list[Finding] = []
+
+    # C3: root AGENTS.md line budget (test_doc_authority pins the same bound).
+    agents_path = REPO_ROOT / "AGENTS.md"
+    if agents_path.is_file():
+        agents_lines = len(agents_path.read_text(encoding="utf-8").splitlines())
+        if agents_lines > _AGENTS_MAX_LINES:
+            findings.append(
+                Finding(
+                    "AGENTS.md",
+                    0,
+                    f"{agents_lines} lines",
+                    f"<= {_AGENTS_MAX_LINES} lines",
+                )
+            )
+    else:
+        findings.append(Finding("AGENTS.md", 0, "missing", "root AGENTS.md must exist"))
+
+    # C4: the four role contracts.
+    for role in _ROLE_FILES:
+        rel = str(_ROLE_DIR / role)
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            findings.append(Finding(rel, 0, "missing", f"role contract {rel} must exist"))
+            continue
+        findings.extend(scan_role_contract(path.read_text(encoding="utf-8"), rel))
+
+    # C5 + C1 over the governance markdown set.
+    for rel in _GOVERNANCE_MD_FILES:
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            findings.append(Finding(rel, 0, "missing", f"governance file {rel} must exist"))
+            continue
+        text = path.read_text(encoding="utf-8")
+        findings.extend(scan_placeholders(text, rel))  # C5
+        findings.extend(scan_path_references(text, rel, REPO_ROOT))  # C1
+
+    # C7: expectations INDEX vs the derived scenario library (Owner D3).
+    index_rel = ".agents/expectations/INDEX.md"
+    index_path = REPO_ROOT / index_rel
+    if index_path.is_file():
+        findings.extend(
+            scan_expectations_index(
+                index_path.read_text(encoding="utf-8"), index_rel, scenario_count
+            )
+        )
+    else:
+        findings.append(Finding(index_rel, 0, "missing", f"{index_rel} must exist (D3)"))
+
+    # A10: directory-level AGENTS.md scope files (any discovered; never the root).
+    for path in REPO_ROOT.rglob("AGENTS.md"):
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        if rel == "AGENTS.md" or ".pytest-tmp" in rel or rel.startswith(".git"):
+            continue
+        findings.extend(scan_scope_file(path.read_text(encoding="utf-8"), rel))
+
+    return findings
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the consistency check; return 0 when all checks pass, 1 otherwise."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1231,6 +1495,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             for finding in scan_skill_list(agents_text, _skill_names(directory), label=label):
                 print(f"AGENTS.md:{finding.line}: '{finding.found}' expected {finding.expected}")
                 all_findings.append(finding)
+
+    # Agent governance layer (ops A13): C1/C3/C4/C5/C7 + A10 scope budgets.
+    # Deterministic checks over the files the governance SOP landed; failures
+    # gate CI exactly like the numeric-claim findings above.
+    governance_findings = run_agent_governance_checks(scenario_count)
+    for finding in governance_findings:
+        print(f"{finding.file}:{finding.line}: '{finding.found}' expected {finding.expected}")
+    all_findings.extend(governance_findings)
 
     # Directory tree: both AGENTS.md §3 and the agent-reference full tree.
     actual_subpackages = _package_subpackages()

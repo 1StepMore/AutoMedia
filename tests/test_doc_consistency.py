@@ -484,3 +484,79 @@ def test_live_structural_claims_are_clean(checker: ModuleType) -> None:
         ("User-facing skills", "docs/skills"),
     ):
         assert checker.scan_skill_list(agents, checker._skill_names(directory), label=label) == []
+
+
+# ---------------------------------------------------------------------------
+# Agent governance layer (ops A13): C1/C3/C4/C5/C7 pure-function contracts.
+# Same pin family as above: pure functions, caller decides severity.
+# ---------------------------------------------------------------------------
+
+
+_FULL_CONTRACT = (
+    "# Coder\n"
+    "## Done\n1. ok\n"
+    "## 返回格式\n- a\n"
+    "## 工具与来源指引\n- b\n"
+    "## 任务边界与禁止触碰\n- c\n"
+    "## Stop & Escalate\n- d\n"
+)
+
+
+def test_scan_role_contract_accepts_complete_contract(checker: ModuleType) -> None:
+    """All five elements with non-empty bodies and <=30 lines -> no findings."""
+    assert checker.scan_role_contract(_FULL_CONTRACT, "coder.md") == []
+
+
+def test_scan_role_contract_flags_heading_without_content(checker: ModuleType) -> None:
+    """A heading-only section must fail (the 有标题无内容 gap class)."""
+    text = _FULL_CONTRACT.replace("## Stop & Escalate\n- d\n", "## Stop & Escalate\n")
+    findings = checker.scan_role_contract(text, "coder.md")
+    assert len(findings) == 1
+    assert findings[0].found == "## Stop & Escalate heading without content"
+
+
+def test_scan_role_contract_flags_missing_element(checker: ModuleType) -> None:
+    text = _FULL_CONTRACT.replace("## 返回格式\n- a\n", "")
+    findings = checker.scan_role_contract(text, "coder.md")
+    assert any(f.found == "missing" for f in findings)
+
+
+def test_scan_role_contract_flags_over_30_lines(checker: ModuleType) -> None:
+    text = _FULL_CONTRACT + "\n".join(f"line {i}" for i in range(30)) + "\n"
+    findings = checker.scan_role_contract(text, "coder.md")
+    assert any("lines" in f.found for f in findings)
+
+
+def test_scan_placeholders_flags_unbackfilled_but_not_empty_literal(
+    checker: ModuleType,
+) -> None:
+    """{{REPO}} is residue; the empty literal {{}} describes the rule itself."""
+    assert len(checker.scan_placeholders("x = {{REPO}}\n", "a.md")) == 1
+    assert checker.scan_placeholders("回填后无残留 {{}}\n", "a.md") == []
+
+
+def test_scan_path_references_resolves_module_paths_and_skips_examples(
+    checker: ModuleType, tmp_path: Path
+) -> None:
+    """Module-rooted tokens resolve under src/; fenced blocks and runtime
+    paths (/abs, ./rel, single-segment dirs) are never findings."""
+    (tmp_path / "src" / "automedia").mkdir(parents=True)
+    (tmp_path / "src" / "automedia" / "real.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guide.md").write_text("g\n", encoding="utf-8")
+
+    text = (
+        "see `automedia/real.py` and `docs/guide.md`\n"
+        "```bash\nrm -rf `config/` `/abs/path` `./rel` `automedia/ghost.py`\n```\n"
+        "runtime `/var/tmp` and `./data` and `config/` are illustrative\n"
+        "broken: `automedia/ghost.py`\n"
+    )
+    findings = checker.scan_path_references(text, "a.md", tmp_path)
+    assert len(findings) == 1
+    assert findings[0].found == "automedia/ghost.py"
+
+
+def test_live_agent_governance_checks_are_clean(checker: ModuleType) -> None:
+    """The committed governance layer must pass C1/C3/C4/C5/C7 + A10 budgets."""
+    scenario_count = checker._count_scenarios()
+    assert checker.run_agent_governance_checks(scenario_count) == []
