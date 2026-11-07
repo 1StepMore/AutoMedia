@@ -18,6 +18,7 @@
 | 11 | 环境 | 本地 mypy 缺 types-PyYAML stubs（CI 环境有），`--ignore-missing-imports` 不抑制 import-untyped | 用仓库 pre-commit 自带方案 `--disable-error-code=import-untyped` 取证（mypy --strict ×7 Success） | 取证方式，已实证 |
 | 12 | 范围 | 备份远端 `backup`（AutoMedia_BackUp）存在；A12 仅推 origin | 与 AutoInfo 轮同类登记：backup 是否纳入交付待 Owner | 签收项 |
 | 13 | 历史安全面 | git 历史曾含 `deploy/systemd/automedia-*.env`（2026-07-08 入库 → 07-18 清理）；gitleaks 全历史扫描现行通过 | Owner 签收建议：确认暴露窗口内部署凭据是否已轮换 | 签收项 |
+| 14 | 网络通道 | 本机 github.com:443（git https）与 ssh:22 不可达，api.github.com 可达（gh api 正常） | git push 不可用时可用 Git Data API 逐 commit 复刻分支：author/committer/时间戳/树/消息逐字节对齐 ⇒ SHA 与本地完全一致（SHA-1 内容决定论），每次创建后校验；脚本 `ops-logs/push_via_api.py` 已实证（8/8 commit SHA 一致）。推广其他仓遇同样网络形态可复用 | 交付通道，已实证 |
 
 ## dry-run 三问实录（P4-S3，四角色各一无历史上下文子代理）
 

@@ -46,7 +46,7 @@ Owner 任务单（2026-11-08）：全自主 P0→P5。AutoMedia 兼任试点仓�
 | P4-S4 | 2026-11-08 | PASS（带签收注记） | E2E 基线 28 场景 27 绿；1 失败=`test_no_unexpected_top_level_keys`（本机真实用户配置残留键 master/azure，系该测试设计探测对象，改动集无配置路径） | 校准 #9 |
 | P4-S5 | 2026-11-08 | 汇入 PR | 人工抽查清单整理进 PR 签收区 | Owner 判定 |
 | P5-S1 | 2026-11-08 | done | runlog/inventory/CALIBRATION 复制入库 `.agents/audit/`（任务单要求随 PR 入库，校准 #10） | commit 见 P5 |
-| P5-A12 | 2026-11-08 | done | `git push -u origin ops/agent-infra` → 开 PR（base main，不合并） | 仅 origin，不推 backup |
+| P5-A12 | 2026-11-08 | done（网络降级路径） | github.com:443（git https）与 22 端口不可达、api.github.com 可达；8 个 commit 经 Git Data API 逐个复刻（author/committer/时间/树/消息逐字节对齐，SHA 逐一校验 == 本地），分支落远端 @ `f38d20cf`；PR #418（base main，**不合并**） | 校准 #14；脚本 push_via_api.py 存控制区；仅 origin，不推 backup |
 
 ## Gate 记录
 
@@ -71,3 +71,4 @@ Owner 任务单（2026-11-08）：全自主 P0→P5。AutoMedia 兼任试点仓�
 | 签收-2 | 2026-07 历史 .env 暴露窗口凭据轮换确认 | gitleaks 全历史现行通过 | 确认 |
 | 签收-3 | constitution 文本终审认可（D6） | 以 AGENTS.md §5 为权威 | 终审 |
 | 校准-8 | 契约"先读"顺序引导性摩擦 | 见 CALIBRATION #8 | 校准拍板 |
+| 校准-14 | github.com git 通道不可达而 api.github.com 可达（本机网络分区） | Git Data API 逐 commit 复刻分支（SHA 确定性一致，脚本已验证）；推广其他仓时可复用 push_via_api.py | 已实证 |
