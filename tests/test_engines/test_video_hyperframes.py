@@ -1655,9 +1655,7 @@ def _ffmpeg_command_for(
 class TestLocateGsap:
     """``_locate_gsap`` discovery order — no network, no real npm."""
 
-    def test_locate_gsap_prefers_config_path(
-        self, tmp_path: Any, monkeypatch: Any
-    ) -> None:
+    def test_locate_gsap_prefers_config_path(self, tmp_path: Any, monkeypatch: Any) -> None:
         configured = tmp_path / "configured-gsap.min.js"
         from_assets = tmp_path / "asset-gsap.min.js"
         configured.write_text("gsap")
@@ -1668,9 +1666,7 @@ class TestLocateGsap:
         assert engine._locate_gsap({}, None) == str(configured)
         assert engine._locate_gsap({"gsap_path": str(from_assets)}, None) == str(from_assets)
 
-    def test_locate_gsap_finds_local_node_modules(
-        self, tmp_path: Any, monkeypatch: Any
-    ) -> None:
+    def test_locate_gsap_finds_local_node_modules(self, tmp_path: Any, monkeypatch: Any) -> None:
         project = tmp_path / "proj"
         bundled = (
             project
@@ -1691,7 +1687,10 @@ class TestLocateGsap:
         target.parent.mkdir(parents=True)
         target.write_text("#!/usr/bin/env node")
         link.parent.mkdir(parents=True)
-        os.symlink(target, link)
+        try:
+            os.symlink(target, link)
+        except OSError as exc:  # [WinError 1314] without Developer Mode / admin rights
+            pytest.skip(f"symlink creation needs privilege on this platform: {exc}")
 
         monkeypatch.setattr(
             shutil, "which", lambda name: str(link) if name == "hyperframes" else None
@@ -1719,9 +1718,7 @@ class TestLocateGsap:
 
         assert HyperFramesVideoEngine()._locate_gsap({}, None) == str(standalone)
 
-    def test_locate_gsap_falls_back_to_npm_root(
-        self, tmp_path: Any, monkeypatch: Any
-    ) -> None:
+    def test_locate_gsap_falls_back_to_npm_root(self, tmp_path: Any, monkeypatch: Any) -> None:
         global_root = tmp_path / "global"
         standalone = global_root / "gsap" / "dist" / "gsap.min.js"
         standalone.parent.mkdir(parents=True)
@@ -1734,9 +1731,7 @@ class TestLocateGsap:
 
         assert HyperFramesVideoEngine()._locate_gsap({}, None) == str(standalone)
 
-    def test_locate_gsap_returns_none_when_absent(
-        self, tmp_path: Any, monkeypatch: Any
-    ) -> None:
+    def test_locate_gsap_returns_none_when_absent(self, tmp_path: Any, monkeypatch: Any) -> None:
         monkeypatch.setattr(shutil, "which", lambda name: None)
         monkeypatch.setattr(
             subprocess, "run", MagicMock(return_value=MagicMock(returncode=1, stdout="", stderr=""))
