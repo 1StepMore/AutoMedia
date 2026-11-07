@@ -8,7 +8,7 @@ a numeric claim (``N tools`` / ``N commands`` / ``N command modules``)
 that disagrees with the derived counts.
 
 Scanned by default: README.md, AGENTS.md, docs/index.md,
-docs/doc-inventory.md and the mcp module docstrings in
+docs/dev/doc-inventory.md and the mcp module docstrings in
 ``src/automedia/mcp/__init__.py`` and ``src/automedia/mcp/server.py``.
 
 W5-T3 RECONCILIATION DECISION (plan agent-tester-validation W5-T3, pinned):
@@ -51,7 +51,7 @@ below are wired into ``main()`` and gate the build:
   private names, SCREAMING_CASE constants, and module-level definitions that
   exist in the codebase) never reach the resolver and never gate-fail.
   Everything in the exclusion set is code-derived — never hand-maintained.
-* ``scan_marker`` (docs/doc-inventory.md): the first line must be byte-equal
+* ``scan_marker`` (docs/dev/doc-inventory.md): the first line must be byte-equal
   to the AUTO-GENERATED marker of ``scripts/doc_inventory.py``; a missing or
   wrong marker is gate-failing.
 * ``scan_size_claims`` (README.md, AGENTS.md, docs/index.md): every
@@ -91,13 +91,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Files scanned by default. See module docstring for the KNOWN LIMITATION
 # (user docs are reconciled manually and intentionally NOT in this list).
-# docs/doc-inventory.md is scanned so its numeric table claims AND its
+# docs/dev/doc-inventory.md is scanned so its numeric table claims AND its
 # AUTO-GENERATED marker are checked by default (marker check below).
 _DEFAULT_DOC_FILES: tuple[str, ...] = (
     "README.md",
     "AGENTS.md",
     "docs/index.md",
-    "docs/doc-inventory.md",
+    "docs/dev/doc-inventory.md",
     "src/automedia/mcp/__init__.py",
     "src/automedia/mcp/server.py",
 )
@@ -168,7 +168,7 @@ _ALLOWLIST_FILE = REPO_ROOT / "scripts" / "doc-identifier-allowlist.txt"
 # byte-identical to the MARKER constant in tests/test_doc_consistency.py
 # (which mirrors scripts/doc_inventory.py's emitted first line).
 _INVENTORY_MARKER = (
-    "<!-- AUTO-GENERATED: docs/doc-inventory.md — do not edit manually. "
+    "<!-- AUTO-GENERATED: docs/dev/doc-inventory.md — do not edit manually. "
     "Regenerate: python scripts/doc_inventory.py -->"
 )
 
@@ -1185,13 +1185,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{rel}:{finding.line}: '{finding.found}' expected {finding.expected}")
             all_findings.append(finding)
 
-    # Marker check: the committed docs/doc-inventory.md must carry the exact
+    # Marker check: the committed docs/dev/doc-inventory.md must carry the exact
     # AUTO-GENERATED marker on its first line (plan item 1c/3).
-    inventory_path = REPO_ROOT / "docs" / "doc-inventory.md"
+    inventory_path = REPO_ROOT / "docs" / "dev" / "doc-inventory.md"
     if inventory_path.is_file():
         for finding in scan_marker(inventory_path.read_text(encoding="utf-8"), _INVENTORY_MARKER):
             print(
-                f"docs/doc-inventory.md:{finding.line}: '{finding.found}' "
+                f"docs/dev/doc-inventory.md:{finding.line}: '{finding.found}' "
                 f"expected {finding.expected}"
             )
             all_findings.append(finding)

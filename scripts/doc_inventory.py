@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate ``docs/doc-inventory.md`` — a deterministic inventory of the docs tree.
+"""Generate ``docs/dev/doc-inventory.md`` — a deterministic inventory of the docs tree.
 
 Inventories the **git-tracked** files under ``docs/`` (EXCLUDING
 ``docs/archived/``) plus the root instruction files (``AGENTS.md``,
@@ -44,11 +44,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Exact first line of the generated file.  Must be byte-identical to the
 # ``MARKER`` in tests/test_doc_consistency.py.
 MARKER = (
-    "<!-- AUTO-GENERATED: docs/doc-inventory.md — do not edit manually. "
+    "<!-- AUTO-GENERATED: docs/dev/doc-inventory.md — do not edit manually. "
     "Regenerate: python scripts/doc_inventory.py -->"
 )
 
-_OUTPUT = REPO_ROOT / "docs" / "doc-inventory.md"
+_OUTPUT = REPO_ROOT / "docs" / "dev" / "doc-inventory.md"
 
 # Walked roots, in this order: the docs tree (excluding archived/) then the
 # two root instruction files.
@@ -150,7 +150,7 @@ def _walked_files() -> list[tuple[Path, str | None]]:
     """Every inventoried ``(path, blob sha | None)``, sorted by POSIX path string.
 
     ``docs/archived/`` is excluded per plan, and the output file itself
-    (``docs/doc-inventory.md``) is excluded — its size would otherwise depend
+    (``docs/dev/doc-inventory.md``) is excluded — its size would otherwise depend
     on its own contents (a self-referential feedback loop that breaks
     byte-determinism).
     """

@@ -141,14 +141,13 @@ MAX_LISTED_PATHS = 10
 # three: produced by a checked-in generator, byte-diff-gated in CI so it cannot
 # drift from that generator, and containing no human-authored prose.
 #
-# `docs/doc-inventory.md` qualifies: scripts/doc_inventory.py generates it, ci.yml
-# gates it byte-for-byte ("Doc inventory drift check (T-13)"), and ADR-005 requires
-# it to land in the same commit as whatever made it stale. Without this entry, any
-# change that adds a doc drags the regenerated index into the diff and reads as
-# user-visible, so internal-only work has to carry a `release:skip` label to say
-# "I changed nothing a user would notice". Hand-written docs (docs/user/**,
-# docs/index.md, README.md) are deliberately NOT listed.
-GENERATED_ARTIFACTS = frozenset({"docs/doc-inventory.md"})
+# `docs/dev/doc-inventory.md` qualifies: scripts/doc_inventory.py generates it and
+# ci.yml gates it byte-for-byte ("Doc inventory drift check (T-13)"). It now sits
+# under the internal `docs/dev/` prefix; the explicit entry pins the artifact as
+# generated so a future relocation cannot silently turn it user-visible.
+# Hand-written docs (docs/user/**, docs/index.md, README.md) are deliberately NOT
+# listed.
+GENERATED_ARTIFACTS = frozenset({"docs/dev/doc-inventory.md"})
 
 
 class Result(NamedTuple):

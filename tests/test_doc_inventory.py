@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-INVENTORY = REPO_ROOT / "docs" / "doc-inventory.md"
+INVENTORY = REPO_ROOT / "docs" / "dev" / "doc-inventory.md"
 SCRIPT = REPO_ROOT / "scripts" / "doc_inventory.py"
 
 

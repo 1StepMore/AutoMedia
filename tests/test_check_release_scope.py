@@ -535,7 +535,7 @@ REAL_PROPOSAL_PATHS = [
     *PLUMBING,
     ".github/.release-please-manifest.json",
     "src/automedia/hitl/constants.py",
-    "docs/doc-inventory.md",
+    "docs/dev/doc-inventory.md",
 ]
 
 
@@ -608,13 +608,11 @@ def test_author_alone_never_exempts(scope: ModuleType) -> None:
 # Source-generated artifacts are not user-visible content (issue #120, option B)
 # ---------------------------------------------------------------------------
 #
-# `docs/doc-inventory.md` is produced by scripts/doc_inventory.py and CI gates it
-# byte-for-byte (ci.yml "Doc inventory drift check (T-13)"), and ADR-005 requires
-# it to land in the same commit as whatever made it stale. So ANY change that adds
-# a doc drags this generated index into the diff -- and because it sits under
-# `docs/` but not `docs/dev/`, it read as user-visible, forcing a `release:skip`
-# label on internal-only work. That label means "skip the release", which is not
-# what such a PR is trying to say.
+# `docs/dev/doc-inventory.md` is produced by scripts/doc_inventory.py and CI gates it
+# byte-for-byte (ci.yml "Doc inventory drift check (T-13)"). It sits under `docs/dev/`,
+# which `is_internal_path` already treats as internal; the GENERATED_ARTIFACTS entry
+# pins that classification so a future relocation still cannot drag internal-only work
+# into a user-visible release.
 #
 # Admission criterion for GENERATED_ARTIFACTS, all three required:
 #   1. produced by a checked-in generator,
@@ -624,7 +622,7 @@ def test_author_alone_never_exempts(scope: ModuleType) -> None:
 
 
 def test_generated_doc_inventory_is_internal(scope: ModuleType) -> None:
-    assert scope.is_internal_path("docs/doc-inventory.md") is True
+    assert scope.is_internal_path("docs/dev/doc-inventory.md") is True
 
 
 def test_handwritten_docs_stay_user_visible(scope: ModuleType) -> None:
@@ -636,7 +634,7 @@ def test_handwritten_docs_stay_user_visible(scope: ModuleType) -> None:
 def test_internal_doc_addition_passes_without_a_skip_label(scope: ModuleType) -> None:
     """The #136 shape: an internal doc plus the index it forces us to regenerate."""
     result = scope.assess_release_scope(
-        ["docs/dev/plans/NEW.md", "docs/doc-inventory.md"],
+        ["docs/dev/plans/NEW.md", "docs/dev/doc-inventory.md"],
         scope.parse_title_type("chore(docs): add an internal plan"),
         [],
     )
@@ -646,7 +644,7 @@ def test_internal_doc_addition_passes_without_a_skip_label(scope: ModuleType) ->
 
 def test_generated_artifact_set_is_pinned(scope: ModuleType) -> None:
     """Pinned so widening the exemption is always a visible diff, never a drive-by."""
-    assert frozenset({"docs/doc-inventory.md"}) == scope.GENERATED_ARTIFACTS
+    assert frozenset({"docs/dev/doc-inventory.md"}) == scope.GENERATED_ARTIFACTS
 
 
 # ---------------------------------------------------------------------------
