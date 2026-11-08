@@ -121,6 +121,15 @@ INTERNAL_PREFIXES = (
     ".opencode/",
     ".cursor/",
     ".trae/",
+    # Agent-governance layer landed by the SOP (.agents/: roles, expectations,
+    # audit runlog) and Spec-Kit (.specify/: constitution) — repo-internal
+    # process files that never enter the wheel. Without these, every
+    # governance PR read as user-visible and needed a manual release:skip
+    # label (#419, calibration record #15). Keep this list in sync with the
+    # prose list in CONTRIBUTING.md §"Choosing the type by release scope" —
+    # one taxonomy, two sites.
+    ".agents/",
+    ".specify/",
 )
 INTERNAL_EXACT = frozenset(
     {

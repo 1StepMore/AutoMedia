@@ -196,10 +196,13 @@ string, which is a release nobody asked for.
 
 Internal paths are `.github/`, `tests/`, `scripts/`, `docs/dev/`, the
 agent-client directories (`.claude/` `.codex/` `.opencode/` `.cursor/`
-`.trae/`), `AGENTS.md`, `CONTRIBUTING.md`, `Makefile`,
+`.trae/`), the agent-governance layer (`.agents/` `.specify/`),
+`AGENTS.md`, `CONTRIBUTING.md`, `Makefile`,
 `.pre-commit-config.yaml`, `.gitignore`, and source-generated artifacts such as
 `docs/dev/doc-inventory.md`. Everything else — including `src/**` and hand-written
-docs under `docs/user/**` — is user-visible.
+docs under `docs/user/**` — is user-visible. This prose list mirrors
+`INTERNAL_PREFIXES`/`INTERNAL_EXACT` in `scripts/check_release_scope.py`; update
+both together so the taxonomy cannot drift (#419).
 
 ```
 chore(ci): pin uv so the lock cannot drift        # internal  -> no release

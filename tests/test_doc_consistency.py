@@ -594,3 +594,19 @@ def test_a10_scope_scan_derives_from_git_tracked_not_filesystem(
     assert len(tracked_findings) == 1
     assert tracked_findings[0].found == "20 lines"
     assert [f for f in findings if f.file == ".venv/lib/site-packages/x/AGENTS.md"] == []
+
+
+# ---------------------------------------------------------------------------
+# Scan-surface expansion — .claude/rules.md (#420, inventory S-30)
+# ---------------------------------------------------------------------------
+
+
+def test_claude_rules_md_is_in_the_default_scan(checker: ModuleType) -> None:
+    """``.claude/rules.md`` rides the default numeric/size-claim scan.
+
+    It is auto-loaded into every Claude Code session; when it went stale
+    (50 tools / 12 commands / G0-G5) nothing noticed because no scan covered
+    it. Membership in ``_DEFAULT_DOC_FILES`` means every future numeric claim
+    in that file is checked against the runtime-derived counts.
+    """
+    assert ".claude/rules.md" in checker._DEFAULT_DOC_FILES

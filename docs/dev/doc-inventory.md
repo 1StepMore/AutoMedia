@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 11196 | file |
+| AGENTS.md | 11520 | file |
 | README.md | 34812 | file |
 | docs/AGENTS.md | 645 | file |
 | docs/adr | — | dir |
