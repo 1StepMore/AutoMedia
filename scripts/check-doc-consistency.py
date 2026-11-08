@@ -1363,12 +1363,21 @@ def run_agent_governance_checks(scenario_count: int) -> list[Finding]:
     else:
         findings.append(Finding(index_rel, 0, "missing", f"{index_rel} must exist (D3)"))
 
-    # A10: directory-level AGENTS.md scope files (any discovered; never the root).
-    for path in REPO_ROOT.rglob("AGENTS.md"):
-        rel = path.relative_to(REPO_ROOT).as_posix()
-        if rel == "AGENTS.md" or ".pytest-tmp" in rel or rel.startswith(".git"):
-            continue
-        findings.extend(scan_scope_file(path.read_text(encoding="utf-8"), rel))
+    # A10: directory-level AGENTS.md scope files (tracked only; never the root).
+    # Derive from the same platform-deterministic ``tracked`` set as C1, never a
+    # filesystem walk: an ``rglob("AGENTS.md")`` once picked up an ignored local
+    # ``.venv/`` third-party file and failed the gate locally while CI (no
+    # ``.venv``) stayed green on the same commit.
+    if not tracked:
+        print("A10 skipped: no git tracking info")
+    else:
+        for rel in sorted(tracked):
+            if rel == "AGENTS.md" or not rel.endswith("/AGENTS.md"):
+                continue
+            path = REPO_ROOT / rel
+            if not path.is_file():
+                continue
+            findings.extend(scan_scope_file(path.read_text(encoding="utf-8"), rel))
 
     return findings
 
