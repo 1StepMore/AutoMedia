@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.2...automedia-v1.14.3) (2026-11-08)
+
+
+### Bug Fixes
+
+* **llm:** 跨 provider fallback 不再继承主块 api_key（[#407](https://github.com/1StepMore/AutoMedia/issues/407)） ([#408](https://github.com/1StepMore/AutoMedia/issues/408)) ([42b901c](https://github.com/1StepMore/AutoMedia/commit/42b901c18c1766080406de93abee8f1f6efca322))
+
+
+### Documentation
+
+* move generated doc inventory into docs/dev/ ([#409](https://github.com/1StepMore/AutoMedia/issues/409)) ([a0e9f76](https://github.com/1StepMore/AutoMedia/commit/a0e9f7667b97a151eff5955c8d6100268be2da58))
+* sync the generic doc-architecture playbook and pin its hash ([#410](https://github.com/1StepMore/AutoMedia/issues/410)) ([#417](https://github.com/1StepMore/AutoMedia/issues/417)) ([90ed000](https://github.com/1StepMore/AutoMedia/commit/90ed0000ff20c0b67122206ef07c72bbac0a5771))
+
 ## [1.14.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.1...automedia-v1.14.2) (2026-11-05)
 
 
