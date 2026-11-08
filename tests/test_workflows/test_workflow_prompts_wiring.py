@@ -63,10 +63,15 @@ def _text_only_cw_gates() -> list[str]:
 
 
 def test_context_writer_uses_workflow_prompt(tmp_path: Path) -> None:
-    writer_calls: dict[str, str] = {}
+    writer_calls: list[dict] = []
 
     def fake_load_prompt(name, platform=None, **kwargs):
-        writer_calls.update(kwargs)
+        # Record EVERY call. The old observer kept only the last call's kwargs
+        # (`writer_calls.update(kwargs)`), so any extra or differently-ordered
+        # load_prompt call flipped this test green/red nondeterministically
+        # (#431). The contract is that the workflow override reaches the
+        # prompt loader — not that it happens to be the final call.
+        writer_calls.append({"name": name, **kwargs})
         return "rendered-prompt"
 
     from automedia.gates.content_writer import ContentWriterGate
@@ -80,8 +85,17 @@ def test_context_writer_uses_workflow_prompt(tmp_path: Path) -> None:
     }
     with (
         patch("automedia.gates.content_writer.load_prompt", fake_load_prompt),
+        # Both layers are patched (#431): the module-global the gate calls and
+        # the client entry it was imported from. The flaky run showed the SEO
+        # branch reaching the real llm_complete ("No API key for provider
+        # 'openai'"); patching both means no call path can touch the network
+        # or depend on an API key, whatever the module identity is.
         patch("automedia.gates.content_writer.llm_complete", return_value="# T\n\nBody"),
+        patch("automedia.core.llm_client.llm_complete", return_value="# T\n\nBody"),
     ):
         result = ContentWriterGate().execute(gate_context)
     assert result["passed"] is True
-    assert writer_calls.get("workflow_prompts") == {"content_writer": "wf override"}
+    assert writer_calls, "load_prompt must have been called at least once"
+    assert any(
+        call.get("workflow_prompts") == {"content_writer": "wf override"} for call in writer_calls
+    ), f"no load_prompt call carried the workflow override: {writer_calls}"

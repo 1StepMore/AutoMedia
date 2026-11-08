@@ -127,14 +127,33 @@ def _skip_unless_full_history() -> None:
         pytest.skip("shallow clone: referenced commits are not present locally")
 
 
-def _commit_exists(sha: str) -> bool:
+def _existing_commits(shas: list[str]) -> set[str]:
+    """Resolve every SHA with ONE ``git cat-file --batch-check`` process.
+
+    The previous helper spawned ``git cat-file -e`` once per SHA; the
+    changelog carries 500+ references, which cost ~110 s on Windows and
+    flaked against the 120 s pytest-timeout whenever the suite ran under
+    load (pre-commit).  ``--batch-check`` answers every request in a single
+    process; a missing object is reported per line, not as a failure.
+    """
+    if not shas:
+        return set()
+    queries = [f"{sha}^{{commit}}" for sha in shas]
     result = subprocess.run(
-        ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+        ["git", "cat-file", "--batch-check"],
         cwd=REPO_ROOT,
+        input="".join(f"{query}\n" for query in queries),
         capture_output=True,
         text=True,
     )
-    return result.returncode == 0
+    if result.returncode != 0:
+        raise AssertionError(f"git cat-file --batch-check failed: {result.stderr}")
+    existing: set[str] = set()
+    for line in result.stdout.splitlines():
+        name, _, rest = line.partition(" ")
+        if rest and rest != "missing":
+            existing.add(name.removesuffix("^{commit}"))
+    return existing
 
 
 def _parent_count(sha: str) -> int | None:
@@ -203,7 +222,8 @@ def test_commit_references_resolve() -> None:
     _skip_unless_full_history()
     text = _read()
     shas = sorted(set(COMMIT_SHA_RE.findall(text)))
-    unresolved = [sha for sha in shas if not _commit_exists(sha)]
+    existing = _existing_commits(shas)
+    unresolved = [sha for sha in shas if sha not in existing]
     assert not unresolved, f"commit references that do not resolve: {unresolved}"
 
 
