@@ -24,6 +24,8 @@ DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 �
   「没跑过」与「跑过没过」必须分开报告。
 
 用法：python3 scripts/nightly_gap.py [--json-out F] [--md-out F] [--scan-root DIR]
+      [--validate-scope none|hard|all]（#415：默认 none 只读矩阵；hard 真跑 hard 场景；
+      all 整库 run --all，让矩阵获得真实 last_status）
 退出码：0 = 三轨全达标 / 1 = 仍有差距（未达标或未验证）/ 2 = 用法或环境错误
 """
 
@@ -362,8 +364,52 @@ def _automedia_cmd(python: str) -> list[str]:
     return [python, "-m", "automedia"]
 
 
+def _last_suite_record() -> str:
+    """最近一次整库 suite 记录的 run 目录名（自带 UTC 时间戳），无则空串。
+
+    矩阵的 ``last_status`` 只认 ``validation-runs/latest.txt`` 指向的那份
+    ``scenarios.json``；没有记录时一切场景都是「未执行」而不是「未过」
+    （issue #415）。把记录时间戳写进报告，读者才能区分「没人跑过」与
+    「记录过期」。
+    """
+    latest = REPO / "validation-runs" / "latest.txt"
+    try:
+        name = latest.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+    return name if name else ""
+
+
+def _coverage_unreachable_names(python: str) -> list[str]:
+    """从 ``validate coverage`` 取执行不可达门的具体名单。
+
+    矩阵输出只带 ``gates_unreachable`` 计数；名单在 coverage audit 的
+    ``unreachable_gates`` 键里（issue #415：看不到门名的数字无法驱动修复）。
+    失败不致命，只标注（调用方负责降级为空名单）。
+    """
+    try:
+        cmd = [*_automedia_cmd(python), "--json", "validate", "coverage"]
+        r = subprocess.run(  # noqa: S603 — argv is literals from _automedia_cmd, no shell
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=REPO,
+            timeout=600,
+        )
+        data = json.loads(r.stdout)
+    except Exception:
+        return []
+    names = data.get("unreachable_gates")
+    return [str(n) for n in names] if isinstance(names, list) else []
+
+
 def validate_summary(python: str) -> dict:
-    """复用 automedia 自己的验证矩阵（不另造门）。失败不致命，只标注。"""
+    """复用 automedia 自己的验证矩阵（不另造门）。失败不致命，只标注。
+
+    「未过」与「未执行」分开报告（issue #415）：``last_status is None``
+    表示该场景从未落过 suite 记录，把它算进「未过」是把「没人跑」
+    误报成「跑红了」。
+    """
     try:
         cmd = [*_automedia_cmd(python), "--json", "validate", "matrix"]
         r = subprocess.run(  # noqa: S603 — argv is literals from _automedia_cmd, no shell
@@ -382,15 +428,19 @@ def validate_summary(python: str) -> dict:
         k = str(s.get("last_status"))
         status[k] = status.get(k, 0) + 1
     summ = data.get("summary") or {}
+    hard = [s for s in sc if s.get("hard")]
     return {
         "scenarios_total": len(sc),
         "scenario_status": status,
-        "hard_total": sum(1 for s in sc if s.get("hard")),
-        "hard_not_passed": [
-            s["name"] for s in sc if s.get("hard") and s.get("last_status") != "passed"
-        ],
+        "hard_total": len(hard),
+        "hard_failed": [s["name"] for s in hard if s.get("last_status") == "failed"],
+        "hard_unexecuted": [s["name"] for s in hard if s.get("last_status") is None],
+        # 向后兼容：旧读者（含既有测试）按 != passed 聚合；新口径见上面两个字段
+        "hard_not_passed": [s["name"] for s in hard if s.get("last_status") != "passed"],
+        "last_suite_record": _last_suite_record(),
         "gates_missing": summ.get("gates_missing"),
         "gates_unreachable": summ.get("gates_unreachable"),
+        "gates_unreachable_names": _coverage_unreachable_names(python),
         "mcp_missing": summ.get("mcp_missing"),
         "cli_missing": summ.get("cli_missing"),
     }
@@ -472,6 +522,79 @@ def _bench_line() -> str:
     return f"- bench：{branch}@{sha}"
 
 
+def run_validation_scope(python: str, scope: str) -> dict:
+    """按 ``--validate-scope`` 真执行场景（issue #415 选项 A：要么跑、要么别报）。
+
+    - ``hard``：逐条真跑 hard 场景（10 条边界场景，快）。单条 run 只落
+      1 场景的 suite 记录、且 ``latest.txt`` 被指到最后一条——矩阵的
+      ``last_status`` 因此**不会**保留这批结果；所以本函数把每条的真实
+      status 直接写进返回值，由报告如实呈现，不经过矩阵转述。
+    - ``all``：整库 ``validate run --all``，落一份完整 suite 记录并刷新
+      ``latest.txt``，矩阵从此有真实 ``last_status``（周一次足矣）。
+    失败不致命：单条失败记入返回值，继续跑下一条。
+    """
+    out: dict = {"scope": scope, "executed": [], "error": ""}
+    if scope == "all":
+        cmd = [*_automedia_cmd(python), "--json", "validate", "run", "--all"]
+        t0 = time.time()
+        try:
+            r = subprocess.run(  # noqa: S603 — argv is literals, no shell
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=REPO,
+                timeout=3600,
+            )
+        except Exception as e:
+            out["error"] = f"{type(e).__name__}: {e}"
+            return out
+        out["seconds"] = round(time.time() - t0, 1)
+        out["exit_code"] = r.returncode
+        data: dict = {}
+        try:
+            data = json.loads(r.stdout)
+            suite = data.get("suite") or data
+            rows = suite.get("scenarios") or []
+            out["status_counts"] = {}
+            for row in rows if isinstance(rows, list) else []:
+                k = str(row.get("status"))
+                out["status_counts"][k] = out["status_counts"].get(k, 0) + 1
+        except Exception:
+            out["status_counts"] = {}
+        out["run_dir"] = str(data.get("run_dir", ""))
+        return out
+
+    # scope == "hard"
+    vs = validate_summary(python)
+    if "error" in vs:
+        out["error"] = f"matrix unavailable: {vs['error']}"
+        return out
+    hard_names = sorted(set(vs.get("hard_failed", [])) | set(vs.get("hard_unexecuted", [])))
+    if not hard_names:
+        # 矩阵里 hard 全部有记录且非 failed —— 没有需要重跑的；如实返回
+        out["note"] = "no hard scenario is failed or unexecuted per matrix"
+        return out
+    for name in hard_names:
+        cmd = [*_automedia_cmd(python), "--json", "validate", "run", "--scenario", name]
+        t0 = time.time()
+        try:
+            r = subprocess.run(  # noqa: S603 — argv is literals, no shell
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=REPO,
+                timeout=900,
+            )
+            data = json.loads(r.stdout)
+            status = str(data.get("status") or f"exit:{r.returncode}")
+        except Exception as e:
+            status = f"error:{type(e).__name__}"
+        out["executed"].append(
+            {"scenario": name, "status": status, "seconds": round(time.time() - t0, 1)}
+        )
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
@@ -481,6 +604,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Additional project root to scan (defaults to $AUTOMEDIA_PROJECTS_DIR)",
     )
     ap.add_argument("--skip-validate", action="store_true")
+    ap.add_argument(
+        "--validate-scope",
+        choices=("none", "hard", "all"),
+        default="none",
+        help=(
+            "Opt-in scenario execution before reading the matrix (issue #415): "
+            "none = read-only (default); hard = actually run the hard boundary "
+            "scenarios and report their real statuses; all = full-library "
+            "validate run --all so the matrix gains real last_status (weekly)"
+        ),
+    )
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
     args = ap.parse_args(argv)
@@ -514,7 +648,12 @@ def main(argv: list[str] | None = None) -> int:
     fail_tracks = [k for k, v in tracks.items() if v["state"] == "fail"]
     unverified_tracks = [k for k, v in tracks.items() if v["state"] == "unverified"]
     gap = [k for k, v in tracks.items() if v["state"] != "pass"]
+    executed: dict = {}
+    if not args.skip_validate and args.validate_scope != "none":
+        executed = run_validation_scope(args.python, args.validate_scope)
     vs = {} if args.skip_validate else validate_summary(args.python)
+    if executed:
+        vs["executed_scope"] = executed
 
     n_pass, n_fail, n_unv = 3 - len(gap), len(fail_tracks), len(unverified_tracks)
     result = {
@@ -595,13 +734,37 @@ def main(argv: list[str] | None = None) -> int:
         if name == "视频轨" and state == "fail":
             md.append(_video_track_note(projects, v))
     if vs and "error" not in vs:
+        # 「未过」与「未执行」分开报（#415）：last_status=None 是「没人跑过」，
+        # 不是「跑红了」；最近一次 suite 记录的时间戳一并给出，读者能区分
+        # 「从未执行」与「记录过期」。
+        hard_failed = vs.get("hard_failed") or []
+        hard_unexec = vs.get("hard_unexecuted") or []
+        record = vs.get("last_suite_record") or ""
+        unreachable = vs.get("gates_unreachable")
+        unreachable_names = vs.get("gates_unreachable_names") or []
         md += [
             "",
             "## 验证矩阵（自动生成，复用 automedia 自带）",
             f"- 场景 {vs['scenarios_total']} 条：{vs['scenario_status']}",
-            f"- hard 场景 {vs['hard_total']} 条，未过：{vs['hard_not_passed'] or '无'}",
-            f"- 门：missing={vs['gates_missing']} unreachable={vs['gates_unreachable']}",
+            f"- 最近整库 suite 记录：{record or '无（validation-runs/ 下没有 latest.txt）'}",
+            f"- hard 场景 {vs['hard_total']} 条：失败 {len(hard_failed)}"
+            f"（{'、'.join(hard_failed) or '无'}）；未执行（无记录）{len(hard_unexec)} 条"
+            f"：{'、'.join(hard_unexec) or '无'}",
+            f"- 门：missing={vs['gates_missing']} unreachable={unreachable}"
+            f"（{'、'.join(unreachable_names) or '名单读取失败，见 validate coverage'}）",
         ]
+        scope = vs.get("executed_scope") or {}
+        if scope:
+            md.append(
+                f"- 本次执行（--validate-scope {scope.get('scope')}）："
+                + (
+                    f"{len(scope.get('executed', []))} 条："
+                    + "；".join(f"{e['scenario']}={e['status']}" for e in scope.get("executed", []))
+                    if scope.get("scope") == "hard"
+                    else f"status_counts={scope.get('status_counts')} "
+                    f"run_dir={scope.get('run_dir') or '未记录'}"
+                )
+            )
     md_text = "\n".join(md) + "\n"
     if args.md_out:
         Path(args.md_out).parent.mkdir(parents=True, exist_ok=True)

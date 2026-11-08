@@ -81,6 +81,15 @@ cd <repo>
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 
+### 2026-11-09 口径修订：验证矩阵「未过」→「未执行/失败」分开报（issue #415）
+
+`scripts/nightly_gap.py` 的验证矩阵小节改口径（属脚本判据，非冻结区 DoD）：
+
+- hard 场景行由「未过：[…]」改为「**失败 N 条（名单）；未执行（无记录）M 条：名单**」——`last_status=None` 是「没人跑过」，不许伪装成「跑红了」；两者仍聚合在 JSON 的 `hard_not_passed`（向后兼容），新增 `hard_failed` / `hard_unexecuted`。
+- 新增 `--validate-scope none|hard|all`（默认 `none` = 只读矩阵，行为不变）：`hard` 真跑 hard 边界场景并把每条真实 status 直接写进报告（单条 run 的 suite 记录会被 `latest.txt` 指走，矩阵不保留，故不过矩阵转述）；`all` 整库 `validate run --all` 落一份完整记录并刷新 `latest.txt`，矩阵从此有真实 `last_status` —— **建议每周一次**。
+- `gates_unreachable` 计数旁现在并列具体门名（取自 `validate coverage` 的 `unreachable_gates`，如 `unreachable=2（G4、G5）`），「看了不知道该修谁」的读数不再出现。
+- 最近整库 suite 记录的时间戳（`validation-runs/latest.txt`）一并展示，区分「从未执行」与「记录过期」。
+
 ### 2026-10-21 夜间复跑（在最新 main `df483ea` 上）
 
 批跑（02:00，systemd `nightly-gap.service`，网关进程树外）：`.venv/bin/python scripts/nightly_gap.py` **exit 0 —— 三轨全达标（机器可判部分完成）**（`nightly/gap.json`：`gap: []`、`passing_units: 3`）。

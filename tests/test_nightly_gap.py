@@ -505,3 +505,111 @@ def test_main_all_pass_exits_zero(tmp_path: Path, monkeypatch) -> None:
     rc = nightly_gap.main(["--skip-validate", "--md-out", str(out)])
     assert rc == 0
     assert "三轨全达标（机器可判部分完成）" in out.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Validation-matrix honesty: 「未过」≠「未执行」(issue #415)
+# ---------------------------------------------------------------------------
+
+
+def _fake_proc(payload: dict) -> object:
+    from types import SimpleNamespace
+
+    return SimpleNamespace(returncode=0, stdout=json.dumps(payload))
+
+
+def test_validate_summary_splits_unexecuted_from_failed(monkeypatch) -> None:
+    """hard 场景的 None（从未落 suite 记录）不得报成「未过」（issue #415）。"""
+    from types import SimpleNamespace
+
+    import scripts.nightly_gap as ng
+
+    matrix = {
+        "scenarios": [
+            {"name": "h-pass", "hard": True, "last_status": "passed"},
+            {"name": "h-fail", "hard": True, "last_status": "failed"},
+            {"name": "h-never", "hard": True, "last_status": None},
+        ],
+        "summary": {"gates_missing": 4, "gates_unreachable": 2},
+    }
+    coverage = {"unreachable_gates": ["G4", "G5"]}
+
+    def fake_run(cmd, **kwargs):
+        payload = matrix if "matrix" in cmd else coverage
+        return SimpleNamespace(returncode=0, stdout=json.dumps(payload))
+
+    monkeypatch.setattr(ng.subprocess, "run", fake_run)
+    monkeypatch.setattr(ng, "REPO", Path("/nonexistent-repo-for-test"))
+    vs = ng.validate_summary("python")
+    assert vs["hard_total"] == 3
+    assert vs["hard_failed"] == ["h-fail"]
+    assert vs["hard_unexecuted"] == ["h-never"]
+    # backward-compat aggregate stays available for old readers
+    assert vs["hard_not_passed"] == ["h-fail", "h-never"]
+    # the unreachable COUNT is resolved to concrete gate names (#415)
+    assert vs["gates_unreachable"] == 2
+    assert vs["gates_unreachable_names"] == ["G4", "G5"]
+
+
+def test_last_suite_record_reads_latest_pointer(tmp_path: Path, monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(ng, "REPO", tmp_path)
+    assert ng._last_suite_record() == ""
+    runs = tmp_path / "validation-runs"
+    runs.mkdir()
+    (runs / "latest.txt").write_text("20261105-004359-871791\n", encoding="utf-8")
+    assert ng._last_suite_record() == "20261105-004359-871791"
+
+
+def test_run_validation_scope_hard_reports_each_scenario(monkeypatch) -> None:
+    """hard 范围逐条真跑并把真实 status 直接写进结果（不经过矩阵转述）。"""
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(
+        ng,
+        "validate_summary",
+        lambda p: {"hard_failed": [], "hard_unexecuted": ["a-boundary", "b-boundary"]},
+    )
+
+    def fake_run(cmd, **kwargs):
+        name = cmd[cmd.index("--scenario") + 1]
+        status = "passed" if name == "a-boundary" else "failed"
+        return _fake_proc({"status": status})
+
+    monkeypatch.setattr(ng.subprocess, "run", fake_run)
+    out = ng.run_validation_scope("python", "hard")
+    assert out["scope"] == "hard"
+    assert [e["scenario"] for e in out["executed"]] == ["a-boundary", "b-boundary"]
+    assert [e["status"] for e in out["executed"]] == ["passed", "failed"]
+
+
+def test_run_validation_scope_hard_handles_subprocess_error(monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(
+        ng,
+        "validate_summary",
+        lambda p: {"hard_failed": ["x-boundary"], "hard_unexecuted": []},
+    )
+
+    def fake_run(cmd, **kwargs):
+        raise OSError("network gone")
+
+    monkeypatch.setattr(ng.subprocess, "run", fake_run)
+    out = ng.run_validation_scope("python", "hard")
+    assert out["executed"][0]["scenario"] == "x-boundary"
+    assert out["executed"][0]["status"] == "error:OSError"
+
+
+def test_run_validation_scope_hard_noop_when_matrix_has_real_records(monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(
+        ng,
+        "validate_summary",
+        lambda p: {"hard_failed": [], "hard_unexecuted": []},
+    )
+    out = ng.run_validation_scope("python", "hard")
+    assert out["executed"] == []
+    assert "no hard scenario" in out["note"]

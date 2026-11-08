@@ -636,3 +636,24 @@ Before adding `# type: ignore` to any file:
 ---
 
 For detailed gate failure mode troubleshooting, see `docs/dev/gate-failure-modes.md`.
+
+## 12. Pushing When github.com Is Unreachable (Git Data API)
+
+On partitioned networks `github.com:443` (git over HTTPS) and `ssh:22` can be
+unreachable while `api.github.com` still answers — plain `git push` then fails
+with a connect timeout. `scripts/push_via_api.py` rebuilds the branch
+commit-by-commit through the Git Data API and verifies every created object
+against the local SHA, so the remote branch ends up byte-identical to the
+local one:
+
+```bash
+python scripts/push_via_api.py . --branch <branch>          # fast-forward push
+python scripts/push_via_api.py . --branch <branch> --force  # history rewrites only
+```
+
+Requirements and limits (details in the script docstring): the token from
+`gh auth token` needs the `repo` scope (fine-grained: Contents read/write);
+commits must be unsigned (a GPG signature lives inside the object and cannot
+be reproduced through the API — the script aborts rather than push a silently
+different SHA); the ref update is fast-forward unless `--force`. The script
+never prints the token.
