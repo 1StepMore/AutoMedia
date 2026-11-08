@@ -536,24 +536,24 @@ def test_scan_placeholders_flags_unbackfilled_but_not_empty_literal(
 
 
 def test_scan_path_references_resolves_module_paths_and_skips_examples(
-    checker: ModuleType, tmp_path: Path
+    checker: ModuleType,
 ) -> None:
-    """Module-rooted tokens resolve under src/; fenced blocks and runtime
-    paths (/abs, ./rel, single-segment dirs) are never findings."""
-    (tmp_path / "src" / "automedia").mkdir(parents=True)
-    (tmp_path / "src" / "automedia" / "real.py").write_text("x = 1\n", encoding="utf-8")
-    (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "guide.md").write_text("g\n", encoding="utf-8")
+    """Module-rooted tokens resolve against the git-tracked set; fenced blocks,
+    runtime paths (/abs, ./rel) and single-segment bare-dir mentions
+    (`config/`, `.automedia/`) are never findings (platform-deterministic)."""
+    tracked = frozenset({"src/automedia/real.py", "docs/guide.md"})
 
     text = (
         "see `automedia/real.py` and `docs/guide.md`\n"
         "```bash\nrm -rf `config/` `/abs/path` `./rel` `automedia/ghost.py`\n```\n"
-        "runtime `/var/tmp` and `./data` and `config/` are illustrative\n"
+        "runtime `/var/tmp` and `./data` and `config/` and `.automedia/` are "
+        "illustrative\n"
         "broken: `automedia/ghost.py`\n"
+        "dir ref ok: `.agents/audit/`\n"
     )
-    findings = checker.scan_path_references(text, "a.md", tmp_path)
-    assert len(findings) == 1
-    assert findings[0].found == "automedia/ghost.py"
+    findings = checker.scan_path_references(text, "a.md", Path("."), tracked)
+    assert len(findings) == 2
+    assert {f.found for f in findings} == {"automedia/ghost.py", ".agents/audit/"}
 
 
 def test_live_agent_governance_checks_are_clean(checker: ModuleType) -> None:

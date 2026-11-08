@@ -28,3 +28,6 @@
 | Maintainer | PASS（一次） | 角色✓；读取链 AGENTS.md→maintainer.md→constitution→DEBT.md；Done 两条逐字一致 |
 | Tester | PASS（一次；首次派发因 harness 并发限额失败重试，非答案问题） | 角色✓；读取链 AGENTS.md→tester.md→constitution→INDEX；Done 三条逐字一致；且正确拒绝在本次 dry-run 中执行验收本身 |
 | User | PASS（一次） | 角色✓；读取链 AGENTS.md→user.md→docs/user/（清点 15 篇）→INDEX；Done 两条逐字一致 |
+
+| 15 | release 门 | `check_release_scope.py` 把 `.agents/**` 判为用户可见路径（CONTRIBUTING 内部路径清单早于 `.agents/` 存在），`chore(ops)` 被拒 | 按脚本自带出口给 PR 打 `release:skip` 标签；建议 Owner 校准：把 `.agents/`、`.specify/` 纳入 CONTRIBUTING/check_release_scope 的内部路径清单（本次不改产品门脚本） | 已按出口处置 |
+| 16 | CI 修复 | 首轮 CI 4 项失败：DCO（10 commit 缺 Signed-off-by）、lint-typecheck+test3.11（我的 C1 扫描用文件系统存在性判定——本机未跟踪 `.automedia/` 目录造成假绿，Linux 无该目录即红）、release-scope（#15） | ① C1 改为 git 跟踪集判定（平台确定，与 doc_inventory 同一原则）+ `git rebase --signoff` 补签（分支 SHA 重写，旧 SHA 以首轮 CI 记录为准）② release:skip | 修复 commit 后重推 |

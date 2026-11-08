@@ -76,6 +76,8 @@ import importlib
 import inspect
 import keyword
 import re
+import shutil
+import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -1148,9 +1150,7 @@ def scan_role_contract(text: str, filename: str) -> list[Finding]:
     findings: list[Finding] = []
     lines = text.splitlines()
     if len(lines) > _ROLE_MAX_LINES:
-        findings.append(
-            Finding(filename, 0, f"{len(lines)} lines", f"<= {_ROLE_MAX_LINES} lines")
-        )
+        findings.append(Finding(filename, 0, f"{len(lines)} lines", f"<= {_ROLE_MAX_LINES} lines"))
     total = len(lines)
     for element in _ROLE_ELEMENTS:
         start = next((i for i, ln in enumerate(lines) if ln.startswith(element)), None)
@@ -1187,27 +1187,28 @@ def scan_placeholders(text: str, filename: str) -> list[Finding]:
         for match in re.finditer(r"\{\{([^}]*)\}\}", line):
             if match.group(1).strip():
                 snippet = line.strip()[:60]
-                findings.append(
-                    Finding(filename, lineno, snippet, "no {{placeholder}} residue")
-                )
+                findings.append(Finding(filename, lineno, snippet, "no {{placeholder}} residue"))
     return findings
 
 
-def scan_path_references(text: str, filename: str, base: Path) -> list[Finding]:
+def scan_path_references(
+    text: str, filename: str, base: Path, tracked: frozenset[str]
+) -> list[Finding]:
     """C1 (governance extension): backtick path-like references must resolve.
 
-    Pure function over a file's text against ``base`` (the repo root). Only
-    tokens that look like repo paths are considered: path charset, contains a
-    slash, no spaces, no ``@``/template suffixes. Skipped on purpose:
+    Pure function over a file's text. ``tracked`` is the repo's git-tracked
+    path set (``git ls-files``) — membership there is PLATFORM-DETERMINISTIC;
+    a filesystem ``exists()`` check once let an untracked local ``.automedia/``
+    dir turn a Windows run green while CI (no such dir) failed. Tokens:
 
-    - fenced code blocks (``` toggles) — shell/usage examples, not references;
-    - absolute (``/...``) and dot-relative (``./...``) tokens — runtime paths;
-    - single-segment extension-less dirs (``config/``) — illustrative names.
+    - path charset, contains a slash, no spaces, no ``@``/template suffixes;
+    - skipped: fenced code blocks (``` toggles) — usage examples, not refs;
+    - skipped: absolute (``/...``) and dot-relative (``./...``) — runtime paths;
+    - skipped: single-segment tokens (``config/``, ``.automedia/``) — runtime
+      or illustrative bare-dir names, not repo file references.
 
-    ``automedia/...`` tokens resolve against ``src/`` (module-rooted paths);
-    everything else resolves against the repo root. Anything else (commands,
-    prose, section headings) is ignored — this guard is for broken file
-    references, not lint.
+    ``automedia/...`` module-rooted tokens match under ``src/``; directory
+    tokens (trailing slash) match when any tracked path starts with them.
     """
     findings: list[Finding] = []
     in_fence = False
@@ -1226,12 +1227,18 @@ def scan_path_references(text: str, filename: str, base: Path) -> list[Finding]:
             if not _PATH_TOKEN_RE.match(token):
                 continue
             segments = token.rstrip("/").split("/")
-            if len(segments) == 1 and "." not in segments[0]:
-                continue  # illustrative bare-dir name (``config/``), not a reference
-            candidates = (base / token, base / "src" / token, base / "src" / "automedia" / token)
-            if not any(candidate.exists() for candidate in candidates):
+            if len(segments) < 2:
+                continue  # bare-dir mention (``config/``, ``.automedia/``), not a ref
+            candidates = (token, f"src/{token}", f"src/automedia/{token}")
+            if token.endswith("/"):
+                resolved = any(
+                    any(path.startswith(candidate) for path in tracked) for candidate in candidates
+                )
+            else:
+                resolved = any(candidate in tracked for candidate in candidates)
+            if not resolved:
                 findings.append(
-                    Finding(filename, lineno, token, "referenced path must exist")
+                    Finding(filename, lineno, token, "referenced path must exist (tracked)")
                 )
     return findings
 
@@ -1281,9 +1288,7 @@ def scan_expectations_index(text: str, index_rel: str, scenario_count: int) -> l
             continue
         candidate = REPO_ROOT / token
         if not candidate.exists():
-            findings.append(
-                Finding(index_rel, 0, token, "INDEX pointer target must exist")
-            )
+            findings.append(Finding(index_rel, 0, token, "INDEX pointer target must exist"))
     if "checkpoints.md" not in text:
         findings.append(
             Finding(
@@ -1299,6 +1304,17 @@ def scan_expectations_index(text: str, index_rel: str, scenario_count: int) -> l
 def run_agent_governance_checks(scenario_count: int) -> list[Finding]:
     """Wire the governance scans over the real repo tree; returns findings."""
     findings: list[Finding] = []
+    git_exe = shutil.which("git")
+    tracked: frozenset[str] = frozenset()
+    if git_exe is not None:
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no user input
+            [git_exe, "-C", str(REPO_ROOT), "ls-files"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        if proc.returncode == 0:
+            tracked = frozenset(proc.stdout.splitlines())
 
     # C3: root AGENTS.md line budget (test_doc_authority pins the same bound).
     agents_path = REPO_ROOT / "AGENTS.md"
@@ -1333,7 +1349,7 @@ def run_agent_governance_checks(scenario_count: int) -> list[Finding]:
             continue
         text = path.read_text(encoding="utf-8")
         findings.extend(scan_placeholders(text, rel))  # C5
-        findings.extend(scan_path_references(text, rel, REPO_ROOT))  # C1
+        findings.extend(scan_path_references(text, rel, REPO_ROOT, tracked))  # C1
 
     # C7: expectations INDEX vs the derived scenario library (Owner D3).
     index_rel = ".agents/expectations/INDEX.md"
