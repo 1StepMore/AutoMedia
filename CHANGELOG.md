@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.3...automedia-v1.14.4) (2026-11-08)
+
+
+### Bug Fixes
+
+* **validation:** suppress bandit B108 on the pinned fixture entry ([#433](https://github.com/1StepMore/AutoMedia/issues/433)) ([9a3cecd](https://github.com/1StepMore/AutoMedia/commit/9a3cecd21f03730b007c81b881ac55bf5b80ff40)), closes [#432](https://github.com/1StepMore/AutoMedia/issues/432)
+
 ## [1.14.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.2...automedia-v1.14.3) (2026-11-08)
 
 
