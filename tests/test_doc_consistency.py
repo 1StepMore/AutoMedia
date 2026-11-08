@@ -71,7 +71,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -560,3 +560,37 @@ def test_live_agent_governance_checks_are_clean(checker: ModuleType) -> None:
     """The committed governance layer must pass C1/C3/C4/C5/C7 + A10 budgets."""
     scenario_count = checker._count_scenarios()
     assert checker.run_agent_governance_checks(scenario_count) == []
+
+
+def test_a10_scope_scan_derives_from_git_tracked_not_filesystem(
+    checker: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regression (#429): A10 must enumerate scope files from ``git ls-files``.
+
+    A filesystem ``rglob("AGENTS.md")`` once picked up an ignored local
+    ``.venv/`` third-party file (107 lines) and failed the gate locally while
+    CI — which has no ``.venv`` — stayed green on the same commit.  A tracked
+    >15-line file still fails; an untracked one is invisible.
+    """
+    fake_root = tmp_path / "repo"
+    tracked_agents = fake_root / "pkg" / "AGENTS.md"
+    tracked_agents.parent.mkdir(parents=True)
+    tracked_agents.write_text("\n".join(f"tracked {i}" for i in range(20)) + "\n", encoding="utf-8")
+
+    venv_agents = fake_root / ".venv" / "lib" / "site-packages" / "x" / "AGENTS.md"
+    venv_agents.parent.mkdir(parents=True)
+    venv_agents.write_text("\n".join(f"vendored {i}" for i in range(107)) + "\n", encoding="utf-8")
+
+    def fake_git(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(returncode=0, stdout="AGENTS.md\npkg/AGENTS.md\n")
+
+    monkeypatch.setattr(checker, "REPO_ROOT", fake_root)
+    monkeypatch.setattr(checker.shutil, "which", lambda _name: "git")
+    monkeypatch.setattr(checker.subprocess, "run", fake_git)
+
+    findings = checker.run_agent_governance_checks(0)
+
+    tracked_findings = [f for f in findings if f.file == "pkg/AGENTS.md"]
+    assert len(tracked_findings) == 1
+    assert tracked_findings[0].found == "20 lines"
+    assert [f for f in findings if f.file == ".venv/lib/site-packages/x/AGENTS.md"] == []
