@@ -26,7 +26,7 @@ If you are an AI coding agent entering this codebase:
 
 ## Features
 
-- **Three-layer API**: SDK / CLI (21 commands) / MCP Server (68 tools)
+- **Three-layer API**: SDK / CLI (21 commands) / MCP Server (64 tools)
 - **33 quality gates**: G0-G6 (copy), V0-V7 (video/quality), H0 (human review), L1-L4 (lifecycle), plus pre-gate, CW, D1-D7 (distribution), and P1-P4 (repurpose)
 - **6-layer configuration hierarchy**: defaults → project → user → overrides → env vars
 - **Platform-aware customization**: Platform-scoped prompt templates, per-platform media specs, gate modifier overrides
@@ -394,7 +394,7 @@ result = run_full_pipeline(
 | `automedia rollback` | Roll back a project: archive it and revert status to draft |
 | `automedia validate` | Run the agent-tester validation suite (list, run, report, diff, coverage, matrix, sign) |
 
-### MCP Server (68 tools)
+### MCP Server (64 tools)
 
 Start:
 
@@ -406,7 +406,6 @@ python -m automedia.mcp.server
 |------|-------------|
 | `health_check` | Return server health status (version, uptime, tool count) |
 | `health_engine` | Check all engine-related dependencies health |
-| `engine_health` | ⚠️ Deprecated: use health_engine |
 | `update_engine_config` | Update an engine configuration setting |
 | `select_topic` | Select highest-scored pending topic from pool |
 | `research_topics` | Research trending topics within a category using LLM |
@@ -423,7 +422,6 @@ python -m automedia.mcp.server
 | `archive_project` | Archive a project (enforces Red Line 8) |
 | `list_topic_pool` | List topics in the pool with optional filters |
 | `add_pool_topic` | Add a topic to the topic pool |
-| `pool_add_topic` | ⚠️ Deprecated: use add_pool_topic |
 | `publish_content` | Publish a project to a platform (supports auto/review/manual modes) |
 | `distribute_content` | Distribute pipeline content to platforms via D-gates |
 | `register_platform_adapter` | Register a publish adapter stub |
@@ -435,7 +433,6 @@ python -m automedia.mcp.server
 | `evaluate_content_quality` | Score content quality against criteria |
 | `analyze_content` | Compute content analytics (word count, sentiment, readability, brand mentions, SEO scores) |
 | `run_batch` | Run pipeline sequentially for multiple topics |
-| `batch_run` | ⚠️ Deprecated: use run_batch |
 | `cancel_pipeline` | Cancel a running pipeline by project ID |
 | `pause_pipeline` | Pause a running pipeline after the current gate completes |
 | `resume_pipeline` | Resume a paused pipeline |
@@ -465,7 +462,6 @@ python -m automedia.mcp.server
 | `reject_gate` | Reject a paused gate in director mode (triggers failure handling) |
 | `get_pending_approvals` | List all gates awaiting human approval in director mode |
 | `help_mcp` | Get a categorized listing of all MCP tools with descriptions |
-| `mcp_help` | ⚠️ Deprecated: use help_mcp |
 | `list_validation_scenarios` | List the agent-tester validation scenario library (name, description, category, status hint) |
 | `run_validation_scenario` | Run ONE named validation scenario in-process; scenario_name is required (the recursion bound) |
 | `run_validation_suite` | Run the WHOLE validation scenario library in-process and persist one immutable suite record |
@@ -605,7 +601,7 @@ All tools also read `AGENTS.md` for project context — it's the single source o
               |                   |
   +-----------+----+     +--------+-----------+
   |  MCP Server    |     |  CLI (typer)       |
-  |  68 tools      |     |  21 commands       |
+  |  64 tools      |     |  21 commands       |
   +-----------+----+     +--------+-----------+
               |                   |
   +-----------+-------------------+------------+

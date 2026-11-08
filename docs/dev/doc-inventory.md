@@ -4,8 +4,8 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 11520 | file |
-| README.md | 34812 | file |
+| AGENTS.md | 11465 | file |
+| README.md | 34592 | file |
 | docs/AGENTS.md | 645 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
@@ -23,7 +23,7 @@
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
 | docs/dev/DEBT.md | 603 | file |
 | docs/dev/agent-era-doc-architecture.md | 18625 | file |
-| docs/dev/agent-reference.md | 25604 | file |
+| docs/dev/agent-reference.md | 25318 | file |
 | docs/dev/agent-troubleshooting.md | 28282 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -53,7 +53,7 @@
 | docs/glossary.md | 13315 | file |
 | docs/index.md | 6871 | file |
 | docs/skills | — | dir |
-| docs/skills/batch-workflow.md | 5555 | file |
+| docs/skills/batch-workflow.md | 5480 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
 | docs/skills/distribution-workflow.md | 6248 | file |
 | docs/skills/pipeline-workflow.md | 7760 | file |
@@ -65,7 +65,7 @@
 | docs/user/deployment.md | 8996 | file |
 | docs/user/hardware-and-remote-engines.md | 8478 | file |
 | docs/user/hitl-framework.md | 10052 | file |
-| docs/user/mcp-setup.md | 27783 | file |
+| docs/user/mcp-setup.md | 27499 | file |
 | docs/user/omni-integration.md | 13187 | file |
 | docs/user/platform-capability-matrix.md | 4152 | file |
 | docs/user/production-workflow.md | 10963 | file |

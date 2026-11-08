@@ -20,7 +20,7 @@ AutoMedia/
 │       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json), remotion/ (React composition sources)
 │       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
 │       ├── cli/                # Typer CLI: app.py + command modules under commands/ (21 commands)
-│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
+│       ├── mcp/                # FastMCP server, 64 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
 │       ├── omni/               # Omni Triad: ol_adapter, opp_adapter, orf_adapter, registry, config, allowlist
@@ -236,7 +236,7 @@ Skills for agents who USE AutoMedia (calling MCP tools to produce content) live 
 | `docs/skills/batch-workflow.md` | Batch production across multiple topics via `run_batch` |
 | `docs/skills/distribution-workflow.md` | Distributing finished content to platforms via the D-gates |
 
-## MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)
+## MCP Tools Quick Reference (64 tools)
 
 > Moved here from AGENTS.md §9 (2026-11-08, ops(A1)): the deep-detail tables live in
 > this reference; AGENTS.md keeps one-line pointers. `scripts/check-doc-consistency.py`
@@ -275,10 +275,8 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `get_account_health` | account_id | Check account health |
 | `disconnect_account` | account_id | Remove an account |
 | `add_pool_topic` | title, category, pool_db_path | Add topic to pool |
-| `pool_add_topic` | title, category, pool_db_path | Deprecated: use add_pool_topic |
 | `publish_content` | project_id, platform, account_id, base_dir, mode | Publish one platform (honors brand automation levels) |
 | `run_batch` | topics, brand, mode | Run pipeline sequentially |
-| `batch_run` | topics, brand, mode | Deprecated: use run_batch |
 | `add_cron_schedule` | name, expression, brand, category, count, platform, mode | Add a cron schedule |
 | `list_cron_schedules` | platform, mode | List cron schedules |
 | `remove_cron_schedule` | name | Remove a cron schedule |
@@ -299,10 +297,8 @@ stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by 
 | `skip_gate` | project_id, gate_name | Mark a gate for skipping |
 | `review_decision` | project_id, gate_name, action, reason, show_diff | Approve/reject a pipeline paused at H0 (live HITL; same-process only) |
 | `health_engine` | — | Engine dependency health |
-| `engine_health` | — | Deprecated: use health_engine |
 | `update_engine_config` | modality, setting, value | Update engine config |
 | `help_mcp` | — | Categorized tool listing |
-| `mcp_help` | — | Deprecated: use help_mcp |
 | `list_overridable_templates` | — | List overridable prompt templates + override status |
 | `list_workflows` | — | List configured workflows from workflows.yaml |
 | `approve_gate` | project_id, gate_name, modifications | Approve a paused gate in director mode (HITL) |

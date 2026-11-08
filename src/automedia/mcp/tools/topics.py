@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 from pydantic import ValidationError
@@ -25,7 +24,6 @@ log = get_logger(__name__)
 __all__ = [
     "add_pool_topic",
     "list_topic_pool",
-    "pool_add_topic",
     "research_topics",
     "select_topic",
 ]
@@ -378,17 +376,3 @@ def add_pool_topic(
         return error_response(MCPErrorCode.PIPELINE_ERROR, str(exc))
     except Exception as exc:
         return error_response(MCPErrorCode.UNKNOWN, str(exc))
-
-
-def pool_add_topic(
-    title: str,
-    category: str = "",
-    pool_db_path: str = "",
-) -> dict[str, Any]:
-    """⚠️ DEPRECATED: Use :func:`add_pool_topic` instead."""
-    warnings.warn(
-        "pool_add_topic is deprecated, use add_pool_topic instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return add_pool_topic(title=title, category=category, pool_db_path=pool_db_path)

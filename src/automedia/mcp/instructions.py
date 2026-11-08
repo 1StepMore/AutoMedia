@@ -50,7 +50,6 @@ _TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
         [
             "list_topic_pool",
             "add_pool_topic",
-            "pool_add_topic",
         ],
     ),
     (
@@ -58,7 +57,6 @@ _TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
         [
             "health_check",
             "health_engine",
-            "engine_health",
             "update_engine_config",
         ],
     ),
@@ -103,7 +101,6 @@ _TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
         "Batch Operations",
         [
             "run_batch",
-            "batch_run",
         ],
     ),
     (
@@ -126,7 +123,6 @@ _TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
         "Help / Introspection",
         [
             "help_mcp",
-            "mcp_help",
         ],
     ),
 ]

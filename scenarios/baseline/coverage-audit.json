@@ -65,18 +65,8 @@
     "validation_coverage_audit",
     "validation_matrix"
   ],
-  "deprecated_mcp": [
-    "batch_run",
-    "engine_health",
-    "mcp_help",
-    "pool_add_topic"
-  ],
-  "deprecated_mcp_covered": [
-    "batch_run",
-    "engine_health",
-    "mcp_help",
-    "pool_add_topic"
-  ],
+  "deprecated_mcp": [],
+  "deprecated_mcp_covered": [],
   "declared_cli": [
     "account",
     "adapter",
@@ -153,13 +143,11 @@
     "analyze_content",
     "approve_gate",
     "archive_project",
-    "batch_run",
     "cancel_pipeline",
     "configure_llm",
     "connect_account",
     "disconnect_account",
     "distribute_content",
-    "engine_health",
     "evaluate_content_quality",
     "extract_brief",
     "format_output",
@@ -190,10 +178,8 @@
     "list_workflows",
     "localize_content",
     "localize_output",
-    "mcp_help",
     "onboard",
     "pause_pipeline",
-    "pool_add_topic",
     "publish_content",
     "register_platform_adapter",
     "reject_gate",
@@ -501,8 +487,8 @@
     "surface/control/retry-gate-boundary.yaml",
     "surface/control/skip-gate-boundary.yaml"
   ],
-  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (run_validation_suite) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = ∅ means '∅ excluding boundary-only (listed)'. Director waiver required for this classification (guide §5.1: error-boundary probes are never silently counted as coverage).",
-  "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist — phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom → ∅.",
+  "director_waiver_note": "Boundary-only allowlist (third coverage class, review fix C1): scenario-level error_boundary: true scenarios probe the dispatcher, not the surface, so their targets (run_validation_suite) are listed loudly here and EXCLUDED from covered_* AND from missing_*. missing = \u2205 means '\u2205 excluding boundary-only (listed)'. Director waiver required for this classification (guide \u00a75.1: error-boundary probes are never silently counted as coverage).",
+  "phantom_note": "Phantom = used minus declared, computed purely (no KNOWN_FUTURE_SURFACE allowlist \u2014 phantom must stay visible or real drift is silently absorbed). Expected-phantom today: the committed meta scenarios reference the W4 validation surface before it ships (MCP: (none); CLI: (none)). When W4-T1/W4-T2 register those surfaces, the same audit flips them to covered and phantom \u2192 \u2205.",
   "summary": {
     "mcp_declared": 64,
     "mcp_used": 64,
@@ -510,8 +496,8 @@
     "mcp_missing": 0,
     "mcp_phantom": 0,
     "mcp_boundary_only": 1,
-    "mcp_deprecated": 4,
-    "mcp_deprecated_covered": 4,
+    "mcp_deprecated": 0,
+    "mcp_deprecated_covered": 0,
     "cli_declared": 21,
     "cli_used": 21,
     "cli_covered": 21,
@@ -722,7 +708,7 @@
       "L5"
     ],
     "distribution": {
-      "L0": 119,
+      "L0": 115,
       "L1": 30,
       "L2": 8,
       "L3": 3,
@@ -819,7 +805,7 @@
         "L5": 0
       },
       "surface": {
-        "L0": 55,
+        "L0": 51,
         "L1": 8,
         "L2": 6,
         "L3": 2,
@@ -827,7 +813,7 @@
         "L5": 0
       }
     },
-    "total": 162
+    "total": 158
   },
   "meta_scenarios": [
     "account-cli-surface",
@@ -881,7 +867,6 @@
     "archive-refusal-redline8",
     "asset-ingest-nonempty-search",
     "auto-journey",
-    "batch-run-alias",
     "cancel-pipeline-boundary",
     "cancel-pipeline-positive",
     "cli-surface-behavior",
@@ -899,7 +884,6 @@
     "doctor-cli-surface",
     "e2e-topic-to-article",
     "effects-cli-contract",
-    "engine-health-alias",
     "engine-health-list",
     "evaluate-content-quality-llm",
     "extract-brief-markdown",
@@ -935,7 +919,6 @@
     "llm-unavailable-error-quality",
     "localize-content-llm",
     "localize-output-llm",
-    "mcp-help-alias",
     "onboard-isolated",
     "orf-format-output-happy",
     "partial-pass-cli-contract",
@@ -946,7 +929,6 @@
     "pipeline-checkpoint-resume",
     "pipeline-export-dag-surface",
     "pipeline-state-surface",
-    "pool-add-topic-alias",
     "produce-article",
     "produce-audio",
     "produce-carousel",
@@ -996,7 +978,7 @@
     "video-only-journey"
   ],
   "meta_scenario_count": 38,
-  "surface_scenario_count": 124,
+  "surface_scenario_count": 120,
   "surface_by_level": {
     "levels": [
       "L0",
@@ -1007,7 +989,7 @@
       "L5"
     ],
     "distribution": {
-      "L0": 81,
+      "L0": 77,
       "L1": 30,
       "L2": 8,
       "L3": 3,
@@ -1096,7 +1078,7 @@
         "L5": 0
       },
       "surface": {
-        "L0": 55,
+        "L0": 51,
         "L1": 8,
         "L2": 6,
         "L3": 2,
@@ -1104,8 +1086,8 @@
         "L5": 0
       }
     },
-    "total": 124
+    "total": 120
   },
-  "scenario_count": 162,
-  "generated_at": ""
+  "generated_at": "",
+  "scenario_count": 158
 }

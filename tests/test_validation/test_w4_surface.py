@@ -193,20 +193,16 @@ class TestValidateCliRealLibrary:
         assert result.exit_code == 1
         data = json.loads(result.output)
         summary: dict[str, Any] = data["summary"]
-        # Gap T-12: the 4 deprecated aliases are reported separately and are
-        # excluded from the live denominator -> 64 live declared / 63 covered
-        # (run_validation_suite stays boundary-only).
+        # Gap T-12 introduced the deprecated bucket; #424 retired the 4 alias
+        # tools, so the bucket is empty and the denominator is all-live: 64
+        # declared / 63 covered (run_validation_suite stays boundary-only).
         assert summary["mcp_declared"] == 64
         assert summary["mcp_used"] == 64
         assert summary["mcp_covered"] == 63
-        assert summary["mcp_deprecated"] == 4
-        assert summary["mcp_deprecated_covered"] == 4
-        assert data["deprecated_mcp"] == [
-            "batch_run",
-            "engine_health",
-            "mcp_help",
-            "pool_add_topic",
-        ]
+        assert summary["mcp_deprecated"] == 0
+        assert summary["mcp_deprecated_covered"] == 0
+        # The 4 deprecated aliases were retired in #424.
+        assert data["deprecated_mcp"] == []
         assert summary["mcp_missing"] == 0
         assert summary["mcp_phantom"] == 0
         assert summary["mcp_boundary_only"] == 1

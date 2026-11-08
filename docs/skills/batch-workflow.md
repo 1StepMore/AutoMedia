@@ -98,7 +98,6 @@ If a result carries an `error` dict, relay it to the user and do not fabricate t
 ## Related Tools
 
 - `run_pipeline` — run a single topic, with progress polling and `resume_from` (see `pipeline-workflow`)
-- `batch_run` — deprecated alias of `run_batch`; use `run_batch` instead
 - `get_pipeline_progress` / `get_pipeline_status` / `get_project_assets` — per-project tracking
 - `cancel_pipeline` — stop a running pipeline
 - `distribute_content` / `publish_content` — distribute the batch results (see `distribution-workflow`)

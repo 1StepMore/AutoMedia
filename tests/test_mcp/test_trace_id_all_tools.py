@@ -34,7 +34,6 @@ from automedia.mcp.mcp_error import (
 UNSAFE_TO_INVOKE = {
     "run_validation_suite": "runs the entire scenario library recursively",
     "list_accounts": "requires AUTOMEDIA_MASTER_KEY and raises before returning",
-    "engine_health": "probes external LLM providers over the network",
     "health_engine": "probes external LLM providers over the network",
 }
 

@@ -342,10 +342,12 @@ class TestMissingBucket:
             {"health.yaml": _HEALTH_SCENARIO},
         )
         audit = coverage_audit(lib)
-        # Gap T-12: deprecated aliases are excluded from the live denominator
-        # and reported separately, so they are never "missing".
+        # Gap T-12 excluded deprecated aliases from the live denominator;
+        # #424 retired the 4 alias tools, so a retired name is neither
+        # "missing" (no longer declared) nor deprecated (bucket is empty).
         assert "pool_add_topic" not in audit["missing"]["mcp"]
-        assert "pool_add_topic" in audit["deprecated_mcp"]
+        assert "pool_add_topic" not in audit["declared_mcp"]
+        assert audit["deprecated_mcp"] == []
         assert "add_brand" in audit["missing"]["mcp"]
         assert "health_check" not in audit["missing"]["mcp"]
 

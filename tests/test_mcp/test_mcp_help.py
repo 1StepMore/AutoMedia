@@ -1,4 +1,4 @@
-"""Tests for the mcp_help tool (server.py).
+"""Tests for the help_mcp tool (server.py).
 
 Covers the categorized tool listing, alphabetical sorting, and
 dynamic generation from the tool registry.
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from automedia.mcp.server import _CATEGORY_PREFIXES, mcp_help
+from automedia.mcp.server import _CATEGORY_PREFIXES, help_mcp
 
 # ---------------------------------------------------------------------------
 # Shared test data
@@ -37,11 +37,6 @@ MOCK_TOOL_REGISTRY: dict[str, dict[str, str]] = {
     "health_engine": {"description": "Engine health", "inputSchema": "{}"},
     "help_mcp": {"description": "Get MCP help", "inputSchema": "{}"},
     "add_pool_topic": {"description": "Add topic to pool", "inputSchema": "{}"},
-    # Renamed tools: old alias names (backward-compatible)
-    "batch_run": {"description": "Batch run (deprecated)", "inputSchema": "{}"},
-    "engine_health": {"description": "Engine health (deprecated)", "inputSchema": "{}"},
-    "mcp_help": {"description": "Get MCP help (deprecated)", "inputSchema": "{}"},
-    "pool_add_topic": {"description": "Add topic to pool (deprecated)", "inputSchema": "{}"},
     "connect_account": {"description": "Connect account", "inputSchema": "{}"},
     "disconnect_account": {"description": "Disconnect account", "inputSchema": "{}"},
     "test_cron_schedule": {"description": "Test cron schedule", "inputSchema": "{}"},
@@ -51,17 +46,17 @@ MOCK_TOOL_REGISTRY: dict[str, dict[str, str]] = {
 
 
 # ---------------------------------------------------------------------------
-# Tests: mcp_help
+# Tests: help_mcp
 # ---------------------------------------------------------------------------
 
 
-class TestMcpHelp:
-    """Tests for the mcp_help tool."""
+class TestHelpMcp:
+    """Tests for the help_mcp tool."""
 
     def test_returns_expected_keys(self) -> None:
-        """mcp_help returns dict with categories, tool_count, and hint keys."""
+        """help_mcp returns dict with categories, tool_count, and hint keys."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         assert "categories" in result
         assert "tool_count" in result
@@ -70,21 +65,21 @@ class TestMcpHelp:
     def test_tool_count_matches_registry_size(self) -> None:
         """tool_count equals the number of tools in the registry."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         assert result["tool_count"] == len(MOCK_TOOL_REGISTRY)
 
     def test_categories_is_dict(self) -> None:
         """categories is a dict mapping category names to tool lists."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         assert isinstance(result["categories"], dict)
 
     def test_categories_sorted_alphabetically(self) -> None:
         """Category keys in the output are sorted alphabetically."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         categories = list(result["categories"].keys())
         assert categories == sorted(categories), f"Categories should be sorted: {categories}"
@@ -92,7 +87,7 @@ class TestMcpHelp:
     def test_tools_within_category_sorted_by_name(self) -> None:
         """Tools within each category are sorted by name alphabetically."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         for category, tools in result["categories"].items():
             names = [t["name"] for t in tools]
@@ -103,7 +98,7 @@ class TestMcpHelp:
     def test_each_tool_has_name_and_description(self) -> None:
         """Every tool entry has 'name' and 'description' keys."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         for category, tools in result["categories"].items():
             for tool in tools:
@@ -113,7 +108,7 @@ class TestMcpHelp:
     def test_categorization_uses_prefix_matching(self) -> None:
         """Tools are categorized based on their name prefix."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         categories = result["categories"]
         # run_pipeline should be under "Run / Execute"
@@ -129,7 +124,7 @@ class TestMcpHelp:
     def test_health_engine_in_server_category(self) -> None:
         """health_engine tool falls under Server / Engine category."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         assert "Server / Engine" in result["categories"]
         engine_tools = {t["name"] for t in result["categories"]["Server / Engine"]}
@@ -139,7 +134,7 @@ class TestMcpHelp:
         """A tool with no matching prefix ends up in 'Other'."""
         # cancel_pipeline doesn't match any prefix in _CATEGORY_PREFIXES
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         # cancel_pipeline doesn't match any prefix, so it should be in "Other"
         # actually let's check - is there a prefix for "cancel_"?
@@ -161,7 +156,7 @@ class TestMcpHelp:
     def test_hint_is_non_empty_string(self) -> None:
         """hint is a non-empty string with guidance."""
         with patch("automedia.mcp.server._tool_registry", MOCK_TOOL_REGISTRY):
-            result = mcp_help()
+            result = help_mcp()
 
         assert isinstance(result["hint"], str)
         assert len(result["hint"]) > 0
@@ -169,7 +164,7 @@ class TestMcpHelp:
     def test_empty_registry_returns_zero_count(self) -> None:
         """An empty tool registry returns tool_count=0 and no categories."""
         with patch("automedia.mcp.server._tool_registry", {}):
-            result = mcp_help()
+            result = help_mcp()
 
         assert result["tool_count"] == 0
         # With empty registry, categories should be empty dict
@@ -182,7 +177,7 @@ class TestMcpHelp:
             "run_pipeline": {"description": "Custom description", "inputSchema": "{}"},
         }
         with patch("automedia.mcp.server._tool_registry", test_registry):
-            result = mcp_help()
+            result = help_mcp()
 
         for tools in result["categories"].values():
             for tool in tools:
@@ -207,11 +202,11 @@ class TestCategorizeTool:
         assert _categorize_tool("run_pipeline") == "Run / Execute"
         assert _categorize_tool("health_check") == "Server / Engine"
 
-    def test_mcp_help_prefix(self) -> None:
-        """mcp_help has no matching prefix and falls to 'Other'."""
+    def test_no_match_prefix_falls_to_other(self) -> None:
+        """A name with no matching prefix falls to 'Other'."""
         from automedia.mcp.server import _categorize_tool
 
-        assert _categorize_tool("mcp_help") == "Other"
+        assert _categorize_tool("zzz_no_prefix_match") == "Other"
 
     def test_help_mcp_prefix(self) -> None:
         """help_mcp falls under Help / Introspection category."""
@@ -250,7 +245,7 @@ class TestCategorizeTool:
         from automedia.mcp.server import _categorize_tool
 
         # engine_ prefix is checked before get_ in the list
-        assert _categorize_tool("engine_health") == "Server / Engine"
+        assert _categorize_tool("engine_probe") == "Server / Engine"
 
     def test_health_before_get_prefix(self) -> None:
         """health_ maps to 'Server / Engine' — checks health_engine."""

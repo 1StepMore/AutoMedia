@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import threading
 import uuid
-import warnings
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -39,7 +38,6 @@ from automedia.pipelines.state_view import aggregate_pipeline_state
 log = get_logger(__name__)
 
 __all__ = [
-    "batch_run",
     "cancel_pipeline",
     "get_gate_report",
     "get_pipeline_progress",
@@ -363,20 +361,6 @@ def run_batch(
             "failed": failed,
         }
     )
-
-
-def batch_run(
-    topics: list[str],
-    brand: NonEmptyStr,
-    mode: PipelineMode = "auto",
-) -> dict[str, Any]:
-    """⚠️ DEPRECATED: Use :func:`run_batch` instead."""
-    warnings.warn(
-        "batch_run is deprecated, use run_batch instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return run_batch(topics=topics, brand=brand, mode=mode)
 
 
 def get_pipeline_progress(

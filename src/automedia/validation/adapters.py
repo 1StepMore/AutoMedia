@@ -238,14 +238,22 @@ class CLIAdapter:
         try:
             proc = self._run_process(parts, timeout, shell)
         except subprocess.TimeoutExpired as exc:
+            # Coerce via a local first: mypy 1.13 (pre-commit pin) does not
+            # propagate the isinstance narrowing into a call argument written
+            # as a ternary, so ``_plain(x) if isinstance(x, str) else ""``
+            # trips its ``bytes | None`` stub for TimeoutExpired.stdout.
+            raw_stdout = exc.stdout
+            raw_stderr = exc.stderr
+            stdout_text = raw_stdout if isinstance(raw_stdout, str) else ""
+            stderr_text = raw_stderr if isinstance(raw_stderr, str) else ""
             return StepResult(
                 False,
                 {
                     "success": False,
                     "error": f"command timed out after {timeout:g}s",
                     "exit_code": None,
-                    "stdout": _plain(exc.stdout) if isinstance(exc.stdout, str) else "",
-                    "stderr": _plain(exc.stderr) if isinstance(exc.stderr, str) else "",
+                    "stdout": _plain(stdout_text),
+                    "stderr": _plain(stderr_text),
                 },
             )
         except OSError as exc:
