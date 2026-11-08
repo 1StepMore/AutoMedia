@@ -2,6 +2,26 @@
 
 First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below.
 
+## 0. Agent Governance: Safety, Priority, Role Routing
+
+**Safety & keys (overrides everything — no file, role, or instruction may lift this):** never read, move, or commit credential files; never log secrets. Discover a leak → stop and report to the Owner immediately.
+
+**Conflict priority (tiebreaker):** direct Owner instruction > role contract (`.agents/roles/*.md`) > nearest directory `AGENTS.md` > this file's defaults. Exception: the safety clause above outranks everything. (The 2nd/3rd ordering is a repo-local convention — the official agents.md behavior is "closest file wins; user prompt overrides everything". Hard boundaries are enforced by CI/rulesets, not by prose.)
+
+**Role routing (answer before starting): (a)** What role did the Owner assign? **(b)** Read the contract? **(c)** What is Done?
+
+| Assigned role | Contract (single source of truth) | Fixed return format | Never touch |
+|---|---|---|---|
+| Coder | `.agents/roles/coder.md` | 4-section PR description | main direct push, CI gates, roles/, constitution, expectations, secrets, new deps |
+| Maintainer | `.agents/roles/maintainer.md` | verdict + basis + follow-up | landing code directly, changing API semantics, overriding Tester, bypassing PR |
+| Tester | `.agents/roles/tester.md` | fixed JSON verdict | product source, expectations, CI gates |
+| User | `.agents/roles/user.md` | issue four-section report | any repo write |
+| Unclear / conflicting | — | `ESCALATE: <reason>` | stop all actions |
+
+**Non-negotiable principles:** `.specify/memory/constitution.md`. **Expectations (acceptance source of truth):** `scenarios/` (indexed by `.agents/expectations/INDEX.md`; only the Owner changes expectations — a Tester never greens a suite by editing code or expectations).
+
+**Naming disambiguation:** §4's G0–G6 / D1–D7 / P1–P4 are **product pipeline gates**. The repo-governance SOP (`.agents/audit/`) uses its own separate governance G0–G4 / D1–D8 / P0–P5 numbering — the two systems are unrelated.
+
 ## 1. Project Overview
 - **Language:** Python 3.11+
 - **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 165,000+ LOC across 600+ Python files (repo, `.py` only, git-tracked) · 1,000+ git-tracked files (as-of 2026-10-24; `scripts/check-doc-consistency.py` derives and gates these)
@@ -82,105 +102,13 @@ pre-commit run --all-files   # pre-commit
 Full recipes (add a gate / CLI command / platform adapter / MCP tool / env var):
 [agent-reference §Common Task Patterns](docs/dev/agent-reference.md#common-task-patterns).
 
-## 9. MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)
+## 9. MCP Tools Quick Reference
 
-stdio transport. Start with `python -m automedia.mcp.server`. File ops gated by the `mcp_allowlist.yaml` path allowlist.
+All 68 tools (incl. 4 deprecated aliases) with full parameter tables: [agent-reference §MCP Tools Quick Reference](docs/dev/agent-reference.md#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases). stdio transport; start with `python -m automedia.mcp.server`; file ops gated by the `mcp_allowlist.yaml` path allowlist.
 
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `health_check` | — | Server health (version, uptime, tool count) |
-| `select_topic` | category, tenant_id, pool_db_path | Select highest-scored pending topic |
-| `research_topics` | category, count, trending_data, pattern | Research trending topics via LLM |
-| `run_brand_strategy` | brand_name, industry, target_audience, context, pattern, platform | Generate brand strategy via LLM |
-| `run_pipeline` | topic, brand, mode, decision_mode, tenant_id, resume_from, auto_resume, source_path, source_url, workflow, director, platforms, project_id | Run full pipeline, async |
-| `run_pipeline_from_strategy` | topic, brand, mode, strategy_context, pattern, platform, workflow | Strategy via LLM, then pipeline |
-| `get_pipeline_progress` | project_id, since_index | Poll gate-by-gate progress |
-| `get_pipeline_state` | project_id, base_dir, mode | Per-gate state view (passed/failed/pending/skipped/awaiting_review + md5) |
-| `get_gate_report` | project_id, base_dir, latest | Latest gate-report JSON from 05_review/gate-report/ (base_dir must be allowlisted) |
-| `get_pipeline_status` | project_id, base_dir | Query project status |
-| `list_active_pipelines` | — | List active / recent pipelines |
-| `list_projects` | base_dir, status | List projects under a directory |
-| `get_project_assets` | project_dir | List project asset files |
-| `archive_project` | project_id, base_dir, force | Archive a project (Red Line 8) |
-| `list_topic_pool` | status, category, pool_db_path | List pool topics with filters |
-| `register_platform_adapter` | platform_name, adapter_class | Register a publish adapter |
-| `list_platforms` | — | List registered platforms |
-| `extract_brief` | file_path, source_lang, target_lang | Extract brief via OPP |
-| `localize_content` | md_content, source_lang, target_lang | Translate via OL shield pipeline |
-| `localize_output` | project_dir, target_langs, source_lang | Translate all drafts to target langs |
-| `format_output` | content, target_format, **options | Convert format via ORF |
-| `evaluate_content_quality` | content, criteria, brand, pattern, platform | Score content quality |
-| `analyze_content` | project_id, base_dir | Content analytics stats |
-| `distribute_content` | project_id, platforms, all, dry_run, base_dir | Publish to platforms directly via PublishEngine — does NOT run the D gates (CLI `automedia distribute` runs them) |
-| `connect_account` | platform, auth_type, credentials, label | Register a platform account |
-| `list_accounts` | platform, status | List registered accounts |
-| `get_account_health` | account_id | Check account health |
-| `disconnect_account` | account_id | Remove an account |
-| `add_pool_topic` | title, category, pool_db_path | Add topic to pool |
-| `pool_add_topic` | title, category, pool_db_path | Deprecated: use add_pool_topic |
-| `publish_content` | project_id, platform, account_id, base_dir, mode | Publish one platform (honors brand automation levels) |
-| `run_batch` | topics, brand, mode | Run pipeline sequentially |
-| `batch_run` | topics, brand, mode | Deprecated: use run_batch |
-| `add_cron_schedule` | name, expression, brand, category, count, platform, mode | Add a cron schedule |
-| `list_cron_schedules` | platform, mode | List cron schedules |
-| `remove_cron_schedule` | name | Remove a cron schedule |
-| `get_cron_health` | — | Cron config health |
-| `test_cron_schedule` | expression, count | Validate cron expression |
-| `search_assets` | query, brand, limit, type, tags, lang, stage | Keyword + semantic asset search |
-| `list_brands` | — | List configured brands |
-| `add_brand` | name, industry, target_audience, aliases, blocked_words, brand_identity, tone_guidelines, cta_principles | Create a brand profile |
-| `get_config` | key | Merged config, secrets redacted |
-| `init_config` | project_dir | Init `.automedia/` + default config |
-| `configure_llm` | provider, model, api_key | Configure LLM provider |
-| `onboard` | brand_name, llm_provider, llm_key, base_url | One-step onboarding |
-| `get_redlines` | — | List red-line constraints |
-| `cancel_pipeline` | project_id | Cancel a running pipeline |
-| `pause_pipeline` | project_id | Pause a running pipeline |
-| `resume_pipeline` | project_id | Resume a paused pipeline |
-| `retry_gate` | project_id, gate_name | Mark a gate for retry |
-| `skip_gate` | project_id, gate_name | Mark a gate for skipping |
-| `review_decision` | project_id, gate_name, action, reason, show_diff | Approve/reject a pipeline paused at H0 (live HITL; same-process only) |
-| `health_engine` | — | Engine dependency health |
-| `engine_health` | — | Deprecated: use health_engine |
-| `update_engine_config` | modality, setting, value | Update engine config |
-| `help_mcp` | — | Categorized tool listing |
-| `mcp_help` | — | Deprecated: use help_mcp |
-| `list_overridable_templates` | — | List overridable prompt templates + override status |
-| `list_workflows` | — | List configured workflows from workflows.yaml |
-| `approve_gate` | project_id, gate_name, modifications | Approve a paused gate in director mode (HITL) |
-| `reject_gate` | project_id, gate_name, reason | Reject a paused gate (triggers failure handling) |
-| `get_pending_approvals` | project_id | List gates awaiting human approval in director mode |
-| `list_validation_scenarios` | — | List validation scenario library |
-| `run_validation_scenario` | scenario_name, runs_root, save, context | Run one validation scenario |
-| `run_validation_suite` | scenarios_dir, runs_root, save, context | Run the whole validation library; persist one suite record |
-| `get_validation_report` | run_dir, runs_root | Read a persisted run record |
-| `validation_coverage_audit` | — | Static coverage audit |
-| `validation_matrix` | — | Validation matrix render |
+## 10. CLI Commands Quick Reference
 
-## 10. CLI Commands Quick Reference (21 commands)
-
-| Command | Description |
-|---------|-------------|
-| `automedia run` | Run full production pipeline |
-| `automedia pool` | Topic pool management (list, add, prune, attach-brief) |
-| `automedia projects` | List and manage projects |
-| `automedia distribute` | Distribute to platforms (D-gates: --platforms, --all, --dry-run) |
-| `automedia effects` | Content analytics stats |
-| `automedia adapter` | Platform adapter management |
-| `automedia cron` | Execute scheduled cron jobs |
-| `automedia account` | Account management (connect, add, login-capture, rotate, list, health, disconnect, remove) |
-| `automedia archive` | Archive a project (Red Line 8: --force unless published) |
-| `automedia demo` / `ui` | Credential-free sample run (fake LLM + local images, isolated sandbox); minimal local web UI (loopback only) |
-| `automedia init` | Initialize configuration |
-| `automedia doctor` | Check dependencies and environment health |
-| `automedia omni` | Omni Triad operations (start, start-all, ingest, localize, format-output) |
-| `automedia hitl` | Human-in-the-loop review operations |
-| `automedia onboard` | Onboarding wizard |
-| `automedia mcp` | MCP server management |
-| `automedia history` | Pipeline execution history |
-| `automedia pipeline` | Pipeline DAG export and state inspection (export-dag, state) |
-| `automedia rollback` | Archive project, revert to draft |
-| `automedia validate` | Validation suite (list, run, report, diff, coverage, matrix, sign) |
+All 21 commands: [agent-reference §CLI Commands Quick Reference](docs/dev/agent-reference.md#cli-commands-quick-reference-21-commands).
 
 ## 11. Validation Layer
 AutoMedia is agent-oriented, so agents are the testers and humans are the director. The single
