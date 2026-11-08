@@ -1640,6 +1640,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-commands-quick-reference-21-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Commands Quick Reference (21 commands)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2707,6 +2729,458 @@ is the onboarding guide. How to read a scenario:</p>
 <tr>
 <td><code>docs/skills/distribution-workflow.md</code></td>
 <td>Distributing finished content to platforms via the D-gates</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases">MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)<a class="headerlink" href="#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Moved here from AGENTS.md §9 (2026-11-08, ops(A1)): the deep-detail tables live in
+this reference; AGENTS.md keeps one-line pointers. <code>scripts/check-doc-consistency.py</code>
+still guards this table against real MCP signatures — now scanning this section.</p>
+</blockquote>
+<p>stdio transport. Start with <code>python -m automedia.mcp.server</code>. File ops gated by the <code>mcp_allowlist.yaml</code> path allowlist.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Parameters</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>health_check</code></td>
+<td>—</td>
+<td>Server health (version, uptime, tool count)</td>
+</tr>
+<tr>
+<td><code>select_topic</code></td>
+<td>category, tenant_id, pool_db_path</td>
+<td>Select highest-scored pending topic</td>
+</tr>
+<tr>
+<td><code>research_topics</code></td>
+<td>category, count, trending_data, pattern</td>
+<td>Research trending topics via LLM</td>
+</tr>
+<tr>
+<td><code>run_brand_strategy</code></td>
+<td>brand_name, industry, target_audience, context, pattern, platform</td>
+<td>Generate brand strategy via LLM</td>
+</tr>
+<tr>
+<td><code>run_pipeline</code></td>
+<td>topic, brand, mode, decision_mode, tenant_id, resume_from, auto_resume, source_path, source_url, workflow, director, platforms, project_id</td>
+<td>Run full pipeline, async</td>
+</tr>
+<tr>
+<td><code>run_pipeline_from_strategy</code></td>
+<td>topic, brand, mode, strategy_context, pattern, platform, workflow</td>
+<td>Strategy via LLM, then pipeline</td>
+</tr>
+<tr>
+<td><code>get_pipeline_progress</code></td>
+<td>project_id, since_index</td>
+<td>Poll gate-by-gate progress</td>
+</tr>
+<tr>
+<td><code>get_pipeline_state</code></td>
+<td>project_id, base_dir, mode</td>
+<td>Per-gate state view (passed/failed/pending/skipped/awaiting_review + md5)</td>
+</tr>
+<tr>
+<td><code>get_gate_report</code></td>
+<td>project_id, base_dir, latest</td>
+<td>Latest gate-report JSON from 05_review/gate-report/ (base_dir must be allowlisted)</td>
+</tr>
+<tr>
+<td><code>get_pipeline_status</code></td>
+<td>project_id, base_dir</td>
+<td>Query project status</td>
+</tr>
+<tr>
+<td><code>list_active_pipelines</code></td>
+<td>—</td>
+<td>List active / recent pipelines</td>
+</tr>
+<tr>
+<td><code>list_projects</code></td>
+<td>base_dir, status</td>
+<td>List projects under a directory</td>
+</tr>
+<tr>
+<td><code>get_project_assets</code></td>
+<td>project_dir</td>
+<td>List project asset files</td>
+</tr>
+<tr>
+<td><code>archive_project</code></td>
+<td>project_id, base_dir, force</td>
+<td>Archive a project (Red Line 8)</td>
+</tr>
+<tr>
+<td><code>list_topic_pool</code></td>
+<td>status, category, pool_db_path</td>
+<td>List pool topics with filters</td>
+</tr>
+<tr>
+<td><code>register_platform_adapter</code></td>
+<td>platform_name, adapter_class</td>
+<td>Register a publish adapter</td>
+</tr>
+<tr>
+<td><code>list_platforms</code></td>
+<td>—</td>
+<td>List registered platforms</td>
+</tr>
+<tr>
+<td><code>extract_brief</code></td>
+<td>file_path, source_lang, target_lang</td>
+<td>Extract brief via OPP</td>
+</tr>
+<tr>
+<td><code>localize_content</code></td>
+<td>md_content, source_lang, target_lang</td>
+<td>Translate via OL shield pipeline</td>
+</tr>
+<tr>
+<td><code>localize_output</code></td>
+<td>project_dir, target_langs, source_lang</td>
+<td>Translate all drafts to target langs</td>
+</tr>
+<tr>
+<td><code>format_output</code></td>
+<td>content, target_format, **options</td>
+<td>Convert format via ORF</td>
+</tr>
+<tr>
+<td><code>evaluate_content_quality</code></td>
+<td>content, criteria, brand, pattern, platform</td>
+<td>Score content quality</td>
+</tr>
+<tr>
+<td><code>analyze_content</code></td>
+<td>project_id, base_dir</td>
+<td>Content analytics stats</td>
+</tr>
+<tr>
+<td><code>distribute_content</code></td>
+<td>project_id, platforms, all, dry_run, base_dir</td>
+<td>Publish to platforms directly via PublishEngine — does NOT run the D gates (CLI <code>automedia distribute</code> runs them)</td>
+</tr>
+<tr>
+<td><code>connect_account</code></td>
+<td>platform, auth_type, credentials, label</td>
+<td>Register a platform account</td>
+</tr>
+<tr>
+<td><code>list_accounts</code></td>
+<td>platform, status</td>
+<td>List registered accounts</td>
+</tr>
+<tr>
+<td><code>get_account_health</code></td>
+<td>account_id</td>
+<td>Check account health</td>
+</tr>
+<tr>
+<td><code>disconnect_account</code></td>
+<td>account_id</td>
+<td>Remove an account</td>
+</tr>
+<tr>
+<td><code>add_pool_topic</code></td>
+<td>title, category, pool_db_path</td>
+<td>Add topic to pool</td>
+</tr>
+<tr>
+<td><code>pool_add_topic</code></td>
+<td>title, category, pool_db_path</td>
+<td>Deprecated: use add_pool_topic</td>
+</tr>
+<tr>
+<td><code>publish_content</code></td>
+<td>project_id, platform, account_id, base_dir, mode</td>
+<td>Publish one platform (honors brand automation levels)</td>
+</tr>
+<tr>
+<td><code>run_batch</code></td>
+<td>topics, brand, mode</td>
+<td>Run pipeline sequentially</td>
+</tr>
+<tr>
+<td><code>batch_run</code></td>
+<td>topics, brand, mode</td>
+<td>Deprecated: use run_batch</td>
+</tr>
+<tr>
+<td><code>add_cron_schedule</code></td>
+<td>name, expression, brand, category, count, platform, mode</td>
+<td>Add a cron schedule</td>
+</tr>
+<tr>
+<td><code>list_cron_schedules</code></td>
+<td>platform, mode</td>
+<td>List cron schedules</td>
+</tr>
+<tr>
+<td><code>remove_cron_schedule</code></td>
+<td>name</td>
+<td>Remove a cron schedule</td>
+</tr>
+<tr>
+<td><code>get_cron_health</code></td>
+<td>—</td>
+<td>Cron config health</td>
+</tr>
+<tr>
+<td><code>test_cron_schedule</code></td>
+<td>expression, count</td>
+<td>Validate cron expression</td>
+</tr>
+<tr>
+<td><code>search_assets</code></td>
+<td>query, brand, limit, type, tags, lang, stage</td>
+<td>Keyword + semantic asset search</td>
+</tr>
+<tr>
+<td><code>list_brands</code></td>
+<td>—</td>
+<td>List configured brands</td>
+</tr>
+<tr>
+<td><code>add_brand</code></td>
+<td>name, industry, target_audience, aliases, blocked_words, brand_identity, tone_guidelines, cta_principles</td>
+<td>Create a brand profile</td>
+</tr>
+<tr>
+<td><code>get_config</code></td>
+<td>key</td>
+<td>Merged config, secrets redacted</td>
+</tr>
+<tr>
+<td><code>init_config</code></td>
+<td>project_dir</td>
+<td>Init <code>.automedia/</code> + default config</td>
+</tr>
+<tr>
+<td><code>configure_llm</code></td>
+<td>provider, model, api_key</td>
+<td>Configure LLM provider</td>
+</tr>
+<tr>
+<td><code>onboard</code></td>
+<td>brand_name, llm_provider, llm_key, base_url</td>
+<td>One-step onboarding</td>
+</tr>
+<tr>
+<td><code>get_redlines</code></td>
+<td>—</td>
+<td>List red-line constraints</td>
+</tr>
+<tr>
+<td><code>cancel_pipeline</code></td>
+<td>project_id</td>
+<td>Cancel a running pipeline</td>
+</tr>
+<tr>
+<td><code>pause_pipeline</code></td>
+<td>project_id</td>
+<td>Pause a running pipeline</td>
+</tr>
+<tr>
+<td><code>resume_pipeline</code></td>
+<td>project_id</td>
+<td>Resume a paused pipeline</td>
+</tr>
+<tr>
+<td><code>retry_gate</code></td>
+<td>project_id, gate_name</td>
+<td>Mark a gate for retry</td>
+</tr>
+<tr>
+<td><code>skip_gate</code></td>
+<td>project_id, gate_name</td>
+<td>Mark a gate for skipping</td>
+</tr>
+<tr>
+<td><code>review_decision</code></td>
+<td>project_id, gate_name, action, reason, show_diff</td>
+<td>Approve/reject a pipeline paused at H0 (live HITL; same-process only)</td>
+</tr>
+<tr>
+<td><code>health_engine</code></td>
+<td>—</td>
+<td>Engine dependency health</td>
+</tr>
+<tr>
+<td><code>engine_health</code></td>
+<td>—</td>
+<td>Deprecated: use health_engine</td>
+</tr>
+<tr>
+<td><code>update_engine_config</code></td>
+<td>modality, setting, value</td>
+<td>Update engine config</td>
+</tr>
+<tr>
+<td><code>help_mcp</code></td>
+<td>—</td>
+<td>Categorized tool listing</td>
+</tr>
+<tr>
+<td><code>mcp_help</code></td>
+<td>—</td>
+<td>Deprecated: use help_mcp</td>
+</tr>
+<tr>
+<td><code>list_overridable_templates</code></td>
+<td>—</td>
+<td>List overridable prompt templates + override status</td>
+</tr>
+<tr>
+<td><code>list_workflows</code></td>
+<td>—</td>
+<td>List configured workflows from workflows.yaml</td>
+</tr>
+<tr>
+<td><code>approve_gate</code></td>
+<td>project_id, gate_name, modifications</td>
+<td>Approve a paused gate in director mode (HITL)</td>
+</tr>
+<tr>
+<td><code>reject_gate</code></td>
+<td>project_id, gate_name, reason</td>
+<td>Reject a paused gate (triggers failure handling)</td>
+</tr>
+<tr>
+<td><code>get_pending_approvals</code></td>
+<td>project_id</td>
+<td>List gates awaiting human approval in director mode</td>
+</tr>
+<tr>
+<td><code>list_validation_scenarios</code></td>
+<td>—</td>
+<td>List validation scenario library</td>
+</tr>
+<tr>
+<td><code>run_validation_scenario</code></td>
+<td>scenario_name, runs_root, save, context</td>
+<td>Run one validation scenario</td>
+</tr>
+<tr>
+<td><code>run_validation_suite</code></td>
+<td>scenarios_dir, runs_root, save, context</td>
+<td>Run the whole validation library; persist one suite record</td>
+</tr>
+<tr>
+<td><code>get_validation_report</code></td>
+<td>run_dir, runs_root</td>
+<td>Read a persisted run record</td>
+</tr>
+<tr>
+<td><code>validation_coverage_audit</code></td>
+<td>—</td>
+<td>Static coverage audit</td>
+</tr>
+<tr>
+<td><code>validation_matrix</code></td>
+<td>—</td>
+<td>Validation matrix render</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cli-commands-quick-reference-21-commands">CLI Commands Quick Reference (21 commands)<a class="headerlink" href="#cli-commands-quick-reference-21-commands" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Moved here from AGENTS.md §10 (2026-11-08, ops(A1)).</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>automedia run</code></td>
+<td>Run full production pipeline</td>
+</tr>
+<tr>
+<td><code>automedia pool</code></td>
+<td>Topic pool management (list, add, prune, attach-brief)</td>
+</tr>
+<tr>
+<td><code>automedia projects</code></td>
+<td>List and manage projects</td>
+</tr>
+<tr>
+<td><code>automedia distribute</code></td>
+<td>Distribute to platforms (D-gates: --platforms, --all, --dry-run)</td>
+</tr>
+<tr>
+<td><code>automedia effects</code></td>
+<td>Content analytics stats</td>
+</tr>
+<tr>
+<td><code>automedia adapter</code></td>
+<td>Platform adapter management</td>
+</tr>
+<tr>
+<td><code>automedia cron</code></td>
+<td>Execute scheduled cron jobs</td>
+</tr>
+<tr>
+<td><code>automedia account</code></td>
+<td>Account management (connect, add, login-capture, rotate, list, health, disconnect, remove)</td>
+</tr>
+<tr>
+<td><code>automedia archive</code></td>
+<td>Archive a project (Red Line 8: --force unless published)</td>
+</tr>
+<tr>
+<td><code>automedia demo</code> / <code>ui</code></td>
+<td>Credential-free sample run (fake LLM + local images, isolated sandbox); minimal local web UI (loopback only)</td>
+</tr>
+<tr>
+<td><code>automedia init</code></td>
+<td>Initialize configuration</td>
+</tr>
+<tr>
+<td><code>automedia doctor</code></td>
+<td>Check dependencies and environment health</td>
+</tr>
+<tr>
+<td><code>automedia omni</code></td>
+<td>Omni Triad operations (start, start-all, ingest, localize, format-output)</td>
+</tr>
+<tr>
+<td><code>automedia hitl</code></td>
+<td>Human-in-the-loop review operations</td>
+</tr>
+<tr>
+<td><code>automedia onboard</code></td>
+<td>Onboarding wizard</td>
+</tr>
+<tr>
+<td><code>automedia mcp</code></td>
+<td>MCP server management</td>
+</tr>
+<tr>
+<td><code>automedia history</code></td>
+<td>Pipeline execution history</td>
+</tr>
+<tr>
+<td><code>automedia pipeline</code></td>
+<td>Pipeline DAG export and state inspection (export-dag, state)</td>
+</tr>
+<tr>
+<td><code>automedia rollback</code></td>
+<td>Archive project, revert to draft</td>
+</tr>
+<tr>
+<td><code>automedia validate</code></td>
+<td>Validation suite (list, run, report, diff, coverage, matrix, sign)</td>
 </tr>
 </tbody>
 </table>
