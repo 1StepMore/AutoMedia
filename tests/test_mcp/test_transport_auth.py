@@ -120,6 +120,6 @@ class TestCreateServerUnchanged:
 
         server = create_server()
 
-        assert len(server._tool_manager._tools) == 68
+        assert len(server._tool_manager._tools) == 64  # 4 deprecated aliases retired in #424
         assert getattr(server, "_token_verifier", None) is None
         assert getattr(server.settings, "auth", None) is None

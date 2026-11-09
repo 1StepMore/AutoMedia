@@ -327,13 +327,11 @@ class TestServerCreation:
                 "analyze_content",
                 "approve_gate",
                 "archive_project",
-                "batch_run",
                 "cancel_pipeline",
                 "configure_llm",
                 "connect_account",
                 "disconnect_account",
                 "distribute_content",
-                "engine_health",
                 "evaluate_content_quality",
                 "extract_brief",
                 "format_output",
@@ -364,10 +362,8 @@ class TestServerCreation:
                 "list_workflows",
                 "localize_content",
                 "localize_output",
-                "mcp_help",
                 "onboard",
                 "pause_pipeline",
-                "pool_add_topic",
                 "publish_content",
                 "register_platform_adapter",
                 "reject_gate",
@@ -891,12 +887,12 @@ class TestResources:
 
 
 # ---------------------------------------------------------------------------
-# Tests for batch_run
+# Tests for run_batch
 # ---------------------------------------------------------------------------
 
 
 class TestBatchRun:
-    """Tests for :func:`automedia.mcp.tools.batch_run`."""
+    """Tests for :func:`automedia.mcp.tools.run_batch`."""
 
     @staticmethod
     def _make_result(
@@ -913,7 +909,7 @@ class TestBatchRun:
 
     def test_all_success(self) -> None:
         """All topics succeed — returns all results with passed=total."""
-        from automedia.mcp.tools import batch_run
+        from automedia.mcp.tools import run_batch
 
         with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
             mock_run.side_effect = [
@@ -921,7 +917,7 @@ class TestBatchRun:
                 self._make_result(project_id="pid_002"),
                 self._make_result(project_id="pid_003"),
             ]
-            result = batch_run(
+            result = run_batch(
                 topics=["topic A", "topic B", "topic C"],
                 brand="TestBrand",
                 mode="auto",
@@ -938,7 +934,7 @@ class TestBatchRun:
 
     def test_partial_failure(self) -> None:
         """One topic fails — batch continues and reports correctly."""
-        from automedia.mcp.tools import batch_run
+        from automedia.mcp.tools import run_batch
 
         with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
             mock_run.side_effect = [
@@ -946,7 +942,7 @@ class TestBatchRun:
                 Exception("Pipeline crashed"),
                 self._make_result(project_id="pid_003"),
             ]
-            result = batch_run(
+            result = run_batch(
                 topics=["topic A", "topic B", "topic C"],
                 brand="TestBrand",
                 mode="auto",
@@ -962,11 +958,11 @@ class TestBatchRun:
 
     def test_all_fail(self) -> None:
         """All topics fail — passed=0, failed=total."""
-        from automedia.mcp.tools import batch_run
+        from automedia.mcp.tools import run_batch
 
         with patch("automedia.pipelines.runner.run_full_pipeline") as mock_run:
             mock_run.side_effect = Exception("always fails")
-            result = batch_run(
+            result = run_batch(
                 topics=["t1", "t2"],
                 brand="TestBrand",
                 mode="auto",
@@ -980,9 +976,9 @@ class TestBatchRun:
 
     def test_empty_topics(self) -> None:
         """Empty topic list — total=0."""
-        from automedia.mcp.tools import batch_run
+        from automedia.mcp.tools import run_batch
 
-        result = batch_run(topics=[], brand="TestBrand", mode="auto")
+        result = run_batch(topics=[], brand="TestBrand", mode="auto")
         assert result["total"] == 0
         assert result["passed"] == 0
         assert result["failed"] == 0

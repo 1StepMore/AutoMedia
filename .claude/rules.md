@@ -4,7 +4,7 @@
 AutoMedia is an automated media production pipeline. Python 3.11+ with typer CLI, mcp SDK, Pydantic 2.x.
 
 ## Entry Points
-- MCP Server: `python -m automedia.mcp.server` (68 tools)
+- MCP Server: `python -m automedia.mcp.server` (64 tools)
 - CLI: `automedia <subcommand>` (21 commands)
 - SDK: `from automedia import run_full_pipeline`
 

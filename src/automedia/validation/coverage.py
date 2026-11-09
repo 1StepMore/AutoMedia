@@ -83,9 +83,10 @@ Static wrinkle: ``server.py`` imports ``analyze_content`` under the alias
 ``effects_analyze_content`` (line 46) and registers the imported name;
 FastMCP keys ``fn.__name__``, so the callable surface is ``analyze_content``.
 The declared set therefore resolves import aliases statically (the analogue
-of ``fn.__name__``) and honors explicit ``name=`` kwargs when present
-(pool_add_topic, batch_run, engine_health, mcp_help — today identical to the
-function names).
+of ``fn.__name__``) and honors explicit ``name=`` kwargs when present.
+Historically the four deprecated tool aliases (pool_add_topic, batch_run,
+engine_health, mcp_help) relied on that ``name=`` support; they were retired
+in #424 and the deprecated bucket now exists for future deprecations only.
 
 The scenarios are loaded through ``automedia.validation.loader``, so a
 scenario file that fails to load fails the audit loudly (schema conformance

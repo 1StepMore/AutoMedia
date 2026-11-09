@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-import warnings
 from typing import Any
 
 import yaml
@@ -145,13 +144,3 @@ def health_engine() -> dict[str, Any]:
         )
     except AutoMediaError as exc:
         return error_response(MCPErrorCode.ENGINE_ERROR, str(exc))
-
-
-def engine_health() -> dict[str, Any]:
-    """⚠️ DEPRECATED: Use :func:`health_engine` instead."""
-    warnings.warn(
-        "engine_health is deprecated, use health_engine instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return health_engine()

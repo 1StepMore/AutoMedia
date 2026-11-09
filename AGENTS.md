@@ -32,7 +32,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 ## 2. Three Entry Points
 | Layer | Command | Description |
 |-------|---------|-------------|
-| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 68 tools |
+| MCP Server | `python -m automedia.mcp.server` | JSON-RPC over stdio, 64 tools |
 | CLI | `automedia <subcommand>` | 21 commands via typer |
 | SDK | `from automedia import run_full_pipeline` | Python API |
 
@@ -41,7 +41,7 @@ Full tree: [agent-reference §Directory Layout](docs/dev/agent-reference.md#dire
 ```
 src/automedia/
 ├── core/ pipelines/ gates/   # config_loader · runner.py + gate_plan.py + dag.py (26 nodes) · 33 gates
-├── cli/ mcp/   # Typer CLI (21 commands) · FastMCP server (68 tools)
+├── cli/ mcp/   # Typer CLI (21 commands) · FastMCP server (64 tools)
 ├── engines/ validation/ effects/   # media engine backends · validation layer · content analytics
 ├── detectors/ hooks/ adapters/ accounts/ omni/ decision/ hitl/ pool/ cron/ prompts/ manifests/ asset_library/
 ├── features/ templates/   # open-core tier markers · hyperframes render templates
@@ -104,7 +104,7 @@ Full recipes (add a gate / CLI command / platform adapter / MCP tool / env var):
 
 ## 9. MCP Tools Quick Reference
 
-All 68 tools (incl. 4 deprecated aliases) with full parameter tables: [agent-reference §MCP Tools Quick Reference](docs/dev/agent-reference.md#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases). stdio transport; start with `python -m automedia.mcp.server`; file ops gated by the `mcp_allowlist.yaml` path allowlist.
+All 64 tools with full parameter tables: [agent-reference §MCP Tools Quick Reference](docs/dev/agent-reference.md#mcp-tools-quick-reference-64-tools). stdio transport; start with `python -m automedia.mcp.server`; file ops gated by the `mcp_allowlist.yaml` path allowlist.
 
 ## 10. CLI Commands Quick Reference
 
@@ -113,7 +113,7 @@ All 21 commands: [agent-reference §CLI Commands Quick Reference](docs/dev/agent
 ## 11. Validation Layer
 AutoMedia is agent-oriented, so agents are the testers and humans are the director. The single
 schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md` is the onboarding guide.
-- Scenario library: count is authoritative from `automedia validate matrix` output (162 scenarios as-of 2026-11-04; do not hard-code a count elsewhere); `scenarios/baseline/` holds the committed pre-flight baseline.
+- Scenario library: count is authoritative from `automedia validate matrix` output (158 scenarios as-of 2026-11-09; do not hard-code a count elsewhere); `scenarios/baseline/` holds the committed pre-flight baseline.
 - CLI: `automedia validate list|run|report|diff|coverage|matrix|sign`
 - MCP: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`
 - The validation-driving surface is the CLI and MCP server only; the SDK is a product entry point, explicitly out of validation scope.

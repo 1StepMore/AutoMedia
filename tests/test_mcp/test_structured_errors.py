@@ -16,7 +16,6 @@ import pytest
 from automedia.exceptions import AutoMediaError
 from automedia.mcp.tools import (
     archive_project,
-    batch_run,
     cancel_pipeline,
     get_pipeline_progress,
     get_pipeline_status,
@@ -24,6 +23,7 @@ from automedia.mcp.tools import (
     pause_pipeline,
     resume_pipeline,
     retry_gate,
+    run_batch,
     run_pipeline,
     run_pipeline_from_strategy,
     search_assets,
@@ -347,16 +347,16 @@ class TestSuccessPaths:
 
 
 # ===================================================================
-# Tests: batch_run error paths
+# Tests: run_batch error paths
 # ===================================================================
 
 
 class TestBatchRunErrors:
-    """Tests for batch_run error paths."""
+    """Tests for run_batch error paths."""
 
     def test_invalid_mode_returns_with_errors_in_results(self) -> None:
-        """batch_run with invalid mode includes error in each result entry."""
-        result = batch_run(
+        """run_batch with invalid mode includes error in each result entry."""
+        result = run_batch(
             topics=["topic1", "topic2"],
             brand="brand",
             mode="invalid_mode",
@@ -368,8 +368,8 @@ class TestBatchRunErrors:
             assert r["status"] == "failed"
 
     def test_empty_topics_list_returns_empty_results(self) -> None:
-        """batch_run with empty topics returns success with no results."""
-        result = batch_run(
+        """run_batch with empty topics returns success with no results."""
+        result = run_batch(
             topics=[],
             brand="brand",
         )
@@ -379,14 +379,14 @@ class TestBatchRunErrors:
         assert result["total"] == 0
 
     def test_success_path(self) -> None:
-        """batch_run success uses success_response."""
+        """run_batch success uses success_response."""
         mock_result = MagicMock()
         mock_result.project_id = "proj_abc"
         mock_result.status = "success"
         mock_result.error = None
 
         with patch("automedia.pipelines.runner.run_full_pipeline", return_value=mock_result):
-            result = batch_run(
+            result = run_batch(
                 topics=["topic1"],
                 brand="brand",
                 mode="auto",

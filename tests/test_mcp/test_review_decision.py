@@ -426,4 +426,5 @@ class TestReviewDecisionRegistration:
         from automedia.mcp.tools import health_check
 
         result = health_check()
-        assert result["tools_count"] == 68
+        # 4 deprecated aliases retired in #424: 64 live tools.
+        assert result["tools_count"] == 64

@@ -43,21 +43,3 @@ def test_all_tool_names_follow_convention() -> None:
         f"Expected pattern: {TOOL_NAME_PATTERN.pattern!r}\n"
         f"To add an intentional exception, add to _ALLOWED_VIOLATIONS in this file."
     )
-
-
-def test_tool_count_includes_aliases() -> None:
-    """The tool count includes both primary and deprecated alias names."""
-    from automedia.mcp.server import create_server
-
-    server = create_server()
-    names = list(server._tool_manager._tools.keys())
-
-    # Both new and old names should be present
-    for new_name, old_name in [
-        ("add_pool_topic", "pool_add_topic"),
-        ("run_batch", "batch_run"),
-        ("health_engine", "engine_health"),
-        ("help_mcp", "mcp_help"),
-    ]:
-        assert new_name in names, f"New tool name {new_name!r} should be registered"
-        assert old_name in names, f"Old tool name {old_name!r} should still be registered as alias"

@@ -17,7 +17,7 @@ non-existent directory, the library is intentionally unavailable and this
 module skips.  NOT e2e-marked: every test is fast (no network, no LLM, no
 CLI subprocess) and runs in the default pytest gate.
 
-Committed-library expectations (as of 2026-09-13): 108 scenarios, 68 MCP
+Committed-library expectations (as of 2026-09-13): 108 scenarios, 64 MCP
 tools after W4-T2 + issue #86 + the graph-engineering ``get_pipeline_state``
 tool + the productization-roadmap ``get_gate_report`` and
 ``review_decision`` tools + the gap R-09 ``run_validation_suite`` tool
@@ -129,17 +129,18 @@ class TestRegistration:
 
     def test_six_validation_tools_registered(self, server: FastMCP) -> None:
         """59 pre-existing + 6 validation + get_pipeline_state + get_gate_report
-        + review_decision = 68 (the R-09 suite tool is the 6th)."""
+        + review_decision = 64 (68 minus the four retired aliases; the R-09
+        suite tool is the 6th)."""
         names = set(server._tool_manager._tools.keys())
         assert names >= EXPECTED_VALIDATION_TOOLS, (
             f"missing validation tools: {sorted(EXPECTED_VALIDATION_TOOLS - names)}"
         )
-        assert len(names) == 68
+        assert len(names) == 64
 
     def test_tools_appear_in_help_mcp(self, server: FastMCP) -> None:
         """The registry population in create_server picks up the new tools."""
         payload = _call_tool(server, "help_mcp", {})
-        assert payload["tool_count"] == 68
+        assert payload["tool_count"] == 64
         listed = {
             entry["name"] for category in payload["categories"].values() for entry in category
         }
@@ -328,7 +329,7 @@ class TestValidationCoverageAudit:
 
     The committed ``scenarios/baseline/coverage-audit.json`` is regenerated
     by W4-T7 (``python -m automedia.validation.coverage``) — it now shows
-    mcp 68 declared / 67 covered / 0 missing (the W4-T7 meta scenario
+    mcp 64 declared / 63 covered / 0 missing (the W4-T7 meta scenario
     ``validation-self-check`` covers run/get/audit and ``validation-matrix-meta``
     covers ``validation_matrix``; the productization-roadmap todo-6
     ``get_gate_report`` tool is covered by ``gate-report-surface`` and the
@@ -342,21 +343,17 @@ class TestValidationCoverageAudit:
         payload = _call_tool(server, "validation_coverage_audit", {})
         assert payload["success"] is True
         summary = payload["summary"]
-        # Live denominator after gap T-12 (4 deprecated aliases reported
-        # separately): 64 live declared / 64 used / 63 covered.
+        # Live denominator after #424 retired the 4 deprecated aliases:
+        # 64 live declared / 64 used / 63 covered.
         assert summary["mcp_declared"] == 64
         assert summary["mcp_used"] == 64
         # the meta scenarios cover the validation tools (W4-T7's
         # validation-self-check plus validation-matrix-meta) -> missing = 0;
         # run_validation_suite is boundary-only (a success call would recurse).
         assert summary["mcp_covered"] == 63
-        assert summary["mcp_deprecated"] == 4
-        assert payload["deprecated_mcp"] == [
-            "batch_run",
-            "engine_health",
-            "mcp_help",
-            "pool_add_topic",
-        ]
+        assert summary["mcp_deprecated"] == 0
+        # The 4 deprecated aliases were retired in #424.
+        assert payload["deprecated_mcp"] == []
         assert summary["mcp_phantom"] == 0
         assert payload["phantom_mcp"] == []
         assert "list_validation_scenarios" in payload["covered_mcp"]

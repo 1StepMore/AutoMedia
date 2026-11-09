@@ -1,4 +1,4 @@
-"""AutoMedia MCP Server — stdio transport with 68 tools and 6 resources.
+"""AutoMedia MCP Server — stdio transport with 64 tools and 6 resources.
 
 Provides an MCP-compliant server exposing AutoMedia pipeline operations
 as LLM-callable tools.  All file-system operations are gated behind a
@@ -29,7 +29,6 @@ Usage::
 from __future__ import annotations
 
 import json
-import warnings
 from typing import TYPE_CHECKING, Any, cast
 
 from structlog import get_logger
@@ -81,10 +80,8 @@ from automedia.mcp.tools import (
     add_cron_schedule,
     approve_gate,
     archive_project,
-    batch_run,
     cancel_pipeline,
     configure_llm,
-    engine_health,
     evaluate_content_quality,
     extract_brief,
     format_output,
@@ -111,7 +108,6 @@ from automedia.mcp.tools import (
     localize_output,
     onboard,
     pause_pipeline,
-    pool_add_topic,
     publish_content,
     register_platform_adapter,
     reject_gate,
@@ -150,7 +146,6 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     "main",
     # Tool handlers
     "add_brand",
-    "batch_run",
     "run_batch",
     "configure_llm",
     "evaluate_content_quality",
@@ -169,7 +164,6 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     "get_project_assets",
     "archive_project",
     "list_topic_pool",
-    "pool_add_topic",
     "add_pool_topic",
     "publish_content",
     "register_platform_adapter",
@@ -192,7 +186,6 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     "remove_cron_schedule",
     "test_cron_schedule",
     # Engine health tool
-    "engine_health",
     "health_engine",
     # Account tools
     "connect_account",
@@ -214,7 +207,6 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
     # Allowlist helpers
     "_require_allowed",
     "check_path_allowed",
-    "mcp_help",
     "help_mcp",
     # Onboarding
     "onboard",
@@ -233,7 +225,7 @@ __all__ = [  # noqa: RUF022 - entries grouped by category; order intentional
 
 
 # ---------------------------------------------------------------------------
-# Tool registry cache for mcp_help — populated at registration time
+# Tool registry cache for help_mcp — populated at registration time
 # ---------------------------------------------------------------------------
 
 _tool_registry: dict[str, dict[str, Any]] = {}
@@ -320,29 +312,6 @@ def help_mcp() -> dict[str, Any]:
             "Use get_pipeline_progress to poll async tasks."
         ),
     }
-
-
-def mcp_help() -> dict[str, Any]:
-    """⚠️ DEPRECATED: Use :func:`help_mcp` instead.
-
-    Get a categorized listing of all available MCP tools with descriptions.
-
-    Use this to discover what tools are available at runtime — the output is
-    dynamically generated from the registered tool set rather than hardcoded.
-
-    Returns
-    -------
-    dict
-        ``{"categories": {...}, "tool_count": int, "hint": str}``
-        where *categories* maps category name → list of ``{name, description}``
-        objects sorted alphabetically within each group.
-    """
-    warnings.warn(
-        "mcp_help is deprecated, use help_mcp instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return help_mcp()
 
 
 # ---------------------------------------------------------------------------
@@ -476,7 +445,7 @@ def create_server() -> FastMCP:
     Returns
     -------
     FastMCP
-        A fully configured server with all 68 tools and 6 resources registered.
+        A fully configured server with all 64 tools and 6 resources registered.
 
     Raises
     ------
@@ -640,16 +609,6 @@ def create_server() -> FastMCP:
             "Returns the new topic id, title, category, and status."
         ),
     )(add_pool_topic)
-
-    mcp.tool(
-        name="pool_add_topic",
-        description=(
-            "⚠️ DEPRECATED: Use add_pool_topic instead. "
-            "Add a topic to the topic pool. "
-            "Takes title, optional category, and optional pool_db_path. "
-            "Returns the new topic id, title, category, and status."
-        ),
-    )(pool_add_topic)
 
     # ------------------------------------------------------------------
     # Cron schedule tools
@@ -838,19 +797,6 @@ def create_server() -> FastMCP:
             "Returns per-topic results with a pass/fail summary."
         ),
     )(run_batch)
-
-    mcp.tool(
-        name="batch_run",
-        description=(
-            "⚠️ DEPRECATED: Use run_batch instead. "
-            "Execute pipelines for multiple topics sequentially. "
-            "Takes a list of topics, brand, and optional mode "
-            "(auto, text_only, text_with_cover, video_only, qa_only, "
-            "image-carousel, social-thread, short-video). "
-            "A single topic failure does not stop the batch. "
-            "Returns per-topic results with a pass/fail summary."
-        ),
-    )(batch_run)
 
     mcp.tool(
         description=(
@@ -1062,16 +1008,6 @@ def create_server() -> FastMCP:
     )(health_engine)
 
     mcp.tool(
-        name="engine_health",
-        description=(
-            "⚠️ DEPRECATED: Use health_engine instead. "
-            "Check all engine-related dependencies (ComfyUI, hyperframes, "
-            "edge-tts, whisper, FFmpeg, Bun, Chrome, LLM API) and return "
-            "their installation and health status."
-        ),
-    )(engine_health)
-
-    mcp.tool(
         description=(
             "Update an engine configuration setting. "
             "Writes a YAML override to ~/.automedia/overrides/rules/. "
@@ -1156,16 +1092,7 @@ def create_server() -> FastMCP:
         ),
     )(help_mcp)
 
-    mcp.tool(
-        name="mcp_help",
-        description=(
-            "⚠️ DEPRECATED: Use help_mcp instead. "
-            "Get a categorized listing of all available MCP tools with descriptions. "
-            "Use this to discover what tools are available."
-        ),
-    )(mcp_help)
-
-    # Populate tool registry for mcp_help to introspect at call time
+    # Populate tool registry for help_mcp to introspect at call time
     _tool_registry.clear()
     for _name, _tool in mcp._tool_manager._tools.items():
         _tool_registry[_name] = {
@@ -1257,7 +1184,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="python3 -m automedia.mcp.server",
         description=(
-            "AutoMedia MCP Server — stdio transport by default (68 tools, 6 resources). "
+            "AutoMedia MCP Server — stdio transport by default (64 tools, 6 resources). "
             "Set AUTOMEDIA_MCP_TRANSPORT=streamable-http together with "
             "AUTOMEDIA_MCP_AUTH_TOKEN for an authenticated HTTP endpoint."
         ),
