@@ -22,7 +22,11 @@ DRAFT_GLOB = "01_content/drafts/*_draft.md"
 def _write_artifact(project: Path, name: str, content: str, mtime: float) -> Path:
     path = project / "01_content" / "drafts" / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    # newline="\n" keeps the on-disk bytes equal to ``content.encode()`` on
+    # every platform: the size assertion below compares against the in-memory
+    # string, and Windows text mode would otherwise translate \n to \r\n and
+    # add one byte per newline (#421).
+    path.write_text(content, encoding="utf-8", newline="\n")
     os.utime(path, (mtime, mtime))
     return path
 

@@ -293,6 +293,9 @@ jobs:
           --deselect=tests/test_mcp/test_topic_pool_persistence.py::TestCrossProcessPersistence::test_topic_added_in_one_process_is_listed_by_a_new_process
           tests/test_pool_db.py
           tests/test_media_production.py
+          # scripts-driven subprocess tests are platform-neutral and pin the
+          # byte-size contract that regressed on Windows CRLF once (#421).
+          tests/test_scripts
           -q --tb=short
 
   test-omni:
