@@ -2355,6 +2355,13 @@ like drift; the derived truth lives in <code>scripts/check-doc-consistency.py</c
 <td><strong>open</strong></td>
 <td><code>core/md5_tracker.py</code> atomicity fixed; cross-process interleaving remains.</td>
 </tr>
+<tr>
+<td>GAP-TEST-4</td>
+<td>L1–L4 lifecycle gates have no scenario proof (<code>missing.gates == ["L1","L2","L3","L4"]</code> in every coverage audit). Accepted for now, not closed: they are execution-reachable on command paths (<code>coverage.py</code> <code>COMMAND_PATH_REACHABLE_GATES</code> lists all four via archive/distribute/omni/publish), so the gap is "no scenario proves them yet", never "they cannot run"; archive refusal is additionally pinned by the <code>archive-refusal-redline8</code> hard scenario and the L2 gate by the CLI archive tests. Scenario designs that drive a real publish/distribute/localize surface need Owner input on fixtures — tracked here until then.</td>
+<td>issue #415 (2026-11-09)</td>
+<td><strong>open</strong></td>
+<td><code>tests/test_validation/test_w4_surface.py</code> pins the missing list so the gap stays visible; <code>automedia validate coverage</code> reports it on every audit.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="gap-open-open-core-boundary-discoverability">GAP-OPEN — open-core &amp; boundary discoverability<a class="headerlink" href="#gap-open-open-core-boundary-discoverability" title="Permanent link">&para;</a></h2>

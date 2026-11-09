@@ -2157,6 +2157,14 @@
 </code></pre></div>
 <hr />
 <h2 id="2026-09-30">【活区】当前差距矩阵（基线 2026-09-30）<a class="headerlink" href="#2026-09-30" title="Permanent link">&para;</a></h2>
+<h3 id="2026-11-09-issue-415">2026-11-09 口径修订：验证矩阵「未过」→「未执行/失败」分开报（issue #415）<a class="headerlink" href="#2026-11-09-issue-415" title="Permanent link">&para;</a></h3>
+<p><code>scripts/nightly_gap.py</code> 的验证矩阵小节改口径（属脚本判据，非冻结区 DoD）：</p>
+<ul>
+<li>hard 场景行由「未过：[…]」改为「<strong>失败 N 条（名单）；未执行（无记录）M 条：名单</strong>」——<code>last_status=None</code> 是「没人跑过」，不许伪装成「跑红了」；两者仍聚合在 JSON 的 <code>hard_not_passed</code>（向后兼容），新增 <code>hard_failed</code> / <code>hard_unexecuted</code>。</li>
+<li>新增 <code>--validate-scope none|hard|all</code>（默认 <code>none</code> = 只读矩阵，行为不变）：<code>hard</code> 真跑 hard 边界场景并把每条真实 status 直接写进报告（单条 run 的 suite 记录会被 <code>latest.txt</code> 指走，矩阵不保留，故不过矩阵转述）；<code>all</code> 整库 <code>validate run --all</code> 落一份完整记录并刷新 <code>latest.txt</code>，矩阵从此有真实 <code>last_status</code> —— <strong>建议每周一次</strong>。</li>
+<li><code>gates_unreachable</code> 计数旁现在并列具体门名（取自 <code>validate coverage</code> 的 <code>unreachable_gates</code>，如 <code>unreachable=2（G4、G5）</code>），「看了不知道该修谁」的读数不再出现。</li>
+<li>最近整库 suite 记录的时间戳（<code>validation-runs/latest.txt</code>）一并展示，区分「从未执行」与「记录过期」。</li>
+</ul>
 <h3 id="2026-10-21-main-df483ea">2026-10-21 夜间复跑（在最新 main <code>df483ea</code> 上）<a class="headerlink" href="#2026-10-21-main-df483ea" title="Permanent link">&para;</a></h3>
 <p>批跑（02:00，systemd <code>nightly-gap.service</code>，网关进程树外）：<code>.venv/bin/python scripts/nightly_gap.py</code> <strong>exit 0 —— 三轨全达标（机器可判部分完成）</strong>（<code>nightly/gap.json</code>：<code>gap: []</code>、<code>passing_units: 3</code>）。</p>
 <ul>

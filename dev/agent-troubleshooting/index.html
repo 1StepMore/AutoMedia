@@ -1329,6 +1329,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#12-pushing-when-githubcom-is-unreachable-git-data-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Pushing When github.com Is Unreachable (Git Data API)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3578,6 +3589,22 @@ automedia<span class="w"> </span>account<span class="w"> </span>health<span clas
 </ul>
 <hr />
 <p>For detailed gate failure mode troubleshooting, see <code>docs/dev/gate-failure-modes.md</code>.</p>
+<h2 id="12-pushing-when-githubcom-is-unreachable-git-data-api">12. Pushing When github.com Is Unreachable (Git Data API)<a class="headerlink" href="#12-pushing-when-githubcom-is-unreachable-git-data-api" title="Permanent link">&para;</a></h2>
+<p>On partitioned networks <code>github.com:443</code> (git over HTTPS) and <code>ssh:22</code> can be
+unreachable while <code>api.github.com</code> still answers — plain <code>git push</code> then fails
+with a connect timeout. <code>scripts/push_via_api.py</code> rebuilds the branch
+commit-by-commit through the Git Data API and verifies every created object
+against the local SHA, so the remote branch ends up byte-identical to the
+local one:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/push_via_api.py<span class="w"> </span>.<span class="w"> </span>--branch<span class="w"> </span>&lt;branch&gt;<span class="w">          </span><span class="c1"># fast-forward push</span>
+python<span class="w"> </span>scripts/push_via_api.py<span class="w"> </span>.<span class="w"> </span>--branch<span class="w"> </span>&lt;branch&gt;<span class="w"> </span>--force<span class="w">  </span><span class="c1"># history rewrites only</span>
+</code></pre></div>
+<p>Requirements and limits (details in the script docstring): the token from
+<code>gh auth token</code> needs the <code>repo</code> scope (fine-grained: Contents read/write);
+commits must be unsigned (a GPG signature lives inside the object and cannot
+be reproduced through the API — the script aborts rather than push a silently
+different SHA); the ref update is fast-forward unless <code>--force</code>. The script
+never prints the token.</p>
 
 
 
