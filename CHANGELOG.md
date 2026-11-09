@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.15.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.4...automedia-v1.15.0) (2026-11-09)
+
+
+### Features
+
+* **mcp:** retire the four deprecated tool aliases (68 -&gt; 64 tools) ([#437](https://github.com/1StepMore/AutoMedia/issues/437)) ([170115b](https://github.com/1StepMore/AutoMedia/commit/170115b2e7e230fbbe44c85c977cd25f1a60d1d7))
+* **video:** fail instead of silently degrading to slideshow, unify V-gate criteria ([#414](https://github.com/1StepMore/AutoMedia/issues/414)) ([#439](https://github.com/1StepMore/AutoMedia/issues/439)) ([ef436e4](https://github.com/1StepMore/AutoMedia/commit/ef436e4a706de080eeed6fda1f35c12d8f53122b))
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#443](https://github.com/1StepMore/AutoMedia/issues/443)) ([be412b7](https://github.com/1StepMore/AutoMedia/commit/be412b7a734e5b87dd605068f2eecd0840a893b0))
+
 ## [1.14.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.3...automedia-v1.14.4) (2026-11-08)
 
 
