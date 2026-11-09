@@ -37,6 +37,35 @@ _DANGLING_CUE_RE = re.compile(
 
 _HSPACE_RUN_RE = re.compile(r"[ \t]{2,}")
 
+#: Paired markdown emphasis markers (``**粗体**`` / ``__粗体__`` / ``*斜体*`` /
+#: ``_斜体_``).  The narrator reads the markers themselves out loud ("星号星号",
+#: issue #444), so only the emphasised words may survive.  Single underscores
+#: inside a word (``a_b_c``) are not emphasis and stay untouched.
+_EMPHASIS_PAIR_RES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), r"\1"),
+    (re.compile(r"__(.+?)__", re.DOTALL), r"\1"),
+    (re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", re.DOTALL), r"\1"),
+    (re.compile(r"(?<!\w)_(?!_)(.+?)(?<!_)_(?!\w)", re.DOTALL), r"\1"),
+)
+
+#: Stray runs left behind by unpaired markers (``**`` / ``__``).  Never prose,
+#: always read aloud — drop them.
+_STRAY_EMPHASIS_RE = re.compile(r"\*{2,}|_{2,}")
+
+
+def strip_emphasis_markers(text: str) -> str:
+    """Unwrap markdown emphasis so only the spoken words remain (#444).
+
+    ``**主题**：先跑通流程`` becomes ``主题：先跑通流程``.  Paired markers are
+    unwrapped first; whatever run of ``**``/``__`` survives is an unpaired
+    marker, which is still unreadable aloud and is removed.  A single
+    underscore inside a word (``a_b_c``) is not emphasis and is preserved.
+    """
+    cleaned = text or ""
+    for pattern, replacement in _EMPHASIS_PAIR_RES:
+        cleaned = pattern.sub(replacement, cleaned)
+    return _STRAY_EMPHASIS_RE.sub("", cleaned)
+
 
 def strip_stage_directions(text: str) -> str:
     """Remove bracketed production cues, keeping the prose around them."""
@@ -66,4 +95,5 @@ def strip_narration_markup(text: str) -> str:
         line = re.sub(r"^(?:[-*>]\s*)+", "", line).strip()
         if line:
             lines.append(line)
-    return strip_stage_directions("\n".join(lines))
+    cleaned = strip_emphasis_markers("\n".join(lines))
+    return strip_stage_directions(cleaned)

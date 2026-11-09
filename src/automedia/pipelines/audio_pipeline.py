@@ -461,20 +461,9 @@ class AudioPipeline:
         the sentence split matters, otherwise a cue break lands inside the
         bracket and the subtitle opens with "音效：".
         """
-        from automedia.pipelines.narration import strip_stage_directions
+        from automedia.pipelines.narration import strip_narration_markup
 
-        text = strip_stage_directions(text or "")
-        cleaned_lines: list[str] = []
-        for raw_line in (text or "").splitlines():
-            line = raw_line.strip()
-            # Markdown headings are section labels, not narration — the
-            # narrator does not read them either (runner._strip_narration_markup).
-            if not line or line.startswith("#"):
-                continue
-            line = re.sub(r"^(?:[-*>]\s*)+", "", line).strip()
-            if line:
-                cleaned_lines.append(line)
-        cleaned = "\n".join(cleaned_lines).strip()
+        cleaned = strip_narration_markup(text or "")
         if not cleaned:
             return []
 
