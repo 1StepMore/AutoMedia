@@ -10,13 +10,13 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 
 **Role routing (answer before starting): (a)** What role did the Owner assign? **(b)** Read the contract? **(c)** What is Done?
 
-| Assigned role | Contract (single source of truth) | Fixed return format | Never touch |
-|---|---|---|---|
-| Coder | `.agents/roles/coder.md` | 4-section PR description | main direct push, CI gates, roles/, constitution, expectations, secrets, new deps |
-| Maintainer | `.agents/roles/maintainer.md` | verdict + basis + follow-up | landing code directly, changing API semantics, overriding Tester, bypassing PR |
-| Tester | `.agents/roles/tester.md` | fixed JSON verdict | product source, expectations, CI gates |
-| User | `.agents/roles/user.md` | issue four-section report | any repo write |
-| Unclear / conflicting | — | `ESCALATE: <reason>` | stop all actions |
+| Assigned role | Contract (single source of truth) | Read order (strict sequence) | Fixed return format | Never touch |
+|---|---|---|---|---|
+| Coder | `.agents/roles/coder.md` | root AGENTS.md §0 → nearest directory AGENTS.md → constitution → contract → assigned issue spec | 4-section PR description | main direct push, CI gates, roles/, constitution, expectations, secrets, new deps |
+| Maintainer | `.agents/roles/maintainer.md` | root AGENTS.md §0 → constitution → contract → `docs/dev/DEBT.md` | verdict + basis + follow-up | landing code directly, changing API semantics, overriding Tester, bypassing PR |
+| Tester | `.agents/roles/tester.md` | root AGENTS.md §0 → constitution → expectations INDEX → contract | fixed JSON verdict | product source, expectations, CI gates |
+| User | `.agents/roles/user.md` | `docs/user/` → contract | issue four-section report | any repo write |
+| Unclear / conflicting | — | — | `ESCALATE: <reason>` | stop all actions |
 
 **Non-negotiable principles:** `.specify/memory/constitution.md`. **Expectations (acceptance source of truth):** `scenarios/` (indexed by `.agents/expectations/INDEX.md`; only the Owner changes expectations — a Tester never greens a suite by editing code or expectations).
 

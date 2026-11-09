@@ -314,6 +314,42 @@ def test_agent_config_only_diff_is_internal(scope: ModuleType) -> None:
     assert result.passed is True
 
 
+# --- Regression: the governance layer is internal (issue #419) ---
+#
+# PR #418 touched only .agents/ and .specify/ governance files (roles,
+# constitution, audit runlog) and was rejected by this gate: the internal-path
+# list predates the governance layer, so process files read as user-visible
+# and every governance PR needed a manual release:skip label (calibration #15).
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".agents/roles/coder.md",
+        ".agents/audit/CALIBRATION-automedia.md",
+        ".agents/expectations/INDEX.md",
+        ".specify/memory/constitution.md",
+    ],
+)
+def test_governance_paths_are_internal(scope: ModuleType, path: str) -> None:
+    assert scope.is_internal_path(path) is True
+
+
+def test_governance_only_diff_is_internal(scope: ModuleType) -> None:
+    result = scope.assess_release_scope(
+        [".agents/audit/CALIBRATION-automedia.md", ".specify/memory/constitution.md"],
+        "chore",
+        [],
+    )
+    assert result.passed is True
+
+
+def test_governance_prefixes_do_not_swallow_lookalikes(scope: ModuleType) -> None:
+    """``.agents``/``.specify`` are prefix-matched with a trailing slash."""
+    for path in ("agents/file.md", ".agentsx/file.md", ".specifyx/file.md"):
+        assert scope.is_internal_path(path) is False
+
+
 def test_source_paths_stay_user_visible(scope: ModuleType) -> None:
     """The new prefixes must not swallow real package code."""
     for path in ("src/automedia/core/project.py", "docs/index.md", "README.md"):

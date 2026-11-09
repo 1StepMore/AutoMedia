@@ -100,6 +100,11 @@ _DEFAULT_DOC_FILES: tuple[str, ...] = (
     "AGENTS.md",
     "docs/index.md",
     "docs/dev/doc-inventory.md",
+    # Agent-client rules file, auto-loaded by Claude Code every session. It
+    # carried stale counts (50 tools / 12 commands / G0-G5) for months
+    # because no scan covered it (issue #420, inventory S-30) — numeric
+    # claims there are now gated like every other scanned doc.
+    ".claude/rules.md",
     "src/automedia/mcp/__init__.py",
     "src/automedia/mcp/server.py",
 )
