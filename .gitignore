@@ -12,6 +12,7 @@
 202[0-9][0-9][0-9][0-9][0-9][0-9]_*
 PRD/
 /hyperframes-workflow-templates/
+/hyperframes-remotion-kit-*.zip
 
 # ===== Pipeline Output Directories =====
 0[1-6]_*/
@@ -31,6 +32,7 @@ docs/production-e2e-test-design.md
 # ===== Local config & tooling =====
 .automedia/
 .omo/
+.zcode/
 .trae/
 /.hermes/
 /.workbuddy/
