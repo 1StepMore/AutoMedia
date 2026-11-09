@@ -678,7 +678,7 @@ class TestRenderFFmpegFallback:
         ]
 
         output = str(tmp_path / "output.mp4")
-        result = HyperFramesVideoEngine().render(sample_assets, output)
+        result = HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         assert result == os.path.abspath(output)
         assert mock_all["run"].call_count == 3
@@ -705,7 +705,7 @@ class TestRenderFFmpegFallback:
         ]
 
         output = str(tmp_path / "output.mp4")
-        HyperFramesVideoEngine().render(sample_assets, output)
+        HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         # The second subprocess call should be the ffmpeg slideshow step 1
         step1_call_args = mock_all["run"].call_args_list[1]  # second call
@@ -742,7 +742,7 @@ class TestRenderFFmpegFallback:
 
         output = str(tmp_path / "output.mp4")
         with pytest.raises(EngineExecutionError) as excinfo:
-            HyperFramesVideoEngine().render(sample_assets, output)
+            HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         error_msg = str(excinfo.value)
         assert "FFmpeg" in error_msg or "ffmpeg" in error_msg
@@ -763,7 +763,7 @@ class TestRenderFFmpegFallback:
         mock_all["isfile"].return_value = False
 
         output = str(tmp_path / "output.mp4")
-        result = HyperFramesVideoEngine().render(minimal_assets, output)
+        result = HyperFramesVideoEngine({"allow_degrade": True}).render(minimal_assets, output)
 
         assert result == os.path.abspath(output)
         # Only one ffmpeg subprocess call (step 1 — slideshow only)
@@ -793,7 +793,7 @@ class TestRenderFFmpegFallback:
         ]
 
         output = str(tmp_path / "output.mp4")
-        HyperFramesVideoEngine().render(sample_assets, output)
+        HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         mock_all["rmtree"].assert_any_call(
             "/tmp/hyperframes_test",
@@ -823,7 +823,9 @@ class TestRenderErrors:
         """Neither binary on PATH → ``EngineExecutionError``."""
         output = str(tmp_path / "output.mp4")
         with pytest.raises(EngineExecutionError) as excinfo:
-            HyperFramesVideoEngine().render(sample_assets, output)
+            # degrade allowed: the fallback path resolves to the neither-tool
+            # error naming both hyperframes and ffmpeg (#414 keeps this shape)
+            HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         error_msg = str(excinfo.value)
         assert "hyperframes" in error_msg
@@ -903,7 +905,7 @@ class TestTempCleanup:
 
         output = str(tmp_path / "output.mp4")
         with pytest.raises(EngineExecutionError):
-            HyperFramesVideoEngine().render(minimal_assets, output)
+            HyperFramesVideoEngine({"allow_degrade": True}).render(minimal_assets, output)
 
         mock_all["rmtree"].assert_called_once_with(
             mock_all["mkdtemp"].return_value,
@@ -1580,7 +1582,7 @@ class TestDegradedRenderIsVisible:
             _ok_result(),
         ]
 
-        engine = HyperFramesVideoEngine()
+        engine = HyperFramesVideoEngine({"allow_degrade": True})
         engine.render(sample_assets, str(tmp_path / "out.mp4"))
 
         assert engine.last_render_degraded is True
@@ -1644,7 +1646,7 @@ def _ffmpeg_command_for(
     tmp_path: Any,
 ) -> list[str]:
     """Run the fallback renderer and return the slideshow (step 1) argv."""
-    HyperFramesVideoEngine().render(assets, str(tmp_path / "out.mp4"))
+    HyperFramesVideoEngine({"allow_degrade": True}).render(assets, str(tmp_path / "out.mp4"))
     for call_args in mock_all["run"].call_args_list:
         cmd = call_args.args[0] if call_args.args else call_args.kwargs.get("args", [])
         if cmd and "ffmpeg" in str(cmd[0]) and "-pattern_type" in cmd:
@@ -1739,3 +1741,69 @@ class TestLocateGsap:
         monkeypatch.chdir(tmp_path)
 
         assert HyperFramesVideoEngine()._locate_gsap({}, None) is None
+
+
+class TestDegradeOptIn:
+    """#414: a failed render must NOT silently degrade unless explicitly allowed."""
+
+    def test_failed_render_raises_instead_of_degrading_by_default(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        """hyperframes fails + ffmpeg available + no allow_degrade ⇒ raise, no slideshow."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+        mock_all["run"].return_value = _fail_result(code=1)
+        output = str(tmp_path / "out.mp4")
+
+        with pytest.raises(EngineExecutionError):
+            HyperFramesVideoEngine().render(sample_assets, output)
+
+        # Only the hyperframes attempt ran — ffmpeg was never invoked and no
+        # degraded file appeared on disk.
+        assert mock_all["run"].call_count == 1
+        assert not os.path.exists(output)
+
+    def test_missing_cli_raises_when_degrade_disabled(
+        self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
+    ) -> None:
+        """No hyperframes CLI + ffmpeg present + no allow_degrade ⇒ raise, no slideshow."""
+        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+        }.get(x)
+        output = str(tmp_path / "out.mp4")
+
+        with pytest.raises(EngineExecutionError) as excinfo:
+            HyperFramesVideoEngine().render(sample_assets, output)
+
+        assert "allow_degrade" in str(excinfo.value)
+        mock_all["run"].assert_not_called()
+        assert not os.path.exists(output)
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            (True, True),
+            (False, False),
+            ("1", True),
+            ("true", True),
+            ("YES", True),
+            ("on", True),
+            ("0", False),
+            ("false", False),
+            ("", False),
+        ],
+    )
+    def test_degrade_allowed_parsing(self, raw: Any, expected: bool) -> None:
+        engine = HyperFramesVideoEngine({"allow_degrade": raw})
+        assert engine._degrade_allowed() is expected
+
+    def test_env_override_reaches_engine_config(self, monkeypatch: Any) -> None:
+        """``AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE`` lands in config (#414)."""
+        from automedia.core.config_loader import _env_to_config
+
+        monkeypatch.setenv("AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE", "1")
+        cfg = _env_to_config()
+        assert cfg["engines"]["video"]["hyperframes"]["allow_degrade"] == "1"
+        assert HyperFramesVideoEngine(cfg["engines"]["video"]["hyperframes"])._degrade_allowed()

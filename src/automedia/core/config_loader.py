@@ -150,6 +150,16 @@ def _env_to_config() -> dict[str, Any]:
     # Non-LLM special key remapping (flatter nesting than generic split)
     _extra_key_map: dict[str, list[str]] = {
         "tavily_api_key": ["tavily", "api_key"],
+        # #414: the video engine's degrade switch is a single underscore key;
+        # the generic split would nest it as allow/degrade. Spelled out so
+        # AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE lands exactly on
+        # engines.video.hyperframes.allow_degrade.
+        "engines_video_hyperframes_allow_degrade": [
+            "engines",
+            "video",
+            "hyperframes",
+            "allow_degrade",
+        ],
     }
 
     for key, value in {**dotenv_overlay(), **os.environ}.items():

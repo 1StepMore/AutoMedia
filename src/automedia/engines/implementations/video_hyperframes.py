@@ -41,19 +41,22 @@ class HyperFramesVideoEngine(BaseVideoEngine):
        (project directory as positional argument, per ``hyperframes
        render --help`` — there is no ``--assets`` option).
     3. On success return ``output_path``.
-    4. On failure, if ``ffmpeg`` is available, fall back to the FFmpeg
-       slideshow path.
+    4. On failure: **degrade to the FFmpeg slideshow only when
+       ``engines.video.hyperframes.allow_degrade`` is enabled**; otherwise
+       re-raise so the pipeline reports the render failure instead of
+       shipping a slideshow that looks like a finished video (#414).
 
     The CLI itself is resolved via :meth:`_resolve_cli_base` with the
     priority ``cli_command`` > ``cli_path`` > ``PATH`` lookup, so both
     a global install and a per-project npm install (``npx hyperframes``
     or ``node <abs>/dist/cli.js``) are supported.
 
-    **Fallback path** — ``ffmpeg`` slideshow:
+    **Fallback path** — ``ffmpeg`` slideshow (only with ``allow_degrade``):
 
     1. Build a slideshow video from the image sequence.
     2. Mux the audio track onto the result.
-    3. Write the final file to ``output_path``.
+    3. Write the final file to ``output_path``. The runner marks the
+       artifact degraded (``render-meta.json`` sidecar + gate-report note).
 
     **When both tools are absent**, :meth:`check_available` returns
     ``(False, ...)``.  If the engine is used anyway, :meth:`render` raises
@@ -71,6 +74,25 @@ class HyperFramesVideoEngine(BaseVideoEngine):
 
     #: Why the primary path failed, verbatim (command exit code + stderr tail).
     last_render_reason: str = ""
+
+    #: Truthy strings accepted for the ``allow_degrade`` config key, which may
+    #: arrive as a YAML bool or as a string via the generic
+    #: ``AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE`` env override.
+    _TRUTHY = ("1", "true", "yes", "on")
+
+    def _degrade_allowed(self) -> bool:
+        """Whether a failed/missing hyperframes render may degrade to slideshow.
+
+        Default is **False** (#414): a slideshow produced after a render
+        failure looks like a finished video on disk, the pipeline stays
+        ``success``, and the video track never gets gate evidence. Enabling
+        ``engines.video.hyperframes.allow_degrade`` restores the pre-#414
+        behaviour explicitly, with the output marked degraded by the runner.
+        """
+        raw = self._config.get("allow_degrade", False)
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in self._TRUTHY
 
     # ------------------------------------------------------------------
     # Constants for the FFmpeg fallback slideshow pipeline
@@ -218,8 +240,11 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         ------
         EngineExecutionError
             - If ``assets["images"]`` is empty.
-            - If the primary ``hyperframes`` call fails and ``ffmpeg`` is not
-              available for the fallback.
+            - If the primary ``hyperframes`` call fails and
+              ``allow_degrade`` is disabled (the failure propagates — no
+              slideshow is written behind the caller's back, #414).
+            - If degrade is enabled but the primary call fails and ``ffmpeg``
+              is not available for the fallback.
             - If the FFmpeg fallback itself fails.
         """
         images: list[str] = assets.get("images", [])
@@ -232,6 +257,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
 
         self.last_render_degraded = False
         self.last_render_reason = ""
+        degrade = self._degrade_allowed()
 
         # Try the primary path first
         cli_base: list[str] | None = self._resolve_cli_base()
@@ -245,13 +271,35 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 # like a success on disk.
                 self.last_render_degraded = True
                 self.last_render_reason = str(exc)
+                if not degrade:
+                    logger.warning(
+                        "hyperframes render failed; slideshow degrade is disabled "
+                        "(engines.video.hyperframes.allow_degrade) — failing the "
+                        "render instead of writing a slideshow (#414). reason=%s",
+                        str(exc),
+                    )
+                    raise
                 logger.warning(
                     "hyperframes render failed; falling back to the FFmpeg slideshow "
                     "(degraded output: still frame + audio). reason=%s",
                     str(exc),
                 )
 
-        # Fallback: FFmpeg slideshow
+        if not degrade:
+            # Degrade disabled and no primary failure to re-raise: the CLI was
+            # never found. Fail loudly rather than silently shipping a
+            # slideshow (#414).
+            raise EngineExecutionError(
+                engine_name=self.engine_name,
+                details=(
+                    "hyperframes CLI not found and slideshow degrade is disabled "
+                    "(engines.video.hyperframes.allow_degrade). Install the "
+                    "hyperframes CLI, configure cli_path/cli_command, or set "
+                    "allow_degrade: true to accept a marked FFmpeg slideshow."
+                ),
+            )
+
+        # Fallback: FFmpeg slideshow (opt-in via allow_degrade, #414)
         ffmpeg_path: str | None = shutil.which("ffmpeg")
         if ffmpeg_path:
             rendered = self._render_with_ffmpeg(assets, output_path)

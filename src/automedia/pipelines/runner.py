@@ -1516,8 +1516,13 @@ def _finalize_pipeline(
             )
         else:
             hint = (
-                "no video artifact was produced, so this mode's V gates were skipped; "
-                "configure a video engine or use a text-only mode"
+                "no video artifact was produced, so this mode's V gates were "
+                "skipped; with allow_degrade disabled a failed hyperframes "
+                "render fails the video track instead of writing a slideshow "
+                "(#414) — check the video_render_failed note in the gate "
+                "report, fix the renderer, or set "
+                "engines.video.hyperframes.allow_degrade to accept a marked "
+                "slideshow"
             )
         log.warning(
             "pipeline.video_not_produced",
@@ -1848,7 +1853,17 @@ def _media_stage_report_block(
     produced = [p for p in (gate_context.get("required_files") or []) if isinstance(p, str)]
     if not notes and not produced:
         return None
-    return {"notes": notes, "produced_files": produced}
+    block: dict[str, Any] = {"notes": notes, "produced_files": produced}
+    # 结构化降级字段（#414）：除了 notes 里的事件，报告顶层也给出
+    # degraded/renderer/reason，机器读者不必解析日志式注记。
+    degraded = gate_context.get("video_degraded")
+    if degraded:
+        block["video"] = {
+            "degraded": True,
+            "renderer": str(degraded),
+            "reason": str(gate_context.get("video_degraded_reason") or ""),
+        }
+    return block
 
 
 def _write_run_gate_report(
@@ -2196,7 +2211,9 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     （V0，无 lint 执行器）、``segments`` 与 ``voice_id``（V4，TTS 引擎不回传
     ``voice_params``）、``avg_brightness`` 等（V6，``opacity`` 无法从已合成帧
     反推）、``source_keywords`` 等（V3，无可信的关键词提取实现）。这些门会
-    如实报 ``skipped``。``entries``（V1）自 #387 起由
+    如实报 ``skipped``（能力债集合 V0/V3/V4/V6，与 ``nightly_gap.py`` 的
+    ``VIDEO_GATES_CAPABILITY_DEBT`` 一致——V1 不在其中：#387 起有真实生产者，
+    #414 起口径统一）。``entries``（V1）自 #387 起由
     ``_produce_vision_entries`` 真实生产：按场景切点抽帧 + 面板短路裁决，
     无视觉模型的场次如实记 ``unjudged``。
 
@@ -2533,6 +2550,23 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                     renderer="slideshow",
                     reason=reason,
                 )
+                # 产物元数据（#414）：降级成片旁边落一份标记，让这个 mp4
+                # 无法冒充真渲染——文件存在本身即是"这是降级件"的声明。
+                # （allow_degrade=False 时引擎根本不会产出 slideshow，
+                # 这里只在显式降级路径上执行。）
+                try:
+                    meta = {
+                        "degraded": True,
+                        "renderer": "slideshow",
+                        "reason": reason,
+                        "output": os.path.basename(video_path),
+                    }
+                    meta_path = os.path.join(project_dir, VIDEO, "render-meta.json")
+                    with open(meta_path, "w", encoding="utf-8") as fh:
+                        json.dump(meta, fh, ensure_ascii=False, indent=2)
+                    produced.append(meta_path)
+                except OSError as meta_exc:
+                    log.warning("pipeline.video_degraded_meta_failed", error=str(meta_exc))
                 log.warning(
                     "pipeline.video_degraded",
                     renderer="slideshow",

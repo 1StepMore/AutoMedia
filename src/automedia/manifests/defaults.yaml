@@ -188,6 +188,14 @@ engines:
       timeout: 900
     hyperframes:
       quality: high
+      # Degrade policy (#414): when the hyperframes render fails, falling back
+      # to the FFmpeg slideshow (still frame + audio) is OPT-IN. Default false:
+      # the failure fails the video track (pipeline status partial, V gates
+      # without evidence) instead of shipping a slideshow that looks like a
+      # finished video. When true, the slideshow is produced WITH a
+      # render-meta.json sidecar (degraded=true) and the gate report notes it.
+      # Env override: AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE=1
+      allow_degrade: false
       # Multi-scene motion templates (#351): narration is split into scenes at
       # sentence boundaries, each segment is TTS'd separately, and scene cut
       # points come from ffprobe-measured segment durations (cut = sentence

@@ -23,8 +23,9 @@ from scripts.nightly_gap import (
 )
 
 V_GATES = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
-MUST_RUN = ("V2", "V5", "V7")
-DEBT = ("V0", "V1", "V3", "V4", "V6")
+# #414: 口径与 gate_inputs 可达性审计统一（V1 自 #387 有真实生产者）。
+MUST_RUN = ("V1", "V2", "V5", "V7")
+DEBT = ("V0", "V3", "V4", "V6")
 
 
 def _report(
@@ -124,8 +125,8 @@ def test_video_ok_with_debt_skips(tmp_path: Path) -> None:
     gates = p["video_gates"]
     assert gates["ok"] is True
     assert gates["reason"] == ""
-    assert gates["debt_skipped"] == ["V0", "V1", "V3", "V4", "V6"]
-    assert gates["passed"] == ["V2", "V5", "V7"]
+    assert gates["debt_skipped"] == ["V0", "V3", "V4", "V6"]
+    assert gates["passed"] == ["V1", "V2", "V5", "V7"]
     assert gates["failed"] == gates["errored"] == gates["other"] == []
     assert gates["missing"] == []
     assert gates["report"] == ("05_review/gate-report/gate-report-2026-01-01T000000+0000.json")
@@ -204,7 +205,7 @@ def test_video_red_when_all_gates_skipped(tmp_path: Path) -> None:
 
 
 def test_video_red_when_must_run_gate_skipped(tmp_path: Path) -> None:
-    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(["V5", "V7"], []))])
+    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(["V1", "V5", "V7"], []))])
     p = _one(tmp_path)
     assert p["video_ok"] is False
     assert "not passed: V2" in p["video_gates"]["reason"]
@@ -257,7 +258,7 @@ def test_latest_report_wins(tmp_path: Path) -> None:
     ev = video_gate_evidence(proj)
     assert ev["report"].endswith("gate-report-2026-01-02T000000+0000.json")
     assert ev["reason"] == ""
-    assert ev["passed"] == ["V2", "V5", "V7"]
+    assert ev["passed"] == ["V1", "V2", "V5", "V7"]
     p = _one(tmp_path)
     assert p["video_ok"] is True
 
@@ -613,3 +614,77 @@ def test_run_validation_scope_hard_noop_when_matrix_has_real_records(monkeypatch
     out = ng.run_validation_scope("python", "hard")
     assert out["executed"] == []
     assert "no hard scenario" in out["note"]
+
+
+# ---------------------------------------------------------------------------
+# #414: render failure / degradation must be part of the red reason
+# ---------------------------------------------------------------------------
+
+
+def test_render_failed_note_reds_the_video_track(tmp_path: Path) -> None:
+    """media_stage 的 video_render_failed 注记 ⇒ 判红且原因直说渲染失败。"""
+    rep = _report(list(MUST_RUN), [])
+    rep["media_stage"] = {
+        "notes": [
+            {
+                "event": "video_render_failed",
+                "error": "hyperframes render failed (exit code 1)",
+            }
+        ]
+    }
+    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", rep)])
+
+    p = _one(tmp_path)
+    gates = p["video_gates"]
+    assert gates["ok"] is False
+    assert "video render failed" in gates["reason"]
+    assert "exit code 1" in gates["reason"]
+    # the note text is surfaced, not swallowed into a generic "gate skipped"
+    assert gates["render_failed"]
+
+
+def test_render_degraded_note_reds_the_video_track(tmp_path: Path) -> None:
+    """video_render_degraded 注记 ⇒ 判红且原因写明降级 slideshow（#414）。"""
+    rep = _report(list(MUST_RUN), [])
+    rep["media_stage"] = {
+        "notes": [
+            {
+                "event": "video_render_degraded",
+                "renderer": "slideshow",
+                "reason": "hyperframes render failed (exit code 1)",
+            }
+        ]
+    }
+    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", rep)])
+
+    p = _one(tmp_path)
+    gates = p["video_gates"]
+    assert gates["ok"] is False
+    assert "degraded to slideshow" in gates["reason"]
+    assert gates["render_degraded"]
+
+
+def test_video_gate_criteria_match_gate_inputs_audit() -> None:
+    """MUST_RUN/DEBT 与 ``gate_inputs`` 静态可达性审计唯一对齐（#414）。
+
+    这是「口径统一」的机器证明：nightly_gap 的必跑/能力债两个集合，
+    必须逐值等于审计给出的 reachable / unreachable V 门集合。任何一侧
+    单方面改动（新增生产者、调口径）都会让这条测试变红。
+    """
+    import scripts.nightly_gap as ng
+    from automedia.validation.gate_inputs import audit_input_reachability
+
+    src = Path(__file__).resolve().parents[1] / "src" / "automedia"
+    result = audit_input_reachability(
+        src / "gates", src, {"V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7"}
+    )
+    reachable = {g for g in result.reachable_gates if g.startswith("V")}
+    unreachable = {g for g in result.unreachable_gates if g.startswith("V")}
+    assert reachable == set(ng.VIDEO_GATES_MUST_RUN), (
+        f"gate_inputs says reachable={sorted(reachable)} but nightly_gap must-run is "
+        f"{sorted(ng.VIDEO_GATES_MUST_RUN)} — the two criteria must agree (#414)"
+    )
+    assert unreachable == set(ng.VIDEO_GATES_CAPABILITY_DEBT), (
+        f"gate_inputs says unreachable={sorted(unreachable)} but nightly_gap debt is "
+        f"{sorted(ng.VIDEO_GATES_CAPABILITY_DEBT)}"
+    )

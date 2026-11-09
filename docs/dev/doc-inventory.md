@@ -23,7 +23,7 @@
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
 | docs/dev/DEBT.md | 603 | file |
 | docs/dev/agent-era-doc-architecture.md | 18625 | file |
-| docs/dev/agent-reference.md | 25361 | file |
+| docs/dev/agent-reference.md | 25604 | file |
 | docs/dev/agent-troubleshooting.md | 28282 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
@@ -36,12 +36,12 @@
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
-| docs/dev/gap-register.md | 18336 | file |
+| docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 24315 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 24647 | file |
+| docs/dev/plans/NIGHTLY.md | 25936 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
 | docs/dev/project-analysis-20261029.md | 29923 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
