@@ -8,7 +8,6 @@ import threading
 from dataclasses import asdict
 from typing import Any
 
-import click
 import typer
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
@@ -136,6 +135,21 @@ def _validate_brand(value: str) -> str:
     return value
 
 
+def _validate_mode(value: str) -> str:
+    """Reject an unknown pipeline mode before any pipeline work starts.
+
+    The ``--mode`` choices used to ride on ``typer.Option(click_type=...)``,
+    which typer 0.29 removed (and its vendored click no longer accepts an
+    external ``click.Choice``).  Validating in a callback keeps the same
+    exit-2 rejection on every typer version the project supports.
+    """
+    if value not in VALID_MODES:
+        raise typer.BadParameter(
+            f"{value!r} is not a valid mode; choose from {', '.join(VALID_MODES)}"
+        )
+    return value
+
+
 def _resolve_resume_identity(project_id: str) -> tuple[str, str] | None:
     """Return ``(topic, brand)`` recorded on the parked *project_id*.
 
@@ -179,11 +193,11 @@ def run_cmd(
         callback=_validate_brand,
         help="Brand identifier. Optional when --project-id is given; taken from the project.",
     ),
-    mode: str = typer.Option(  # type: ignore[call-overload]  # external click.Choice vs typer's vendored click ParamType
+    mode: str = typer.Option(
         "auto",
         "--mode",
         "-m",
-        click_type=click.Choice(list(VALID_MODES)),
+        callback=_validate_mode,
         help=(
             "Pipeline mode: auto, text_only, text_with_cover, "
             "video_only, qa_only, image-carousel, social-thread, "
