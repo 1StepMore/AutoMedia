@@ -1149,6 +1149,48 @@ class TestVideoModeStatusDowngrade:
 
         assert result.status == "partial"
 
+    @patch("automedia.pipelines.runner._produce_media_assets")
+    @patch("automedia.core.config_loader.load_config", return_value={})
+    @patch("automedia.core.project.Project")
+    @patch("automedia.pipelines.runner._build_gates_from_names")
+    @patch("automedia.pipelines.runner._record_gate_md5s")
+    def test_render_failure_is_partial_not_success(
+        self,
+        mock_record: MagicMock,
+        mock_build: MagicMock,
+        mock_project: MagicMock,
+        mock_config: MagicMock,
+        mock_media: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """#414: a failed hyperframes render (no video_path) ⇒ ``partial``.
+
+        The engine raises instead of silently degrading to a slideshow, so the
+        media stage records ``video_render_failed`` and never sets
+        ``video_path`` — the same no-video downgrade path as above, now
+        reached by a real render failure rather than by a missing input.
+        """
+        from automedia.pipelines import runner as runner_mod
+
+        mock_proj = MagicMock()
+        mock_proj.project_id = "vd04"
+        mock_proj.project_dir = str(tmp_path / "vd04")
+        mock_project.init.return_value = mock_proj
+        mock_build.return_value = [_AlwaysPassGate()]
+
+        def _failed_render(gate_context: object) -> None:
+            runner_mod._note_media_stage(
+                gate_context,
+                "video_render_failed",
+                error="hyperframes render failed (exit code 1)",
+            )
+
+        mock_media.side_effect = _failed_render
+
+        result = run_full_pipeline("AI topic", "testbrand", mode="short-video")
+
+        assert result.status == "partial"
+
     @patch("automedia.core.config_loader.load_config", return_value={})
     @patch("automedia.core.project.Project")
     @patch("automedia.pipelines.runner._build_gates_from_names")

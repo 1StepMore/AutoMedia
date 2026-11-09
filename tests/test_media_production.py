@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -23,7 +24,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from automedia.core.md5_tracker import compute_md5
-from automedia.engines.errors import EngineUnavailableError
+from automedia.engines.errors import EngineExecutionError, EngineUnavailableError
 from automedia.gates._context import GateContext
 from automedia.gates._result import missing_input_result
 from automedia.pipelines.runner import _media_narration_text, _produce_media_assets
@@ -701,3 +702,64 @@ class TestVideoAssetsCarryPlatformSize:
         """Without a video platform the size stays unset — the engine config wins."""
         assets = self._assets(tmp_path, [])
         assert "width" not in assets and "height" not in assets
+
+
+class _DegradedVideoEngine(_FakeVideoEngine):
+    """写出假 mp4 但如实声明降级（last_render_degraded=True）。"""
+
+    last_render_degraded = True
+    last_render_reason = "hyperframes render failed (exit code 1)"
+
+
+class _FailingVideoEngine:
+    """渲染直接失败（#414：不许静默降级成 slideshow）。"""
+
+    def render(self, assets: dict[str, Any], output_path: str) -> str:
+        raise EngineExecutionError(
+            engine_name="hyperframes",
+            details="hyperframes render failed (exit code 1): browser launch failed",
+        )
+
+
+class TestRenderFailureAndDegrade:
+    """#414：渲染失败不产出成片；显式降级必须在产物元数据与注记里留痕。"""
+
+    def _run(self, tmp_path: Path, engine: object) -> GateContext:
+        ctx = _video_context(tmp_path)
+        with (
+            patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
+            patch(_AUDIO_PATH, _FakeAudioPipeline),
+            patch(_IMAGE_PATH, _FakeImagePipeline),
+            patch(_ENGINE_PATH, return_value=engine),
+        ):
+            _produce_media_assets(ctx)
+        return ctx
+
+    def test_failed_render_produces_no_video_and_records_failure(self, tmp_path: Path) -> None:
+        """引擎抛错 ⇒ 没有 output.mp4、video_path 不写、注记 video_render_failed。"""
+        ctx = self._run(tmp_path, _FailingVideoEngine())
+
+        assert ctx.was_written("video_path") is False
+        assert not (tmp_path / "03_video" / "output.mp4").exists()
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list)
+        failed = [n for n in notes if n["event"] == "video_render_failed"]
+        assert failed and "exit code 1" in failed[0]["error"]
+        # V1 如实 skip（entries 未产出），不拿假数据糊门
+        assert missing_input_result("V1", ctx, ("entries",)) is not None
+
+    def test_allowed_degrade_marks_artifact_with_sidecar(self, tmp_path: Path) -> None:
+        """显式降级（引擎已按 allow_degrade 放行）⇒ 成片旁落 render-meta.json。"""
+        ctx = self._run(tmp_path, _DegradedVideoEngine())
+
+        assert ctx.was_written("video_path") is True
+        meta_path = tmp_path / "03_video" / "render-meta.json"
+        assert meta_path.is_file(), "degraded slideshow must carry its metadata sidecar"
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        assert meta["degraded"] is True
+        assert meta["renderer"] == "slideshow"
+        assert "exit code 1" in meta["reason"]
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list)
+        assert any(n["event"] == "video_render_degraded" for n in notes)

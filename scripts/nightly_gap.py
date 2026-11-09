@@ -17,8 +17,10 @@ DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 �
   图文轨   文本轨两条（同上）+ 02_images/ 里有 ≥1 个 ≥1KB 的图片
   视频轨   文本轨两条（同上）+ 03_video/ 里有 ≥1 个 ≥10KB 的视频，
           且该项目有可解析 gate-report：
-          有诚实生产者的 V2/V5/V7 必须真跑且 pass；
-          V0/V1/V3/V4/V6 计为已登记能力债（#193），任何新增 skip 判红
+          有诚实生产者的 V1/V2/V5/V7 必须真跑且 pass（#414 口径统一）；
+          V0/V3/V4/V6 计为已登记能力债（#193），任何新增 skip 判红；
+          media_stage 有 video_render_failed / video_render_degraded 注记
+          ⇒ 判红，且原因写明渲染失败/降级（#414）
 三态（#361）：每条轨 pass / fail / unverified。unverified = 该轨毫无证据
   （没有视频文件 / 没有图 / 没有跑过的项目）——不作能力宣称，也绝不当作 pass；
   「没跑过」与「跑过没过」必须分开报告。
@@ -45,8 +47,12 @@ PROJECT_RE = re.compile(r"^\d{8}_.+")
 MIN_DRAFT_BYTES = 500
 MIN_IMAGE_BYTES = 1024
 MIN_VIDEO_BYTES = 10 * 1024
-VIDEO_GATES_MUST_RUN = ("V2", "V5", "V7")  # 有诚实生产者：必须真跑且 pass
-VIDEO_GATES_CAPABILITY_DEBT = ("V0", "V1", "V3", "V4", "V6")  # 无诚实生产者：允许 skip，但须登记
+# 视频轨 V 门口径（#414 起与 validation/gate_inputs.py 的静态可达性审计唯一对齐）：
+# 必跑集合 = 有诚实生产者的门（audit 的 reachable）；能力债 = 无生产者的门
+# （audit 的 unreachable）。V1 自 #387 起有真实生产者（_produce_vision_entries），
+# 从债集合移除；tests/test_nightly_gap.py 用该审计逐值 pin 这两个常量。
+VIDEO_GATES_MUST_RUN = ("V1", "V2", "V5", "V7")  # 有诚实生产者：必须真跑且 pass
+VIDEO_GATES_CAPABILITY_DEBT = ("V0", "V3", "V4", "V6")  # 无诚实生产者：允许 skip，但须登记
 VIDEO_GATE_DEBT_ISSUE = "#193"
 GATE_REPORT_GLOB = "05_review/gate-report/gate-report-*.json"
 #: 跑批结论里判「这次跑批没成」的状态位（issue #361）。success/awaiting_review 不拦。
@@ -179,9 +185,13 @@ def gate_chain_evidence(project_dir: Path) -> dict:
 def video_gate_evidence(project_dir: Path) -> dict:
     """读该项目最新的 gate-report，给出视频轨 V 门证据（#181：只看文件大小会假绿）。
 
-    判据（owner 2026-10-07 裁定「带能力债的达标」）：
-      - 有诚实生产者的 V2/V5/V7 必须真跑且 pass；
-      - 无诚实生产者的 V0/V1/V3/V4/V6 允许 skip，但只允许这五门（能力债登记 #193）。
+    判据（owner 2026-10-07 裁定「带能力债的达标」；#414 起口径与
+    ``validation/gate_inputs.py`` 的可达性审计统一）：
+      - 有诚实生产者的 V1/V2/V5/V7 必须真跑且 pass；
+      - 无诚实生产者的 V0/V3/V4/V6 允许 skip，但只允许这四门（能力债登记 #193）；
+      - media_stage 注记 ``video_render_failed`` / ``video_render_degraded``
+        ⇒ 判红，且判红原因写明「渲染失败 / 降级 slideshow」——修渲染还是
+        补产物，一眼可辨（#414）。
     """
     all_v = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
     buckets: dict[str, list[str]] = {
@@ -202,6 +212,8 @@ def video_gate_evidence(project_dir: Path) -> dict:
         "other": [],
         "missing": [],
         "debt_skipped": [],
+        "render_failed": "",
+        "render_degraded": "",
     }
 
     files = sorted(project_dir.glob(GATE_REPORT_GLOB))
@@ -233,6 +245,18 @@ def video_gate_evidence(project_dir: Path) -> dict:
     out["missing"] = sorted(set(all_v) - seen)
     out["debt_skipped"] = sorted(set(buckets["skipped"]) & set(VIDEO_GATES_CAPABILITY_DEBT))
 
+    # media_stage 注记里的渲染事实（#414）：失败 / 降级都要浮出到判红原因
+    media_stage = data.get("media_stage")
+    notes = media_stage.get("notes") if isinstance(media_stage, dict) else None
+    for note in notes if isinstance(notes, list) else []:
+        if not isinstance(note, dict):
+            continue
+        event = str(note.get("event") or "")
+        if event == "video_render_failed" and not out["render_failed"]:
+            out["render_failed"] = str(note.get("error") or "")[:200]
+        elif event == "video_render_degraded" and not out["render_degraded"]:
+            out["render_degraded"] = str(note.get("reason") or "")[:200]
+
     # ok 当且仅当五条全满足；reason 取第一条不满足的
     if out["missing"]:
         out["reason"] = "gates missing from report: " + ",".join(out["missing"])
@@ -248,6 +272,15 @@ def video_gate_evidence(project_dir: Path) -> dict:
     else:
         out["ok"] = True
         out["reason"] = ""
+
+    # #414：渲染失败/降级压过一切「结构合格」——即使门行齐整（例如
+    # allow_degrade 下降级件 + V 门真跑），视频轨也判红，且原因直说渲染。
+    if out["render_failed"]:
+        out["ok"] = False
+        out["reason"] = f"video render failed: {out['render_failed']}"
+    elif out["render_degraded"]:
+        out["ok"] = False
+        out["reason"] = f"video degraded to slideshow: {out['render_degraded']}"
     return out
 
 
@@ -673,7 +706,8 @@ def main(argv: list[str] | None = None) -> int:
                     {g for p in projects if p["video_ok"] for g in p["video_gates"]["debt_skipped"]}
                 ),
                 "reason": (
-                    "五门无诚实生产者（见 .trae/documents/video-track-remediation-plan.md §一）"
+                    "四门无诚实生产者（#193 登记；V1 自 #387 起有生产者、"
+                    "#414 起移出债集合，口径与 gate_inputs 审计统一）"
                 ),
                 "tracked_by": VIDEO_GATE_DEBT_ISSUE,
             }

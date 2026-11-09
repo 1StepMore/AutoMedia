@@ -17,13 +17,17 @@ from automedia.core.config_loader import (
     deep_merge,
     load_config,
 )
-from automedia.core.env_overlay import reset_dotenv_overlay_cache
+from automedia.core.env_overlay import dotenv_overlay, reset_dotenv_overlay_cache
 from automedia.exceptions import ConfigError
 
 
 @pytest.fixture(autouse=True)
 def _clear_automedia_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove AUTOMEDIA_* env vars loaded from .env so config tests are isolated."""
+    # A developer .env in the checkout must never leak into env-to-config
+    # assertions (it used to pass only when another test had poisoned the
+    # overlay cache first — order-dependent, red in isolation).
+    monkeypatch.setattr("automedia.core.config_loader.dotenv_overlay", lambda: {})
     original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
     for k in original:
         monkeypatch.delenv(k, raising=False)
@@ -174,6 +178,7 @@ class TestEnvToConfig:
     @pytest.fixture(autouse=True)
     def _clear_automedia_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Clear existing AUTOMEDIA_* env vars so tests run in a clean environment."""
+        monkeypatch.setattr("automedia.core.config_loader.dotenv_overlay", lambda: {})
         original = {k: v for k, v in os.environ.items() if k.startswith("AUTOMEDIA_")}
         for k in original:
             monkeypatch.delenv(k, raising=False)
@@ -216,6 +221,7 @@ class TestEnvToConfig:
 
     def test_dotenv_overlay_supplies_config_keys(self, monkeypatch, tmp_path):
         """A ``.env`` value becomes a config key with no ``os.environ`` write."""
+        monkeypatch.setattr("automedia.core.config_loader.dotenv_overlay", dotenv_overlay)
         reset_dotenv_overlay_cache()
         monkeypatch.setenv(
             "AUTOMEDIA_DOTENV_PATH",
@@ -230,6 +236,9 @@ class TestEnvToConfig:
 
     def test_real_env_beats_dotenv_for_same_key(self, monkeypatch, tmp_path):
         """A real env var wins over the ``.env`` overlay per key."""
+        # This test exercises the overlay itself: re-enable the real function
+        # that the class fixture neutralises for isolation.
+        monkeypatch.setattr("automedia.core.config_loader.dotenv_overlay", dotenv_overlay)
         reset_dotenv_overlay_cache()
         monkeypatch.setenv(
             "AUTOMEDIA_DOTENV_PATH",
