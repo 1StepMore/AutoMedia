@@ -14,9 +14,11 @@ from __future__ import annotations
 import re
 
 #: Cue keywords that mark a bracket as a production note rather than prose.
+#: ``切`` covers both ``[切]`` and the colonised ``[切：画面瞬间变得干净…]``
+#: form the writer model emits (#455).
 _CUE_KEYWORDS = (
     r"(?:画面|镜头|镜号|机位|构图|音效|配乐|音乐|bgm|字幕|花字|旁白|画外音|"
-    r"转场|特效|特写|全景|中景|近景|远景|视觉|提示|"
+    r"切|转场|特效|特写|全景|中景|近景|远景|视觉|提示|"
     r"visual|sfx|vfx|cut\s*to|transition|shot)"
 )
 
@@ -65,8 +67,14 @@ _SHOT_HEADER_RE = re.compile(
     r"镜头\s*\d+\s*(?:[｜|:：]\s*)?\d{1,2}:\d{2}\s*[-–—~至]\s*\d{1,2}:\d{2}\s*"
 )
 
-#: ``口播：`` marks the spoken part of the script; the label is never spoken.
-_SPOKEN_PREFIX_RE = re.compile(r"口播\s*[:：]\s*")
+#: ``口播：`` / ``口播文案：`` mark the spoken part of the script; the label
+#: itself is never spoken (#455).
+_SPOKEN_PREFIX_RE = re.compile(r"口播(?:文案)?\s*[:：]\s*")
+
+#: ``0:03-0:09`` / ``（0:00-0:03）`` — production timing.  Never narration:
+#: a TTS-ready script writes durations in words, so a colon timecode span is
+#: scaffolding wherever it sits (parenthesised section headers included).
+_TIMECODE_SPAN_RE = re.compile(r"[（(]?\s*\d{1,2}:\d{2}\s*[-–—~至]\s*\d{1,2}:\d{2}\s*[）)]?")
 
 #: Short uncolonised production tags — ``[切]`` / ``[转场]`` / ``[停顿]``.
 #: Deliberately an allowlist: ordinary bracketed prose must survive (#455).
@@ -116,6 +124,7 @@ def strip_structure_labels(text: str) -> str:
     for line in (text or "").splitlines():
         line = _SHORT_CUE_TAG_RE.sub("", line)
         line = _SHOT_HEADER_RE.sub("", line)
+        line = _TIMECODE_SPAN_RE.sub("", line)
         line = _SPOKEN_PREFIX_RE.sub("", line)
         segments = [seg for seg in _SEGMENT_SPLIT_RE.split(line) if seg]
         structured = "".join(
