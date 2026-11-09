@@ -2538,6 +2538,11 @@ is the onboarding guide. How to read a scenario:</p>
 <td>Set to <code>1</code>/<code>true</code>/<code>yes</code> to skip the project-init asset pull</td>
 <td>(unset)</td>
 </tr>
+<tr>
+<td><code>AUTOMEDIA_ENGINES_VIDEO_HYPERFRAMES_ALLOW_DEGRADE</code></td>
+<td>Opt-in slideshow fallback when the hyperframes render fails (<code>1</code>/<code>true</code>/<code>yes</code>/<code>on</code>); default: fail the video track instead of shipping an unmarked slideshow (#414)</td>
+<td>(unset = disabled)</td>
+</tr>
 </tbody>
 </table>
 <p>The <code>AUTOMEDIA_LLM_*</code> vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>

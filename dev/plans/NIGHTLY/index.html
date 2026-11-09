@@ -2356,6 +2356,12 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <td style="text-align: left;">强制产物落在 repo 内对实际使用极不方便：Agent（as user / as tester）应当能自由选择产物位置。<strong>AutoInfo 与本地化套件（e2e-test-suite）的判据本就无此限制</strong>，AutoMedia 这条是孤例。证据：journey 场景忘设 <code>AUTOMEDIA_PROJECTS_DIR</code> 时项目会落 repo 根，10-28 已积 73 个；而一条完全合规的真视频证据（<code>03_video/output.mp4</code> 16.7MB、<code>V2/V5/V7</code> 全 pass、<code>failed=0</code>）实际落在 <code>/tmp/automedia/prod-video/</code>，仅因位置被判据否决。</td>
 <td style="text-align: left;"><strong>已裁定（owner 2026-10-30）：采纳「产物位置由 Agent 自由决定」</strong>——附加硬要求 1 改为「产物落在 Agent 指定的持久目录（位置不限，repo 内 / repo 外 / <code>/tmp</code> 均可）；判据只认产物确实落盘且能被扫描器发现；扫描器通过 <code>AUTOMEDIA_PROJECTS_DIR</code> 发现产物目录」。实现：<code>scripts/nightly_gap.py</code>（<code>PROJECTS_DIR_ENV</code> 常量 + <code>scan_projects()</code> 认 env）、<code>99-Tools/nightly/nightly_batch.sh</code>（am 步骤改用 <code>${AUTOMEDIA_PROJECTS_DIR:-…}</code>）</td>
 </tr>
+<tr>
+<td style="text-align: left;">2026-11-09</td>
+<td style="text-align: left;">视频轨 DoD 判据中的「有诚实生产者的门（<strong>V2/V5/V7</strong>）必须真跑且 pass；所有 skipped 必须落在已登记能力债集合（<strong>V0/V1/V3/V4/V6</strong>）」</td>
+<td style="text-align: left;">口径冲撞且证据在案（issue #414）：<code>validation/gate_inputs.py::audit_input_reachability</code> 的静态审计判 <strong>V1 可达</strong>（<code>entries</code> 自 #387 起由 <code>_produce_vision_entries</code> 真实生产：按场景切点抽帧 + 面板短路裁决），而本 DoD 与 <code>nightly_gap.py</code> 仍把 V1 记成能力债——同一问题两个答案。且渲染失败静默降级 slideshow 时，V 门拿不到输入全部 skip，视频轨的判红原因显示为「无门证据」而非「渲染失败」（修渲染还是补产物无法区分）。</td>
+<td style="text-align: left;"><strong>待裁定</strong>（请求）：冻结区判据改为「V1/V2/V5/V7 必须 pass；V0/V3/V4/V6 为登记能力债」，即与审计唯一对齐；同时 <code>nightly_gap.py</code> 已按此实现——<code>VIDEO_GATES_MUST_RUN=("V1","V2","V5","V7")</code> / <code>VIDEO_GATES_CAPABILITY_DEBT=("V0","V3","V4","V6")</code>，并由 <code>tests/test_nightly_gap.py::test_video_gate_criteria_match_gate_inputs_audit</code> 机器钉死两侧一致。渲染失败/降级另由 media_stage 注记进入判红原因（#414 实现）。裁定前按冻结区原样执行（V1 若 skip，现行判据仍判红）</td>
+</tr>
 </tbody>
 </table>
 

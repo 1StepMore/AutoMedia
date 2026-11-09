@@ -2105,10 +2105,10 @@ like drift; the derived truth lives in <code>scripts/check-doc-consistency.py</c
 <tbody>
 <tr>
 <td>GAP-CAP-1</td>
-<td>V0/V1/V3/V4/V6 have no honest producer inside the repo: the gates report <code>skipped</code> with an explicit reason instead of inspecting fabricated inputs. Registered capability debt.</td>
-<td>capability-gap-20260915 §2 → health-20260917 P0-1 → codebase-audit-20261022 P0-1 → NIGHTLY #193</td>
+<td>V0/V3/V4/V6 have no honest producer inside the repo: the gates report <code>skipped</code> with an explicit reason instead of inspecting fabricated inputs. Registered capability debt. <strong>V1 left the debt set</strong> — <code>_produce_vision_entries</code> has produced <code>entries</code> since #387; #414 unified the nightly must-run/debt criteria with the static reachability audit (reachable = V1/V2/V5/V7, debt = V0/V3/V4/V6, pinned by <code>tests/test_nightly_gap.py</code>).</td>
+<td>capability-gap-20260915 §2 → health-20260917 P0-1 → codebase-audit-20261022 P0-1 → NIGHTLY #193 → issue #414</td>
 <td><strong>mitigated</strong>（登记债）</td>
-<td><code>runner.py</code> media stage deliberately leaves producer keys unwritten; <code>_result.py</code> <code>missing_input_result</code> records the skip reason. Ownership: NIGHTLY 三轨 DoD / <code>scripts/nightly_gap.py</code>. Full fix lands with the video-engine work (GAP-PROD-1).</td>
+<td><code>runner.py</code> media stage deliberately leaves producer keys unwritten; <code>_result.py</code> <code>missing_input_result</code> records the skip reason; <code>scripts/nightly_gap.py</code> <code>VIDEO_GATES_CAPABILITY_DEBT</code> agrees with <code>validation/gate_inputs.py</code> <code>audit_input_reachability</code> (machine-pinned). Full fix of the remaining four lands with the video-engine work (GAP-PROD-1).</td>
 </tr>
 <tr>
 <td>GAP-CAP-2</td>
