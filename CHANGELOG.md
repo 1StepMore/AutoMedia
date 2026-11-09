@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.15.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.15.0...automedia-v1.15.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **cli:** reject bad --mode in a callback so typer 0.29 works ([#457](https://github.com/1StepMore/AutoMedia/issues/457)) ([9f27048](https://github.com/1StepMore/AutoMedia/commit/9f270480129d5addb1320303ffa8e0a766edc5ab))
+* **gates:** surface why a gate failed in history and logs ([#452](https://github.com/1StepMore/AutoMedia/issues/452)) ([aba8a0e](https://github.com/1StepMore/AutoMedia/commit/aba8a0ec7bda48c748ee09eaeaeff13b80fd8c0e)), closes [#442](https://github.com/1StepMore/AutoMedia/issues/442)
+* **pipeline:** strip emphasis markup from narration and SRT cues ([#451](https://github.com/1StepMore/AutoMedia/issues/451)) ([9c3bc34](https://github.com/1StepMore/AutoMedia/commit/9c3bc34be15e12e489498894f77ea53cf0cc44d5)), closes [#444](https://github.com/1StepMore/AutoMedia/issues/444)
+
+
+### Dependencies
+
+* **deps:** bump setuptools to 84.2.1 in uv.lock ([#450](https://github.com/1StepMore/AutoMedia/issues/450)) ([8fe9629](https://github.com/1StepMore/AutoMedia/commit/8fe9629a565c1c448938cf09800f890a197d7894))
+
 ## [1.15.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.14.4...automedia-v1.15.0) (2026-11-09)
 
 
