@@ -688,3 +688,96 @@ def test_video_gate_criteria_match_gate_inputs_audit() -> None:
         f"gate_inputs says unreachable={sorted(unreachable)} but nightly_gap debt is "
         f"{sorted(ng.VIDEO_GATES_CAPABILITY_DEBT)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# #447: the nightly validation chain must actually run by default
+# ---------------------------------------------------------------------------
+
+
+def _healthy_matrix() -> dict:
+    return {
+        "scenarios_total": 3,
+        "scenario_status": {"passed": 1, "failed": 1, "None": 1},
+        "hard_total": 3,
+        "hard_passed": ["h-pass"],
+        "hard_failed": ["h-fail"],
+        "hard_unexecuted": ["h-never"],
+        "hard_not_passed": ["h-fail", "h-never"],
+        "last_suite_record": "",
+        "gates_missing": 0,
+        "gates_unreachable": 0,
+        "gates_unreachable_names": [],
+        "mcp_missing": 0,
+        "cli_missing": 0,
+    }
+
+
+def test_validate_scope_default_is_not_none() -> None:
+    """缺省 scope 必须是 hard；none 只能显式传（#447）。"""
+    import scripts.nightly_gap as ng
+
+    assert ng._build_parser().parse_args([]).validate_scope == "hard"
+
+
+def test_report_keeps_three_hard_states_apart(tmp_path: Path, monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(ng, "REPO", tmp_path)
+    monkeypatch.setattr(ng, "scan_projects", lambda root=None, extra_root=None: [])
+    monkeypatch.setattr(ng, "validate_summary", lambda p: _healthy_matrix())
+    out = tmp_path / "gap.md"
+
+    ng.main(["--validate-scope", "none", "--md-out", str(out)])
+
+    text = out.read_text(encoding="utf-8")
+    assert "已执行-通过 1（h-pass）" in text
+    assert "已执行-失败 1（h-fail）" in text
+    assert "未执行 1（h-never）" in text
+
+
+def test_consecutive_unexecuted_days_turn_red(tmp_path: Path, monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(ng, "REPO", tmp_path)
+    monkeypatch.setattr(ng, "scan_projects", lambda root=None, extra_root=None: [])
+    monkeypatch.setattr(ng, "validate_summary", lambda p: _healthy_matrix())
+    out = tmp_path / "gap.md"
+    state = tmp_path / "validation-runs" / ng.UNEXECUTED_STREAK_FILENAME
+
+    ng.main(["--validate-scope", "none", "--md-out", str(out)])
+    data = json.loads(state.read_text(encoding="utf-8"))
+    data["date"] = "2000-01-01"
+    state.write_text(json.dumps(data), encoding="utf-8")
+
+    ng.main(["--validate-scope", "none", "--md-out", str(out)])
+
+    text = out.read_text(encoding="utf-8")
+    assert "连续未执行 2 天" in text
+    assert "#447" in text
+
+
+def test_real_execution_resets_the_streak(tmp_path: Path, monkeypatch) -> None:
+    import scripts.nightly_gap as ng
+
+    monkeypatch.setattr(ng, "REPO", tmp_path)
+    monkeypatch.setattr(ng, "scan_projects", lambda root=None, extra_root=None: [])
+    monkeypatch.setattr(ng, "validate_summary", lambda p: _healthy_matrix())
+    monkeypatch.setattr(
+        ng,
+        "run_validation_scope",
+        lambda p, s: {
+            "scope": s,
+            "executed": [{"scenario": "x", "status": "passed", "seconds": 0.1}],
+            "error": "",
+        },
+    )
+    state = tmp_path / "validation-runs" / ng.UNEXECUTED_STREAK_FILENAME
+    state.parent.mkdir(parents=True)
+    state.write_text(json.dumps({"date": "2000-01-01", "streak": 5}), encoding="utf-8")
+    out = tmp_path / "gap.md"
+
+    ng.main(["--validate-scope", "hard", "--md-out", str(out)])
+
+    assert json.loads(state.read_text(encoding="utf-8"))["streak"] == 0
+    assert "连续未执行 0 天" in out.read_text(encoding="utf-8")
