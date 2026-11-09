@@ -124,3 +124,6 @@ nightly/
 
 # Local pytest basetemp (Windows runs)
 .pytest-tmp/
+
+# 本地维护报告（agent 巡检产物，不入库）
+reports/
