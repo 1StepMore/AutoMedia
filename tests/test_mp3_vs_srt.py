@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.mp3_vs_srt import (
     _CHECK_NAMES,
@@ -70,7 +72,7 @@ class TestV5MockDriven:
         assert result["passed"] is True
         assert result["gate"] == "V5"
         assert result["error"] is None
-        assert len(result["checks"]) == 3
+        assert len(result["checks"]) == 4
 
     def test_diff_failure(self) -> None:
         result = V5Mp3VsSrt().execute(
@@ -151,3 +153,79 @@ class TestV5ResultStructure:
         assert result["passed"] is True
         assert "checks" not in result
         assert "whisper_text" in result["reason"]
+
+
+_POLLUTED_BODY = "主题：企业用AI做内容 口播：先把链路跑顺。 [切] 镜头1｜0:03-0:09"
+
+
+class TestV5StructureLabelResidue:
+    """Structure labels in SRT or whisper text fail the gate regardless of the
+    diff ratio (#455) — same-source pollution used to read as ``pass``."""
+
+    def test_same_source_pollution_fails_at_perfect_similarity(self) -> None:
+        """SRT and whisper both carry the labels and are otherwise identical.
+
+        ``whisper_vs_srt_diff`` scores 100% — the very loophole #455 describes
+        — yet the gate must still fail on residue alone.
+        """
+        result = V5Mp3VsSrt().execute(
+            _make_context(whisper_text=_POLLUTED_BODY, srt_text=_POLLUTED_BODY)
+        )
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        diff = next(c for c in result["checks"] if c["name"] == "whisper_vs_srt_diff")
+        assert diff["passed"] is True  # similarity 100% — the old blind spot
+        assert residue["passed"] is False
+        assert result["passed"] is False
+
+    def test_clean_texts_pass_residue_check(self) -> None:
+        result = V5Mp3VsSrt().execute(_make_context())
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        assert residue["passed"] is True
+        assert result["passed"] is True
+
+    def test_whisper_only_residue_fails(self) -> None:
+        result = V5Mp3VsSrt().execute(
+            _make_context(whisper_text="做AI内容的老板。镜头2从0:09开始。", srt_text=_SRT_SAMPLE)
+        )
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        assert residue["passed"] is False
+        assert result["passed"] is False
+
+    def test_residue_detail_names_each_pattern(self) -> None:
+        result = V5Mp3VsSrt().execute(
+            _make_context(whisper_text=_POLLUTED_BODY, srt_text=_POLLUTED_BODY)
+        )
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        for label in (
+            "metadata_label",
+            "spoken_prefix",
+            "transition_tag",
+            "shot_label",
+            "timecode",
+        ):
+            assert label in residue["detail"]
+        assert "whisper" in residue["detail"] and "srt" in residue["detail"]
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "主题：先跑通流程",  # metadata label
+            "品牌：壹目贯维",  # metadata label
+            "镜头2｜0:09-0:15",  # shot header + timecode
+            "口播：先把链路跑顺。",  # spoken prefix
+            "先把链路跑顺。[切]",  # transition tag
+        ],
+    )
+    def test_each_pollution_category_fails_alone(self, fragment: str) -> None:
+        result = V5Mp3VsSrt().execute(_make_context(whisper_text=fragment, srt_text=_SRT_SAMPLE))
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        assert residue["passed"] is False, fragment
+        assert result["passed"] is False
+
+    def test_bare_shen_tou_without_digit_is_not_a_shot_label(self) -> None:
+        """``镜头`` in ordinary prose (no digit, no timecode) is not scaffolding."""
+        result = V5Mp3VsSrt().execute(
+            _make_context(whisper_text="把镜头对准产品本身。", srt_text=_SRT_SAMPLE)
+        )
+        residue = next(c for c in result["checks"] if c["name"] == "structure_label_residue")
+        assert residue["passed"] is True
