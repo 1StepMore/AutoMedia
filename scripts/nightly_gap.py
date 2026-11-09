@@ -26,7 +26,7 @@ DoD（见 docs/dev/plans/NIGHTLY.md，与 L1 一致）：三条轨各有 ≥1 �
   「没跑过」与「跑过没过」必须分开报告。
 
 用法：python3 scripts/nightly_gap.py [--json-out F] [--md-out F] [--scan-root DIR]
-      [--validate-scope none|hard|all]（#415：默认 none 只读矩阵；hard 真跑 hard 场景；
+      [--validate-scope none|hard|all]（#447：默认 hard 真跑边界场景；none 需显式传；
       all 整库 run --all，让矩阵获得真实 last_status）
 退出码：0 = 三轨全达标 / 1 = 仍有差距（未达标或未验证）/ 2 = 用法或环境错误
 """
@@ -62,6 +62,10 @@ BLOCKING_PIPELINE_STATUSES = ("partial", "failed")
 BLOCKING_GATE_VERDICTS = ("fail", "failed", "review", "error")
 #: 轨名 → 每项目三态字段的映射（报告层用）。
 TRACK_STATE_KEYS = {"文本轨": "text_state", "图文轨": "image_state", "视频轨": "video_state"}
+
+#: 连续多少天一次场景都没执行，就在 gap 报告里报红（#447）。
+UNEXECUTED_STREAK_RED_DAYS = 2
+UNEXECUTED_STREAK_FILENAME = "nightly-gap-unexecuted-streak.json"
 
 #: Agent 用它声明「我把产物放在哪」。扫描器认这个位置，**不限定必须在 repo 内**。
 PROJECTS_DIR_ENV = "AUTOMEDIA_PROJECTS_DIR"
@@ -413,6 +417,56 @@ def _last_suite_record() -> str:
     return name if name else ""
 
 
+def _read_streak_state(path: Path) -> tuple[str, int]:
+    """Best-effort read of the streak state; missing or corrupt data reads as zero."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "", 0
+    if not isinstance(data, dict):
+        return "", 0
+    try:
+        return str(data.get("date") or ""), int(data.get("streak") or 0)
+    except (TypeError, ValueError):
+        return "", 0
+
+
+def _write_streak_state(path: Path, day: str, streak: int) -> None:
+    """Persist the streak; an unwritable state file must not abort the report."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"date": day, "streak": streak}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        return
+
+
+def _update_unexecuted_streak(scope_used: str, executed: dict) -> dict:
+    """Track consecutive days on which no validation scenario actually ran (#447).
+
+    ``--validate-scope none`` and ``--skip-validate`` leave the chain idle; an
+    idle day increments the streak, any real execution resets it.  Same-day
+    reruns keep the count, so a manual rerun cannot inflate it.  The state file
+    lives under the gitignored ``validation-runs/`` directory.
+    """
+    today = time.strftime("%Y-%m-%d")
+    did_run = scope_used == "all" or bool(executed.get("executed")) or bool(executed.get("note"))
+    path = REPO / "validation-runs" / UNEXECUTED_STREAK_FILENAME
+    last_day, streak = _read_streak_state(path)
+    if did_run:
+        streak = 0
+    elif last_day != today:
+        streak += 1
+    _write_streak_state(path, today, streak)
+    return {
+        "days": streak,
+        "red": streak >= UNEXECUTED_STREAK_RED_DAYS,
+        "executed_this_run": did_run,
+    }
+
+
 def _coverage_unreachable_names(python: str) -> list[str]:
     """从 ``validate coverage`` 取执行不可达门的具体名单。
 
@@ -466,6 +520,7 @@ def validate_summary(python: str) -> dict:
         "scenarios_total": len(sc),
         "scenario_status": status,
         "hard_total": len(hard),
+        "hard_passed": [s["name"] for s in hard if s.get("last_status") == "passed"],
         "hard_failed": [s["name"] for s in hard if s.get("last_status") == "failed"],
         "hard_unexecuted": [s["name"] for s in hard if s.get("last_status") is None],
         # 向后兼容：旧读者（含既有测试）按 != passed 聚合；新口径见上面两个字段
@@ -628,7 +683,7 @@ def run_validation_scope(python: str, scope: str) -> dict:
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="nightly_gap.py")
     ap.add_argument("--python", default=sys.executable)
     ap.add_argument(
@@ -640,17 +695,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--validate-scope",
         choices=("none", "hard", "all"),
-        default="none",
+        default="hard",
         help=(
-            "Opt-in scenario execution before reading the matrix (issue #415): "
-            "none = read-only (default); hard = actually run the hard boundary "
-            "scenarios and report their real statuses; all = full-library "
-            "validate run --all so the matrix gains real last_status (weekly)"
+            "Scenario execution before reading the matrix: hard = actually run "
+            "the hard boundary scenarios and report their real statuses "
+            "(default, #447); none = read-only, must be explicit; all = "
+            "full-library validate run --all so the matrix gains real "
+            "last_status (weekly)"
         ),
     )
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
-    args = ap.parse_args(argv)
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
 
     explicit = Path(args.scan_root) if args.scan_root else None
     env_dir = os.environ.get(PROJECTS_DIR_ENV, "").strip()
@@ -687,6 +747,9 @@ def main(argv: list[str] | None = None) -> int:
     vs = {} if args.skip_validate else validate_summary(args.python)
     if executed:
         vs["executed_scope"] = executed
+    chain = _update_unexecuted_streak(
+        "none" if args.skip_validate else args.validate_scope, executed
+    )
 
     n_pass, n_fail, n_unv = 3 - len(gap), len(fail_tracks), len(unverified_tracks)
     result = {
@@ -699,6 +762,7 @@ def main(argv: list[str] | None = None) -> int:
         "tracks": tracks,
         "projects": projects,
         "validate": vs,
+        "validation_chain": chain,
         "capability_debt": {
             "视频轨": {
                 "registered_gates": list(VIDEO_GATES_CAPABILITY_DEBT),
@@ -771,6 +835,7 @@ def main(argv: list[str] | None = None) -> int:
         # 「未过」与「未执行」分开报（#415）：last_status=None 是「没人跑过」，
         # 不是「跑红了」；最近一次 suite 记录的时间戳一并给出，读者能区分
         # 「从未执行」与「记录过期」。
+        hard_passed = vs.get("hard_passed") or []
         hard_failed = vs.get("hard_failed") or []
         hard_unexec = vs.get("hard_unexecuted") or []
         record = vs.get("last_suite_record") or ""
@@ -781,9 +846,10 @@ def main(argv: list[str] | None = None) -> int:
             "## 验证矩阵（自动生成，复用 automedia 自带）",
             f"- 场景 {vs['scenarios_total']} 条：{vs['scenario_status']}",
             f"- 最近整库 suite 记录：{record or '无（validation-runs/ 下没有 latest.txt）'}",
-            f"- hard 场景 {vs['hard_total']} 条：失败 {len(hard_failed)}"
-            f"（{'、'.join(hard_failed) or '无'}）；未执行（无记录）{len(hard_unexec)} 条"
-            f"：{'、'.join(hard_unexec) or '无'}",
+            f"- hard 场景 {vs['hard_total']} 条："
+            f"已执行-通过 {len(hard_passed)}（{'、'.join(hard_passed) or '无'}）；"
+            f"已执行-失败 {len(hard_failed)}（{'、'.join(hard_failed) or '无'}）；"
+            f"未执行 {len(hard_unexec)}（{'、'.join(hard_unexec) or '无'}）",
             f"- 门：missing={vs['gates_missing']} unreachable={unreachable}"
             f"（{'、'.join(unreachable_names) or '名单读取失败，见 validate coverage'}）",
         ]
@@ -799,6 +865,21 @@ def main(argv: list[str] | None = None) -> int:
                     f"run_dir={scope.get('run_dir') or '未记录'}"
                 )
             )
+        md.append(
+            f"- 验证链：连续未执行 {chain['days']} 天；"
+            f"本次{'已执行' if chain['executed_this_run'] else '未执行'}场景"
+        )
+        if chain["red"]:
+            md.append(f"- ❌ **验证链连续 {chain['days']} 天未执行任何场景**（#447）")
+    else:
+        reason = "--skip-validate" if args.skip_validate else "矩阵读取失败"
+        md += [
+            "",
+            "## 验证矩阵（未读取）",
+            f"- 本次 {reason}：未执行场景（连续未执行 {chain['days']} 天）",
+        ]
+        if chain["red"]:
+            md.append(f"- ❌ **验证链连续 {chain['days']} 天未执行任何场景**（#447）")
     md_text = "\n".join(md) + "\n"
     if args.md_out:
         Path(args.md_out).parent.mkdir(parents=True, exist_ok=True)
