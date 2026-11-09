@@ -2573,13 +2573,11 @@
   - analyze_content
   - approve_gate
   - archive_project
-  - batch_run
   - cancel_pipeline
   - configure_llm
   - connect_account
   - disconnect_account
   - distribute_content
-  - engine_health
   - evaluate_content_quality
   - extract_brief
   - format_output
@@ -2611,10 +2609,8 @@
   - list_workflows
   - localize_content
   - localize_output
-  - mcp_help
   - onboard
   - pause_pipeline
-  - pool_add_topic
   - publish_content
   - register_platform_adapter
   - reject_gate
@@ -2674,10 +2670,6 @@
 <td>Run pipeline sequentially for multiple topics</td>
 </tr>
 <tr>
-<td><code>batch_run</code></td>
-<td>⚠️ Deprecated: use run_batch</td>
-</tr>
-<tr>
 <td><code>cancel_pipeline</code></td>
 <td>Cancel a running pipeline by project ID</td>
 </tr>
@@ -2734,16 +2726,8 @@
 <td>Get a categorized listing of all MCP tools with descriptions and parameter schemas</td>
 </tr>
 <tr>
-<td><code>mcp_help</code></td>
-<td>⚠️ Deprecated: use help_mcp</td>
-</tr>
-<tr>
 <td><code>health_engine</code></td>
 <td>Check all engine-related dependencies health</td>
-</tr>
-<tr>
-<td><code>engine_health</code></td>
-<td>⚠️ Deprecated: use health_engine</td>
 </tr>
 <tr>
 <td><code>health_check</code></td>
@@ -2772,10 +2756,6 @@
 <tr>
 <td><code>add_pool_topic</code></td>
 <td>Add a topic to the topic pool</td>
-</tr>
-<tr>
-<td><code>pool_add_topic</code></td>
-<td>⚠️ Deprecated: use add_pool_topic</td>
 </tr>
 <tr>
 <td><code>list_topic_pool</code></td>

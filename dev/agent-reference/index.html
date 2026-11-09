@@ -1641,10 +1641,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases" class="md-nav__link">
+  <a href="#mcp-tools-quick-reference-64-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)
+        MCP Tools Quick Reference (64 tools)
       
     </span>
   </a>
@@ -2338,7 +2338,7 @@ under 200 lines. Read the section you need — none of it is required up front.<
 │       ├── templates/          # Render templates: hyperframes/ (HTML/Jinja2 scene templates + package.json), remotion/ (React composition sources)
 │       ├── hooks/              # Readonly observer protocol: protocol, cost_tracker, pipeline_history
 │       ├── cli/                # Typer CLI: app.py + command modules under commands/ (21 commands)
-│       ├── mcp/                # FastMCP server, 68 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
+│       ├── mcp/                # FastMCP server, 64 tools; mcp_allowlist.yaml path allowlist; tools/* handler modules
 │       ├── adapters/           # Publish adapters: base, registry, publish_engine, platforms/
 │       ├── accounts/           # PRD-4: AES-256-GCM credential store, registry, sessions, auth flows
 │       ├── omni/               # Omni Triad: ol_adapter, opp_adapter, orf_adapter, registry, config, allowlist
@@ -2737,7 +2737,7 @@ is the onboarding guide. How to read a scenario:</p>
 </tr>
 </tbody>
 </table>
-<h2 id="mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases">MCP Tools Quick Reference (68 tools, incl. 4 deprecated aliases)<a class="headerlink" href="#mcp-tools-quick-reference-68-tools-incl-4-deprecated-aliases" title="Permanent link">&para;</a></h2>
+<h2 id="mcp-tools-quick-reference-64-tools">MCP Tools Quick Reference (64 tools)<a class="headerlink" href="#mcp-tools-quick-reference-64-tools" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p>Moved here from AGENTS.md §9 (2026-11-08, ops(A1)): the deep-detail tables live in
 this reference; AGENTS.md keeps one-line pointers. <code>scripts/check-doc-consistency.py</code>
@@ -2899,11 +2899,6 @@ still guards this table against real MCP signatures — now scanning this sectio
 <td>Add topic to pool</td>
 </tr>
 <tr>
-<td><code>pool_add_topic</code></td>
-<td>title, category, pool_db_path</td>
-<td>Deprecated: use add_pool_topic</td>
-</tr>
-<tr>
 <td><code>publish_content</code></td>
 <td>project_id, platform, account_id, base_dir, mode</td>
 <td>Publish one platform (honors brand automation levels)</td>
@@ -2912,11 +2907,6 @@ still guards this table against real MCP signatures — now scanning this sectio
 <td><code>run_batch</code></td>
 <td>topics, brand, mode</td>
 <td>Run pipeline sequentially</td>
-</tr>
-<tr>
-<td><code>batch_run</code></td>
-<td>topics, brand, mode</td>
-<td>Deprecated: use run_batch</td>
 </tr>
 <tr>
 <td><code>add_cron_schedule</code></td>
@@ -3019,11 +3009,6 @@ still guards this table against real MCP signatures — now scanning this sectio
 <td>Engine dependency health</td>
 </tr>
 <tr>
-<td><code>engine_health</code></td>
-<td>—</td>
-<td>Deprecated: use health_engine</td>
-</tr>
-<tr>
 <td><code>update_engine_config</code></td>
 <td>modality, setting, value</td>
 <td>Update engine config</td>
@@ -3032,11 +3017,6 @@ still guards this table against real MCP signatures — now scanning this sectio
 <td><code>help_mcp</code></td>
 <td>—</td>
 <td>Categorized tool listing</td>
-</tr>
-<tr>
-<td><code>mcp_help</code></td>
-<td>—</td>
-<td>Deprecated: use help_mcp</td>
 </tr>
 <tr>
 <td><code>list_overridable_templates</code></td>
