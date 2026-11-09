@@ -40,6 +40,7 @@ from automedia.core.env_overlay import env_lookup
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.lexicon import CN_OFFICIALESE_RE
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 # ---------------------------------------------------------------------------
@@ -230,16 +231,9 @@ _ACADEMIC_WORD_RE = re.compile(
 
 # Pattern 7b: Chinese officialese / buzzwords (官腔黑话) — detection only;
 # \b boundaries do not apply between CJK characters, so a separate regex is
-# used. 生态 is guarded so the legitimate 生态系统 is not flagged.
-_CN_ACADEMIC_PATTERNS: list[str] = [
-    r"赋能",
-    r"抓手",
-    r"闭环",
-    r"颗粒度",
-    r"底层逻辑",
-    r"生态(?!系统)",
-]
-_CN_ACADEMIC_RE = re.compile("|".join(_CN_ACADEMIC_PATTERNS))
+# used.  The word list lives in gates/lexicon.py so the failure-mode guidance
+# and this detector can never name different words (#442).
+_CN_ACADEMIC_RE = CN_OFFICIALESE_RE
 
 # Pattern 8: Absolute assertions
 _ABSOLUTE_PATTERNS: list[str] = [

@@ -67,6 +67,24 @@ def _verdict_from_results(results: list[dict[str, Any]]) -> bool:
     return all(r.get("passed", True) for r in results)
 
 
+def _failure_reason(result: dict[str, Any]) -> str | None:
+    """Return why *result* failed: its error, else its first failing check.
+
+    ``build_gate_result`` leaves ``error`` as ``None`` for quality failures —
+    the payload lives in ``checks[*].detail`` — so reading only ``error`` made
+    a failed gate look reasonless in logs and history (#442).
+    """
+    error = result.get("error")
+    if error:
+        return str(error)
+    for check in result.get("checks") or []:
+        if isinstance(check, dict) and check.get("passed") is False:
+            detail = check.get("detail") or check.get("suggestion")
+            if detail:
+                return str(detail)
+    return None
+
+
 # Content gates whose failing results may apply ``modified_content`` into the
 # main content flow (quality-retry branch).  G0 (fact check), G1 (humanizer)
 # and G2 (copy review) are ``failure_mode="retry"`` gates that emit
@@ -1051,11 +1069,13 @@ class GateEngine:
                     log.info("gate.passed", gate_name=gate_name, duration_s=duration)
                     self._dispatch_after(gate_name, gate_context, result)
                 else:
+                    result["failure_reason"] = _failure_reason(result)
                     log.warning(
                         "gate.failed",
                         gate_name=gate_name,
                         duration_s=duration,
                         failure_mode=fm,
+                        failure_reason=result["failure_reason"],
                     )
                     if fm == "stop":
                         self._dispatch_after(gate_name, gate_context, result)
@@ -1090,7 +1110,7 @@ class GateEngine:
                             attempt=_quality_attempt,
                             max_quality_retries=_local_max_quality,
                             remaining=_remaining,
-                            failure_reason=result.get("error", "quality check failed"),
+                            failure_reason=_failure_reason(result) or "quality check failed",
                         )
 
                         if progress:

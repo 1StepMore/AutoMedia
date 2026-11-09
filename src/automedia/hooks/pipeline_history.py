@@ -184,6 +184,16 @@ class PipelineHistoryHook(GateObserver):
         error = result.get("error")
         if error is not None:
             extra["error"] = str(error)
+        reason = result.get("failure_reason") or error
+        if reason:
+            extra["failure_reason"] = str(reason)
+        failed = [
+            str(check.get("name") or check.get("check_name") or "unknown")
+            for check in result.get("checks") or []
+            if isinstance(check, dict) and check.get("passed") is False
+        ]
+        if failed:
+            extra["failed_checks"] = failed
         self._write_entry(gate_name, "completed", context, extra_meta=extra)
 
     def on_gate_failed(self, gate_name: str, context: dict[str, Any], error: Exception) -> None:
