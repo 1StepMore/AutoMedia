@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from structlog import get_logger
 
+from automedia.gates.lexicon import CN_OFFICIALESE_WORDS
+
 log = get_logger(__name__)
 
 FAILURE_MODES: dict[str, dict[str, object]] = {
@@ -50,7 +52,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "Transition phrases between paragraphs are formulaic",
             "Verify loop (issue #62) reports detector_score > 0.5 on the final"
             " output — the rewritten text still reads AI-written (e.g. CN officialese"
-            " 赋能/闭环/底层逻辑 or hollow intros like 值得注意的是)",
+            f" {'/'.join(CN_OFFICIALESE_WORDS)} or hollow intros like 值得注意的是)",
         ],
         "fixes": [
             "Replace AI transition phrases with natural conversational alternatives",
@@ -60,7 +62,7 @@ FAILURE_MODES: dict[str, dict[str, object]] = {
             "When the verify loop reports AI-written output, inspect the failing"
             " checks in the detector detail (e.g. hollow_intros,"
             " overacademic_vocabulary) and remove the flagged patterns directly —"
-            " the CN 官腔黑话 patterns (赋能/抓手/闭环/颗粒度/底层逻辑/生态) are"
+            f" the CN 官腔黑话 patterns ({'/'.join(CN_OFFICIALESE_WORDS)}) are"
             " detection-only and are NOT rewritten automatically",
         ],
         "verify_loop": (
