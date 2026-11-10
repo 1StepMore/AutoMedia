@@ -103,17 +103,18 @@ def test_produced_keys_are_read_from_the_real_pipeline() -> None:
     # ``entries`` has a real producer since #387 (vision_entries extracts
     # per-scene frames and writes verdicts after a successful render).
     assert "entries" in produced
-    # Never written anywhere: these are the structurally dead inputs.
-    assert "lint_result" not in produced
+    # ``lint_result`` has a real producer since #470 (lint_executor.run_lint
+    # writes it once the SRT lands).
+    assert "lint_result" in produced
 
 
 def test_reachability_separates_the_three_buckets() -> None:
     reachability = audit_input_reachability(_SRC / "gates", _SRC, {"V0", "V2", "G0"})
 
-    assert reachability.reachable_gates == ("V2",)
-    assert reachability.unreachable_gates == ("V0",)
+    assert reachability.reachable_gates == ("V0", "V2")
+    assert reachability.unreachable_gates == ()
     assert reachability.unknown_gates == ("G0",)
-    assert reachability.missing_keys == {"V0": ("lint_result",)}
+    assert reachability.missing_keys == {}
 
 
 def test_a_gate_with_no_declared_inputs_is_never_claimed_reachable() -> None:
@@ -128,9 +129,9 @@ def test_note_states_all_three_buckets() -> None:
     reachability = audit_input_reachability(_SRC / "gates", _SRC, {"V0", "V2", "G0"})
     note = input_reachability_note(reachability)
 
-    assert "1 of the 2 gates that DECLARE required inputs" in note
+    assert "2 of the 2 gates that DECLARE required inputs" in note
     assert "1 gates declare no required inputs" in note
-    assert "V0(lint_result)" in note
+    assert "V0(lint_result)" not in note
 
 
 def test_note_is_clean_when_every_declared_input_is_produced() -> None:
@@ -147,13 +148,12 @@ def test_note_is_clean_when_every_declared_input_is_produced() -> None:
 def test_coverage_audit_reports_input_reachability() -> None:
     result = coverage_audit()
 
-    # V1 joined the reachable set in #387: the vision-entries producer writes
-    # ``entries`` after a successful render.
-    assert result["input_reachable_gates"] == ["V1", "V2", "V5", "V7"]
-    assert result["input_unreachable_gates"] == ["V0", "V3", "V4", "V6"]
-    assert result["input_missing_keys"]["V0"] == ["lint_result"]
-    assert result["summary"]["gates_input_reachable"] == 4
-    assert result["summary"]["gates_input_unreachable"] == 4
+    # V1 joined the reachable set in #387 (vision-entries producer); V0 joined
+    # it in #470 (lint_executor writes ``lint_result`` once the SRT lands).
+    assert result["input_reachable_gates"] == ["V0", "V1", "V2", "V5", "V7"]
+    assert result["input_unreachable_gates"] == ["V3", "V4", "V6"]
+    assert result["summary"]["gates_input_reachable"] == 5
+    assert result["summary"]["gates_input_unreachable"] == 3
 
 
 def test_input_reachability_does_not_disturb_the_existing_classes() -> None:
@@ -173,7 +173,7 @@ def test_input_unreachable_and_execution_unreachable_are_disjoint_reports() -> N
     assert set(result["input_unreachable_gates"]) & set(result["unreachable_gates"]) == set()
 
 
-@pytest.mark.parametrize("gate", ["V0", "V3", "V4", "V6"])
+@pytest.mark.parametrize("gate", ["V3", "V4", "V6"])
 def test_each_input_less_gate_names_the_missing_key(gate: str) -> None:
     result = coverage_audit()
 
