@@ -334,10 +334,21 @@ class TestFullChain:
         else:
             assert missing_input_result("V0", ctx, ("lint_result",)) is not None
         assert missing_input_result("V1", ctx, ("entries",)) is not None
-        assert (
-            missing_input_result("V3", ctx, ("source_keywords", "content_keywords", "source_texts"))
-            is not None
-        )
+        # V3 自 #471 起有条件生产者：无源材料的链路不写三件套 → 如实 skip。
+        if ctx.get("source_content"):
+            assert (
+                missing_input_result(
+                    "V3", ctx, ("source_keywords", "content_keywords", "source_texts")
+                )
+                is None
+            )
+        else:
+            assert (
+                missing_input_result(
+                    "V3", ctx, ("source_keywords", "content_keywords", "source_texts")
+                )
+                is not None
+            )
         assert missing_input_result("V4", ctx, ("voice_id", "segments")) is not None
         assert (
             missing_input_result(

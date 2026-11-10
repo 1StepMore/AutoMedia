@@ -415,11 +415,11 @@
     "V0",
     "V1",
     "V2",
+    "V3",
     "V5",
     "V7"
   ],
   "input_unreachable_gates": [
-    "V3",
     "V4",
     "V6"
   ],
@@ -451,11 +451,6 @@
     "pre-gate"
   ],
   "input_missing_keys": {
-    "V3": [
-      "source_keywords",
-      "content_keywords",
-      "source_texts"
-    ],
     "V4": [
       "voice_id",
       "segments"
@@ -467,7 +462,7 @@
       "pixel_valid"
     ]
   },
-  "input_reachability_note": "5 of the 8 gates that DECLARE required inputs have them produced by this pipeline; 25 gates declare no required inputs (reachability not asserted). 3 will always report skipped because no module produces a required key: V3(source_keywords,content_keywords,source_texts), V4(voice_id,segments), V6(avg_brightness,contrast,opacity,pixel_valid).",
+  "input_reachability_note": "6 of the 8 gates that DECLARE required inputs have them produced by this pipeline; 25 gates declare no required inputs (reachability not asserted). 2 will always report skipped because no module produces a required key: V4(voice_id,segments), V6(avg_brightness,contrast,opacity,pixel_valid).",
   "boundary_only_mcp": [
     "run_validation_suite"
   ],
@@ -507,8 +502,8 @@
     "gates_missing": 4,
     "gates_phantom": 0,
     "gates_unreachable": 2,
-    "gates_input_reachable": 5,
-    "gates_input_unreachable": 3,
+    "gates_input_reachable": 6,
+    "gates_input_unreachable": 2,
     "gates_input_unknown": 25,
     "gates_boundary_only": 0,
     "modes_declared": 9,
