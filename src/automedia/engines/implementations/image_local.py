@@ -4,8 +4,8 @@ Provides:
     - :class:`LocalImageEngine` — a :class:`BaseImageEngine` implementation
       that renders a fully offline, deterministic image: a vertical gradient
       seeded by a hash of ``(prompt, index)``, a soft radial vignette, two to
-      three translucent geometric accents, and the prompt's first ~14
-      characters drawn over the top.
+      three translucent geometric accents, and reader-facing copy drawn over
+      the top (see :func:`pick_card_text`).
 
 The output is deterministic: every visual parameter comes from
 ``sha256(f"{prompt}|{index}")`` and PNG encoding carries no timestamps, so
@@ -29,6 +29,7 @@ import colorsys
 import hashlib
 import logging
 import os
+import re
 from typing import TYPE_CHECKING, ClassVar, overload
 
 from typing_extensions import override
@@ -63,6 +64,78 @@ DEFAULT_HEIGHT = 1080
 
 #: Maximum number of prompt characters rendered on the card.
 _TITLE_CHAR_LIMIT = 14
+
+#: SD quality-tag vocabulary the ``image_prompt.j2`` template mandates.  These
+#: are instructions *to the image model* — painting them onto a human-facing
+#: card is exactly the #463 bug ("masterpiece, b…").
+_SD_QUALITY_TAG_RE = re.compile(
+    r"\b(?:masterpiece|best\s+quality|high\s*quality|highly\s+detailed|"
+    r"ultra[-\s]?detailed|ultra[-\s]?detailed|sharp\s+focus|8k|4k|uhd|"
+    r"high\s+resolution|professional\s+lighting|cinematic\s+lighting|"
+    r"studio\s+lighting|trending\s+on\s+artstation|photorealistic|"
+    r"hyperrealistic|detailed\s+texture|depth\s+of\s+field|bokeh)\b",
+    re.IGNORECASE,
+)
+
+#: Any CJK character — the "中文场景文案" marker for :func:`pick_card_text`.
+_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+
+#: Fallback marker drawn under copy that came from the English prompt rather
+#: than real Chinese scene copy (the #463 卡住条款's「标注『兜底卡』」).
+_FALLBACK_CARD_MARKER = "AutoMedia 兜底卡"
+
+#: Bracketed production cues inside a scene line (``[画面：…]``) — never copy.
+_BRACKETED_CUE_RE = re.compile(r"[\[【][^\]】]*[\]】]")
+
+#: Spoken-part labels at the head of a scene line.
+_SPOKEN_LABEL_RE = re.compile(r"^(?:旁白|口播|画外音)(?:文案)?\s*[:：]\s*")
+
+
+def pick_card_text(prompt: str) -> tuple[str, bool]:
+    """Return the reader-facing text to draw on a fallback card (#463).
+
+    The image prompt is written *for Stable Diffusion*: it opens with English
+    quality tags (``masterpiece, best quality, 8k, …``).  Painting the prompt's
+    first characters onto the card put those tags on every fallback image
+    (#463) — the tags are for the model, not for a reader.
+
+    Priority:
+
+    1. **Chinese scene copy** — the longest CJK-bearing segment of the prompt
+       (scene narration lines ride along in prompts for some paths; bracketed
+       cues and ``旁白：`` labels are stripped from it).
+    2. **Prompt topic description** — with no CJK anywhere, the quality tags
+       and technical tokens are dropped and the leading descriptive clause is
+       used (the #463 minimum: the topic segment, never the tag segment).
+    3. Empty prompt → empty string (the caller substitutes a brand line).
+
+    Returns:
+        ``(text, from_scene_copy)`` where ``from_scene_copy`` marks text found
+        via the Chinese-copy path; English-prompt fallbacks are drawn with the
+        :data:`_FALLBACK_CARD_MARKER` subtitle so a card never pretends to be
+        real scene copy.
+    """
+    flat = " ".join((prompt or "").split())
+    if not flat:
+        return "", False
+
+    # 1) Chinese scene copy: split into segments and prefer the longest CJK one.
+    segments = [seg.strip(" ,;；、.。") for seg in re.split(r"[,，;；\n]|(?:\s{2,})", flat)]
+    cjk_segments = [seg for seg in segments if seg and _CJK_RE.search(seg)]
+    if cjk_segments:
+        best = max(cjk_segments, key=len)
+        best = _BRACKETED_CUE_RE.sub("", best).strip(" ,;；、.。")
+        best = _SPOKEN_LABEL_RE.sub("", best).strip(" ,;；、.。")
+        if best and _CJK_RE.search(best):
+            return best, True
+        # The CJK segment collapsed to nothing after cue stripping — fall
+        # through to the descriptive path.
+
+    # 2) English prompt: drop quality tags, keep the leading description.
+    tokens = [tok.strip() for tok in flat.split(",")]
+    descriptive = [tok for tok in tokens if tok and not _SD_QUALITY_TAG_RE.search(tok)]
+    text = ", ".join(descriptive).strip() or flat
+    return text[:_TITLE_CHAR_LIMIT], False
 
 
 def _digest(prompt: str, index: int) -> bytes:
@@ -278,7 +351,7 @@ class LocalImageEngine(BaseImageEngine):
         # Soft radial vignette (dark edges, clear centre) as an alpha mask.
         composed = self._apply_vignette(composed, width, height)
 
-        # Title: first ~14 prompt characters, drawn with a shadow.
+        # Reader-facing copy (never SD quality tags — #463), drawn with a shadow.
         flat = composed.convert("RGB")
         self._draw_title(ImageDraw.Draw(flat), prompt, width, height)
         return flat
@@ -354,8 +427,14 @@ class LocalImageEngine(BaseImageEngine):
         width: int,
         height: int,
     ) -> None:
-        """Draw the first *14* prompt characters centred on the card."""
-        title = " ".join(prompt.split())
+        """Draw the card copy centred, with a shadow.
+
+        The copy is picked by :func:`pick_card_text` (#463): Chinese scene
+        copy when the prompt carries it, else the prompt's descriptive
+        segment with quality tags stripped.  An English-prompt fallback also
+        draws the「兜底卡」marker so the card never poses as real scene copy.
+        """
+        title, from_scene_copy = pick_card_text(prompt)
         if len(title) > _TITLE_CHAR_LIMIT:
             title = title[:_TITLE_CHAR_LIMIT] + "…"
         if not title:
@@ -370,6 +449,19 @@ class LocalImageEngine(BaseImageEngine):
         # Shadow first, then the glyphs — readable on any gradient.
         draw.text((x + 2, y + 2), title, font=font, fill=(0, 0, 0))
         draw.text((x, y), title, font=font, fill=(255, 255, 255))
+
+        if not from_scene_copy:
+            # Honest labelling: this card's text came from an English SD
+            # prompt, not real scene copy (#463 卡住条款).
+            marker_size = max(10, font_size // 2)
+            marker_font = self._load_font(marker_size)
+            marker_width = self._text_width(draw, _FALLBACK_CARD_MARKER, marker_font)
+            draw.text(
+                (max(8, (width - marker_width) // 2), y + font_size + marker_size),
+                _FALLBACK_CARD_MARKER,
+                font=marker_font,
+                fill=(235, 235, 235),
+            )
 
     def _font_candidates(self) -> list[str]:
         """Return font paths to try, in priority order."""
