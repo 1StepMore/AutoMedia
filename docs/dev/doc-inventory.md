@@ -4,9 +4,9 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 11465 | file |
+| AGENTS.md | 12349 | file |
 | README.md | 34592 | file |
-| docs/AGENTS.md | 645 | file |
+| docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -42,7 +42,7 @@
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 25936 | file |
+| docs/dev/plans/NIGHTLY.md | 26319 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
 | docs/dev/project-analysis-20261029.md | 29923 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
