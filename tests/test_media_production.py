@@ -318,10 +318,21 @@ class TestFullChain:
             assert records[path] == {"expected": compute_md5(path)}
 
     def test_gates_never_scored_stay_skipped(self, tmp_path: Path) -> None:
-        """无可信生产者的门（V0/V1/V3/V4/V6）仍须跳过——绝不写假数据。"""
+        """无可信生产者的门（V1/V3/V4/V6）仍须跳过——绝不写假数据。
+
+        V0 自 #470 起有 lint_executor 真实生产者：链路产出 SRT 时
+        ``lint_result`` 存在（不再是 input-less 门），V1 也由 #387 起的
+        vision-entries 生产者覆盖（本链路无成片时 V1 仍如实 skip）。
+        """
         ctx = self._run(tmp_path)
 
-        assert missing_input_result("V0", ctx, ("lint_result",)) is not None
+        # V0: SRT 已产出 → lint_result 已写 → missing_input_result 放行。
+        if ctx.get("srt_text"):
+            assert missing_input_result("V0", ctx, ("lint_result",)) is None
+            lint_result = ctx["lint_result"]
+            assert {"errors", "warnings", "syntax_ok"} <= set(lint_result)
+        else:
+            assert missing_input_result("V0", ctx, ("lint_result",)) is not None
         assert missing_input_result("V1", ctx, ("entries",)) is not None
         assert (
             missing_input_result("V3", ctx, ("source_keywords", "content_keywords", "source_texts"))

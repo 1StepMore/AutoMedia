@@ -2228,14 +2228,15 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     为了让 V2/V5 跳过而不是失败（V2 的跳过判据是 ``transcription`` 本身，
     见 ``gates/pre_send_whisper.py``）。
 
-    刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``lint_result``
-    （V0，无 lint 执行器）、``segments`` 与 ``voice_id``（V4，TTS 引擎不回传
-    ``voice_params``）、``avg_brightness`` 等（V6，``opacity`` 无法从已合成帧
-    反推）、``source_keywords`` 等（V3，无可信的关键词提取实现）。这些门会
-    如实报 ``skipped``（能力债集合 V0/V3/V4/V6，与 ``nightly_gap.py`` 的
-    ``VIDEO_GATES_CAPABILITY_DEBT`` 一致——V1 不在其中：#387 起有真实生产者，
-    #414 起口径统一）。``entries``（V1）自 #387 起由
-    ``_produce_vision_entries`` 真实生产：按场景切点抽帧 + 面板短路裁决，
+    刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``segments`` 与
+    ``voice_id``（V4，TTS 引擎不回传 ``voice_params``）、``avg_brightness`` 等
+    （V6，``opacity`` 无法从已合成帧反推）、``source_keywords`` 等（V3，无可信
+    的关键词提取实现）。这些门会如实报 ``skipped``（能力债集合 V3/V4/V6，与
+    ``nightly_gap.py`` 的 ``VIDEO_GATES_CAPABILITY_DEBT`` 一致——V1 不在其中：
+    #387 起有真实生产者，#414 起口径统一；V0 亦不在其中：#470 起由
+    ``lint_executor.run_lint`` 在 SRT 落盘后真实生产 ``lint_result``）。
+    ``entries``（V1）自 #387 起由 ``_produce_vision_entries`` 真实生产：
+    按场景切点抽帧 + 面板短路裁决，
     无视觉模型的场次如实记 ``unjudged``。
 
     Args:
@@ -2412,6 +2413,24 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             srt_len=len(srt_text),
             hint="audio registered — V2/V5 will report skipped; video continues without subtitles",
         )
+
+    # V0 的诚实生产者（#470）：SRT/脚本客观 lint。SRT 两种来源——转写段
+    # 原子写入的 ``srt_text``，或转写失败时盘上的脚本派生 narration.srt
+    # （lint 只需要 SRT 本身，不需要 whisper 转写；V2/V5 的 skip 语义不受
+    # 影响）。无 SRT 可 lint 时保持不写，V0 如实 skip——不造假。
+    from automedia.pipelines.lint_executor import run_lint
+
+    lint_srt = str(gate_context.get("srt_text") or "")
+    if not lint_srt and srt_path and os.path.isfile(srt_path):
+        try:
+            with open(srt_path, encoding="utf-8") as fh:
+                lint_srt = fh.read()
+        except OSError:
+            lint_srt = ""
+    if lint_srt.strip():
+        lint_result = run_lint({**gate_context, "srt_text": lint_srt})
+        if lint_result is not None:
+            gate_context["lint_result"] = lint_result
 
     # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
     from automedia.pipelines.image_pipeline import BODY_IMAGE_SIZE, ImagePipeline

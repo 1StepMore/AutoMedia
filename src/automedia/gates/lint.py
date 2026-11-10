@@ -97,8 +97,17 @@ class V0Lint(BaseGate):
     _failure_mode = "stop"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
-        """Run V0 lint checks and return structured result."""
-        if not gate_context.get("hyperframes_available", True):
+        """Run V0 lint checks and return structured result.
+
+        The HyperFrames precondition now yields to the honest producer (#470):
+        the SRT/script lint is an offline static check that needs no renderer.
+        When the lint executor wrote a real ``lint_result``, the gate runs on
+        it even without HyperFrames; when there is no ``lint_result`` (no SRT
+        at all), the original skip reason stands.  The three criteria and
+        their thresholds are untouched.
+        """
+        lint_present = bool(gate_context.get("lint_result"))
+        if not gate_context.get("hyperframes_available", True) and not lint_present:
             return {
                 "passed": True,
                 "gate": "V0",
@@ -106,9 +115,10 @@ class V0Lint(BaseGate):
                 "reason": "HyperFrames not installed — video QA skipped",
             }
 
-        # ``lint_result`` is produced by the video pipeline.  Absent means this
-        # run produced no video artifact to lint — report that honestly as a
-        # skip instead of judging an empty dict (health-assessment P0-1).
+        # ``lint_result`` is produced by the lint executor (#470).  Absent means
+        # this run produced no lintable artifact to inspect — report that
+        # honestly as a skip instead of judging an empty dict (health-assessment
+        # P0-1).
         skipped = missing_input_result("V0", gate_context, ("lint_result",))
         if skipped is not None:
             return skipped
