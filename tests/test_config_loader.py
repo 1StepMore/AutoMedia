@@ -646,3 +646,70 @@ class TestComfyuiLegacyPathMigration:
             warnings.simplefilter("error", DeprecationWarning)
             config = load_config(config_dir=str(tmp_path))
         assert config["engines"]["image"]["comfyui"]["port"] == 7777
+
+
+class TestLoadConfigHonorsConfigDirEnv:
+    """AUTOMEDIA_CONFIG_DIR redirects the whole user-config root (#478).
+
+    ``paths.get_user_config_dir()`` owns that resolution; ``load_config`` used
+    to hardcode ``~/.automedia`` for layers 3/4/5, so ``automedia demo``'s
+    hermetic-sandbox claim was false: real user overrides leaked into isolated
+    runs (issue #478's repro read ``engines.video.default: ffmpeg`` from the
+    real ``~/.automedia/overrides/rules``).
+    """
+
+    @staticmethod
+    def _seed_real_home(tmp_path: Path) -> Path:
+        """A fake HOME whose ``~/.automedia`` carries a stale video override."""
+        home = tmp_path / "home"
+        rules = home / ".automedia" / "overrides" / "rules"
+        rules.mkdir(parents=True)
+        (rules / "engine-override-video.yaml").write_text(
+            "engines:\n  video:\n    default: ffmpeg\n",
+            encoding="utf-8",
+        )
+        (home / ".automedia" / "tone.yaml").write_text("brand:\n  tone: leaked\n", encoding="utf-8")
+        return home
+
+    def test_isolated_dir_reads_no_user_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """①设了隔离目录 → 读不到 ~/.automedia 的任何覆盖."""
+        home = self._seed_real_home(tmp_path)
+        isolated = tmp_path / "isolated-config"
+        isolated.mkdir()
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(isolated))
+        config = load_config()
+        # the stale ffmpeg override must NOT leak in
+        assert config["engines"]["video"]["default"] == "hyperframes"
+        # nor any other user-layer key
+        assert "tone" not in config.get("brand", {})
+
+    def test_without_env_user_overrides_still_apply(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """②没设隔离目录 → 行为与现在完全一致（用户覆盖照常生效）."""
+        home = self._seed_real_home(tmp_path)
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        monkeypatch.delenv("AUTOMEDIA_CONFIG_DIR", raising=False)
+        config = load_config()
+        assert config["engines"]["video"]["default"] == "ffmpeg"
+        assert config["brand"]["tone"] == "leaked"
+
+    def test_missing_isolated_dir_falls_back_to_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """③隔离目录不存在 → 视为空配置层：纯内置默认，不报错、不创建目录.
+
+        二选一里选「按默认继续」：``get_user_config_dir`` 对缺失目录从不抛
+        错；隐式在用户指定的路径上建目录反而 surprising。需要"目录必须存
+        在"的调用方（沙箱/demo）自己负责 mkdir——它们已经这么做了。
+        """
+        home = self._seed_real_home(tmp_path)
+        missing = tmp_path / "not-created" / "config"
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(missing))
+        config = load_config()
+        assert config["engines"]["video"]["default"] == "hyperframes"
+        assert not missing.exists()
