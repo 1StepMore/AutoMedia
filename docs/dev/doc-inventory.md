@@ -25,7 +25,7 @@
 | docs/dev/adapter-credentials-matrix.md | 4425 | file |
 | docs/dev/agent-era-doc-architecture.md | 18625 | file |
 | docs/dev/agent-reference.md | 25318 | file |
-| docs/dev/agent-troubleshooting.md | 28282 | file |
+| docs/dev/agent-troubleshooting.md | 29007 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
@@ -38,7 +38,7 @@
 | docs/dev/forward-compat.md | 12882 | file |
 | docs/dev/founder-expectations.md | 112497 | file |
 | docs/dev/gap-register.md | 18711 | file |
-| docs/dev/gate-failure-modes.md | 24315 | file |
+| docs/dev/gate-failure-modes.md | 25636 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |

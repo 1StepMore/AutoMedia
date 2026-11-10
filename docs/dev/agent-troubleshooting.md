@@ -267,7 +267,21 @@ When the Vision API rate limit is hit, V1 degrades to a pixel-luminance fallback
 
 ### V5 — MP3 vs SRT Gate
 
-This gate cross-validates audio duration against subtitle timing. A common failure is WPM exceeding 300. Fix by rewriting dense subtitle segments to reduce word count.
+This gate checks that the transcribed narration and the subtitles say the same
+thing: every SRT cue must be anchored in the ASR text, cue order must match the
+audio order, no 8+ character ASR stretch may be left uncovered, and no script
+scaffolding (`镜头1`, `口播：`, `[切]`, `0:03-0:09`) may survive into either side
+(#469).
+
+The check detail names the offending cue or stretch. A residue hit means TTS or
+the SRT was generated from the raw script instead of the cleaned narration —
+re-run the media stage so `strip_narration_markup` runs first. A coverage or
+order hit means the audio is missing, re-ordered or extended relative to the
+script — regenerate the SRT from the same script the TTS engine read.
+
+The old whole-string similarity is still reported as `observation only:
+similarity N%`; it no longer decides the verdict (real Chinese ASR scores
+74–79% on a clean film).
 
 ### L1-L4 — Lifecycle Gates
 

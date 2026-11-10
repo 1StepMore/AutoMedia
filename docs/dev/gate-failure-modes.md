@@ -327,21 +327,37 @@ Verify brand audio (TTS) quality and correctness.
 
 ## V5: MP3 vs SRT
 
-Cross-validate audio duration against subtitle timing.
+Verify that the ASR transcript of the narration audio and the SRT subtitles say
+the same thing, structurally. Since #469 the verdict comes from four checks —
+a whole-string character similarity is no longer a criterion (it reported
+74–79% for a clean Chinese film under real ASR, and ≥80% for a film whose SRT
+and narration shared the same dirty source text):
+
+| Check | Fails when |
+|---|---|
+| `cue_anchor_coverage` | a cue has < 45% of its characters anchored in the ASR text (a sentence was not narrated) |
+| `cue_order_consistency` | a cue's anchor sits more than 4 characters before the previous cue's (blocks swapped) |
+| `uncovered_speech` | 8+ consecutive ASR characters are covered by no cue (audio says something the subtitles never show) |
+| `structure_label_residue` | script scaffolding (`镜头1`, `口播：`, `[切]`, `0:03-0:09`) survived into the SRT or the audio |
+
+`whisper_vs_srt_diff` still appears in the gate report as an observation field
+(`observation only: similarity N%`) and never drives pass/fail.
+`semantic_consistency` reports `semantic: skipped(no key)` until a semantic
+judge key is configured.
 
 **Common failure causes:**
 
-- MP3 total duration significantly shorter/longer than SRT timeline
-- Individual subtitle segments overlap or have excessive gaps
-- WPM exceeds readability threshold (> 300)
-- Audio file corrupted or truncated
+- TTS was fed the raw script, so labels such as `黄金开头（0:00-0:03）口播文案：` were read aloud
+- A narration sentence was dropped or re-ordered between script and audio
+- The audio track carries extra speech (intro/outro, retake) the subtitles never show
+- Subtitles were generated from a different text than the one narrated
 
 **Remediation:**
 
-- Adjust speaking rate and regenerate TTS audio to match SRT timeline
-- Merge overlapping segments and redistribute time budget
-- Rewrite dense segments to reduce word count
-- Verify MP3 integrity with `ffprobe`
+- Re-run the media stage so `strip_narration_markup` cleans the narration before TTS
+- Regenerate the SRT from the same script the TTS engine read
+- Read the failing check's detail — it names the cue index, coverage ratio or the uncovered ASR stretch
+- Verify MP3 integrity with `ffprobe` if anchors cluster at offset 0
 
 ## V6: Subtitle Rendering
 
