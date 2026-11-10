@@ -11,6 +11,14 @@ Explicit is honored: a caller who already exported ``AUTOMEDIA_CONFIG_DIR`` or
 missing half.  ``AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1`` preserves the root for
 post-mortem inspection.
 
+The owned ``config/`` is seeded with a minimal ``model_config.yaml`` (the same
+template ``automedia init`` writes) because ``automedia run`` refuses to start
+without that file even when ``AUTOMEDIA_LLM_*`` is fully exported (#466); a
+caller-owned config directory is never seeded.  A scenario that genuinely
+needs "no config" behaviour can delete the seed in a step
+(``rm -f ${AUTOMEDIA_CONFIG_DIR}/model_config.yaml``) — the scenario-level
+switch without product changes.
+
 The sandbox also provisions a scoped ``mcp_allowlist.yaml`` (via
 ``AUTOMEDIA_MCP_ALLOWLIST_PATH``) covering the sandbox dirs and
 ``/tmp/automedia/``, so the MCP tools' fail-closed allowlist checks pass for
@@ -34,6 +42,34 @@ KEEP_ENV = "AUTOMEDIA_VALIDATION_KEEP_SANDBOX"
 ALLOWLIST_ENV = "AUTOMEDIA_MCP_ALLOWLIST_PATH"
 
 _TRUTHY = frozenset({"1", "true", "yes"})
+
+#: Seed written into a sandbox-owned ``config/`` so journey/produce scenarios
+#: clear ``automedia run``'s model-config precheck (#466).  The template is
+#: the same minimal shape ``automedia init`` writes (``init_cmd._init_minimal``:
+#: provider/model placeholders with an empty ``api_key``) — credentials keep
+#: coming from the ``AUTOMEDIA_LLM_*`` environment layer, which outranks file
+#: config.  Callers who export their own ``AUTOMEDIA_CONFIG_DIR`` keep their
+#: directory untouched (explicit wins, same as the config/projects vars).
+_MODEL_CONFIG_SEED: dict[str, object] = {
+    "llm": {
+        "text_generation": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "",
+        },
+    },
+}
+
+
+def _seed_model_config(config_dir: Path) -> Path:
+    """Write the minimal ``model_config.yaml`` seed if the directory lacks one."""
+    path = config_dir / "model_config.yaml"
+    if path.is_file():
+        return path
+    import yaml
+
+    path.write_text(yaml.safe_dump(_MODEL_CONFIG_SEED, allow_unicode=True), encoding="utf-8")
+    return path
 
 
 def _write_sandbox_allowlist(directory: Path, config_dir: Path, projects_dir: Path) -> Path:
@@ -149,6 +185,11 @@ def validation_sandbox(environ: Mapping[str, str] | None = None) -> Iterator[San
     owned_projects = root / "projects"
     owned_config.mkdir()
     owned_projects.mkdir()
+    # Journey/produce scenarios call ``automedia run``, whose CLI precheck
+    # requires model_config.yaml to exist (#466) — seed the owned config dir
+    # so the 15 journey/produce scenarios stop failing at step 1.  The seed
+    # lives inside the sandbox root and is removed with it (no residue).
+    _seed_model_config(owned_config)
 
     env: dict[str, str] = {}
     if not existing_config:

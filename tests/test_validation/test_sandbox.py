@@ -180,6 +180,58 @@ class TestIdempotency:
             assert not (second.config_dir / "accounts").exists()
 
 
+class TestModelConfigSeeding:
+    """Owned config dirs are seeded so ``automedia run`` clears its precheck (#466)."""
+
+    def test_owned_sandbox_seeds_minimal_model_config(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import yaml
+
+        monkeypatch.delenv(CONFIG_ENV, raising=False)
+        monkeypatch.delenv(PROJECTS_ENV, raising=False)
+        with validation_sandbox() as sandbox:
+            seed_path = sandbox.config_dir / "model_config.yaml"
+            assert seed_path.is_file()
+            data = yaml.safe_load(seed_path.read_text(encoding="utf-8"))
+        # Template matches ``automedia init`` minimal output
+        # (init_cmd._init_minimal): provider/model placeholders, empty api_key.
+        assert data["llm"]["text_generation"]["provider"] == "openai"
+        assert data["llm"]["text_generation"]["model"] == "gpt-4o-mini"
+        assert data["llm"]["text_generation"]["api_key"] == ""
+
+    def test_seed_is_removed_with_the_sandbox(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(CONFIG_ENV, raising=False)
+        monkeypatch.delenv(PROJECTS_ENV, raising=False)
+        with validation_sandbox() as sandbox:
+            seed_path = sandbox.config_dir / "model_config.yaml"
+            root = sandbox.root
+            assert seed_path.is_file()
+        assert not root.exists()
+        assert not seed_path.exists()
+
+    def test_explicit_config_dir_is_never_seeded(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config_dir = tmp_path / "config"
+        projects_dir = tmp_path / "projects"
+        config_dir.mkdir()
+        projects_dir.mkdir()
+        monkeypatch.setenv(CONFIG_ENV, str(config_dir))
+        monkeypatch.setenv(PROJECTS_ENV, str(projects_dir))
+        with validation_sandbox():
+            pass
+        assert not (config_dir / "model_config.yaml").exists()
+
+    def test_seed_helper_never_clobbers_an_existing_file(self, tmp_path: Path) -> None:
+        from automedia.validation.sandbox import _seed_model_config
+
+        existing = tmp_path / "model_config.yaml"
+        existing.write_text("llm:\n  text_generation:\n    provider: glm\n", encoding="utf-8")
+        assert _seed_model_config(tmp_path) == existing
+        assert "provider: glm" in existing.read_text(encoding="utf-8")
+
+
 class TestCliAdapterExpansion:
     def test_expands_env_vars_in_commands(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTOMEDIA_TEST_DIR", "/tmp/automedia-expand")
