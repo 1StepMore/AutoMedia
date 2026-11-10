@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.15.1...automedia-v1.16.0) (2026-11-10)
+
+
+### Features
+
+* **adapters:** dry-run publish engine, contract suite, credentials matrix ([#465](https://github.com/1StepMore/AutoMedia/issues/465)) ([f359923](https://github.com/1StepMore/AutoMedia/commit/f359923603504f9f383ab0801897e61f62422c33))
+
+
+### Bug Fixes
+
+* **gates:** judge V5 by cue anchoring, order and residue, not similarity ([#469](https://github.com/1StepMore/AutoMedia/issues/469)) ([#475](https://github.com/1StepMore/AutoMedia/issues/475)) ([885e55b](https://github.com/1StepMore/AutoMedia/commit/885e55b06b2f2b583f3cddd674b3257b3c64cbcb))
+* **pipeline:** stop narration and SRT from reading script structure aloud ([#455](https://github.com/1StepMore/AutoMedia/issues/455)) ([#459](https://github.com/1StepMore/AutoMedia/issues/459)) ([b35d4c9](https://github.com/1StepMore/AutoMedia/commit/b35d4c95d921c9c2a88eac45442ce1e05a7097e4))
+
 ## [1.15.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.15.0...automedia-v1.15.1) (2026-11-09)
 
 
