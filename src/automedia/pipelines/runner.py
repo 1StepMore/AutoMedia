@@ -2214,6 +2214,26 @@ def _expected_md5_records(paths: list[str]) -> dict[str, dict[str, str]]:
     return {path: {"expected": compute_md5(path)} for path in paths}
 
 
+def _expected_voice_from_brand(brand_profile: dict[str, Any] | None) -> str:
+    """Brand-asset expected TTS voice (same fallback chain as language_config).
+
+    ``languages.<lang>.tts_voice`` → ``languages.zh.tts_voice`` → the zh-CN
+    default.  Read-only over the brand dict; never hard-codes a voice outside
+    the shared default.
+    """
+    languages = (brand_profile or {}).get("languages")
+    if isinstance(languages, dict) and languages:
+        for lang in ("zh",):
+            lang_data = languages.get(lang)
+            if isinstance(lang_data, dict):
+                voice = lang_data.get("tts_voice")
+                if isinstance(voice, str) and voice.strip():
+                    return voice.strip()
+    from automedia.pipelines.language_config import _ZH_DEFAULTS
+
+    return str(_ZH_DEFAULTS["tts_voice"])
+
+
 def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     """音频轨 → 图片 → 视频 → 产物清单，供 V 门真实校验。
 
@@ -2335,6 +2355,25 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
 
     # 音频段：TTS 落盘即登记——下游转写失败不再连坐音频（issue #343）。
     gate_context["audio_path"] = audio_path
+
+    # V4 的诚实生产者（#472）：TTS 实际使用的 voice 参数 + 品牌资产期望值。
+    # edge-tts 引擎不回传参数，适配层按"调用参数即实际参数"登记（见
+    # AudioPipeline.last_voice_params 的风险注记）；期望值与品牌资产同源：
+    # brand 档案 languages.<lang>.tts_voice → zh 默认（与
+    # language_config.resolve_language_config 同一条回退链，不许硬编码）。
+    # speed/pitch 全链路未配置 → speaking_rate=0.0，V4 语速判据如实 skip。
+    # 无 TTS 产物时什么都不写——V4 保持诚实 skip，绝不默认 pass。
+    voice_params = dict(getattr(audio, "last_voice_params", None) or {})
+    if voice_params.get("voice_id"):
+        gate_context["voice_id"] = str(voice_params["voice_id"])
+        gate_context["speaking_rate"] = float(voice_params.get("rate") or 0.0)
+        _v4_scenes = list(gate_context.get("video_timeline_scenes") or [])
+        gate_context["segments"] = [
+            {"id": sc.get("id"), "voice_params": dict(voice_params)} for sc in _v4_scenes
+        ]
+        gate_context["expected_voice_id"] = _expected_voice_from_brand(
+            gate_context.get("brand_profile")
+        )
 
     # 转写段：失败只降级 V2/V5（如实跳过），不外抛、不丢音频、不阻断视频。
     # 字幕段（#376）：SRT 文本必须来自**脚本原文**，Whisper 只做校验。

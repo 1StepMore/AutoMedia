@@ -110,6 +110,9 @@ def test_produced_keys_are_read_from_the_real_pipeline() -> None:
     # producer since #471 (keyword_extractor writes them when the run has
     # topic + source material).
     assert {"source_keywords", "content_keywords", "source_texts"} <= produced
+    # ``voice_id``/``segments`` have a real producer since #472 (the TTS
+    # adapter layer records the resolved voice params per synthesis).
+    assert {"voice_id", "segments"} <= produced
 
 
 def test_reachability_separates_the_three_buckets() -> None:
@@ -155,11 +158,12 @@ def test_coverage_audit_reports_input_reachability() -> None:
     # V1 joined the reachable set in #387 (vision-entries producer); V0 joined
     # it in #470 (lint_executor writes ``lint_result`` once the SRT lands);
     # V3 joined it in #471 (keyword_extractor writes the three V3 inputs when
-    # topic + source material exist).
-    assert result["input_reachable_gates"] == ["V0", "V1", "V2", "V3", "V5", "V7"]
-    assert result["input_unreachable_gates"] == ["V4", "V6"]
-    assert result["summary"]["gates_input_reachable"] == 6
-    assert result["summary"]["gates_input_unreachable"] == 2
+    # topic + source material exist); V4 joined it in #472 (TTS adapter
+    # records voice params per synthesis).
+    assert result["input_reachable_gates"] == ["V0", "V1", "V2", "V3", "V4", "V5", "V7"]
+    assert result["input_unreachable_gates"] == ["V6"]
+    assert result["summary"]["gates_input_reachable"] == 7
+    assert result["summary"]["gates_input_unreachable"] == 1
 
 
 def test_input_reachability_does_not_disturb_the_existing_classes() -> None:
@@ -179,7 +183,7 @@ def test_input_unreachable_and_execution_unreachable_are_disjoint_reports() -> N
     assert set(result["input_unreachable_gates"]) & set(result["unreachable_gates"]) == set()
 
 
-@pytest.mark.parametrize("gate", ["V4", "V6"])
+@pytest.mark.parametrize("gate", ["V6"])
 def test_each_input_less_gate_names_the_missing_key(gate: str) -> None:
     result = coverage_audit()
 
