@@ -604,6 +604,8 @@ class PublishEngine:
         project: dict[str, Any],
         account_ids: list[str] | None = None,
         automation: dict[str, str] | None = None,
+        dry_run: bool = False,
+        record_dir: str | None = None,
     ) -> dict[str, Any]:
         """Iterate adapters and publish.
 
@@ -628,6 +630,21 @@ class PublishEngine:
             (e.g. ``{"wechat": "auto", "zhihu": "review"}``).  When
             ``None`` or missing a platform, :data:`AUTOMATION_DEFAULTS`
             are used.
+        dry_run:
+            Walk the full pre-flight state machine — adapter resolution,
+            enabled/credential check, automation-level resolution,
+            ``validate()`` (local credential/artifact checks), publish
+            preparation and result assembly — but **never call
+            ``adapter.publish()``**, so no network request can be issued
+            (#456).  Every result carries ``dry_run=True``; disabled
+            adapters are reported as ``skipped`` instead of being silently
+            omitted, so one dry run doubles as an executable credential
+            matrix.
+        record_dir:
+            When set, every per-platform result is written to
+            ``<record_dir>/<platform>.json`` so a future real publish
+            leaves a replayable fixture trail (#456).  Works for both
+            dry-run and real publishes; recording never alters the result.
 
         Returns
         -------
@@ -677,6 +694,20 @@ class PublishEngine:
                         }
                         continue
 
+                    if dry_run:
+                        results[account_id] = {
+                            "status": "ok",
+                            "platform": platform,
+                            "dry_run": True,
+                            "automation_level": level,
+                            "draft_only": level == _REVIEW,
+                            "reason": (
+                                "dry run — pre-flight (credentials, automation, "
+                                "validate) passed; adapter.publish() not called"
+                            ),
+                        }
+                        continue
+
                     if level == _REVIEW:
                         result = adapter.publish(
                             artifact_dir,
@@ -707,6 +738,18 @@ class PublishEngine:
                 adapter = adapter_cls()
 
                 if not adapter.enabled:
+                    if dry_run:
+                        # 报告而不是静默跳过：一次干跑同时就是一张可执行的
+                        # 凭证矩阵（#456）——哪个平台缺什么一眼可见。
+                        results[name] = {
+                            "status": "skipped",
+                            "platform": name,
+                            "dry_run": True,
+                            "reason": (
+                                "credentials not set (adapter disabled) — "
+                                "publishing would require credentials"
+                            ),
+                        }
                     continue
 
                 # ---- automation check ---------------------------------
@@ -723,6 +766,20 @@ class PublishEngine:
                     results[name] = {
                         "status": "skipped",
                         "reason": "validation failed",
+                    }
+                    continue
+
+                if dry_run:
+                    results[name] = {
+                        "status": "ok",
+                        "platform": name,
+                        "dry_run": True,
+                        "automation_level": level,
+                        "draft_only": level == _REVIEW,
+                        "reason": (
+                            "dry run — pre-flight (credentials, automation, "
+                            "validate) passed; adapter.publish() not called"
+                        ),
                     }
                     continue
 
@@ -745,4 +802,52 @@ class PublishEngine:
                     # Catch-all for legacy adapter publish errors
                     results[name] = {"status": "error", "reason": str(exc)}
 
+        if record_dir:
+            self.record_results(results, record_dir)
+
         return results
+
+    @staticmethod
+    def record_results(results: dict[str, Any], record_dir: str) -> list[str]:
+        """Write per-platform results to ``<record_dir>/<key>.json``.
+
+        The recording channel for #456: a real publish (or a dry run)
+        leaves a per-platform JSON fixture on disk, so a future first real
+        publish has an evidence trail and tests can replay recorded
+        responses instead of touching the network.  Recording is
+        best-effort — a failed write is logged, never raised.
+        """
+        import json
+        import os
+
+        written: list[str] = []
+        os.makedirs(record_dir, exist_ok=True)
+        for key, result in results.items():
+            path = os.path.join(record_dir, f"{key}.json")
+            try:
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(result, fh, ensure_ascii=False, indent=2, sort_keys=True)
+                written.append(path)
+            except OSError as exc:
+                log.warning(
+                    "publish.engine.record.write_failed",
+                    path=path,
+                    error=str(exc),
+                )
+        return written
+
+    @staticmethod
+    def load_recorded_result(key: str, record_dir: str) -> dict[str, Any] | None:
+        """Load a previously recorded per-platform result (replay channel).
+
+        Returns ``None`` when no recording exists for *key*.
+        """
+        import json
+        import os
+
+        path = os.path.join(record_dir, f"{key}.json")
+        if not os.path.isfile(path):
+            return None
+        with open(path, encoding="utf-8") as fh:
+            result: dict[str, Any] = json.load(fh)
+        return result
