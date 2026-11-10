@@ -104,10 +104,15 @@ _ALL_CHECK_NAMES: list[str] = [
     "voice_id_match",
     "speaking_rate",
     "voice_consistency",
-    # V5 — mp3_vs_srt
-    "whisper_vs_srt_diff",
+    # V5 — mp3_vs_srt (#469: structural criteria + retained observation field)
+    "cue_anchor_coverage",
+    "cue_order_consistency",
+    "uncovered_speech",
+    "structure_label_residue",
     "srt_not_empty",
     "whisper_not_empty",
+    "whisper_vs_srt_diff",
+    "semantic_consistency",
     # V6 — subtitle_render
     "subtitle_region_brightness",
     "subtitle_region_contrast",
@@ -489,9 +494,14 @@ def build_mp3_vs_srt_context(
         "_mock_results": mock_results
         or build_all_pass_mock(
             [
-                "whisper_vs_srt_diff",
+                "cue_anchor_coverage",
+                "cue_order_consistency",
+                "uncovered_speech",
+                "structure_label_residue",
                 "srt_not_empty",
                 "whisper_not_empty",
+                "whisper_vs_srt_diff",
+                "semantic_consistency",
             ]
         ),
     }
