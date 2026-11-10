@@ -147,8 +147,21 @@ class V3ContentSemantic(BaseGate):
     _failure_mode = "stop"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
-        """Run V3 content semantic checks and return structured result."""
-        if not gate_context.get("hyperframes_available", True):
+        """Run V3 content semantic checks and return structured result.
+
+        The HyperFrames precondition yields to the honest producer (#471):
+        the keyword comparison is an offline static check that needs no
+        renderer.  When the extractor wrote the three inputs, the gate runs
+        even without HyperFrames; when they are absent, the original skip
+        stands.  Thresholds and criteria are untouched.
+        """
+        inputs_present = all(
+            gate_context.was_written(key)
+            if hasattr(gate_context, "was_written")
+            else key in gate_context
+            for key in ("source_keywords", "content_keywords", "source_texts")
+        )
+        if not gate_context.get("hyperframes_available", True) and not inputs_present:
             return {
                 "passed": True,
                 "gate": "V3",
