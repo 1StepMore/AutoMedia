@@ -106,7 +106,11 @@ class TestCheckLlmChain:
 class TestCheckLlmApiReportsBrokenFallback:
     """``_check_llm_api`` must fail, naming the broken fallback."""
 
-    def test_check_llm_api_fails_on_broken_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_check_llm_api_fails_on_broken_fallback(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Isolate the file-layer probe from the host's real config (#467).
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
         monkeypatch.setattr(
             "automedia.core.config_loader.load_config",
             lambda *args, **kwargs: _config(),

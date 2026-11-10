@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from automedia.core.doctor import Doctor
 
 _HEALTHY_CONFIG: dict[str, Any] = {
@@ -17,6 +19,16 @@ _HEALTHY_CONFIG: dict[str, Any] = {
         }
     }
 }
+
+
+@pytest.fixture(autouse=True)
+def _isolate_file_layer_config(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the file-layer probe at an empty dir — no ambient user config.
+
+    Same principle as the patched ``load_config`` below: the assertions are
+    about a *known* config, not the host's real ``~/.automedia`` (#467).
+    """
+    monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
 
 
 class TestDoctorLlmConnectivity:

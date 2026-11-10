@@ -363,11 +363,16 @@ def _build_client(
             api_key = resolved
 
     if not api_key:
-        raise LLMError(
+        detail = (
             f"No API key for provider {provider!r}. "
             "Set AUTOMEDIA_LLM_API_KEY, add to model_config.yaml, "
             "or run `automedia init`."
         )
+        if not provider:
+            # Name the blank config key itself (#467): "provider ''" alone
+            # reads as a mystery blank; say which field is empty.
+            detail += f" llm.{task_type}.provider is empty (provider='')."
+        raise LLMError(detail)
 
     base_url: str | None = llm_cfg.get("base_url") or None
 

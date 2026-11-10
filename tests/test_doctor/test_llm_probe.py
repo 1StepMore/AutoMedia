@@ -32,6 +32,20 @@ from automedia.core import llm_client
 from automedia.core.doctor import Doctor
 from automedia.core.llm_client import LLMError, llm_complete
 
+
+@pytest.fixture(autouse=True)
+def _isolate_file_layer_config(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the file-layer probe at an empty dir — no ambient user config.
+
+    ``Doctor._check_llm_api`` inspects the *file* layer for an explicitly
+    blank provider (#208/#467).  Without isolation, a developer machine whose
+    real ``~/.automedia/model_config.yaml`` happens to carry one would make
+    these probe tests exit before the live call.  An empty config dir means
+    "no file-layer corruption", which is the state these tests assume.
+    """
+    monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+
+
 # ``10.255.255.1`` is a blackhole (no host answers; SYN packets are dropped),
 # verified on this host to block until the socket timeout fires.  A routable
 # but closed port would be refused instantly and make the timing vacuous.

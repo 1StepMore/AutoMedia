@@ -330,8 +330,56 @@ def validate_config(config: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Empty-provider probe (issue #208 / #467)
 # ---------------------------------------------------------------------------
+
+#: LLM task slots whose ``provider`` must never be an explicitly empty string
+#: (same slots the doctor flags in the resolved config).
+_LLM_TASK_SLOTS: tuple[str, ...] = (
+    "text_generation",
+    "vision",
+    "subtitle_proofread",
+    "translation",
+)
+
+
+def explicitly_empty_llm_provider_slot() -> tuple[str, str] | None:
+    """Return ``(slot, path)`` for the first file-layer model config that writes
+    an explicit empty ``provider`` for an LLM task slot.
+
+    Issue #208's corruption is written into ``model_config.yaml``; issue #467
+    showed the doctor's resolved-config check can be bypassed when the
+    ``AUTOMEDIA_LLM_*`` environment layer overrides the provider — the file
+    stays clobbered either way, and the guard's job is to name it.  Only
+    *explicit* emptiness counts (``provider: ''``); a slot that omits the key
+    entirely is the runtime default and is not corruption.
+
+    Scans the user config dir's ``model_config.yaml`` — the same file the
+    ``automedia run`` precheck requires.
+
+    Returns:
+        ``(slot, file_path)`` or ``None`` when no file layer carries an
+        explicitly blank provider (missing/invalid file included).
+    """
+    path = get_user_config_dir() / "model_config.yaml"
+    try:
+        if not path.is_file():
+            return None
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    llm = data.get("llm")
+    if not isinstance(llm, dict):
+        return None
+    for slot in _LLM_TASK_SLOTS:
+        slot_cfg = llm.get(slot)
+        if isinstance(slot_cfg, dict) and "provider" in slot_cfg:
+            provider = slot_cfg["provider"]
+            if isinstance(provider, str) and not provider.strip():
+                return slot, str(path)
+    return None
 
 
 def load_config(
