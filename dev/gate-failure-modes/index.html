@@ -2758,20 +2758,54 @@ drops but the flow is not blocked.</p>
 <li>Select the appropriate voice_id from the voice library</li>
 </ul>
 <h2 id="v5-mp3-vs-srt">V5: MP3 vs SRT<a class="headerlink" href="#v5-mp3-vs-srt" title="Permanent link">&para;</a></h2>
-<p>Cross-validate audio duration against subtitle timing.</p>
+<p>Verify that the ASR transcript of the narration audio and the SRT subtitles say
+the same thing, structurally. Since #469 the verdict comes from four checks —
+a whole-string character similarity is no longer a criterion (it reported
+74–79% for a clean Chinese film under real ASR, and ≥80% for a film whose SRT
+and narration shared the same dirty source text):</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Fails when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cue_anchor_coverage</code></td>
+<td>a cue has &lt; 45% of its characters anchored in the ASR text (a sentence was not narrated)</td>
+</tr>
+<tr>
+<td><code>cue_order_consistency</code></td>
+<td>a cue's anchor sits more than 4 characters before the previous cue's (blocks swapped)</td>
+</tr>
+<tr>
+<td><code>uncovered_speech</code></td>
+<td>8+ consecutive ASR characters are covered by no cue (audio says something the subtitles never show)</td>
+</tr>
+<tr>
+<td><code>structure_label_residue</code></td>
+<td>script scaffolding (<code>镜头1</code>, <code>口播：</code>, <code>[切]</code>, <code>0:03-0:09</code>) survived into the SRT or the audio</td>
+</tr>
+</tbody>
+</table>
+<p><code>whisper_vs_srt_diff</code> still appears in the gate report as an observation field
+(<code>observation only: similarity N%</code>) and never drives pass/fail.
+<code>semantic_consistency</code> reports <code>semantic: skipped(no key)</code> until a semantic
+judge key is configured.</p>
 <p><strong>Common failure causes:</strong></p>
 <ul>
-<li>MP3 total duration significantly shorter/longer than SRT timeline</li>
-<li>Individual subtitle segments overlap or have excessive gaps</li>
-<li>WPM exceeds readability threshold (&gt; 300)</li>
-<li>Audio file corrupted or truncated</li>
+<li>TTS was fed the raw script, so labels such as <code>黄金开头（0:00-0:03）口播文案：</code> were read aloud</li>
+<li>A narration sentence was dropped or re-ordered between script and audio</li>
+<li>The audio track carries extra speech (intro/outro, retake) the subtitles never show</li>
+<li>Subtitles were generated from a different text than the one narrated</li>
 </ul>
 <p><strong>Remediation:</strong></p>
 <ul>
-<li>Adjust speaking rate and regenerate TTS audio to match SRT timeline</li>
-<li>Merge overlapping segments and redistribute time budget</li>
-<li>Rewrite dense segments to reduce word count</li>
-<li>Verify MP3 integrity with <code>ffprobe</code></li>
+<li>Re-run the media stage so <code>strip_narration_markup</code> cleans the narration before TTS</li>
+<li>Regenerate the SRT from the same script the TTS engine read</li>
+<li>Read the failing check's detail — it names the cue index, coverage ratio or the uncovered ASR stretch</li>
+<li>Verify MP3 integrity with <code>ffprobe</code> if anchors cluster at offset 0</li>
 </ul>
 <h2 id="v6-subtitle-rendering">V6: Subtitle Rendering<a class="headerlink" href="#v6-subtitle-rendering" title="Permanent link">&para;</a></h2>
 <p>Ensure subtitles are correctly rendered into the video.</p>

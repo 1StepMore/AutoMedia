@@ -3053,7 +3053,19 @@ get_pipeline_progress<span class="o">(</span><span class="nv">project_id</span><
 <h3 id="v1-vision-qa-gate">V1 — Vision QA Gate<a class="headerlink" href="#v1-vision-qa-gate" title="Permanent link">&para;</a></h3>
 <p>When the Vision API rate limit is hit, V1 degrades to a pixel-luminance fallback. The QA report includes the word "降级" (degraded) in this case. Accuracy drops but the pipeline does not block.</p>
 <h3 id="v5-mp3-vs-srt-gate">V5 — MP3 vs SRT Gate<a class="headerlink" href="#v5-mp3-vs-srt-gate" title="Permanent link">&para;</a></h3>
-<p>This gate cross-validates audio duration against subtitle timing. A common failure is WPM exceeding 300. Fix by rewriting dense subtitle segments to reduce word count.</p>
+<p>This gate checks that the transcribed narration and the subtitles say the same
+thing: every SRT cue must be anchored in the ASR text, cue order must match the
+audio order, no 8+ character ASR stretch may be left uncovered, and no script
+scaffolding (<code>镜头1</code>, <code>口播：</code>, <code>[切]</code>, <code>0:03-0:09</code>) may survive into either side
+(#469).</p>
+<p>The check detail names the offending cue or stretch. A residue hit means TTS or
+the SRT was generated from the raw script instead of the cleaned narration —
+re-run the media stage so <code>strip_narration_markup</code> runs first. A coverage or
+order hit means the audio is missing, re-ordered or extended relative to the
+script — regenerate the SRT from the same script the TTS engine read.</p>
+<p>The old whole-string similarity is still reported as <code>observation only:
+similarity N%</code>; it no longer decides the verdict (real Chinese ASR scores
+74–79% on a clean film).</p>
 <h3 id="l1-l4-lifecycle-gates">L1-L4 — Lifecycle Gates<a class="headerlink" href="#l1-l4-lifecycle-gates" title="Permanent link">&para;</a></h3>
 <p>These gates validate publish logs, archives, platform integrity, and translation quality. They run after content and video gates. Failures here usually mean missing artifacts or schema mismatches.</p>
 <hr />
