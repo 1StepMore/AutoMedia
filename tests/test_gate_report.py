@@ -75,6 +75,60 @@ class TestRenderFromGatesLog:
         assert report["blocked_by_gate"] == "G1"
         assert "G1" in report["markdown"]
 
+    def test_blocked_by_uses_failing_check_when_error_is_none(self, project_dir: Path) -> None:
+        """A gate that fails on its checks has no error; name the check (issue #477)."""
+        gates_log = [_entry("V5", "failed", 1.0)]
+        gate_results = [
+            {
+                "passed": False,
+                "gate": "V5",
+                "checks": [
+                    {"name": "cue_anchor_coverage", "passed": True, "detail": "ok"},
+                    {
+                        "name": "cue_anchor_coverage",
+                        "passed": False,
+                        "detail": "9/102 cues have no ASR anchor (< 45%)",
+                    },
+                ],
+                "error": None,
+            }
+        ]
+        report = render_gate_report(str(project_dir), gates_log, gate_results)
+        assert report["blocked_by"] == (
+            "Run blocked by gate V5: cue_anchor_coverage — 9/102 cues have no ASR anchor (< 45%)"
+        )
+
+    def test_blocked_by_truncates_long_check_detail(self, project_dir: Path) -> None:
+        gates_log = [_entry("V5", "failed", 1.0)]
+        gate_results = [
+            {
+                "passed": False,
+                "gate": "V5",
+                "checks": [{"name": "coverage", "passed": False, "detail": "x" * 500}],
+                "error": None,
+            }
+        ]
+        report = render_gate_report(str(project_dir), gates_log, gate_results)
+        reason = report["blocked_by"].removeprefix("Run blocked by gate V5: ")
+        assert len(reason) == 300
+        assert reason.endswith("…")
+
+    def test_blocked_by_keeps_gate_error_when_present(self, project_dir: Path) -> None:
+        """Regression: a gate that raised still reports its error verbatim."""
+        gates_log = [_entry("CW", "failed", 1.0, error="ContentWriterGate: LLM call failed — 401")]
+        gate_results = [
+            {
+                "passed": False,
+                "gate": "CW",
+                "checks": [{"name": "irrelevant", "passed": False, "detail": "not used"}],
+                "error": "ContentWriterGate: LLM call failed — 401",
+            }
+        ]
+        report = render_gate_report(str(project_dir), gates_log, gate_results)
+        assert report["blocked_by"] == (
+            "Run blocked by gate CW: ContentWriterGate: LLM call failed — 401"
+        )
+
     def test_error_status_maps_to_review(self, project_dir: Path) -> None:
         """An 'error' status (gate raised) maps to review, not fail."""
         gates_log = [_entry("V1", "error", 0.5, error="ffmpeg crashed")]
