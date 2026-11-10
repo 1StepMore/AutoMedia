@@ -1,9 +1,11 @@
 """V5 MP3 vs SRT Gate — Whisper transcription diff vs SRT text ≥80%.
 
 Checks:
-    1. whisper_vs_srt_diff — diff ratio between Whisper output and SRT text
-    2. srt_not_empty       — SRT file content is non-empty
-    3. whisper_not_empty   — Whisper transcription is non-empty
+    1. whisper_vs_srt_diff    — diff ratio between Whisper output and SRT text
+    2. srt_not_empty          — SRT file content is non-empty
+    3. whisper_not_empty      — Whisper transcription is non-empty
+    4. structure_label_residue — no script-structure labels in SRT or whisper
+       text (#455)
 
 failure_mode = "retry" — on failure, pipeline can retry/fix the gate.
 """
@@ -31,9 +33,34 @@ _CHECK_NAMES: list[str] = [
     "whisper_vs_srt_diff",
     "srt_not_empty",
     "whisper_not_empty",
+    "structure_label_residue",
 ]
 
 _MIN_DIFF_RATIO: float = 0.80
+
+#: Script-structure patterns that must never survive into the narration audio
+#: or the subtitles (#455).  ``strip_narration_markup`` removes them before
+#: TTS/SRT, so a hit means structure leaked past the narration boundary.  The
+#: diff ratio cannot catch this — SRT and whisper derive from the same
+#: cleaned text, so same-source pollution inflates similarity past the
+#: threshold and would read as "pass" — hence this check, judged on residue
+#: alone and independent of the ratio.
+_STRUCTURE_RESIDUE_RES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("shot_label", re.compile(r"镜头\s*\d+")),
+    ("timecode", re.compile(r"\d{1,2}:\d{2}\s*[-–—~至]\s*\d{1,2}:\d{2}")),
+    ("spoken_prefix", re.compile(r"口播\s*[:：]")),
+    (
+        "metadata_label",
+        re.compile(
+            r"(?:主题|品牌|时长|风格|平台|BGM|音效|转场|字幕|画面|运镜|机位|场景)\s*[:：]",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "transition_tag",
+        re.compile(r"\[(?:切|转场|切换|停顿|暂停|淡入|淡出|黑场|闪回|叠化|白闪|黑闪|分屏)\]"),
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +113,46 @@ def _check_srt_not_empty(srt_text: str) -> CheckResult:
     if srt_text.strip():
         return {"name": name, "passed": True, "detail": "SRT text non-empty"}
     return {"name": name, "passed": False, "detail": "SRT text is empty"}
+
+
+def _structure_residue_hits(text: str) -> list[str]:
+    """Count structure-label hits per pattern, e.g. ``["shot_label×2", ...]``."""
+    hits: list[str] = []
+    for name, pattern in _STRUCTURE_RESIDUE_RES:
+        count = len(pattern.findall(text))
+        if count:
+            hits.append(f"{name}×{count}")
+    return hits
+
+
+def _check_structure_label_residue(whisper_text: str, srt_text: str) -> CheckResult:
+    """Check 4: no script-structure labels in SRT or whisper text (#455).
+
+    SRT and whisper both derive from the cleaned narration, so shared
+    pollution (``镜头1｜0:03-0:09`` / ``主题：`` / ``口播：`` / ``[切]`` /
+    timecodes) shows up on *both* sides and the diff ratio stays high.  This
+    check fails on residue alone — a perfect similarity score cannot green a
+    polluted film.
+    """
+    name = "structure_label_residue"
+    srt_hits = _structure_residue_hits(_strip_srt_timestamps(srt_text))
+    whisper_hits = _structure_residue_hits(whisper_text)
+    if not srt_hits and not whisper_hits:
+        return {
+            "name": name,
+            "passed": True,
+            "detail": "no structure labels in SRT or whisper text",
+        }
+    parts: list[str] = []
+    if srt_hits:
+        parts.append("srt: " + ", ".join(srt_hits))
+    if whisper_hits:
+        parts.append("whisper: " + ", ".join(whisper_hits))
+    return {
+        "name": name,
+        "passed": False,
+        "detail": "structure labels present (independent of diff ratio) — " + "; ".join(parts),
+    }
 
 
 def _check_whisper_not_empty(whisper_text: str) -> CheckResult:
@@ -150,6 +217,10 @@ class V5Mp3VsSrt(BaseGate):
             ("whisper_vs_srt_diff", lambda: _check_whisper_vs_srt_diff(whisper_text, srt_text)),
             ("srt_not_empty", lambda: _check_srt_not_empty(srt_text)),
             ("whisper_not_empty", lambda: _check_whisper_not_empty(whisper_text)),
+            (
+                "structure_label_residue",
+                lambda: _check_structure_label_residue(whisper_text, srt_text),
+            ),
         ]
 
         checks = apply_mock_overrides(check_fns, mock_results)

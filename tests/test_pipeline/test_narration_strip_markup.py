@@ -33,20 +33,21 @@ class TestStripEmphasisMarkers:
 
 class TestNarrationMarkupIncludesEmphasis:
     def test_headings_cues_and_emphasis_all_go(self) -> None:
-        raw = "## 抖音短视频脚本\n\n[画面：叹气]**主题**：先把排期跑通。\n"
-        assert strip_narration_markup(raw) == "主题：先把排期跑通。"
+        # 主题：本身是结构标签（#455 丢弃），这里只钉强调标记的剥离。
+        raw = "## 抖音短视频脚本\n\n[画面：叹气]**排期**：先把链路跑通。\n"
+        assert strip_narration_markup(raw) == "排期：先把链路跑通。"
 
 
 class TestSrtDropsEmphasis:
     def test_generated_srt_has_no_markers(self, tmp_path: Path) -> None:
         path = AudioPipeline().generate_srt_from_scenes(
-            [{"text": "**主题**：先把排期跑通。", "start": 0.0, "duration": 2.0}],
+            [{"text": "**排期**：先把链路跑通。", "start": 0.0, "duration": 2.0}],
             str(tmp_path / "subtitle.srt"),
         )
         assert path
         body = Path(path).read_text(encoding="utf-8")
         assert "**" not in body
-        assert "主题：先把排期跑通。" in body
+        assert "排期：先把链路跑通。" in body
 
 
 class TestOneCleanerForTtsAndSrt:
