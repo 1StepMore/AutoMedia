@@ -29,6 +29,8 @@ from typing import Any
 
 from structlog import get_logger
 
+from automedia.pipelines.vlm_client import VLMClient
+
 log = get_logger(__name__)
 
 #: injection seam for tests — signature: (argv list) -> CompletedProcess-like
@@ -75,17 +77,22 @@ def _extract_frame(
     """抽一帧；成功返回 ``dest``，失败返回空串（调用方记账，不外抛）。"""
     try:
         proc = run(
-            [ffmpeg_path, "-ss", f"{max(at_seconds, 0.0):.3f}", "-i", video_path,
-             *_FFMPEG_FRAME_ARGS, dest],
+            [
+                ffmpeg_path,
+                "-ss",
+                f"{max(at_seconds, 0.0):.3f}",
+                "-i",
+                video_path,
+                *_FFMPEG_FRAME_ARGS,
+                dest,
+            ],
             capture_output=True,
         )
     except OSError as exc:
         log.warning("vision_entries.ffmpeg_spawn_failed", dest=dest, error=str(exc))
         return ""
     if proc.returncode != 0 or not os.path.isfile(dest):
-        stderr_tail = (
-            proc.stderr[-200:].decode(errors="replace") if proc.stderr else ""
-        )
+        stderr_tail = proc.stderr[-200:].decode(errors="replace") if proc.stderr else ""
         log.warning(
             "vision_entries.frame_extract_failed",
             dest=dest,
@@ -106,6 +113,7 @@ def build_vision_entries(
     ffmpeg_path: str | None = None,
     ffprobe_path: str | None = None,
     run: Runner | None = None,
+    vlm_client: VLMClient | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """从成片按场景切点抽帧并给出逐场 ``entries``（V1 的输入）。
 
@@ -117,6 +125,9 @@ def build_vision_entries(
             与 ``scene_media`` 对齐；缺的场视作 ``missing``。
         frames_dir: 帧落盘目录（``03_video/frames/``），不存在则创建。
         ffmpeg_path/ffprobe_path/run: 测试注入位；缺省用 PATH 探测与真跑。
+        vlm_client: 视觉判定客户端（:mod:`automedia.pipelines.vlm_client`），
+            ``None`` 时尝试按 llm.vision 配置构建；仍不可得则生成图/复用图
+            的场次保持诚实的 ``unjudged``（#473，绝不默认 pass）。
 
     Returns:
         ``(entries, stats)``。``entries`` 逐场含 ``mid_frame_path``、
@@ -140,6 +151,16 @@ def build_vision_entries(
 
     entries: list[dict[str, Any]] = []
     stats = {"frames_extracted": 0, "frames_failed": 0, "judged": 0, "unjudged": 0}
+
+    # V1 视觉判定通道（#473）：注入优先，缺省按 llm.vision 配置构建；
+    # 无通道 → None，生成图/复用图场次保持 unjudged。
+    if vlm_client is None:
+        try:
+            from automedia.pipelines.vlm_client import create_vlm_client
+
+            vlm_client = create_vlm_client()
+        except Exception:  # pragma: no cover — defensive; create_vlm_client never raises
+            vlm_client = None
     # ffprobe 缺席时给末帧留保守余量，避免 -ss 越过 EOF 抽到空。
     end_margin = 0.05 if duration is not None else 0.25
 
@@ -151,8 +172,10 @@ def build_vision_entries(
         end_path = os.path.join(frames_dir, f"scene-{scene_no}-end.jpg")
 
         mid = _extract_frame(resolved_ffmpeg, video_path, start + length / 2, mid_path, runner)
-        end_at = start + length - end_margin if duration is None else min(
-            start + length, duration - end_margin
+        end_at = (
+            start + length - end_margin
+            if duration is None
+            else min(start + length, duration - end_margin)
         )
         end = _extract_frame(resolved_ffmpeg, video_path, end_at, end_path, runner)
         stats["frames_extracted"] += int(bool(mid)) + int(bool(end))
@@ -167,18 +190,47 @@ def build_vision_entries(
             stats["unjudged"] += 1
         elif kind == "panel":
             # 文字面板：面板文字就是该场文案，相关性由构造保证——只登记。
-            checked, qa_passed, verdict = True, True, (
-                "panel (by construction: the panel text is this scene's copy)"
+            checked, qa_passed, verdict = (
+                True,
+                True,
+                ("panel (by construction: the panel text is this scene's copy)"),
             )
             stats["judged"] += 1
         else:
-            # 生成图/复用图：需要视觉模型判相关性；仓库当前没有图像输入的
-            # LLM 客户端，如实记未判定，绝不默认 pass（#387）。
-            checked, qa_passed, verdict = False, False, (
-                "unjudged: no vision-capable model configured — frame extracted "
-                "for future VLM judging"
-            )
-            stats["unjudged"] += 1
+            # 生成图/复用图：需要视觉模型判相关性（#473）。有可插拔 VLM 通道
+            # → 抽出的中帧对场文案真判（相关 + 理由）；无通道 → 如实记未
+            # 判定，绝不默认 pass（#387）。VLM 判定失败按单场降级为
+            # unjudged，不外抛、不丢其余场的判定。
+            verdict_vlm: str | None = None
+            vlm_error = ""
+            if vlm_client is not None and mid:
+                try:
+                    judged = vlm_client.judge_frame(mid, str(scene.get("text", "") or ""))
+                    related = bool(judged.get("related"))
+                    reason = str(judged.get("reason") or "")[:200]
+                    verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
+                    checked, qa_passed = True, related
+                except Exception as exc:
+                    verdict_vlm = None
+                    vlm_error = str(exc)[:150]
+            if verdict_vlm is not None:
+                stats["judged"] += 1
+            else:
+                checked, qa_passed = False, False
+                stats["unjudged"] += 1
+            if verdict_vlm is None:
+                if vlm_client is not None and mid:
+                    verdict = (
+                        f"unjudged: VLM judging failed ({vlm_error}) — frame "
+                        "extracted for future VLM judging"
+                    )
+                else:
+                    verdict = (
+                        "unjudged: no vision-capable model configured — frame "
+                        "extracted for future VLM judging"
+                    )
+            else:
+                verdict = verdict_vlm
 
         entries.append(
             {
