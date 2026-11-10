@@ -45,6 +45,8 @@ class _FakeAudioPipeline:
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = config
+        # #472 起 AudioPipeline 在每次合成后登记 voice 参数——替身同构。
+        self.last_voice_params = {"voice_id": "zh-CN-YunxiNeural", "rate": 0.0, "pitch": 0.0}
         _FakeAudioPipeline.instances.append(self)
 
     def generate_tts(self, text: str, voice: str = "", output_path: str = "") -> str:
@@ -327,7 +329,13 @@ class TestFullChain:
             missing_input_result("V3", ctx, ("source_keywords", "content_keywords", "source_texts"))
             is not None
         )
-        assert missing_input_result("V4", ctx, ("voice_id", "segments")) is not None
+        # V4 自 #472 起有条件生产者：TTS 产物落盘即写 voice_id/segments。
+        if ctx.get("audio_path"):
+            assert missing_input_result("V4", ctx, ("voice_id", "segments")) is None
+            assert ctx["voice_id"]
+            assert ctx["expected_voice_id"]
+        else:
+            assert missing_input_result("V4", ctx, ("voice_id", "segments")) is not None
         assert (
             missing_input_result(
                 "V6", ctx, ("avg_brightness", "contrast", "opacity", "pixel_valid")

@@ -122,8 +122,22 @@ class V4TTSBrandAsset(BaseGate):
     _failure_mode = "stop"
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
-        """Run V4 TTS brand asset checks and return structured result."""
-        if not gate_context.get("hyperframes_available", True):
+        """Run V4 TTS brand asset checks and return structured result.
+
+        The HyperFrames precondition yields to the honest producer (#472):
+        voice-parameter comparison is an offline check that needs no renderer.
+        When the TTS adapter wrote ``voice_id``/``segments``, the gate runs
+        even without HyperFrames; when they are absent (no narration
+        synthesized), the original skip stands.  Red lines and thresholds are
+        untouched.
+        """
+        inputs_present = all(
+            gate_context.was_written(key)
+            if hasattr(gate_context, "was_written")
+            else key in gate_context
+            for key in ("voice_id", "segments")
+        )
+        if not gate_context.get("hyperframes_available", True) and not inputs_present:
             return {
                 "passed": True,
                 "gate": "V4",
@@ -131,9 +145,9 @@ class V4TTSBrandAsset(BaseGate):
                 "reason": "HyperFrames not installed — video QA skipped",
             }
 
-        # ``voice_id`` + ``segments`` are produced by the TTS stage.  Absent
-        # means no narration was synthesized, so brand-voice consistency is
-        # not a checkable claim for this run.
+        # ``voice_id`` + ``segments`` are produced by the TTS stage (#472).
+        # Absent means no narration was synthesized, so brand-voice
+        # consistency is not a checkable claim for this run.
         skipped = missing_input_result("V4", gate_context, ("voice_id", "segments"))
         if skipped is not None:
             return skipped
