@@ -1190,7 +1190,7 @@ def _build_pipeline_context(
     resume_from: str | None = None,
     workflow_prompts: dict[str, str] | None = None,
 ) -> GateContext:
-    from automedia.engines import resolve_engine
+    from automedia.engines import resolve_video_engine
     from automedia.engines.errors import (
         EngineExecutionError,
         EngineNotFoundError,
@@ -1281,7 +1281,7 @@ def _build_pipeline_context(
     hyperframes_available = _check_hyperframes(mode=mode)
     video_engine_available = False
     try:
-        resolve_engine("video", config)
+        resolve_video_engine(config)
         video_engine_available = True
     except (EngineNotFoundError, EngineExecutionError, EngineUnavailableError):
         pass
@@ -1447,6 +1447,15 @@ def _setup_and_run_engine(
     return success, results, hitl_awaiting
 
 
+def _video_render_failure_note(gate_context: GateContext | dict[str, Any]) -> str:
+    """Return the latest ``video_render_failed`` media-stage note, or ``""``."""
+    notes = gate_context.get("_media_stage_notes") or []
+    for note in reversed(notes if isinstance(notes, list) else []):
+        if isinstance(note, dict) and note.get("event") == "video_render_failed":
+            return str(note.get("error") or "video render failed")[:300]
+    return "no video artifact was produced"
+
+
 def _finalize_pipeline(
     success: bool,
     results: list[dict[str, Any]],
@@ -1498,6 +1507,7 @@ def _finalize_pipeline(
     # of "owes a video", and keying this on the mode set alone left every
     # ``auto`` run that genuinely owed a video reporting success.
     video_produced = bool(gate_context.get("video_path"))
+    video_failure = _video_render_failure_note(gate_context)
     if status == "success" and owes_video and not video_produced:
         status = "partial"
         # Two distinct shapes hide behind "no video": the media stage produced
@@ -1530,6 +1540,16 @@ def _finalize_pipeline(
             hint=hint,
         )
 
+    # Job-level honesty (#476): a run that owed a video and produced none
+    # carries ``video_render_failed`` on the RESULT object — visible whether
+    # it ended ``partial`` or parked at ``awaiting_review``.  Gate-report
+    # notes alone let a parked run present as a clean "awaiting_review".
+    if owes_video and not video_produced and video_failure:
+        blocked_by = [f"video_render_failed: {video_failure}"]
+        log.warning("pipeline.blocked_by_video_render", blocked_by=blocked_by)
+    else:
+        blocked_by = []
+
     log.info(
         "pipeline.complete",
         status=status,
@@ -1560,6 +1580,7 @@ def _finalize_pipeline(
         affected_downstream=affected_downstream,
         usage=usage_summary,
         workflow=workflow or "",
+        blocked_by=blocked_by,
     )
 
 
@@ -2522,14 +2543,12 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             reason="no video assets collected (images + audio required)",
         )
     if assets:
-        from automedia.engines import resolve_engine
+        from automedia.engines import resolve_video_engine
         from automedia.engines.base import BaseVideoEngine
         from automedia.engines.errors import EngineExecutionError, EngineNotFoundError
 
         try:
-            video_engine = cast(
-                BaseVideoEngine, resolve_engine("video", gate_context.get("config"))
-            )
+            video_engine = cast(BaseVideoEngine, resolve_video_engine(gate_context.get("config")))
             video_path = video_engine.render(assets, os.path.join(project_dir, VIDEO, "output.mp4"))
             gate_context["video_path"] = video_path
             produced.append(video_path)
