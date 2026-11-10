@@ -297,6 +297,84 @@ def _locate_identity(content: str, expected: str) -> str:
     return "not found anywhere"
 
 
+#: ``brand_identity`` 在品牌档案里常以 ``{识别点: 描述}`` 的 dict 形态出现
+#: （#460：yimuguanwei 档案即 dict，G3 曾直接 ``.strip()`` 崩溃，堵死三条
+#: 图文轨）。取值时只认这些**常见身份键**的值拼成判定文本；一个可判定键
+#: 都没有 → 记 ``skipped`` 并写明缺哪些键，绝不拿非身份键的值硬造
+#: identity 文本。
+_BRAND_IDENTITY_DICT_KEYS: tuple[str, ...] = (
+    "识别点",
+    "识别",
+    "描述",
+    "价值观",
+    "定位",
+    "身份",
+    "slogan",
+    "identity",
+    "description",
+    "values",
+    "positioning",
+)
+
+
+def _coerce_identity_text(value: Any) -> tuple[str, list[str], str]:  # noqa: ANN401 — brand_identity arrives as an arbitrary YAML value from brand profiles (#460)
+    """把档案声明的 ``brand_identity`` 归一成可判定的文本，一律不抛异常。
+
+    兼容四种输入（#460 执行契约）：
+
+    - ``str``：strip 后原样返回，单一判定片段（行为与 #460 之前完全一致）；
+    - ``dict``：品牌档案常见 ``{识别点: 描述}`` 形态——按
+      :data:`_BRAND_IDENTITY_DICT_KEYS` 里的常见键取各键的值（固定键序，
+      保证判定可复现），每个值是一个**判定片段**；一个可判定键都没有 →
+      返回空文本 + ``missing`` 说明（期望哪些键、实际有哪些键），
+      调用方据此记 ``skipped``——绝不拿非身份键的值硬造 identity 文本；
+    - ``list``：逐项递归（str 取本身，dict 走 dict 规则），每项一个片段；
+    - ``None``：视为未声明，返回空文本；其余标量（数字等）安全转 str。
+
+    Returns:
+        ``(identity_text, fragments, missing_detail)``。``identity_text``
+        是各片段用「；」拼接的展示文本；``fragments`` 是逐片段判定用的
+        列表（判据：**每个**片段都要落在身份窗口内——str 形态单片段时
+        与历史判据逐字等价，dict/list 多片段时取最严格读法）。
+        ``identity_text`` 为空时 ``missing_detail`` 解释缺什么；
+        未声明（``None``）时三者皆空。
+    """
+    if value is None:
+        return "", [], ""
+    if isinstance(value, str):
+        text = value.strip()
+        return text, ([text] if text else []), ""
+    if isinstance(value, dict):
+        parts: list[str] = []
+        for key in _BRAND_IDENTITY_DICT_KEYS:
+            val = value.get(key)
+            if isinstance(val, str) and val.strip():
+                parts.append(val.strip())
+        if parts:
+            return "；".join(parts), parts, ""
+        got = ", ".join(str(k) for k in value) or "<empty dict>"
+        return (
+            "",
+            [],
+            (
+                "dict has no recognizable identity key "
+                f"(expected one of {'/'.join(_BRAND_IDENTITY_DICT_KEYS)}); "
+                f"got keys: {got}"
+            ),
+        )
+    if isinstance(value, list):
+        list_parts: list[str] = []
+        for item in value:
+            _, item_parts, _ = _coerce_identity_text(item)
+            list_parts.extend(item_parts)
+        if list_parts:
+            return "；".join(list_parts), list_parts, ""
+        return "", [], "list is empty or carries no determinable identity text"
+    # 其余标量（数字等）：安全转文本，不抛异常。
+    text = str(value).strip()
+    return text, ([text] if text else []), ""
+
+
 def _check_brand_identity(
     content: str,
     brand_profile: dict[str, Any],
@@ -305,11 +383,13 @@ def _check_brand_identity(
 ) -> CheckResult:
     """Check 3: 品牌身份是否出现在正文首段。
 
-    判据（#202，方案 ②）：品牌档案声明了 ``brand_identity`` 时，归一化后的
-    声明值必须出现在**正文首段**（无段落切分时取前
-    :data:`_BRAND_IDENTITY_WINDOW_CHARS` 个字符的窗口），出现次数 ≥1 即
-    pass。「全文只出现一次」由写作端 Prompt 保证，判据不因重复而判失败。
-    档案**未声明** ``brand_identity`` 时该子检查不适用 → 返回 skip
+    判据（#202，方案 ②；#460 扩展非 str 形态）：品牌档案声明了
+    ``brand_identity`` 时，归一化后的**每个声明片段**（str 形态即声明值
+    本身；dict/list 形态按 :func:`_coerce_identity_text` 拆片段）必须出现
+    在**正文首段**（无段落切分时取前 :data:`_BRAND_IDENTITY_WINDOW_CHARS`
+    个字符的窗口），全部出现即 pass。「全文只出现一次」由写作端 Prompt
+    保证，判据不因重复而判失败。档案**未声明** ``brand_identity``（或
+    dict/list 取不到可判定内容）时该子检查不适用 → 返回 skip
     （``passed=True`` + ``status="skipped"``），不再用凭空默认短语判失败。
 
     中文说明：本检查只回答一个问题——**档案声明的身份是否落在正文首段**。
@@ -318,34 +398,47 @@ def _check_brand_identity(
     """
     name = "brand_identity"
 
-    declared_identity: str = brand_profile.get("brand_identity", "")
-    expected = declared_identity.strip()
+    declared_value: Any = brand_profile.get("brand_identity", "")
+    expected, fragments, missing_detail = _coerce_identity_text(declared_value)
 
-    # 未声明身份 ⇒ 不适用：skip 并记账，绝不判失败（#202）。
-    if not expected:
+    # 未声明身份 ⇒ 不适用：skip 并记账，绝不判失败（#202）。dict/list 形态
+    # 取不到可判定内容时同样 skip，并写明缺哪个字段（#460）。
+    if not expected or not fragments:
+        detail = "skipped (no declared identity)"
+        if missing_detail:
+            detail = f"skipped (brand_identity {missing_detail})"
         return {
             "name": name,
             "passed": True,
             "status": "skipped",
-            "detail": "skipped (no declared identity)",
+            "detail": detail,
         }
 
     window, window_desc = _first_identity_window(content, script_format=script_format)
-    if _normalize_identity(expected) in _normalize_identity(window):
+    normalized_window = _normalize_identity(window)
+    missing_fragments = [
+        fragment for fragment in fragments if _normalize_identity(fragment) not in normalized_window
+    ]
+    if not missing_fragments:
         return {
             "name": name,
             "passed": True,
             "detail": f"declared brand identity '{expected}' found in {window_desc}",
         }
 
-    location = _locate_identity(content, expected)
+    # str 单片段：保持 #460 之前的失败文案逐字不变；dict/list 多片段：
+    # 额外点名哪些片段缺失（判据 = 每个片段都要落进身份窗口）。
+    location = _locate_identity(content, missing_fragments[0])
+    detail = (
+        f"declared brand identity '{expected}' not found in the {window_desc}; "
+        f"first occurrence in content: {location}"
+    )
+    if len(fragments) > 1:
+        detail += f"; missing fragment(s): {', '.join(missing_fragments)}"
     return {
         "name": name,
         "passed": False,
-        "detail": (
-            f"declared brand identity '{expected}' not found in the {window_desc}; "
-            f"first occurrence in content: {location}"
-        ),
+        "detail": detail,
     }
 
 
@@ -521,7 +614,9 @@ class G3BrandCTA(BaseGate):
         - ``brand_profile``: dict with keys:
             - ``brand_name``: str — primary brand name
             - ``aliases``: list[str] — alternative brand names
-            - ``brand_identity``: str — declared brand identity
+            - ``brand_identity``: str | dict | list | None — declared brand
+              identity; dict/list brand-profile forms are joined into judgment
+              text via :func:`_coerce_identity_text` and never raise (#460)
             - ``blocked_words``: list[str] — forbidden words
         - ``video_script`` (optional): str — for CTA direction sync check
         - ``content_format`` (optional): str — ``"short_video"`` /
@@ -584,7 +679,7 @@ class G3BrandCTA(BaseGate):
 
         # expected 文案跟随档案声明值动态拼接；未声明时保持默认描述。
         expected_map = dict(_EXPECTED_MAP)
-        declared_expected = (brand_profile.get("brand_identity") or "").strip()
+        declared_expected = _coerce_identity_text(brand_profile.get("brand_identity"))[0]
         if declared_expected:
             expected_map["brand_identity"] = (
                 f"Brand identity '{declared_expected}' appears in the first paragraph"

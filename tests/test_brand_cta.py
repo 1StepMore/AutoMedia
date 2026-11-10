@@ -356,6 +356,114 @@ class TestG3DeclaredBrandIdentity:
         assert "no declared identity" in result["detail"]
 
 
+class TestG3BrandIdentityTypedForms:
+    """brand_identity 非 str 形态不得崩溃（#460）。
+
+    yimuguanwei 档案的 ``brand_identity`` 实际是 dict 形态
+    （``{识别点: 描述}``），G3 曾直接 ``.strip()`` 抛
+    ``AttributeError``，failure_mode=stop 堵死三条图文轨。契约：str /
+    dict / list / None 四种输入一律不抛异常，判定结果符合各自规则。
+    """
+
+    def test_str_identity_unchanged(self) -> None:
+        """str 形态行为不变：包含 → pass，不抛异常."""
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": "菲律宾外卖平台"}
+        result = _check_brand_identity(
+            "本平台是菲律宾外卖平台，覆盖全境。立即咨询。",
+            profile,
+        )
+        assert result["passed"] is True
+        assert "菲律宾外卖平台" in result["detail"]
+
+    def test_dict_identity_joined_from_recognized_keys(self) -> None:
+        """dict 形态：按常见身份键（识别点/描述/价值观等）拆片段判定.
+
+        判据 = 每个片段都要落在身份窗口内（str 单片段与历史判据等价）。
+        """
+        profile = {
+            **_DEFAULT_BRAND_PROFILE,
+            "brand_identity": {
+                "识别点": "菲律宾外卖平台",
+                "描述": "覆盖全境的即时配送网络",
+                "价值观": "准时必达",
+            },
+        }
+        # 全部片段都在首段 → pass
+        result = _check_brand_identity(
+            "本平台是菲律宾外卖平台，覆盖全境的即时配送网络，准时必达。立即咨询。",
+            profile,
+        )
+        assert result["passed"] is True
+        # 判定文本 = 各身份键的值按固定键序拼接
+        assert "菲律宾外卖平台" in result["detail"]
+        assert "覆盖全境的即时配送网络" in result["detail"]
+        assert "准时必达" in result["detail"]
+        # 只含部分片段 → fail，且点名缺失片段
+        result_partial = _check_brand_identity(
+            "本平台是菲律宾外卖平台，覆盖全境。立即咨询。",
+            profile,
+        )
+        assert result_partial["passed"] is False
+        assert "missing fragment(s)" in result_partial["detail"]
+        assert "准时必达" in result_partial["detail"]
+
+    def test_dict_identity_without_recognizable_keys_skips_with_missing_fields(
+        self,
+    ) -> None:
+        """dict 里一个可判定身份键都没有 → skipped 并写明缺哪些字段.
+
+        绝不拿非身份键的值硬造 identity 文本（#460 卡住条款）。
+        """
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": {"tone": "专业", "logo": "蓝色"}}
+        result = _check_brand_identity("我们专注AI内容创作。立即咨询。", profile)
+        assert result["passed"] is True
+        assert result.get("status") == "skipped"
+        assert "no recognizable identity key" in result["detail"]
+        assert "识别点" in result["detail"]  # 期望键写进 detail
+        assert "tone" in result["detail"]  # 实际键写进 detail
+
+    def test_list_identity_joined_from_items(self) -> None:
+        """list 形态：逐项拆片段判定（判据 = 每项都要落在身份窗口内）."""
+        profile = {
+            **_DEFAULT_BRAND_PROFILE,
+            "brand_identity": ["菲律宾外卖平台", "覆盖全境的即时配送"],
+        }
+        result = _check_brand_identity(
+            "我们是覆盖全境的即时配送平台。立即咨询。",
+            profile,
+        )
+        # 只含第二项 → fail，但绝不抛异常，且点名缺失片段
+        assert result["passed"] is False
+        assert "菲律宾外卖平台" in result["detail"]
+        result_pass = _check_brand_identity(
+            "本平台是菲律宾外卖平台，覆盖全境的即时配送。立即咨询。",
+            profile,
+        )
+        assert result_pass["passed"] is True
+
+    def test_none_identity_skips_without_exception(self) -> None:
+        """None 形态：视为未声明 → skipped，不抛异常."""
+        profile = {**_DEFAULT_BRAND_PROFILE, "brand_identity": None}
+        result = _check_brand_identity("我们专注AI内容创作。立即咨询。", profile)
+        assert result["passed"] is True
+        assert result.get("status") == "skipped"
+        assert "no declared identity" in result["detail"]
+
+    def test_gate_execute_with_dict_identity_does_not_raise(self) -> None:
+        """门级：dict 形态走完整 execute（含 expected_map 拼接路径）不抛异常."""
+        gate = G3BrandCTA()
+        ctx = _make_context(
+            brand_profile={
+                **_DEFAULT_BRAND_PROFILE,
+                "brand_identity": {"识别点": "AI内容生产公司"},
+            },
+        )
+        result = gate.execute(ctx)
+        assert result["gate"] == "G3"
+        bi = next(c for c in result["checks"] if c["name"] == "brand_identity")
+        assert bi["passed"] is True  # 首段含「AI内容生产公司」→ pass
+
+
 class TestG3BrandIdentityFirstParagraph:
     """品牌身份判据 = 出现在正文首段，出现次数 ≥1（#202 方案 ②）。"""
 
