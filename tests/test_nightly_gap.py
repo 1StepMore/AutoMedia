@@ -24,8 +24,9 @@ from scripts.nightly_gap import (
 
 V_GATES = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
 # #414: 口径与 gate_inputs 可达性审计统一（V1 自 #387 有真实生产者）。
-MUST_RUN = ("V1", "V2", "V5", "V7")
-DEBT = ("V0", "V3", "V4", "V6")
+# #471: V3 自 keyword_extractor 起有真实生产者（topic 与源材料齐备时）。
+MUST_RUN = ("V1", "V2", "V3", "V5", "V7")
+DEBT = ("V0", "V4", "V6")
 
 
 def _report(
@@ -125,8 +126,8 @@ def test_video_ok_with_debt_skips(tmp_path: Path) -> None:
     gates = p["video_gates"]
     assert gates["ok"] is True
     assert gates["reason"] == ""
-    assert gates["debt_skipped"] == ["V0", "V3", "V4", "V6"]
-    assert gates["passed"] == ["V1", "V2", "V5", "V7"]
+    assert gates["debt_skipped"] == ["V0", "V4", "V6"]
+    assert gates["passed"] == list(MUST_RUN)
     assert gates["failed"] == gates["errored"] == gates["other"] == []
     assert gates["missing"] == []
     assert gates["report"] == ("05_review/gate-report/gate-report-2026-01-01T000000+0000.json")
@@ -205,17 +206,21 @@ def test_video_red_when_all_gates_skipped(tmp_path: Path) -> None:
 
 
 def test_video_red_when_must_run_gate_skipped(tmp_path: Path) -> None:
-    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(["V1", "V5", "V7"], []))])
+    _project(
+        tmp_path,
+        reports=[("2026-01-01T00:00:00+0000", _report([g for g in MUST_RUN if g != "V2"], []))],
+    )
     p = _one(tmp_path)
     assert p["video_ok"] is False
     assert "not passed: V2" in p["video_gates"]["reason"]
 
 
 def test_video_red_when_gate_failed(tmp_path: Path) -> None:
-    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(list(MUST_RUN), ["V3"]))])
+    # V3 是必跑门，失败样本换用能力债门 V4（#471 口径）。
+    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(list(MUST_RUN), ["V4"]))])
     p = _one(tmp_path)
     assert p["video_ok"] is False
-    assert "gate failed: V3" in p["video_gates"]["reason"]
+    assert "gate failed: V4" in p["video_gates"]["reason"]
 
 
 def test_video_red_when_no_gate_report(tmp_path: Path) -> None:
@@ -258,7 +263,7 @@ def test_latest_report_wins(tmp_path: Path) -> None:
     ev = video_gate_evidence(proj)
     assert ev["report"].endswith("gate-report-2026-01-02T000000+0000.json")
     assert ev["reason"] == ""
-    assert ev["passed"] == ["V1", "V2", "V5", "V7"]
+    assert ev["passed"] == list(MUST_RUN)
     p = _one(tmp_path)
     assert p["video_ok"] is True
 
@@ -438,12 +443,12 @@ def test_failed_gate_in_report_blocks_all_tracks(tmp_path: Path) -> None:
         tmp_path,
         image_bytes=2 * 1024,
         video_bytes=10 * 1024,
-        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), ["V3"]))],
+        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), ["V4"]))],
     )
     p = _one(tmp_path)
-    assert p["gate_chain"]["blocker"] == "V3"
+    assert p["gate_chain"]["blocker"] == "V4"
     assert p["text_state"] == p["image_state"] == p["video_state"] == "fail"
-    assert _track_red_reason(p, "文本轨") == "卡在 V3"
+    assert _track_red_reason(p, "文本轨") == "卡在 V4"
 
 
 def test_removing_video_makes_track_unverified(tmp_path: Path) -> None:

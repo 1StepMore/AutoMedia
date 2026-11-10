@@ -103,8 +103,10 @@ def test_produced_keys_are_read_from_the_real_pipeline() -> None:
     # ``entries`` has a real producer since #387 (vision_entries extracts
     # per-scene frames and writes verdicts after a successful render).
     assert "entries" in produced
-    # Never written anywhere: these are the structurally dead inputs.
-    assert "lint_result" not in produced
+    # ``source_keywords``/``content_keywords``/``source_texts`` have a real
+    # producer since #471 (keyword_extractor writes them when the run has
+    # topic + source material).
+    assert {"source_keywords", "content_keywords", "source_texts"} <= produced
 
 
 def test_reachability_separates_the_three_buckets() -> None:
@@ -148,12 +150,14 @@ def test_coverage_audit_reports_input_reachability() -> None:
     result = coverage_audit()
 
     # V1 joined the reachable set in #387: the vision-entries producer writes
-    # ``entries`` after a successful render.
-    assert result["input_reachable_gates"] == ["V1", "V2", "V5", "V7"]
-    assert result["input_unreachable_gates"] == ["V0", "V3", "V4", "V6"]
+    # ``entries`` after a successful render.  V3 joined it in #471: the
+    # keyword extractor writes the three V3 inputs when topic + source
+    # material exist.
+    assert result["input_reachable_gates"] == ["V1", "V2", "V3", "V5", "V7"]
+    assert result["input_unreachable_gates"] == ["V0", "V4", "V6"]
     assert result["input_missing_keys"]["V0"] == ["lint_result"]
-    assert result["summary"]["gates_input_reachable"] == 4
-    assert result["summary"]["gates_input_unreachable"] == 4
+    assert result["summary"]["gates_input_reachable"] == 5
+    assert result["summary"]["gates_input_unreachable"] == 3
 
 
 def test_input_reachability_does_not_disturb_the_existing_classes() -> None:
@@ -173,7 +177,7 @@ def test_input_unreachable_and_execution_unreachable_are_disjoint_reports() -> N
     assert set(result["input_unreachable_gates"]) & set(result["unreachable_gates"]) == set()
 
 
-@pytest.mark.parametrize("gate", ["V0", "V3", "V4", "V6"])
+@pytest.mark.parametrize("gate", ["V0", "V4", "V6"])  # V3 自 #471 起可达
 def test_each_input_less_gate_names_the_missing_key(gate: str) -> None:
     result = coverage_audit()
 
