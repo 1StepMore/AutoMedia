@@ -22,6 +22,7 @@
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
 | docs/dev/AutoMedia开发简报.md | 4642 | file |
 | docs/dev/DEBT.md | 603 | file |
+| docs/dev/adapter-credentials-matrix.md | 4425 | file |
 | docs/dev/agent-era-doc-architecture.md | 18625 | file |
 | docs/dev/agent-reference.md | 25318 | file |
 | docs/dev/agent-troubleshooting.md | 28282 | file |
