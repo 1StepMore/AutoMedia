@@ -19,11 +19,19 @@ from structlog import get_logger
 
 from automedia.core.layout import CONTENT
 from automedia.core.llm_client import LLMError, llm_complete
+from automedia.core.text_cleaning import clean_publishable_copy
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
 from automedia.prompts import load_prompt
 
 log = get_logger(__name__)
+
+#: Image-track modes whose final text product is the CW draft itself — the
+#: draft → publishable-copy boundary sits at this gate's file write, so the
+#: storyboard markup is stripped here (#464).  ``image-carousel`` renders its
+#: text onto cards via the image pipeline and is deliberately not in this set;
+#: the video track cleans at the narration boundary instead.
+_IMAGE_TRACK_PUBLISH_MODES = frozenset({"text_with_cover", "social-thread"})
 
 _EXPECTED_MAP: dict[str, str] = {
     "topic_present": "Topic is provided in gate_context",
@@ -418,6 +426,13 @@ class ContentWriterGate(BaseGate):
                 },
             }
 
+        # Draft → publishable-copy boundary (#464): image-track modes post
+        # the draft verbatim, so storyboard markup is stripped before it
+        # lands on disk.  Downstream gates (G0-G6) validate exactly this
+        # publishable text.
+        if pipeline_mode in _IMAGE_TRACK_PUBLISH_MODES:
+            content = clean_publishable_copy(content)
+
         # --- Write to disk ----------------------------------------------------------
         content_dir = os.path.join(project_dir, CONTENT, "drafts")
         os.makedirs(content_dir, exist_ok=True)
@@ -498,6 +513,9 @@ class ContentWriterGate(BaseGate):
 
             seo_rewritten = True
             seo_retries_remaining -= 1
+            # An SEO rewrite re-enters the publish boundary (#464).
+            if pipeline_mode in _IMAGE_TRACK_PUBLISH_MODES:
+                content = clean_publishable_copy(content)
 
         gate_context.setdefault("extra", {})["seo_scores"] = seo_scores
         if seo_rewritten:
