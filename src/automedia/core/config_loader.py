@@ -3,9 +3,10 @@
 Layer priority (lowest → highest):
     1. Built-in ``automedia/manifests/defaults.yaml``
     2. Project ``.automedia/`` directory (or explicit *config_dir*)
-    3. User ``~/.automedia/`` directory
-    4. ``~/.automedia/overrides/rules/*.yaml``
-    5. ``~/.automedia/overrides/prompts/*.j2``
+    3. User config root — ``~/.automedia/``, or the directory named by
+       ``AUTOMEDIA_CONFIG_DIR`` when set (#478)
+    4. ``<user config root>/overrides/rules/*.yaml``
+    5. ``<user config root>/overrides/prompts/*.j2``
     6. ``AUTOMEDIA_*`` environment variables (with the lazy ``.env`` overlay
        beneath them), then *overrides* parameter
 """
@@ -21,6 +22,7 @@ from typing import Any
 import yaml
 
 from automedia.core.env_overlay import dotenv_overlay
+from automedia.core.paths import get_user_config_dir
 from automedia.exceptions import ConfigError
 
 _DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "manifests" / "defaults.yaml"
@@ -361,15 +363,20 @@ def load_config(
     project_dir = config_dir if config_dir is not None else os.path.join(os.getcwd(), ".automedia")
     config = deep_merge(config, _load_yaml_dir(project_dir))
 
-    # Layer 3 – user ~/.automedia/
-    user_dir = os.path.join(os.path.expanduser("~"), ".automedia")
+    # Layer 3 – user config root.  Resolved through paths.get_user_config_dir(),
+    # which honours AUTOMEDIA_CONFIG_DIR (#478) — ``automedia demo`` (and any
+    # CI/container isolation) points that env var at a private dir and every
+    # user-config layer must follow it, not the hardcoded ``~/.automedia``.
+    # A nonexistent dir is simply an empty config layer: built-in defaults
+    # apply, nothing is created, nothing errors.
+    user_dir = str(get_user_config_dir())
     config = deep_merge(config, _load_yaml_dir(user_dir))
 
-    # Layer 4 – ~/.automedia/overrides/rules/*.yaml
+    # Layer 4 – <user config root>/overrides/rules/*.yaml
     rules_dir = os.path.join(user_dir, "overrides", "rules")
     config = deep_merge(config, _load_yaml_dir(rules_dir))
 
-    # Layer 5 – ~/.automedia/overrides/prompts/*.j2
+    # Layer 5 – <user config root>/overrides/prompts/*.j2
     prompts_dir = os.path.join(user_dir, "overrides", "prompts")
     config = deep_merge(config, _load_j2_dir(prompts_dir))
 
