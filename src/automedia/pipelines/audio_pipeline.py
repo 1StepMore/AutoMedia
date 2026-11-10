@@ -179,6 +179,12 @@ class AudioPipeline:
         # Ensure parent directory exists
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
+        # V4 的适配层记录（#472）：edge-tts CLI 不回传实际使用的 voice 参数，
+        # 这里按"调用参数即实际参数"登记（参数非空时引擎原样使用它）。speed /
+        # pitch 本流水线从未配置，恒为 0.0——V4 的语速判据据此如实 skip。
+        # 风险注记：若未来引擎在内部改写参数，这里的登记值会滞后于实际值。
+        self.last_voice_params = {"voice_id": voice, "rate": 0.0, "pitch": 0.0}
+
         # Try the engine chain first; fall back to direct subprocess call
         chain = self._tts_engine_chain()
         if chain:
