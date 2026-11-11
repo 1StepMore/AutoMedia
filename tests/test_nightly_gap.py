@@ -24,8 +24,9 @@ from scripts.nightly_gap import (
 
 V_GATES = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
 # #414: 口径与 gate_inputs 可达性审计统一（V1 自 #387 有真实生产者）。
-MUST_RUN = ("V1", "V2", "V5", "V7")
-DEBT = ("V0", "V3", "V4", "V6")
+# #470: V0 自 lint_executor.run_lint 起有真实生产者，同样进必跑集合。
+MUST_RUN = ("V0", "V1", "V2", "V5", "V7")
+DEBT = ("V3", "V4", "V6")
 
 
 def _report(
@@ -125,8 +126,8 @@ def test_video_ok_with_debt_skips(tmp_path: Path) -> None:
     gates = p["video_gates"]
     assert gates["ok"] is True
     assert gates["reason"] == ""
-    assert gates["debt_skipped"] == ["V0", "V3", "V4", "V6"]
-    assert gates["passed"] == ["V1", "V2", "V5", "V7"]
+    assert gates["debt_skipped"] == ["V3", "V4", "V6"]
+    assert gates["passed"] == list(MUST_RUN)
     assert gates["failed"] == gates["errored"] == gates["other"] == []
     assert gates["missing"] == []
     assert gates["report"] == ("05_review/gate-report/gate-report-2026-01-01T000000+0000.json")
@@ -205,7 +206,10 @@ def test_video_red_when_all_gates_skipped(tmp_path: Path) -> None:
 
 
 def test_video_red_when_must_run_gate_skipped(tmp_path: Path) -> None:
-    _project(tmp_path, reports=[("2026-01-01T00:00:00+0000", _report(["V1", "V5", "V7"], []))])
+    _project(
+        tmp_path,
+        reports=[("2026-01-01T00:00:00+0000", _report([g for g in MUST_RUN if g != "V2"], []))],
+    )
     p = _one(tmp_path)
     assert p["video_ok"] is False
     assert "not passed: V2" in p["video_gates"]["reason"]
@@ -258,7 +262,7 @@ def test_latest_report_wins(tmp_path: Path) -> None:
     ev = video_gate_evidence(proj)
     assert ev["report"].endswith("gate-report-2026-01-02T000000+0000.json")
     assert ev["reason"] == ""
-    assert ev["passed"] == ["V1", "V2", "V5", "V7"]
+    assert ev["passed"] == list(MUST_RUN)
     p = _one(tmp_path)
     assert p["video_ok"] is True
 
