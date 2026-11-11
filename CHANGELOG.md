@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.17.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.0...automedia-v1.17.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **narration:** drop emoji instead of speaking them and keep the last SRT cue whole ([#496](https://github.com/1StepMore/AutoMedia/issues/496)) ([#501](https://github.com/1StepMore/AutoMedia/issues/501)) ([05c2b3a](https://github.com/1StepMore/AutoMedia/commit/05c2b3afa40570b3a13fbf3f5c003beffb0a721e))
+* **pipelines:** give short-video its cover and a 04_subtitle SRT ([#495](https://github.com/1StepMore/AutoMedia/issues/495)) ([#500](https://github.com/1StepMore/AutoMedia/issues/500)) ([75e510e](https://github.com/1StepMore/AutoMedia/commit/75e510e8c4f025ad5f6d7be6aa68d90229b48060))
+
 ## [1.17.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.16.0...automedia-v1.17.0) (2026-11-11)
 
 
