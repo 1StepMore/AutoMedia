@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.17.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.16.0...automedia-v1.17.0) (2026-11-11)
+
+
+### Features
+
+* **pipelines:** offline keyword extraction behind V3 ([#471](https://github.com/1StepMore/AutoMedia/issues/471)) ([#490](https://github.com/1StepMore/AutoMedia/issues/490)) ([01aa57b](https://github.com/1StepMore/AutoMedia/commit/01aa57b597639db948368375e45d92ba4546c024))
+* **pipelines:** pluggable VLM client for V1 frame judging ([#473](https://github.com/1StepMore/AutoMedia/issues/473)) ([#492](https://github.com/1StepMore/AutoMedia/issues/492)) ([9586033](https://github.com/1StepMore/AutoMedia/commit/95860332b7a770670cd740d78982aa04e2d8e148))
+* **pipelines:** real lint executor behind V0 — SRT structure, monotonic times, script fields ([#470](https://github.com/1StepMore/AutoMedia/issues/470)) ([#489](https://github.com/1StepMore/AutoMedia/issues/489)) ([71fc193](https://github.com/1StepMore/AutoMedia/commit/71fc193bb4e3c3a793c3c548a3eb9746068b5b46))
+* **pipelines:** voice-params producer behind V4 — TTS adapter records actual voice ([#472](https://github.com/1StepMore/AutoMedia/issues/472)) ([#491](https://github.com/1StepMore/AutoMedia/issues/491)) ([89e6917](https://github.com/1StepMore/AutoMedia/commit/89e691782bb57e58ea3bd56f92a11cd1a459a14f))
+
+
+### Bug Fixes
+
+* **config:** honor AUTOMEDIA_CONFIG_DIR in load_config layers 3/4/5 ([#478](https://github.com/1StepMore/AutoMedia/issues/478)) ([#486](https://github.com/1StepMore/AutoMedia/issues/486)) ([14a5063](https://github.com/1StepMore/AutoMedia/commit/14a5063ec67b787bf9a0b610c74d144826821043))
+* **core:** name the empty provider when model config is corrupted ([#467](https://github.com/1StepMore/AutoMedia/issues/467)) ([#485](https://github.com/1StepMore/AutoMedia/issues/485)) ([c5c1874](https://github.com/1StepMore/AutoMedia/commit/c5c1874ab69d6040d3269bc1a5784c6a98cb6208))
+* **engines:** fallback cards draw topic copy, never SD quality tags ([#463](https://github.com/1StepMore/AutoMedia/issues/463)) ([#484](https://github.com/1StepMore/AutoMedia/issues/484)) ([f2679c3](https://github.com/1StepMore/AutoMedia/commit/f2679c3665daebb2f00f56ecdfde505fb12d488b))
+* **engines:** video chain fallback + job-level blocked_by for missing renders ([#476](https://github.com/1StepMore/AutoMedia/issues/476)) ([#488](https://github.com/1StepMore/AutoMedia/issues/488)) ([7f5be3b](https://github.com/1StepMore/AutoMedia/commit/7f5be3b4d604fc25b6dd29242ae9344965188d70))
+* **gate-report:** name the failing check when a gate has no error ([#477](https://github.com/1StepMore/AutoMedia/issues/477)) ([#479](https://github.com/1StepMore/AutoMedia/issues/479)) ([9bc5352](https://github.com/1StepMore/AutoMedia/commit/9bc5352e49bfdea344f5b8ad3e4131f0afefb5af))
+* **gates:** G3 tolerates dict/list/None brand_identity instead of crashing ([#460](https://github.com/1StepMore/AutoMedia/issues/460)) ([#480](https://github.com/1StepMore/AutoMedia/issues/480)) ([048eb62](https://github.com/1StepMore/AutoMedia/commit/048eb627258c19ffed01993fe8ea9a2d8d231445))
+* **narration:** drop section-heading words in label form, not prose ([#461](https://github.com/1StepMore/AutoMedia/issues/461)) ([#487](https://github.com/1StepMore/AutoMedia/issues/487)) ([d165f0e](https://github.com/1StepMore/AutoMedia/commit/d165f0e2e7601b4a298eaa03430a93ccd31fe96e))
+* **pipelines:** clean image-track copy at the draft-to-publish boundary ([#464](https://github.com/1StepMore/AutoMedia/issues/464)) ([#481](https://github.com/1StepMore/AutoMedia/issues/481)) ([837b4ea](https://github.com/1StepMore/AutoMedia/commit/837b4eab37a9d2e8eaba5daf6b37b788b127489c))
+* **ui:** route the selected platform into the media spec ([#494](https://github.com/1StepMore/AutoMedia/issues/494)) ([#499](https://github.com/1StepMore/AutoMedia/issues/499)) ([48e02c0](https://github.com/1StepMore/AutoMedia/commit/48e02c002415e20cb6f58b03a4b81aea68fe7474))
+* **validation:** seed minimal model_config.yaml into owned sandbox config ([#466](https://github.com/1StepMore/AutoMedia/issues/466)) ([#483](https://github.com/1StepMore/AutoMedia/issues/483)) ([8554bde](https://github.com/1StepMore/AutoMedia/commit/8554bde4b618a74647f0aacec85aa31808eed152))
+
+
+### Documentation
+
+* cross-repo boundary clause + fix 'edit the canonical copy in AutoInfo' wording ([#474](https://github.com/1StepMore/AutoMedia/issues/474)) ([#493](https://github.com/1StepMore/AutoMedia/issues/493)) ([df1cb54](https://github.com/1StepMore/AutoMedia/commit/df1cb54695217558ad0e52bd8b4b366e42c10cd2))
+
 ## [1.16.0](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.15.1...automedia-v1.16.0) (2026-11-10)
 
 
