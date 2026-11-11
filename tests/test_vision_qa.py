@@ -154,17 +154,49 @@ class TestV1UnjudgedAccounting:
         chk = next(c for c in result["checks"] if c["name"] == "red_line_6")
         assert chk["passed"] is True
 
-    def test_mixed_panel_and_unjudged_accounts_in_red_line_6(self, tmp_path: Any) -> None:
+    def test_mixed_panel_and_unjudged_reports_review(self, tmp_path: Any) -> None:
+        """#498：部分覆盖不得假绿——judged=1/2 时门级必须是 review 而非 passed。
+
+        旧版此处断言 ``passed is True``（red_line_6 子检查记 skipped 后整门放
+        行），正是 #498 指控的假绿：报告读者会以为画面质量已判定。现改为门级
+        ``status="review"``，reason 直接带 judged/total 计数。
+        """
         panel = _good_entry(0, str(tmp_path))
         panel["verdict"] = "panel (by construction)"
         unjudged = self._unjudged_entry(1, str(tmp_path))
         result = V1VisionQA().execute(_make_context(entries=[panel, unjudged]))
-        assert result["passed"] is True
+        assert result["passed"] is True  # 不停机——未判定不等于失败
+        assert result["status"] == "review"  # 但也绝不冒充 passed/skipped
+        assert result["judged"] == 1
+        assert result["total_scenes"] == 2
+        assert "judged=1/2" in result["reason"]
+        assert "unjudged=1" in result["reason"]
         chk = next(c for c in result["checks"] if c["name"] == "red_line_6")
         assert chk["passed"] is True
         assert chk.get("status") == "skipped"
         assert "recorded unjudged" in chk["detail"]
         assert "not counted as pass" in chk["detail"]
+
+    def test_judged_failure_with_unjudged_still_fails_gate(self, tmp_path: Any) -> None:
+        """#498：已判定场景不通过时，review 不得吞掉 fail——门必须照常停。"""
+        failed_judged = _good_entry(0, str(tmp_path))
+        failed_judged["qa_passed"] = False
+        failed_judged["verdict"] = "vlm: unrelated stock photo"
+        unjudged = self._unjudged_entry(1, str(tmp_path))
+        result = V1VisionQA().execute(_make_context(entries=[failed_judged, unjudged]))
+        assert result["passed"] is False
+        assert result.get("status") != "review"
+
+    def test_mixed_six_to_one_counts_match_issue_example(self, tmp_path: Any) -> None:
+        """#498 实跑复现形态：judged=1/6，reason 与计数键都要如实。"""
+        panel = _good_entry(0, str(tmp_path))
+        panel["verdict"] = "panel (by construction)"
+        entries = [panel] + [self._unjudged_entry(i, str(tmp_path)) for i in range(1, 6)]
+        result = V1VisionQA().execute(_make_context(entries=entries))
+        assert result["status"] == "review"
+        assert result["judged"] == 1
+        assert result["total_scenes"] == 6
+        assert "judged=1/6" in result["reason"]
 
     def test_judged_failure_still_fails_gate(self, tmp_path: Any) -> None:
         """负样本验收：已判定且不通过 → 门必须 fail。"""

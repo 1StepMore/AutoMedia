@@ -158,10 +158,16 @@ class GateLogEntry:
     skipped gate makes no claim about the artifact, and collapsing it into
     ``"passed"`` was health-assessment finding P0-1 (the report showed
     "pass" for gates that never ran).
+
+    ``"review"`` (issue #498) means the gate ran and judged *part* of the
+    artifact, but coverage was incomplete — the unjudged remainder needs
+    human attention.  Distinct from ``"skipped"`` ("evaluated nothing") and
+    from ``"failed"`` ("evaluated and failed"): V1 with some scenes judged
+    and some unjudged is neither, and flattening either way hides the gap.
     """
 
     gate_name: str
-    status: Literal["passed", "failed", "error", "skipped"]
+    status: Literal["passed", "failed", "error", "skipped", "review"]
     duration_s: float
     error: str | None = None
     #: Why a gate was skipped, in the gate's own words (issue #285).  A skip
@@ -171,6 +177,11 @@ class GateLogEntry:
     #: be able to tell apart.  ``None`` for non-skipped gates and for older
     #: persisted rows that never recorded one.
     skip_reason: str | None = None
+    #: The gate's own explanation for a non-verdict outcome that is not a
+    #: skip — currently V1's partial-coverage ``review`` (issue #498, carries
+    #: the ``judged=X/Y`` counts).  ``None`` for verdict gates; a review
+    #: without its accounting would be exactly the opacity #498 fixes.
+    reason: str | None = None
 
 
 @dataclass

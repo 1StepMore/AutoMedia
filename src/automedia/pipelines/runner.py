@@ -1831,7 +1831,8 @@ def _build_gates_from_names(
 def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     """Convert raw gate result dicts into :class:`GateLogEntry` items.
 
-    A gate that reports an explicit ``status`` keeps it verbatim.  This is
+    A gate that reports an explicit ``status`` keeps it verbatim — including
+    ``"review"`` (partial coverage, #498).  This is
     what makes ``"skipped"`` visible all the way to ``PipelineResult``, the
     gate report and the CLI — before health-assessment P0-1 every skipped V
     gate was flattened to ``"passed"`` here, so an un-run video QA suite
@@ -1848,11 +1849,18 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
     for r in results:
         passed = r.get("passed", True)
         reported = r.get("status")
-        status: Literal["passed", "failed", "error", "skipped"] = "passed" if passed else "failed"
-        if reported in ("skipped", "passed", "failed", "error"):
+        status: Literal["passed", "failed", "error", "skipped", "review"] = (
+            "passed" if passed else "failed"
+        )
+        # "review" (#498): the gate ran and judged part of the artifact but
+        # coverage was incomplete (e.g. V1 with unjudged scenes).  First-class
+        # — flattening it to "passed" was exactly the false green #498 fixes.
+        if reported in ("skipped", "passed", "failed", "error", "review"):
             status = reported
         elif r.get("_hitl_awaiting") is True:
-            status = cast(Literal["passed", "failed", "error", "skipped"], "awaiting_hitl")
+            status = cast(
+                Literal["passed", "failed", "error", "skipped", "review"], "awaiting_hitl"
+            )
         entries.append(
             GateLogEntry(
                 gate_name=r.get("gate", "unknown"),
@@ -1863,6 +1871,10 @@ def _build_gates_log(results: list[dict[str, Any]]) -> list[GateLogEntry]:
                 # (issue #285).  A skip without a reason is a report that
                 # cannot distinguish "no input" from "absent tooling".
                 skip_reason=(r.get("reason") or r.get("detail")) if status == "skipped" else None,
+                # Same for a partial-coverage review (#498): the judged=X/Y
+                # counts are the whole point — a review without them is the
+                # opacity the status exists to remove.
+                reason=r.get("reason") if status == "review" else None,
             )
         )
     return entries

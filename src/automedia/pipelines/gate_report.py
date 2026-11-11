@@ -6,11 +6,13 @@ Design constraints (productization-roadmap-20260902 todo 4 / roadmap P0-1):
   :class:`~automedia.pipelines.gate_engine.GateLogEntry` rows (the pipeline's
   own gates log) plus optional in-memory per-gate result dicts (the dicts
   produced by ``GateEngine._run`` / ``gates._result.build_gate_result``).
-- **Vocabulary mapping.**  Internal gate status ``passed|failed|error|skipped``
+- **Vocabulary mapping.**  Internal gate status ``passed|failed|error|skipped|review``
   maps to the report vocabulary ``pass|fail|review|skip`` (``error`` →
   ``review``: a gate that crashed needs human attention, it did not "fail" on
   content; ``skipped`` → ``skip``: the gate deliberately did not evaluate the
-  artifact, so it must never be counted as a pass — health-assessment P0-1).
+  artifact, so it must never be counted as a pass — health-assessment P0-1;
+  ``review`` → ``review``: the gate judged *part* of the artifact and the
+  unjudged remainder needs human attention — issue #498, never a pass).
 - **H0 / HITL honesty.**  ``_hitl_approved`` lives only in transient result
   dicts — it is ABSENT from gates_log rows.  A live render (``gate_results``
   given) may mark H0 as reviewed based on that key; an offline render
@@ -59,6 +61,11 @@ _VERDICT_MAP: dict[str, str] = {
     # H0 auto-passed under --skip-review, a V gate whose input is missing).
     # Any status absent from this map still falls back to "review".
     "skipped": "skip",
+    # Partial coverage (#498): the gate judged part of the artifact — the
+    # unjudged remainder needs human attention.  Its own status is already
+    # "review"; mapping it explicitly here keeps that visible even though the
+    # unknown-status fallback would land in the same place.
+    "review": "review",
 }
 
 #: Per-check remediation keys produced by
@@ -74,13 +81,16 @@ class GateReportRow(TypedDict, total=False):
     """One per-gate row in the report (JSON-serializable)."""
 
     gate: str
-    status: str  # internal: passed|failed|error|skipped
+    status: str  # internal: passed|failed|error|skipped|review
     verdict: str  # report vocabulary: pass|fail|review|skip
     verdict_source: str  # "log" (persisted) | "result" (live in-memory)
     reviewed: bool  # True only when HITL involvement is a fact, not a guess
     duration_s: float
     error: str | None
     skip_reason: str | None  # why a skipped gate did not run (issue #285)
+    reason: str | None  # gate's own accounting for a review row (issue #498)
+    judged: int | None  # scenes the gate actually judged (V1 review, #498)
+    total_scenes: int | None  # scenes the gate should have judged (V1, #498)
     checks: list[dict[str, Any]] | None  # per-check detail (live renders only)
     expected_vs_actual: dict[str, Any] | None
     output_path: str | None
@@ -162,9 +172,20 @@ def _build_row(
         duration_s=round(float(entry.duration_s), 4),
         error=entry.error,
         skip_reason=entry.skip_reason,
+        # The review accounting travels with the row so an OFFLINE render
+        # (persisted rows only) still shows judged=X/Y (issue #498).
+        reason=entry.reason,
     )
 
     if result is not None:
+        # Coverage counts from a live V1 review result (#498) — the JSON row
+        # carries them as first-class numbers, not only inside prose.
+        judged = result.get("judged")
+        total_scenes = result.get("total_scenes")
+        if isinstance(judged, int):
+            row["judged"] = judged
+        if isinstance(total_scenes, int):
+            row["total_scenes"] = total_scenes
         # Per-check detail where present (live in-memory result dicts only).
         checks = result.get("checks")
         if isinstance(checks, list):
@@ -292,7 +313,7 @@ def _render_markdown(report: GateReport) -> str:
         verdict = row["verdict"]
         if row.get("reviewed"):
             verdict += " (reviewed)"
-        reason = row.get("error") or row.get("skip_reason") or ""
+        reason = row.get("error") or row.get("reason") or row.get("skip_reason") or ""
         fix = _gate_fix(row)
         lines.append(
             f"| {row['gate']} | {verdict} | {row.get('duration_s', 0.0)} | {reason} | {fix} |"
@@ -398,7 +419,7 @@ def _render_html(report: GateReport) -> str:
             f"<td>{_esc(row['gate'])}</td>"
             f'<td class="{_esc(row["verdict"])}">{_esc(verdict)}</td>'
             f"<td>{_esc(row.get('duration_s', 0.0))}</td>"
-            f"<td>{_esc(row.get('error') or '')}</td>"
+            f"<td>{_esc(row.get('error') or row.get('reason') or '')}</td>"
             f"<td>{_esc(_gate_fix(row))}</td>"
             "</tr>"
         )
