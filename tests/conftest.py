@@ -282,6 +282,39 @@ def _path_isolation() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _tools_dir_isolation(tmp_path: Path) -> Generator[None, None, None]:
+    """Point ``AUTOMEDIA_TOOLS_DIR`` at an empty dir under *tmp_path*.
+
+    Tool resolution (:func:`automedia.core.tool_paths.find_tool`, #510) scans
+    the own tools directory (default ``%LOCALAPPDATA%\\automedia-tools\\bin``)
+    and persists tools-dir discoveries into ``<user config>/tools.yaml``.
+    Without isolation, a test running on a machine where ffmpeg actually lives
+    there would (a) resolve the developer's real binaries instead of the
+    stubs it installs and (b) write pins into the developer's real user
+    config — the same leak class the ``PATH`` guard exists for. Isolating the
+    tools dir alone keeps both impossible in tests: no tools-dir hit means no
+    persistence.
+
+    ``AUTOMEDIA_CONFIG_DIR`` is deliberately NOT hijacked here — the
+    established convention in this suite is to isolate the user config by
+    mocking ``Path.home()`` (or setting the variable explicitly), and several
+    tests assert exactly that default-resolution behavior.
+
+    A test that needs a specific tools dir overrides the variable itself.
+    """
+    name = "AUTOMEDIA_TOOLS_DIR"
+    saved = os.environ.get(name)
+    os.environ[name] = str(tmp_path / "tools")
+    try:
+        yield
+    finally:
+        if saved is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = saved
+
+
+@pytest.fixture(autouse=True)
 def _no_mock_paths_in_cwd() -> Generator[None, None, None]:
     """Fail any test that leaves a ``MagicMock``-repr path in the CWD.
 

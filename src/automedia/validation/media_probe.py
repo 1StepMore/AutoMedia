@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+
+from automedia.core.tool_paths import ToolPathError, find_tool
 
 _FFPROBE_TIMEOUT_SECONDS = 20.0
 """Wall-clock ceiling for one ffprobe invocation."""
@@ -365,8 +366,16 @@ def glob_artifacts(root: str | Path, pattern: str) -> list[str]:
 
 
 def _find_ffprobe() -> str | None:
-    """Prefer ``ffprobe`` on PATH, fall back to ``~/.local/bin/ffprobe``."""
-    found = shutil.which("ffprobe")
+    """Prefer the resolved ``ffprobe``, fall back to ``~/.local/bin/ffprobe``.
+
+    Resolution goes through :func:`automedia.core.tool_paths.find_tool`
+    (pinned path → PATH → the own tools directory, #510); a stale pin is
+    swallowed because a probe must never raise.
+    """
+    try:
+        found = find_tool("ffprobe")
+    except ToolPathError:
+        return None
     if found:
         return found
     candidate = Path.home() / ".local" / "bin" / "ffprobe"

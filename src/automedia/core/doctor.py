@@ -15,6 +15,8 @@ from typing import Any
 
 import structlog
 
+from automedia.core.tool_paths import ToolPathError, find_tool
+
 # ---------------------------------------------------------------------------
 # Dependency definitions
 # ---------------------------------------------------------------------------
@@ -180,7 +182,14 @@ class Doctor:
             path = shutil.which(c)
             if path:
                 return path
-        return None
+        # Not on PATH — check the pinned paths and AutoMedia's own tools
+        # directory before reporting the tool missing (#510). A stale pin is
+        # reported as plain absence here; Doctor's detail rows carry the
+        # resolution errors elsewhere.
+        try:
+            return find_tool(name)
+        except ToolPathError:
+            return None
 
     @staticmethod
     def _hyperframes_browser_path() -> str | None:

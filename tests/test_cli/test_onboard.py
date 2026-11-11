@@ -253,11 +253,18 @@ class TestOnboardPreflight:
         import shutil
 
         import automedia.cli.commands.onboard as onboard_mod
+        import automedia.core.tool_paths as tool_paths_mod
 
+        # Preflight probes go through tool_paths.find_tool (#510), whose
+        # shutil.which is called with a `path=` kwarg for the tools-dir scan.
+        # Patch the seam the production code actually uses; the stub accepts
+        # both call shapes so it intercepts PATH and tools-dir lookups alike.
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setattr(tool_paths_mod.shutil, "which", lambda name, **_: None)
         monkeypatch.setattr(
-            onboard_mod.shutil.which if hasattr(onboard_mod, "shutil") else shutil,
+            onboard_mod.shutil if hasattr(onboard_mod, "shutil") else shutil,
             "which",
-            lambda name: None,
+            lambda name, **_: None,
         )
         monkeypatch.setattr(onboard_mod, "_USER_CFG_DIR", tmp_path)
         result = runner.invoke(

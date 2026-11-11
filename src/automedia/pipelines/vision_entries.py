@@ -22,13 +22,13 @@
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from collections.abc import Callable
 from typing import Any
 
 from structlog import get_logger
 
+from automedia.core.tool_paths import ToolPathError, find_tool
 from automedia.pipelines.vlm_client import VLMClient
 
 log = get_logger(__name__)
@@ -138,10 +138,20 @@ def build_vision_entries(
     Raises:
         FileNotFoundError: ffmpeg 不可用（无帧可抽，调用方降级为不写 entries）。
     """
-    resolved_ffmpeg = ffmpeg_path or shutil.which("ffmpeg")
+    resolved_ffmpeg: str | None
+    try:
+        resolved_ffmpeg = ffmpeg_path or find_tool("ffmpeg")
+    except ToolPathError as exc:
+        raise FileNotFoundError(str(exc)) from exc
     if not resolved_ffmpeg:
         raise FileNotFoundError("ffmpeg not found on PATH — no frames can be extracted")
-    resolved_ffprobe = ffprobe_path or shutil.which("ffprobe")
+    resolved_ffprobe: str | None
+    try:
+        resolved_ffprobe = ffprobe_path or find_tool("ffprobe")
+    except ToolPathError:
+        # ffprobe only refines scene duration — its loss must not break frame
+        # extraction, so a stale pin degrades to the no-duration path here.
+        resolved_ffprobe = None
     runner: Runner = run or subprocess.run  # type: ignore[assignment]
 
     os.makedirs(frames_dir, exist_ok=True)

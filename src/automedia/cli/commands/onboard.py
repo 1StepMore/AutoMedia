@@ -30,6 +30,7 @@ import yaml
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.config_loader import load_config
 from automedia.core.paths import get_user_config_dir
+from automedia.core.tool_paths import ToolPathError, find_tool
 from automedia.manifests.model_config_schema import save_model_config
 
 _USER_CFG_DIR = get_user_config_dir()
@@ -84,25 +85,30 @@ def _preflight() -> None:
     live in ``automedia doctor``; network probes stay there too, so the
     wizard start stays instant.
     """
-    import shutil
-
     from automedia.core.doctor import Doctor
 
     _print_header("Preflight: Environment Check")
     typer.echo(f"  Detected system: {_detect_os()}")
 
-    missing = [tool for tool in _MEDIA_TOOLS if shutil.which(tool) is None]
+    def _found(tool: str) -> bool:
+        try:
+            return find_tool(tool) is not None
+        except ToolPathError:
+            return False
+
+    missing = [tool for tool in _MEDIA_TOOLS if not _found(tool)]
     if Doctor()._resolve_chrome() is None:
         missing.append("chrome")
 
     if missing:
         typer.secho(
-            "  Not found on PATH (only media pipelines need these): " + ", ".join(sorted(missing)),
+            "  Not found on PATH or in the tools dir (only media pipelines need "
+            "these): " + ", ".join(sorted(missing)),
             fg=typer.colors.YELLOW,
         )
         typer.echo("  Text-only modes need none of them.")
     else:
-        typer.secho("  All media tools found on PATH.", fg=typer.colors.GREEN)
+        typer.secho("  All media tools found.", fg=typer.colors.GREEN)
 
     typer.echo("  Full audit + per-OS install commands: automedia doctor --install-missing")
     typer.echo("  Interactive install:                      automedia doctor --fix")

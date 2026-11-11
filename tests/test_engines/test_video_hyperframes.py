@@ -250,7 +250,7 @@ class TestCheckAvailable:
     def _which_side_effect(mapping: dict[str, str | None]) -> Any:
         """Build a ``side_effect`` callable for ``shutil.which``."""
 
-        def _which(name: str) -> str | None:
+        def _which(name: str, path: str | None = None) -> str | None:
             return mapping.get(name)
 
         return _which
@@ -306,7 +306,7 @@ class TestCliResolution:
         tmp_path: Any,
     ) -> None:
         """> ``cli_command`` wins even when ``cli_path`` and PATH exist."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -373,7 +373,7 @@ class TestCliResolution:
         tmp_path: Any,
     ) -> None:
         """> Without config, the PATH binary is used as the CLI prefix."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -452,7 +452,7 @@ class TestRenderHyperFrames:
         tmp_path: Any,
     ) -> None:
         """Successful hyperframes render returns ``os.path.abspath(output)``."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -473,7 +473,7 @@ class TestRenderHyperFrames:
         ``hyperframes render [OPTIONS] [DIR]`` — the project directory is
         a positional argument; there is no ``--assets`` option.
         """
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -503,7 +503,7 @@ class TestRenderHyperFrames:
         tmp_path: Any,
     ) -> None:
         """The CLI shape uses a positional project dir and no ``--assets``."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -530,7 +530,7 @@ class TestRenderHyperFrames:
         tmp_path: Any,
     ) -> None:
         """Images, audio, subtitles, and template are copied to the temp dir."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -575,7 +575,7 @@ class TestRenderHyperFrames:
         tmp_path: Any,
     ) -> None:
         """When audio/subtitles/template are absent only images are copied."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # Pretend no optional asset files exist
@@ -610,7 +610,7 @@ class TestRenderHyperFrames:
         tmp_path: Any,
     ) -> None:
         """> ``shutil.rmtree`` is called on the temp dir after success."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -630,7 +630,7 @@ class TestRenderHyperFrames:
     ) -> None:
         """> ``shutil.rmtree`` is called even when the subprocess fails
         (hyperframes only, no ffmpeg fallback)."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": None,
         }.get(x)
@@ -661,7 +661,7 @@ class TestRenderFFmpegFallback:
         tmp_path: Any,
     ) -> None:
         """Hyperframes fails → FFmpeg slideshow is used and succeeds."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -690,7 +690,7 @@ class TestRenderFFmpegFallback:
         tmp_path: Any,
     ) -> None:
         """The FFmpeg slideshow command uses the expected arguments."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -749,7 +749,7 @@ class TestRenderFFmpegFallback:
         tmp_path: Any,
     ) -> None:
         """Hyperframes fails AND FFmpeg fails → ``EngineExecutionError``."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -774,7 +774,7 @@ class TestRenderFFmpegFallback:
     ) -> None:
         """Without audio the ffmpeg fallback uses ``shutil.move`` instead of
         a second subprocess call."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": None,
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -797,7 +797,7 @@ class TestRenderFFmpegFallback:
         tmp_path: Any,
     ) -> None:
         """Both temp directories are cleaned up after a succesful fallback."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -870,7 +870,7 @@ class TestRenderErrors:
         tmp_path: Any,
     ) -> None:
         """Empty images list is checked *before* tool availability."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         assets: dict[str, Any] = {"images": [], "content": "Nope."}
@@ -916,7 +916,7 @@ class TestTempCleanup:
         """When FFmpeg subprocess times out, the temp dir is still cleaned."""
         from subprocess import TimeoutExpired
 
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": None,
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -939,7 +939,7 @@ class TestTempCleanup:
     ) -> None:
         """An unexpected exception in ``_render_with_hyperframes`` is wrapped
         in ``EngineExecutionError`` and the temp dir is still cleaned."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": None,
         }.get(x)
@@ -971,7 +971,7 @@ class TestRenderConfiguration:
         tmp_path: Any,
     ) -> None:
         """> ``timeout`` and ``quality`` from ``engine_config`` are used."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -1013,7 +1013,7 @@ class TestRenderChromePath:
         tmp_path: Any,
     ) -> None:
         """chrome_path in config → HYPERFRAMES_BROWSER_PATH set in subprocess env."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         engine = HyperFramesVideoEngine(
@@ -1035,7 +1035,7 @@ class TestRenderChromePath:
     ) -> None:
         """chrome_path=None → HYPERFRAMES_BROWSER_PATH not in env."""
         monkeypatch.delenv("HYPERFRAMES_BROWSER_PATH", raising=False)
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         engine = HyperFramesVideoEngine(
@@ -1057,7 +1057,7 @@ class TestRenderChromePath:
     ) -> None:
         """chrome_path points to non-existent file → env var not set."""
         monkeypatch.delenv("HYPERFRAMES_BROWSER_PATH", raising=False)
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # Mock os.path.isfile to return False for the chrome path
@@ -1177,7 +1177,7 @@ class TestDefaultTemplateProvisioning:
                 "automedia.engines.implementations.video_hyperframes.subprocess.run",
             ) as m_run,
         ):
-            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+            m_which.side_effect = lambda x, path=None: {  # type: ignore[return-value]
                 "ffprobe": "/usr/bin/ffprobe",
             }.get(x)
             m_run.return_value = MagicMock(returncode=0, stdout="20.0\n", stderr="")
@@ -1236,7 +1236,7 @@ class TestDefaultTemplateProvisioning:
                 "automedia.engines.implementations.video_hyperframes.subprocess.run",
             ) as m_run,
         ):
-            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+            m_which.side_effect = lambda x, path=None: {  # type: ignore[return-value]
                 "ffprobe": "/usr/bin/ffprobe",
             }.get(x)
             m_run.return_value = MagicMock(returncode=0, stdout="20.0\n", stderr="")
@@ -1301,7 +1301,7 @@ class TestDefaultTemplateProvisioning:
                 "automedia.engines.implementations.video_hyperframes.subprocess.run",
             ) as m_run,
         ):
-            m_which.side_effect = lambda x: {  # type: ignore[return-value]
+            m_which.side_effect = lambda x, path=None: {  # type: ignore[return-value]
                 "ffprobe": "/usr/bin/ffprobe",
             }.get(x)
             m_run.return_value = MagicMock(returncode=0, stdout="10.0\n", stderr="")
@@ -1356,7 +1356,7 @@ class TestDefaultTemplateProvisioning:
         tmp_path: Any,
     ) -> None:
         """> ``template_dir=""`` → ``_provision_default_hyperframes_project`` called."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # ``isdir`` returns ``False`` for template_dir → defaults path
@@ -1386,7 +1386,7 @@ class TestDefaultTemplateProvisioning:
     ) -> None:
         """> User ``template_dir`` → files copied to temp root,
         ``_provision_default_hyperframes_project`` NOT called."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
         # ``isdir`` returns ``True`` for template_dir → user templates path
@@ -1591,7 +1591,7 @@ class TestDegradedRenderIsVisible:
     def test_fallback_sets_degraded_flag_and_keeps_the_reason(
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -1611,7 +1611,7 @@ class TestDegradedRenderIsVisible:
     def test_primary_path_clears_the_flag(
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
         }.get(x)
 
@@ -1634,7 +1634,7 @@ class TestFallbackUsesSceneMedia:
     def test_scene_media_wins_over_the_legacy_image_list(
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
         assets = dict(sample_assets)
@@ -1652,7 +1652,7 @@ class TestFallbackUsesSceneMedia:
     def test_legacy_list_still_used_without_scene_media(
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
 
@@ -1797,7 +1797,7 @@ class TestDegradeOptIn:
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
         """hyperframes fails + ffmpeg available + no allow_degrade ⇒ raise, no slideshow."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "hyperframes": "/usr/bin/hyperframes",
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
@@ -1816,7 +1816,7 @@ class TestDegradeOptIn:
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
     ) -> None:
         """No hyperframes CLI + ffmpeg present + no allow_degrade ⇒ raise, no slideshow."""
-        mock_all["which"].side_effect = lambda x: {  # type: ignore[return-value]
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
         output = str(tmp_path / "out.mp4")

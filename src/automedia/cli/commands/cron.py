@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
@@ -15,6 +14,7 @@ import yaml
 
 from automedia.cli.output import OutputMode, get_output_mode, output_error, output_text
 from automedia.core.layout import PUBLISH
+from automedia.core.tool_paths import ToolPathError, find_tool
 from automedia.cron.schedule import is_schedule_due
 from automedia.pool.collector import HotCollector
 from automedia.pool.db import PoolDB
@@ -661,10 +661,15 @@ def cron_check_health() -> None:
     if not py_ok:
         dep_ok = False
     dep_details.append(f"python {sys.version_info.major}.{sys.version_info.minor}")
-    ffmpeg_path = shutil.which("ffmpeg")
-    if not ffmpeg_path:
+    try:
+        ffmpeg_path = find_tool("ffmpeg")
+        if not ffmpeg_path:
+            dep_ok = False
+        dep_details.append(f"ffmpeg={'yes' if ffmpeg_path else 'no'}")
+    except ToolPathError as exc:
+        # A stale pin is a real failure, not mere absence — say so (#510).
         dep_ok = False
-    dep_details.append(f"ffmpeg={'yes' if ffmpeg_path else 'no'}")
+        dep_details.append(f"ffmpeg=stale pin: {exc}")
     checks.append(("core dependencies", dep_ok, ", ".join(dep_details)))
 
     # 4. jobs.yaml valid
