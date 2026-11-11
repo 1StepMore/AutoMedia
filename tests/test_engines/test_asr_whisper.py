@@ -307,3 +307,37 @@ class TestWhisperASREngineTranscribe:
         args = mock_run.call_args[0][0]
         model_idx = args.index("--model") + 1
         assert args[model_idx] == "base"
+
+
+class TestWhisperASREngineHFEndpoint:
+    """The whisper CLI subprocess must inherit the settled HF endpoint (#512)."""
+
+    @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
+    def test_child_env_gets_mirror_default_when_unset(
+        self, mock_run: MagicMock, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("HF_ENDPOINT", raising=False)
+        audio_path = str(tmp_path / "a.mp3")
+        _create_fake_audio(audio_path)
+        _write_fake_whisper_json(str(tmp_path / "a.json"))
+        mock_run.return_value = _make_subprocess_result()
+
+        WhisperASREngine().transcribe(audio_path)
+
+        child_env = mock_run.call_args.kwargs["env"]
+        assert child_env["HF_ENDPOINT"] == "https://hf-mirror.com"
+
+    @patch("automedia.engines.implementations.asr_whisper.subprocess.run")
+    def test_child_env_keeps_existing_endpoint(
+        self, mock_run: MagicMock, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HF_ENDPOINT", "https://hf.example.org")
+        audio_path = str(tmp_path / "a.mp3")
+        _create_fake_audio(audio_path)
+        _write_fake_whisper_json(str(tmp_path / "a.json"))
+        mock_run.return_value = _make_subprocess_result()
+
+        WhisperASREngine().transcribe(audio_path)
+
+        child_env = mock_run.call_args.kwargs["env"]
+        assert child_env["HF_ENDPOINT"] == "https://hf.example.org"
