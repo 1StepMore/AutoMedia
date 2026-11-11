@@ -45,7 +45,7 @@ def _resolve_project_dir(project_id: str, base_dir: str | None) -> str | None:
     return None
 
 
-def _awaiting_gate(project_dir: str) -> str | None:
+def _awaiting_gate(project_dir: str, project_id: str) -> str | None:
     """Return the gate a run is parked at, or ``None`` if it is not paused.
 
     A paused run has a ``<gate>:started`` history row with no terminal row for
@@ -53,6 +53,11 @@ def _awaiting_gate(project_dir: str) -> str | None:
     That makes ``history.db`` a reliable cross-process "is a decision pending?"
     signal — an in-flight run holds the pause only in memory, and a parked run
     that has already exited holds nothing at all.
+
+    Rows are scoped to *project_id* before the started/settled merge: a project
+    directory's history accumulates rows from every rerun against it, so a
+    terminal row left by an earlier run must not settle a later run's
+    ``started`` row (issue #507).
     """
     from automedia.hooks.pipeline_history import _read_history
 
@@ -63,6 +68,8 @@ def _awaiting_gate(project_dir: str) -> str | None:
     started: set[str] = set()
     settled: set[str] = set()
     for row in rows:
+        if str(row.get("project_id", "")) != project_id:
+            continue
         action = str(row.get("action", ""))
         if ":" not in action:
             continue
@@ -84,7 +91,7 @@ def _deliver(decision: str, project_id: str, base_dir: str | None) -> None:
         )
         raise typer.Exit(code=1)
 
-    gate = _awaiting_gate(project_dir)
+    gate = _awaiting_gate(project_dir, project_id)
     if gate is None:
         output_error(
             f"Project {project_id!r} has no gate awaiting a decision, so there "
@@ -147,7 +154,7 @@ def hitl_pending(
         project_dir = project.get("_dir")
         if not project_dir:
             continue
-        gate = _awaiting_gate(project_dir)
+        gate = _awaiting_gate(project_dir, str(project.get("project_id", "")))
         if gate is not None:
             waiting.append(
                 {
