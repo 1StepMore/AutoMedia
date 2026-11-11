@@ -896,6 +896,7 @@ def _run_pipeline(
             hitl_on_timeout,
             resume_from,
             workflow_prompts,
+            platforms=platforms,
         )
 
         if block_on_hitl is None:
@@ -1189,6 +1190,7 @@ def _build_pipeline_context(
     hitl_on_timeout: str | None = None,
     resume_from: str | None = None,
     workflow_prompts: dict[str, str] | None = None,
+    platforms: list[str] | None = None,
 ) -> GateContext:
     from automedia.engines import resolve_video_engine
     from automedia.engines.errors import (
@@ -1258,16 +1260,24 @@ def _build_pipeline_context(
         correlation_id=correlation_id,
     )
 
-    gate_context["brand_platforms"] = (
-        list(brand_profile.platforms) if brand_profile is not None else []
+    # An explicit ``platforms`` argument (``--platforms`` / UI selection) wins
+    # over the brand profile's list, which is only a default (#494): the media
+    # stage reads the spec from this context, so ignoring the argument here is
+    # what shipped a 16:9 video for a douyin-targeted run.
+    effective_platforms = (
+        list(platforms)
+        if platforms
+        else (list(brand_profile.platforms) if brand_profile is not None else [])
     )
+    gate_context["brand_platforms"] = effective_platforms
 
     gate_context["media_specs"] = {}
-    if brand_profile is not None and brand_profile.platforms:
+    if effective_platforms:
         from automedia.core.media_spec import resolve_media_specs
 
         gate_context["media_specs"] = resolve_media_specs(
-            asdict(brand_profile), list(brand_profile.platforms)
+            asdict(brand_profile) if brand_profile is not None else {},
+            effective_platforms,
         )
 
     gate_context["hitl_config"] = hitl_config

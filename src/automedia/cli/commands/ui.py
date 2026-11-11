@@ -55,6 +55,7 @@ def _redact(value: object) -> object:
         return [_redact(v) for v in value]
     return value
 
+
 #: Run-state shared between the run thread and the progress endpoint.
 _run_state: dict[str, Any] = {
     "running": False,
@@ -112,17 +113,48 @@ def create_app() -> FastAPI:
             redacted = {}
         return {"config": redacted, "dependencies": deps}
 
+    @web.get("/api/platforms")
+    def platforms_view() -> dict[str, Any]:
+        from automedia.core.media_spec import PLATFORM_MEDIA_SPECS
+        from automedia.core.platforms import names_with_media_spec
+
+        return {
+            "platforms": [
+                {
+                    "name": name,
+                    "width": spec.width,
+                    "height": spec.height,
+                    "aspect_ratio": spec.aspect_ratio,
+                }
+                for name in names_with_media_spec()
+                if (spec := PLATFORM_MEDIA_SPECS.get(name)) is not None
+            ]
+        }
+
     @web.post("/api/run")
     def run_pipeline(
         topic: str = Body(...),
         mode: str = Body("text_only"),
         brand: str = Body("default"),
+        platforms: list[str] | None = Body(None),
     ) -> dict[str, Any]:
         if _run_state["running"]:
             raise HTTPException(status_code=409, detail="a run is already in progress")
 
         from automedia import run_full_pipeline
+        from automedia.core.platforms import PLATFORMS
         from automedia.pipelines.gate_types import PipelineProgress
+
+        unknown = sorted({p for p in (platforms or []) if p not in PLATFORMS})
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown platform(s): {', '.join(unknown)}",
+            )
+        # A short-video run with no platform chosen used to fall through to the
+        # engine's 16:9 default (#494); the mode itself names the vertical
+        # format, so douyin is the default target rather than a landscape frame.
+        resolved_platforms = platforms or (["douyin"] if mode == "short-video" else None)
 
         progress = PipelineProgress()
         _run_state.update(
@@ -140,6 +172,7 @@ def create_app() -> FastAPI:
                     brand=brand or "default",
                     mode=mode,
                     progress=progress,
+                    platforms=resolved_platforms,
                 )
                 _run_state["status"] = str(getattr(result, "status", ""))
             except Exception as exc:  # surfaced to the UI verbatim
