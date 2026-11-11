@@ -1366,3 +1366,33 @@ class TestFakeModeDotenvOverlay:
         monkeypatch.setenv("AUTOMEDIA_FAKE_LLM", "0")
 
         assert _is_fake_mode() is False
+
+
+class TestBuildClientNamesEmptyProvider:
+    """The no-key error names the provider field when it is empty (#467)."""
+
+    def test_empty_provider_named_in_error(self) -> None:
+        config: dict[str, Any] = {
+            "llm": {"text_generation": {"provider": "", "model": "m", "api_key": ""}}
+        }
+        with _patch_openai_module(), pytest.raises(LLMError) as excinfo:
+            _build_client(config)
+        assert "provider is empty" in str(excinfo.value)
+        assert "provider=''" in str(excinfo.value)
+
+    def test_missing_provider_field_still_names_provider(self) -> None:
+        """缺 provider 字段（非显式空）：错误仍点名 provider 字段，不硬造空值."""
+        config: dict[str, Any] = {"llm": {"text_generation": {"model": "m"}}}
+        with _patch_openai_module(), pytest.raises(LLMError) as excinfo:
+            _build_client(config)
+        message = str(excinfo.value)
+        assert "No API key for provider" in message
+        assert "provider" in message
+
+    def test_normal_provider_named_in_error(self) -> None:
+        config: dict[str, Any] = {
+            "llm": {"text_generation": {"provider": "glm", "model": "m", "api_key": ""}}
+        }
+        with _patch_openai_module(), pytest.raises(LLMError) as excinfo:
+            _build_client(config)
+        assert "No API key for provider 'glm'" in str(excinfo.value)

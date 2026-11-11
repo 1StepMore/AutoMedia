@@ -446,7 +446,10 @@ class Doctor:
         except ImportError:
             return False, "openai package not installed"
 
-        from automedia.core.config_loader import load_config
+        from automedia.core.config_loader import (
+            explicitly_empty_llm_provider_slot,
+            load_config,
+        )
 
         try:
             config = load_config()
@@ -458,6 +461,20 @@ class Doctor:
 
         if _is_fake_mode(config):
             return False, "fake LLM mode active — provider API not contacted"
+
+        # File-layer corruption check (#208/#467): an explicitly blank
+        # ``provider`` written into model_config.yaml must be named even when
+        # the AUTOMEDIA_LLM_* environment layer overrides the resolved config
+        # — the env rescue masks the corruption until the env disappears.
+        file_slot = explicitly_empty_llm_provider_slot()
+        if file_slot is not None:
+            slot, path = file_slot
+            return False, (
+                f"llm.{slot}.provider is empty in {path} — set a real provider "
+                "(e.g. openai, deepseek) in model_config.yaml or via the "
+                "AUTOMEDIA_* credential env vars; an empty provider resolves "
+                "to nothing at runtime."
+            )
 
         chain_ok, chain_message = Doctor._check_llm_chain(config)
         if not chain_ok:
