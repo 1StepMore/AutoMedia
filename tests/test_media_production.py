@@ -793,3 +793,103 @@ class TestRenderFailureAndDegrade:
         notes = ctx.get("_media_stage_notes")
         assert isinstance(notes, list)
         assert any(n["event"] == "video_render_degraded" for n in notes)
+
+
+class _CoverRecordingImagePipeline(_FakeImagePipeline):
+    """记录封面生成调用，并在 ``02_images/cover/cover.png`` 落一张假图（#495）。"""
+
+    calls: ClassVar[list[dict[str, Any]]] = []
+
+    def generate_single_cover(
+        self,
+        topic: str,
+        brand: str,
+        project_dir: str,
+        ratio: str = "16:9",
+    ) -> str:
+        _CoverRecordingImagePipeline.calls.append(
+            {"topic": topic, "brand": brand, "project_dir": project_dir, "ratio": ratio}
+        )
+        path = Path(project_dir) / "02_images" / "cover" / "cover.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake-cover")
+        return str(path)
+
+
+class TestShortVideoCover:
+    """#495：short-video 也必须产出封面（此前只有 text_with_cover 会写）。"""
+
+    @pytest.fixture(autouse=True)
+    def _clear_cover_calls(self) -> None:
+        _CoverRecordingImagePipeline.calls.clear()
+
+    def test_short_video_dispatches_cover_generation(self, tmp_path: Path) -> None:
+        ctx = GateContext(
+            topic="t",
+            brand="b",
+            mode="short-video",
+            project_dir=str(tmp_path),
+            content="",
+        )
+        with patch(_IMAGE_PATH, _CoverRecordingImagePipeline):
+            _produce_media_assets(ctx)
+
+        assert _CoverRecordingImagePipeline.calls, "short-video must invoke cover generation"
+        cover = tmp_path / "02_images" / "cover" / "cover.png"
+        assert cover.is_file()
+        assert ctx.get("cover_image") == str(cover)
+
+    def test_video_only_still_does_not_generate_a_cover(self, tmp_path: Path) -> None:
+        """既有行为不变：``video_only`` 不产出封面。"""
+        ctx = _video_context(tmp_path, content="")
+        with patch(_IMAGE_PATH, _CoverRecordingImagePipeline):
+            _produce_media_assets(ctx)
+
+        assert _CoverRecordingImagePipeline.calls == []
+        assert not (tmp_path / "02_images" / "cover" / "cover.png").exists()
+
+
+class TestSubtitleMirror:
+    """#495：SRT 同时落在 ``04_subtitle/``，``04_audio/`` 的副本仍是权威件。"""
+
+    def _run(self, tmp_path: Path) -> GateContext:
+        ctx = GateContext(
+            topic="t",
+            brand="b",
+            mode="short-video",
+            project_dir=str(tmp_path),
+            content="real content",
+        )
+        with (
+            patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
+            patch(_AUDIO_PATH, _FakeAudioPipeline),
+            patch(_IMAGE_PATH, _CoverRecordingImagePipeline),
+            patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
+        ):
+            _produce_media_assets(ctx)
+        return ctx
+
+    def test_subtitle_copy_lands_in_04_subtitle_with_identical_text(self, tmp_path: Path) -> None:
+        ctx = self._run(tmp_path)
+
+        authoritative = tmp_path / "04_audio" / "narration.srt"
+        mirrored = tmp_path / "04_subtitle" / "narration.srt"
+        assert authoritative.is_file()
+        assert mirrored.is_file(), "short-video must ship a 04_subtitle SRT"
+        assert mirrored.read_text(encoding="utf-8") == authoritative.read_text(encoding="utf-8")
+        assert ctx.get("subtitles_path") == str(authoritative)
+
+    def test_subtitle_copy_failure_keeps_audio_srt_and_records_note(self, tmp_path: Path) -> None:
+        # A regular file where the 04_subtitle directory should be makes the
+        # mirror write fail; the audio-side SRT must survive and the failure
+        # must be recorded instead of raised.
+        (tmp_path / "04_subtitle").write_text("not a directory", encoding="utf-8")
+
+        ctx = self._run(tmp_path)
+
+        assert (tmp_path / "04_audio" / "narration.srt").is_file()
+        assert ctx.was_written("subtitles_path") is True
+        notes = ctx.get("_media_stage_notes")
+        assert isinstance(notes, list)
+        assert any(n["event"] == "subtitle_copy_failed" for n in notes)

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
-from automedia.core.layout import AUDIO, DRAFTS, IMAGES, VIDEO
+from automedia.core.layout import AUDIO, DRAFTS, IMAGES, SUBTITLE, VIDEO
 from automedia.core.overrides import OverridesLoader
 from automedia.core.platforms import platform_categories
 from automedia.pipelines import gate_plan
@@ -2435,6 +2435,24 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     if srt_path and os.path.isfile(srt_path):
         with open(srt_path, encoding="utf-8") as fh:
             srt_text = fh.read().strip()
+        # #495: the issue requires the SRT under ``04_subtitle/`` as well, while
+        # ``04_audio/narration.srt`` stays the authoritative artifact pinned by
+        # scenarios/production/produce-subtitle.yaml. A failed mirror must not
+        # cost us the audio-side SRT — record it instead of raising.
+        try:
+            subtitle_dir = os.path.join(project_dir, SUBTITLE)
+            os.makedirs(subtitle_dir, exist_ok=True)
+            subtitle_copy = os.path.join(subtitle_dir, os.path.basename(srt_path))
+            shutil.copyfile(srt_path, subtitle_copy)
+            log.info(
+                "pipeline.subtitle_copied",
+                source=srt_path,
+                destination=subtitle_copy,
+                authoritative=srt_path,
+            )
+        except OSError as exc:
+            _note_media_stage(gate_context, "subtitle_copy_failed", error=str(exc)[:200])
+            log.warning("pipeline.media_stage.subtitle_copy_failed", error=str(exc))
 
     complete_audio = bool(transcript_text) and bool(srt_text)
     if complete_audio:
@@ -2746,6 +2764,10 @@ def _produce_media_assets(gate_context: GateContext | dict[str, Any]) -> None:
         if mode == "image-carousel":
             _produce_carousel_images(gate_context)
         elif mode == "text_with_cover":
+            _produce_cover_image(gate_context)
+        elif mode == "short-video":
+            # #495: short-video owes a cover too; produce it before the video
+            # track so scene media can reuse it.
             _produce_cover_image(gate_context)
         if mode == "auto" or mode in _VIDEO_PRODUCING_MODES:
             _produce_video_track(gate_context)
