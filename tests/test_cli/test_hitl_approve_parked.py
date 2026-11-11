@@ -102,3 +102,80 @@ def test_unknown_project_is_refused(tmp_path: Path) -> None:
     error = json.loads(result.stdout)["error"]
     assert "No project" in error
     assert not list(tmp_path.glob("*/.hitl_state.json"))
+
+
+# ---------------------------------------------------------------------------
+# Reruns of the same project directory — issue #507
+# ---------------------------------------------------------------------------
+#
+# A rerun against the same directory writes a new project id into
+# ``00_project_info.json`` and appends its own rows to the shared
+# ``history.db``. The started/settled merge must therefore be scoped to the
+# project id of the run being asked about — a terminal row from an earlier
+# round must not settle a later round's ``started`` row.
+
+
+def _awaiting_gate(project_dir: Path, project_id: str) -> str | None:
+    from automedia.cli.commands.hitl_review import _awaiting_gate as awaiting_gate
+
+    return awaiting_gate(str(project_dir), project_id)
+
+
+def test_earlier_round_settled_h0_does_not_settle_later_round(tmp_path: Path) -> None:
+    """A terminal H0 row from run A must not settle run B's H0 ``started`` row.
+
+    This is the #507 report scenario: round one parked, was approved, settled;
+    a rerun in the same directory parks again and must still be approvable.
+    """
+    project_dir = _seed_project(tmp_path, "round-one", settle_h0=True)
+    hook = PipelineHistoryHook()
+    hook.before_gate("H0", {"project_dir": str(project_dir), "project_id": "round-two"})
+    assert _awaiting_gate(project_dir, "round-two") == "H0"
+
+
+def test_awaiting_gate_is_none_for_a_settled_project(tmp_path: Path) -> None:
+    """A project whose H0 has a terminal row and no new ``started`` is not parked."""
+    project_dir = _seed_project(tmp_path, "round-one", settle_h0=True)
+    assert _awaiting_gate(project_dir, "round-one") is None
+
+
+def test_awaiting_gate_ignores_other_projects_completed_row(tmp_path: Path) -> None:
+    """A ``H0:completed`` row belonging to another project settles nothing here."""
+    project_dir = _seed_project(tmp_path, "round-one")
+    hook = PipelineHistoryHook()
+    hook.after_gate(
+        "H0", {"project_dir": str(project_dir), "project_id": "another-project"}, {"passed": True}
+    )
+    assert _awaiting_gate(project_dir, "round-one") == "H0"
+
+
+def test_approve_scoped_to_the_rerun_in_the_same_directory(tmp_path: Path) -> None:
+    """Same directory, round one approved and settled: the rerun is approvable.
+
+    End-to-end per #507 DoD: round one ran, parked, was approved and settled;
+    the rerun rewrites the project info with a new id and parks at H0 again —
+    ``hitl approve`` with the *new* id must succeed, and ``hitl pending`` must
+    list it.
+    """
+    project_dir = _seed_project(tmp_path, "round-one", settle_h0=True)
+    hook = PipelineHistoryHook()
+    ctx = {"project_dir": str(project_dir), "project_id": "round-two"}
+    hook.before_gate("H0", ctx)
+    # The rerun rewrites the project info with the new id (same directory).
+    (project_dir / "00_project_info.json").write_text(
+        json.dumps({"project_id": "round-two", "topic": "review me again", "status": "draft"}),
+        encoding="utf-8",
+    )
+
+    pending = runner.invoke(app, ["--json", "hitl", "pending", "--base-dir", str(tmp_path)])
+    assert pending.exit_code == 0
+    listed = json.loads(pending.stdout)["pending"]
+    assert [(p["project_id"], p["gate"]) for p in listed] == [("round-two", "H0")]
+
+    result = runner.invoke(
+        app, ["--json", "hitl", "approve", "round-two", "--base-dir", str(tmp_path)]
+    )
+    assert result.exit_code == 0
+    delivered = json.loads(_state_file(project_dir).read_text(encoding="utf-8"))
+    assert delivered["decision"] == "approve"
+    assert delivered["gate"] == "H0"
