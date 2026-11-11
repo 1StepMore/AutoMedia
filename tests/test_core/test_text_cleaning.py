@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import re
 
+import pytest
+
 from automedia.core.text_cleaning import (
     clean_publishable_copy,
     strip_narration_markup,
@@ -134,3 +136,31 @@ class TestNarrationReexportUnchanged:
         assert "口播" not in cleaned
         assert "画面" not in cleaned
         assert "别以为人工智能能救命。" in cleaned
+
+
+class TestEmojiAreNeverSpoken:
+    """emoji 不是口播内容：旁白与字幕边界直接删除（#496）.
+
+    TTS 会把 👇 念成对图形的描述（夜跑 ASR 记成「反手十指向下指」），
+    ASR 再把这句话写回 narration.json，观众听到的就是没人写过的话。
+    """
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("评论区聊聊👇", "评论区聊聊"),
+            ("评论区聊聊👇。", "评论区聊聊。"),
+            ("👉 点这里了解", "点这里了解"),
+            ("跑通了✅️再发", "跑通了再发"),
+            ("这条会🔥", "这条会"),
+            ("家庭👨\u200d👩\u200d👧合影", "家庭合影"),
+            ("1️⃣ 第一步", "第一步"),
+            ("价格 19.9 元（含税），谢谢！", "价格 19.9 元（含税），谢谢！"),
+            ("(ok), fine.", "(ok), fine."),
+        ],
+    )
+    def test_pictographs_go_and_letters_stay(self, raw: str, expected: str) -> None:
+        assert strip_narration_markup(raw) == expected
+
+    def test_emoji_after_a_script_label_is_still_not_narration(self) -> None:
+        assert strip_narration_markup("口播：评论区聊聊👇") == "评论区聊聊"

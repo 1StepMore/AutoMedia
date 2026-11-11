@@ -696,7 +696,7 @@
       "L5"
     ],
     "distribution": {
-      "L0": 115,
+      "L0": 116,
       "L1": 30,
       "L2": 8,
       "L3": 3,
@@ -777,7 +777,7 @@
         "L5": 0
       },
       "regression": {
-        "L0": 12,
+        "L0": 13,
         "L1": 0,
         "L2": 0,
         "L3": 0,
@@ -801,7 +801,7 @@
         "L5": 0
       }
     },
-    "total": 158
+    "total": 159
   },
   "meta_scenarios": [
     "account-cli-surface",
@@ -829,6 +829,7 @@
     "regression-333-validation-sandbox",
     "regression-335-qa-only-content-gates",
     "regression-336-subtitle-text-fidelity",
+    "regression-496-narration-emoji-srt",
     "regression-83-configure-llm-preserves-fallback",
     "rollback-cli-surface",
     "run-cli-surface",
@@ -965,7 +966,7 @@
     "update-engine-config-positive",
     "video-only-journey"
   ],
-  "meta_scenario_count": 38,
+  "meta_scenario_count": 39,
   "surface_scenario_count": 120,
   "surface_by_level": {
     "levels": [
@@ -1077,5 +1078,5 @@
     "total": 120
   },
   "generated_at": "",
-  "scenario_count": 158
+  "scenario_count": 159
 }

@@ -1,0 +1,19 @@
+name: regression-496-narration-emoji-srt
+description: Narration cleaning drops emoji before TTS, and a scene without a measured duration still contributes its words to the SRT, so no cue shows an emoji reading and no closing sentence disappears.
+intent: Pin issue #496 - the TTS service read the closing 👇 as「反手十指向下指」, and a scene whose duration was not positive was skipped, so narration.srt ended on a fragment while the audio still spoke the full closing sentence.
+category: regression
+user_level: L0
+meta: true
+regression: true
+regression_issue: "#496"
+requires_env: []
+steps:
+  - name: emoji are dropped and a zero-duration scene still reaches the SRT
+    kind: cli
+    check: "Run the committed regression-496 helper: it generates an SRT from two scenes, the last carrying 👇 and a zero duration, and asserts the pictograph is gone while the closing words are still captioned."
+    standard: subtitle.srt
+    command: python3 scripts/regression_496_narration_emoji_srt.py
+    timeout_seconds: 60
+    expect:
+      stdout_has:
+        - REG496_NARRATION_EMOJI_SRT_GUARDED

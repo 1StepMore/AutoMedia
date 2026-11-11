@@ -60,6 +60,19 @@ _EMPHASIS_PAIR_RES: tuple[tuple[re.Pattern[str], str], ...] = (
 #: always read aloud — drop them.
 _STRAY_EMPHASIS_RE = re.compile(r"\*{2,}|_{2,}")
 
+#: Emoji pictographs are not spoken words (#496).  The service TTS reads 👇 as
+#: a description of the glyph ("反手十指向下指"), the audio carries that reading
+#: and the ASR transcript records it as if the script had said it.  The
+#: pictographic planes (``\U0001F000-\U0001FAFF``) cover 👇/👉/🔥/flags; the two
+#: symbol blocks add ✅ ⭐ ✔; the keycap alternative takes its base digit
+#: (``1️⃣``); the trailing classes drop the variation selectors, ZWJ and keycap
+#: marks a sequence leaves behind.  CJK text and punctuation are outside every
+#: class and survive untouched.
+_EMOJI_RE = re.compile(
+    "(?:[0-9#*]\ufe0f?\u20e3)"
+    "|[\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff\ufe00-\ufe0f\u200d\u20e3]"
+)
+
 #: Labels that head a script-structure row (``主题：`` / ``品牌：…`` /
 #: ``镜头2``) — they describe the script to a human editor, never the words a
 #: narrator says (#455).
@@ -124,6 +137,7 @@ def _is_section_heading_line(line: str) -> bool:
     """
     segments = [seg for seg in _SECTION_HEADING_SEP_RE.split(line.strip()) if seg]
     return bool(segments) and all(seg in _SECTION_HEADING_WORDS for seg in segments)
+
 
 # ---------------------------------------------------------------------------
 # Publishable-copy boundary (#464)
@@ -210,6 +224,19 @@ def strip_structure_labels(text: str) -> str:
     return "\n".join(kept_lines).strip()
 
 
+def strip_emoji(text: str) -> str:
+    """Remove emoji pictographs; keep every word and punctuation mark (#496).
+
+    中文说明：TTS 会把 emoji 念成对图形的描述（👇 被念成「反手十指向下
+    指」），ASR 再把这句话写进 narration.json，观众于是听到一句没人写过
+    的话。emoji 不是口播内容，在旁白边界直接删除；CJK 与中英文标点不在
+    删除范围内，照常保留。
+    """
+    if not text:
+        return ""
+    return _EMOJI_RE.sub("", text)
+
+
 def strip_narration_markup(text: str) -> str:
     """Drop markdown structure and production cues from narrated text.
 
@@ -233,7 +260,8 @@ def strip_narration_markup(text: str) -> str:
     # Cues are stripped before structure rows so ``[画面：…]主题：…`` is still
     # recognised as a metadata row (#455).
     cleaned = strip_stage_directions(cleaned)
-    return strip_structure_labels(cleaned)
+    cleaned = strip_structure_labels(cleaned)
+    return _HSPACE_RUN_RE.sub(" ", strip_emoji(cleaned)).strip()
 
 
 def clean_publishable_copy(text: str) -> str:
@@ -295,6 +323,7 @@ def clean_publishable_copy(text: str) -> str:
 
 __all__ = [
     "clean_publishable_copy",
+    "strip_emoji",
     "strip_emphasis_markers",
     "strip_narration_markup",
     "strip_stage_directions",
