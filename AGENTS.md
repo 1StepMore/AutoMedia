@@ -22,6 +22,16 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 
 **Naming disambiguation:** §4's G0–G6 / D1–D7 / P1–P4 are **product pipeline gates**. The repo-governance SOP (`.agents/audit/`) uses its own separate governance G0–G4 / D1–D8 / P0–P5 numbering — the two systems are unrelated.
 
+- **Cross-repo boundary**: AutoInfo, the three Omni_* modules, and e2e-test-suite are
+  **separate product lines this repo does not own** — not modules, not fixtures, not dependencies.
+  - Do not modify those repos: no edits, no branches, no commits, no `git checkout/fetch/merge/push`
+    inside their work trees.
+  - Do not open PRs or issues in their trackers; their issues/PRs/backlogs are never work items here —
+    **even when a file in this repo mentions them**.
+  - Do not "fix it in passing" because a script here calls their CLI. A defect observed there belongs
+    to them: file an issue **in this repo** naming the owning repo + evidence (file:line, command, output).
+  - A mention of another repo in this tree is **a reference, never scope**.
+
 ## 1. Project Overview
 - **Language:** Python 3.11+
 - **Size:** 68,000+ LOC across 260+ Python files (`src/automedia/` core) · 165,000+ LOC across 600+ Python files (repo, `.py` only, git-tracked) · 1,000+ git-tracked files (as-of 2026-10-24; `scripts/check-doc-consistency.py` derives and gates these)
@@ -121,7 +131,8 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
-- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md); cross-repo playbook copy [docs/dev/agent-era-doc-architecture.md](docs/dev/agent-era-doc-architecture.md) is byte-identical across six repos — edit the canonical copy in AutoInfo, never this one (e2e-test-suite#254)
+- **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md)
+- **不要直接改正本，也不要在 AutoInfo 仓动手**：本仓副本（[docs/dev/agent-era-doc-architecture.md](docs/dev/agent-era-doc-architecture.md)）与正本按 hash-pin 协议保持字节一致（e2e-test-suite#254）。需要改版时，**在本仓开 issue 说明改动点**，由 owner 决定是否走六仓同传。
 - **Maintainer skills:** `.opencode/skills/` — `project-validation`, `doc-sync`, `validation-runner`, `deep-modules` (two further maintainer skills are kept local-only on purpose — gitignored, never shipped; see .gitignore).
 - **User-facing skills:** `docs/skills/` — `brand-strategy`, `pipeline-workflow`, `batch-workflow`, `distribution-workflow`
 
