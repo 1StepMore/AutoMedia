@@ -202,6 +202,14 @@ class PipelineResult:
     usage: dict[str, Any] = field(default_factory=dict)
     workflow: str = ""
     """Name of the workflow used for this pipeline run, if any."""
+    blocked_by: list[str] = field(default_factory=list)
+    """Job-level explicit blockers (#476).
+
+    A run that owed a video artifact but produced none must not hide that
+    fact in gate-report notes alone: every such run carries
+    ``video_render_failed: <reason>`` here — visible on the result object
+    whether the run ended ``partial`` or parked at ``awaiting_review``.
+    """
 
 
 # GateErrorResult, ProgressData, GateProgressEvent, and PipelineProgress

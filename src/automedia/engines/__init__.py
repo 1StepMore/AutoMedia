@@ -161,6 +161,55 @@ def resolve_engine(
     return engine
 
 
+def resolve_video_engine(config: dict[str, Any] | None = None) -> BaseEngine:
+    """Resolve the video engine with one chain fallback (#476).
+
+    ``engines.video.default`` pointing at an unregistered engine name (a stale
+    override such as the removed ``ffmpeg`` engine) used to hard-fail the
+    render while ``engines.video.chain`` was never consulted — the run then
+    ended ``awaiting_review`` with no mp4.  This helper asks
+    :func:`resolve_engine` first; on :class:`EngineNotFoundError` it logs an
+    explicit warning naming the stale default and falls back to the first
+    available engine of the configured chain.  An empty chain re-raises the
+    original error.
+
+    A *registered* default whose ``check_available`` fails still raises
+    :class:`EngineUnavailableError` unchanged: that is the explicit
+    fail-loudly path the #414 degraded-render semantics are built on, not a
+    name-resolution problem.
+
+    Raises
+    ------
+    EngineNotFoundError
+        The default is unregistered and no chain engine resolves.
+    EngineUnavailableError
+        The default (or a chain fallback) is registered but unavailable.
+    EngineExecutionError
+        ``check_available`` raised unexpectedly.
+    """
+    try:
+        return resolve_engine("video", config)
+    except EngineNotFoundError as exc:
+        cfg = config or {}
+        engine_cfg = cfg.get("engines", {}).get("video", {})
+        stale = engine_cfg.get("default") if isinstance(engine_cfg, dict) else None
+        log.warning(
+            "engines.video.default_fallback",
+            stale_default=str(stale) if stale is not None else None,
+            error=str(exc),
+            hint="Falling back to the configured engines.video.chain; "
+            "fix or remove the stale override.",
+        )
+        chain = resolve_engine_chain("video", config)
+        if chain:
+            log.warning(
+                "engines.video.default_fallback_resolved",
+                fallback_engine=chain[0].engine_name,
+            )
+            return chain[0]
+        raise
+
+
 def _dedupe(names: list[str]) -> list[str]:
     """Return *names* with duplicates removed, preserving first occurrence."""
     seen: set[str] = set()
@@ -293,4 +342,5 @@ __all__ = [
     "EngineUnavailableError",
     "resolve_engine",
     "resolve_engine_chain",
+    "resolve_video_engine",
 ]
