@@ -705,15 +705,34 @@ class TestRenderFFmpegFallback:
         ]
 
         output = str(tmp_path / "output.mp4")
+        captured: dict[str, str] = {}
+        results = iter([_fail_result(), _ok_result(), _ok_result()])
+
+        def _capture_concat_list(cmd: Any, **kwargs: Any) -> Any:
+            """Snapshot the concat list at ffmpeg-invocation time: the render's
+            ``finally`` deletes the mkstemp file before the asserts run."""
+            cmd_list = list(cmd)
+            if "ffmpeg" in str(cmd_list[0]) and "-f" in cmd_list and "concat" in cmd_list:
+                concat_list = cmd_list[cmd_list.index("-i") + 1]
+                with open(concat_list, encoding="utf-8") as fh:
+                    captured["list"] = fh.read()
+            return next(results)
+
+        mock_all["run"].side_effect = _capture_concat_list
         HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
 
         # The second subprocess call should be the ffmpeg slideshow step 1
         step1_call_args = mock_all["run"].call_args_list[1]  # second call
         step1_cmd = step1_call_args[0][0]  # positional arg 0 = cmd list
         assert step1_cmd[0] == "ffmpeg"
-        assert "-framerate" in step1_cmd
-        assert "-pattern_type" in step1_cmd
-        assert "glob" in step1_cmd
+        assert "-f" in step1_cmd
+        assert "concat" in step1_cmd
+        # #505: no glob input — Windows libavformat builds lack glob support.
+        assert "-pattern_type" not in step1_cmd
+        listed = captured["list"]
+        assert "/fake/img1.png" in listed
+        assert "/fake/img2.png" in listed
+        assert "duration" in listed
 
         # The third subprocess call should be the audio mux step 2
         step2_call_args = mock_all["run"].call_args_list[2]  # third call
@@ -1622,11 +1641,13 @@ class TestFallbackUsesSceneMedia:
         assets["images"] = ["/fake/cover/cover.png"]
         assets["scene_media"] = ["/fake/scenes/scene-01.png", "/fake/scenes/scene-02.png"]
 
-        cmd = _ffmpeg_command_for(mock_all, assets, tmp_path)
+        listed = self._render_and_capture_list(mock_all, assets, tmp_path)
 
-        # The slideshow globs the directory of the first frame, so the root
-        # must be the scene directory — not the cover/fallback directory.
-        assert self._slideshow_source(cmd) == os.path.join("/fake/scenes", "*.png")
+        # #505: the slideshow input is a concat LIST file, and the list must
+        # carry the scene pictures — not the cover/fallback directory.
+        assert "/fake/scenes/scene-01.png" in listed
+        assert "/fake/scenes/scene-02.png" in listed
+        assert "/fake/cover/cover.png" not in listed
 
     def test_legacy_list_still_used_without_scene_media(
         self, mock_all: dict[str, MagicMock], sample_assets: dict[str, Any], tmp_path: Any
@@ -1635,9 +1656,35 @@ class TestFallbackUsesSceneMedia:
             "ffmpeg": "/usr/bin/ffmpeg",
         }.get(x)
 
-        cmd = _ffmpeg_command_for(mock_all, dict(sample_assets), tmp_path)
+        listed = self._render_and_capture_list(mock_all, dict(sample_assets), tmp_path)
 
-        assert self._slideshow_source(cmd).endswith("*.png")
+        assert "/fake/img1.png" in listed
+        assert "/fake/img2.png" in listed
+
+    @staticmethod
+    def _render_and_capture_list(
+        mock_all: dict[str, MagicMock],
+        assets: dict[str, Any],
+        tmp_path: Any,
+    ) -> str:
+        """Run the fallback renderer; return the concat list content.
+
+        The list is a real mkstemp file that the render's ``finally`` deletes,
+        so it is captured at ffmpeg-invocation time (#505).
+        """
+        captured: dict[str, str] = {}
+
+        def _capture(cmd: Any, **kwargs: Any) -> Any:
+            cmd_list = list(cmd)
+            if "ffmpeg" in str(cmd_list[0]) and "-f" in cmd_list and "concat" in cmd_list:
+                list_path = cmd_list[cmd_list.index("-i") + 1]
+                with open(list_path, encoding="utf-8") as fh:
+                    captured["list"] = fh.read()
+            return _ok_result()
+
+        mock_all["run"].side_effect = _capture
+        HyperFramesVideoEngine({"allow_degrade": True}).render(assets, str(tmp_path / "out.mp4"))
+        return captured.get("list", "")
 
 
 def _ffmpeg_command_for(
@@ -1649,7 +1696,7 @@ def _ffmpeg_command_for(
     HyperFramesVideoEngine({"allow_degrade": True}).render(assets, str(tmp_path / "out.mp4"))
     for call_args in mock_all["run"].call_args_list:
         cmd = call_args.args[0] if call_args.args else call_args.kwargs.get("args", [])
-        if cmd and "ffmpeg" in str(cmd[0]) and "-pattern_type" in cmd:
+        if cmd and "ffmpeg" in str(cmd[0]) and "-f" in cmd and "concat" in cmd:
             return list(cmd)
     return []
 
