@@ -66,6 +66,9 @@ _VERDICT_MAP: dict[str, str] = {
 #: only).  Preserved verbatim when present; never synthesized in this module.
 _CHECK_REMEDIATION_KEYS = ("check_name", "actual_value", "threshold", "suggestion")
 
+#: Cap for the failing-check reason folded into ``blocked_by`` (issue #477).
+_BLOCKED_REASON_MAX_CHARS = 300
+
 
 class GateReportRow(TypedDict, total=False):
     """One per-gate row in the report (JSON-serializable)."""
@@ -192,6 +195,30 @@ def _build_row(
         row["checks"] = None  # per-check detail unavailable from persisted rows
 
     return row
+
+
+def _blocked_reason(row: GateReportRow) -> str:
+    """Return the human-readable reason a failed gate blocked the run.
+
+    A gate that fails on its checks carries ``error=None``; the reason then
+    lives in the first failing check's ``name`` and ``detail`` (issue #477).
+    Long details are truncated so the one-line summary stays readable.
+    """
+    error = row.get("error")
+    if error:
+        return error
+    for check in row.get("checks") or ():
+        if check.get("passed"):
+            continue
+        name = str(check.get("name") or "").strip()
+        detail = str(check.get("detail") or "").strip()
+        reason = f"{name} — {detail}" if name and detail else name or detail
+        if not reason:
+            continue
+        if len(reason) > _BLOCKED_REASON_MAX_CHARS:
+            reason = reason[: _BLOCKED_REASON_MAX_CHARS - 1].rstrip() + "…"
+        return reason
+    return "no reason recorded"
 
 
 def _match_result(
@@ -491,7 +518,7 @@ def render_gate_report(
     blocked_by = ""
     if blocked_gate:
         blocked_row = next(r for r in rows if r["gate"] == blocked_gate)
-        reason = blocked_row.get("error") or "no reason recorded"
+        reason = _blocked_reason(blocked_row)
         blocked_by = f"Run blocked by gate {blocked_gate}: {reason}"
 
     verdicts = [r["verdict"] for r in rows]
