@@ -13,6 +13,7 @@ HyperFramesVideoEngine
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -495,6 +496,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             If either FFmpeg subprocess fails or times out.
         """
         temp_dir: str | None = None
+        concat_path: str | None = None
         timeout: int = self._config.get("timeout", 300)
         try:
             temp_dir = tempfile.mkdtemp(prefix="ffmpeg_slideshow_")
@@ -565,23 +567,44 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                     temp_video,
                 ]
             else:
-                # Use the first image's directory as the glob root and its
-                # extension to select the sequence.
-                images_dir: str = os.path.dirname(images[0]) if images else ""
-                first_img: str = images[0]
-                img_ext: str = os.path.splitext(first_img)[1] or ".png"
-                glob_pattern: str = os.path.join(images_dir, f"*{img_ext}")
-
-                slide_source = glob_pattern
+                # Concat demuxer instead of ``-pattern_type glob``: globbing
+                # is not compiled into Windows libavformat builds ("Pattern
+                # type 'glob' was selected but globbing is not supported by
+                # this libavformat build"), which made every degraded render
+                # fail outright on Windows (issue #505).  The explicit list
+                # also tolerates non-contiguous filenames (scene 1 may reuse
+                # the cover) that a ``%02d`` sequence pattern cannot express.
+                # Per-image duration is ``1 / input_framerate`` so N images
+                # still total ``N / framerate`` seconds, matching the audio;
+                # the final entry repeats the last file with no duration
+                # because the concat demuxer ignores the last file's own
+                # duration directive.  The list lives in a real ``mkstemp``
+                # file (not under ``temp_dir``) so the mocked-mkdtemp unit
+                # tests and the real cleanup share one story: the file is
+                # removed again in the ``finally`` below.
+                per_image: float = (
+                    1.0 / input_framerate
+                    if input_framerate > 0
+                    else float(self._DEFAULT_SCENE_DURATION)
+                )
+                fd, concat_path = tempfile.mkstemp(suffix=".txt", prefix="slideshow_")
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    for img in images:
+                        # Forward slashes keep the list portable across
+                        # POSIX/Windows; single quotes guard spaces.
+                        fh.write(f"file '{os.path.abspath(img).replace(os.sep, '/')}'\n")
+                        fh.write(f"duration {per_image:.6f}\n")
+                    fh.write(f"file '{os.path.abspath(images[-1]).replace(os.sep, '/')}'\n")
+                slide_source = concat_path
                 step1_cmd = [
                     "ffmpeg",
                     "-y",
-                    "-framerate",
-                    str(input_framerate),
-                    "-pattern_type",
-                    "glob",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
                     "-i",
-                    glob_pattern,
+                    concat_path,
                     "-vf",
                     video_filter,
                     "-c:v",
@@ -681,6 +704,9 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         finally:
             if temp_dir is not None:
                 shutil.rmtree(temp_dir, ignore_errors=True)
+            if concat_path is not None:
+                with contextlib.suppress(OSError):
+                    os.remove(concat_path)
 
     # ------------------------------------------------------------------
     # Audio duration detection (for default template provisioning)
