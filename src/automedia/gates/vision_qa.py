@@ -136,9 +136,7 @@ def _check_red_line_6(entries: list[dict[str, Any]]) -> CheckResult:
     unchecked = [i for i, e in enumerate(entries) if not e.get("checked", False)]
     if unchecked:
         unjudged = [
-            i
-            for i in unchecked
-            if str(entries[i].get("verdict", "")).startswith("unjudged")
+            i for i in unchecked if str(entries[i].get("verdict", "")).startswith("unjudged")
         ]
         if len(unjudged) == len(unchecked):
             scenes = [entries[i].get("scene_id", i + 1) for i in unjudged]
@@ -194,7 +192,10 @@ class V1VisionQA(BaseGate):
     Producer: ``pipelines/vision_entries.build_vision_entries`` (issue #387) —
     per-scene mid/end frames from the rendered video.  When *no* entry is
     judgeable the whole gate reports ``skipped`` with the accounting in its
-    reason instead of a hollow pass.
+    reason instead of a hollow pass.  When coverage is *partial* (some scenes
+    judged, some unjudged) the gate reports ``status="review"`` with the
+    ``judged/total`` counts in its reason (issue #498) — never a green pass
+    that reads as "visual quality fully judged".
 
     Returns:
         dict with keys: ``passed``, ``gate``, ``checks``, ``error``.
@@ -227,8 +228,10 @@ class V1VisionQA(BaseGate):
         # 标记（生产者的如实记账，而非裸数据）时，整门 skip 并记账；裸的
         # 未检查数据仍交给 red_line_6 判 fail。
         judged = [e for e in entries if e.get("checked", False)]
-        all_unjudged = bool(entries) and not judged and all(
-            str(e.get("verdict", "")).startswith("unjudged") for e in entries
+        all_unjudged = (
+            bool(entries)
+            and not judged
+            and all(str(e.get("verdict", "")).startswith("unjudged") for e in entries)
         )
         if all_unjudged:
             paths = "; ".join(
@@ -254,4 +257,21 @@ class V1VisionQA(BaseGate):
 
         checks = apply_mock_overrides(check_fns, mock_results)
 
-        return build_gate_result(checks, gate="V1", expected_suffix=".")
+        result = build_gate_result(checks, gate="V1", expected_suffix=".")
+
+        # #498：部分覆盖不得假绿。已判定场次全过、但仍有 unjudged 场次时，门级
+        # 降为 ``review``（不停机，也不冒充 ``skipped``——“评了一部分”与“没评”
+        # 是两个事实，报告词汇表各自有位）；``reason`` 直接带 judged/total 计数，
+        # 由 runner 透传进 gate-report 的 V1 行，读者一眼可见覆盖缺口。
+        unjudged_n = sum(1 for e in entries if not e.get("checked", False))
+        if result["passed"] and unjudged_n:
+            judged_n = len(entries) - unjudged_n
+            result["status"] = "review"
+            result["judged"] = judged_n
+            result["total_scenes"] = len(entries)
+            result["reason"] = (
+                f"partial vision coverage: judged={judged_n}/{len(entries)} scene(s), "
+                f"unjudged={unjudged_n} — unjudged scenes were not vision-checked; "
+                f"treat visual QA as incomplete"
+            )
+        return result

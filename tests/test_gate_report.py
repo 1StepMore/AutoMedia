@@ -24,14 +24,17 @@ from automedia.pipelines.gate_report import render_gate_report, write_gate_repor
 
 def _entry(
     gate_name: str,
-    status: Literal["passed", "failed", "error", "skipped"],
+    status: Literal["passed", "failed", "error", "skipped", "review"],
     duration_s: float,
     error: str | None = None,
+    reason: str | None = None,
 ) -> GateLogEntry:
     """Build a GateLogEntry (status validated as in gate_engine)."""
-    if status not in ("passed", "failed", "error", "skipped"):
+    if status not in ("passed", "failed", "error", "skipped", "review"):
         pytest.fail(f"invalid test status {status!r}")
-    return GateLogEntry(gate_name=gate_name, status=status, duration_s=duration_s, error=error)
+    return GateLogEntry(
+        gate_name=gate_name, status=status, duration_s=duration_s, error=error, reason=reason
+    )
 
 
 @pytest.fixture()
@@ -454,3 +457,84 @@ class TestMediaStageSection:
         html_text = artifacts.html_path.read_text(encoding="utf-8")
         assert "Media stage" in html_text
         assert "no_content" in html_text
+
+
+# ---------------------------------------------------------------------------
+# Case N — review is a first-class status (issue #498)
+# ---------------------------------------------------------------------------
+
+
+class TestReviewStatusVocabularyIssue498:
+    """#498：部分覆盖的 ``review`` 是一等状态——不许摊平成 passed。"""
+
+    _REASON = "partial vision coverage: judged=1/6 scene(s), unjudged=5"
+
+    def test_live_review_row_reports_review_with_counts(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason=self._REASON)
+        result = {"gate": "V1", "passed": True, "status": "review", "judged": 1, "total_scenes": 6}
+        report = render_gate_report(str(project_dir), [entry], [result])
+        row = report["gates"][0]
+        assert row["status"] == "review"
+        assert row["verdict"] == "review"
+        assert row["judged"] == 1
+        assert row["total_scenes"] == 6
+        assert "judged=1/6" in (row.get("reason") or "")
+        assert report["summary"]["errored"] == 1  # review 计入 review 桶
+        assert report["summary"]["passed"] == 0
+
+    def test_review_does_not_block_the_run(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason="partial vision coverage: judged=1/2")
+        report = render_gate_report(str(project_dir), [entry])
+        assert report["blocked_by_gate"] is None
+        assert report["blocked_by"] == ""
+
+    def test_markdown_shows_review_reason(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason=self._REASON)
+        report = render_gate_report(str(project_dir), [entry])
+        assert "judged=1/6" in report["markdown"]
+        v1_line = next(ln for ln in report["markdown"].splitlines() if "| V1 |" in ln)
+        assert "review" in v1_line
+
+    def test_offline_review_row_keeps_reason(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason=self._REASON)
+        report = render_gate_report(str(project_dir), [entry])
+        row = report["gates"][0]
+        assert row["verdict"] == "review"
+        assert "judged=1/6" in (row.get("reason") or "")
+
+    def test_runner_preserves_review_status_and_reason(self) -> None:
+        from automedia.pipelines.runner import _build_gates_log
+
+        entries = _build_gates_log(
+            [
+                {
+                    "gate": "V1",
+                    "passed": True,
+                    "status": "review",
+                    "reason": self._REASON,
+                },
+                {"gate": "G0", "passed": True},
+            ]
+        )
+        assert entries[0].status == "review"
+        assert entries[0].reason is not None
+        assert "judged=1/6" in entries[0].reason
+        assert entries[1].status == "passed"
+
+    def test_written_json_row_carries_counts(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason=self._REASON)
+        result = {"gate": "V1", "passed": True, "status": "review", "judged": 1, "total_scenes": 6}
+        report = render_gate_report(str(project_dir), [entry], [result])
+        artifacts = write_gate_report(str(project_dir), report)
+        payload = json.loads(artifacts.json_path.read_text(encoding="utf-8"))
+        v1 = next(g for g in payload["gates"] if g["gate"] == "V1")
+        assert v1["verdict"] == "review"
+        assert v1["judged"] == 1
+        assert v1["total_scenes"] == 6
+
+    def test_html_reason_column_shows_counts(self, project_dir: Path) -> None:
+        entry = _entry("V1", "review", 0.5, reason=self._REASON)
+        report = render_gate_report(str(project_dir), [entry])
+        artifacts = write_gate_report(str(project_dir), report)
+        html_text = artifacts.html_path.read_text(encoding="utf-8")
+        assert "judged=1/6" in html_text
