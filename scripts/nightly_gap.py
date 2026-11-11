@@ -52,10 +52,11 @@ MIN_VIDEO_BYTES = 10 * 1024
 # （audit 的 unreachable）。V1 自 #387 起有真实生产者（_produce_vision_entries），
 # 从债集合移除；V0 自 #470 起有真实生产者（pipelines/lint_executor.run_lint：
 # SRT 结构 / 时间单调 / 脚本字段完整性），V3 自 #471 起有真实生产者
-# （keyword_extractor：topic 与源材料齐备时生产三件套），同样移除；
+# （keyword_extractor：topic 与源材料齐备时生产三件套），V4 自 #472 起有真实
+# 生产者（TTS 适配层回传 voice 参数，品牌资产同源期望值），同样移除；
 # tests/test_nightly_gap.py 用该审计逐值 pin 这两个常量。
-VIDEO_GATES_MUST_RUN = ("V0", "V1", "V2", "V3", "V5", "V7")  # 有诚实生产者：必须真跑且 pass
-VIDEO_GATES_CAPABILITY_DEBT = ("V4", "V6")  # 无诚实生产者：允许 skip，但须登记
+VIDEO_GATES_MUST_RUN = ("V0", "V1", "V2", "V3", "V4", "V5", "V7")  # 有诚实生产者：必须真跑且 pass
+VIDEO_GATES_CAPABILITY_DEBT = ("V6",)  # 无诚实生产者：允许 skip，但须登记
 VIDEO_GATE_DEBT_ISSUE = "#193"
 GATE_REPORT_GLOB = "05_review/gate-report/gate-report-*.json"
 #: 跑批结论里判「这次跑批没成」的状态位（issue #361）。success/awaiting_review 不拦。
