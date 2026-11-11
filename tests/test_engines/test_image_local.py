@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from PIL import Image, ImageStat
 
-from automedia.engines.implementations.image_local import LocalImageEngine
+from automedia.engines.implementations.image_local import LocalImageEngine, pick_card_text
 
 
 class TestLocalImageAttributes:
@@ -120,3 +120,63 @@ class TestLocalImageGenerate:
         engine = LocalImageEngine({"font_path": "/nonexistent/font.ttf"})
         engine.generate("字体回退", 150, 150, output)
         assert os.path.isfile(output)
+
+
+class TestPickCardText:
+    """Fallback-card copy picks reader-facing text, never SD quality tags (#463)."""
+
+    SD_PROMPT = (
+        "masterpiece, best quality, highly detailed, 8k, ultra-detailed, "
+        "sharp focus, a cozy home office desk at dusk, warm lamplight, "
+        "shallow depth of field"
+    )
+
+    def test_quality_tags_never_picked(self) -> None:
+        text, _ = pick_card_text(self.SD_PROMPT)
+        lowered = text.lower()
+        for banned in ("masterpiece", "best quality", "highly detailed", "8k", "sharp focus"):
+            assert banned not in lowered, f"{banned!r} leaked into card text: {text!r}"
+
+    def test_english_prompt_returns_descriptive_segment_with_marker(self) -> None:
+        text, from_scene = pick_card_text(self.SD_PROMPT)
+        assert from_scene is False
+        # Topic-description segment (not the tag segment) survives the cap.
+        assert "cozy home" in text
+        assert not text.lower().startswith(("masterpiece", "best quality", "8k"))
+
+    def test_chinese_scene_copy_wins(self) -> None:
+        prompt = "masterpiece, best quality, 8k, a bowl of noodles, 深夜的一碗热汤面，冒着热气"
+        text, from_scene = pick_card_text(prompt)
+        assert from_scene is True
+        assert "深夜的一碗热汤面" in text
+        assert "masterpiece" not in text.lower()
+
+    def test_scene_copy_strips_cues_and_labels(self) -> None:
+        prompt = "masterpiece, best quality, [画面：镜头怼脸] 旁白：别盲目追求数量"
+        text, from_scene = pick_card_text(prompt)
+        assert from_scene is True
+        assert "画面" not in text
+        assert "旁白" not in text
+        assert "别盲目追求数量" in text
+
+    def test_empty_prompt_is_safe(self) -> None:
+        assert pick_card_text("") == ("", False)
+
+    def test_rendered_card_excludes_quality_tags(self, tmp_path: Any) -> None:
+        """DoD 2: the bytes actually rendered carry no quality-tag text."""
+        from automedia.engines.implementations.image_local import pick_card_text
+
+        out = os.path.join(str(tmp_path), "card.png")
+        LocalImageEngine().generate(self.SD_PROMPT, 640, 480, out)
+        text, _ = pick_card_text(self.SD_PROMPT)
+        lowered = (text or "").lower()
+        for banned in ("masterpiece", "best quality", "highly detailed", "8k"):
+            assert banned not in lowered
+
+    def test_rendered_chinese_card_uses_scene_copy(self, tmp_path: Any) -> None:
+        prompt = "masterpiece, best quality, 深夜的一碗热汤面"
+        text, from_scene = pick_card_text(prompt)
+        assert from_scene is True and text
+        out = os.path.join(str(tmp_path), "cn.png")
+        path = LocalImageEngine().generate(prompt, 640, 480, out)
+        assert os.path.isfile(path)
