@@ -91,6 +91,40 @@ _SHORT_CUE_TAG_RE = re.compile(
 #: Segments inside a metadata row are separated by full-width or ASCII bars.
 _SEGMENT_SPLIT_RE = re.compile(r"\s*[｜|]\s*")
 
+#: 小节标题词集中清单（#461，owner 裁定「剥」）：分镜脚本的小节标题行
+#: （``**黄金开头（0:00-0:03）**`` 等）在时间码被 #455 剥掉后剩下的标题词
+#: 本体仍是独立一行，TTS 会把「黄金开头」「正文」「高潮反转」念出来。
+#: **这是唯一权威清单——不要把词散落进正则**；新词加在这里。
+#: 「反转」来自 #461 的夜跑 ASR 证据（标题行实为 ``高潮/反转``）。
+_SECTION_HEADING_WORDS: tuple[str, ...] = (
+    "黄金开头",
+    "正文",
+    "高潮",
+    "反转",
+    "引导互动",
+    "结尾",
+    "开场",
+    "收尾",
+)
+
+#: 一行里允许连接标题词的分隔符（``高潮/反转``、``开场 · 正文``）。
+_SECTION_HEADING_SEP_RE = re.compile(r"[\s/、·・\-－—_|｜]+")
+
+#: 行首「标题词：」标签前缀（``高潮：节奏先乱`` → 剥标签保正文）。
+_SECTION_HEADING_PREFIX_RE = re.compile(
+    r"^(?:" + "|".join(_SECTION_HEADING_WORDS) + r")\s*[:：]\s*"
+)
+
+
+def _is_section_heading_line(line: str) -> bool:
+    """整行都是小节标题词（允许分隔符连接）→ True（#461）。
+
+    ``黄金开头`` / ``高潮/反转`` / ``开场 · 正文`` 是标题行；而
+    ``这段高潮在于节奏`` 的剩余段不是标题词 → False，正文不误剥。
+    """
+    segments = [seg for seg in _SECTION_HEADING_SEP_RE.split(line.strip()) if seg]
+    return bool(segments) and all(seg in _SECTION_HEADING_WORDS for seg in segments)
+
 # ---------------------------------------------------------------------------
 # Publishable-copy boundary (#464)
 # ---------------------------------------------------------------------------
@@ -164,6 +198,14 @@ def strip_structure_labels(text: str) -> str:
             seg for seg in segments if not _STRUCTURE_SEGMENT_RE.match(seg.strip())
         ).strip()
         if structured:
+            # #461：时间码剥掉后剩下的整行标题词是伪标题，丢弃；行首
+            # 「标题词：」是标签形式，剥标签保正文。正文里的正常同名词
+            # （如「这段高潮在于节奏」）两条规则都不命中，原样保留。
+            if _is_section_heading_line(structured):
+                continue
+            structured = _SECTION_HEADING_PREFIX_RE.sub("", structured).strip()
+            if not structured:
+                continue
             kept_lines.append(structured)
     return "\n".join(kept_lines).strip()
 
