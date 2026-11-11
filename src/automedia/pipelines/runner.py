@@ -2230,13 +2230,13 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
 
     刻意**不写**的键（仓库内无可信生产者，写了就是假数据）：``segments`` 与
     ``voice_id``（V4，TTS 引擎不回传 ``voice_params``）、``avg_brightness`` 等
-    （V6，``opacity`` 无法从已合成帧反推）、``source_keywords`` 等（V3，无可信
-    的关键词提取实现）。这些门会如实报 ``skipped``（能力债集合 V3/V4/V6，与
-    ``nightly_gap.py`` 的 ``VIDEO_GATES_CAPABILITY_DEBT`` 一致——V1 不在其中：
-    #387 起有真实生产者，#414 起口径统一；V0 亦不在其中：#470 起由
-    ``lint_executor.run_lint`` 在 SRT 落盘后真实生产 ``lint_result``）。
-    ``entries``（V1）自 #387 起由 ``_produce_vision_entries`` 真实生产：
-    按场景切点抽帧 + 面板短路裁决，
+    （V6，``opacity`` 无法从已合成帧反推）。这些门会如实报 ``skipped``（能力债
+    集合 V4/V6，与 ``nightly_gap.py`` 的 ``VIDEO_GATES_CAPABILITY_DEBT`` 一致
+    ——V1 不在其中：#387 起有真实生产者，#414 起口径统一；V0 亦不在其中：#470
+    起由 ``lint_executor.run_lint`` 在 SRT 落盘后真实生产 ``lint_result``；V3
+    自 #471 起由 ``keyword_extractor`` 在 topic 与源材料齐备时真实生产三件套，
+    无源材料的 run 如实 skip）。``entries``（V1）自 #387 起由
+    ``_produce_vision_entries`` 真实生产：按场景切点抽帧 + 面板短路裁决，
     无视觉模型的场次如实记 ``unjudged``。
 
     Args:
@@ -2431,6 +2431,23 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         lint_result = run_lint({**gate_context, "srt_text": lint_srt})
         if lint_result is not None:
             gate_context["lint_result"] = lint_result
+
+    # V3 的诚实生产者（#471）：离线关键词提取。V3 的三条判据（覆盖率/对齐/
+    # 幻觉）只有在内容确有"源"可对时才有意义——本流水线的源 = topic +
+    # source_content（--source 提供）。没有源材料时**不写** V3 输入，V3 如实
+    # skip 并写明缺什么（与 #470 的 lint 同一口径）；绝不为让门跑起来而硬造
+    # 源文本。
+    from automedia.pipelines.keyword_extractor import (
+        extract_content_keywords,
+        extract_source_keywords,
+    )
+
+    _v3_topic = str(gate_context.get("topic") or "")
+    _v3_source = str(gate_context.get("source_content") or "").strip()
+    if _v3_topic and _v3_source:
+        gate_context["source_texts"] = [_v3_topic, _v3_source]
+        gate_context["source_keywords"] = extract_source_keywords(f"{_v3_topic}\n{_v3_source}")
+        gate_context["content_keywords"] = extract_content_keywords(text)
 
     # 图片：视频引擎的最小输入之一（引擎不可用时该方法自身返回 ""）。
     from automedia.pipelines.image_pipeline import BODY_IMAGE_SIZE, ImagePipeline

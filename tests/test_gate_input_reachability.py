@@ -106,6 +106,10 @@ def test_produced_keys_are_read_from_the_real_pipeline() -> None:
     # ``lint_result`` has a real producer since #470 (lint_executor.run_lint
     # writes it once the SRT lands).
     assert "lint_result" in produced
+    # ``source_keywords``/``content_keywords``/``source_texts`` have a real
+    # producer since #471 (keyword_extractor writes them when the run has
+    # topic + source material).
+    assert {"source_keywords", "content_keywords", "source_texts"} <= produced
 
 
 def test_reachability_separates_the_three_buckets() -> None:
@@ -149,11 +153,13 @@ def test_coverage_audit_reports_input_reachability() -> None:
     result = coverage_audit()
 
     # V1 joined the reachable set in #387 (vision-entries producer); V0 joined
-    # it in #470 (lint_executor writes ``lint_result`` once the SRT lands).
-    assert result["input_reachable_gates"] == ["V0", "V1", "V2", "V5", "V7"]
-    assert result["input_unreachable_gates"] == ["V3", "V4", "V6"]
-    assert result["summary"]["gates_input_reachable"] == 5
-    assert result["summary"]["gates_input_unreachable"] == 3
+    # it in #470 (lint_executor writes ``lint_result`` once the SRT lands);
+    # V3 joined it in #471 (keyword_extractor writes the three V3 inputs when
+    # topic + source material exist).
+    assert result["input_reachable_gates"] == ["V0", "V1", "V2", "V3", "V5", "V7"]
+    assert result["input_unreachable_gates"] == ["V4", "V6"]
+    assert result["summary"]["gates_input_reachable"] == 6
+    assert result["summary"]["gates_input_unreachable"] == 2
 
 
 def test_input_reachability_does_not_disturb_the_existing_classes() -> None:
@@ -173,7 +179,7 @@ def test_input_unreachable_and_execution_unreachable_are_disjoint_reports() -> N
     assert set(result["input_unreachable_gates"]) & set(result["unreachable_gates"]) == set()
 
 
-@pytest.mark.parametrize("gate", ["V3", "V4", "V6"])
+@pytest.mark.parametrize("gate", ["V4", "V6"])
 def test_each_input_less_gate_names_the_missing_key(gate: str) -> None:
     result = coverage_audit()
 
