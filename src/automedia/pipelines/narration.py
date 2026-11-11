@@ -17,6 +17,7 @@ re-exports them unchanged; the video track's behaviour is byte-identical.
 from __future__ import annotations
 
 from automedia.core.text_cleaning import (
+    strip_emoji,
     strip_emphasis_markers,
     strip_narration_markup,
     strip_stage_directions,
@@ -24,6 +25,7 @@ from automedia.core.text_cleaning import (
 )
 
 __all__ = [
+    "strip_emoji",
     "strip_emphasis_markers",
     "strip_narration_markup",
     "strip_stage_directions",

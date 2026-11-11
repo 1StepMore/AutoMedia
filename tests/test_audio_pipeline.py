@@ -537,6 +537,28 @@ class TestScriptDerivedSrt:
         assert spans[0] == (0.0, 3.0)
         assert spans[-1][1] == 7.0
 
+    @pytest.mark.parametrize("duration", [0.0, -0.5])
+    def test_scene_without_positive_duration_still_reaches_the_srt(
+        self, tmp_path: Any, duration: float
+    ) -> None:
+        """A scene with no measurable duration must not lose its words (#496).
+
+        The old wrapper skipped such a scene outright, so the tail of the
+        narration vanished from the captions while the audio still said it.
+        """
+        scenes = [
+            {"text": "第一句口播。", "start": 0.0, "duration": 3.0},
+            {"text": "评论区聊聊，反手十指向下指。", "start": 3.0, "duration": duration},
+        ]
+        path = AudioPipeline().generate_srt_from_scenes(scenes, str(tmp_path / "z.srt"))
+        content = Path(path).read_text(encoding="utf-8")
+        spoken = "".join(
+            line
+            for line in content.splitlines()
+            if line.strip() and not line.strip().isdigit() and "-->" not in line
+        )
+        assert "评论区聊聊，反手十指向下指。" in spoken
+
     def test_empty_script_returns_empty_string(self, tmp_path: Any) -> None:
         assert AudioPipeline().generate_srt_from_script("", 12.0, str(tmp_path / "e.srt")) == ""
         assert AudioPipeline().generate_srt_from_script("文字", 0.0, str(tmp_path / "z.srt")) == ""

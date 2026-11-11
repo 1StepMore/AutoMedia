@@ -50,6 +50,18 @@ class TestSrtDropsEmphasis:
         assert "排期：先把链路跑通。" in body
 
 
+class TestSrtDropsEmoji:
+    def test_generated_srt_keeps_the_words_and_drops_the_pictograph(self, tmp_path: Path) -> None:
+        path = AudioPipeline().generate_srt_from_scenes(
+            [{"text": "先把链路跑通👇。", "start": 0.0, "duration": 2.0}],
+            str(tmp_path / "subtitle.srt"),
+        )
+        assert path
+        body = Path(path).read_text(encoding="utf-8")
+        assert "👇" not in body
+        assert "先把链路跑通。" in body
+
+
 class TestOneCleanerForTtsAndSrt:
     def test_srt_cues_are_the_cleaned_narration(self) -> None:
         raw = "## 标题\n\n[画面：叹气]**主题**：先跑通流程。\n- 第二句。"

@@ -441,7 +441,10 @@ class AudioPipeline:
 
         Uses each scene's measured ``start``/``duration`` (the ffprobe cut
         points) and splits its text into cues proportionally — the most
-        accurate timing available without an ASR pass.
+        accurate timing available without an ASR pass.  A scene whose duration
+        is not positive keeps its text as a zero-length cue at its start: the
+        words are still spoken by the narrator, so dropping them would make the
+        captions disagree with the audio (#496).
         """
         timed: list[tuple[float, float, str]] = []
         for scene in scenes:
@@ -449,7 +452,20 @@ class AudioPipeline:
             start = float(scene.get("start", 0.0) or 0.0)
             duration = float(scene.get("duration", 0.0) or 0.0)
             cues = self.split_caption_cues(text)
-            if not cues or duration <= 0:
+            if not cues:
+                continue
+            if duration <= 0:
+                # 无实测时长不等于没有口播：旧实现整场丢弃，末句字幕凭空
+                # 消失（#496）。保留文字，零长度 cue 如实表示"时长未知"。
+                logger.warning(
+                    "generate_srt_from_scenes: scene has no positive duration "
+                    "(scene=%s, start=%.3f, duration=%.3f) — emitting its text "
+                    "as a zero-length cue instead of dropping it",
+                    scene.get("id"),
+                    start,
+                    duration,
+                )
+                timed.extend((start, start, cue) for cue in cues)
                 continue
             timed.extend(self._distribute_cues(cues, start, duration))
         if not timed:
