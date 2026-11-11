@@ -29,7 +29,9 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -724,7 +726,7 @@ class TestRenderFFmpegFallback:
         # The second subprocess call should be the ffmpeg slideshow step 1
         step1_call_args = mock_all["run"].call_args_list[1]  # second call
         step1_cmd = step1_call_args[0][0]  # positional arg 0 = cmd list
-        assert step1_cmd[0] == "ffmpeg"
+        assert step1_cmd[0] == "/usr/bin/ffmpeg"  # resolved binary, not a bare name (#510)
         assert "-f" in step1_cmd
         assert "concat" in step1_cmd
         # #505: no glob input — Windows libavformat builds lack glob support.
@@ -737,7 +739,7 @@ class TestRenderFFmpegFallback:
         # The third subprocess call should be the audio mux step 2
         step2_call_args = mock_all["run"].call_args_list[2]  # third call
         step2_cmd = step2_call_args[0][0]
-        assert step2_cmd[0] == "ffmpeg"
+        assert step2_cmd[0] == "/usr/bin/ffmpeg"  # resolved binary (#510)
         assert "-i" in step2_cmd
         # second -i is the audio file
         assert "/fake/audio.mp3" in step2_cmd
@@ -1854,3 +1856,52 @@ class TestDegradeOptIn:
         cfg = _env_to_config()
         assert cfg["engines"]["video"]["hyperframes"]["allow_degrade"] == "1"
         assert HyperFramesVideoEngine(cfg["engines"]["video"]["hyperframes"])._degrade_allowed()
+
+
+class TestRenderFFmpegBinaryResolution:
+    """The slideshow must invoke the *resolved* ffmpeg binary (#510).
+
+    A tools-directory ffmpeg lives outside PATH: resolving it for the
+    availability check and then invoking a bare ``"ffmpeg"`` would guarantee
+    ``WinError 2`` on exactly those machines.
+    """
+
+    def test_render_uses_tools_dir_binary(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("AUTOMEDIA_CONFIG_DIR", str(tmp_path / "userconfig"))
+        tools_dir = tmp_path / "tools"
+        tools_dir.mkdir()
+        monkeypatch.setenv("AUTOMEDIA_TOOLS_DIR", str(tools_dir))
+        suffix = ".exe" if sys.platform == "win32" else ""
+        fake_ffmpeg = tools_dir / f"ffmpeg{suffix}"
+        fake_ffmpeg.write_bytes(b"")
+
+        # ffmpeg exists ONLY in the tools dir: PATH lookups miss, the
+        # tools-dir scan (which(name, path=...)) hits.
+        mock_all["which"].side_effect = lambda name, path=None: (  # type: ignore[union-attr]
+            str(fake_ffmpeg) if path == str(tools_dir) and name == "ffmpeg" else None
+        )
+        # hyperframes is not found (which → None for it), so there is no
+        # hyperframes subprocess attempt: the run calls are step 1 then step 2.
+        mock_all["run"].side_effect = [
+            _ok_result(),  # slideshow step 1
+            _ok_result(),  # audio mux step 2
+        ]
+        mock_all["mkdtemp"].side_effect = [
+            "/tmp/hyperframes_test",
+            "/tmp/ffmpeg_test",
+        ]
+
+        output = str(tmp_path / "output.mp4")
+        result = HyperFramesVideoEngine({"allow_degrade": True}).render(sample_assets, output)
+        assert result == os.path.abspath(output)
+
+        step1_cmd = mock_all["run"].call_args_list[0][0][0]
+        step2_cmd = mock_all["run"].call_args_list[1][0][0]
+        assert step1_cmd[0] == str(fake_ffmpeg.resolve())
+        assert step2_cmd[0] == str(fake_ffmpeg.resolve())
