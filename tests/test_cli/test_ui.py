@@ -190,3 +190,63 @@ class TestRunRoute:
             assert resp.status_code == 409
         finally:
             _run_state.update(running=False, finished=True)
+
+
+class TestPlatformsRoute:
+    def test_lists_platforms_with_media_specs(self, client: Any) -> None:
+        data = client.get("/api/platforms").json()
+        by_name = {p["name"]: p for p in data["platforms"]}
+        assert by_name["douyin"] == {
+            "name": "douyin",
+            "width": 1080,
+            "height": 1920,
+            "aspect_ratio": "9:16",
+        }
+        # a notifier has no media spec, so it is not a run target here
+        assert "feishu" not in by_name
+
+
+class TestRunPlatforms:
+    """#494: the platform picked in the UI must reach the SDK call."""
+
+    def _post_and_wait(self, client: Any, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        calls: list[dict[str, Any]] = []
+        fake_result = MagicMock()
+        fake_result.status = "published"
+
+        def fake_run(**kwargs: Any) -> Any:
+            calls.append(kwargs)
+            return fake_result
+
+        with patch("automedia.run_full_pipeline", side_effect=fake_run):
+            resp = client.post("/api/run", json=payload)
+            assert resp.json()["started"] is True
+            deadline = time.time() + 2.0
+            while time.time() < deadline and not _run_state["finished"]:
+                time.sleep(0.01)
+        assert _run_state["finished"] is True
+        return calls
+
+    def test_selected_platforms_are_forwarded(self, client: Any) -> None:
+        calls = self._post_and_wait(
+            client, {"topic": "T", "mode": "video_only", "platforms": ["douyin"]}
+        )
+        assert calls[0]["platforms"] == ["douyin"]
+
+    def test_short_video_without_selection_targets_douyin(self, client: Any) -> None:
+        calls = self._post_and_wait(client, {"topic": "T", "mode": "short-video"})
+        assert calls[0]["platforms"] == ["douyin"]
+
+    def test_text_run_without_selection_leaves_platforms_unset(self, client: Any) -> None:
+        calls = self._post_and_wait(client, {"topic": "T", "mode": "text_only"})
+        assert calls[0]["platforms"] is None
+
+    def test_unknown_platform_is_rejected_before_starting(self, client: Any) -> None:
+        with patch("automedia.run_full_pipeline") as fake_run:
+            resp = client.post(
+                "/api/run",
+                json={"topic": "T", "mode": "short-video", "platforms": ["nope"]},
+            )
+        assert resp.status_code == 422
+        assert "nope" in resp.json()["detail"]
+        fake_run.assert_not_called()

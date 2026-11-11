@@ -136,9 +136,9 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "S", "SIM", "ANN", "C4", "PERF", "
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.flake8-bugbear]
-# typer declares CLI params via default calls — that is the framework's API,
-# not a mutable-default bug.
-extend-immutable-calls = ["typer.Option", "typer.Argument"]
+# typer and fastapi declare params via default calls — that is the framework's
+# API, not a mutable-default bug.
+extend-immutable-calls = ["typer.Option", "typer.Argument", "fastapi.Body"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/automedia/.vulture_whitelist.py" = ["F821", "B018", "N999"]
