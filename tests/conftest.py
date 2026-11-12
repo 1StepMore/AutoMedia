@@ -282,6 +282,75 @@ def _path_isolation() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _hermetic_user_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Redirect ``Path.home()`` to a temp home and isolate the tools dir.
+
+    Two real-machine leak paths need closing for every test:
+
+    * ``Path.home()``-derived state — ``~/.automedia`` (pins written by a real
+      pipeline run via :mod:`automedia.core.tool_paths`, model config, audit
+      logs) must never be read or written by a test. Tests that mock home
+      themselves simply replace this mock (``monkeypatch`` restores both).
+    * ``AUTOMEDIA_TOOLS_DIR`` — the own tools directory
+      (:func:`automedia.core.tool_paths.find_tool`, #510) points at a real
+      ffmpeg on dev machines; a test without this would resolve the real
+      binary instead of its stubs, and a tools-dir hit would persist a pin.
+
+    ``AUTOMEDIA_CONFIG_DIR`` is deliberately NOT set: default-resolution
+    tests assert the ``Path.home()/.automedia`` behavior, and the home mock
+    above already lands that inside the fake home.
+    """
+    # A system temp dir, not *tmp_path*: tests that assert the exact contents
+    # of *tmp_path* (e.g. project-init dir counts) must not see the fake home.
+    import shutil
+    import tempfile
+
+    fake_home = Path(tempfile.mkdtemp(prefix="automedia-test-home-"))
+    (fake_home / ".automedia").mkdir(parents=True)
+    # A test that redirects home via raw env vars (HOME/USERPROFILE) must be
+    # honored — the model-config scope guard (#208) simulates a *real* user
+    # dir exactly that way and expects writes there to be refused.
+    _env_home_key = "USERPROFILE" if os.name == "nt" else "HOME"
+    _real_env_home = os.environ.get(_env_home_key, "")
+    _real_norm = os.path.normpath(_real_env_home).lower() if _real_env_home else ""
+
+    def _fake_expanduser(path: str) -> str:
+        # Both home seams must land on the same fake home: tests in this suite
+        # mock Path.home() or os.path.expanduser interchangeably (the config
+        # layering tests patch the latter), and get_user_config_dir() goes
+        # through whichever the patch chain leaves active.
+        env_home = os.environ.get(_env_home_key, "")
+        if env_home and _real_norm and os.path.normpath(env_home).lower() != _real_norm:
+            honored = os.path.normpath(env_home)
+            if path == "~":
+                return honored
+            if path.startswith("~/") or path.startswith("~\\"):
+                return os.path.join(honored, path[2:])
+        if path == "~":
+            return str(fake_home)
+        if path.startswith("~/") or path.startswith("~\\"):
+            return os.path.join(str(fake_home), path[2:])
+        return path
+
+    monkeypatch.setattr(os.path, "expanduser", _fake_expanduser)
+    # Path.home() must follow the expanduser seam (not a hard-coded value):
+    # tests patch either one, and both have to agree on the fake home.
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: Path(os.path.expanduser("~"))))
+    saved_tools_dir = os.environ.get("AUTOMEDIA_TOOLS_DIR")
+    os.environ["AUTOMEDIA_TOOLS_DIR"] = str(tmp_path / "tools")
+    try:
+        yield
+    finally:
+        if saved_tools_dir is None:
+            os.environ.pop("AUTOMEDIA_TOOLS_DIR", None)
+        else:
+            os.environ["AUTOMEDIA_TOOLS_DIR"] = saved_tools_dir
+        shutil.rmtree(fake_home, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
 def _no_mock_paths_in_cwd() -> Generator[None, None, None]:
     """Fail any test that leaves a ``MagicMock``-repr path in the CWD.
 

@@ -26,6 +26,7 @@ from typing import Any, ClassVar
 
 import jinja2
 
+from automedia.core.tool_paths import ToolPathError, find_tool
 from automedia.engines.base import BaseVideoEngine
 from automedia.engines.errors import EngineExecutionError
 
@@ -170,10 +171,13 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             when neither is available.
         """
         cli_base: list[str] | None = self._resolve_cli_base()
-        ffmpeg_path: str | None = shutil.which("ffmpeg")
-
         if cli_base:
             return (True, f"hyperframes found: {' '.join(cli_base)}")
+
+        try:
+            ffmpeg_path: str | None = find_tool("ffmpeg")
+        except ToolPathError as exc:
+            return (False, str(exc))
 
         if ffmpeg_path:
             return (True, f"hyperframes not found; ffmpeg fallback at {ffmpeg_path}")
@@ -301,9 +305,12 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             )
 
         # Fallback: FFmpeg slideshow (opt-in via allow_degrade, #414)
-        ffmpeg_path: str | None = shutil.which("ffmpeg")
+        try:
+            ffmpeg_path: str | None = find_tool("ffmpeg")
+        except ToolPathError as exc:
+            raise EngineExecutionError(engine_name=self.engine_name, details=str(exc)) from exc
         if ffmpeg_path:
-            rendered = self._render_with_ffmpeg(assets, output_path)
+            rendered = self._render_with_ffmpeg(assets, output_path, ffmpeg_bin=ffmpeg_path)
             self.last_render_degraded = self.last_render_degraded or not cli_base
             if not cli_base:
                 self.last_render_reason = "hyperframes CLI not found; FFmpeg slideshow used"
@@ -470,7 +477,9 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     # Fallback path — FFmpeg slideshow
     # ------------------------------------------------------------------
 
-    def _render_with_ffmpeg(self, assets: dict[str, Any], output_path: str) -> str:
+    def _render_with_ffmpeg(
+        self, assets: dict[str, Any], output_path: str, ffmpeg_bin: str = "ffmpeg"
+    ) -> str:
         """Render a video via an ``ffmpeg`` slideshow pipeline.
 
         Two-step process:
@@ -484,6 +493,13 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             Asset dictionary (see :meth:`render`).
         output_path:
             Final output path for the rendered video.
+        ffmpeg_bin:
+            The ffmpeg executable to invoke. Callers pass the resolved
+            absolute path from ``find_tool`` (#510): a bare ``"ffmpeg"``
+            only works when the binary is on ``PATH``, which is exactly
+            the machine shape where the tools-directory install lives
+            *outside* PATH — resolving for the availability check and
+            then invoking a bare name would guarantee ``WinError 2`` there.
 
         Returns
         -------
@@ -546,7 +562,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 )
                 slide_source: str = images[0]
                 step1_cmd: list[str] = [
-                    "ffmpeg",
+                    ffmpeg_bin,
                     "-y",
                     "-loop",
                     "1",
@@ -597,7 +613,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                     fh.write(f"file '{os.path.abspath(images[-1]).replace(os.sep, '/')}'\n")
                 slide_source = concat_path
                 step1_cmd = [
-                    "ffmpeg",
+                    ffmpeg_bin,
                     "-y",
                     "-f",
                     "concat",
@@ -643,7 +659,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             # Step 2: Mux audio onto the video (if audio is provided)
             if audio and os.path.isfile(audio):
                 step2_cmd: list[str] = [
-                    "ffmpeg",
+                    ffmpeg_bin,
                     "-y",
                     "-i",
                     temp_video,
@@ -715,7 +731,10 @@ class HyperFramesVideoEngine(BaseVideoEngine):
     @staticmethod
     def _get_audio_duration(audio_path: str) -> float | None:
         """Detect audio duration using ``ffprobe`` (seconds, or ``None`` on failure)."""
-        ffprobe: str | None = shutil.which("ffprobe")
+        try:
+            ffprobe: str | None = find_tool("ffprobe")
+        except ToolPathError:
+            return None
         if not ffprobe or not audio_path or not os.path.isfile(audio_path):
             return None
         try:
