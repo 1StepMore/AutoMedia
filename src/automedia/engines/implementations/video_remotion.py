@@ -36,6 +36,7 @@ from typing import Any, ClassVar
 
 from typing_extensions import override
 
+from automedia.core.tool_paths import ToolPathError, find_tool
 from automedia.engines.base import BaseVideoEngine
 from automedia.engines.errors import EngineExecutionError
 
@@ -192,6 +193,122 @@ class VideoRemotionEngine(BaseVideoEngine):
         return True, f"remotion workspace ready at {workspace} (node {probe.stdout.strip()})"
 
     # ------------------------------------------------------------------
+    # Target frame size (#523 — same contract as #519's hyperframes fix)
+    # ------------------------------------------------------------------
+
+    def _target_size(self, assets: dict[str, Any]) -> tuple[int, int]:
+        """Resolve the output frame size for this render (#378/#523).
+
+        Priority:
+
+        1. ``assets["width"]/["height"]`` — the platform media spec, stamped on
+           the assets by the runner (douyin/weibo/kuaishou are 1080x1920).
+        2. The engine config block (``engines.video.remotion.width/height``)
+           — an explicit operator override.
+        3. 1080p landscape.
+
+        Before this, only (2) and (3) existed, so a portrait-platform run
+        whose storyboard carried the config/landscape defaults shipped
+        1920x1080 landscape video (the root ``calculateMetadata`` derives the
+        composition size from the storyboard, so the wrong values propagate
+        straight into the file).
+        """
+        raw_width = assets.get("width") or self._config.get("width", 1920)
+        raw_height = assets.get("height") or self._config.get("height", 1080)
+        return int(raw_width), int(raw_height)
+
+    @staticmethod
+    def _probe_video_size(video_path: str) -> tuple[int, int] | None:
+        """Probe the first video stream's dimensions via ``ffprobe``.
+
+        Returns ``(width, height)``, or ``None`` when ffprobe is missing, the
+        probe fails, or the stream carries no usable dimensions — callers
+        decide whether "unprobeable" may pass.
+        """
+        try:
+            ffprobe: str | None = find_tool("ffprobe")
+        except ToolPathError:
+            return None
+        if not ffprobe or not video_path or not os.path.isfile(video_path):
+            return None
+        try:
+            result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # ffprobe path is hardcoded
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=width,height",
+                    "-of",
+                    "json",
+                    video_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        if result.returncode != 0:
+            return None
+        try:
+            streams: list[dict[str, Any]] = json.loads(result.stdout).get("streams") or []
+            width: int = int(streams[0].get("width") or 0)
+            height: int = int(streams[0].get("height") or 0)
+        except (json.JSONDecodeError, IndexError, KeyError, TypeError, ValueError):
+            return None
+        if width <= 0 or height <= 0:
+            return None
+        return width, height
+
+    def _verify_output_size(
+        self, output_path: str, assets: dict[str, Any]
+    ) -> tuple[int, int] | None:
+        """Assert the finished file's dimensions equal ``_target_size(assets)`` (#523).
+
+        The composition size is derived from the storyboard's width/height by
+        ``calculateMetadata``, so a storyboard that carried the config/landscape
+        defaults shipped 1920x1080 landscape video for a portrait platform.
+        This is the delivery-side net (#519's hyperframes equivalent): whatever
+        the renderer did, the file on disk must measure exactly the target.
+
+        - Probed size differs from the target → :class:`EngineExecutionError`:
+          a wrong-shape video must never look like a success.
+        - ffprobe missing or the probe itself failing → warn and return
+          ``None``: a machine without ffprobe must not lose renders that used
+          to work, but the verification gap is logged, never silent.
+        """
+        expected_width, expected_height = self._target_size(assets)
+        probed = self._probe_video_size(output_path)
+        if probed is None:
+            logger.warning(
+                "remotion output size not verified (ffprobe missing or probe failed): %s",
+                output_path,
+            )
+            return None
+        actual_width, actual_height = probed
+        if (actual_width, actual_height) != (expected_width, expected_height):
+            raise EngineExecutionError(
+                engine_name=self.engine_name,
+                details=(
+                    f"Rendered video size {actual_width}x{actual_height} does not match "
+                    f"the target size {expected_width}x{expected_height} (#523). The "
+                    "storyboard carried the wrong frame size for this platform — "
+                    "refusing to ship a wrong-shape video."
+                ),
+            )
+        logger.info(
+            "remotion output size verified: %dx%d == target %dx%d",
+            actual_width,
+            actual_height,
+            expected_width,
+            expected_height,
+        )
+        return probed
+
+    # ------------------------------------------------------------------
     # Render
     # ------------------------------------------------------------------
 
@@ -223,8 +340,7 @@ class VideoRemotionEngine(BaseVideoEngine):
             raise EngineExecutionError(engine_name=self.engine_name, details=why)
 
         fps = int(self._config.get("fps", 30))
-        width = int(self._config.get("width", 1920))
-        height = int(self._config.get("height", 1080))
+        width, height = self._target_size(assets)
         scene_media = list(assets.get("scene_media") or [])
         audio_path = str(assets.get("audio") or "")
 
@@ -315,4 +431,5 @@ class VideoRemotionEngine(BaseVideoEngine):
                 ),
             )
         logger.info("remotion render succeeded (%s)", output_path)
+        self._verify_output_size(output_path, assets)
         return os.path.abspath(output_path)
