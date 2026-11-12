@@ -45,6 +45,12 @@ _ENV_WATCHLIST: tuple[str, ...] = (
     "AUTOMEDIA_FAKE_LLM",
     "AUTOMEDIA_LLM_API_KEY",
     "AUTOMEDIA_CONFIG_DIR",
+    # Omni MCP adapters read these to decide validate_env(); an import-time
+    # write leaks into tests that assert the variable is absent (#518).
+    "MCP_ALLOWED_DIRECTORIES",
+    "OL_MCP_ALLOWED_DIRS",
+    "OPP_MCP_ALLOWED_DIRS",
+    "ORF_MCP_ALLOWED_DIRS",
 )
 """Environment variables the leak guard watches.
 
