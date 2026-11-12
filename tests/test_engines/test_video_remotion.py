@@ -164,3 +164,126 @@ class TestRender:
                 {"scenes": [{"index": 1, "text": "x", "start": 0.0, "duration": 1.0}]},
                 str(tmp_path / "out.mp4"),
             )
+
+
+class TestTargetSize:
+    """Platform frame size resolution (#523) — same contract as #519."""
+
+    def _engine(self, tmp_path: Any, **config: Any) -> VideoRemotionEngine:
+        base = {"wsl_dist": "", "project_dir": str(tmp_path / "ws")}
+        base.update(config)
+        return VideoRemotionEngine(base)
+
+    def test_assets_platform_size_wins(self, tmp_path: Any) -> None:
+        # runner stamps douyin/weibo/kuaishou as 1080x1920 on the assets
+        assert self._engine(tmp_path)._target_size({"width": 1080, "height": 1920}) == (1080, 1920)
+
+    def test_config_used_when_assets_carry_no_size(self, tmp_path: Any) -> None:
+        engine = self._engine(tmp_path, width=1280, height=720)
+        assert engine._target_size({}) == (1280, 720)
+
+    def test_no_size_still_defaults_to_landscape_1080p(self, tmp_path: Any) -> None:
+        assert self._engine(tmp_path)._target_size({}) == (1920, 1080)
+
+    def test_storyboard_carries_platform_size(self, tmp_path: Any) -> None:
+        engine = self._engine(tmp_path)
+        media = tmp_path / "scene-01.png"
+        media.write_bytes(b"png")
+        out = str(tmp_path / "out.mp4")
+
+        def fake_node(args: list[str], cwd: Any, timeout: int) -> MagicMock:
+            with open(out, "wb") as fh:
+                fh.write(b"mp4")
+            return MagicMock(returncode=0, stdout="", stderr="")
+
+        with (
+            patch.object(engine, "check_available", return_value=(True, "ready")),
+            patch.object(engine, "_node_cmd", side_effect=fake_node),
+        ):
+            engine.render(
+                {
+                    "width": 1080,
+                    "height": 1920,
+                    "scene_media": [str(media)],
+                    "scenes": [
+                        {"index": 1, "text": "第一场，内容够长。", "start": 0.0, "duration": 4.0},
+                    ],
+                },
+                out,
+            )
+        payload = json.loads(
+            (tmp_path / "ws" / "input" / "storyboard.json").read_text(encoding="utf-8")
+        )
+        assert payload["storyboard"]["width"] == 1080
+        assert payload["storyboard"]["height"] == 1920
+
+
+class TestVerifyOutputSize:
+    """Delivery-side net (#523) — refuse to ship a wrong-shape video."""
+
+    MATCH_JSON = '{"streams": [{"width": 1080, "height": 1920}]}'
+    MISMATCH_JSON = '{"streams": [{"width": 1920, "height": 1080}]}'
+
+    def _assets(self) -> dict[str, Any]:
+        return {"width": 1080, "height": 1920, "scenes": []}
+
+    def test_verify_passes_when_probed_size_matches(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_remotion.find_tool") as m_which,
+            patch("automedia.engines.implementations.video_remotion.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_remotion.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout=self.MATCH_JSON, stderr="")
+            result = VideoRemotionEngine({})._verify_output_size(
+                str(tmp_path / "out.mp4"),
+                self._assets(),
+            )
+        assert result == (1080, 1920)
+
+    def test_verify_raises_when_probed_size_mismatches(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_remotion.find_tool") as m_which,
+            patch("automedia.engines.implementations.video_remotion.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_remotion.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout=self.MISMATCH_JSON, stderr="")
+            with pytest.raises(EngineExecutionError, match="1920x1080 does not match"):
+                VideoRemotionEngine({})._verify_output_size(
+                    str(tmp_path / "out.mp4"),
+                    self._assets(),
+                )
+
+    def test_verify_skips_without_ffprobe(self, tmp_path: Any) -> None:
+        """> No ffprobe → warn-and-continue, never a manufactured failure."""
+        with (
+            patch("automedia.engines.implementations.video_remotion.find_tool") as m_which,
+            patch("automedia.engines.implementations.video_remotion.subprocess.run") as m_run,
+        ):
+            m_which.return_value = None
+            result = VideoRemotionEngine({})._verify_output_size(
+                str(tmp_path / "out.mp4"),
+                self._assets(),
+            )
+        assert result is None
+        assert m_run.called is False
+
+    def test_probe_returns_none_on_garbage_stdout(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_remotion.find_tool") as m_which,
+            patch("automedia.engines.implementations.video_remotion.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_remotion.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout="not json", stderr="")
+            assert VideoRemotionEngine({})._probe_video_size(str(tmp_path / "out.mp4")) is None
