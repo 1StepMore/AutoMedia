@@ -33,6 +33,7 @@ from typing_extensions import override
 from automedia.core.env_overlay import env_lookup
 from automedia.engines.base import BaseASREngine
 from automedia.engines.errors import EngineExecutionError
+from automedia.engines.implementations._hf_endpoint import ensure_hf_endpoint
 
 #: Environment variable consulted when no model config is supplied.
 MODEL_ENV_VAR = "AUTOMEDIA_FASTER_WHISPER_MODEL"
@@ -112,6 +113,10 @@ class FasterWhisperASREngine(BaseASREngine):
         *path* that does not exist is reported unavailable rather than
         failing mid-pipeline.
         """
+        # Importing faster_whisper bakes the hub endpoint into
+        # huggingface_hub.constants, so the mirror decision (#512) must land
+        # before this import.
+        ensure_hf_endpoint(self._config)
         try:
             import faster_whisper
         except Exception as exc:  # pragma: no cover - environment dependent
@@ -166,6 +171,9 @@ class FasterWhisperASREngine(BaseASREngine):
         compute_type = self._config.get("compute_type", DEFAULT_COMPUTE_TYPE)
 
         try:
+            # huggingface_hub bakes HF_ENDPOINT at import time; settle the
+            # mirror decision (#512) before the library loads a model.
+            ensure_hf_endpoint(self._config)
             from faster_whisper import WhisperModel
         except ImportError as exc:
             raise EngineExecutionError(

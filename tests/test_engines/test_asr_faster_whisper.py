@@ -224,3 +224,83 @@ class TestFasterWhisperTranscribe:
         assert isinstance(first["end"], float)
         assert isinstance(first["text"], str)
         assert first["end"] >= first["start"]
+
+
+# ---------------------------------------------------------------------------
+# HF endpoint settlement — issue #512
+# ---------------------------------------------------------------------------
+
+
+class _RecordingModel:
+    """Fake WhisperModel that records ``os.environ`` at construction time."""
+
+    env_at_init: ClassVar[dict[str, str]] = {}
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        _RecordingModel.env_at_init = dict(os.environ)
+
+    def transcribe(self, audio_path: str, language: Any = None, **kwargs: Any) -> tuple[Any, Any]:
+        return iter([]), types.SimpleNamespace(language=language)
+
+
+def _fake_faster_whisper() -> types.ModuleType:
+    module = types.ModuleType("faster_whisper")
+    module.WhisperModel = _RecordingModel  # type: ignore[attr-defined]
+    module.decode_audio = lambda *_a, **_k: None  # type: ignore[attr-defined]
+    return module
+
+
+class TestFasterWhisperHFEndpoint:
+    """The hub endpoint must be settled before faster_whisper imports (#512)."""
+
+    def test_transcribe_sets_mirror_default_when_env_unset(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("HF_ENDPOINT", raising=False)
+        monkeypatch.setitem(sys.modules, "faster_whisper", _fake_faster_whisper())
+        wav_path = str(tmp_path / "audio.wav")
+        Path(wav_path).write_bytes(b"")  # fake model never reads the bytes
+
+        engine = FasterWhisperASREngine({"model": "tiny"})
+        engine.transcribe(wav_path)
+
+        assert _RecordingModel.env_at_init.get("HF_ENDPOINT") == "https://hf-mirror.com"
+
+    def test_transcribe_keeps_existing_env(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HF_ENDPOINT", "https://hf.example.org")
+        monkeypatch.setitem(sys.modules, "faster_whisper", _fake_faster_whisper())
+        wav_path = str(tmp_path / "audio.wav")
+        Path(wav_path).write_bytes(b"")  # fake model never reads the bytes
+
+        engine = FasterWhisperASREngine({"model": "tiny"})
+        engine.transcribe(wav_path)
+
+        assert _RecordingModel.env_at_init.get("HF_ENDPOINT") == "https://hf.example.org"
+
+    def test_transcribe_config_key_wins(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HF_ENDPOINT", "https://hf.example.org")
+        monkeypatch.setitem(sys.modules, "faster_whisper", _fake_faster_whisper())
+        wav_path = str(tmp_path / "audio.wav")
+        Path(wav_path).write_bytes(b"")  # fake model never reads the bytes
+
+        engine = FasterWhisperASREngine({"model": "tiny", "hf_endpoint": "https://cfg.example.org"})
+        engine.transcribe(wav_path)
+
+        assert _RecordingModel.env_at_init.get("HF_ENDPOINT") == "https://cfg.example.org"
+
+    def test_check_available_settles_endpoint_before_import(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("HF_ENDPOINT", raising=False)
+        monkeypatch.setitem(sys.modules, "faster_whisper", _fake_faster_whisper())
+
+        engine = FasterWhisperASREngine({})
+        engine.check_available()
+
+        import os as _os
+
+        assert _os.environ.get("HF_ENDPOINT") == "https://hf-mirror.com"

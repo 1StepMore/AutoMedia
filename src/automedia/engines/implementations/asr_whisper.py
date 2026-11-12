@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from automedia.engines.base import BaseASREngine
+from automedia.engines.implementations._hf_endpoint import ensure_hf_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +114,16 @@ class WhisperASREngine(BaseASREngine):
             model,
             lang,
         )
+        # The whisper CLI downloads models via huggingface_hub inside the
+        # child process — a fresh import reads the env at startup, so the
+        # mirror decision (#512) reaches it reliably through the env mapping.
+        child_env = {**os.environ, "HF_ENDPOINT": ensure_hf_endpoint(self._config)}
         result = subprocess.run(  # noqa: S603 — trusted internal command
             cmd,
             capture_output=True,
             text=True,
             timeout=600,
+            env=child_env,
         )
         if result.returncode != 0:
             logger.error(
