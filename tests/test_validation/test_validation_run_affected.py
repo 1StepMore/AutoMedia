@@ -118,4 +118,3 @@ def test_failed_scenario_prints_step_detail(
     assert "exit_code: 3" in out
     assert "expect: expect.exit_code" in out
     assert "boom: bad option" in out
-
