@@ -20,7 +20,9 @@ No V1 thresholds or frame-extraction logic live here.
 from __future__ import annotations
 
 import base64
+import json
 import os
+import re
 from typing import Any, Protocol
 
 from structlog import get_logger
@@ -41,6 +43,33 @@ _JUDGE_SYSTEM_PROMPT = (
     '"related" means the visual content of the frame matches what the '
     "narration describes. Never answer with anything except the JSON object."
 )
+
+_JSON_OBJECT_RE = re.compile(r"\{[^{}]*\}")
+#: First balanced ``{...}`` object — models often wrap the JSON in prose or a
+#: code fence even under a "JSON only" instruction (#516); the strict
+#: whole-string parse then mislabels every real verdict as unusable.
+
+
+def _parse_verdict_json(raw: str) -> dict[str, Any] | None:
+    """Parse the verdict JSON out of a VLM answer, ``None`` when none exists.
+
+    Tries the whole string first, then the first balanced ``{...}`` object
+    anywhere in the answer (prose-wrapped / fenced answers, #516).
+    """
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed
+    except ValueError:
+        pass
+    match = _JSON_OBJECT_RE.search(raw)
+    if match is None:
+        return None
+    try:
+        parsed = json.loads(match.group(0))
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 class VLMClient(Protocol):
@@ -99,8 +128,6 @@ class OpenAICompatVLMClient:
         return f"data:image/jpeg;base64,{encoded}"
 
     def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
-        import json as _json
-
         response = self._client.chat.completions.create(
             model=self._model,
             temperature=0.0,
@@ -122,14 +149,13 @@ class OpenAICompatVLMClient:
             ],
         )
         raw = (response.choices[0].message.content or "").strip()
-        try:
-            parsed = _json.loads(raw)
-            related = bool(parsed.get("related"))
-            reason = str(parsed.get("reason") or "")[:200]
-        except ValueError:
-            # Non-JSON answer: treat as unusable rather than guessing a verdict.
-            related = False
-            reason = f"unparseable VLM answer: {raw[:120]}"
+        parsed = _parse_verdict_json(raw)
+        if parsed is None:
+            # No JSON object anywhere in the answer: treat as unusable rather
+            # than guessing a verdict.
+            return {"related": False, "reason": f"unparseable VLM answer: {raw[:120]}"}
+        related = bool(parsed.get("related"))
+        reason = str(parsed.get("reason") or "")[:200]
         return {"related": related, "reason": reason}
 
 
