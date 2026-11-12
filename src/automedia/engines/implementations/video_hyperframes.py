@@ -212,6 +212,105 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         return int(raw_width), int(raw_height)
 
     # ------------------------------------------------------------------
+    # Output size verification (#511)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _probe_video_size(video_path: str) -> tuple[int, int] | None:
+        """Probe the first video stream's dimensions via ``ffprobe``.
+
+        Returns ``(width, height)``, or ``None`` when ffprobe is missing, the
+        probe fails, or the stream carries no usable dimensions — callers
+        decide whether "unprobeable" may pass.
+        """
+        try:
+            ffprobe: str | None = find_tool("ffprobe")
+        except ToolPathError:
+            return None
+        if not ffprobe or not video_path or not os.path.isfile(video_path):
+            return None
+        try:
+            result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # ffprobe path is hardcoded
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=width,height",
+                    "-of",
+                    "json",
+                    video_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        if result.returncode != 0:
+            return None
+        try:
+            streams: list[dict[str, Any]] = json.loads(result.stdout).get("streams") or []
+            width: int = int(streams[0].get("width") or 0)
+            height: int = int(streams[0].get("height") or 0)
+        except (json.JSONDecodeError, IndexError, KeyError, TypeError, ValueError):
+            return None
+        if width <= 0 or height <= 0:
+            return None
+        return width, height
+
+    def _verify_output_size(
+        self, output_path: str, assets: dict[str, Any]
+    ) -> tuple[int, int] | None:
+        """Assert the finished file's dimensions equal ``_target_size(assets)`` (#511).
+
+        The CLI renders from the templates' *composition declarations* rather
+        than the project config, so a provisioned project whose templates
+        stayed 1920x1080 shipped landscape video for a portrait platform. This
+        is the delivery-side net: whatever the renderer did, the file on disk
+        must measure exactly the target — on the primary hyperframes path
+        **and** on the FFmpeg fallback, since both flow through the same check
+        in :meth:`render`.
+
+        - Probed size differs from the target → :class:`EngineExecutionError`
+          (with ``allow_degrade`` the caller degrades to a correctly-sized
+          slideshow; without it the render fails outright — a wrong-shape
+          video must never look like a success).
+        - ffprobe missing or the probe itself failing → warn and return
+          ``None``: a machine without ffprobe must not lose renders that used
+          to work, but the verification gap is logged, never silent.
+        """
+        expected_width, expected_height = self._target_size(assets)
+        probed = self._probe_video_size(output_path)
+        if probed is None:
+            logger.warning(
+                "video output size not verified (ffprobe missing or probe failed): %s",
+                output_path,
+            )
+            return None
+        actual_width, actual_height = probed
+        if (actual_width, actual_height) != (expected_width, expected_height):
+            raise EngineExecutionError(
+                engine_name=self.engine_name,
+                details=(
+                    f"Rendered video size {actual_width}x{actual_height} does not match "
+                    f"the target size {expected_width}x{expected_height} (#511). The "
+                    "renderer ignored the platform frame size — refusing to ship a "
+                    "wrong-shape video."
+                ),
+            )
+        logger.info(
+            "video output size verified: %dx%d == target %dx%d",
+            actual_width,
+            actual_height,
+            expected_width,
+            expected_height,
+        )
+        return probed
+
+    # ------------------------------------------------------------------
     # Render — primary hyperframes path → FFmpeg fallback
     # ------------------------------------------------------------------
 
@@ -268,7 +367,13 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         cli_base: list[str] | None = self._resolve_cli_base()
         if cli_base:
             try:
-                return self._render_with_hyperframes(assets, output_path, cli_base)
+                rendered = self._render_with_hyperframes(assets, output_path, cli_base)
+                # Delivery-side size net (#511): a CLI render that ignored the
+                # platform size fails here — inside the degrade-aware handler,
+                # so ``allow_degrade`` rescues it with a correctly-sized
+                # slideshow instead of shipping the wrong shape.
+                self._verify_output_size(rendered, assets)
+                return rendered
             except EngineExecutionError as exc:
                 # Keep the real failure in the log (#383).  A bare "render
                 # failed" warning left no way to tell a missing browser from a
@@ -314,6 +419,11 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             self.last_render_degraded = self.last_render_degraded or not cli_base
             if not cli_base:
                 self.last_render_reason = "hyperframes CLI not found; FFmpeg slideshow used"
+            # Delivery-side size net (#511): the fallback must measure exactly
+            # the target size too. The ``scale``+``pad`` filter chain
+            # guarantees it, so a mismatch here means the chain broke — fail
+            # the render instead of shipping the wrong shape.
+            self._verify_output_size(rendered, assets)
             logger.warning(
                 "video rendered as a degraded FFmpeg slideshow (still frame + audio): %s",
                 output_path,
@@ -931,6 +1041,18 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         # config: that project owns its composition size.
         self._apply_frame_size(os.path.join(temp_dir, "hyperframes.json"), assets)
 
+        # 1a-2. The templates must follow the same size (#511).  The shipped
+        # ``index.html.j2``/``scene.html.j2`` hardcoded 1920x1080 in the
+        # viewport meta, the ``html/body`` CSS, the composition root's
+        # ``data-width``/``data-height`` and the scene-exit slide distance —
+        # and the hyperframes CLI renders from those *composition
+        # declarations*, not from ``project.width``/``project.height``.  The
+        # observed failure was exactly that split: the log said
+        # "project frame size set to 1080x1920" while the CLI captured a
+        # 1920x1080 canvas.  Every size-bearing layer now renders from
+        # ``_target_size(assets)`` so all three agree.
+        template_width, template_height = self._target_size(assets)
+
         # 1b. Vendor GSAP when a local copy is available (#351): CDN access is
         # unreliable in some networks (jsdelivr resets connections), and the
         # hyperframes render blocks on timeline-script failures. Priority:
@@ -1040,6 +1162,8 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             audio_basename=audio_basename,
             scenes=scenes,
             gsap_src=gsap_src,
+            width=template_width,
+            height=template_height,
         )
         with open(os.path.join(temp_dir, "index.html"), "w", encoding="utf-8") as _f:
             _f.write(index_html)
@@ -1083,6 +1207,8 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 scene_index=scene["index"],
                 total_scenes=len(scenes),
                 gsap_src="../" + gsap_src if gsap_src.startswith("assets/") else gsap_src,
+                width=template_width,
+                height=template_height,
             )
             scene_path: str = os.path.join(
                 compositions_dir,
