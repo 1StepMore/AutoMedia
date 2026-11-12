@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1920, height=1080" />
+  <meta name="viewport" content="width={{ width }}, height={{ height }}" />
   <script src="{{ gsap_src }}"></script>
   <style>
     /* Motion-grammar tokens (promo/docs/运动语法-禁则.md):
@@ -22,9 +22,9 @@
       --stamp: 0.7s;  /* 21 frames @30fps */
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+    html, body { margin: 0; width: {{ width }}px; height: {{ height }}px; overflow: hidden; background: var(--bg); }
     body { font-family: var(--font-sans); color: var(--text-1); }
-    #root { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; }
+    #root { position: absolute; inset: 0; width: {{ width }}px; height: {{ height }}px; overflow: hidden; }
     .stage { position: absolute; inset: 0; }
 
     /* 发丝网格 — 12 栏竖向 hairline 打底 */
@@ -65,7 +65,7 @@
 <body>
   <div id="root" class="scene-wrapper" data-composition-id="{{ scene_id }}"
        data-start="0" data-duration="{{ duration }}"
-       data-width="1920" data-height="1080">
+       data-width="{{ width }}" data-height="{{ height }}">
     <div class="stage">
       <div class="media{% if not media_src %} graphic{% endif %}">
         {% if media_src %}<img src="{{ media_src }}" alt="" />{% endif %}
@@ -91,9 +91,10 @@
     const STAMP = 0.7;             /* 压印字效：单次动作 ≈21 帧 */
     const EASE_IN = "power2.in", EASE_OUT = "power3.out";
 
-    /* 场景横移：入场从 +220 收进（不从静止入场），结尾向左出画（在运动中切） */
+    /* 场景横移：入场从 +220 收进（不从静止入场），结尾向左出画（在运动中切）。
+       出画距离 = 画布宽 + 入场偏移，随画布尺寸走，竖屏不再用 1920 的旧值。 */
     tl.fromTo(".stage", { x: 220 }, { x: 0, duration: SEAM, ease: EASE_OUT }, 0);
-    tl.to(".stage", { x: -2140, duration: SEAM, ease: EASE_IN }, Math.max(DUR - SEAM, SEAM));
+    tl.to(".stage", { x: -{{ width + 220 }}, duration: SEAM, ease: EASE_IN }, Math.max(DUR - SEAM, SEAM));
 
     /* 镜头推近：每场 scale 1.00 → 1.04，inOut cubic，不来回 */
     tl.fromTo(".stage", { scale: 1.0 }, { scale: 1.04, duration: DUR, ease: "sine.inOut" }, 0);

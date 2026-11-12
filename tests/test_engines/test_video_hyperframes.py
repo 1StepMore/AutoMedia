@@ -1905,3 +1905,319 @@ class TestRenderFFmpegBinaryResolution:
         step2_cmd = mock_all["run"].call_args_list[1][0][0]
         assert step1_cmd[0] == str(fake_ffmpeg.resolve())
         assert step2_cmd[0] == str(fake_ffmpeg.resolve())
+
+
+# ===================================================================
+# Provisioned template frame size (#511)
+# ===================================================================
+
+
+class TestProvisionedTemplateFrameSize:
+    """Provisioned templates must carry the platform size in every layer (#511).
+
+    The shipped templates hardcoded 1920x1080 in the viewport meta, the
+    ``html/body`` CSS, the composition root's ``data-width``/``data-height``
+    and the scene-exit slide distance. The hyperframes CLI renders from the
+    *composition declarations*, so rewriting only ``hyperframes.json`` left a
+    douyin run (project config 1080x1920, log line confirmed) rendering
+    1920x1080. Every layer must now follow ``_target_size(assets)``.
+    """
+
+    def _provision(self, tmp_path: Any, assets: dict[str, Any]) -> Path:
+        project = tmp_path / "proj"
+        project.mkdir(parents=True, exist_ok=True)
+        with (
+            patch(
+                "automedia.engines.implementations.video_hyperframes.shutil.which",
+            ) as m_which,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.subprocess.run",
+            ) as m_run,
+        ):
+            m_which.side_effect = lambda x, path=None: (  # type: ignore[return-value]
+                "/usr/bin/ffprobe" if x == "ffprobe" else None
+            )
+            m_run.return_value = MagicMock(returncode=0, stdout="20.0\n", stderr="")
+            engine = HyperFramesVideoEngine()
+            engine._provision_default_hyperframes_project(str(project), assets)
+        return project
+
+    @staticmethod
+    def _portrait_assets(tmp_path: Any) -> dict[str, Any]:
+        images: list[str] = []
+        for i in range(2):
+            img = tmp_path / f"img{i}.png"
+            img.write_text("fake-png")
+            images.append(str(img))
+        return {
+            "images": images,
+            "audio": "",
+            "content": "portrait run",
+            "width": 1080,
+            "height": 1920,
+        }
+
+    def test_portrait_platform_size_reaches_every_layer(self, tmp_path: Any) -> None:
+        """> douyin-style 1080x1920 assets: viewport, CSS, composition
+        declarations and the exit slide all switch to the portrait canvas."""
+        project = self._provision(tmp_path, self._portrait_assets(tmp_path))
+
+        config = json.loads((project / "hyperframes.json").read_text(encoding="utf-8"))
+        assert config["project"]["width"] == 1080
+        assert config["project"]["height"] == 1920
+
+        index_html = (project / "index.html").read_text(encoding="utf-8")
+        assert 'content="width=1080, height=1920"' in index_html
+        assert "width: 1080px; height: 1920px" in index_html
+        assert 'data-width="1080" data-height="1920"' in index_html
+        # The hardcoded landscape declarations must be gone, not merely
+        # accompanied by the new ones — the CLI renders from these. (A
+        # portrait page legitimately still contains ``height: 1920px``, so
+        # only the width-bearing spellings are forbidden.)
+        assert "width=1920" not in index_html
+        assert "width: 1920px" not in index_html
+        assert 'data-width="1920"' not in index_html
+
+        scene_html = (project / "compositions" / "01-scene.html").read_text(encoding="utf-8")
+        assert 'content="width=1080, height=1920"' in scene_html
+        assert "width: 1080px; height: 1920px" in scene_html
+        assert 'data-width="1080" data-height="1920"' in scene_html
+        # The stage must exit across the 1080px-wide canvas (1080 + 220),
+        # not across the old 1920px one (-2140).
+        assert "x: -1300" in scene_html
+        assert "x: -2140" not in scene_html
+
+    def test_custom_landscape_size_follows_assets(self, tmp_path: Any) -> None:
+        """> 1280x720 assets: every layer follows, proving nothing is pinned
+        to portrait either."""
+        assets = self._portrait_assets(tmp_path)
+        assets["width"] = 1280
+        assets["height"] = 720
+        project = self._provision(tmp_path, assets)
+
+        index_html = (project / "index.html").read_text(encoding="utf-8")
+        assert 'content="width=1280, height=720"' in index_html
+        assert "width: 1280px; height: 720px" in index_html
+        assert 'data-width="1280" data-height="720"' in index_html
+
+        scene_html = (project / "compositions" / "01-scene.html").read_text(encoding="utf-8")
+        assert 'data-width="1280" data-height="720"' in scene_html
+        assert "x: -1500" in scene_html  # 1280 + 220
+
+    def test_no_size_still_defaults_to_landscape_1080p(self, tmp_path: Any) -> None:
+        """> Assets without a size keep the historical 1920x1080 default."""
+        images: list[str] = []
+        for i in range(1):
+            img = tmp_path / f"img{i}.png"
+            img.write_text("fake-png")
+            images.append(str(img))
+        assets = {"images": images, "audio": "", "content": "default size"}
+        project = self._provision(tmp_path, assets)
+
+        index_html = (project / "index.html").read_text(encoding="utf-8")
+        assert 'content="width=1920, height=1080"' in index_html
+        assert 'data-width="1920" data-height="1080"' in index_html
+
+        scene_html = (project / "compositions" / "01-scene.html").read_text(encoding="utf-8")
+        assert 'data-width="1920" data-height="1080"' in scene_html
+        assert "x: -2140" in scene_html
+
+
+# ===================================================================
+# Output size verification (#511)
+# ===================================================================
+
+
+class TestOutputSizeVerification:
+    """The delivery-side size net (#511): the probed file must equal the target.
+
+    The hyperframes CLI renders from the templates' composition declarations,
+    so a wrong-size project used to ship a landscape mp4 that looked like a
+    success. ``render()`` now measures the finished file via ffprobe on both
+    the primary and the FFmpeg-fallback path, and fails on any mismatch.
+    """
+
+    #: ffprobe JSON for a correctly-sized portrait video.
+    MATCH_JSON = json.dumps({"streams": [{"width": 1080, "height": 1920}]})
+
+    #: ffprobe JSON reproducing the #511 bug shape: landscape while the
+    #: platform target is portrait.
+    MISMATCH_JSON = json.dumps({"streams": [{"width": 1920, "height": 1080}]})
+
+    @staticmethod
+    def _portrait_assets(tmp_path: Any) -> dict[str, Any]:
+        img = tmp_path / "img.png"
+        img.write_text("fake-png")
+        return {
+            "images": [str(img)],
+            "audio": "/fake/audio.mp3",
+            "subtitles": "",
+            # A fake template_dir keeps the default-provisioning branch out of
+            # these hermetic tests (mock_all stubs the filesystem); the
+            # provisioning side of the size fix is covered by
+            # TestProvisionedTemplateFrameSize and the real render test below.
+            "template_dir": "/fake/template",
+            "content": "portrait run",
+            "width": 1080,
+            "height": 1920,
+        }
+
+    # ------------------------------------------------------------------
+    # _verify_output_size / _probe_video_size unit tests
+    # ------------------------------------------------------------------
+
+    def test_verify_passes_when_probed_size_matches(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_hyperframes.shutil.which") as m_which,
+            patch("automedia.engines.implementations.video_hyperframes.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout=self.MATCH_JSON, stderr="")
+            result = HyperFramesVideoEngine()._verify_output_size(
+                str(tmp_path / "out.mp4"),
+                self._portrait_assets(tmp_path),
+            )
+        assert result == (1080, 1920)
+
+    def test_verify_raises_when_probed_size_mismatches(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_hyperframes.shutil.which") as m_which,
+            patch("automedia.engines.implementations.video_hyperframes.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout=self.MISMATCH_JSON, stderr="")
+            with pytest.raises(EngineExecutionError, match="1920x1080 does not match"):
+                HyperFramesVideoEngine()._verify_output_size(
+                    str(tmp_path / "out.mp4"),
+                    self._portrait_assets(tmp_path),
+                )
+
+    def test_verify_skips_without_ffprobe(self, tmp_path: Any) -> None:
+        """> No ffprobe → warn-and-continue, never a manufactured failure."""
+        with (
+            patch("automedia.engines.implementations.video_hyperframes.shutil.which") as m_which,
+            patch("automedia.engines.implementations.video_hyperframes.subprocess.run") as m_run,
+        ):
+            m_which.return_value = None
+            result = HyperFramesVideoEngine()._verify_output_size(
+                str(tmp_path / "out.mp4"),
+                self._portrait_assets(tmp_path),
+            )
+        assert result is None
+        assert m_run.called is False
+
+    def test_probe_returns_none_on_garbage_stdout(self, tmp_path: Any) -> None:
+        with (
+            patch("automedia.engines.implementations.video_hyperframes.shutil.which") as m_which,
+            patch("automedia.engines.implementations.video_hyperframes.subprocess.run") as m_run,
+            patch(
+                "automedia.engines.implementations.video_hyperframes.os.path.isfile",
+                return_value=True,
+            ),
+        ):
+            m_which.return_value = "/usr/bin/ffprobe"
+            m_run.return_value = MagicMock(returncode=0, stdout="not json", stderr="")
+            assert HyperFramesVideoEngine()._probe_video_size(str(tmp_path / "out.mp4")) is None
+
+    # ------------------------------------------------------------------
+    # render()-level: the net catches a wrong-shape primary render
+    # ------------------------------------------------------------------
+
+    def test_render_fails_on_mismatched_primary_output(
+        self, mock_all: dict[str, MagicMock], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+            "ffprobe": "/usr/bin/ffprobe",
+        }.get(x)
+        mock_all["run"].side_effect = [
+            _ok_result(),  # hyperframes render "succeeds"
+            MagicMock(returncode=0, stdout=self.MISMATCH_JSON, stderr=""),  # probe: landscape!
+        ]
+
+        engine = HyperFramesVideoEngine()  # degrade disabled by default (#414)
+        with pytest.raises(EngineExecutionError, match="does not match"):
+            engine.render(self._portrait_assets(tmp_path), str(tmp_path / "out.mp4"))
+
+    def test_degrade_rescues_a_mismatched_primary_render(
+        self, mock_all: dict[str, MagicMock], tmp_path: Any
+    ) -> None:
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+            "ffmpeg": "/usr/bin/ffmpeg",
+            "ffprobe": "/usr/bin/ffprobe",
+        }.get(x)
+        mock_all["run"].side_effect = [
+            _ok_result(),  # hyperframes render "succeeds"
+            MagicMock(returncode=0, stdout=self.MISMATCH_JSON, stderr=""),  # probe: landscape!
+            _ok_result(),  # ffprobe audio duration inside the fallback
+            _ok_result(),  # ffmpeg slideshow step 1
+            _ok_result(),  # ffmpeg audio mux step 2
+            MagicMock(returncode=0, stdout=self.MATCH_JSON, stderr=""),  # probe: portrait ✓
+        ]
+
+        engine = HyperFramesVideoEngine({"allow_degrade": True})
+        result = engine.render(self._portrait_assets(tmp_path), str(tmp_path / "out.mp4"))
+
+        assert result == os.path.abspath(str(tmp_path / "out.mp4"))
+        assert engine.last_render_degraded is True
+        assert "does not match" in engine.last_render_reason
+
+    def test_fallback_output_is_verified_too(
+        self, mock_all: dict[str, MagicMock], tmp_path: Any
+    ) -> None:
+        """> The size net fires on the FFmpeg fallback path as well (#511)."""
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "ffmpeg": "/usr/bin/ffmpeg",
+            "ffprobe": "/usr/bin/ffprobe",
+        }.get(x)
+        mock_all["run"].side_effect = [
+            _ok_result(),  # ffprobe audio duration inside the fallback
+            _ok_result(),  # ffmpeg slideshow step 1
+            _ok_result(),  # ffmpeg audio mux step 2
+            MagicMock(returncode=0, stdout=self.MISMATCH_JSON, stderr=""),  # probe: landscape!
+        ]
+
+        engine = HyperFramesVideoEngine({"allow_degrade": True})
+        with pytest.raises(EngineExecutionError, match="does not match"):
+            engine.render(self._portrait_assets(tmp_path), str(tmp_path / "out.mp4"))
+
+
+@requires_ffmpeg
+class TestFallbackPortraitRender:
+    """Real FFmpeg fallback render must deliver the platform's portrait size (#511).
+
+    No hyperframes CLI involved: this is the degraded path plus the delivery
+    size net, end to end with real binaries — the exact machine shape that
+    used to be correct *before* the CLI existed and must stay correct now.
+    """
+
+    def test_fallback_render_delivers_verified_portrait_size(self, tmp_path: Any) -> None:
+        image_dir = tmp_path / "images"
+        image_dir.mkdir()
+        images = _write_png_sequence(image_dir, 2)
+        audio = tmp_path / "narration.wav"
+        _write_silent_wav(audio, 4)
+        output = tmp_path / "out.mp4"
+
+        engine = HyperFramesVideoEngine({"allow_degrade": True})
+        with patch.object(HyperFramesVideoEngine, "_resolve_cli_base", return_value=None):
+            result = engine.render(
+                {"images": images, "audio": str(audio), "width": 1080, "height": 1920},
+                str(output),
+            )
+
+        assert result == os.path.abspath(str(output))
+        width, height, duration = _probe_video(result)
+        assert (width, height) == (1080, 1920)
+        assert abs(duration - 4.0) <= 1.0
+        assert engine.last_render_degraded is True
+        assert "not found" in engine.last_render_reason
