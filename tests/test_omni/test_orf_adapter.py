@@ -5,6 +5,7 @@ from __future__ import annotations
 import builtins
 import os
 import tempfile
+from typing import Any
 from unittest.mock import patch
 
 from automedia.omni.orf_adapter import ORFAdapter
@@ -28,7 +29,11 @@ class TestORFAdapterContract:
         adapter = ORFAdapter()
         assert adapter.name == "orf"
 
-    def test_orf_adapter_validate_env_returns_false_without_env(self) -> None:
+    def test_orf_adapter_validate_env_returns_false_without_env(self, monkeypatch: Any) -> None:
+        # Explicit isolation (#518): a leaked MCP_ALLOWED_DIRECTORIES (set in
+        # the surrounding environment or by another test) flips validate_env()
+        # to True and breaks this absence-assertion in full-suite runs.
+        monkeypatch.delenv("MCP_ALLOWED_DIRECTORIES", raising=False)
         adapter = ORFAdapter()
         assert adapter.validate_env() is False
 
