@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1920, height=1080" />
+  <meta name="viewport" content="width={{ width }}, height={{ height }}" />
   <script src="{{ gsap_src }}"></script>
   <style>
     :root {
@@ -13,14 +13,14 @@
       --font-sans: system-ui, sans-serif;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+    html, body { margin: 0; width: {{ width }}px; height: {{ height }}px; overflow: hidden; background: var(--bg); }
     body { font-family: var(--font-sans); color: var(--text-1); }
   </style>
 </head>
 <body>
   <div id="root" data-composition-id="main"
        data-start="0" data-duration="{{ total_duration }}"
-       data-width="1920" data-height="1080">
+       data-width="{{ width }}" data-height="{{ height }}">
 
 {% if audio_basename %}
     <audio class="clip" data-start="0" data-duration="{{ total_duration }}" data-track-index="0"
