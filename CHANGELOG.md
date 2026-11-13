@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.17.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.1...automedia-v1.17.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* **asr:** settle HF_ENDPOINT to hf-mirror before whisper model downloads ([#512](https://github.com/1StepMore/AutoMedia/issues/512)) ([#514](https://github.com/1StepMore/AutoMedia/issues/514)) ([7890807](https://github.com/1StepMore/AutoMedia/commit/7890807826300649f02590ba5505bd9db1d88e42))
+* **engines:** replace glob slideshow input with a concat list ([#505](https://github.com/1StepMore/AutoMedia/issues/505)) ([#506](https://github.com/1StepMore/AutoMedia/issues/506)) ([d85ea0f](https://github.com/1StepMore/AutoMedia/commit/d85ea0f2da3de74249fe54107c1953b6d998b99b))
+* **engines:** resolve ffmpeg/ffprobe from the own tools dir and pin discoveries ([#510](https://github.com/1StepMore/AutoMedia/issues/510)) ([#513](https://github.com/1StepMore/AutoMedia/issues/513)) ([2e2cc4f](https://github.com/1StepMore/AutoMedia/commit/2e2cc4f6576e87b79cf70250388df0f4f1b0310a))
+* **gates:** report V1 review instead of pass on partial vision coverage ([#498](https://github.com/1StepMore/AutoMedia/issues/498)) ([#503](https://github.com/1StepMore/AutoMedia/issues/503)) ([9fc5a3d](https://github.com/1StepMore/AutoMedia/commit/9fc5a3db44deeed638a540996d5c1855aa6fb379))
+* **hitl:** scope awaiting-gate history scan to the rerun's project id ([#507](https://github.com/1StepMore/AutoMedia/issues/507)) ([#509](https://github.com/1StepMore/AutoMedia/issues/509)) ([f737130](https://github.com/1StepMore/AutoMedia/commit/f737130a43073d11896fdf55dc60a58630d92f49))
+* **hyperframes:** render at the platform frame size and verify the output ([#511](https://github.com/1StepMore/AutoMedia/issues/511)) ([#519](https://github.com/1StepMore/AutoMedia/issues/519)) ([c903d8e](https://github.com/1StepMore/AutoMedia/commit/c903d8ef9a53316d991c023ad859703533913195))
+* **prompts:** ban unverifiable outcome promises in hooks and anchor G0 rewrites to token-level hedging ([#520](https://github.com/1StepMore/AutoMedia/issues/520)) ([#522](https://github.com/1StepMore/AutoMedia/issues/522)) ([423257c](https://github.com/1StepMore/AutoMedia/commit/423257ce9f8e3d9ce1fbf3b1633a63d01d08f6db))
+* **remotion:** render at the platform frame size and verify the output ([#511](https://github.com/1StepMore/AutoMedia/issues/511)) ([#523](https://github.com/1StepMore/AutoMedia/issues/523)) ([eb1b3f1](https://github.com/1StepMore/AutoMedia/commit/eb1b3f19a5625fc46a5623bb5fbe81a27d24e950))
+* **vlm:** extract the verdict JSON from prose-wrapped answers ([#516](https://github.com/1StepMore/AutoMedia/issues/516)) ([#517](https://github.com/1StepMore/AutoMedia/issues/517)) ([2a6fe9b](https://github.com/1StepMore/AutoMedia/commit/2a6fe9b3e7536dac4d674a66d0e1526367d1a79f))
+
 ## [1.17.1](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.0...automedia-v1.17.1) (2026-11-11)
 
 
