@@ -159,6 +159,41 @@ def test_duplicate_token_reported_once_per_area() -> None:
     assert len(h1_hits) == 1 and h1_hits[0].token == "决定"
 
 
+def test_table_script_mid_rows_are_not_hook_areas() -> None:
+    """Table-formatted scripts (douyin drafts): rows between the metadata
+    header and the closing row are body — a visual-effect label like
+    「职场逆袭」特效字 in the climax row must NOT deterministically fail the
+    gate (the judge owns body claims)."""
+    content = (
+        "**主题：** 为什么你的周报领导总是跳过不读\n"
+        "**品牌：** default\n"
+        "**时长：** 45秒\n\n"
+        "| 时间 | 画面内容 | 音效 | 口播文案 |\n"
+        "| :--- | :--- | :--- | :--- |\n"
+        "| **0:00-0:03** | **[黄金开头]**<br>文字贴纸：**领导跳过？** | "
+        "**口播：**<br>为什么你的周报总被领导直接划走？ |\n"
+        "| **0:45-0:55** | **[高潮/反转]**<br>背景出现“职场逆袭”特效字 | "
+        "**口播：**<br>改完这篇，下周汇报直接C位出道。 |\n"
+        "| **0:55-0:60** | **[引导互动]**<br>屏幕出现文字：**关注我** | "
+        "**口播：**<br>想要万能周报模板？评论区扣“1”，我私发你。 |"
+    )
+    assert hook_area_violations(content) == []
+
+
+def test_table_script_cta_row_is_still_scanned() -> None:
+    """A banned token in the closing row's spoken line still fails."""
+    content = (
+        "| 时间 | 口播文案 |\n"
+        "| :--- | :--- |\n"
+        "| 0:00-0:03 | 为什么你的周报总被领导直接划走？ |\n"
+        "| 0:55-0:60 | 三步搞定，学会投稿赚钱！ |"
+    )
+    hits = hook_area_violations(content)
+    tokens = {h.token for h in hits}
+    assert {"搞定", "学会"} <= tokens
+    assert {h.area for h in hits} == {"CTA / closing paragraph"}
+
+
 # ---------------------------------------------------------------------------
 # Template wiring — no template carries its own copy of the list
 # ---------------------------------------------------------------------------

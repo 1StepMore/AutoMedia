@@ -22,6 +22,7 @@ and concrete, never absolute.
 
 from __future__ import annotations
 
+import re
 from typing import NamedTuple
 
 # The one copy of the ban list (#522 wording, token order preserved).
@@ -108,42 +109,76 @@ def prompt_vars() -> dict[str, str]:
     }
 
 
+_BR_SPLIT_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+
+
+def _segments(content: str) -> list[str]:
+    """Split *content* into fine-grained text segments.
+
+    Segments are the unit the hook-area classification works on: blank-line
+    separated blocks, individual markdown table rows (split on ``|`` cells)
+    and ``<br>`` parts inside either. Table-formatted scripts (douyin/tiktok
+    drafts) otherwise merge into one giant block and the closing-CTA
+    heuristic would misread a mid-table visual-effect label as a claim.
+    """
+    segments: list[str] = []
+    block: list[str] = []
+
+    def _emit(text: str) -> None:
+        for part in _BR_SPLIT_RE.split(text):
+            part = part.strip()
+            if part:
+                segments.append(part)
+
+    def _flush_block() -> None:
+        if block:
+            _emit(" ".join(block))
+            block.clear()
+
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            _flush_block()
+            continue
+        if stripped.startswith("#"):
+            _flush_block()
+            continue
+        if stripped.startswith("|"):
+            _flush_block()
+            cells = stripped.strip("|").split("|")
+            for cell in cells:
+                _emit(cell)
+            continue
+        block.append(stripped)
+    _flush_block()
+    return segments
+
+
 def _hook_area_blocks(content: str) -> list[tuple[str, str]]:
     """Return ``(area, text)`` pairs for the hook areas of *content*.
 
     Hook areas mirror the content-writer constraint exactly:
 
     - the H1 title (``# …``) and every section heading (``## …`` and deeper)
-    - the first paragraph (first blank-line-separated block after headings)
-    - the closing call-to-action (last paragraph block, when distinct)
+    - the first paragraph (first segment after headings; for table-formatted
+      scripts this is the leading metadata/topic line — mid-table rows are
+      body, not hook)
+    - the closing call-to-action (last segment, when distinct)
     """
     headings: list[tuple[str, str]] = []
-    paragraphs: list[str] = []
-    current: list[str] = []
     for line in content.splitlines():
         stripped = line.strip()
         if stripped.startswith("#"):
-            if current:
-                paragraphs.append(" ".join(current))
-                current = []
             heading_text = stripped.lstrip("#").strip()
             area = "H1 title" if stripped.startswith("# ") else "section heading"
             headings.append((area, heading_text))
-            continue
-        if not stripped:
-            if current:
-                paragraphs.append(" ".join(current))
-                current = []
-            continue
-        current.append(stripped)
-    if current:
-        paragraphs.append(" ".join(current))
 
+    segments = _segments(content)
     areas: list[tuple[str, str]] = list(headings)
-    if paragraphs:
-        areas.append(("first paragraph", paragraphs[0]))
-        if len(paragraphs) > 1:
-            areas.append(("CTA / closing paragraph", paragraphs[-1]))
+    if segments:
+        areas.append(("first paragraph", segments[0]))
+        if len(segments) > 1:
+            areas.append(("CTA / closing paragraph", segments[-1]))
     return areas
 
 
