@@ -550,6 +550,8 @@ def _run_plausibility_check(
     content: str,
     topic: str,
     platform: str = "",
+    gate_context: GateContext | dict[str, Any] | None = None,
+    rewrite_allowed: bool = False,
 ) -> dict[str, Any] | None:
     """Run LLM-based plausibility check when no source material is available.
 
@@ -561,6 +563,15 @@ def _run_plausibility_check(
         The generated content to evaluate.
     topic:
         The article topic (passed into the prompt for context).
+    gate_context:
+        The full gate context — forwarded to :func:`_finalize_failure` so a
+        failing plausibility check gets the same one-shot rewrite the
+        source-data path gets (#520: the rewrite template's rule 5 hunts the
+        very tokens the hook-claim criteria flag; without it a deterministic
+        rejection is unrecoverable because the quality retry would re-judge
+        the same text).
+    rewrite_allowed:
+        Whether the one-shot rewrite may be attempted (``enable_llm``).
 
     Returns
     -------
@@ -577,7 +588,11 @@ def _run_plausibility_check(
         # hedged, checkable statement is not questionable.
         violations = hook_area_violations(content)
         if violations:
-            return _build_hook_claim_failure(violations)
+            return _finalize_failure(
+                _build_hook_claim_failure(violations),
+                gate_context or {},
+                rewrite_allowed=rewrite_allowed,
+            )
 
         prompt = load_prompt(
             "fact_check_g0_plausibility",
@@ -617,6 +632,12 @@ def _run_plausibility_check(
         if gate_result.get("passed") is False:
             _enrich_failing_checks_with_issue_details([check], result.structured_issues)
             gate_result["error"] = _build_failure_reason([check])
+            return _finalize_failure(
+                gate_result,
+                gate_context or {},
+                rewrite_allowed=rewrite_allowed,
+                structured_issues=result.structured_issues,
+            )
         return gate_result
 
     except Exception:
@@ -821,7 +842,13 @@ class G0FactCheck(BaseGate):
         if not source_data:
             if enable_llm:
                 topic: str = gate_context.get("topic", "")
-                plausibility_result = _run_plausibility_check(content, topic, platform=platform)
+                plausibility_result = _run_plausibility_check(
+                    content,
+                    topic,
+                    platform=platform,
+                    gate_context=gate_context,
+                    rewrite_allowed=enable_llm,
+                )
                 if plausibility_result is not None:
                     return plausibility_result
 

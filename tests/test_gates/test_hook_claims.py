@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -271,15 +270,24 @@ def _plausibility_context(content: str) -> dict[str, Any]:
     }
 
 
-def test_plausibility_rejects_guarantee_hooks_without_llm() -> None:
-    """A pure guarantee-style hook fails deterministically — no LLM call."""
+def test_plausibility_rejects_guarantee_hooks_without_judge() -> None:
+    """A pure guarantee-style hook fails deterministically — the judge never
+    sees it; the one-shot rewrite IS attempted so the engine's retry can
+    re-judge fixed text instead of re-judging the same failure."""
     from automedia.gates.fact_check import G0FactCheck
+    from automedia.gates.llm_helpers import G0RewriteResult
     from tests.mock_llm import mock_llm_response
 
+    rewrite = G0RewriteResult(
+        rewritten_content=(
+            "# 三步走下来，周报会顺很多\n\n很多人写周报没章法。\n\n写完记得对照检查一遍。"
+        ),
+        notes=["hedged the CTA"],
+    )
     ctx = _plausibility_context(GUARANTEE_CONTENT)
-    with mock_llm_response(MagicMock()) as mock_call:
+    with mock_llm_response(rewrite) as mock_call:
         result = G0FactCheck().execute(ctx)
-    mock_call.assert_not_called()
+    assert mock_call.call_count == 1  # only the rewrite — no judge round-trip
     assert result["gate"] == "G0"
     assert result["passed"] is False
     assert result["method"] == "deterministic"
@@ -288,6 +296,22 @@ def test_plausibility_rejects_guarantee_hooks_without_llm() -> None:
     assert "outcome-promise token(s) in hook area" in check["detail"]
     assert "满分" in check["detail"]
     assert result["error"]
+    assert result["modified_content"].startswith("# 三步走下来")
+
+
+def test_plausibility_rewrite_attempted_once_per_run() -> None:
+    """The rewrite flag is set before the call — a failed rewrite can never
+    produce a second attempt."""
+    from automedia.gates.fact_check import G0FactCheck
+    from automedia.gates.llm_helpers import G0RewriteResult
+    from tests.mock_llm import mock_llm_response
+
+    rewrite = G0RewriteResult(rewritten_content="改写后的内容", notes=[])
+    ctx = _plausibility_context(GUARANTEE_CONTENT)
+    with mock_llm_response(rewrite) as mock_call:
+        G0FactCheck().execute(ctx)
+        assert ctx["_g0_rewrite_attempted"] is True
+    assert mock_call.call_count == 1
 
 
 def test_plausibility_passes_hedged_content_to_the_judge() -> None:
