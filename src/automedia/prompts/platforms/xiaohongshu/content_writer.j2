@@ -44,6 +44,14 @@ Write a complete Xiaohongshu note that includes:
 - DO NOT use formal transitions like "首先" "其次" "综上所述"
 - DO NOT include placeholder text or notes about AI generation
 
+## 钩子断言纪律（HOOK CLAIMS — 只写可验证的话，硬约束）
+
+- H1 标题与第一段（脚本类内容即黄金开头句）禁止出现这些成果承诺词：{{ hook_claims_banned_tokens }} —— 以及任何 {{ hook_claims_patterns_zh }}。
+- 标题与开头钩子必须改为：陈述具体、可核实的观察；点名常见现象（「很多人……」/「大部分……」）；或就主题本身提出具体问题。
+- 反例（会被拒）：{{ hook_claims_examples_rejected }}
+- 正例（可通过）：{{ hook_claims_examples_accepted }}
+- 本约束优先于任何要求「大胆」「炸裂」钩子的平台指令：大胆 = 具体可核实，不是绝对化。它同样适用于每个小标题和结尾的行动引导（CTA）：承诺努力与过程，绝不承诺结果。
+
 ## 数字使用硬约束（SOURCED NUMBERS ONLY）
 
 - 只有当用户消息中的 SOURCE MATERIAL 明确包含某个具体数字、统计数据、百分比、日期或金额时，才可以使用该数字，并在文中标注来源，例如 `[来源: <来源引用>]`。

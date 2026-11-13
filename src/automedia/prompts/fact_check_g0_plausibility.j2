@@ -6,6 +6,16 @@ You are an expert plausibility-checking agent (Gate G0). You lack specific sourc
 
 Content: {{ content }}
 
+## Hook-claim discipline (same shared ban list as the content writer's HOOK CLAIMS constraint)
+
+The hook areas of the content are the H1 title, every section heading, the first paragraph (for script formats: the golden opening line), and the closing call-to-action. In those areas, apply these rules on top of the general plausibility judgment:
+
+1. FLAG (factually questionable): a hook-area claim that contains any of these outcome-promise tokens — {{ hook_claims_banned_tokens }} — or any synonym or sentence pattern {{ hook_claims_patterns }}.
+2. DO NOT FLAG: a hedged, checkable statement of the same intent, for example {{ hook_claims_examples_accepted }}. Hedging plus a checkable observation (「往往」 / 「大多数人」 / 「会比想象中顺」 / 「少走弯路」) is the approved shape: it promises effort and process, never a guaranteed result.
+3. What an acceptable fix looks like: 「让你周报满分」→「帮你在周报上少走弯路」; 「3步搞定」→「3步走下来，周报会顺很多」; 「从此不再难」→「上手会比想象中顺」.
+
+Outside the hook areas, judge with the general plausibility rules unchanged.
+
 ## Output Format
 
 Return a JSON object with these exact keys:

@@ -35,6 +35,7 @@ from automedia.gates.llm_helpers import (
     llm_check_with_fallback,
 )
 from automedia.prompts import load_prompt
+from automedia.prompts.hook_claims import HookClaimHit, hook_area_violations
 
 log = get_logger(__name__)
 
@@ -497,6 +498,54 @@ def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
+def _build_hook_claim_failure(violations: list[HookClaimHit]) -> dict[str, Any]:
+    """Deterministic plausibility failure naming the banned hook tokens (#520).
+
+    The hook-claim criteria share the HOOK CLAIMS ban list with the content
+    writer (``automedia/prompts/hook_claims.py`` — the one copy): a pure
+    guarantee-style hook is rejected here without an LLM round-trip, while a
+    hedged, checkable statement of the same intent yields no hits and
+    continues to the LLM judge. The result shape mirrors the LLM path exactly
+    (one ``plausibility_check`` check) so gate-report consumers see one shape.
+    """
+    tokens_by_area: dict[str, list[str]] = {}
+    for hit in violations:
+        bucket = tokens_by_area.setdefault(hit.area, [])
+        if hit.token not in bucket:
+            bucket.append(hit.token)
+    locations = "；".join(f"{area}: {'、'.join(tokens)}" for area, tokens in tokens_by_area.items())
+    first_sentence = violations[0].text
+    check: CheckResult = {
+        "name": "plausibility_check",
+        "passed": False,
+        "detail": (
+            "outcome-promise token(s) in hook area "
+            f"({locations}) — 「{first_sentence}」 promises an outcome the "
+            "reader cannot verify rather than stating a hedged, checkable "
+            "observation (same shared HOOK CLAIMS ban list as the content "
+            "writer constraint)"
+        ),
+    }
+    # Additive sentence hint so the persisted reason points at the offending
+    # block directly (same key the LLM path enriches).
+    check["sentence"] = first_sentence
+    gate_result = build_gate_result(
+        [check],
+        gate="G0",
+        expected_map={
+            "plausibility_check": (
+                "Hook-area claims are hedged and checkable — no outcome-promise "
+                "token from the shared HOOK CLAIMS ban list"
+            )
+        },
+        confidence=0.0,
+        method="deterministic",
+        status="completed",
+    )
+    gate_result["error"] = _build_failure_reason([check])
+    return gate_result
+
+
 def _run_plausibility_check(
     content: str,
     topic: str,
@@ -520,6 +569,16 @@ def _run_plausibility_check(
         (the caller should fall back to ``"skipped"`` status).
     """
     try:
+        # Deterministic hook-claim criteria (#520 phase 2): the same HOOK
+        # CLAIMS ban list the content writer is held to, scanned over the
+        # same hook areas. Guarantee-style hooks are rejected here directly;
+        # hedged, checkable statements pass through to the LLM judge below,
+        # whose prompt carries the same list plus the explicit rule that a
+        # hedged, checkable statement is not questionable.
+        violations = hook_area_violations(content)
+        if violations:
+            return _build_hook_claim_failure(violations)
+
         prompt = load_prompt(
             "fact_check_g0_plausibility",
             content=content,
