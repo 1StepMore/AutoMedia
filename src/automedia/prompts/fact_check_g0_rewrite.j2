@@ -14,7 +14,8 @@ You are a surgical copy editor (Gate G0). The fact-check gate found the issues l
 2. When the issue is an unsourced or contradicted number, remove the number or replace it with qualitative wording (for example 「点击率高 30%」 becomes 「点击率表现良好」).
 3. Introduce NO new numbers, statistics, dates, percentages, or monetary figures.
 4. Introduce NO new claims. Do not add analysis, opinions, or filler.
-5. Preserve the original language, tone, and formatting.
+5. When the issue is an unverifiable absolutism, hunt down every outcome-promise token ({{ hook_claims_banned_tokens }}) in the flagged sentence and its heading, and replace each with a hedged, checkable statement of the same intent (「让你周报满分」 becomes 「帮你在周报上少走弯路」; 「3步搞定」 becomes 「3步走下来，周报会顺很多」; 「从此不再难」 becomes 「上手会比想象中顺」). This token list is the single shared HOOK CLAIMS ban list (src/automedia/prompts/hook_claims.py) — the same copy the content writer and the G0 plausibility criteria render from. A rewrite that still contains any of these tokens in the flagged sentence is NOT a fix.
+6. Preserve the original language, tone, and formatting.
 
 ## Output Format
 
