@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.17.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.2...automedia-v1.17.3) (2026-11-14)
+
+
+### Bug Fixes
+
+* **g0:** share the HOOK CLAIMS ban list and add deterministic hedged criteria ([#520](https://github.com/1StepMore/AutoMedia/issues/520)) ([#528](https://github.com/1StepMore/AutoMedia/issues/528)) ([310a1a2](https://github.com/1StepMore/AutoMedia/commit/310a1a2151659f19fbe79157b9d93280ad5d108c))
+* **llm:** add the thinking-disable pathway via extra_body ([#525](https://github.com/1StepMore/AutoMedia/issues/525)) ([#527](https://github.com/1StepMore/AutoMedia/issues/527)) ([368d1da](https://github.com/1StepMore/AutoMedia/commit/368d1da4f006c4043f9a8c7fedf1891377f06e7d))
+
+
+### Dependencies
+
+* **deps:** bump opentelemetry-api from 1.45.1 to 1.45.2 ([#529](https://github.com/1StepMore/AutoMedia/issues/529)) ([b2859e2](https://github.com/1StepMore/AutoMedia/commit/b2859e2459082489d31206960ba22948d7fb2788))
+* **deps:** bump soupsieve from 2.9 to 4.0 ([#526](https://github.com/1StepMore/AutoMedia/issues/526)) ([2532ded](https://github.com/1StepMore/AutoMedia/commit/2532ded4ee56c873b9a17bfb0216b48b7039de85))
+
 ## [1.17.2](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.1...automedia-v1.17.2) (2026-11-13)
 
 
