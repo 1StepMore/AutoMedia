@@ -1,6 +1,6 @@
 # AutoMedia — Agent Codebase Context
 
-First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below.
+First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below. · docs/dev/harness-run-facts.md — 运行环境 / 门禁顺序 / 缺 key 症状 / 已知坑
 
 ## 0. Agent Governance: Safety, Priority, Role Routing
 
