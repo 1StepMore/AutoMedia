@@ -5,7 +5,7 @@
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
 | AGENTS.md | 12437 | file |
-| README.md | 34592 | file |
+| README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |

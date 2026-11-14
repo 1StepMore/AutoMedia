@@ -710,6 +710,17 @@ make doctor         # Check system dependencies
 make clean          # Clean build artifacts
 ```
 
+All Python-driven targets pass through an interpreter guard first: if the
+selected interpreter cannot import the automedia package, the target aborts
+with exit 2 and a clear message instead of a bare "No module named automedia"
+coming from whatever python interpreter is first on PATH. Point make at the
+repo venv explicitly when the venv is not on PATH:
+
+```bash
+make doctor PYTHON=.venv_win/Scripts/python.exe   # Windows native
+make doctor PYTHON=.venv/bin/python               # WSL / Linux
+```
+
 ### Scripts
 
 | Script | Purpose |

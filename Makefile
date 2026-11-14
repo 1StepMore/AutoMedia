@@ -1,7 +1,14 @@
 .PHONY: install install-dev install-mcp test test-coverage test-e2e \
         lint lint-fix typecheck mcp clean workspace-clean pre-commit doctor
 
-PYTHON ?= python3
+# Interpreter for every recipe.  Override it explicitly when the repo venv is
+# not the first `python` on PATH, e.g. on Windows native:
+#     make doctor PYTHON=.venv_win/Scripts/python.exe
+# on WSL / Linux:
+#     make doctor PYTHON=.venv/bin/python
+# The default stays a bare name so CI and activated-venv shells keep working;
+# `python3` is often a Microsoft Store stub on Windows, hence `python` (#536).
+PYTHON ?= python
 
 # =============================================================================
 # AutoMedia — Development Makefile
@@ -9,43 +16,60 @@ PYTHON ?= python3
 # Targets mirror CI workflow (.github/workflows/ci.yml) and pre-commit hooks
 # (.pre-commit-config.yaml).  Run `make <target>` from the repo root.
 
+# ---- Interpreter guard (issue #536) -----------------------------------------
+# Inlined as the first recipe line of every python-driven target: fails fast
+# with exit 2 and a clear message when $(PYTHON) cannot import automedia,
+# instead of letting the real target die with a bare "No module named
+# automedia" from whatever interpreter happens to be first on PATH.
+# Deliberately NOT a prerequisite target: tests/test_e2e_collection_guard.py
+# pins `test-e2e:` to a bare target line followed by tab recipe lines, so the
+# guard must live inside the recipe.  Install targets intentionally get no
+# guard — on a fresh clone automedia is not importable yet.
+define PY_GUARD
+@$(PYTHON) -c "import automedia" 2>/dev/null || ( echo "ERROR: interpreter '$(PYTHON)' cannot import automedia - wrong interpreter on PATH. Activate the repo venv first, or pass it explicitly: make doctor PYTHON=.venv_win/Scripts/python.exe (Windows native) | PYTHON=.venv/bin/python (WSL/Linux)"; exit 2 )
+endef
+
 # ---- Installation ----------------------------------------------------------
 
 install:
-	pip install -e .
+	$(PYTHON) -m pip install -e .
 
 install-dev:
-	pip install -e ".[dev]"
+	$(PYTHON) -m pip install -e ".[dev]"
 
 install-mcp:
-	pip install -e ".[mcp]"
+	$(PYTHON) -m pip install -e ".[mcp]"
 
 # ---- Testing ---------------------------------------------------------------
 
 test:
-	python -m pytest -q --tb=short
+	$(PY_GUARD)
+	$(PYTHON) -m pytest -q --tb=short
 
 test-coverage:
-	python -m pytest --cov=src/automedia
+	$(PY_GUARD)
+	$(PYTHON) -m pytest --cov=src/automedia
 
 test-e2e:
+	$(PY_GUARD)
 	$(PYTHON) -m pytest tests/test_e2e/ -v -o addopts=""
 
 # ---- Code Quality ----------------------------------------------------------
 
 lint:
-	ruff check .
+	$(PYTHON) -m ruff check .
 
 lint-fix:
-	ruff check . --fix
+	$(PYTHON) -m ruff check . --fix
 
 typecheck:
-	mypy src/automedia/ --ignore-missing-imports
+	$(PYTHON) -m mypy src/automedia/ --ignore-missing-imports
 
 # ---- MCP Server ------------------------------------------------------------
 
 mcp:
-	python -m automedia.mcp.server
+	$(PY_GUARD)
+	$(PYTHON) -m automedia.mcp.server
 
 # ---- Utilities -------------------------------------------------------------
 
@@ -64,7 +88,8 @@ ifneq ($(CLEAN),)
 endif
 
 pre-commit:
-	pre-commit run --all-files
+	$(PYTHON) -m pre_commit run --all-files
 
 doctor:
-	python -m automedia doctor
+	$(PY_GUARD)
+	$(PYTHON) -m automedia doctor
