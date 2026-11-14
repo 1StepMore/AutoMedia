@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.3...automedia-v1.17.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **make:** guard python targets against a wrong interpreter ([#536](https://github.com/1StepMore/AutoMedia/issues/536)) ([#538](https://github.com/1StepMore/AutoMedia/issues/538)) ([e7faaf0](https://github.com/1StepMore/AutoMedia/commit/e7faaf0d1d3c0fbf41426456c073538c73ee2fd0))
+
 ## [1.17.3](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.2...automedia-v1.17.3) (2026-11-14)
 
 
