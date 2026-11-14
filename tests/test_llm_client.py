@@ -1396,3 +1396,262 @@ class TestBuildClientNamesEmptyProvider:
         with _patch_openai_module(), pytest.raises(LLMError) as excinfo:
             _build_client(config)
         assert "No API key for provider 'glm'" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Thinking-disable pathway (#525)
+# ---------------------------------------------------------------------------
+
+
+class TestThinkingDisableBody:
+    """thinking_disable_body() resolves the shape in exactly one place."""
+
+    def test_default_shape_for_unmapped_gateway(self) -> None:
+        """Unmapped host/provider keeps the historical anthropic-style shape."""
+        from automedia.core.llm_client import (
+            DEFAULT_THINKING_SHAPE,
+            THINKING_DISABLE_BODIES,
+            thinking_disable_body,
+        )
+
+        body = thinking_disable_body("openai", "https://api.deepseek.com/v1")
+        assert body == THINKING_DISABLE_BODIES[DEFAULT_THINKING_SHAPE]
+        assert body == {"thinking": {"type": "disabled"}}
+
+    def test_host_map_beats_provider_map(self) -> None:
+        """A mapped base_url host wins over the provider declaration."""
+        from automedia.core.llm_client import thinking_disable_body
+
+        body = thinking_disable_body("openai", "https://developer.amd.com.cn/radeon/api/v1")
+        assert body == {"chat_template_kwargs": {"enable_thinking": False}}
+        body2 = thinking_disable_body("vllm", "https://Developer.AMD.com.cn:443/v1")
+        assert body2["chat_template_kwargs"] == {"enable_thinking": False}
+
+    def test_provider_map_covers_chat_template_gateways(self) -> None:
+        """vLLM / SGLang / iFlytek Spark style providers get the wrapper shape."""
+        from automedia.core.llm_client import thinking_disable_body
+
+        expected = {"chat_template_kwargs": {"enable_thinking": False}}
+        for provider in ("vllm", "sglang", "spark", "xfyun", "xf-yun", "iflytek", "VLLM"):
+            assert thinking_disable_body(provider, "https://gateway.example/v1") == expected
+
+    def test_none_and_empty_inputs_fall_back_to_default(self) -> None:
+        from automedia.core.llm_client import thinking_disable_body
+
+        assert thinking_disable_body(None, None) == {"thinking": {"type": "disabled"}}
+        assert thinking_disable_body("", "") == {"thinking": {"type": "disabled"}}
+
+    def test_registry_not_mutated_by_callers(self) -> None:
+        """The returned body is a deep copy — mutating it cannot leak."""
+        from automedia.core.llm_client import THINKING_DISABLE_BODIES, thinking_disable_body
+
+        body = thinking_disable_body("openai", "https://api.deepseek.com/v1")
+        body["thinking"]["type"] = "enabled"
+        assert THINKING_DISABLE_BODIES["anthropic"] == {"thinking": {"type": "disabled"}}
+        again = thinking_disable_body("openai", "https://api.deepseek.com/v1")
+        assert again["thinking"]["type"] == "disabled"
+
+
+class TestResolveExtraBody:
+    """resolve_extra_body() turns one provider spec into the request body."""
+
+    def test_reasoning_model_true_sends_disable_body(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        spec = {
+            "provider": "openai",
+            "base_url": "https://api.deepseek.com/v1",
+            "reasoning_model": True,
+        }
+        assert resolve_extra_body(spec) == {"thinking": {"type": "disabled"}}
+
+    def test_reasoning_model_true_with_chat_template_provider(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        spec = {"provider": "spark", "base_url": "https://maas.example/v1", "reasoning_model": True}
+        assert resolve_extra_body(spec) == {"chat_template_kwargs": {"enable_thinking": False}}
+
+    def test_reasoning_model_false_sends_nothing(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        assert resolve_extra_body({"provider": "openai", "reasoning_model": False}) is None
+
+    def test_absent_flag_sends_nothing(self) -> None:
+        """No reasoning_model key — request stays byte-identical (pre-#525)."""
+        from automedia.core.llm_client import resolve_extra_body
+
+        assert resolve_extra_body({"provider": "openai", "model": "m"}) is None
+
+    def test_explicit_extra_body_wins_verbatim(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        explicit = {"chat_template_kwargs": {"enable_thinking": False, "top_p": 0.9}}
+        spec = {"provider": "openai", "reasoning_model": True, "extra_body": explicit}
+        assert resolve_extra_body(spec) == explicit
+
+    def test_explicit_empty_extra_body_treated_as_absent(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        assert resolve_extra_body({"extra_body": {}}) is None
+
+    def test_non_dict_spec_sends_nothing(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        assert resolve_extra_body(None) is None
+
+    def test_explicit_body_is_deep_copied(self) -> None:
+        from automedia.core.llm_client import resolve_extra_body
+
+        explicit: dict[str, Any] = {"thinking": {"type": "disabled"}}
+        spec: dict[str, Any] = {"extra_body": explicit}
+        resolved = resolve_extra_body(spec)
+        assert resolved is not None
+        resolved["thinking"]["type"] = "enabled"
+        assert explicit["thinking"]["type"] == "disabled"
+
+
+class TestExtraBodyPassthrough:
+    """The retry wrappers and public APIs carry extra_body end to end."""
+
+    def test_chat_wrapper_includes_extra_body(self, mock_client: MagicMock) -> None:
+        from automedia.core.llm_client import _llm_chat_completion_with_retry
+
+        mock_client.chat.completions.create.return_value = _make_mock_response()
+        _llm_chat_completion_with_retry(
+            mock_client,
+            model="m",
+            messages=[{"role": "user", "content": "hi"}],
+            temperature=0.5,
+            max_tokens=64,
+            extra_body={"thinking": {"type": "disabled"}},
+        )
+        kwargs = mock_client.chat.completions.create.call_args[1]
+        assert kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+
+    def test_chat_wrapper_omits_extra_body_when_none(self, mock_client: MagicMock) -> None:
+        from automedia.core.llm_client import _llm_chat_completion_with_retry
+
+        mock_client.chat.completions.create.return_value = _make_mock_response()
+        _llm_chat_completion_with_retry(
+            mock_client,
+            model="m",
+            messages=[{"role": "user", "content": "hi"}],
+            temperature=0.5,
+            max_tokens=64,
+        )
+        kwargs = mock_client.chat.completions.create.call_args[1]
+        assert "extra_body" not in kwargs
+
+    def test_structured_wrapper_includes_extra_body(self, mock_parsed_client: MagicMock) -> None:
+        from automedia.core.llm_client import _llm_structured_completion_with_retry
+
+        mock_parsed_client.beta.chat.completions.parse.return_value = _make_mock_response()
+
+        class _Schema(BaseModel):
+            value: str = "x"
+
+        _llm_structured_completion_with_retry(
+            mock_parsed_client,
+            model="m",
+            messages=[{"role": "user", "content": "hi"}],
+            response_format=_Schema,
+            temperature=0.5,
+            max_tokens=64,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+        )
+        kwargs = mock_parsed_client.beta.chat.completions.parse.call_args[1]
+        assert kwargs["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}}
+
+    def test_structured_wrapper_omits_extra_body_when_none(
+        self, mock_parsed_client: MagicMock
+    ) -> None:
+        from automedia.core.llm_client import _llm_structured_completion_with_retry
+
+        mock_parsed_client.beta.chat.completions.parse.return_value = _make_mock_response()
+
+        class _Schema(BaseModel):
+            value: str = "x"
+
+        _llm_structured_completion_with_retry(
+            mock_parsed_client,
+            model="m",
+            messages=[{"role": "user", "content": "hi"}],
+            response_format=_Schema,
+            temperature=0.5,
+            max_tokens=64,
+        )
+        kwargs = mock_parsed_client.beta.chat.completions.parse.call_args[1]
+        assert "extra_body" not in kwargs
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_llm_complete_resolves_extra_body_from_spec(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+        mock_response: MagicMock,
+    ) -> None:
+        """reasoning_model: true in the spec reaches the chat wrapper."""
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = mock_response
+        config = _make_llm_config()
+        config["llm"]["text_generation"]["reasoning_model"] = True
+        llm_complete("Hello", config=config)
+        assert mock_retry.call_args[1]["extra_body"] == {"thinking": {"type": "disabled"}}
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_llm_complete_without_flag_keeps_request_unchanged(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+        mock_response: MagicMock,
+    ) -> None:
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = mock_response
+        llm_complete("Hello", config=_make_llm_config())
+        assert mock_retry.call_args[1]["extra_body"] is None
+
+    @patch("automedia.core.llm_client._llm_structured_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_llm_complete_structured_resolves_extra_body_from_spec(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+        mock_parsed_response: MagicMock,
+    ) -> None:
+        mock_build.return_value = MagicMock()
+        parsed_instance = _make_mock_response()
+
+        class _Schema(BaseModel):
+            value: str = "x"
+
+        parsed_instance.choices[0].message.parsed = _Schema()
+        mock_retry.return_value = parsed_instance
+        config = _make_llm_config()
+        config["llm"]["text_generation"]["reasoning_model"] = True
+        config["llm"]["text_generation"]["base_url"] = "https://gateway.spark.example/v1"
+        config["llm"]["text_generation"]["provider"] = "spark"
+        llm_complete_structured("Hello", config=config, response_format=_Schema)
+        assert mock_retry.call_args[1]["extra_body"] == {
+            "chat_template_kwargs": {"enable_thinking": False}
+        }
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_fallback_chain_inherits_reasoning_model(
+        self,
+        mock_build: MagicMock,
+        mock_retry: MagicMock,
+        mock_response: MagicMock,
+    ) -> None:
+        """A fallback entry without its own flag inherits the primary's body."""
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = mock_response
+        config = _make_llm_config()
+        config["llm"]["text_generation"]["reasoning_model"] = True
+        config["llm"]["text_generation"]["fallback"] = [
+            {"provider": "test-provider", "model": "backup-model"}
+        ]
+        llm_complete("Hello", config=config)
+        assert mock_retry.call_args[1]["extra_body"] == {"thinking": {"type": "disabled"}}
