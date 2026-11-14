@@ -117,9 +117,17 @@ class MockVLMClient:
 class OpenAICompatVLMClient:
     """Real backend: OpenAI-compatible vision chat (e.g. GLM-4V, qwen-vl)."""
 
-    def __init__(self, client: Any, model: str) -> None:  # noqa: ANN401 — any OpenAI-compatible SDK client
+    def __init__(
+        self,
+        client: Any,  # noqa: ANN401 — any OpenAI-compatible SDK client
+        model: str,
+        extra_body: dict[str, Any] | None = None,
+    ) -> None:
         self._client = client
         self._model = model
+        # Thinking-disable pathway (#525): resolved once via the shared
+        # resolver, never a per-site literal.
+        self._extra_body = extra_body
 
     @staticmethod
     def _data_url(image_path: str) -> str:
@@ -128,10 +136,10 @@ class OpenAICompatVLMClient:
         return f"data:image/jpeg;base64,{encoded}"
 
     def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
-        response = self._client.chat.completions.create(
-            model=self._model,
-            temperature=0.0,
-            messages=[
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "temperature": 0.0,
+            "messages": [
                 {"role": "system", "content": _JUDGE_SYSTEM_PROMPT},
                 {
                     "role": "user",
@@ -147,7 +155,10 @@ class OpenAICompatVLMClient:
                     ],
                 },
             ],
-        )
+        }
+        if self._extra_body is not None:
+            kwargs["extra_body"] = self._extra_body
+        response = self._client.chat.completions.create(**kwargs)
         raw = (response.choices[0].message.content or "").strip()
         parsed = _parse_verdict_json(raw)
         if parsed is None:
@@ -168,7 +179,7 @@ def create_vlm_client(config: dict[str, Any] | None = None) -> VLMClient | None:
     """
     try:
         from automedia.core.config_loader import load_config
-        from automedia.core.llm_client import _build_client
+        from automedia.core.llm_client import _build_client, resolve_extra_body
 
         cfg = config or load_config()
         vision_cfg = cfg.get("llm", {}).get("vision", {})
@@ -176,7 +187,11 @@ def create_vlm_client(config: dict[str, Any] | None = None) -> VLMClient | None:
         if not model:
             return None
         client = _build_client(cfg, task_type="vision")
-        return OpenAICompatVLMClient(client, model)
+        return OpenAICompatVLMClient(
+            client,
+            model,
+            extra_body=resolve_extra_body(vision_cfg if isinstance(vision_cfg, dict) else None),
+        )
     except Exception as exc:  # no key, no provider, bad config — all "no channel"
         log.info("vlm_client.unavailable", error=str(exc))
         return None
