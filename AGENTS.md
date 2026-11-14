@@ -137,3 +137,18 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 - **User-facing skills:** `docs/skills/` — `brand-strategy`, `pipeline-workflow`, `batch-workflow`, `distribution-workflow`
 
 For troubleshooting common issues, see [Agent Troubleshooting Guide](docs/dev/agent-troubleshooting.md).
+
+## 运行环境与门禁速查（harness 用 · 2026-11-14 核对）
+
+| 项 | 内容 |
+|:--|:--|
+| 解释器 | Windows 原生 `.venv_win\Scripts\python.exe`（Python 3.12）；WSL 侧 `.venv/bin/python`。**两者都在 `.gitignore` 里，不要删对方的目录**（删了对方平台就废） |
+| 安装 | `make install-dev`（或 `.venv/Scripts/pip install -e ".[dev]"`） |
+| 必需密钥 | `AUTOMEDIA_LLM_API_KEY`。`.env` **只认 `~/.automedia/.env` 或 `$AUTOMEDIA_DOTENV_PATH`**；仓库根 `.env` 不读 |
+| 缺 key 症状 | `automedia doctor` 的 `llm_api` 项红（该探针**真发一次请求**，不是静态检查） |
+| DoD 顺序 | `make lint`（ruff）→ `make typecheck`（mypy）→ `make test` →（依赖或环境变更时）`make doctor` |
+| 已知坑 | `Makefile` 的 target 用**裸 `python`**（#536 在跟）⇒ 先确认 `python -c "import automedia"` 能过，否则 `make doctor` 会报假的 `No module named automedia`；`.scratch/` 与 `.venv_win/` 已在 `.gitignore` |
+| 无 key 时 | live e2e 跑不了 ⇒ 报告里必须写"未跑"，**不能写"通过"**；允许用"提交对齐 + main 零漂移"作为替代证据，但要显式标注 |
+| 队列 | `gh issue list -l agent-ready --state open` |
+
+> 本块是**本仓运行事实的唯一真身**（Owner 侧的通用执行提示词不写具体仓信息）。通用规则（边界 / 权限 / 合并判定）见 Owner 侧提示词，不入库。
