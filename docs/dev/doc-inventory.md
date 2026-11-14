@@ -24,7 +24,7 @@
 | docs/dev/DEBT.md | 603 | file |
 | docs/dev/adapter-credentials-matrix.md | 4425 | file |
 | docs/dev/agent-era-doc-architecture.md | 18625 | file |
-| docs/dev/agent-reference.md | 25318 | file |
+| docs/dev/agent-reference.md | 26267 | file |
 | docs/dev/agent-troubleshooting.md | 29007 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
@@ -461,6 +462,118 @@ def _should_try_next_provider(exc: BaseException) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Thinking-disable request body (issue #525) — single source of truth
+# ---------------------------------------------------------------------------
+#
+# "Disable thinking" is not a standardized OpenAI parameter: every gateway
+# spells it differently, and an unrecognized body parameter is either a hard
+# 400 or a silent no-op that keeps burning the shared ``max_tokens`` budget
+# on hidden reasoning (reasoning and content compete for the same budget —
+# symptom: empty output or truncation, not an error).  Two conventions are in
+# the wild:
+#
+#   ``anthropic``     ``{"thinking": {"type": "disabled"}}`` — DeepSeek-style
+#                     relays and GLM (bigmodel.cn) gateways.  Historical
+#                     default shape.
+#   ``chat_template`` ``{"chat_template_kwargs": {"enable_thinking": False}}``
+#                     — iFlytek Spark MAAS / vLLM / SGLang gateways.  These
+#                     accept a bare ``{"enable_thinking": False}`` but IGNORE
+#                     it; only the ``chat_template_kwargs`` wrapper lands.
+#
+# The shape is resolved in exactly ONE place (:func:`thinking_disable_body`),
+# reached from :func:`resolve_extra_body` — no call site writes the literal.
+# Resolution order is base_url host → provider → documented default, mirroring
+# AutoInfo ``llm.py``'s ``thinking_disable_body()``; an unmapped gateway keeps
+# today's byte-identical request so no existing deployment regresses.
+
+THINKING_SHAPE_ANTHROPIC = "anthropic"
+THINKING_SHAPE_CHAT_TEMPLATE = "chat_template"
+
+# The only place the disable parameter is spelled out, per shape id.
+THINKING_DISABLE_BODIES: dict[str, dict[str, Any]] = {
+    THINKING_SHAPE_ANTHROPIC: {"thinking": {"type": "disabled"}},
+    THINKING_SHAPE_CHAT_TEMPLATE: {"chat_template_kwargs": {"enable_thinking": False}},
+}
+
+# Documented default: the historical shape every unmapped gateway keeps.
+DEFAULT_THINKING_SHAPE = THINKING_SHAPE_ANTHROPIC
+
+# Gateways that need the chat-template shape, keyed by base_url host
+# (lower-cased, scheme/credentials/port/path stripped).
+_THINKING_SHAPE_BY_GATEWAY_HOST: dict[str, str] = {
+    "developer.amd.com.cn": THINKING_SHAPE_CHAT_TEMPLATE,
+}
+
+# Providers that front chat-template gateways under their own name rather
+# than under ``provider: openai``.  Consulted only after the host map, which
+# is the stronger signal (the same provider string can front both
+# conventions).
+_THINKING_SHAPE_BY_PROVIDER: dict[str, str] = {
+    "amd": THINKING_SHAPE_CHAT_TEMPLATE,
+    "iflytek": THINKING_SHAPE_CHAT_TEMPLATE,
+    "spark": THINKING_SHAPE_CHAT_TEMPLATE,
+    "sglang": THINKING_SHAPE_CHAT_TEMPLATE,
+    "vllm": THINKING_SHAPE_CHAT_TEMPLATE,
+    "xfyun": THINKING_SHAPE_CHAT_TEMPLATE,
+    "xf-yun": THINKING_SHAPE_CHAT_TEMPLATE,
+}
+
+
+def _gateway_host(base_url: str) -> str:
+    """Return the lower-cased host of *base_url*.
+
+    Scheme, credentials, port and path are stripped, so
+    ``https://user@Spark-API.XF-Yun.com:443/v1`` yields ``xf-yun.com``.
+    Returns ``""`` when *base_url* carries no host.
+    """
+    after_scheme = base_url.strip().partition("://")[2]
+    host_and_port = after_scheme.partition("/")[0]
+    host = host_and_port.rpartition("@")[2]
+    return host.partition(":")[0].lower()
+
+
+def thinking_disable_body(provider: str | None, base_url: str | None) -> dict[str, Any]:
+    """Return the ``extra_body`` that disables thinking on this gateway.
+
+    Resolution order — ``base_url`` host, then *provider*, then
+    :data:`DEFAULT_THINKING_SHAPE`.  The body is deep-copied so no caller can
+    mutate the shared registry and leak a changed shape into a later request.
+    """
+    shape = (
+        _THINKING_SHAPE_BY_GATEWAY_HOST.get(_gateway_host(base_url or ""))
+        or _THINKING_SHAPE_BY_PROVIDER.get((provider or "").strip().lower())
+        or DEFAULT_THINKING_SHAPE
+    )
+    return deepcopy(THINKING_DISABLE_BODIES[shape])
+
+
+def resolve_extra_body(spec: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Resolve the ``extra_body`` for one provider spec.
+
+    Priority:
+
+    1. An explicit non-empty ``extra_body`` mapping in the spec is used
+       verbatim (deep-copied) — the user owns the exact body.
+    2. ``reasoning_model: true`` marks a reasoning-mode model whose thinking
+       must be disabled; the body comes from :func:`thinking_disable_body`
+       keyed on the spec's provider/base_url.
+    3. Otherwise ``None`` — the request stays byte-identical to the
+       pre-#525 behavior.
+    """
+    if not isinstance(spec, dict):
+        return None
+    explicit = spec.get("extra_body")
+    if isinstance(explicit, dict) and explicit:
+        return deepcopy(explicit)
+    if spec.get("reasoning_model") is True:
+        return thinking_disable_body(
+            str(spec.get("provider") or ""),
+            str(spec.get("base_url") or ""),
+        )
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Retryable wrappers (private)
 # ---------------------------------------------------------------------------
 
@@ -473,6 +586,7 @@ def _llm_chat_completion_with_retry(
     max_tokens: int,
     response_format: dict[str, str] | None = None,
     max_attempts: int = 3,
+    extra_body: dict[str, Any] | None = None,
 ) -> ChatCompletion:
     """Call ``client.chat.completions.create`` with exponential-backoff retry.
 
@@ -492,6 +606,11 @@ def _llm_chat_completion_with_retry(
         Total number of calls to ``create`` per provider, including the first.
         Callers that need a hard wall-clock bound (the bounded doctor probe)
         pass ``1`` so a hanging host cannot consume ``max_attempts`` timeouts.
+    extra_body:
+        Optional OpenAI ``extra_body`` mapping (native SDK parameter) merged
+        into the raw request — the thinking-disable pathway (#525) rides on
+        it.  ``None`` keeps the request byte-identical to the pre-#525
+        behavior.
     """
 
     @retry(
@@ -509,6 +628,8 @@ def _llm_chat_completion_with_retry(
         }
         if response_format is not None:
             kwargs["response_format"] = response_format
+        if extra_body is not None:
+            kwargs["extra_body"] = extra_body
         return client.chat.completions.create(**kwargs)
 
     response = _call()
@@ -532,6 +653,7 @@ def _llm_structured_completion_with_retry(
     response_format: type,
     temperature: float,
     max_tokens: int,
+    extra_body: dict[str, Any] | None = None,
 ) -> ParsedChatCompletion:
     """Call ``client.beta.chat.completions.parse`` with exponential-backoff retry.
 
@@ -540,6 +662,14 @@ def _llm_structured_completion_with_retry(
 
     Token usage from the response is automatically recorded in the
     thread-local :class:`_UsageTracker`.
+
+    Parameters
+    ----------
+    extra_body:
+        Optional OpenAI ``extra_body`` mapping (native SDK parameter) merged
+        into the raw request — the thinking-disable pathway (#525) rides on
+        it.  ``None`` keeps the request byte-identical to the pre-#525
+        behavior.
     """
 
     @retry(
@@ -549,13 +679,16 @@ def _llm_structured_completion_with_retry(
         reraise=True,
     )
     def _call() -> ParsedChatCompletion:
-        return client.beta.chat.completions.parse(
-            model=model,
-            messages=messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
-            response_format=response_format,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,  # type: ignore[arg-type]  # OpenAI expects ChatCompletionMessageParam, not list[dict[str, str]]
+            "response_format": response_format,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if extra_body is not None:
+            kwargs["extra_body"] = extra_body
+        return client.beta.chat.completions.parse(**kwargs)
 
     response = _call()
 
@@ -723,11 +856,13 @@ def _attempt_structured_repair(
     max_tokens: int,
     bad_text: str,
     error_detail: str,
+    extra_body: dict[str, Any] | None = None,
 ) -> str:
     """Make the single allowed repair call, returning the new raw text.
 
     The call uses the same provider spec (same client/model/temperature/
-    limits) as the original request — never a different provider tier.
+    limits/extra_body) as the original request — never a different provider
+    tier.
     """
     repair_messages = list(messages)
     repair_messages.append(
@@ -741,6 +876,7 @@ def _attempt_structured_repair(
             temperature=temperature,
             max_tokens=max_tokens,
             response_format={"type": "json_object"},
+            extra_body=extra_body,
         )
     except _FALLBACK_STRUCTURED_ERRORS:
         response = _llm_chat_completion_with_retry(
@@ -749,6 +885,7 @@ def _attempt_structured_repair(
             messages=repair_messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            extra_body=extra_body,
         )
     return response.choices[0].message.content or ""
 
@@ -762,6 +899,7 @@ def _parse_structured_with_repair(
     messages: list[dict[str, str]],  # type: ignore[type-arg]
     temperature: float,
     max_tokens: int,
+    extra_body: dict[str, Any] | None = None,
 ) -> _ModelT:
     """Parse *raw_text* tolerantly, with at most one repair call on failure."""
     instance, invalid_fields, error_detail = _tolerant_validate(response_format, raw_text)
@@ -789,6 +927,7 @@ def _parse_structured_with_repair(
         max_tokens=max_tokens,
         bad_text=raw_text,
         error_detail=error_detail or "unknown validation error",
+        extra_body=extra_body,
     )
     repaired_instance, repaired_invalid, repaired_detail = _tolerant_validate(
         response_format, repaired_text
@@ -898,6 +1037,10 @@ def _structured_completion_with_fallback(
             resolved_max: int = (
                 max_tokens if max_tokens is not None else spec.get("max_tokens", 4096)
             )
+            # Thinking-disable pathway (#525): resolved once per spec so the
+            # beta call, both manual-parse fallbacks and the repair call all
+            # carry the same body.
+            resolved_extra_body: dict[str, Any] | None = resolve_extra_body(spec)
 
             # Skip beta API entirely if the provider already proved it doesn't support it
             response: ChatCompletion | ParsedChatCompletion | None = None
@@ -911,6 +1054,7 @@ def _structured_completion_with_fallback(
                         response_format=response_format,
                         temperature=resolved_temp,
                         max_tokens=resolved_max,
+                        extra_body=resolved_extra_body,
                     )
                     try:
                         return cast(_ModelT, response.choices[0].message.parsed)
@@ -957,6 +1101,7 @@ def _structured_completion_with_fallback(
                         temperature=resolved_temp,
                         max_tokens=resolved_max,
                         response_format={"type": "json_object"},
+                        extra_body=resolved_extra_body,
                     )
                 except _FALLBACK_STRUCTURED_ERRORS:
                     # Provider may reject json_object mode (e.g. OpenAI requires the
@@ -973,6 +1118,7 @@ def _structured_completion_with_fallback(
                             messages=messages,
                             temperature=resolved_temp,
                             max_tokens=resolved_max,
+                            extra_body=resolved_extra_body,
                         )
                     except Exception as exc:
                         raise LLMError(
@@ -993,6 +1139,7 @@ def _structured_completion_with_fallback(
                 messages=messages,
                 temperature=resolved_temp,
                 max_tokens=resolved_max,
+                extra_body=resolved_extra_body,
             )
         except Exception as exc:
             errors.append(f"{provider_key}: {exc}")
@@ -1193,6 +1340,7 @@ def llm_complete(
                 temperature=resolved_temp,
                 max_tokens=resolved_max,
                 max_attempts=max_attempts,
+                extra_body=resolve_extra_body(spec),
             )
             choice = response.choices[0]
             content: str = choice.message.content or ""
@@ -1307,6 +1455,7 @@ def llm_complete_structured(
                     response_format=response_format,
                     temperature=resolved_temp,
                     max_tokens=resolved_max,
+                    extra_body=resolve_extra_body(spec),
                 )
             except Exception as exc:
                 raise LLMError(f"LLM structured completion failed: {exc}") from exc

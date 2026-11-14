@@ -166,6 +166,26 @@ Key `AUTOMEDIA_*` environment variables:
 
 The `AUTOMEDIA_LLM_*` vars map to `llm.text_generation.*` config keys in `automedia/core/config_loader.py`. See `.env.example` for the complete list.
 
+### Thinking-disable pathway (#525)
+
+Reasoning-mode models share `max_tokens` between hidden reasoning and visible
+content — long tasks surface as empty output or truncation, not errors. Each
+`llm.<slot>` section in `~/.automedia/model_config.yaml` supports two optional
+keys:
+
+- `reasoning_model: true` — the model runs a thinking mode that must be
+  disabled. The disable body is resolved in ONE place
+  (`automedia/core/llm_client.py: thinking_disable_body()`) by gateway shape:
+  iFlytek Spark MAAS / vLLM / SGLang get
+  `{"chat_template_kwargs": {"enable_thinking": false}}`; DeepSeek-style
+  relays (and any unmapped gateway) get `{"thinking": {"type": "disabled"}}`.
+- `extra_body:` — an explicit mapping overrides the resolved shape verbatim
+  for gateways that need a bespoke body.
+
+Absent keys keep the request byte-identical to the pre-#525 behavior.
+`reasoning_model` inherits into `fallback:` entries like the other spec
+fields.
+
 Optional engine extras and their version constraints:
 
 - `[tts-piper]` installs Piper TTS.
