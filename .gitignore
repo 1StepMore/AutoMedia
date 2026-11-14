@@ -127,3 +127,6 @@ nightly/
 
 # 本地维护报告（agent 巡检产物，不入库）
 reports/
+
+# Agent 临时目录（规程指定的 scratch 落点，不入库）
+.scratch/
