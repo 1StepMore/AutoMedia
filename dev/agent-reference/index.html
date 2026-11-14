@@ -1605,6 +1605,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Config Key Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#thinking-disable-pathway-525" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thinking-disable pathway (#525)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2546,6 +2563,24 @@ is the onboarding guide. How to read a scenario:</p>
 </tbody>
 </table>
 <p>The <code>AUTOMEDIA_LLM_*</code> vars map to <code>llm.text_generation.*</code> config keys in <code>automedia/core/config_loader.py</code>. See <code>.env.example</code> for the complete list.</p>
+<h3 id="thinking-disable-pathway-525">Thinking-disable pathway (#525)<a class="headerlink" href="#thinking-disable-pathway-525" title="Permanent link">&para;</a></h3>
+<p>Reasoning-mode models share <code>max_tokens</code> between hidden reasoning and visible
+content — long tasks surface as empty output or truncation, not errors. Each
+<code>llm.&lt;slot&gt;</code> section in <code>~/.automedia/model_config.yaml</code> supports two optional
+keys:</p>
+<ul>
+<li><code>reasoning_model: true</code> — the model runs a thinking mode that must be
+  disabled. The disable body is resolved in ONE place
+  (<code>automedia/core/llm_client.py: thinking_disable_body()</code>) by gateway shape:
+  iFlytek Spark MAAS / vLLM / SGLang get
+  <code>{"chat_template_kwargs": {"enable_thinking": false}}</code>; DeepSeek-style
+  relays (and any unmapped gateway) get <code>{"thinking": {"type": "disabled"}}</code>.</li>
+<li><code>extra_body:</code> — an explicit mapping overrides the resolved shape verbatim
+  for gateways that need a bespoke body.</li>
+</ul>
+<p>Absent keys keep the request byte-identical to the pre-#525 behavior.
+<code>reasoning_model</code> inherits into <code>fallback:</code> entries like the other spec
+fields.</p>
 <p>Optional engine extras and their version constraints:</p>
 <ul>
 <li><code>[tts-piper]</code> installs Piper TTS.</li>
