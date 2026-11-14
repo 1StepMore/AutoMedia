@@ -26,6 +26,7 @@ from pathlib import Path
 from jinja2 import Template
 
 from automedia.core.paths import get_user_config_dir
+from automedia.prompts.hook_claims import prompt_vars
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -33,6 +34,14 @@ from automedia.core.paths import get_user_config_dir
 
 _PROMPTS_DIR = Path(__file__).parent
 _OVERRIDE_DIR = get_user_config_dir() / "overrides" / "prompts"
+
+# Templates that render the shared HOOK CLAIMS ban list (#520): load_prompt
+# injects the variables from prompts/hook_claims.py — the ONE copy of the list
+# — for these names, so the built-in templates, the platform variants and any
+# user override all render the same tokens without hand-copying them.
+_HOOK_CLAIMS_TEMPLATES: frozenset[str] = frozenset(
+    {"content_writer", "fact_check_g0_plausibility", "fact_check_g0_rewrite"}
+)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -77,6 +86,12 @@ def load_prompt(name: str, platform: str | None = None, **kwargs: object) -> str
     FileNotFoundError
         When neither the user override nor the built-in template exists.
     """
+    # Shared HOOK CLAIMS criteria variables (#520) — setdefault so an
+    # explicit kwarg can still override any of them.
+    if name in _HOOK_CLAIMS_TEMPLATES:
+        for var_key, var_value in prompt_vars().items():
+            kwargs.setdefault(var_key, var_value)
+
     # 0. Workflow-level inline override (highest priority)
     workflow_prompts = kwargs.pop("workflow_prompts", None)
     if isinstance(workflow_prompts, dict) and name in workflow_prompts:

@@ -33,7 +33,15 @@ _PROMPT_METADATA: dict[str, dict[str, Any]] = {
         "purpose": "Score content quality against specified criteria using LLM evaluation.",
     },
     "content_writer": {
-        "variables": ["topic", "brand"],
+        "variables": [
+            "topic",
+            "brand",
+            "hook_claims_banned_tokens",
+            "hook_claims_patterns",
+            "hook_claims_patterns_zh",
+            "hook_claims_examples_rejected",
+            "hook_claims_examples_accepted",
+        ],
         "purpose": "Write a full article draft for Chinese social media platforms.",
     },
     "copy_review_g2": {
@@ -45,11 +53,27 @@ _PROMPT_METADATA: dict[str, dict[str, Any]] = {
         "purpose": "Verify factual claims in content against known knowledge (Gate G0).",
     },
     "fact_check_g0_plausibility": {
-        "variables": ["content", "topic"],
+        "variables": [
+            "content",
+            "topic",
+            "hook_claims_banned_tokens",
+            "hook_claims_patterns",
+            "hook_claims_patterns_zh",
+            "hook_claims_examples_rejected",
+            "hook_claims_examples_accepted",
+        ],
         "purpose": "Plausibility check for content lacking source material (Gate G0).",
     },
     "fact_check_g0_rewrite": {
-        "variables": ["content", "failure_reason"],
+        "variables": [
+            "content",
+            "failure_reason",
+            "hook_claims_banned_tokens",
+            "hook_claims_patterns",
+            "hook_claims_patterns_zh",
+            "hook_claims_examples_rejected",
+            "hook_claims_examples_accepted",
+        ],
         "purpose": "One-shot surgical rewrite of the sentences a failing G0 "
         "fact-check flagged, preserving everything else (Gate G0).",
     },
