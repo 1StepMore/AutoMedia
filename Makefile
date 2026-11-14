@@ -67,4 +67,4 @@ pre-commit:
 	pre-commit run --all-files
 
 doctor:
-	python -c "from automedia.core.doctor import Doctor; Doctor().check()"
+	python -m automedia doctor
