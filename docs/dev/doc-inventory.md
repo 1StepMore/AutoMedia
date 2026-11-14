@@ -4,9 +4,10 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 12343 | file |
+| AGENTS.md | 12437 | file |
 | README.md | 34592 | file |
 | docs/AGENTS.md | 827 | file |
+| docs/adr | — | dir |
 | docs/adr | — | dir |
 | docs/adr/ADR-001-singleton-registry-unification.md | 4740 | file |
 | docs/adr/ADR-002-hitl-decision-layer-decoupling.md | 4999 | file |
@@ -17,6 +18,7 @@
 | docs/adr/ADR-007-gate-engine-verdict-aggregate.md | 6365 | file |
 | docs/adr/README.md | 2185 | file |
 | docs/adr/TEMPLATE.md | 2267 | file |
+| docs/dev | — | dir |
 | docs/dev | — | dir |
 | docs/dev/2026-08-30-AutoMedia-GraphEngineering落地实施方案-修正版.md | 12545 | file |
 | docs/dev/AutoMedia-development-brief-v2.md | 12165 | file |
@@ -39,8 +41,10 @@
 | docs/dev/founder-expectations.md | 112497 | file |
 | docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 25636 | file |
+| docs/dev/harness-run-facts.md | 1121 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
+| docs/dev/plans | — | dir |
 | docs/dev/plans | — | dir |
 | docs/dev/plans/NIGHTLY.md | 26311 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
@@ -54,10 +58,12 @@
 | docs/glossary.md | 13315 | file |
 | docs/index.md | 6871 | file |
 | docs/skills | — | dir |
+| docs/skills | — | dir |
 | docs/skills/batch-workflow.md | 5480 | file |
 | docs/skills/brand-strategy.md | 3228 | file |
 | docs/skills/distribution-workflow.md | 6248 | file |
 | docs/skills/pipeline-workflow.md | 7760 | file |
+| docs/user | — | dir |
 | docs/user | — | dir |
 | docs/user/account-management.md | 3314 | file |
 | docs/user/api-reference.md | 21255 | file |
