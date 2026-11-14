@@ -2061,7 +2061,7 @@
 <p><strong>必需环境变量</strong>：AUTOMEDIA_LLM_API_KEY。.env 只认 ~/.automedia/.env 或 $AUTOMEDIA_DOTENV_PATH；仓库根 .env 不读。</p>
 <p><strong>缺 key 症状</strong>：<code>automedia doctor</code> 的 llm_api 项红（该探针真发一次请求，不是静态检查）。</p>
 <p><strong>DoD 顺序</strong>：<code>make lint</code> → <code>make typecheck</code> → <code>make test</code> →（依赖或环境变更时）<code>make doctor</code>。</p>
-<p><strong>陷阱</strong>：Makefile 的 target 用裸 python（#536 在跟）⇒ 先确认 python -c "import automedia" 能过，否则 make doctor 会报假的 No module named automedia；.scratch/ 与 .venv_win/ 已在 .gitignore；无 key 时 live e2e 跑不了，报告里必须写"未跑"，不能写"通过"。</p>
+<p><strong>陷阱</strong>：Makefile 全部 target 已走 <code>$(PYTHON)</code> 并带解释器 guard（#536 已修，PR #538 合入 main）：解释器无法 import automedia 时 guard 以 exit 2 拦截并给出指引，可用 <code>make doctor PYTHON=.venv_win/Scripts/python.exe</code>（Windows）或 <code>PYTHON=.venv/bin/python</code>（WSL/Linux）显式覆盖；<code>.scratch/</code> 与 <code>.venv_win/</code> 已在 .gitignore；无 key 时 live e2e 跑不了，报告里必须写"未跑"，不能写"通过"。</p>
 <p><strong>队列</strong>：<code>gh issue list -l agent-ready --state open</code>。</p>
 
 
