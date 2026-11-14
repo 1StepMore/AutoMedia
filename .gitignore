@@ -66,6 +66,7 @@ __pycache__/
 *.py[cod]
 *.so
 .venv/
+.venv_win/
 venv/
 env/
 .pytest_cache/
