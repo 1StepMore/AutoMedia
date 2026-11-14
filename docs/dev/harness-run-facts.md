@@ -12,6 +12,6 @@
 
 **DoD 顺序**：`make lint` → `make typecheck` → `make test` →（依赖或环境变更时）`make doctor`。
 
-**陷阱**：Makefile 的 target 用裸 python（#536 在跟）⇒ 先确认 python -c "import automedia" 能过，否则 make doctor 会报假的 No module named automedia；.scratch/ 与 .venv_win/ 已在 .gitignore；无 key 时 live e2e 跑不了，报告里必须写"未跑"，不能写"通过"。
+**陷阱**：Makefile 全部 target 已走 `$(PYTHON)` 并带解释器 guard（#536 已修，PR #538 合入 main）：解释器无法 import automedia 时 guard 以 exit 2 拦截并给出指引，可用 `make doctor PYTHON=.venv_win/Scripts/python.exe`（Windows）或 `PYTHON=.venv/bin/python`（WSL/Linux）显式覆盖；`.scratch/` 与 `.venv_win/` 已在 .gitignore；无 key 时 live e2e 跑不了，报告里必须写"未跑"，不能写"通过"。
 
 **队列**：`gh issue list -l agent-ready --state open`。
