@@ -42,7 +42,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import overload
+from typing import Any, overload
 
 from automedia.core.paths import get_user_config_dir
 
@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "DOTENV_PATH_ENV_VAR",
+    "describe_dotenv_source",
     "dotenv_overlay",
     "env_lookup",
     "reset_dotenv_overlay_cache",
@@ -63,6 +64,49 @@ DOTENV_PATH_ENV_VAR = "AUTOMEDIA_DOTENV_PATH"
 _overlay_cache: dict[str, str] | None = None
 _lock = threading.Lock()
 
+# Emit the HOME-mismatch diagnostic at most once per process.
+_home_mismatch_warned = False
+
+
+def _account_home() -> str | None:
+    """Return the account's real home directory, or ``None`` when unavailable."""
+    try:
+        import pwd
+    except ImportError:  # POSIX-only module
+        return None
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except (KeyError, OSError):
+        return None
+
+
+def _home_mismatch_info() -> tuple[str | None, str | None, bool]:
+    home = os.environ.get("HOME")
+    account_home = _account_home()
+    mismatch = home is not None and account_home is not None and home != account_home
+    return home, account_home, mismatch
+
+
+def _warn_home_mismatch(path: Path) -> None:
+    global _home_mismatch_warned
+    if _home_mismatch_warned:
+        return
+    home, account_home, mismatch = _home_mismatch_info()
+    if not mismatch or path.is_file():
+        return
+    _home_mismatch_warned = True
+    logger.warning(
+        "Resolved .env at %s, but $HOME=%s differs from the account home %s and "
+        "that file does not exist. Credentials in %s/.automedia/.env are invisible. "
+        "Fix: export AUTOMEDIA_DOTENV_PATH=%s/.automedia/.env, or run with HOME=%s.",
+        path,
+        home,
+        account_home,
+        account_home,
+        account_home,
+        account_home,
+    )
+
 
 def _dotenv_file_path() -> Path:
     """Return the ``.env`` file this process reads.
@@ -71,9 +115,31 @@ def _dotenv_file_path() -> Path:
     ``~/.automedia/.env`` location.
     """
     override = os.environ.get(DOTENV_PATH_ENV_VAR)
-    if override:
-        return Path(override)
-    return get_user_config_dir() / ".env"
+    path = Path(override) if override else get_user_config_dir() / ".env"
+    _warn_home_mismatch(path)
+    return path
+
+
+def describe_dotenv_source() -> dict[str, Any]:
+    """Describe where this process resolves its ``.env`` file.
+
+    Returns ``path`` (absolute string), whether that ``path`` is an existing
+    file, which layer supplied it (``AUTOMEDIA_DOTENV_PATH`` or ``config_dir``),
+    the current ``$HOME``, the account's real home directory (``None`` when
+    ``pwd`` is unavailable), and whether the two disagree.  Read-only; never
+    changes the resolution priority.
+    """
+    path = _dotenv_file_path()
+    source = DOTENV_PATH_ENV_VAR if os.environ.get(DOTENV_PATH_ENV_VAR) else "config_dir"
+    home, account_home, mismatch = _home_mismatch_info()
+    return {
+        "path": str(path),
+        "exists": path.is_file(),
+        "source": source,
+        "home": home,
+        "account_home": account_home,
+        "home_mismatch": mismatch,
+    }
 
 
 def _parse_overlay(path: Path) -> dict[str, str]:
@@ -163,6 +229,7 @@ def reset_dotenv_overlay_cache() -> None:
     Needed when ``AUTOMEDIA_DOTENV_PATH`` (or the pointed-to file) changes
     inside one process — primarily a test hook.
     """
-    global _overlay_cache
+    global _overlay_cache, _home_mismatch_warned
     with _lock:
         _overlay_cache = None
+        _home_mismatch_warned = False

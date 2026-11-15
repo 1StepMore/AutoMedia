@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -171,6 +172,9 @@ class TestDoctorCheckDependencies:
                     assert dep["path"] is None
                     assert dep["version"] is None
                     assert dep["model_present"] is True
+                elif dep["name"] == "env_file":
+                    assert dep["installed"] is True
+                    assert dep["env_path"]
                 else:
                     assert dep["path"] == "/usr/bin/ok"
                     assert dep["version"] == "1.0"
@@ -189,6 +193,9 @@ class TestDoctorCheckDependencies:
         ):
             results = doctor.check_dependencies()
             for dep in results:
+                if dep["name"] == "env_file":
+                    # A missing .env is not an error unless HOME is mismatched.
+                    continue
                 assert dep["installed"] is False
                 assert dep["path"] is None
                 if dep["name"] == "chrome":
@@ -218,7 +225,7 @@ class TestDoctorCheckDependencies:
         ):
             results = doctor.check_dependencies()
 
-        installed = {r["name"] for r in results if r["installed"]}
+        installed = {r["name"] for r in results if r["installed"]} - {"env_file"}
         missing = {r["name"] for r in results if not r["installed"]}
         assert installed == installed_names
         assert "whisper" in missing
@@ -505,3 +512,37 @@ class TestDoctorChromeRemediation:
         shim.write_text('exec "chrome.exe" "$@"\n', encoding="utf-8")
         assert Doctor._is_windows_side_chrome(str(shim))
         assert not Doctor._is_windows_side_chrome("/usr/bin/google-chrome")
+
+
+class TestDoctorEnvFile:
+    """Issue #542: doctor reports the resolved .env source."""
+
+    def test_env_file_dependency_reported(
+        self, doctor: Doctor, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ):
+        from automedia.core.env_overlay import reset_dotenv_overlay_cache
+
+        env_file = tmp_path / ".env"
+        env_file.write_text("FOO_542=bar\n", encoding="utf-8")
+        monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(env_file))
+        reset_dotenv_overlay_cache()
+
+        with (
+            patch.object(Doctor, "_hyperframes_browser_path", return_value=None),
+            patch.object(doctor, "_resolve_path", return_value="/usr/bin/ok"),
+            patch.object(doctor, "_get_version", return_value="1.0"),
+            patch.object(doctor, "_check_comfyui_http", return_value=(True, "ok")),
+            patch.object(
+                doctor, "_check_comfyui_upscale_model", return_value=(True, "present")
+            ),
+            patch.object(doctor, "_check_llm_api", return_value=(True, "ok")),
+            patch.object(doctor, "_check_chrome_headless", return_value=(True, None)),
+        ):
+            results = doctor.check_dependencies()
+
+        dep = next(r for r in results if r["name"] == "env_file")
+        assert dep["env_path"]
+        assert dep["env_exists"] is Path(dep["env_path"]).is_file()
+        assert dep["env_source"] == "AUTOMEDIA_DOTENV_PATH"
+        assert dep["installed"] is True
+        assert dep["path"] == str(env_file)
