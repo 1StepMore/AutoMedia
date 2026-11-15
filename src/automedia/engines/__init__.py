@@ -221,46 +221,65 @@ def _dedupe(names: list[str]) -> list[str]:
     return ordered
 
 
-def _chain_names(
+def _chain_plan(
     modality: str,
     engine_cfg: dict[str, Any] | None,
     registry: EngineRegistry,
-) -> list[str]:
+) -> tuple[list[str], set[str]]:
     """Resolve the ordered engine names a chain should try for *modality*.
 
     An explicit ``chain`` list wins.  Otherwise the configured (or built-in)
     default comes first, followed by the legacy ``fallback`` list and then
     every other engine registered for the modality in registration order.
+
+    Returns the ordered names plus the subset the user explicitly named in
+    config (``chain``, ``default`` or ``fallback``) — candidates that only
+    appear because of registration order are implicit.
     """
     if isinstance(engine_cfg, dict):
         chain = engine_cfg.get("chain")
         if isinstance(chain, str):
-            return _dedupe([chain])
+            explicit = _dedupe([chain])
+            return explicit, set(explicit)
         if isinstance(chain, (list, tuple)):
-            return _dedupe([str(name) for name in chain if name])
+            explicit = _dedupe([str(name) for name in chain if name])
+            return explicit, set(explicit)
 
-    names: list[str] = []
-    default_name: str | None = None
+    fallback_names: list[str] = []
+    configured_default: str | None = None
     if isinstance(engine_cfg, dict):
         raw_default = engine_cfg.get("default")
         if raw_default:
-            default_name = str(raw_default)
+            configured_default = str(raw_default)
         fallback = engine_cfg.get("fallback")
         if isinstance(fallback, str):
-            names.extend([fallback])
+            fallback_names.extend([fallback])
         elif isinstance(fallback, (list, tuple)):
-            names.extend(str(name) for name in fallback if name)
+            fallback_names.extend(str(name) for name in fallback if name)
 
-    if default_name is None:
-        default_name = _DEFAULT_ENGINES.get(modality)
+    default_name = (
+        configured_default if configured_default is not None else _DEFAULT_ENGINES.get(modality)
+    )
 
     try:
         registered = registry.list_by_modality_ordered(modality)
     except Exception:  # pragma: no cover - defensive against registry swaps
         registered = []
 
-    ordered = ([default_name] if default_name else []) + names + registered
-    return _dedupe(ordered)
+    ordered = ([default_name] if default_name else []) + fallback_names + registered
+    explicit_names = set(fallback_names)
+    if configured_default is not None:
+        explicit_names.add(configured_default)
+    return _dedupe(ordered), explicit_names
+
+
+def _chain_names(
+    modality: str,
+    engine_cfg: dict[str, Any] | None,
+    registry: EngineRegistry,
+) -> list[str]:
+    """Return just the ordered candidate names from :func:`_chain_plan`."""
+    return _chain_plan(modality, engine_cfg, registry)[0]
 
 
 def resolve_engine_chain(
@@ -280,8 +299,12 @@ def resolve_engine_chain(
     removed while preserving order.
 
     Each candidate is instantiated through :func:`resolve_engine`, which also
-    runs its availability check.  Unavailable, unknown, or misconfigured
-    engines are skipped with a debug log.
+    runs its availability check.  A candidate the user explicitly named
+    (``chain``, ``default`` or ``fallback``) that is unavailable, unknown, or
+    misconfigured is skipped with a warning naming the engine and the reason.
+    A candidate that merely came from registration order is skipped with a
+    debug log, since the user never asked for it.  When the chain ends up
+    empty, one final warning lists every dropped candidate and its reason.
 
     This function **never raises**: callers decide what an empty chain means
     (direct subprocess fallback for audio, "no image" for image).
@@ -309,9 +332,10 @@ def resolve_engine_chain(
             engine_cfg = None
 
         registry: EngineRegistry = EngineRegistry()
-        names = _chain_names(modality, engine_cfg, registry)
+        names, explicit_names = _chain_plan(modality, engine_cfg, registry)
 
         chain: list[BaseEngine] = []
+        skipped: list[tuple[str, str]] = []
         for name in names:
             per_modality = dict(engine_cfg or {})
             per_modality["default"] = name
@@ -322,8 +346,32 @@ def resolve_engine_chain(
             try:
                 chain.append(resolve_engine(modality, candidate_cfg))
             except Exception as exc:
-                log.debug("Engine chain: skipping %r for modality %r: %s", name, modality, exc)
+                reason = str(exc)
+                skipped.append((name, reason))
+                if name in explicit_names:
+                    log.warning(
+                        f"engines.chain.candidate_skipped: {name}",
+                        modality=modality,
+                        engine=name,
+                        reason=reason,
+                    )
+                else:
+                    log.debug(
+                        f"engines.chain.implicit_candidate_skipped: {name}",
+                        modality=modality,
+                        engine=name,
+                        reason=reason,
+                    )
                 continue
+        if not chain and skipped:
+            log.warning(
+                f"engines.chain.empty: no engine available for {modality} "
+                f"({len(skipped)} candidate(s) dropped: "
+                + "; ".join(f"{name}: {reason}" for name, reason in skipped)
+                + ")",
+                modality=modality,
+                skipped=[{"engine": name, "reason": reason} for name, reason in skipped],
+            )
         return chain
     except Exception as exc:  # pragma: no cover - chain resolution never raises
         log.debug("Engine chain resolution failed for %r: %s", modality, exc)
