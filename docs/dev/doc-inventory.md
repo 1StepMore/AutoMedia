@@ -39,7 +39,7 @@
 | docs/dev/founder-expectations.md | 112497 | file |
 | docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 25636 | file |
-| docs/dev/harness-run-facts.md | 2466 | file |
+| docs/dev/harness-run-facts.md | 3470 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
