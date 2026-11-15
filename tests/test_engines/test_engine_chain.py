@@ -306,8 +306,7 @@ class TestChainCandidateLogging:
         warnings = [entry for entry in logs if entry["log_level"] == "warning"]
         assert any(
             "azure" in entry["event"]
-            and "AUTOMEDIA_AZURE_SPEECH_KEY"
-            in " ".join(str(value) for value in entry.values())
+            and "AUTOMEDIA_AZURE_SPEECH_KEY" in " ".join(str(value) for value in entry.values())
             for entry in warnings
         )
 

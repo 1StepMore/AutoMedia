@@ -157,11 +157,7 @@ def doctor_cmd(
             remediation = Doctor.chrome_remediation(dep)
             if remediation:
                 typer.secho(f"    {remediation}", fg=typer.colors.YELLOW)
-        if (
-            dep["name"] == "env_file"
-            and dep.get("env_home_mismatch")
-            and not dep.get("env_exists")
-        ):
+        if dep["name"] == "env_file" and dep.get("env_home_mismatch") and not dep.get("env_exists"):
             typer.secho(f"  ⚠ {dep.get('env_message')}", fg=typer.colors.YELLOW)
         if not dep["installed"]:
             all_ok = False
