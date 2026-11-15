@@ -13,12 +13,14 @@ Everything is monkeypatched — no network, no real ComfyUI, no real engines.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 from PIL import Image
+from structlog.testing import capture_logs
 
 from automedia.engines import resolve_engine_chain
 from automedia.engines.errors import EngineExecutionError, EngineUnavailableError
@@ -53,6 +55,13 @@ class _FakeTTSEngine(_FakeEngine):
         return os.path.abspath(output_path)
 
 
+class _ConfigFakeTTSEngine(_FakeTTSEngine):
+    """Available TTS double that accepts ``resolve_engine``'s constructor arg."""
+
+    def __init__(self, engine_config: dict[str, Any] | None = None) -> None:
+        super().__init__("fake-chain-tts")
+
+
 class _FakeASREngine(_FakeEngine):
     def transcribe(self, audio_path: str, language: str | None = None) -> dict[str, Any]:
         self.calls.append((audio_path, language))
@@ -81,6 +90,40 @@ def _fake_resolve_from_default(modality: str, config: dict | None = None) -> Any
     assert config is not None
     name = config["engines"][modality]["default"]
     return _FakeEngine(name)
+
+
+def _install_fake_tts(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Register an always-available TTS double, restored after the test."""
+    name = "fake-chain-tts"
+    registry = EngineRegistry()
+    monkeypatch.setitem(registry._registry, name, _ConfigFakeTTSEngine)
+    return name
+
+
+@pytest.fixture
+def _azure_unconfigured(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    """Drop Azure credentials from both the process env and the ``.env`` overlay."""
+    from automedia.core.env_overlay import reset_dotenv_overlay_cache
+    from automedia.engines.implementations.tts_azure import SPEECH_KEY_ENV, SPEECH_REGION_ENV
+
+    monkeypatch.delenv(SPEECH_KEY_ENV, raising=False)
+    monkeypatch.delenv(SPEECH_REGION_ENV, raising=False)
+    monkeypatch.setattr(
+        "automedia.core.env_overlay._dotenv_file_path",
+        lambda: tmp_path / "missing.env",
+    )
+    reset_dotenv_overlay_cache()
+    yield
+    reset_dotenv_overlay_cache()
+
+
+@pytest.fixture
+def _azure_registered() -> None:
+    from automedia.engines.implementations.tts_azure import AzureTTSEngine
+
+    registry = EngineRegistry()
+    if "azure" not in registry:
+        registry.register("azure", AzureTTSEngine, modality="tts")
 
 
 class TestDefaultsYamlChains:
@@ -239,6 +282,60 @@ class TestResolveEngineChain:
             lambda modality, config=None: _FakeEngine("solo"),
         )
         assert resolve_engine_chain("asr", {}) != []
+
+
+class TestChainCandidateLogging:
+    def test_explicit_unavailable_candidate_warns_with_reason(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        _azure_unconfigured: None,
+        _azure_registered: None,
+    ) -> None:
+        config = {
+            "engines": {
+                "tts": {
+                    "chain": ["azure"],
+                    "azure": {"voice": "zh-CN-YunjianNeural"},
+                }
+            }
+        }
+        with capture_logs() as logs:
+            chain = resolve_engine_chain("tts", config)
+
+        assert chain == []
+        warnings = [entry for entry in logs if entry["log_level"] == "warning"]
+        assert any(
+            "azure" in entry["event"]
+            and "AUTOMEDIA_AZURE_SPEECH_KEY"
+            in " ".join(str(value) for value in entry.values())
+            for entry in warnings
+        )
+
+    def test_partial_chain_keeps_available_and_warns_for_dropped(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        _azure_unconfigured: None,
+        _azure_registered: None,
+    ) -> None:
+        fake = _install_fake_tts(monkeypatch)
+        config = {"engines": {"tts": {"chain": [fake, "azure"]}}}
+        with capture_logs() as logs:
+            chain = resolve_engine_chain("tts", config)
+
+        assert [engine.engine_name for engine in chain] == [fake]
+        warnings = [entry for entry in logs if entry["log_level"] == "warning"]
+        assert any("azure" in entry["event"] for entry in warnings)
+
+    def test_no_warning_when_all_candidates_available(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake = _install_fake_tts(monkeypatch)
+        config = {"engines": {"tts": {"chain": [fake]}}}
+        with capture_logs() as logs:
+            chain = resolve_engine_chain("tts", config)
+
+        assert [engine.engine_name for engine in chain] == [fake]
+        assert [entry for entry in logs if entry["log_level"] == "warning"] == []
 
 
 class TestAudioPipelineChainFallback:
