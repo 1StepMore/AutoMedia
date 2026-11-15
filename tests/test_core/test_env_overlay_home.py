@@ -70,9 +70,7 @@ def test_explicit_dotenv_path_is_used_without_warning(
     assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
-def test_real_environment_still_wins(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> None:
+def test_real_environment_still_wins(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text("FOO_542=from_file\n", encoding="utf-8")
     monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(env_file))

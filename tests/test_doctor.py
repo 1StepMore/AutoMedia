@@ -532,9 +532,7 @@ class TestDoctorEnvFile:
             patch.object(doctor, "_resolve_path", return_value="/usr/bin/ok"),
             patch.object(doctor, "_get_version", return_value="1.0"),
             patch.object(doctor, "_check_comfyui_http", return_value=(True, "ok")),
-            patch.object(
-                doctor, "_check_comfyui_upscale_model", return_value=(True, "present")
-            ),
+            patch.object(doctor, "_check_comfyui_upscale_model", return_value=(True, "present")),
             patch.object(doctor, "_check_llm_api", return_value=(True, "ok")),
             patch.object(doctor, "_check_chrome_headless", return_value=(True, None)),
         ):
