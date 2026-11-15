@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import threading
 from pathlib import Path
 from typing import Any, overload
@@ -70,6 +71,12 @@ _home_mismatch_warned = False
 
 def _account_home() -> str | None:
     """Return the account's real home directory, or ``None`` when unavailable."""
+    if sys.platform == "win32":
+        # pwd / os.getuid are POSIX-only; on Windows the import below always
+        # raised ImportError, so returning None directly is behavior-identical.
+        # The explicit platform check also lets mypy's win32 run prune the
+        # POSIX-only body (typeshed has no pwd stub / os.getuid on win32, #547).
+        return None
     try:
         import pwd
     except ImportError:  # POSIX-only module
