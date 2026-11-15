@@ -15,6 +15,7 @@ from typing import Any
 
 import structlog
 
+from automedia.core.env_overlay import describe_dotenv_source
 from automedia.core.tool_paths import ToolPathError, find_tool
 
 # ---------------------------------------------------------------------------
@@ -36,6 +37,7 @@ _DEPENDENCIES: list[dict[str, Any]] = [
     },  # model file presence (informational)
     {"name": "chrome", "check_cmd": None, "version_flag": None},  # detected via shutil
     {"name": "llm_api", "check_cmd": None, "version_flag": None},  # API connectivity test
+    {"name": "env_file", "check_cmd": None, "version_flag": None},  # .env source resolution
 ]
 
 logger = structlog.get_logger(__name__)
@@ -660,6 +662,51 @@ class Doctor:
                         "installed": installed,
                         "version": version,
                         "path": None,
+                    }
+                )
+                continue
+
+            # --- .env source resolution (issue #542) ----------------------
+            if name == "env_file":
+                info = describe_dotenv_source()
+                env_path: str = info["path"]
+                env_exists: bool = info["exists"]
+                env_home = info["home"]
+                env_account_home = info["account_home"]
+                env_home_mismatch: bool = info["home_mismatch"]
+
+                if env_exists:
+                    installed = True
+                    env_message = f"resolved {env_path} (exists)"
+                elif env_home_mismatch:
+                    installed = False
+                    env_message = (
+                        f"resolved {env_path} (missing) but $HOME={env_home} differs from "
+                        f"account home {env_account_home} — credentials in "
+                        f"{env_account_home}/.automedia/.env are invisible. "
+                        f"Fix: export AUTOMEDIA_DOTENV_PATH={env_account_home}/.automedia/.env, "
+                        f"or run with HOME={env_account_home}."
+                    )
+                else:
+                    installed = True
+                    env_message = (
+                        f"resolved {env_path} (missing — credentials must come from "
+                        "the real environment)"
+                    )
+
+                results.append(
+                    {
+                        "name": name,
+                        "installed": installed,
+                        "version": None,
+                        "path": env_path,
+                        "env_path": env_path,
+                        "env_source": info["source"],
+                        "env_exists": env_exists,
+                        "env_home": env_home,
+                        "env_account_home": env_account_home,
+                        "env_home_mismatch": env_home_mismatch,
+                        "env_message": env_message,
                     }
                 )
                 continue
