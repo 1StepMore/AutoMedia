@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.17.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.4...automedia-v1.17.5) (2026-11-16)
+
+
+### Bug Fixes
+
+* **core:** guard POSIX-only pwd lookup with sys.platform so win32 mypy passes ([#547](https://github.com/1StepMore/AutoMedia/issues/547)) ([#549](https://github.com/1StepMore/AutoMedia/issues/549)) ([66468f9](https://github.com/1StepMore/AutoMedia/commit/66468f9fdb693b49fdba296236407949b493a0a2))
+* **core:** report .env resolution and warn on HOME mismatch ([#542](https://github.com/1StepMore/AutoMedia/issues/542)) ([#544](https://github.com/1StepMore/AutoMedia/issues/544)) ([d54b4ea](https://github.com/1StepMore/AutoMedia/commit/d54b4eaebc8bd45fa952ae9c2c67c47ac6b2238f))
+* **engines:** warn when a configured chain candidate is dropped ([#541](https://github.com/1StepMore/AutoMedia/issues/541)) ([#543](https://github.com/1StepMore/AutoMedia/issues/543)) ([77aac2c](https://github.com/1StepMore/AutoMedia/commit/77aac2c23defaa4ccb44b3e45a80fa61fae19ae0))
+* **style:** apply pre-commit ruff-format to 4 files left behind by [#543](https://github.com/1StepMore/AutoMedia/issues/543)/[#544](https://github.com/1StepMore/AutoMedia/issues/544) ([#548](https://github.com/1StepMore/AutoMedia/issues/548)) ([#550](https://github.com/1StepMore/AutoMedia/issues/550)) ([86b84e0](https://github.com/1StepMore/AutoMedia/commit/86b84e02a40fe8bb1e7fbd0dcc4caa136a5d7539))
+
 ## [1.17.4](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.3...automedia-v1.17.4) (2026-11-14)
 
 
