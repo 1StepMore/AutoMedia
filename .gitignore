@@ -131,3 +131,6 @@ reports/
 
 # Agent 临时目录（规程指定的 scratch 落点，不入库）
 .scratch/
+
+# 自驱租约（owner 授权是本机状态；跨机共享的是 GitHub 上的 status:claimed）
+/.agents/autonomy/
