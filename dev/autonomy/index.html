@@ -2147,10 +2147,28 @@ owner 自己的 harness 上，先在本机声明立场，否则 <code>gate</code
 <td style="text-align: left;">打转</td>
 <td style="text-align: left;">同一目标连续 2 次尝试，结论与证据集完全相同</td>
 </tr>
+<tr>
+<td style="text-align: left;">E7</td>
+<td style="text-align: left;">目标达成</td>
+<td style="text-align: left;">当前目标判据已达标（<code>autonomy.py goal</code> ⇒ <code>ACHIEVED</code>），继续干必须先有新目标</td>
+</tr>
 </tbody>
 </table>
 <p><strong>不算阻塞</strong>（自己判）：能查文档/重试/换实现；测试红但根因可定位；两条实现路线（选一条+写理由）；命名/目录/拆函数/挑库；缺时间缺 token（换免费档）；issue 契约不完整（自己补并留痕）。</p>
 <p><strong>停手前必做</strong>：写一条阻塞记录（类别、证据、试过什么、下一步可选）⇒ <strong>换下一条继续</strong>。单条阻塞不是停整个班次的理由；只有名单里每一条都阻塞才整体停。</p>
+<h2 id="5-e7">5. 目标达成之后（E7）—— 别自己找活干<a class="headerlink" href="#5-e7" title="Permanent link">&para;</a></h2>
+<p>当前目标写在 <code>docs/dev/goals.md</code>，其中 <code>&lt;!-- goal-cmd: … --&gt;</code> 是<strong>判据命令</strong>，<code>exit 0 = 达标</code>。</p>
+<p><strong>不需要谁记得单独跑它</strong>：<code>gate</code>（开工闸）和 <code>next</code>（选活）会自动跑一遍并缓存 10 分钟 ——
+<code>ACHIEVED</code> ⇒ 退出码 <strong>5</strong>（停手走四步）；<code>ERROR</code> ⇒ 退出码 <strong>6</strong>（判据跑不起来是环境问题，先修环境）；
+<code>ACTIVE</code> ⇒ 照常干。<code>goal</code> 子命令只是给人看详情用的。</p>
+<p>达标之后（顺序固定）：</p>
+<ol>
+<li><code>autonomy.py stop --reason done</code> —— 收租约</li>
+<li>开 <code>[goal-achieved]</code> issue，<strong>把判据命令的原始输出贴进去</strong>（证据，不是结论）</li>
+<li>下一阶段（P2）标 <code>asked-owner</code>，<strong>交回 owner 定方向</strong></li>
+<li><strong>停手</strong>：不再用 <code>next</code> 领活。达标后自己找活 = 偏离方向 + 烧 token</li>
+</ol>
+<p><strong>不许自己定下一阶段</strong>：目标属方向，是 owner 的。agent 只给 2–3 个候选 + 数据 + 推荐 + 代价，按 <code>goals.md</code> 的提问模板问。</p>
 <h2 id="4-harness">4. harness 侧必须自己提供的东西（写不进仓）<a class="headerlink" href="#4-harness" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
