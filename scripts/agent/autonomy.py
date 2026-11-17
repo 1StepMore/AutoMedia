@@ -38,6 +38,7 @@ import contextlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -99,7 +100,6 @@ def write_lease(d: dict, path: Path | None = None) -> None:
     path.write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
-
 def default_lane() -> str:
     """本机立场：AUTONOMY_LANE 环境变量 > .agents/autonomy/lane 文件 > 缺省本机侧。
 
@@ -116,6 +116,7 @@ def default_lane() -> str:
         if v:
             return v
     return MINE
+
 
 def effective_lane(now: datetime, path: Path | None = None) -> tuple[str, str, dict]:
     """返回 (lane, 理由, 租约状态)。租约有效 ⇒ 租约说了算。"""
@@ -365,6 +366,83 @@ def cmd_release(a: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- 目标
+GOALS = ROOT / "docs" / "dev" / "goals.md"
+GOAL_CMD_RE = re.compile(r"<!--\s*goal-cmd:\s*(.+?)\s*-->")
+
+
+def goal_cmd() -> list[str] | None:
+    """从 docs/dev/goals.md 抽判据命令。约定：exit 0 = 当前目标达标。"""
+    if not GOALS.exists():
+        return None
+    m = GOAL_CMD_RE.search(GOALS.read_text(encoding="utf-8"))
+    if not m:
+        return None
+    return shlex.split(m.group(1))
+
+
+def goal_verdict(rc: int) -> str:
+    """退出码 → 结论。
+
+    0 ⇒ ACHIEVED；2 ⇒ ERROR（判据跑不起来，属环境问题，**不能**当成"未达标"继续硬推）；
+    其它非 0 ⇒ ACTIVE（真的还有差距）。
+    """
+    if rc == 0:
+        return "ACHIEVED"
+    if rc == 2:
+        return "ERROR"
+    return "ACTIVE"
+
+
+def cmd_goal(a: argparse.Namespace) -> int:
+    cmd = shlex.split(a.cmd) if a.cmd else goal_cmd()
+    if not cmd:
+        print(
+            "REFUSE: 找不到判据命令（docs/dev/goals.md 缺 `<!-- goal-cmd: … -->`，或加 --cmd）",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        r = subprocess.run(  # noqa: S603 - 判据命令来自仓内 goals.md，不是外部输入
+            cmd, cwd=ROOT, capture_output=True, text=True, timeout=a.timeout
+        )
+    except subprocess.TimeoutExpired:
+        print(f"REFUSE: 判据命令超过 {a.timeout}s", file=sys.stderr)
+        return 2
+    out = (r.stdout or "").strip() or (r.stderr or "").strip()
+    tail = out.splitlines()[-a.tail :] if out else []
+    verdict = goal_verdict(r.returncode)
+    if a.json:
+        print(
+            json.dumps(
+                {"verdict": verdict, "exit": r.returncode, "cmd": cmd, "tail": tail},
+                ensure_ascii=False,
+                indent=1,
+            )
+        )
+    else:
+        print(f"判据命令：{' '.join(cmd)}")
+        print(f"退出码　：{r.returncode}  ⇒ {verdict}")
+        for line in tail:
+            print(f"  {line}")
+        if verdict == "ACHIEVED":
+            print("\nACHIEVED：当前目标已达标（E7）。按 docs/dev/goals.md 四步走，然后停手：")
+            print("  1) autonomy.py stop --reason done")
+            print("  2) 开 [goal-achieved] issue，贴上面原始输出")
+            print("  3) goals.md 里下一阶段标 asked-owner")
+            print("  4) 停止从 next 领活")
+        elif verdict == "ERROR":
+            print(
+                "\nERROR：判据命令跑不起来（环境/用法问题，E4 类）"
+                "——不要硬推，先修环境或报 owner。"
+            )
+        else:
+            print("\nACTIVE：未达标，继续推进当前目标。")
+    if verdict == "ACHIEVED":
+        return 0
+    return 2 if verdict == "ERROR" else 4
+
+
 def cmd_selfcheck(a: argparse.Namespace) -> int:
     """这台机器 + 这个 clone 能不能自驱？缺什么直接说缺什么。"""
     problems, notes = [], []
@@ -464,6 +542,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("issue", type=int)
     s.add_argument("--reason", default="not-mine")
     s.set_defaults(fn=cmd_release)
+
+    s = sub.add_parser("goal")
+    s.add_argument("--cmd", default=None)
+    s.add_argument("--timeout", type=int, default=1800)
+    s.add_argument("--tail", type=int, default=12)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_goal)
 
     s = sub.add_parser("selfcheck")
     s.set_defaults(fn=cmd_selfcheck)

@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 12904 | file |
+| AGENTS.md | 12949 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -40,6 +40,7 @@
 | docs/dev/founder-expectations.md | 112497 | file |
 | docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 25636 | file |
+| docs/dev/goals.md | 1967 | file |
 | docs/dev/harness-run-facts.md | 3470 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |

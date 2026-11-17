@@ -111,3 +111,16 @@ def test_new_manifest_is_committed_state_not_local_state():
     # 租约必须 gitignore（本机状态），否则一台机器的授权会"传染"给另一台
     root = Path(__file__).resolve().parents[1]
     assert ".agents/autonomy/" in (root / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_goal_cmd_declared_in_goals_md():
+    # 目标必须用可执行判据表达，不接受「我觉得差不多了」
+    cmd = au.goal_cmd()
+    assert cmd and "nightly_gap.py" in " ".join(cmd)
+
+
+def test_goal_verdict_only_zero_is_achieved():
+    assert au.goal_verdict(0) == "ACHIEVED"
+    assert au.goal_verdict(1) == "ACTIVE"
+    # 2 = 判据跑不起来（环境问题）⇒ ERROR，不能伪装成"未达标"让 agent 继续硬推
+    assert au.goal_verdict(2) == "ERROR"

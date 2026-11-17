@@ -24,7 +24,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 — lease > clock; **exit 3 = not your turn, stop** (not an error). The same script lists claimable items,
 claims one (writes `status:claimed` + `owner:*` + a claim comment) and reports what this machine is missing.
 Contract, blocker classes (E1–E6), harness-side checklist and the DoD matrix reading:
-**[docs/dev/autonomy.md](docs/dev/autonomy.md)**.
+**[docs/dev/autonomy.md`（目标与判据 → `docs/dev/goals.md）](docs/dev/autonomy.md)**.
 
 **Naming disambiguation:** §4's G0–G6 / D1–D7 / P1–P4 are **product pipeline gates**. The repo-governance SOP (`.agents/audit/`) uses its own separate governance G0–G4 / D1–D8 / P0–P5 numbering — the two systems are unrelated.
 
