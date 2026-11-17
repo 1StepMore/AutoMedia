@@ -20,6 +20,12 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 
 **Non-negotiable principles:** `.specify/memory/constitution.md`. **Expectations (acceptance source of truth):** `scenarios/` (indexed by `.agents/expectations/INDEX.md`; only the Owner changes expectations — a Tester never greens a suite by editing code or expectations).
 
+**Self-drive (any agent/harness, any machine):** before any work run `python3 scripts/agent/autonomy.py status`
+— lease > clock; **exit 3 = not your turn, stop** (not an error). The same script lists claimable items,
+claims one (writes `status:claimed` + `owner:*` + a claim comment) and reports what this machine is missing.
+Contract, blocker classes (E1–E6), harness-side checklist and the DoD matrix reading:
+**[docs/dev/autonomy.md](docs/dev/autonomy.md)**.
+
 **Naming disambiguation:** §4's G0–G6 / D1–D7 / P1–P4 are **product pipeline gates**. The repo-governance SOP (`.agents/audit/`) uses its own separate governance G0–G4 / D1–D8 / P0–P5 numbering — the two systems are unrelated.
 
 - **Cross-repo boundary**: AutoInfo, the three Omni_* modules, and e2e-test-suite are
