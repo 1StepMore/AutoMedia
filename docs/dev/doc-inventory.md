@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 12437 | file |
+| AGENTS.md | 12947 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -27,6 +27,7 @@
 | docs/dev/agent-reference.md | 26267 | file |
 | docs/dev/agent-troubleshooting.md | 29007 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
+| docs/dev/autonomy.md | 8012 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
@@ -39,6 +40,7 @@
 | docs/dev/founder-expectations.md | 112497 | file |
 | docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 25636 | file |
+| docs/dev/goals.md | 1967 | file |
 | docs/dev/harness-run-facts.md | 3470 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
 | docs/dev/override-reference.md | 10342 | file |
