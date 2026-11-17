@@ -22,7 +22,7 @@
     python3 scripts/agent/autonomy.py status
     python3 scripts/agent/autonomy.py start --goal "OL --help 契约全绿" --until 22:00 \
         --evidence "chat 2026-11-17"
-    python3 scripts/agent/autonomy.py gate --need-minutes 60
+    python3 scripts/agent/autonomy.py gate --need-minutes 60   # 自带目标闸（E7）
     python3 scripts/agent/autonomy.py next -n 3
     python3 scripts/agent/autonomy.py claim 350 --branch fix/350-x
     python3 scripts/agent/autonomy.py release 350 --reason done
@@ -42,6 +42,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -61,7 +62,9 @@ NIGHT_START_HOUR = 23
 DAY_START_HOUR = 9
 DEFAULT_NEED_MINUTES = 30
 MAX_LEASE_HOURS = 12
-CLOSING_RE = re.compile(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b[^\n]{0,40}?#(\d+)")
+CLOSING_RE = re.compile(
+    r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b[^\n]{0,40}?#(\d+)"
+)
 
 
 # ---------------------------------------------------------------- 时间判据
@@ -97,7 +100,9 @@ def read_lease(path: Path | None = None) -> dict:
 def write_lease(d: dict, path: Path | None = None) -> None:
     path = path or LEASE
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+    )
 
 
 def default_lane() -> str:
@@ -124,7 +129,11 @@ def effective_lane(now: datetime, path: Path | None = None) -> tuple[str, str, d
     if d.get("status") == "active":
         until = datetime.fromisoformat(d["until"])
         if now < until:
-            return d.get("lane", MINE), f"租约有效，到 {d['until']}（目标：{d.get('goal', '')}）", d
+            return (
+                d.get("lane", MINE),
+                f"租约有效，到 {d['until']}（目标：{d.get('goal', '')}）",
+                d,
+            )
         return (*lane_at(now), {**d, "_expired": True})
     return (*lane_at(now), d)
 
@@ -160,7 +169,7 @@ def pick(issues: list[dict], prs: list[dict], owner: str | None = None) -> list[
 def _gh(args: list[str], timeout: int = 60) -> str:
     env = {k: v for k, v in os.environ.items() if "PROXY" not in k.upper()}
     env["NO_PROXY"] = "*"
-    r = subprocess.run(  # noqa: S603 - 固定 gh 可执行，参数由本模块构造
+    r = subprocess.run(
         [shutil.which("gh") or "gh", *args],
         capture_output=True,
         text=True,
@@ -185,12 +194,16 @@ def _gh_obj(args: list[str]) -> dict:
 
 
 def repo_slug() -> str:
-    return _gh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).strip()
+    return _gh(
+        ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]
+    ).strip()
 
 
 # ---------------------------------------------------------------- 子命令
 def cmd_status(a: argparse.Namespace) -> int:
-    now = datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    now = (
+        datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    )
     lane, why, lease = effective_lane(now)
     d = {
         "now": now.isoformat(timespec="seconds"),
@@ -208,13 +221,17 @@ def cmd_status(a: argparse.Namespace) -> int:
         print(f"当前归属：{lane}")
         print(f"理由　　：{why}")
         if lease.get("status") == "active":
-            left = int((datetime.fromisoformat(lease["until"]) - now).total_seconds() // 60)
+            left = int(
+                (datetime.fromisoformat(lease["until"]) - now).total_seconds() // 60
+            )
             print(f"租约剩余：{left} 分钟｜目标：{lease.get('goal', '')}")
     return 0
 
 
 def cmd_start(a: argparse.Namespace) -> int:
-    now = datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    now = (
+        datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    )
     until = parse_until(a.until, now) if a.until else (now + timedelta(hours=4))
     hours = (until - now).total_seconds() / 3600
     if hours <= 0:
@@ -260,7 +277,9 @@ def cmd_stop(a: argparse.Namespace) -> int:
 
 
 def cmd_gate(a: argparse.Namespace) -> int:
-    now = datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    now = (
+        datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
+    )
     lane, why, lease = effective_lane(now)
     if lane != a.lane:
         print(f"REFUSE: 当前归属 {lane}（{why}），不是 {a.lane}", file=sys.stderr)
@@ -269,14 +288,23 @@ def cmd_gate(a: argparse.Namespace) -> int:
         left = int((datetime.fromisoformat(lease["until"]) - now).total_seconds() // 60)
         if left < a.need_minutes:
             print(
-                f"REFUSE: 租约剩 {left} 分钟 < 需要 {a.need_minutes}（排空保护）", file=sys.stderr
+                f"REFUSE: 租约剩 {left} 分钟 < 需要 {a.need_minutes}（排空保护）",
+                file=sys.stderr,
             )
             return 3
     print(f"OK: {a.lane} 在班（{why}）")
+    if not a.skip_goal:
+        blocked = goal_gate()
+        if blocked is not None:
+            return blocked
     return 0
 
 
 def cmd_next(a: argparse.Namespace) -> int:
+    if not a.skip_goal:
+        blocked = goal_gate()
+        if blocked is not None:
+            return blocked
     repo = repo_slug()
     issues = _gh_json(
         [
@@ -326,16 +354,36 @@ def cmd_next(a: argparse.Namespace) -> int:
 
 def cmd_claim(a: argparse.Namespace) -> int:
     repo = repo_slug()
-    cur = _gh_obj(["issue", "view", str(a.issue), "-R", repo, "--json", "labels,number,title"])
+    cur = _gh_obj(
+        ["issue", "view", str(a.issue), "-R", repo, "--json", "labels,number,title"]
+    )
     labels = {lbl["name"] for lbl in cur.get("labels", [])}
     owners = {lbl for lbl in labels if lbl.startswith(OWNER_PREFIX)}
     if CLAIMED in labels and owners and a.owner not in owners:
-        print(f"REFUSE: #{a.issue} 已被 {sorted(owners)} 认领（status:claimed）", file=sys.stderr)
+        print(
+            f"REFUSE: #{a.issue} 已被 {sorted(owners)} 认领（status:claimed）",
+            file=sys.stderr,
+        )
         return 3
     if owners and a.owner not in owners:
-        print(f"REFUSE: #{a.issue} 带 {sorted(owners)} 标签，归属不是 {a.owner}", file=sys.stderr)
+        print(
+            f"REFUSE: #{a.issue} 带 {sorted(owners)} 标签，归属不是 {a.owner}",
+            file=sys.stderr,
+        )
         return 3
-    _gh(["issue", "edit", str(a.issue), "-R", repo, "--add-label", CLAIMED, "--add-label", a.owner])
+    _gh(
+        [
+            "issue",
+            "edit",
+            str(a.issue),
+            "-R",
+            repo,
+            "--add-label",
+            CLAIMED,
+            "--add-label",
+            a.owner,
+        ]
+    )
     body = (
         f"**认领**\n\n- 接活方：`{a.owner}`\n"
         f"- 时间：{datetime.now(TZ).isoformat(timespec='seconds')}\n"
@@ -378,7 +426,10 @@ def goal_cmd() -> list[str] | None:
     m = GOAL_CMD_RE.search(GOALS.read_text(encoding="utf-8"))
     if not m:
         return None
-    return shlex.split(m.group(1))
+    cmd = shlex.split(m.group(1))
+    if cmd and cmd[0] in ("python", "python3"):
+        cmd = [sys.executable, *cmd[1:]]
+    return cmd
 
 
 def goal_verdict(rc: int) -> str:
@@ -403,7 +454,7 @@ def cmd_goal(a: argparse.Namespace) -> int:
         )
         return 2
     try:
-        r = subprocess.run(  # noqa: S603 - 判据命令来自仓内 goals.md，不是外部输入
+        r = subprocess.run(
             cmd, cwd=ROOT, capture_output=True, text=True, timeout=a.timeout
         )
     except subprocess.TimeoutExpired:
@@ -426,7 +477,9 @@ def cmd_goal(a: argparse.Namespace) -> int:
         for line in tail:
             print(f"  {line}")
         if verdict == "ACHIEVED":
-            print("\nACHIEVED：当前目标已达标（E7）。按 docs/dev/goals.md 四步走，然后停手：")
+            print(
+                "\nACHIEVED：当前目标已达标（E7）。按 docs/dev/goals.md 四步走，然后停手："
+            )
             print("  1) autonomy.py stop --reason done")
             print("  2) 开 [goal-achieved] issue，贴上面原始输出")
             print("  3) goals.md 里下一阶段标 asked-owner")
@@ -441,6 +494,67 @@ def cmd_goal(a: argparse.Namespace) -> int:
     if verdict == "ACHIEVED":
         return 0
     return 2 if verdict == "ERROR" else 4
+
+
+GOAL_CACHE = ROOT / ".agents" / "autonomy" / "goal.json"
+
+
+def goal_check(max_age_s: int = 600) -> tuple[str, int]:
+    """跑（或复用缓存里的）目标判据，返回 (verdict, rc)。
+
+    缓存默认 10 分钟：`gate` / `next` 每个班次都会调用，没必要每次都跑一遍矩阵。
+    """
+    if GOAL_CACHE.exists():
+        with contextlib.suppress(Exception):
+            d = json.loads(GOAL_CACHE.read_text(encoding="utf-8"))
+            if time.time() - float(d.get("at", 0)) < max_age_s:
+                return str(d["verdict"]), int(d["rc"])
+    cmd = goal_cmd()
+    if not cmd:
+        return "NONE", 0
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800)
+        rc = r.returncode
+        tail = (r.stdout or r.stderr or "")[-400:]
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        rc, tail = 2, f"{type(exc).__name__}: {exc}"
+    verdict = goal_verdict(rc)
+    with contextlib.suppress(OSError):
+        GOAL_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        GOAL_CACHE.write_text(
+            json.dumps(
+                {"at": time.time(), "verdict": verdict, "rc": rc, "tail": tail},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+    return verdict, rc
+
+
+def goal_gate() -> int | None:
+    """目标闸：不需要任何人记得跑 goal —— gate / next 自动判。
+
+    ACHIEVED ⇒ 5（别领活，去走 goals.md 的四步）
+    ERROR    ⇒ 6（判据跑不起来 = 环境问题，先修环境，别当成"没达标"硬推）
+    ACTIVE / NONE ⇒ None（照常干活）
+    """
+    verdict, _rc = goal_check()
+    if verdict == "ACHIEVED":
+        print(
+            "E7 目标已达成（`docs/dev/goals.md` 的判据 exit 0）：\n"
+            "  1) autonomy.py stop --reason done\n"
+            "  2) 开 [goal-achieved] issue 贴原始输出\n"
+            "  3) 下一阶段交回 owner（P2 标 asked-owner）\n"
+            "  4) 停手——别自己找活干"
+        )
+        return 5
+    if verdict == "ERROR":
+        print(
+            "⚠️ 目标判据跑不起来（E4 环境问题，不是「没达标」）：先修环境或报 owner，别硬推。",
+            file=sys.stderr,
+        )
+        return 6
+    return None
 
 
 def cmd_selfcheck(a: argparse.Namespace) -> int:
@@ -468,12 +582,16 @@ def cmd_selfcheck(a: argparse.Namespace) -> int:
         repo = repo_slug()
         labels = {
             lbl["name"]
-            for lbl in _gh_json(["label", "list", "-R", repo, "--limit", "100", "--json", "name"])
+            for lbl in _gh_json(
+                ["label", "list", "-R", repo, "--limit", "100", "--json", "name"]
+            )
         }
         need = {READY, CLAIMED, MINE, HUMAN}
         missing = need - labels
         if missing:
-            problems.append(f"仓库缺标签 {sorted(missing)}（先 `gh label create <name>` 再开工）")
+            problems.append(
+                f"仓库缺标签 {sorted(missing)}（先 `gh label create <name>` 再开工）"
+            )
         else:
             notes.append(f"标签齐全 ✓（{repo}）")
     except Exception as e:
@@ -525,11 +643,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--lane", default=default_lane())
     s.add_argument("--need-minutes", type=int, default=0)
     s.add_argument("--now")
+    s.add_argument("--skip-goal", action="store_true", help="跳过目标闸（调试用）")
     s.set_defaults(fn=cmd_gate)
 
     s = sub.add_parser("next")
     s.add_argument("-n", type=int, default=3)
     s.add_argument("--json", action="store_true")
+    s.add_argument("--skip-goal", action="store_true", help="跳过目标闸（调试用）")
     s.set_defaults(fn=cmd_next)
 
     s = sub.add_parser("claim")

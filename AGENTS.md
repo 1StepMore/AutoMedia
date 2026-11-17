@@ -20,7 +20,7 @@ First file an AI coding agent reads. This is the map; deep detail lives in [docs
 
 **Non-negotiable principles:** `.specify/memory/constitution.md`. **Expectations (acceptance source of truth):** `scenarios/` (indexed by `.agents/expectations/INDEX.md`; only the Owner changes expectations — a Tester never greens a suite by editing code or expectations).
 
-**Self-drive (any agent/harness, any machine):** before any work run `python3 scripts/agent/autonomy.py status`
+**Self-drive (any agent/harness, any machine):** before any work run `python3 scripts/agent/autonomy.py gate`
 — lease > clock; **exit 3 = not your turn, stop** (not an error). The same script lists claimable items,
 claims one (writes `status:claimed` + `owner:*` + a claim comment) and reports what this machine is missing.
 Contract, blocker classes (E1–E6), harness-side checklist and the DoD matrix reading:
