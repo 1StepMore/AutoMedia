@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.6](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.5...automedia-v1.17.6) (2026-11-17)
+
+
+### Dependencies
+
+* **deps:** bump bridgecrewio/checkov-action ([#551](https://github.com/1StepMore/AutoMedia/issues/551)) ([17d06e2](https://github.com/1StepMore/AutoMedia/commit/17d06e2f92f720d465f6b4ecfc66c2d9670230aa))
+
 ## [1.17.5](https://github.com/1StepMore/AutoMedia/compare/automedia-v1.17.4...automedia-v1.17.5) (2026-11-16)
 
 
