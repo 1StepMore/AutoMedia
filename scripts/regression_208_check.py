@@ -56,14 +56,29 @@ _SEEDED_CONFIG = (
 
 
 def _snapshot_dir(path: Path) -> list[tuple[str, int, int]]:
-    """Return ``(relative path, size, mtime ns)`` for every file under *path*."""
+    """Return ``(relative path, size, mtime ns)`` for every file under *path*.
+
+    Entries the OS cannot stat still count as *present* — recorded with
+    ``(-1, 0)`` so a later disappearance would still trip the untouched
+    comparison — instead of crashing the whole guard: stat-refusing entries
+    (a WSL-created symlink under the user config directory raises WinError
+    1920 on Windows) are a normal ``~/.automedia`` state, not a guard
+    failure (#565).
+    """
     if not path.is_dir():
         return []
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_size, item.stat().st_mtime_ns)
-        for item in path.rglob("*")
-        if item.is_file()
-    )
+    out: list[tuple[str, int, int]] = []
+    for item in path.rglob("*"):
+        rel = str(item.relative_to(path))
+        try:
+            if not item.is_file():
+                continue
+            stat_result = item.stat()
+        except OSError:
+            out.append((rel, -1, 0))
+        else:
+            out.append((rel, stat_result.st_size, stat_result.st_mtime_ns))
+    return sorted(out)
 
 
 def _fail(guard: str, detail: str) -> int:
@@ -158,7 +173,13 @@ def _check_user_scope_guard(tmp: Path) -> list[str]:
 
     saved_home = os.environ.get("HOME")
     saved_config_dir = os.environ.pop(_CONFIG_DIR_ENV, None)
+    # Windows resolves Path.home() from USERPROFILE, not $HOME — patch both or
+    # the fake home is never recognised as the real user config dir and guard 3
+    # silently turns into a plain write (#565).
+    saved_userprofile = os.environ.get("USERPROFILE") if os.name == "nt" else None
     os.environ["HOME"] = str(fake_home)
+    if os.name == "nt":
+        os.environ["USERPROFILE"] = str(fake_home)
     try:
         try:
             save_model_config(
@@ -186,11 +207,18 @@ def _check_user_scope_guard(tmp: Path) -> list[str]:
                 failures.append("the opted-in write did not land")
     finally:
         os.environ["HOME"] = saved_home if saved_home is not None else ""
+        if os.name == "nt":
+            if saved_userprofile is not None:
+                os.environ["USERPROFILE"] = saved_userprofile
+            else:
+                os.environ.pop("USERPROFILE", None)
         if saved_config_dir is not None:
             os.environ[_CONFIG_DIR_ENV] = saved_config_dir
 
-    if not os.environ.get("HOME"):
+    if not os.environ.get("HOME") and os.name != "nt":
         # Path.home() needs $HOME; restore the process default rather than "".
+        # POSIX only — Windows resolves home from USERPROFILE (restored above)
+        # and has no pwd module (#565).
         import pwd
 
         os.environ["HOME"] = pwd.getpwuid(os.getuid()).pw_dir
@@ -204,10 +232,20 @@ def _doctor_python() -> list[str]:
     slimmer interpreter than ``automedia doctor`` (which imports typer).  Prefer
     the repository's own venv, which is self-contained, and only fall back to
     the current interpreter when there is no venv to run.
+
+    Candidates the OS cannot stat are skipped rather than crashing the
+    resolution: on a Windows checkout the POSIX ``.venv/bin/python`` may be a
+    WSL-created symlink whose stat raises WinError 1920 (#565).
     """
-    venv_python = _REPO_ROOT / ".venv" / "bin" / "python"
-    if venv_python.is_file():
-        return [str(venv_python)]
+    for candidate in (
+        _REPO_ROOT / ".venv" / "bin" / "python",
+        _REPO_ROOT / ".venv_win" / "Scripts" / "python.exe",
+    ):
+        try:
+            if candidate.is_file():
+                return [str(candidate)]
+        except OSError:
+            continue
     return [sys.executable]
 
 
