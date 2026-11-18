@@ -36,6 +36,7 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,6 +75,25 @@ def _plain(text: str) -> str:
     Stripping here keeps every CLI expectation environment-independent.
     """
     return _ANSI_ESCAPE_RE.sub("", text)
+
+
+def _tolerant_decode(raw: bytes | bytearray | str | None) -> str:
+    """Decode subprocess output without dying on mixed-encoding children.
+
+    Order: UTF-8 (the repo's canonical output encoding), then GBK/cp936
+    (Windows native console tools), then UTF-8 with replacement — a decode
+    failure must never lose the captured bytes outright.
+    """
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    for encoding in ("utf-8", "gbk"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="replace")
 
 
 @dataclass
@@ -227,14 +247,24 @@ class CLIAdapter:
             return StepResult(False, {"success": False, "error": "cli step without a command"})
         timeout = step.timeout_seconds or DEFAULT_TIMEOUT_SECONDS
         expanded = os.path.expandvars(command)
+        # POSIX shlex rules eat backslashes, which corrupts every expanded
+        # Windows path (C:\Users\... -> C:UsersRenAnZai...): keep them intact
+        # by splitting without posix escaping on Windows, then dequote simple
+        # surrounding quotes that posix=False leaves in place (#night-20261117).
+        posix_split = sys.platform != "win32"
         parts: str | list[str]
         try:
-            parts = shlex.split(expanded)
+            parts = shlex.split(expanded, posix=posix_split)
         except ValueError:
             parts = command
             shell = True
         else:
             shell = False
+            if not posix_split and isinstance(parts, list):
+                parts = [
+                    p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in ('"', "'") else p
+                    for p in parts
+                ]
         try:
             proc = self._run_process(parts, timeout, shell)
         except subprocess.TimeoutExpired as exc:
@@ -242,10 +272,8 @@ class CLIAdapter:
             # propagate the isinstance narrowing into a call argument written
             # as a ternary, so ``_plain(x) if isinstance(x, str) else ""``
             # trips its ``bytes | None`` stub for TimeoutExpired.stdout.
-            raw_stdout = exc.stdout
-            raw_stderr = exc.stderr
-            stdout_text = raw_stdout if isinstance(raw_stdout, str) else ""
-            stderr_text = raw_stderr if isinstance(raw_stderr, str) else ""
+            stdout_text = _tolerant_decode(exc.stdout)
+            stderr_text = _tolerant_decode(exc.stderr)
             return StepResult(
                 False,
                 {
@@ -281,14 +309,26 @@ class CLIAdapter:
     def _run_process(
         parts: str | list[str], timeout: float, shell: bool
     ) -> subprocess.CompletedProcess[str]:
-        """The single subprocess choke point (trusted scenario commands)."""
-        return subprocess.run(  # noqa: S603 — trusted committed scenario config
+        """The single subprocess choke point (trusted scenario commands).
+
+        Captures bytes and decodes tolerantly (utf-8, then GBK, then
+        replacement) instead of ``text=True``: a native Windows child whose
+        console output is GBK (cp936) crashed the ``subprocess`` reader
+        thread under strict UTF-8 decoding, silently losing the step's
+        stdout/stderr (#night-20261117).
+        """
+        proc = subprocess.run(  # noqa: S603 — trusted committed scenario config
             parts,
             capture_output=True,
-            text=True,
             timeout=timeout,
             shell=shell,  # nosec B602 — trusted committed scenario config
             check=False,
+        )
+        return subprocess.CompletedProcess(
+            proc.args,
+            proc.returncode,
+            stdout=_tolerant_decode(proc.stdout),
+            stderr=_tolerant_decode(proc.stderr),
         )
 
 
