@@ -27,7 +27,7 @@
 | docs/dev/agent-reference.md | 26267 | file |
 | docs/dev/agent-troubleshooting.md | 29007 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
-| docs/dev/autonomy.md | 8012 | file |
+| docs/dev/autonomy.md | 8199 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
