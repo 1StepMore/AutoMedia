@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 12947 | file |
+| AGENTS.md | 13134 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -43,6 +43,8 @@
 | docs/dev/goals.md | 1967 | file |
 | docs/dev/harness-run-facts.md | 3470 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
+| docs/dev/matrix-ownership.md | 1615 | file |
+| docs/dev/matrix-verdict-policy.md | 1938 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
 | docs/dev/plans/NIGHTLY.md | 26311 | file |
