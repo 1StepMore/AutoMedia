@@ -8,6 +8,7 @@
 
 import argparse
 import importlib.util
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -185,6 +186,80 @@ def test_gate_skip_goal_bypasses(monkeypatch):
         au, "effective_lane", lambda now, path=None: (au.MINE, "测试", {})
     )
     assert au.cmd_gate(a) == 0
+
+
+# ---------------------------------------------------------------- owner 授意
+def test_gate_authorized_offshift_passes_and_writes_lease(tmp_path, monkeypatch):
+    monkeypatch.setattr(au, "LEASE", tmp_path / "lease.json")
+    monkeypatch.delenv("AUTONOMY_AUTHORIZED", raising=False)
+    rc = au.main(
+        [
+            "gate",
+            "--lane",
+            au.HUMAN,
+            "--skip-goal",
+            "--authorized",
+            "接这个活",
+            "--now",
+            "2026-11-18T15:00:00",
+        ]
+    )
+    assert rc == 0
+    d = json.loads((tmp_path / "lease.json").read_text(encoding="utf-8"))
+    assert d["status"] == "active"
+    assert d["evidence"] == "接这个活"
+    assert d["lane"] == au.HUMAN
+    assert d["goal"] == "owner 授意：接这个活"
+    assert d["granted_by"] == "owner"
+    assert d["source"] == "gate--authorized"
+    assert datetime.fromisoformat(d["until"]) == _dt("2026-11-18T19:00:00")
+
+
+def test_gate_without_authorized_still_refuses_offshift(tmp_path, monkeypatch):
+    monkeypatch.setattr(au, "LEASE", tmp_path / "lease.json")
+    monkeypatch.delenv("AUTONOMY_AUTHORIZED", raising=False)
+    rc = au.main(
+        [
+            "gate",
+            "--lane",
+            au.HUMAN,
+            "--skip-goal",
+            "--now",
+            "2026-11-18T15:00:00",
+        ]
+    )
+    assert rc == 3
+    assert not (tmp_path / "lease.json").exists()
+
+
+def test_gate_authorized_does_not_clobber_active_lease(tmp_path, monkeypatch):
+    lease = tmp_path / "lease.json"
+    monkeypatch.setattr(au, "LEASE", lease)
+    monkeypatch.delenv("AUTONOMY_AUTHORIZED", raising=False)
+    original = {
+        "lane": au.HUMAN,
+        "goal": "旧目标：别的活",
+        "started_at": "2026-11-18T14:00:00+08:00",
+        "until": "2026-11-18T18:00:00+08:00",
+        "granted_by": "owner",
+        "evidence": "旧证据",
+        "status": "active",
+    }
+    au.write_lease(original)
+    rc = au.main(
+        [
+            "gate",
+            "--lane",
+            au.HUMAN,
+            "--skip-goal",
+            "--authorized",
+            "接这个活",
+            "--now",
+            "2026-11-18T15:00:00",
+        ]
+    )
+    assert rc == 0
+    assert json.loads(lease.read_text(encoding="utf-8")) == original
 
 
 def test_goal_cmd_uses_current_interpreter():
