@@ -117,6 +117,73 @@ class TestProbeAudioDuration:
             assert probe_audio_duration("a.mp3") is None
 
 
+class TestResolveTool:
+    """#574 — tools.yaml pins must win over the bare tool name."""
+
+    def test_pin_path_wins(self) -> None:
+        pinned = r"C:\automedia-tools\bin\ffprobe.exe"
+        with patch.object(vt, "find_tool", return_value=pinned):
+            assert vt._resolve_tool("ffprobe") == pinned
+
+    def test_unresolvable_falls_back_to_bare_name(self) -> None:
+        with patch.object(vt, "find_tool", return_value=None):
+            assert vt._resolve_tool("ffprobe") == "ffprobe"
+
+    def test_stale_pin_falls_back_to_bare_name(self) -> None:
+        from automedia.core.tool_paths import ToolPathError
+
+        with patch.object(vt, "find_tool", side_effect=ToolPathError("pin gone")):
+            assert vt._resolve_tool("ffmpeg") == "ffmpeg"
+
+    def test_default_cmds_reach_probe_and_concat_resolved(self, tmp_path: Any) -> None:
+        """build_scene_timeline with no explicit cmds passes the pinned path down."""
+        seen: dict[str, object] = {}
+
+        def _probe(path: str, ffprobe_cmd: str = "ffprobe", timeout: int = 30) -> float | None:
+            seen["ffprobe_cmd"] = ffprobe_cmd
+            return 3.0
+
+        def _concat(files: list[str], out: str, ffmpeg_cmd: str = "ffmpeg") -> str:
+            seen["ffmpeg_cmd"] = ffmpeg_cmd
+            return out
+
+        with (
+            patch.object(vt, "find_tool", return_value=r"C:\pins\tool.exe"),
+            patch.object(vt, "probe_audio_duration", side_effect=_probe),
+            patch.object(vt, "concat_audio", side_effect=_concat),
+        ):
+            tl = build_scene_timeline(
+                "第一场的内容足够长。第二场的内容也足够长。",
+                audio_pipeline=_FakeTTS(),
+                audio_dir=str(tmp_path),
+            )
+        assert seen["ffprobe_cmd"] == r"C:\pins\tool.exe"
+        assert seen["ffmpeg_cmd"] == r"C:\pins\tool.exe"
+        assert tl["timeline_mode"] == "narration_aligned"
+
+    def test_explicit_cmd_kept_verbatim(self, tmp_path: Any) -> None:
+        """WSL-wrapped prefixes (docstring contract) must not be replaced."""
+        seen: dict[str, object] = {}
+        wsl_prefix = ["wsl", "-e", "ffprobe"]
+
+        def _probe(path: str, ffprobe_cmd: str = "ffprobe", timeout: int = 30) -> float | None:
+            seen["ffprobe_cmd"] = ffprobe_cmd
+            return 3.0
+
+        with (
+            patch.object(vt, "find_tool", return_value=r"C:\pins\tool.exe"),
+            patch.object(vt, "probe_audio_duration", side_effect=_probe),
+            patch.object(vt, "concat_audio", return_value=str(tmp_path / "narration.mp3")),
+        ):
+            build_scene_timeline(
+                "第一场的内容足够长。第二场的内容也足够长。",
+                audio_pipeline=_FakeTTS(),
+                audio_dir=str(tmp_path),
+                ffprobe_cmd=wsl_prefix,
+            )
+        assert seen["ffprobe_cmd"] == wsl_prefix
+
+
 class TestConcatAudio:
     def test_single_file_copied_to_canonical_name(self, tmp_path: Any) -> None:
         """A lone segment is copied to narration.mp3 — downstream (V7 records,

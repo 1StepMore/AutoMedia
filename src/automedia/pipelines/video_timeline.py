@@ -26,6 +26,8 @@ from typing import Any, Protocol
 
 from structlog import get_logger
 
+from automedia.core.tool_paths import ToolPathError, find_tool
+
 logger = get_logger(__name__)
 
 #: Cap on scene count — 30–60s videos read best at 3–6 scenes.
@@ -82,6 +84,23 @@ def split_narration(text: str, max_scenes: int = MAX_SCENES) -> list[str]:
         del merged[shortest + 1]
 
     return merged
+
+
+def _resolve_tool(name: str) -> str:
+    """Resolve *name* via :func:`find_tool` (pins → PATH → bundled), #574.
+
+    tools.yaml pins (e.g. ``automedia-tools/bin/ffprobe.exe``) must win over
+    the bare name — a tool that only exists under a pin was silently
+    unavailable before, degrading the timeline to even-split.  Falls back to
+    the bare name so the existing honest-degradation paths (and WSL-wrapped
+    prefixes passed explicitly by callers) keep working unchanged.
+    """
+    try:
+        return find_tool(name) or name
+    except ToolPathError:
+        # A stale pin must not crash the timeline; the bare name keeps the
+        # previous degrade-to-even-split behaviour.
+        return name
 
 
 def probe_audio_duration(
@@ -217,8 +236,8 @@ def build_scene_timeline(
     *,
     audio_pipeline: _TTSSynthesizer,
     audio_dir: str,
-    ffprobe_cmd: str | list[str] = "ffprobe",
-    ffmpeg_cmd: str | list[str] = "ffmpeg",
+    ffprobe_cmd: str | list[str] | None = None,
+    ffmpeg_cmd: str | list[str] | None = None,
     legacy_audio_path: str = "",
 ) -> dict[str, Any]:
     """Build the narration-aligned scene timeline; degrade honestly.
@@ -244,6 +263,11 @@ def build_scene_timeline(
     segments = split_narration(text)
     if not segments:
         return {"timeline_mode": "unavailable", "scenes": [], "reason": "empty narration"}
+
+    # #574: None (the default) resolves through find_tool so tools.yaml pins
+    # win over PATH; explicit commands (tests, WSL prefixes) pass verbatim.
+    ffprobe_cmd = _resolve_tool("ffprobe") if ffprobe_cmd is None else ffprobe_cmd
+    ffmpeg_cmd = _resolve_tool("ffmpeg") if ffmpeg_cmd is None else ffmpeg_cmd
 
     mode = "narration_aligned"
     segment_files: list[str] = []
