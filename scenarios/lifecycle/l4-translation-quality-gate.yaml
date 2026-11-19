@@ -80,9 +80,10 @@ steps:
 cleanup_steps:
   - name: remove the synthetic translation project
     kind: cli
-    check: rm -rf removes the synthetic project tree created by this scenario (fully static path).
+    check: "python shutil.rmtree removes the synthetic tree; python resolves /tmp exactly as the steps that created it, so cleanup works identically on POSIX and Windows (MSYS rm would resolve /tmp elsewhere and leave stale state that breaks re-runs)."
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/lifecycle-projects/4a4b4c4d4e04
+    command: |-
+      python3 -c 'import shutil; shutil.rmtree("/tmp/automedia/lifecycle-projects/4a4b4c4d4e04", ignore_errors=True)'
     timeout_seconds: 60
     expect:
       exit_code: 0

@@ -85,9 +85,10 @@ steps:
 cleanup_steps:
   - name: remove the synthetic publish-log project
     kind: cli
-    check: rm -rf removes the synthetic project tree created by this scenario (fully static path).
+    check: "python shutil.rmtree removes the synthetic tree(s); python resolves /tmp exactly as the steps that created it, so cleanup works identically on POSIX and Windows (MSYS rm would resolve /tmp elsewhere and leave stale state that breaks re-runs)."
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/lifecycle-projects/1a1b1c1d1e01
+    command: |-
+      python3 -c 'import shutil; shutil.rmtree("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01", ignore_errors=True)'
     timeout_seconds: 60
     expect:
       exit_code: 0

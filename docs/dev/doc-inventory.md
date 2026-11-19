@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 13266 | file |
+| AGENTS.md | 15205 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -27,7 +27,7 @@
 | docs/dev/agent-reference.md | 26267 | file |
 | docs/dev/agent-troubleshooting.md | 29007 | file |
 | docs/dev/api-gotchas.md | 10981 | file |
-| docs/dev/autonomy.md | 8012 | file |
+| docs/dev/autonomy.md | 8199 | file |
 | docs/dev/capability-gap-assessment-20260915.md | 13124 | file |
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
@@ -55,7 +55,7 @@
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
-| docs/dev/run-with-real-llm.md | 2617 | file |
+| docs/dev/run-with-real-llm.md | 3298 | file |
 | docs/dev/task-routing.md | 2291 | file |
 | docs/dev/validation-evidence | — | dir |
 | docs/dev/validation-evidence/README.md | 659 | file |

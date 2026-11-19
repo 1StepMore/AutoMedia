@@ -81,9 +81,10 @@ steps:
 cleanup_steps:
   - name: remove the synthetic project and its archive
     kind: cli
-    check: rm -rf removes both the source tree and the _archived sibling created by this scenario (fully static paths).
+    check: "python shutil.rmtree removes both trees; python resolves /tmp exactly as the steps that created it, so cleanup works identically on POSIX and Windows (MSYS rm would resolve /tmp elsewhere and leave stale state that breaks re-runs)."
     standard: founder-expectations.F01
-    command: rm -rf /tmp/automedia/lifecycle-projects/2a2b2c2d2e02 /tmp/automedia/lifecycle-projects/2a2b2c2d2e02_archived
+    command: |-
+      python3 -c 'import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ("/tmp/automedia/lifecycle-projects/2a2b2c2d2e02", "/tmp/automedia/lifecycle-projects/2a2b2c2d2e02_archived")]'
     timeout_seconds: 60
     expect:
       exit_code: 0
