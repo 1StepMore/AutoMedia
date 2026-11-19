@@ -127,6 +127,7 @@ def _env_to_config() -> dict[str, Any]:
         AUTOMEDIA_LLM_API_KEY   → llm.text_generation.api_key
         AUTOMEDIA_LLM_TEMPERATURE → llm.text_generation.temperature
         AUTOMEDIA_LLM_MAX_TOKENS → llm.text_generation.max_tokens
+        AUTOMEDIA_LLM_REASONING_MODEL → llm.text_generation.reasoning_model
 
     Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
     remain the fallback.
@@ -147,6 +148,7 @@ def _env_to_config() -> dict[str, Any]:
         "llm_api_key": ["llm", "text_generation", "api_key"],
         "llm_temperature": ["llm", "text_generation", "temperature"],
         "llm_max_tokens": ["llm", "text_generation", "max_tokens"],
+        "llm_reasoning_model": ["llm", "text_generation", "reasoning_model"],
     }
 
     # Non-LLM special key remapping (flatter nesting than generic split)
@@ -176,6 +178,9 @@ def _env_to_config() -> dict[str, Any]:
                 node = node.setdefault(part, {})
             # Convert numeric fields to proper types
             last_key = mapped[-1]
+            if last_key == "reasoning_model":
+                node[last_key] = str(value).strip().lower() in ("1", "true", "yes", "on")
+                continue
             if last_key in ("max_tokens", "temperature"):
                 try:
                     typed_value: int | float = (

@@ -714,12 +714,25 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
     Non-OpenAI providers (DeepSeek, etc.) raise ``AttributeError`` when
     ``client.beta`` does not exist, ``NotImplementedError`` when the
     provider explicitly refuses structured output, or ``openai.APIError``
-    when the server rejects the beta endpoint.
+    when the server rejects the beta endpoint.  ``LengthFinishReasonError``
+    (raised when a reasoning model burns the whole ``max_tokens`` budget on
+    thinking and the beta parse never terminates) also routes to the manual
+    parse path.
     """
     try:
         import openai
 
-        return (AttributeError, NotImplementedError, openai.APIError)
+        errors: tuple[type[BaseException], ...] = (
+            AttributeError,
+            NotImplementedError,
+            openai.APIError,
+        )
+        # Older SDKs predate LengthFinishReasonError — only add it when the
+        # attribute exists and really is an exception class.
+        length_error = getattr(openai, "LengthFinishReasonError", None)
+        if isinstance(length_error, type) and issubclass(length_error, BaseException):
+            errors = (*errors, length_error)
+        return errors
     except ImportError:
         return (AttributeError, NotImplementedError)
 
