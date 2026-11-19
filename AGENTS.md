@@ -136,6 +136,28 @@ schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md` is the onboa
 - The validation-driving surface is the CLI and MCP server only; the SDK is a product entry point, explicitly out of validation scope.
 Full evidence contract (5 statuses, honesty rules, where things live): [agent-reference §Validation Layer](docs/dev/agent-reference.md#validation-layer).
 
+## 11b. 交叉审计的产物中转 + 真假模型（MUST · 2026-11-19）
+
+质量通过不能靠口头，必须**产物入库 + git 中转**：两侧机器不共享磁盘，唯一通道是 GitHub 仓库。
+协议真身：workspace 根 `99-Tools/methodology/cross-audit-evidence-protocol.md`；本仓落点与规则：`docs/dev/cross-audit-evidence.md`
+
+- 一次性中间件 ⇒ `.scratch/`（不入库）；**要交叉审的产物 ⇒ `docs/dev/validation-evidence/<矩阵>/<run-date>/` + `manifest.json`，必须 commit**。
+- `validation-runs/` 是 gitignored 本机临时区，**不是交付通道**（对方机器读不到）。
+- 自检：`python3 99-Tools/check_evidence_committed.py <repo>`，exit 0 才可宣称质量通过。
+- `quality.verdict=pass` 必须带存在的 `quality.evidence`，否则按 fail 计。
+
+**假模型 vs 真模型（硬规矩）**
+
+| 用途 | 允许 `AUTOMEDIA_FAKE_LLM=1` | 说明 |
+|:--|:--|:--|
+| 链路 / 契约 / 门覆盖（路径能跑通、schema 对、gate 执行了） | ✅ | 必须记 `confidence=mock`，**不得**称"内容合格/质量通过" |
+| 质量验收（内容可用性、评分、文案/摘要/翻译质量） | ❌ | **必须真模型**；fake 的质量结论无效 |
+| 对客交付包验收 | ❌ | 同上 |
+
+真跑需要 `AUTOMEDIA_LLM_API_KEY`（+ 需要 `AUTOMEDIA_LLM_BASE_URL` / `AUTOMEDIA_LLM_MODEL` 走兼容端点时一并给）。
+**没有 key ⇒ 先查环境，再向 owner 要（优先免费额度）**，标 `blocked:no-llm-key` 等人给；
+不许用 fake 冒充真跑，也不许因此跳过质量验收。
+
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
 - **Documentation index:** [docs/index.md](docs/index.md) and [agent-reference §Documentation Index](docs/dev/agent-reference.md#documentation-index); executable onboarding in [ONBOARDING.md](ONBOARDING.md)
