@@ -1897,15 +1897,30 @@ def _media_stage_report_block(
     if not notes and not produced:
         return None
     block: dict[str, Any] = {"notes": notes, "produced_files": produced}
-    # 结构化降级字段（#414）：除了 notes 里的事件，报告顶层也给出
-    # degraded/renderer/reason，机器读者不必解析日志式注记。
+    # 结构化视频字段（#414/#576）：除了 notes 里的事件，报告顶层也给出
+    # degraded/renderer/reason 与 engine_used/fallback_reason/fallback_chain，
+    # 机器读者不必解析日志式注记。
+    video_info: dict[str, Any] = {}
     degraded = gate_context.get("video_degraded")
     if degraded:
-        block["video"] = {
-            "degraded": True,
-            "renderer": str(degraded),
-            "reason": str(gate_context.get("video_degraded_reason") or ""),
-        }
+        video_info.update(
+            {
+                "degraded": True,
+                "renderer": str(degraded),
+                "reason": str(gate_context.get("video_degraded_reason") or ""),
+            }
+        )
+    engine_used = gate_context.get("video_engine_used")
+    if engine_used:
+        video_info["engine_used"] = str(engine_used)
+    fallback_reason = gate_context.get("video_fallback_reason")
+    if fallback_reason:
+        video_info["fallback_reason"] = str(fallback_reason)
+    fallback_chain = gate_context.get("video_fallback_chain")
+    if fallback_chain:
+        video_info["fallback_chain"] = fallback_chain
+    if video_info:
+        block["video"] = video_info
     return block
 
 
@@ -2658,24 +2673,47 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
             reason="no video assets collected (images + audio required)",
         )
     if assets:
-        from automedia.engines import resolve_video_engine
-        from automedia.engines.base import BaseVideoEngine
         from automedia.engines.errors import EngineExecutionError, EngineNotFoundError
+        from automedia.engines.video_chain import render_video_with_fallback
 
         try:
-            video_engine = cast(BaseVideoEngine, resolve_video_engine(gate_context.get("config")))
-            video_path = video_engine.render(assets, os.path.join(project_dir, VIDEO, "output.mp4"))
+            render_result = render_video_with_fallback(
+                assets,
+                os.path.join(project_dir, VIDEO, "output.mp4"),
+                gate_context.get("config"),
+            )
+            video_path = render_result.output_path
             gate_context["video_path"] = video_path
             produced.append(video_path)
             log.info("pipeline.video_produced", path=video_path)
+            # 回退留痕（#576）：换过引擎就必须写明最终产出者与前一引擎的
+            # 失败原因，不允许静默降级成"看起来成功的 mp4"。
+            if render_result.used_fallback:
+                gate_context["video_engine_used"] = render_result.engine_used
+                gate_context["video_fallback_reason"] = render_result.fallback_reason
+                gate_context["video_fallback_chain"] = render_result.fallback_chain
+                _note_media_stage(
+                    gate_context,
+                    "video_engine_fallback",
+                    engine_used=render_result.engine_used,
+                    fallback_reason=render_result.fallback_reason[:300],
+                    fallback_chain=render_result.fallback_chain,
+                )
+                log.warning(
+                    "pipeline.video_engine_fallback",
+                    engine_used=render_result.engine_used,
+                    fallback_reason=render_result.fallback_reason[:300],
+                    fallback_chain=render_result.fallback_chain,
+                )
             # 逐场视觉 entries（#387）：从成片抽帧 + 面板短路裁决；失败只降级
             # （V1 保持 skip 并记账），不外抛、不丢已产出的视频。
             _produce_vision_entries(gate_context)
             # Degraded render must be visible, not just logged (#383): a
             # slideshow is a still frame plus audio, and calling it "video
             # produced" let a demo ship an mp4 nobody had really rendered.
-            if getattr(video_engine, "last_render_degraded", False):
-                reason = str(getattr(video_engine, "last_render_reason", "") or "")[:300]
+            meta: dict[str, object] = {}
+            if render_result.degraded:
+                reason = render_result.degraded_reason
                 gate_context["video_degraded"] = "slideshow"
                 gate_context["video_degraded_reason"] = reason
                 _note_media_stage(
@@ -2684,29 +2722,38 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
                     renderer="slideshow",
                     reason=reason,
                 )
-                # 产物元数据（#414）：降级成片旁边落一份标记，让这个 mp4
-                # 无法冒充真渲染——文件存在本身即是"这是降级件"的声明。
-                # （allow_degrade=False 时引擎根本不会产出 slideshow，
-                # 这里只在显式降级路径上执行。）
-                try:
-                    meta = {
+                meta.update(
+                    {
                         "degraded": True,
                         "renderer": "slideshow",
                         "reason": reason,
-                        "output": os.path.basename(video_path),
                     }
-                    meta_path = os.path.join(project_dir, VIDEO, "render-meta.json")
-                    with open(meta_path, "w", encoding="utf-8") as fh:
-                        json.dump(meta, fh, ensure_ascii=False, indent=2)
-                    produced.append(meta_path)
-                except OSError as meta_exc:
-                    log.warning("pipeline.video_degraded_meta_failed", error=str(meta_exc))
+                )
                 log.warning(
                     "pipeline.video_degraded",
                     renderer="slideshow",
                     reason=reason,
                     path=video_path,
                 )
+            # 产物元数据（#414/#576）：降级成片或发生过引擎回退时，在成片
+            # 旁落一份标记，让这个 mp4 无法冒充"一次真渲染"。
+            if render_result.used_fallback:
+                meta.update(
+                    {
+                        "engine_used": render_result.engine_used,
+                        "fallback_reason": render_result.fallback_reason,
+                        "fallback_chain": render_result.fallback_chain,
+                    }
+                )
+            if meta:
+                try:
+                    meta["output"] = os.path.basename(video_path)
+                    meta_path = os.path.join(project_dir, VIDEO, "render-meta.json")
+                    with open(meta_path, "w", encoding="utf-8") as fh:
+                        json.dump(meta, fh, ensure_ascii=False, indent=2)
+                    produced.append(meta_path)
+                except OSError as meta_exc:
+                    log.warning("pipeline.video_degraded_meta_failed", error=str(meta_exc))
         except (EngineExecutionError, EngineNotFoundError) as exc:
             # 显式报告（#351）：引擎不可用/渲染失败必须进 gate-report，
             # 禁止静默退化成整排 skipped 的 V 门。
