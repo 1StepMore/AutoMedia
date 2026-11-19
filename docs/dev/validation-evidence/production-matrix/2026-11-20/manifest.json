@@ -1,0 +1,91 @@
+{
+  "matrix": "production-matrix",
+  "run-date": "2026-11-20",
+  "produced_by": "code-side Windows machine (auto agent shift)",
+  "commit": "40d09587abc000ea9dee97e921e776cb2686acf0",
+  "summary_doc": "2026-11-20/run-summary.md",
+  "cells": [
+    {
+      "cell": "matrix-coverage-4-sides",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-20/matrix-final.txt",
+        "reading": "mcp 64/63covered missing=0; cli 21/21 missing=0; gates 33 declared covered=31 missing=0 (G4/G5 unreachable-by-design); modes 9/9 missing=0"
+      },
+      "command": "python -m automedia validate matrix",
+      "produced_at": "2026-11-20T03:40+08:00"
+    },
+    {
+      "cell": "full-suite-real-model",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-20/run-summary.md",
+        "reading": "162/162 scenarios confidence=real; passed=129 failed=16 unconfigured=13 partial-pass=3 recovered=1; hard-safety violations=0 (10 hard scenarios all passed)"
+      },
+      "command": "AUTOMEDIA_LLM_PROVIDER/BASE_URL/MODEL/REASONING_MODEL=<machine endpoint env> python -m automedia validate run --all",
+      "run_record": "validation-runs/20261120-014835-290077 (machine-local)",
+      "produced_at": "2026-11-19T18:52Z"
+    },
+    {
+      "cell": "lifecycle-gates-L1-L4",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-20/run-summary.md",
+        "reading": "l1-publish-log-gate 4/4, l2-archive-validation-gate 4/4 (deterministic), l3-platform-integrity-gate 4/4 (real D1 rewrite + L3), l4-translation-quality-gate 4/4 (real OL translation recorded honest verdict) — merged via PR #585"
+      },
+      "command": "python -m automedia validate run --scenario l1-publish-log-gate|l2-archive-validation-gate|l3-platform-integrity-gate|l4-translation-quality-gate",
+      "run_record": "validation-runs/20261120-011709/011719/012739/012807 (machine-local)",
+      "produced_at": "2026-11-20T01:30+08:00"
+    },
+    {
+      "cell": "text-track",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-20/run-summary.md",
+        "reading": "text-only-journey pipeline step passed (74.8s, CW/G0-G6 all green, real model); owner-side cell per matrix-ownership — cross-audit by owner side pending"
+      },
+      "command": "see run-summary.md §失败16条归因 A",
+      "produced_at": "2026-11-19T18:30Z"
+    },
+    {
+      "cell": "image-track-cover",
+      "quality": {
+        "verdict": "fail",
+        "confidence": "real",
+        "evidence": "2026-11-20/image-track/cover/cover.png",
+        "reading": "Vision QA FAIL: title renders as tofu boxes (CJK glyphs missing in cover render chain); pipeline itself passed (attempt 2, exit 0); blocked:missing-dep(cjk-font) on this machine",
+        "sha256_prefix": "ea4b89af1f7af84d"
+      },
+      "command": "automedia validate run --scenario produce-cover (attempt 2) + manual artifact inspection",
+      "produced_at": "2026-11-20T02:59+08:00"
+    },
+    {
+      "cell": "video-track",
+      "quality": {
+        "verdict": "fail",
+        "confidence": "real",
+        "evidence": "2026-11-20/video-track/render/",
+        "reading": "V-gate chain ran for real after AUTOMEDIA_ENGINES_VIDEO_CHAIN=hyperframes (remotion WSL workspace absent on this machine): output.mp4 41.2s h264 1920x1080+aac ~4.9Mbps ffprobe-decodable; main/subtitle Chinese text renders correctly; decorative template elements have tofu glyphs + clipped text (quality defect); narration 41.2s@48kbps below the scenario's >=60s/>=128kbps bar",
+        "frames": ["frame-0030.png", "frame-0900.png"]
+      },
+      "command": "AUTOMEDIA_ENGINES_VIDEO_CHAIN=hyperframes python -m automedia validate run --scenario produce-audio|produce-video|produce-subtitle + ffmpeg frame extraction + ffprobe",
+      "run_record": "validation-runs/20261120-035240-574185, 20261120-041957-327296, 20261120-043253-615066 (machine-local; all three pipeline steps passed after the chain fix)",
+      "produced_at": "2026-11-20T04:32+08:00"
+    },
+    {
+      "cell": "masterkey-account-surface",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-20/run-summary.md",
+        "reading": "6/6 masterkey scenarios passed with synthetic AUTOMEDIA_MASTER_KEY + isolated sandbox store; dep-doctor-missing-ffmpeg passed with behavior toggle"
+      },
+      "command": "AUTOMEDIA_MASTER_KEY=<synthetic> python -m automedia validate run --scenario <each>",
+      "produced_at": "2026-11-20T03:27+08:00"
+    }
+  ]
+}
