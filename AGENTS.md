@@ -1,6 +1,7 @@
 # AutoMedia — Agent Codebase Context
+> 判活按标签、不问编号 → `docs/dev/task-routing.md`（`owner:*` 是例外不是默认：**不标 = 任一侧可做**）
 
-First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below. · docs/dev/harness-run-facts.md — 运行环境 / 门禁顺序 / 缺 key 症状 / 已知坑
+First file an AI coding agent reads. This is the map; deep detail lives in [docs/dev/agent-reference.md](docs/dev/agent-reference.md) (on-demand) and the inline links below. · docs/dev/harness-run-facts.md — 运行环境 / 门禁顺序 / 缺 key 症状 / 已知坑 · **矩阵归属/判定口径 → `docs/dev/matrix-ownership.md`（口径真身 = `docs/dev/matrix-verdict-policy.md`；视频轨+图片=code 侧，文本轨/图文文字=owner 侧）**
 
 ## 0. Agent Governance: Safety, Priority, Role Routing
 
