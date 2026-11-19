@@ -88,7 +88,12 @@ def test_snapshot_dir_still_reports_removal(tmp_path: Path, monkeypatch) -> None
 
 def test_doctor_python_skips_unstat_venv_candidate(monkeypatch) -> None:
     """A WSL-symlink ``.venv/bin/python`` (unstat-able on Windows) must not
-    crash interpreter resolution — the resolver skips it (#565)."""
+    crash interpreter resolution — the resolver skips it (#565).
+
+    ``sys.executable`` is replaced by a sentinel because a "path differs" check
+    is vacuous when pytest itself runs under the repo's ``.venv/bin/python``:
+    the fallback then equals the skipped candidate (#569).
+    """
     from pathlib import Path as _Path
 
     repo_root = regression_208_check._REPO_ROOT
@@ -101,10 +106,15 @@ def test_doctor_python_skips_unstat_venv_candidate(monkeypatch) -> None:
         return real_is_file(self)
 
     monkeypatch.setattr(_Path, "is_file", fake_is_file)
+    monkeypatch.setattr(
+        regression_208_check.sys, "executable", "<sentinel-interpreter>"
+    )
 
     result = regression_208_check._doctor_python()
 
-    assert result[0] != str(wsl_python), "unstat-able candidate must be skipped"
+    assert result == ["<sentinel-interpreter>"], (
+        "unstat-able candidate must be skipped, falling back to sys.executable"
+    )
 
 
 def test_user_scope_guard_holds_on_this_platform(tmp_path: Path) -> None:
