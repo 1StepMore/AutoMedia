@@ -2101,6 +2101,7 @@ owner 自己的 harness 上，先在本机声明立场，否则 <code>gate</code
 <li>owner 说「交给你了，做到 22:00，目标是 X」⇒ <code>autonomy.py start --goal X --until 22:00</code></li>
 <li>到期<strong>自动失效</strong>，不需要 owner 再喊停；中途收回 ⇒ <code>stop --reason owner-reclaim</code></li>
 <li>没有租约时按缺省时段：工作日 09:00–23:00 归 <code>owner:code-auto</code>，工作日 23:00–09:00 + 周末全天归 <code>owner:human-agent</code>。两侧不同时动手。</li>
+<li>owner 明确说「接这个活」⇒ agent 直接带 --authorized "&lt;他的原话&gt;" 跑 gate，闸会自动立 4 小时租约放行；不得以「不在我的班次」为理由停手。</li>
 </ul>
 <h2 id="2">2. 什么算「可开工」<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>agent-ready ∧ 无任何 owner:* 标签 ∧ 无 status:claimed ∧ 没有被任何 open PR 认领（标题 #N / close|fix|resolve #N）
