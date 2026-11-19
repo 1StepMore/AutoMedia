@@ -240,6 +240,10 @@
     "G3",
     "G6",
     "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
     "P1",
     "P2",
     "P3",
@@ -368,6 +372,10 @@
     "G3",
     "G6",
     "H0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
     "P1",
     "P2",
     "P3",
@@ -395,12 +403,7 @@
   ],
   "missing_mcp": [],
   "missing_cli": [],
-  "missing_gates": [
-    "L1",
-    "L2",
-    "L3",
-    "L4"
-  ],
+  "missing_gates": [],
   "missing_modes": [],
   "phantom_mcp": [],
   "phantom_cli": [],
@@ -493,9 +496,9 @@
     "cli_phantom": 0,
     "cli_boundary_only": 0,
     "gates_declared": 33,
-    "gates_used": 27,
-    "gates_covered": 27,
-    "gates_missing": 4,
+    "gates_used": 31,
+    "gates_covered": 31,
+    "gates_missing": 0,
     "gates_phantom": 0,
     "gates_unreachable": 2,
     "gates_input_reachable": 7,
@@ -619,6 +622,10 @@
       "G3",
       "G6",
       "H0",
+      "L1",
+      "L2",
+      "L3",
+      "L4",
       "P1",
       "P2",
       "P3",
@@ -648,12 +655,7 @@
   "missing": {
     "mcp": [],
     "cli": [],
-    "gates": [
-      "L1",
-      "L2",
-      "L3",
-      "L4"
-    ],
+    "gates": [],
     "modes": []
   },
   "allowlisted": {
@@ -667,8 +669,8 @@
   "evidence_run": null,
   "evidence_confidence": null,
   "covered_count": 0,
-  "unproven_count": 120,
-  "missing_count": 4,
+  "unproven_count": 124,
+  "missing_count": 0,
   "missing_hard_count": 0,
   "allowlist": {
     "path": "scenarios/boundary_only_allowlist.yml",
@@ -697,11 +699,11 @@
     ],
     "distribution": {
       "L0": 116,
-      "L1": 30,
-      "L2": 8,
+      "L1": 31,
+      "L2": 10,
       "L3": 3,
       "L4": 2,
-      "L5": 0
+      "L5": 1
     },
     "matrix": {
       "baseline": {
@@ -727,6 +729,14 @@
         "L3": 0,
         "L4": 0,
         "L5": 0
+      },
+      "lifecycle": {
+        "L0": 0,
+        "L1": 1,
+        "L2": 2,
+        "L3": 0,
+        "L4": 0,
+        "L5": 1
       },
       "meta": {
         "L0": 7,
@@ -801,7 +811,7 @@
         "L5": 0
       }
     },
-    "total": 159
+    "total": 163
   },
   "meta_scenarios": [
     "account-cli-surface",
@@ -896,6 +906,10 @@
     "image-carousel-journey",
     "init-config-recovery",
     "init-config-tempdir",
+    "l1-publish-log-gate",
+    "l2-archive-validation-gate",
+    "l3-platform-integrity-gate",
+    "l4-translation-quality-gate",
     "list-accounts-masterkey",
     "list-active-pipelines-empty",
     "list-brands-baseline",
@@ -967,7 +981,7 @@
     "video-only-journey"
   ],
   "meta_scenario_count": 39,
-  "surface_scenario_count": 120,
+  "surface_scenario_count": 124,
   "surface_by_level": {
     "levels": [
       "L0",
@@ -979,11 +993,11 @@
     ],
     "distribution": {
       "L0": 77,
-      "L1": 30,
-      "L2": 8,
+      "L1": 31,
+      "L2": 10,
       "L3": 3,
       "L4": 2,
-      "L5": 0
+      "L5": 1
     },
     "matrix": {
       "baseline": {
@@ -1009,6 +1023,14 @@
         "L3": 0,
         "L4": 0,
         "L5": 0
+      },
+      "lifecycle": {
+        "L0": 0,
+        "L1": 1,
+        "L2": 2,
+        "L3": 0,
+        "L4": 0,
+        "L5": 1
       },
       "partial": {
         "L0": 2,
@@ -1075,8 +1097,8 @@
         "L5": 0
       }
     },
-    "total": 120
+    "total": 124
   },
   "generated_at": "",
-  "scenario_count": 159
+  "scenario_count": 163
 }

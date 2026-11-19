@@ -1,0 +1,88 @@
+# Lifecycle gate coverage — L4 translation quality
+#
+# WHY THIS SCENARIO EXISTS (issue #78 coverage gap: L1-L4 were command-path
+# reachable but no scenario proved them):
+#   L4 is NOT in any pipeline preset.  It runs on the localize path
+#   (cli/commands/omni.py:213): ``automedia omni localize`` translates each
+#   draft through OLAdapter and then calls :class:`L4TranslationQuality` over
+#   every translation result.  L4 is ADVISORY: a failing verdict is reported
+#   as a warning and never aborts localisation.
+#
+# HOW IT IS PROVEN (run-tested, not declarative):
+#   1. A synthetic project with a real draft is created.
+#   2. ``automedia omni localize --project <dir> --target-langs en`` runs the
+#      shipped localisation path, which executes L4 on the translation.
+#   3. The produced 06_publish/en/draft.md is inspected.
+#   4. L4 is re-executed over that exact produced file and its verdict is
+#      printed as JSON (gate name, pass state, failure/warning counts).
+#
+# HONESTY NOTES:
+#   - L4 prints a warning only when it FAILS; a passing verdict is silent.  So
+#     step 4 always records the real verdict instead of assuming a pass.
+#   - The translation itself needs AUTOMEDIA_LLM_API_KEY (declared below);
+#     without it (and without AUTOMEDIA_FAKE_LLM=1) the env gate marks the
+#     scenario unconfigured — never a pass.  When the OL config/credentials
+#     are absent the adapter returns an empty translation with a warning,
+#     L4 correctly reports the frontmatter/empty failures, and that degraded
+#     verdict is recorded as-is: the gate EXECUTED, which is what this
+#     scenario proves.
+#   - The fixed project id makes the artifact path statically addressable.
+
+name: l4-translation-quality-gate
+description: "automedia omni localize's L4 branch is proven: a synthetic project is localised to English through the shipped path, the produced 06_publish/en draft is inspected, and L4TranslationQuality re-executes over that real artifact with its verdict recorded."
+intent: "Prove L4 (translation quality) really executes on the shipped localisation surface instead of only being declared: automedia omni localize calls L4TranslationQuality for every translated draft, and a re-grade over the produced 06_publish/en file records the gate verdict in the run record."
+category: lifecycle
+user_level: L5
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - L4
+steps:
+  - name: create the synthetic translation project
+    kind: cli
+    check: "A python3 one-liner writes the project info plus a markdown draft under 01_content/drafts/ so omni localize finds a file to translate and grade with L4."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/4a4b4c4d4e04"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "4a4b4c4d4e04", "topic": "translation quality lifecycle probe", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("# Translation probe\n\nThis synthetic draft exercises the localisation surface. It gives the L4 translation-quality gate real content to grade after the OL adapter produces a target-language file.\n")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: automedia omni localize runs the translation and L4
+    kind: cli
+    check: "The shipped localize command resolves 01_content/drafts, translates to English through OLAdapter, executes L4TranslationQuality on the result (advisory), and writes the produced file under 06_publish/en."
+    standard: founder-expectations.F02
+    command: automedia omni localize --project /tmp/automedia/lifecycle-projects/4a4b4c4d4e04 --target-langs en
+    timeout_seconds: 300
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Localised 1 file(s)"
+  - name: re-execute L4 over the produced translation and record its verdict
+    kind: cli
+    check: "L4TranslationQuality (the exact gate class the localize command calls) executes over the real 06_publish/en/draft.md content and prints the gate name plus its honest verdict — pass state, failure count, warning count — into the run record."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, pathlib; from automedia.gates.translation_quality import L4TranslationQuality; p = pathlib.Path("/tmp/automedia/lifecycle-projects/4a4b4c4d4e04/06_publish/en/draft.md"); text = p.read_text(encoding="utf-8"); result = L4TranslationQuality().execute({"translation_result": {"translated_md": text}, "source_lang": "zh", "target_lang": "en"}); print(json.dumps({"gate": result.get("gate"), "passed": bool(result.get("passed")), "failures": len(result.get("failures", [])), "warnings": len(result.get("warnings", []))}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"L4\""
+  - name: the localised artifact exists
+    kind: file
+    check: "The localize command wrote 06_publish/en/draft.md — the file L4 graded above — so the recorded verdict is tied to the artifact the shipped command produced. The file may be empty when the OL config/credentials are absent: this scenario proves L4 EXECUTED and records its honest (failing) verdict, not that the translation was good."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/lifecycle-projects/4a4b4c4d4e04/06_publish/en/draft.md
+    timeout_seconds: 60
+    expect:
+      success: true
+      artifact_exists: /tmp/automedia/lifecycle-projects/4a4b4c4d4e04/06_publish/en/draft.md
+cleanup_steps:
+  - name: remove the synthetic translation project
+    kind: cli
+    check: rm -rf removes the synthetic project tree created by this scenario (fully static path).
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/lifecycle-projects/4a4b4c4d4e04
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

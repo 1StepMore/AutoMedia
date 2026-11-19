@@ -1,0 +1,92 @@
+# Lifecycle gate coverage — L3 platform integrity
+#
+# WHY THIS SCENARIO EXISTS (issue #78 coverage gap: L1-L4 were command-path
+# reachable but no scenario proved them):
+#   L3 is NOT in any pipeline preset.  It runs in
+#   ``run_l3_distribution_gate`` (cli/commands/distribute.py:160-168), called
+#   ONCE by ``automedia distribute`` (distribute.py:530) after the D-gates
+#   produced their per-platform artifacts.  ``--dry-run`` returns before the
+#   D-gates and therefore never reaches L3, so this scenario performs a real
+#   (non-dry-run) distribution to prove the gate actually executes.
+#
+# HOW IT IS PROVEN (run-tested, not declarative):
+#   1. A synthetic project with a real draft is created.
+#   2. ``automedia distribute <id> --platforms wechat`` runs the shipped D1
+#      rewrite and then L3 over the produced 04_distribution/wechat/*.md.
+#   3. The produced artifact is listed.
+#   4. L3 is re-executed with the SHIPPED context builder
+#      (build_l3_distribution_context) over the files the command actually
+#      produced, and its verdict is printed as JSON into the run record.
+#
+# HONESTY NOTES:
+#   - L3 prints nothing on success (distribute only prints the summary), so
+#     step 4 names the gate and its verdict explicitly instead of inferring
+#     execution from a silent success.
+#   - The D-gate rewrite is LLM-driven.  This scenario declares
+#     AUTOMEDIA_LLM_API_KEY; without it (and without AUTOMEDIA_FAKE_LLM=1) the
+#     env gate marks the scenario unconfigured — never a pass.  Under the
+#     deterministic fake-LLM mode the rewrite is a fixed body, which is the
+#     honest degraded path for coverage: the gate code executes for real,
+#     the run record records confidence=mock, and no provider is contacted.
+#   - The fixed project id makes the artifact path statically addressable.
+
+name: l3-platform-integrity-gate
+description: "automedia distribute's L3 branch is proven: a synthetic project runs a real (non-dry-run) D1 wechat rewrite, then L3 platform integrity executes over the produced 04_distribution artifacts and its verdict is recorded."
+intent: "Prove L3 (platform integrity) really executes on the shipped distribution surface instead of only being declared: automedia distribute runs run_l3_distribution_gate once after the D-gates produce their artifacts, and a re-grade over those actual files records the L3 verdict in the run record."
+category: lifecycle
+user_level: L1
+requires_env:
+  - AUTOMEDIA_LLM_API_KEY
+proves_gates:
+  - L3
+steps:
+  - name: create the synthetic distribution project
+    kind: cli
+    check: "A python3 one-liner writes the project info plus a non-trivial draft so distribute's content load succeeds and the D1 rewrite has real source material."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/3a3b3c3d3e03"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "3a3b3c3d3e03", "topic": "platform integrity lifecycle probe", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "draft"})); (base / "01_content" / "drafts" / "draft.md").write_text("# Distribution probe\n\nThis synthetic draft exercises the distribution surface so the D1 rewrite produces a real artifact and the L3 platform-integrity gate has grounded files to check. It is long enough to pass the content-load threshold.\n")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: run a real distribution so L3 executes after the D-gates
+    kind: cli
+    check: "automedia distribute (without --dry-run) runs the D1 wechat rewrite, writes 04_distribution/wechat/, and then executes L3 platform integrity over the produced files; the command completes 1/1."
+    standard: founder-expectations.F02
+    command: automedia distribute 3a3b3c3d3e03 --platforms wechat --base-dir /tmp/automedia/lifecycle-projects
+    timeout_seconds: 300
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "D1 (wechat)"
+        - "Distribution complete — 1/1 passed"
+  - name: re-execute L3 over the produced artifacts and record its verdict
+    kind: cli
+    check: "build_l3_distribution_context + run_l3_distribution_gate (the exact functions automedia distribute calls) read the real 04_distribution/*.md files produced above and print the gate name, pass state, failure mode, and file count — explicit L3 execution evidence in the run record."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, pathlib; from automedia.cli.commands.distribute import build_l3_distribution_context, run_l3_distribution_gate; base = pathlib.Path("/tmp/automedia/lifecycle-projects/3a3b3c3d3e03"); info = json.loads((base / "00_project_info.json").read_text(encoding="utf-8")); files = sorted(str(p) for p in (base / "04_distribution").rglob("*.md")); content = (base / "01_content" / "drafts" / "draft.md").read_text(encoding="utf-8"); passed, mode, result = run_l3_distribution_gate(build_l3_distribution_context(info, ["wechat"], files, unified_content=content)); print(json.dumps({"gate": result.get("gate"), "passed": passed, "failure_mode": mode, "files": len(files)}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"L3\""
+        - "\"passed\": true"
+  - name: the distributed wechat artifact exists
+    kind: file
+    check: "The 04_distribution/wechat directory contains the D1-produced markdown file that L3 graded (artifact_glob *.md matches), tying the gate verdict to a real distribution artifact."
+    standard: artifact.glob-exists
+    command: /tmp/automedia/lifecycle-projects/3a3b3c3d3e03/04_distribution/wechat
+    timeout_seconds: 60
+    expect:
+      success: true
+      artifact_glob: "*.md"
+cleanup_steps:
+  - name: remove the synthetic distribution project
+    kind: cli
+    check: rm -rf removes the synthetic project tree created by this scenario (fully static path).
+    standard: founder-expectations.F01
+    command: rm -rf /tmp/automedia/lifecycle-projects/3a3b3c3d3e03
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
