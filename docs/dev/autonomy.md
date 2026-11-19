@@ -37,6 +37,7 @@ mkdir -p .agents/autonomy && echo owner:human-agent > .agents/autonomy/lane
 - owner 说「交给你了，做到 22:00，目标是 X」⇒ `autonomy.py start --goal X --until 22:00`
 - 到期**自动失效**，不需要 owner 再喊停；中途收回 ⇒ `stop --reason owner-reclaim`
 - 没有租约时按缺省时段：工作日 09:00–23:00 归 `owner:code-auto`，工作日 23:00–09:00 + 周末全天归 `owner:human-agent`。两侧不同时动手。
+- owner 明确说「接这个活」⇒ agent 直接带 --authorized "<他的原话>" 跑 gate，闸会自动立 4 小时租约放行；不得以「不在我的班次」为理由停手。
 
 ## 2. 什么算「可开工」
 
