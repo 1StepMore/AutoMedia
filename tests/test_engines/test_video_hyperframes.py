@@ -37,6 +37,7 @@ from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 
+from automedia.core.tool_paths import ToolPathError
 from automedia.engines.errors import EngineExecutionError
 from automedia.engines.implementations.video_hyperframes import HyperFramesVideoEngine
 from automedia.engines.registry import EngineRegistry
@@ -1074,6 +1075,105 @@ class TestRenderChromePath:
         env = _extract_env_from_run(mock_all["run"])
         assert env is not None
         assert "HYPERFRAMES_BROWSER_PATH" not in env
+
+
+# ===================================================================
+# Tool-path env injection (#575)
+# ===================================================================
+
+
+class TestRenderToolPathInjection:
+    """Pinned ffmpeg/ffprobe dirs are prepended to the child ``PATH`` (#575).
+
+    The hyperframes CLI resolves ffmpeg/ffprobe from PATH on its own, so a
+    tool resolved by :func:`find_tool` but living outside PATH must be made
+    visible to the subprocess.
+    """
+
+    def test_resolved_tool_dirs_prefix_child_path(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """ffmpeg/ffprobe resolved to ``/opt/tools/bin`` → PATH starts there."""
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        resolved = {
+            "ffmpeg": "/opt/tools/bin/ffmpeg",
+            "ffprobe": "/opt/tools/bin/ffprobe",
+        }
+        monkeypatch.setattr(
+            "automedia.engines.implementations.video_hyperframes.find_tool",
+            lambda name, **kwargs: resolved.get(name),
+        )
+
+        output = str(tmp_path / "output.mp4")
+        HyperFramesVideoEngine().render(sample_assets, output)
+
+        # The render call is the first one; later calls (output-size probe)
+        # do not pass ``env``.
+        env = mock_all["run"].call_args_list[0][1].get("env")
+        assert env is not None
+        parts = env["PATH"].split(os.pathsep)
+        assert parts[0] == "/opt/tools/bin"
+        # Deduplicated: ffmpeg and ffprobe share a dir.
+        assert parts.count("/opt/tools/bin") == 1
+        # The inherited PATH is preserved at the tail.
+        assert env["PATH"].endswith(os.environ.get("PATH", ""))
+
+    def test_missing_tools_leave_path_untouched(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``find_tool`` returning None injects nothing and does not raise."""
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+        monkeypatch.setattr(
+            "automedia.engines.implementations.video_hyperframes.find_tool",
+            lambda name, **kwargs: None,
+        )
+
+        output = str(tmp_path / "output.mp4")
+        HyperFramesVideoEngine().render(sample_assets, output)
+
+        env = _extract_env_from_run(mock_all["run"])
+        assert env is not None
+        assert env.get("PATH") == os.environ.get("PATH")
+
+    def test_tool_path_error_does_not_abort_render(
+        self,
+        mock_all: dict[str, MagicMock],
+        sample_assets: dict[str, Any],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A stale pin (``ToolPathError``) logs and keeps the inherited PATH."""
+        mock_all["which"].side_effect = lambda x, path=None: {  # type: ignore[return-value]
+            "hyperframes": "/usr/bin/hyperframes",
+        }.get(x)
+
+        def _raise(name: str, **kwargs: Any) -> str | None:
+            raise ToolPathError(f"{name} pin is stale")
+
+        monkeypatch.setattr(
+            "automedia.engines.implementations.video_hyperframes.find_tool",
+            _raise,
+        )
+
+        output = str(tmp_path / "output.mp4")
+        HyperFramesVideoEngine().render(sample_assets, output)
+
+        env = _extract_env_from_run(mock_all["run"])
+        assert env is not None
+        assert env.get("PATH") == os.environ.get("PATH")
 
 
 # ===================================================================

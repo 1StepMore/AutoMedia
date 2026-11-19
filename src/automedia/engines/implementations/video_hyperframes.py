@@ -544,6 +544,26 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             if chrome_path and os.path.isfile(chrome_path):
                 env["HYPERFRAMES_BROWSER_PATH"] = chrome_path
 
+            # The hyperframes CLI resolves ffmpeg/ffprobe through PATH itself,
+            # so tools pinned in tools.yaml (which may live outside PATH) must
+            # be exposed by prepending their directories (#575). Resolution
+            # failures keep the old behaviour: fall back to the inherited PATH.
+            tool_dirs: list[str] = []
+            for tool_name in ("ffmpeg", "ffprobe"):
+                try:
+                    tool_path = find_tool(tool_name)
+                except ToolPathError as exc:
+                    logger.debug(
+                        "Could not resolve %s for PATH injection: %s", tool_name, exc
+                    )
+                    continue
+                if tool_path:
+                    tool_dir = os.path.dirname(tool_path)
+                    if tool_dir and tool_dir not in tool_dirs:
+                        tool_dirs.append(tool_dir)
+            if tool_dirs:
+                env["PATH"] = os.pathsep.join([*tool_dirs, env.get("PATH", "")])
+
             result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # cmd is hardcoded
                 cmd,
                 capture_output=True,
