@@ -1,0 +1,94 @@
+# Lifecycle gate coverage — L1 publish-log schema
+#
+# WHY THIS SCENARIO EXISTS (issue #78 coverage gap: L1-L4 were command-path
+# reachable but no scenario proved them):
+#   L1 is NOT in any pipeline preset.  It is executed inside
+#   ``prepare_publish_log`` (gates/publish_log_wiring.py:101), which resolves
+#   the target platform set, builds one publish_log entry per platform from
+#   the real project draft/media, runs :class:`L1PublishLogSchema` over every
+#   entry, and only then writes ``06_publish/publish_log.json``.  A schema
+#   failure raises ``PublishLogGateError`` and no file is written, so the
+#   artifact's existence is itself proof the gate passed.
+#
+# HOW IT IS PROVEN (run-tested, not declarative):
+#   1. A synthetic project (00_project_info.json + 01_content/drafts/draft.md)
+#      is created under /tmp/automedia/lifecycle-projects.
+#   2. The shipped MCP tool ``publish_content`` (mcp/tools/publishing.py:111)
+#      is called for platform "wechat" — the exact production path that runs
+#      ``prepare_publish_log`` before any publish attempt.
+#   3. The written ``06_publish/publish_log.json`` is inspected.
+#   4. The same entries are re-graded by :class:`L1PublishLogSchema` and the
+#      gate verdict is printed into the run record, so the evidence names the
+#      gate that executed instead of relying on inference.
+#
+# HONESTY NOTES:
+#   - No LLM is needed: L1 is a pure schema gate.  The publish attempt after
+#     the gate may return ``published: false`` without platform credentials;
+#     that is irrelevant — this scenario proves the LOG GATE, not a publish.
+#   - The fixed project id makes the artifact path statically addressable; a
+#     real pipeline run generates a random id and cannot be named in YAML.
+
+name: l1-publish-log-gate
+description: "publish_content's L1 wiring is proven end to end: a synthetic project resolves through the real MCP publish path, prepare_publish_log validates every entry with L1PublishLogSchema, and the written 06_publish/publish_log.json is re-graded with the gate verdict recorded."
+intent: "Prove L1 (publish-log schema) really executes on the shipped publish surface instead of only being declared: the MCP publish_content path runs prepare_publish_log (gates/publish_log_wiring.py:101), the resulting publish_log.json exists only because L1 passed, and a direct re-grade of those entries records the L1 verdict in the run record."
+category: lifecycle
+user_level: L2
+requires_env: []
+proves_gates:
+  - L1
+steps:
+  - name: create the synthetic project for the publish-log gate
+    kind: cli
+    check: "A python3 one-liner writes the exact 00_project_info.json shape a real run writes (project_id, topic, brand, tenant_id, created_at, status) plus a non-trivial draft in 01_content/drafts/ so publish_content resolves the project and build_publish_log_entries has real content to gate."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "1a1b1c1d1e01", "topic": "publish log lifecycle probe", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "published"})); (base / "01_content" / "drafts" / "draft.md").write_text("# Publish log probe\n\nThis synthetic draft exists so the L1 publish-log gate has real project content to grade. It is long enough to be non-trivial and is never published anywhere.\n")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: publish_content runs prepare_publish_log for wechat
+    kind: tool
+    check: "The shipped publish_content tool resolves the synthetic project and runs prepare_publish_log before any publish attempt; the tool envelope succeeds and names the platform, while 06_publish/publish_log.json is written only because every L1 schema check passed."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: "1a1b1c1d1e01"
+      platform: wechat
+      base_dir: /tmp/automedia/lifecycle-projects
+    timeout_seconds: 90
+    expect:
+      success: true
+      output_has:
+        - published
+        - platform
+  - name: the L1-gated publish log exists
+    kind: file
+    check: "06_publish/publish_log.json exists and is non-empty in the real project directory — prepare_publish_log writes it only after L1PublishLogSchema passed every entry (gates/publish_log_wiring.py:103-112), so its presence is the command-path proof that L1 executed and passed."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/lifecycle-projects/1a1b1c1d1e01/06_publish/publish_log.json
+    timeout_seconds: 60
+    expect:
+      success: true
+      artifact_nonempty: /tmp/automedia/lifecycle-projects/1a1b1c1d1e01/06_publish/publish_log.json
+  - name: re-grade the written entries with L1 and record the verdict
+    kind: cli
+    check: "The publish_log entries written by the shipped path are re-graded by L1PublishLogSchema and the verdict is printed as JSON (gate name, pass state, entry count), so the run record carries explicit L1 execution evidence rather than an inference from the artifact alone."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, pathlib; from automedia.gates.publish_log_schema import L1PublishLogSchema; p = pathlib.Path("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01/06_publish/publish_log.json"); entries = json.loads(p.read_text(encoding="utf-8")); gate = L1PublishLogSchema(); ok = all(bool(gate.execute({"publish_log": entry}).get("passed", False)) for entry in entries); print(json.dumps({"gate": "L1", "passed": ok, "entries": len(entries)}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"L1\""
+        - "\"passed\": true"
+cleanup_steps:
+  - name: remove the synthetic publish-log project
+    kind: cli
+    check: "python shutil.rmtree removes the synthetic tree(s); python resolves /tmp exactly as the steps that created it, so cleanup works identically on POSIX and Windows (MSYS rm would resolve /tmp elsewhere and leave stale state that breaks re-runs)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import shutil; shutil.rmtree("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01", ignore_errors=True)'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

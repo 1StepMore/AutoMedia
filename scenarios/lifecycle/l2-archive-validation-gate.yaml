@@ -1,0 +1,90 @@
+# Lifecycle gate coverage — L2 archive validation
+#
+# WHY THIS SCENARIO EXISTS (issue #78 coverage gap: L1-L4 were command-path
+# reachable but no scenario proved them):
+#   L2 is NOT in any pipeline preset.  It runs in ``run_l2_archive_gate``
+#   (cli/commands/archive.py:47-53), invoked by ``automedia archive``
+#   (archive.py:113) and MCP ``archive_project`` — AFTER the Red Line 8
+#   eligibility check and BEFORE the project directory rename.  ``--force``
+#   short-circuits it, so the honest proof uses a published project and no
+#   force flag.
+#
+# HOW IT IS PROVEN (run-tested, not declarative):
+#   1. A synthetic project is created with status "published" (Red Line 8
+#      passes without --force, so the L2 branch is reached).
+#   2. The L2 gate is executed with the SHIPPED context builder
+#      (build_l2_archive_context) over real project data, and its verdict is
+#      printed as JSON into the run record.
+#   3. ``automedia archive`` then archives the project through the shipped
+#      CLI path, which runs L2 a second time before renaming.
+#   4. The archived 00_project_info.json is inspected, proving the rename
+#      happened only after the L2-gated command completed.
+#
+# HONESTY NOTES:
+#   - L2 prints nothing on success (the CLI only reports the rename), so step
+#      2 exists to name the gate and its verdict explicitly instead of
+#      inferring execution from a silent success.
+#   - A non-published project is refused by the Red Line 8 check BEFORE L2,
+#      so a refusal probe would NOT exercise L2; that is why this scenario
+#      archives a published project without --force.
+#   - The fixed project id makes the path statically addressable.
+
+name: l2-archive-validation-gate
+description: "automedia archive's L2 branch is proven: a published synthetic project passes the shipped L2 archive-validation context/gate with its verdict recorded, then the real CLI archives it and the archived project info proves the gated rename completed."
+intent: "Prove L2 (archive validation) really executes on the shipped archive surface instead of only being declared: automedia archive without --force resolves the real project, runs run_l2_archive_gate over build_l2_archive_context, and the rename only happens after L2 passes."
+category: lifecycle
+user_level: L2
+requires_env: []
+proves_gates:
+  - L2
+steps:
+  - name: create the published synthetic project
+    kind: cli
+    check: "A python3 one-liner writes a published project (status 'published' so Red Line 8 passes without --force and the L2 branch is reached) with a non-trivial draft under 01_content/drafts/."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/2a2b2c2d2e02"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "2a2b2c2d2e02", "topic": "archive lifecycle probe", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "published"})); (base / "01_content" / "drafts" / "draft.md").write_text("# Archive probe\n\nThis synthetic draft accompanies the archive-lifecycle probe. It gives the project real content so the archive context is grounded in a genuine project tree.\n")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: execute L2 over the real archive context and record its verdict
+    kind: cli
+    check: "run_l2_archive_gate (the exact function automedia archive calls) executes over build_l2_archive_context on the real project data and prints the gate name, pass state, failure mode, and check count — explicit L2 execution evidence in the run record."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, pathlib; from automedia.cli.commands.archive import build_l2_archive_context, run_l2_archive_gate; base = pathlib.Path("/tmp/automedia/lifecycle-projects/2a2b2c2d2e02"); info = json.loads((base / "00_project_info.json").read_text(encoding="utf-8")); context = build_l2_archive_context(info, base, base.parent / "2a2b2c2d2e02_archived", force=False); passed, mode, result = run_l2_archive_gate(context); print(json.dumps({"gate": result.get("gate"), "passed": passed, "failure_mode": mode, "checks": len(result.get("checks", []))}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"L2\""
+        - "\"passed\": true"
+  - name: automedia archive runs L2 and renames the project
+    kind: cli
+    check: "The shipped automedia archive command archives the published project without --force: it reaches the L2 branch (run_l2_archive_gate) and only renames the directory after the gate passes, reporting 'Archived project'."
+    standard: founder-expectations.F02
+    command: automedia archive 2a2b2c2d2e02 --base-dir /tmp/automedia/lifecycle-projects
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "Archived project 2a2b2c2d2e02"
+  - name: the gated archive rename produced the archived project
+    kind: file
+    check: "The archived project's 00_project_info.json exists under <id>_archived — the rename only runs after the L2-gated archive command completes, so the artifact is the command-path evidence that the L2 branch was traversed."
+    standard: founder-expectations.F01
+    command: /tmp/automedia/lifecycle-projects/2a2b2c2d2e02_archived/00_project_info.json
+    timeout_seconds: 60
+    expect:
+      success: true
+      artifact_nonempty: /tmp/automedia/lifecycle-projects/2a2b2c2d2e02_archived/00_project_info.json
+cleanup_steps:
+  - name: remove the synthetic project and its archive
+    kind: cli
+    check: "python shutil.rmtree removes both trees; python resolves /tmp exactly as the steps that created it, so cleanup works identically on POSIX and Windows (MSYS rm would resolve /tmp elsewhere and leave stale state that breaks re-runs)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ("/tmp/automedia/lifecycle-projects/2a2b2c2d2e02", "/tmp/automedia/lifecycle-projects/2a2b2c2d2e02_archived")]'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

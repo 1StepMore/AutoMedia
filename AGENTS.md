@@ -130,11 +130,34 @@ All 21 commands: [agent-reference §CLI Commands Quick Reference](docs/dev/agent
 ## 11. Validation Layer
 AutoMedia is agent-oriented, so agents are the testers and humans are the director. The single
 schema authority is `scenarios/STANDARDS.md`; `scenarios/README.md` is the onboarding guide.
-- Scenario library: count is authoritative from `automedia validate matrix` output (159 scenarios as-of 2026-11-11; do not hard-code a count elsewhere); `scenarios/baseline/` holds the committed pre-flight baseline.
+- Scenario library: count is authoritative from `automedia validate matrix` output (163 scenarios as-of 2026-11-19; do not hard-code a count elsewhere); `scenarios/baseline/` holds the committed pre-flight baseline.
 - CLI: `automedia validate list|run|report|diff|coverage|matrix|sign`
 - MCP: `list_validation_scenarios`, `run_validation_scenario`, `run_validation_suite`, `get_validation_report`, `validation_coverage_audit`, `validation_matrix`
 - The validation-driving surface is the CLI and MCP server only; the SDK is a product entry point, explicitly out of validation scope.
 Full evidence contract (5 statuses, honesty rules, where things live): [agent-reference §Validation Layer](docs/dev/agent-reference.md#validation-layer).
+
+## 11b. 交叉审计的产物中转 + 真假模型（MUST · 2026-11-19）
+
+质量通过不能靠口头，必须**产物入库 + git 中转**：两侧机器不共享磁盘，唯一通道是 GitHub 仓库。
+协议真身在 workspace 根的方法论目录（99-Tools/methodology/cross-audit-evidence-protocol.md，仓外文件，不在本仓路径校验范围）；本仓落点与规则：`docs/dev/cross-audit-evidence.md`
+
+- 一次性中间件 ⇒ `.scratch/`（不入库）；**要交叉审的产物 ⇒ `docs/dev/validation-evidence/<矩阵>/<run-date>/` + `manifest.json`，必须 commit**。
+- `validation-runs/` 是 gitignored 本机临时区，**不是交付通道**（对方机器读不到）。
+- 自检：`python3 99-Tools/check_evidence_committed.py <repo>`，exit 0 才可宣称质量通过。
+- `quality.verdict=pass` 必须带存在的 `quality.evidence`，否则按 fail 计。
+
+**假模型 vs 真模型（硬规矩）**
+
+| 用途 | 允许 `AUTOMEDIA_FAKE_LLM=1` | 说明 |
+|:--|:--|:--|
+| 链路 / 契约 / 门覆盖（路径能跑通、schema 对、gate 执行了） | ✅ | 必须记 `confidence=mock`，**不得**称"内容合格/质量通过" |
+| 质量验收（内容可用性、评分、文案/摘要/翻译质量） | ❌ | **必须真模型**；fake 的质量结论无效 |
+| 对客交付包验收 | ❌ | 同上 |
+
+真跑需要 `AUTOMEDIA_LLM_API_KEY`（+ 需要 `AUTOMEDIA_LLM_BASE_URL` / `AUTOMEDIA_LLM_MODEL` 走兼容端点时一并给）。
+**缺模型的取用阶梯（不许跳步，也不许硬编码厂商）**：① 先用**本 harness 自带的默认模型**；② 再用**本机已有的 OpenAI 兼容端点/凭据**（只读使用）；
+③ 都不行 ⇒ 向**屏幕前的人类**要（`blocked:no-llm-key`，写清要 base_url + key + 模型名）——**免不免费由那个人决定**。
+不许用 fake 冒充真跑，也不许因此跳过质量验收。详见 `docs/dev/run-with-real-llm.md`。
 
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
