@@ -139,7 +139,7 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 ## 11b. 交叉审计的产物中转 + 真假模型（MUST · 2026-11-19）
 
 质量通过不能靠口头，必须**产物入库 + git 中转**：两侧机器不共享磁盘，唯一通道是 GitHub 仓库。
-协议真身：workspace 根 `99-Tools/methodology/cross-audit-evidence-protocol.md`；本仓落点与规则：`docs/dev/cross-audit-evidence.md`
+协议真身在 workspace 根的方法论目录（99-Tools/methodology/cross-audit-evidence-protocol.md，仓外文件，不在本仓路径校验范围）；本仓落点与规则：`docs/dev/cross-audit-evidence.md`
 
 - 一次性中间件 ⇒ `.scratch/`（不入库）；**要交叉审的产物 ⇒ `docs/dev/validation-evidence/<矩阵>/<run-date>/` + `manifest.json`，必须 commit**。
 - `validation-runs/` 是 gitignored 本机临时区，**不是交付通道**（对方机器读不到）。
