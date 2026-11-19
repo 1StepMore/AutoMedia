@@ -280,9 +280,39 @@ def cmd_gate(a: argparse.Namespace) -> int:
     now = (
         datetime.fromisoformat(a.now).replace(tzinfo=TZ) if a.now else datetime.now(TZ)
     )
+    authorized = (
+        getattr(a, "authorized", None) or os.environ.get("AUTONOMY_AUTHORIZED", "")
+    ).strip()
+    current = read_lease()
+    active = False
+    if current.get("status") == "active":
+        with contextlib.suppress(ValueError):
+            active = now < datetime.fromisoformat(current["until"])
+    if authorized and not active:
+        until = now + timedelta(hours=4)
+        write_lease(
+            {
+                "lane": a.lane,
+                "goal": "owner 授意：" + authorized[:200],
+                "started_at": now.isoformat(timespec="seconds"),
+                "until": until.isoformat(timespec="seconds"),
+                "granted_by": "owner",
+                "evidence": authorized,
+                "status": "active",
+                "source": "gate--authorized",
+            }
+        )
+        print(
+            f"授权已落地：{a.lane} 到 {until.isoformat(timespec='seconds')}"
+            f"（4 小时，证据：{authorized}）"
+        )
     lane, why, lease = effective_lane(now)
     if lane != a.lane:
-        print(f"REFUSE: 当前归属 {lane}（{why}），不是 {a.lane}", file=sys.stderr)
+        print(
+            f"REFUSE: 当前归属 {lane}（{why}），不是 {a.lane}"
+            f"（owner 已授意就重跑并加 --authorized \"<他的原话>\"，会自动立 4 小时租约）",
+            file=sys.stderr,
+        )
         return 3
     if lease.get("status") == "active" and a.need_minutes:
         left = int((datetime.fromisoformat(lease["until"]) - now).total_seconds() // 60)
@@ -643,6 +673,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--lane", default=default_lane())
     s.add_argument("--need-minutes", type=int, default=0)
     s.add_argument("--now")
+    s.add_argument(
+        "--authorized",
+        "--owner-said",
+        default=None,
+        dest="authorized",
+        help="owner 本次授意的原话（无 active 租约时自动立 4 小时租约）",
+    )
     s.add_argument("--skip-goal", action="store_true", help="跳过目标闸（调试用）")
     s.set_defaults(fn=cmd_gate)
 
