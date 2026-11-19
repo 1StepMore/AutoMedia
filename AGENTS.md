@@ -155,8 +155,9 @@ Full evidence contract (5 statuses, honesty rules, where things live): [agent-re
 | 对客交付包验收 | ❌ | 同上 |
 
 真跑需要 `AUTOMEDIA_LLM_API_KEY`（+ 需要 `AUTOMEDIA_LLM_BASE_URL` / `AUTOMEDIA_LLM_MODEL` 走兼容端点时一并给）。
-**没有 key ⇒ 先查环境，再向 owner 要（优先免费额度）**，标 `blocked:no-llm-key` 等人给；
-不许用 fake 冒充真跑，也不许因此跳过质量验收。
+**缺模型的取用阶梯（不许跳步，也不许硬编码厂商）**：① 先用**本 harness 自带的默认模型**；② 再用**本机已有的 OpenAI 兼容端点/凭据**（只读使用）；
+③ 都不行 ⇒ 向**屏幕前的人类**要（`blocked:no-llm-key`，写清要 base_url + key + 模型名）——**免不免费由那个人决定**。
+不许用 fake 冒充真跑，也不许因此跳过质量验收。详见 `docs/dev/run-with-real-llm.md`。
 
 ## 12. Config, Docs, and Skills
 - **Config keys:** `.env.example` and [agent-reference §Config Key Reference](docs/dev/agent-reference.md#config-key-reference)
