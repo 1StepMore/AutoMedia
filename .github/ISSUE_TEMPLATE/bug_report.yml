@@ -6,6 +6,17 @@ body:
   - type: markdown
     attributes:
       value: "Thanks for taking the time to fill out this bug report!"
+  - type: dropdown
+    id: ownership
+    attributes:
+      label: 归属（owner）
+      description: 默认「任一侧可做」。只在换一侧根本做不了时才指定（判据见 docs/dev/autonomy.md）。
+      options:
+        - 任一侧可做（默认，不标 owner:*）
+        - 只有本机侧能做：重依赖模态（视频/音频/图片渲染）→ owner:code-auto
+        - 只有主人侧能做：Windows 原生 / 需要他的账号额度或外部动作 → owner:human-agent
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:

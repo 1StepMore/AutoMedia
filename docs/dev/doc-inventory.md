@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 12947 | file |
+| AGENTS.md | 13266 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -43,6 +43,8 @@
 | docs/dev/goals.md | 1967 | file |
 | docs/dev/harness-run-facts.md | 3470 | file |
 | docs/dev/infrastructure-audit-20261030.md | 34636 | file |
+| docs/dev/matrix-ownership.md | 1615 | file |
+| docs/dev/matrix-verdict-policy.md | 1938 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
 | docs/dev/plans/NIGHTLY.md | 26311 | file |
@@ -52,6 +54,7 @@
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
+| docs/dev/task-routing.md | 2291 | file |
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
