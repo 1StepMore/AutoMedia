@@ -188,6 +188,8 @@ engines:
       timeout: 900
     hyperframes:
       quality: high
+      # 浏览器逐帧渲染是分钟级（实测 242s 视频 ~57min），不是秒级；#577。
+      timeout: 3600
       # Degrade policy (#414): when the hyperframes render fails, falling back
       # to the FFmpeg slideshow (still frame + audio) is OPT-IN. Default false:
       # the failure fails the video track (pipeline status partial, V gates

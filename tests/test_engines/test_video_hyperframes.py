@@ -70,6 +70,38 @@ def _extract_env_from_run(mock_run: MagicMock) -> dict[str, str] | None:
     return call_kwargs.get("env")
 
 
+class _PopenViaRun:
+    """Adapter for the #577 tree-kill spawn path.
+
+    The render now starts the CLI through ``subprocess.Popen`` (inside
+    ``_run_tree_aware``) so a timeout can kill the whole node -> chrome
+    tree.  These tests patch ``subprocess.run``, so the Popen call is
+    routed back through that mock when the engine awaits ``communicate``.
+    """
+
+    pid = 1
+    returncode = 0
+
+    def __init__(self, mock_run: MagicMock, cmd: list[str], env: dict[str, str] | None) -> None:
+        self._mock_run = mock_run
+        self._cmd = cmd
+        self._env = env
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        result = self._mock_run(
+            self._cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=self._env,
+        )
+        self.returncode = result.returncode
+        return result.stdout, result.stderr
+
+    def kill(self) -> None:
+        self.returncode = -9
+
+
 # ===================================================================
 # Shared fixtures
 # ===================================================================
@@ -134,6 +166,10 @@ def mock_all() -> Iterator[dict[str, MagicMock]]:
         patch(
             "automedia.engines.implementations.video_hyperframes.subprocess.run",
         ) as m_run,
+        patch(
+            "automedia.engines.implementations.video_hyperframes.subprocess.Popen",
+            side_effect=lambda cmd, **kwargs: _PopenViaRun(m_run, cmd, kwargs.get("env")),
+        ),
         patch(
             "automedia.engines.implementations.video_hyperframes.tempfile.mkdtemp",
         ) as m_mkdtemp,
@@ -495,7 +531,7 @@ class TestRenderHyperFrames:
             ],
             capture_output=True,
             text=True,
-            timeout=300,
+            timeout=3600,
             env=ANY,
         )
 
