@@ -1,11 +1,18 @@
 """Hyperframes render timeout defaults and tree-kill behaviour (#577).
 
-Three cases:
+Cases:
 
 1. No ``timeout`` configured -> the render subprocess gets 3600 seconds.
 2. ``timeout: 5400`` configured -> that value is passed through.
-3. A render timeout kills the whole process tree, then still raises
+3. ``_run_tree_aware`` kills the whole process tree on timeout and re-raises
    ``TimeoutExpired`` so the #414 degrade chain sees the same error.
+4. ``_kill_tree`` dispatches to taskkill (Windows) or killpg (POSIX).
+5. A render timeout still surfaces the exact #414 message.
+
+The tree-kill behaviour is exercised on ``_run_tree_aware`` directly: faking
+``subprocess.Popen`` for the whole engine also intercepts the unrelated
+``subprocess.run`` preflight calls, which made the test depend on the
+interpreter version (it failed on 3.11 while passing on 3.13).
 """
 
 from __future__ import annotations
@@ -30,12 +37,6 @@ def _assets(tmp_path: Path) -> dict[str, Any]:
     return {"images": [str(image)]}
 
 
-def _engine() -> HyperFramesVideoEngine:
-    # ``cli_command`` short-circuits PATH lookup, so no hyperframes install
-    # is required on the test machine.
-    return HyperFramesVideoEngine(engine_config={"cli_command": ["hyperframes"]})
-
-
 def test_default_render_timeout_is_3600(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Unconfigured engines hand 3600s to the render subprocess."""
     seen: list[int] = []
@@ -51,8 +52,11 @@ def test_default_render_timeout_is_3600(tmp_path: Path, monkeypatch: pytest.Monk
         return subprocess.CompletedProcess(cmd, 0, "", "")
 
     monkeypatch.setattr(hf, "_run_tree_aware", fake_run)
-
-    _engine().render(_assets(tmp_path), str(tmp_path / "out.mp4"))
+    # ``cli_command`` short-circuits PATH lookup, so no hyperframes install
+    # is required on the test machine.
+    HyperFramesVideoEngine(engine_config={"cli_command": ["hyperframes"]}).render(
+        _assets(tmp_path), str(tmp_path / "out.mp4")
+    )
 
     assert seen == [3600]
 
@@ -79,10 +83,9 @@ def test_configured_render_timeout_is_used(tmp_path: Path, monkeypatch: pytest.M
     assert seen == [5400]
 
 
-def test_timeout_kills_whole_process_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A timeout calls ``_kill_tree`` and preserves the #414 error message."""
+def test_run_tree_aware_kills_tree_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A timeout kills the whole tree, then re-raises ``TimeoutExpired``."""
     killed: list[int] = []
-    real_kill_tree = hf._kill_tree
     monkeypatch.setattr(hf, "_kill_tree", killed.append)
 
     popen_kwargs: dict[str, Any] = {}
@@ -95,10 +98,14 @@ def test_timeout_kills_whole_process_tree(tmp_path: Path, monkeypatch: pytest.Mo
             popen_kwargs.update(kwargs)
             self._timed_out = False
 
-        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        # ``subprocess.run``/our helper always pass ``input`` first, so the
+        # signature must accept it positionally (a ``timeout``-only signature
+        # breaks on some interpreters).
+        def communicate(self, input: Any = None, timeout: float | None = None) -> tuple[str, str]:
             if not self._timed_out:
                 self._timed_out = True
-                raise subprocess.TimeoutExpired("hyperframes", timeout)
+                delay: float = timeout if timeout is not None else 0.0
+                raise subprocess.TimeoutExpired("hyperframes", delay)
             return "", ""
 
         def kill(self) -> None:
@@ -106,23 +113,38 @@ def test_timeout_kills_whole_process_tree(tmp_path: Path, monkeypatch: pytest.Mo
 
     monkeypatch.setattr(hf.subprocess, "Popen", _FakeProc)
 
-    engine = HyperFramesVideoEngine(engine_config={"cli_command": ["hyperframes"], "timeout": 5400})
-    with pytest.raises(EngineExecutionError) as excinfo:
-        engine.render(_assets(tmp_path), str(tmp_path / "out.mp4"))
+    with pytest.raises(subprocess.TimeoutExpired):
+        hf._run_tree_aware(["hyperframes", "render"], env={}, timeout=5400)
 
-    # Tree kill happened before the error surfaced.
     assert killed == [4242]
-    # The #414 degrade chain depends on this exact wording.
-    assert "hyperframes render timed out after 5400 seconds." in excinfo.value.details
 
     # The child runs in its own session/group so the kill can reach
     # grandchildren (node -> chrome).
     if os.name == "nt":
-        assert popen_kwargs["creationflags"] == subprocess.CREATE_NEW_PROCESS_GROUP
+        assert popen_kwargs["creationflags"] == subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
     else:
         assert popen_kwargs["start_new_session"] is True
 
-    # ``_kill_tree`` dispatch for this platform.
+
+def test_render_reports_timeout_message(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A render timeout surfaces the exact #414 wording."""
+
+    def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        timed_out: float = kwargs.get("timeout") or 0.0
+        raise subprocess.TimeoutExpired("hyperframes", timed_out)
+
+    monkeypatch.setattr(hf, "_run_tree_aware", fake_run)
+
+    engine = HyperFramesVideoEngine(engine_config={"cli_command": ["hyperframes"], "timeout": 5400})
+    with pytest.raises(EngineExecutionError) as excinfo:
+        engine.render(_assets(tmp_path), str(tmp_path / "out.mp4"))
+
+    # The #414 degrade chain depends on this exact wording.
+    assert "hyperframes render timed out after 5400 seconds." in excinfo.value.details
+
+
+def test_kill_tree_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``_kill_tree`` uses taskkill on Windows and killpg elsewhere."""
     if os.name == "nt":
         argv: list[list[str]] = []
 
@@ -131,7 +153,7 @@ def test_timeout_kills_whole_process_tree(tmp_path: Path, monkeypatch: pytest.Mo
             return subprocess.CompletedProcess(args[0], 0, "", "")
 
         monkeypatch.setattr(hf.subprocess, "run", fake_taskkill)
-        real_kill_tree(4242)
+        hf._kill_tree(4242)
         assert argv == [["taskkill", "/F", "/T", "/PID", "4242"]]
     else:
         sent: list[int] = []
@@ -143,5 +165,5 @@ def test_timeout_kills_whole_process_tree(tmp_path: Path, monkeypatch: pytest.Mo
 
         monkeypatch.setattr(hf.os, "getpgid", lambda pid: 999)
         monkeypatch.setattr(hf.os, "killpg", fake_killpg)
-        real_kill_tree(4242)
+        hf._kill_tree(4242)
         assert sent[0] == signal.SIGTERM
