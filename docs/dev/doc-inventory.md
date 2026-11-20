@@ -4,7 +4,7 @@
 
 | Path | Size (bytes) | Type |
 |------|-------------:|------|
-| AGENTS.md | 13266 | file |
+| AGENTS.md | 15205 | file |
 | README.md | 35092 | file |
 | docs/AGENTS.md | 827 | file |
 | docs/adr | — | dir |
@@ -32,6 +32,7 @@
 | docs/dev/codebase-audit-20261022.md | 45053 | file |
 | docs/dev/competitive-landscape-20260915.md | 16144 | file |
 | docs/dev/cron-troubleshooting.md | 5174 | file |
+| docs/dev/cross-audit-evidence.md | 1710 | file |
 | docs/dev/deep-module-rfc-001.md | 16703 | file |
 | docs/dev/developer-guide.md | 25450 | file |
 | docs/dev/doc-update-audit-20261029.md | 17929 | file |
@@ -54,7 +55,24 @@
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
+| docs/dev/run-with-real-llm.md | 3298 | file |
 | docs/dev/task-routing.md | 2291 | file |
+| docs/dev/validation-evidence | — | dir |
+| docs/dev/validation-evidence/README.md | 659 | file |
+| docs/dev/validation-evidence/manifest.json | 49 | file |
+| docs/dev/validation-evidence/production-matrix | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20 | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/image-track | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/image-track/cover | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/image-track/cover/cover.png | 125984 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/manifest.json | 4659 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/matrix-final.txt | 15072 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/nightly-gap.txt | 1635 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/run-summary.md | 11990 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/video-track | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/video-track/render | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/video-track/render/frame-0030.png | 849428 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-20/video-track/render/frame-0900.png | 905552 | file |
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |

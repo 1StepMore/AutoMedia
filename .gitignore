@@ -8,8 +8,13 @@
 /solution-wise/
 /projects/
 /test-*/
-202[0-9]*/
-202[0-9][0-9][0-9][0-9][0-9][0-9]_*
+# Root-anchored on purpose: these keep dated delivery/scratch dirs OUT at the
+# repo root while letting the cross-audit evidence protocol's dated run dirs
+# (docs/dev/validation-evidence/<matrix>/<run-date>/...) stay trackable
+# (cross-audit-evidence.md: evidence MUST be committed; unanchored the rule
+# silently swallowed the protocol's own channel).
+/202[0-9]*/
+/202[0-9][0-9][0-9][0-9][0-9][0-9]_*
 PRD/
 /hyperframes-workflow-templates/
 /hyperframes-remotion-kit-*.zip

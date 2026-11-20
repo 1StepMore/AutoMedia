@@ -7,7 +7,7 @@
 # `uncovered` only when it is neither behaviourally covered nor actively
 # exempt, and fails loudly on a malformed entry.
 version: 1
-reviewed: "2026-11-04"
+reviewed: "2026-11-20"
 release: "wave2"
 entries:
   - surface: cli
@@ -29,11 +29,6 @@ entries:
     name: adapter create
     owner: validation-maintainer
     reason: "Generates a platform adapter stub file (mutating)."
-    expires: "2026-12-31"
-  - surface: cli
-    name: archive
-    owner: validation-maintainer
-    reason: "Red Line 8: archiving is destructive and refuses unless published/--force."
     expires: "2026-12-31"
   - surface: cli
     name: cron check-health
@@ -69,11 +64,6 @@ entries:
     name: omni ingest
     owner: validation-maintainer
     reason: "Needs OPP + a source document/URL; external dependency."
-    expires: "2026-12-31"
-  - surface: cli
-    name: omni localize
-    owner: validation-maintainer
-    reason: "Needs OL + an LLM provider + a source document."
     expires: "2026-12-31"
   - surface: cli
     name: omni start

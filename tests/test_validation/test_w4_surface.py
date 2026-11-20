@@ -161,9 +161,10 @@ class TestValidateCliRealLibrary:
         assert "Coverage audit" in result.output
         assert "Gates:" in result.output
         assert "Modes:" in result.output
-        # Issue #99: the honest residual — L1-L4 are command-path reachable but
-        # no scenario proves them, and G4/G5 are classified as unreachable.
-        assert "Missing gates (declared, not covered): L1, L2, L3, L4" in result.output
+        # Issue #99 residual closed: L1-L4 now have run-tested lifecycle
+        # scenarios, so no gate is missing; G4/G5 stay classified unreachable.
+        assert "Missing gates (declared, not covered):" not in result.output
+        assert "missing = 0 (excluding boundary-only, listed above)" in result.output
         assert "Unreachable gates" in result.output
         assert "Evidence run:" in result.output
         assert "Buckets:" in result.output
@@ -176,10 +177,11 @@ class TestValidateCliRealLibrary:
         Issue #78 final contract (A3 landed): the pipeline surfaces are fully
         declared — 33 gates / 9 modes, modes 9 / 9 / 0.  Gap T-01 adds the
         evidence buckets and makes the static job exit 1 while surfaces are
-        unproven.  Issue #99 corrects the gate truth: preset-covered is 27/33
-        (the G4/G5/L1-L4 declarations were lies), G4/G5 are classified
-        unreachable (2), and the remaining L1-L4 are the tracked command-path
-        gap (4 missing) — reported, never silently counted as covered.
+        unproven.  Issue #99 corrects the gate truth: preset-covered was 27/33
+        (the G4/G5/L1-L4 declarations were lies) and G4/G5 are classified
+        unreachable (2).  The L1-L4 command-path backlog is now closed by the
+        lifecycle scenarios (scenarios/lifecycle/), so 31/33 are covered and
+        missing = 0 — the residual 2 are the unreachable G4/G5.
         Issue #86: the 5th validation MCP tool ``validation_matrix`` is now
         declared and covered by ``validation-matrix-meta``. The
         graph-engineering-rollout adds ``get_pipeline_state`` and the
@@ -212,24 +214,25 @@ class TestValidateCliRealLibrary:
         assert summary["cli_covered"] == 21
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
-        # Issue #99: 33 declared; 27 preset/command-covered; 6 classified, not
-        # counted as coverage. The old 33/33/0 encoded the phantom declaration.
+        # Issue #99 + lifecycle coverage: 33 declared; 31 preset/command-covered
+        # (L1-L4 now proved by scenarios/lifecycle/); G4/G5 classified, not
+        # counted as coverage.
         assert summary["gates_declared"] == 33
-        assert summary["gates_used"] == 27
-        assert summary["gates_covered"] == 27
-        assert summary["gates_missing"] == 4
+        assert summary["gates_used"] == 31
+        assert summary["gates_covered"] == 31
+        assert summary["gates_missing"] == 0
         assert summary["gates_phantom"] == 0
         assert summary["gates_unreachable"] == 2
         assert data["unreachable_gates"] == ["G4", "G5"]
-        # L1-L4 run via automedia archive/distribute/omni/publish but no
-        # scenario proves them yet — the gap stays visible, never hidden.
-        assert data["missing"]["gates"] == ["L1", "L2", "L3", "L4"]
+        # L1-L4 moved from the tracked command-path backlog to run-tested
+        # lifecycle scenarios; no declared gate is missing any more.
+        assert data["missing"]["gates"] == []
         assert summary["modes_declared"] == 9
         assert summary["modes_used"] == 9
         assert summary["modes_covered"] == 9
         assert summary["modes_missing"] == 0
         assert summary["modes_phantom"] == 0
-        assert data["missing_count"] == 4
+        assert data["missing_count"] == 0
         # The build gate fails on missing_hard_count, which excludes the tracked
         # command-path backlog: every mcp/cli/mode surface and every
         # preset-reachable gate is proven, so nothing here is a broken invariant.

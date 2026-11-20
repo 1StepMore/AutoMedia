@@ -407,7 +407,7 @@ class TestEngineAvailabilityFallback:
         """把引擎解析器换成假实现，同时让所有 CLI 探测失败。"""
         resolver = _fake_engine_resolver(asr_text)
         chain_resolver = _fake_engine_chain_resolver(asr_text)
-        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(shutil, "which", lambda _cmd, *args, **kwargs: None)
         monkeypatch.setattr(_ENGINE_PATH, resolver)
         monkeypatch.setattr(_AUDIO_ENGINE_PATH, chain_resolver)
         monkeypatch.setattr(
@@ -448,7 +448,7 @@ class TestEngineAvailabilityFallback:
                 engine_name=modality, reason="not installed", install_hint="install it"
             )
 
-        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(shutil, "which", lambda _cmd, *args, **kwargs: None)
         monkeypatch.setattr(_ENGINE_PATH, _unavailable)
         monkeypatch.setattr("automedia.pipelines.runner.log", mock_log)
 
@@ -604,7 +604,7 @@ class TestCliSmokeProbe:
         def _boom(*_args: Any) -> None:
             raise AssertionError("probe must not execute a missing command")
 
-        monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+        monkeypatch.setattr(shutil, "which", lambda _cmd, *args, **kwargs: None)
         monkeypatch.setattr(_RUNNER_SUBPROCESS_RUN, _boom)
         assert _cli_smoke_probe("whisper") is False
 

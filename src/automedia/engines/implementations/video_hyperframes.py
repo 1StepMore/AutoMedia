@@ -19,8 +19,10 @@ import logging
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
+import time
 from datetime import date
 from typing import Any, ClassVar
 
@@ -31,6 +33,69 @@ from automedia.engines.base import BaseVideoEngine
 from automedia.engines.errors import EngineExecutionError
 
 logger = logging.getLogger(__name__)
+
+
+def _kill_tree(pid: int) -> None:
+    """Terminate a process and every process it spawned (#577)."""
+    if os.name == "nt":
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(  # noqa: S603
+                ["taskkill", "/F", "/T", "/PID", str(pid)],  # noqa: S607
+                capture_output=True,
+                check=False,
+            )
+        return
+
+    try:
+        pgid: int = os.getpgid(pid)
+    except OSError:
+        return
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGTERM)
+    deadline: float = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        try:
+            os.killpg(pgid, 0)
+        except OSError:
+            return
+        time.sleep(0.1)
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, signal.SIGKILL)
+
+
+def _run_tree_aware(
+    cmd: list[str],
+    *,
+    env: dict[str, str],
+    timeout: int,
+    cwd: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess and, on timeout, kill its whole tree (#577)."""
+    kwargs: dict[str, Any] = {}
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    else:
+        kwargs["start_new_session"] = True
+    proc = subprocess.Popen(  # noqa: S603  # cmd is caller-controlled argv
+        cmd,
+        env=env,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        **kwargs,
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_tree(proc.pid)
+        try:
+            out, err = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            out, err = "", ""
+        raise subprocess.TimeoutExpired(cmd, timeout) from None
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
 
 class HyperFramesVideoEngine(BaseVideoEngine):
@@ -482,7 +547,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 ),
             )
         temp_dir: str | None = None
-        timeout: int = self._config.get("timeout", 300)
+        timeout: int = self._config.get("timeout", 3600)
         try:
             temp_dir = tempfile.mkdtemp(prefix="hyperframes_")
 
@@ -544,12 +609,30 @@ class HyperFramesVideoEngine(BaseVideoEngine):
             if chrome_path and os.path.isfile(chrome_path):
                 env["HYPERFRAMES_BROWSER_PATH"] = chrome_path
 
-            result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603  # cmd is hardcoded
+            # The hyperframes CLI resolves ffmpeg/ffprobe through PATH itself,
+            # so tools pinned in tools.yaml (which may live outside PATH) must
+            # be exposed by prepending their directories (#575). Resolution
+            # failures keep the old behaviour: fall back to the inherited PATH.
+            tool_dirs: list[str] = []
+            for tool_name in ("ffmpeg", "ffprobe"):
+                try:
+                    tool_path = find_tool(tool_name)
+                except ToolPathError as exc:
+                    logger.debug(
+                        "Could not resolve %s for PATH injection: %s", tool_name, exc
+                    )
+                    continue
+                if tool_path:
+                    tool_dir = os.path.dirname(tool_path)
+                    if tool_dir and tool_dir not in tool_dirs:
+                        tool_dirs.append(tool_dir)
+            if tool_dirs:
+                env["PATH"] = os.pathsep.join([*tool_dirs, env.get("PATH", "")])
+
+            result: subprocess.CompletedProcess[str] = _run_tree_aware(
                 cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
                 env=env,
+                timeout=timeout,
             )
 
             if result.returncode != 0:
@@ -623,7 +706,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
         """
         temp_dir: str | None = None
         concat_path: str | None = None
-        timeout: int = self._config.get("timeout", 300)
+        timeout: int = self._config.get("timeout", 3600)
         try:
             temp_dir = tempfile.mkdtemp(prefix="ffmpeg_slideshow_")
             temp_video: str = os.path.join(temp_dir, "temp_video.mp4")
