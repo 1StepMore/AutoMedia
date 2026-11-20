@@ -40,7 +40,7 @@ from automedia.core.env_overlay import env_lookup
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
-from automedia.gates.lexicon import CN_OFFICIALESE_RE
+from automedia.gates.lexicon import CN_OFFICIALESE_RE, CN_OFFICIALESE_WORDS
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 # ---------------------------------------------------------------------------
@@ -234,6 +234,32 @@ _ACADEMIC_WORD_RE = re.compile(
 # used.  The word list lives in gates/lexicon.py so the failure-mode guidance
 # and this detector can never name different words (#442).
 _CN_ACADEMIC_RE = CN_OFFICIALESE_RE
+
+# Rewrite-time replacements for the same shared word list (#594).  Keyed by
+# the imported words (not a second literal list) so the detector and the
+# rewrite can never drift apart; the tuple is aligned positionally with
+# CN_OFFICIALESE_WORDS.  A word with no mapping is deleted as a fallback —
+# the rewrite must never leave a detected word in place, or G1 retries can
+# never converge.
+_CN_ACADEMIC_REPLACEMENTS: dict[str, str] = dict(
+    zip(
+        CN_OFFICIALESE_WORDS,
+        (
+            "帮上忙",
+            "切入点",
+            "从头到尾跑通",
+            "细到什么程度",
+            "真正的原因",
+            "上下游",
+        ),
+        strict=False,
+    )
+)
+
+
+def _replace_cn_academic(m: re.Match[str]) -> str:
+    """Replace a Chinese officialese word, deleting it when unmapped."""
+    return _CN_ACADEMIC_REPLACEMENTS.get(m.group(0), "")
 
 # Pattern 8: Absolute assertions
 _ABSOLUTE_PATTERNS: list[str] = [
@@ -645,6 +671,10 @@ def _rewrite_content(content: str) -> str:
         return replacement
 
     text = _ACADEMIC_WORD_RE.sub(_replace_academic, text)
+
+    # 7b. Replace Chinese officialese / buzzwords (same shared list as the
+    # detector — without this, retries keep re-detecting the same word).
+    text = _CN_ACADEMIC_RE.sub(_replace_cn_academic, text)
 
     # 8. Soften absolute assertions
     _absolute_soften: dict[str, str] = {

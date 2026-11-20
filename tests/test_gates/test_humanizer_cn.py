@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import Any
 
 from automedia.gates.humanizer import (
+    _CN_FILLER_CONNECTORS,
+    _CN_FILLER_RE,
     _SENTENCE_SPLIT_RE,
     G1Humanizer,
     _check_absolute_assertions,
@@ -23,6 +25,7 @@ from automedia.gates.humanizer import (
     _check_vague_subjects,
     _rewrite_content,
 )
+from automedia.gates.lexicon import CN_OFFICIALESE_RE, CN_OFFICIALESE_WORDS
 
 _CLEAN_CN = "人工智能正在改变我们的生活方式。科技创新让效率大幅提升。团队协作是成功的关键。"
 
@@ -368,6 +371,30 @@ class TestCnRewrite:
         result = _rewrite_content("我们永远不会忘记这次教训。")
         assert "永远不会" not in result
         assert "通常不会" in result
+
+    def test_removes_every_officialese_word(self) -> None:
+        """Rewrite clears every word the detector shares (#594)."""
+        text = (
+            "平台为商家全面赋能。数字化是转型的重要抓手。我们打通了运营的闭环。"
+            "方案需要细化到颗粒度。这符合商业的底层逻辑。平台正在构建完整的内容生态。"
+        )
+        assert CN_OFFICIALESE_RE.findall(text)
+        result = _rewrite_content(text)
+        assert CN_OFFICIALESE_RE.findall(result) == []
+
+    def test_each_officialese_word_individually_cleared(self) -> None:
+        for word in CN_OFFICIALESE_WORDS:
+            result = _rewrite_content(f"我们讨论{word}这件事。")
+            assert word not in result
+            assert CN_OFFICIALESE_RE.search(result) is None
+
+    def test_every_cn_filler_connector_is_rewritten(self) -> None:
+        """Every filler the detector flags is removed by the rewrite (#594)."""
+        for connector in _CN_FILLER_CONNECTORS:
+            text = f"{connector}，我们继续推进项目。"
+            assert _check_filler_connectors(text)["passed"] is False
+            result = _rewrite_content(text)
+            assert _CN_FILLER_RE.match(result) is None
 
 
 # =========================================================================
