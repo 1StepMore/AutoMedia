@@ -127,6 +127,7 @@ def _env_to_config() -> dict[str, Any]:
         AUTOMEDIA_LLM_API_KEY   → llm.text_generation.api_key
         AUTOMEDIA_LLM_TEMPERATURE → llm.text_generation.temperature
         AUTOMEDIA_LLM_MAX_TOKENS → llm.text_generation.max_tokens
+        AUTOMEDIA_LLM_TIMEOUT → llm.text_generation.timeout
         AUTOMEDIA_LLM_REASONING_MODEL → llm.text_generation.reasoning_model
 
     Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
@@ -148,6 +149,10 @@ def _env_to_config() -> dict[str, Any]:
         "llm_api_key": ["llm", "text_generation", "api_key"],
         "llm_temperature": ["llm", "text_generation", "temperature"],
         "llm_max_tokens": ["llm", "text_generation", "max_tokens"],
+        # Documented in .env.example but historically unmapped: the generic
+        # split sent AUTOMEDIA_LLM_TIMEOUT to config["llm"]["timeout"], a key
+        # nothing reads, so the documented override silently did nothing.
+        "llm_timeout": ["llm", "text_generation", "timeout"],
         "llm_reasoning_model": ["llm", "text_generation", "reasoning_model"],
     }
 
@@ -181,7 +186,7 @@ def _env_to_config() -> dict[str, Any]:
             if last_key == "reasoning_model":
                 node[last_key] = str(value).strip().lower() in ("1", "true", "yes", "on")
                 continue
-            if last_key in ("max_tokens", "temperature"):
+            if last_key in ("max_tokens", "temperature", "timeout"):
                 try:
                     typed_value: int | float = (
                         int(value) if last_key == "max_tokens" else float(value)

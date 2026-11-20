@@ -55,7 +55,7 @@
 | docs/dev/project-health-assessment-20260917.md | 17689 | file |
 | docs/dev/project-validation-framework.md | 12572 | file |
 | docs/dev/remediation-report-20260917.md | 11999 | file |
-| docs/dev/run-with-real-llm.md | 3298 | file |
+| docs/dev/run-with-real-llm.md | 3523 | file |
 | docs/dev/task-routing.md | 2291 | file |
 | docs/dev/validation-evidence | — | dir |
 | docs/dev/validation-evidence/README.md | 659 | file |

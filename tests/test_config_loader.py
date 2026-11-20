@@ -404,6 +404,19 @@ class TestLoadConfig:
         assert config["llm"]["text_generation"]["api_key"] == "sk-new"
         assert config["llm"]["text_generation"]["model"] == "gpt-4o-mini"
 
+    def test_env_var_timeout_mapping(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """AUTOMEDIA_LLM_TIMEOUT maps to config["llm"]["text_generation"]["timeout"].
+
+        Regression: the var is documented in .env.example, but the generic
+        underscore split routed it to config["llm"]["timeout"] — a key nothing
+        reads — so the documented override silently did nothing.
+        """
+        project, home, *_ = self._setup_dirs(tmp_path)
+        monkeypatch.setattr(os.path, "expanduser", lambda p: str(home) if p == "~" else p)
+        monkeypatch.setenv("AUTOMEDIA_LLM_TIMEOUT", "180")
+        config = load_config(config_dir=str(project))
+        assert config["llm"]["text_generation"]["timeout"] == 180.0
+
     # -- Full 6-layer merge ---------------------------------------------------
 
     def test_full_six_layer_merge(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
