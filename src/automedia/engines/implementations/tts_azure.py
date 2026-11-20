@@ -10,7 +10,7 @@ Configuration (``engines.tts.azure`` in ``.automedia/config.yaml``)::
 
     azure:
       voice: zh-CN-YunjianNeural          # kit baseline: 有力男声
-      output_format: audio-24khz-48kbitrate-mono-mp3
+      output_format: audio-48khz-192kbitrate-mono-mp3
       speech_key: null                    # prefer the env var below
       region: null                        # prefer the env var below
 
@@ -49,8 +49,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_VOICE: str = "zh-CN-YunjianNeural"
 """Default Azure neural voice (video-narration baseline voice)."""
 
-DEFAULT_OUTPUT_FORMAT: str = "audio-24khz-48kbitrate-mono-mp3"
-"""Narration-friendly output format (24 kHz mono MP3, per promo/docs/tts.md)."""
+DEFAULT_OUTPUT_FORMAT: str = "audio-48khz-192kbitrate-mono-mp3"
+"""Narration-friendly output format (48 kHz mono MP3, ≥128 kbps per promo/docs/tts.md)."""
 
 SPEECH_KEY_ENV: str = "AUTOMEDIA_AZURE_SPEECH_KEY"
 SPEECH_REGION_ENV: str = "AUTOMEDIA_AZURE_SPEECH_REGION"
