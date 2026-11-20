@@ -154,8 +154,8 @@ class TestL2RedLine8:
 
         assert result["passed"] is True
         status_check = next(c for c in result["checks"] if c["name"] == "archive_status")
-        assert status_check["passed"] is True  # Overridden by force
-        assert "overridden by --force" in status_check["detail"]
+        assert status_check["passed"] is True  # Exempted by force
+        assert "exemption applied" in status_check["detail"]
 
     def test_archived_status_fails_without_force(self) -> None:
         """archive_status='archived' without force → fails."""
@@ -171,11 +171,42 @@ class TestL2RedLine8:
 
         assert result["passed"] is True
         status_check = next(c for c in result["checks"] if c["name"] == "archive_status")
-        assert "overridden by --force" in status_check["detail"]
+        assert "exemption applied" in status_check["detail"]
 
     def test_empty_status_fails_without_force(self) -> None:
         """Empty archive_status fails without force."""
         ctx = _make_context(archive_status="", force=False)
+        result = L2ArchiveValidation().execute(ctx)
+
+        assert result["passed"] is False
+
+    def test_published_with_failed_integrity_check_stays_failed(self) -> None:
+        """Published + force=False + empty archive_path → still fails.
+
+        A published status has nothing to exempt, so a failed integrity check
+        must keep the gate red instead of being force-greened.
+        """
+        ctx = _make_context(archive_status="published", force=False, archive_path="")
+        result = L2ArchiveValidation().execute(ctx)
+
+        assert result["passed"] is False
+        assert all("overridden by --force" not in c["detail"] for c in result["checks"])
+
+    def test_draft_with_force_exempts_only_archive_status(self) -> None:
+        """Draft + force=True with other checks passing → passes.
+
+        Only ``archive_status`` is exempted; its detail records the exemption.
+        """
+        ctx = _make_context(archive_status="draft", force=True)
+        result = L2ArchiveValidation().execute(ctx)
+
+        assert result["passed"] is True
+        status_check = next(c for c in result["checks"] if c["name"] == "archive_status")
+        assert "exemption applied" in status_check["detail"]
+
+    def test_draft_without_force_fails(self) -> None:
+        """Draft without force → fails."""
+        ctx = _make_context(archive_status="draft", force=False)
         result = L2ArchiveValidation().execute(ctx)
 
         assert result["passed"] is False
