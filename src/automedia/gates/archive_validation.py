@@ -120,15 +120,17 @@ def _check_output_directory_exists(context: GateContext | dict[str, Any]) -> Che
     return {"name": name, "passed": False, "detail": "output_dir is missing or empty"}
 
 
-def _red_line_8_passes(context: GateContext | dict[str, Any]) -> bool:
-    """Red Line 8: the archive passes validation iff it is published or force is on.
+def _red_line_8_exemption_applies(context: GateContext | dict[str, Any]) -> bool:
+    """Red Line 8 exemption: ``--force`` may override a *non-published* status.
 
-    This combines the two related checks into a single boolean for the
-    top-level ``passed`` computation.
+    The exemption is deliberately narrow: it only applies when ``force`` is
+    exactly ``True`` **and** the archive status is not already ``"published"``
+    (a published archive has nothing to exempt). Other integrity checks are
+    never covered by this exemption.
     """
-    status_ok = context.get("archive_status", "") == "published"
     force_ok = context.get("force", False) is True
-    return status_ok or force_ok
+    status_not_published = context.get("archive_status", "") != "published"
+    return force_ok and status_not_published
 
 
 # ---------------------------------------------------------------------------
@@ -176,24 +178,33 @@ class L2ArchiveValidation(BaseGate):
         # archive_status and force_flag checks with the top-level combination.
         result = build_gate_result(checks, gate="L2")
 
-        # Red Line 8 override: only apply to real logic (not mock-driven tests).
-        # When mocks are present, we trust the mock values verbatim.
-        if mock_results is None and not result["passed"] and _red_line_8_passes(gate_context):
-            # Force overrides: mark archive_status check as passed
+        # Red Line 8 exemption: only the ``archive_status`` check is exempted,
+        # and only when ``force=True`` overrides a non-published status. Every
+        # other integrity check keeps its own verdict, and the overall
+        # ``passed`` value is recomputed from all checks afterwards.
+        # Mock-driven runs trust the mock values verbatim (no exemption).
+        if (
+            mock_results is None
+            and not result["passed"]
+            and _red_line_8_exemption_applies(gate_context)
+        ):
             for c in result["checks"]:
                 if c["name"] == "archive_status":
                     c["passed"] = True
-                    c["detail"] = "overridden by --force (Red Line 8 exemption)"
-            result["passed"] = True
-            first_pass = next(
-                (c for c in result["checks"] if c["passed"]),
+                    c["detail"] = (
+                        "exemption applied: --force overrides a non-published "
+                        "archive status (Red Line 8)"
+                    )
+            result["passed"] = all(c["passed"] for c in result["checks"])
+            target = next(
+                (c for c in result["checks"] if not c["passed"]),
                 result["checks"][0] if result["checks"] else None,
             )
-            if first_pass:
+            if target:
                 result["expected_vs_actual"] = {
-                    "check": first_pass["name"],
-                    "expected": _derive_expected(first_pass["name"]),
-                    "actual": first_pass.get("detail", ""),
+                    "check": target["name"],
+                    "expected": _derive_expected(target["name"]),
+                    "actual": target.get("detail", ""),
                     "context": {},
                 }
 

@@ -416,10 +416,16 @@ class TestRollbackUnaffected:
 
 
 class TestL2MetadataSemantics:
-    """Metadata completeness is advisory for published archives (Red Line 8)."""
+    """Integrity checks stay effective for published archives (Red Line 8 exemption scope)."""
 
-    def test_published_with_incomplete_metadata_is_force_passed(self) -> None:
-        """A PUBLISHED archive fails metadata completeness but is force-passed."""
+    def test_published_with_incomplete_metadata_fails(self) -> None:
+        """A PUBLISHED archive with incomplete metadata fails L2 (AutoMedia#587).
+
+        Red Line 8 only exempts the ``archive_status`` check; the other five
+        integrity checks stay effective.  A published archive therefore passes
+        on status and must still fail on metadata completeness instead of being
+        blanket force-passed.
+        """
         ctx: dict[str, Any] = {
             "archive_status": "published",
             "force": False,
@@ -434,10 +440,10 @@ class TestL2MetadataSemantics:
             c for c in result["checks"] if c["name"] == "archive_metadata_complete"
         )
         assert metadata_check["passed"] is False
-        assert result["passed"] is True
+        assert result["passed"] is False
         status_check = next(c for c in result["checks"] if c["name"] == "archive_status")
         assert status_check["passed"] is True
-        assert "overridden by --force" in status_check["detail"]
+        assert "overridden by --force" not in status_check["detail"]
 
     def test_non_published_with_incomplete_metadata_fails(self) -> None:
         """A NON-published archive with incomplete metadata fails L2."""
