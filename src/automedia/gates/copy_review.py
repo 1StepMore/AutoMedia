@@ -503,6 +503,62 @@ def _check_specificity(content: str) -> CheckResult:
 # Rewriting helpers
 # ---------------------------------------------------------------------------
 
+#: Clause punctuation that may be promoted to a full stop when splitting a
+#: long CJK sentence.  ``；`` is included even though ``_CJK_SENTENCE_SPLIT_RE``
+#: already ends a sentence there — it keeps the caller's contract intact.
+_CJK_CLAUSE_BREAK_CHARS = "，；、"
+
+#: Upper bound on split rounds per sentence, so a pathological input cannot
+#: make the rewrite loop forever.
+_CJK_MAX_SPLIT_ROUNDS = 5
+
+
+def _pick_cjk_break(sentence: str) -> int | None:
+    """Return the index of the clause punctuation closest to the midpoint.
+
+    Only positions that leave *both* halves within ``_CJK_LONG_SENTENCE_CHARS``
+    are eligible.  ``None`` means "no legal cut" — the sentence must stay as
+    written rather than being cut arbitrarily just to turn the gate green.
+    """
+    candidates: list[tuple[int, int]] = []
+    for idx, ch in enumerate(sentence):
+        if ch not in _CJK_CLAUSE_BREAK_CHARS:
+            continue
+        left_len = _visible_char_count(sentence[:idx])
+        right_len = _visible_char_count(sentence[idx + 1 :])
+        if left_len <= _CJK_LONG_SENTENCE_CHARS and right_len <= _CJK_LONG_SENTENCE_CHARS:
+            candidates.append((abs(left_len - right_len), idx))
+    if not candidates:
+        return None
+    return min(candidates)[1]
+
+
+def _split_cjk_sentence(sentence: str, rounds: int = _CJK_MAX_SPLIT_ROUNDS) -> str:
+    """Promote clause punctuation to ``。`` until every sentence fits the limit."""
+    if rounds <= 0 or _visible_char_count(sentence) <= _CJK_LONG_SENTENCE_CHARS:
+        return sentence
+    idx = _pick_cjk_break(sentence)
+    if idx is None:
+        return sentence
+    head = sentence[:idx] + "。"
+    tail = sentence[idx + 1 :]
+    return _split_cjk_sentence(head, rounds - 1) + _split_cjk_sentence(tail, rounds - 1)
+
+
+def _split_long_cjk_sentences(text: str) -> str:
+    """Split over-long CJK sentences in place, preserving separators verbatim."""
+    if not _is_cjk_dominant(text):
+        return text
+
+    pieces: list[str] = []
+    cursor = 0
+    for match in _CJK_SENTENCE_SPLIT_RE.finditer(text):
+        pieces.append(_split_cjk_sentence(text[cursor : match.start()]))
+        pieces.append(match.group(0))
+        cursor = match.end()
+    pieces.append(_split_cjk_sentence(text[cursor:]))
+    return "".join(pieces)
+
 
 def _rewrite_content(content: str) -> str:
     """Apply targeted rewrites to improve copy quality."""
@@ -547,6 +603,12 @@ def _rewrite_content(content: str) -> str:
         return replacement
 
     text = _ABSTRACT_RE.sub(_replace_abstract, text)
+
+    # 4. Split over-long CJK sentences, using the same sentence boundaries and
+    #    the same character count as ``_check_clarity``.  Without this step the
+    #    rewrite reported the long-sentence problem but never fixed it, so every
+    #    retry re-failed on the identical sentence (#597).
+    text = _split_long_cjk_sentences(text)
 
     # Clean up extra whitespace
     text = re.sub(r"  +", " ", text)
