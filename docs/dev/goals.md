@@ -11,7 +11,7 @@
 
 | 阶段 | 目标 | 达标判据 | 状态 |
 |:--|:--|:--|:--|
-| **P1** | 生产矩阵 100% —— 三条轨（文本 / 图文 / 视频）全部 pass，且门链无 fail | `python3 scripts/nightly_gap.py` ⇒ **exit 0**（三态 pass / fail / unverified；**unverified 绝不算 pass**（没跑过就是没达标）） | `ACTIVE` |
+| **P1** | 生产矩阵 100% —— 三条轨（文本 / 图文 / 视频）全部 pass，且门链无 fail | `python3 scripts/nightly_gap.py` ⇒ **exit 0**（三态 pass / fail / unverified；**unverified 绝不算 pass**（没跑过就是没达标）） | `ACHIEVED`（#579，2026-11-19） |
 | P2 | 待定（owner 定方向） | — | `needs-owner` |
 
 ## 达标之后做什么（顺序固定，别省步骤）
