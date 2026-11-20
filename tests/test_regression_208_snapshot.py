@@ -106,8 +106,24 @@ def test_doctor_python_skips_unstat_venv_candidate(monkeypatch) -> None:
         return real_is_file(self)
 
     monkeypatch.setattr(_Path, "is_file", fake_is_file)
+    monkeypatch.setattr(regression_208_check.sys, "executable", "<sentinel-interpreter>")
+    # Pin the candidate set: on machines that DO have repo venvs on disk the
+    # resolver would correctly pick a stat-able venv over sys.executable,
+    # making the fallback premise machine-dependent.  With only the unstat-able
+    # candidate present, the resolution must truly fall back to the sentinel.
     monkeypatch.setattr(
-        regression_208_check.sys, "executable", "<sentinel-interpreter>"
+        regression_208_check,
+        "_INTERPRETER_CANDIDATES",
+        (wsl_python,),
+    )
+    # Pin the candidate set: on machines that DO have repo venvs on disk the
+    # resolver would correctly pick a stat-able venv over sys.executable,
+    # making the fallback premise machine-dependent.  With only the unstat-able
+    # candidate present, the resolution must truly fall back to the sentinel.
+    monkeypatch.setattr(
+        regression_208_check,
+        "_INTERPRETER_CANDIDATES",
+        (wsl_python,),
     )
 
     result = regression_208_check._doctor_python()

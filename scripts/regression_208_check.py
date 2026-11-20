@@ -221,8 +221,20 @@ def _check_user_scope_guard(tmp: Path) -> list[str]:
         # and has no pwd module (#565).
         import pwd
 
-        os.environ["HOME"] = pwd.getpwuid(os.getuid()).pw_dir
+        os.environ["HOME"] = pwd.getpwuid(os.getuid()).pw_dir  # type: ignore[attr-defined]  # POSIX-only; os.name != "nt" guard above (win32 mypy can't narrow os.name)
     return failures
+
+
+_INTERPRETER_CANDIDATES: tuple[Path, ...] = (
+    _REPO_ROOT / ".venv" / "bin" / "python",
+    _REPO_ROOT / ".venv_win" / "Scripts" / "python.exe",
+)
+"""Repo-local interpreter candidates, probed in order before sys.executable.
+
+A module constant so tests can pin the candidate set (machines that do have
+repo venvs on disk would otherwise make the "fall back to sys.executable"
+premise machine-dependent).
+"""
 
 
 def _doctor_python() -> list[str]:
@@ -237,10 +249,7 @@ def _doctor_python() -> list[str]:
     resolution: on a Windows checkout the POSIX ``.venv/bin/python`` may be a
     WSL-created symlink whose stat raises WinError 1920 (#565).
     """
-    for candidate in (
-        _REPO_ROOT / ".venv" / "bin" / "python",
-        _REPO_ROOT / ".venv_win" / "Scripts" / "python.exe",
-    ):
+    for candidate in _INTERPRETER_CANDIDATES:
         try:
             if candidate.is_file():
                 return [str(candidate)]

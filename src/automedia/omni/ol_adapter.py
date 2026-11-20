@@ -19,6 +19,19 @@ _OL_CONFIG_ENV = "AUTOMEDIA_OL_CONFIG"
 _OL_CONFIG_NAME = "ol_config.yaml"
 
 
+def _home_root() -> Path:
+    """``$HOME`` when set, else the platform home directory.
+
+    ``Path.home()`` reads ``USERPROFILE`` on Windows and ignores ``$HOME``,
+    which breaks the POSIX convention (and every test harness that only sets
+    ``$HOME``).  Honor ``$HOME`` first on every platform; Git Bash/MSYS
+    Windows sessions set it too, so this is strictly more correct there as
+    well.
+    """
+    home = os.environ.get("HOME", "").strip()
+    return Path(home) if home else Path.home()
+
+
 def resolve_config_path(explicit: str | None = None) -> str | None:
     """Resolve the OL config YAML path through a fixed precedence ladder.
 
@@ -44,7 +57,7 @@ def resolve_config_path(explicit: str | None = None) -> str | None:
     if cwd_config.is_file():
         return str(cwd_config)
 
-    home_config = Path.home() / ".automedia" / "omni" / _OL_CONFIG_NAME
+    home_config = _home_root() / ".automedia" / "omni" / _OL_CONFIG_NAME
     if home_config.is_file():
         return str(home_config)
 
