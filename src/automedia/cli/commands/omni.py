@@ -172,7 +172,11 @@ def omni_localize(
     """
     from automedia.gates.translation_quality import L4TranslationQuality
     from automedia.omni.artifact_mapping import ol_output_path
-    from automedia.omni.ol_adapter import OLAdapter, resolve_source_lang
+    from automedia.omni.ol_adapter import (
+        OLAdapter,
+        resolve_source_lang,
+        stamp_translation_frontmatter,
+    )
 
     project_dir = Path(project)
     drafts_dir = project_dir / DRAFTS
@@ -191,6 +195,7 @@ def omni_localize(
     effective_source_lang = resolve_source_lang(source_lang)
     adapter = OLAdapter()
     produced: list[Path] = []
+    failures: list[str] = []
     warnings_list: list[str] = []
 
     for md_file in md_files:
@@ -206,8 +211,23 @@ def omni_localize(
                 msg = f"Translation failed for {md_file.name} → {lang}: {exc}"
                 if get_output_mode() == OutputMode.TEXT:
                     typer.secho(msg, fg=typer.colors.RED, err=True)
+                failures.append(msg)
                 warnings_list.append(msg)
                 continue
+
+            if not result.translated_md.strip():
+                reasons = "; ".join(result.warnings) or "empty translation"
+                msg = f"Translation failed for {md_file.name} → {lang}: {reasons}"
+                if get_output_mode() == OutputMode.TEXT:
+                    typer.secho(msg, fg=typer.colors.RED, err=True)
+                failures.append(msg)
+                continue
+
+            # The AutoMedia adapter owns the frontmatter contract: L4 requires
+            # source_lang/target_lang, so stamp them before running the gate.
+            result.translated_md = stamp_translation_frontmatter(
+                result.translated_md, effective_source_lang, lang
+            )
 
             # L4 Translation Quality gate — ADVISORY by decision: a failing
             # verdict is reported as a warning and never aborts localisation.
@@ -232,6 +252,12 @@ def omni_localize(
             output_file = output_dir / md_file.name
             output_file.write_text(result.translated_md, encoding="utf-8")
             produced.append(output_file)
+
+    if failures:
+        details = "\n".join(f"  - {failure}" for failure in failures)
+        output_error(
+            f"Localisation failed for {len(failures)} file(s) (kept {len(produced)}):\n{details}"
+        )
 
     if not produced:
         output_error("No files were produced.")
