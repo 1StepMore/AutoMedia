@@ -21,10 +21,12 @@ row cells require step-level scanning, and they mirror the audit's own
 extraction rules (tool-kind steps incl. recovery/cleanup; cli-kind
 ``automedia <sub>`` commands; declarative ``proves_gates``/``proves_modes``).
 
-``last_status`` and the assertion half are best-effort: the latest run
-record named by ``latest.txt`` under ``runs_root`` is read, indexed by
-scenario name; a missing runs root, missing record, or corrupt JSON yields
-``None``/empty — never a crash.
+``last_status`` is best-effort and spans recent history: the newest runs
+under ``runs_root`` are walked newest-first and each scenario takes its first
+hit, because one scenario per run means ``latest.txt`` alone would surface a
+single status. The assertion half stays anchored to the latest run record.
+A missing runs root, missing record, or corrupt JSON yields ``None``/empty —
+never a crash.
 
 Run it directly::
 
@@ -94,23 +96,100 @@ def _uses_cli(scenario: Scenario) -> bool:
     )
 
 
-def _read_last_statuses(runs_root: str | Path) -> dict[str, str]:
-    """Scenario name → last recorded status from the latest run, best-effort."""
-    root = Path(runs_root)
-    run_name = latest_run(root)
-    if run_name is None:
-        return {}
+def _read_record_best_effort(path: Path) -> dict[str, Any] | None:
+    """Read one ``scenarios.json``; unreadable or non-object JSON yields None."""
     try:
-        record = json.loads((root / run_name / "scenarios.json").read_text(encoding="utf-8"))
+        record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {}
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def _generated_at(record: dict[str, Any] | None) -> str:
+    """The record's ``generated_at`` when it is a string, else ``""``."""
+    value = record.get("generated_at") if isinstance(record, dict) else None
+    return value if isinstance(value, str) else ""
+
+
+def _ordered_runs(root: Path) -> list[tuple[str, dict[str, Any] | None]]:
+    """Every run dir under ``root`` carrying ``scenarios.json``, newest first.
+
+    Ordering prefers the record's ``generated_at`` (ISO strings compare
+    chronologically) and falls back to the directory name, whose
+    ``YYYYMMDD-HHMMSS-XXXXXX`` shape also sorts chronologically. Runs whose
+    record could not be read have no stamp and land after the dated ones.
+    A missing or unreadable root is an empty list.
+    """
+    try:
+        run_dirs = [
+            entry
+            for entry in root.iterdir()
+            if entry.is_dir() and (entry / "scenarios.json").is_file()
+        ]
+    except OSError:
+        return []
+    runs = [(entry.name, _read_record_best_effort(entry / "scenarios.json")) for entry in run_dirs]
+    runs.sort(key=lambda run: (_generated_at(run[1]), run[0]), reverse=True)
+    return runs
+
+
+def _scan_runs(
+    runs_root: str | Path, max_runs: int = 200
+) -> tuple[dict[str, str], dict[str, int]]:
+    """Walk recent runs newest-first; return (first-hit statuses, diagnostics).
+
+    Each scenario keeps the status from its first hit, i.e. its most recent
+    observation. Rows are read leniently: the name key is ``scenario`` or
+    ``name`` and the status key is ``status`` or ``verdict``. Corrupt records
+    are skipped, never raised.
+    """
+    root = Path(runs_root)
+    selected = _ordered_runs(root)[:max_runs] if max_runs > 0 else []
     statuses: dict[str, str] = {}
-    for row in record.get("scenarios", []) if isinstance(record, dict) else []:
-        name = row.get("scenario") if isinstance(row, dict) else None
-        status = row.get("status") if isinstance(row, dict) else None
-        if isinstance(name, str) and isinstance(status, str):
-            statuses[name] = status
+    rows_parsed = 0
+    for _run_name, record in selected:
+        rows = record.get("scenarios") if isinstance(record, dict) else None
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = row.get("scenario", row.get("name"))
+            status = row.get("status", row.get("verdict"))
+            if not isinstance(name, str) or not isinstance(status, str):
+                continue
+            rows_parsed += 1
+            statuses.setdefault(name, status)
+    diagnostics = {
+        "runs_scanned": len(selected),
+        "rows_parsed": rows_parsed,
+        "scenarios_with_status": len(statuses),
+    }
+    return statuses, diagnostics
+
+
+def _read_last_statuses(runs_root: str | Path, max_runs: int = 200) -> dict[str, str]:
+    """Scenario name → most recent recorded status across recent runs.
+
+    One scenario per run means ``latest.txt`` names only a single scenario, so
+    the newest ``max_runs`` records are walked newest-first and each scenario
+    keeps its first hit. Best-effort: an absent root or unreadable records
+    yield ``{}``.
+    """
+    statuses, _diagnostics = _scan_runs(runs_root, max_runs)
     return statuses
+
+
+def _read_status_diagnostics(runs_root: str | Path, max_runs: int = 200) -> dict[str, int]:
+    """How much of the run history the status read actually covered.
+
+    Returns ``runs_scanned`` (records walked), ``rows_parsed`` (rows that
+    yielded a usable name + status) and ``scenarios_with_status`` (distinct
+    scenarios resolved). Shares :func:`_scan_runs` with
+    :func:`_read_last_statuses`, so the counts describe that same read.
+    """
+    _statuses, diagnostics = _scan_runs(runs_root, max_runs)
+    return diagnostics
 
 
 def _load_latest_record(runs_root: str | Path) -> dict[str, Any] | None:
