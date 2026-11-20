@@ -5,7 +5,12 @@ from __future__ import annotations
 import typing
 from typing import Any
 
-from automedia.omni.ol_adapter import OLAdapter, TranslationResult
+from automedia.omni.ol_adapter import (
+    OLAdapter,
+    TranslationResult,
+    resolve_config_path,
+    stamp_translation_frontmatter,
+)
 
 
 class TestTranslationResult:
@@ -57,9 +62,12 @@ class TestOLAdapterContract:
         adapter = OLAdapter(config_path="my.yaml")
         assert adapter.config_path == "my.yaml"
 
-    def test_init_default_config_path(self) -> None:
+    def test_init_default_config_path(self, tmp_path: Any, monkeypatch: Any) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path / "home"))
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("AUTOMEDIA_OL_CONFIG", raising=False)
         adapter = OLAdapter()
-        assert adapter.config_path == "ol_config.yaml"
+        assert adapter.config_path == ""
 
     def test_translate_returns_translation_result(self) -> None:
         adapter = OLAdapter()
@@ -84,3 +92,55 @@ def test_translate_graceful_on_missing_config(tmp_path: Any) -> None:
         assert "Config not found" in result.warnings[0]
     finally:
         del os.environ["OL_CONFIG_PATH"]
+
+
+def test_resolve_config_path_precedence(tmp_path: Any, monkeypatch: Any) -> None:
+    """explicit > AUTOMEDIA_OL_CONFIG > cwd > ~/.automedia/omni > None."""
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    (home / ".automedia" / "omni").mkdir(parents=True)
+    work.mkdir()
+
+    explicit = tmp_path / "explicit.yaml"
+    from_env = tmp_path / "env.yaml"
+    cwd_config = work / "ol_config.yaml"
+    home_config = home / ".automedia" / "omni" / "ol_config.yaml"
+    for path in (explicit, from_env, cwd_config, home_config):
+        path.write_text("source_lang: zh\n", encoding="utf-8")
+
+    monkeypatch.delenv("AUTOMEDIA_OL_CONFIG", raising=False)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.chdir(work)
+
+    assert resolve_config_path(str(explicit)) == str(explicit)
+
+    monkeypatch.setenv("AUTOMEDIA_OL_CONFIG", str(from_env))
+    assert resolve_config_path() == str(from_env)
+
+    monkeypatch.delenv("AUTOMEDIA_OL_CONFIG")
+    assert resolve_config_path() == str(cwd_config)
+
+    cwd_config.unlink()
+    assert resolve_config_path() == str(home_config)
+
+    home_config.unlink()
+    assert resolve_config_path() is None
+
+
+def test_stamp_frontmatter_adds_and_overwrites() -> None:
+    """Missing frontmatter is prepended; existing keys are preserved/overwritten."""
+    assert (
+        stamp_translation_frontmatter("# Body", "zh", "en")
+        == "---\nsource_lang: zh\ntarget_lang: en\n---\n\n# Body"
+    )
+
+    existing = "---\nsource_lang: fr\ntarget_lang: de\ntitle: Hello\n---\n# Body\n"
+    stamped = stamp_translation_frontmatter(existing, "zh", "en")
+    assert stamped.startswith("---\n")
+    assert "source_lang: zh" in stamped
+    assert "target_lang: en" in stamped
+    assert "title: Hello" in stamped
+    assert "# Body" in stamped
+
+    assert stamp_translation_frontmatter("", "zh", "en") == ""
+    assert stamp_translation_frontmatter("   \n", "zh", "en") == "   \n"

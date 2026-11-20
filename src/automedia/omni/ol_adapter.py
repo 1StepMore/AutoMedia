@@ -3,15 +3,88 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
 from structlog import get_logger
 from typing_extensions import override
 
 from automedia.omni.base import BaseOmniAdapter
 
 log = get_logger(__name__)
+
+_OL_CONFIG_ENV = "AUTOMEDIA_OL_CONFIG"
+_OL_CONFIG_NAME = "ol_config.yaml"
+
+
+def resolve_config_path(explicit: str | None = None) -> str | None:
+    """Resolve the OL config YAML path through a fixed precedence ladder.
+
+    Order:
+
+    1. *explicit* (returned as-is when provided)
+    2. ``AUTOMEDIA_OL_CONFIG`` environment variable
+    3. ``ol_config.yaml`` in the current working directory (when it exists)
+    4. ``~/.automedia/omni/ol_config.yaml`` (when it exists)
+
+    Returns ``None`` when no candidate is available.  Explicit/environment
+    values are not existence-checked so ``translate`` can report a precise
+    "Config not found" warning instead of silently falling through.
+    """
+    if explicit:
+        return explicit
+
+    from_env = os.environ.get(_OL_CONFIG_ENV, "").strip()
+    if from_env:
+        return from_env
+
+    cwd_config = Path.cwd() / _OL_CONFIG_NAME
+    if cwd_config.is_file():
+        return str(cwd_config)
+
+    home_config = Path.home() / ".automedia" / "omni" / _OL_CONFIG_NAME
+    if home_config.is_file():
+        return str(home_config)
+
+    return None
+
+
+def stamp_translation_frontmatter(md: str, source_lang: str, target_lang: str) -> str:
+    """Ensure *md* carries ``source_lang`` / ``target_lang`` YAML frontmatter.
+
+    - Empty (or whitespace-only) content is returned unchanged.
+    - Without frontmatter, a new block is prepended.
+    - With frontmatter, other keys are preserved and the two language keys
+      are overwritten.
+    """
+    if not md.strip():
+        return md
+
+    header = f"---\nsource_lang: {source_lang}\ntarget_lang: {target_lang}\n---\n"
+
+    if not md.startswith("---"):
+        return header + "\n" + md
+
+    second_dash = md.find("---", 3)
+    if second_dash == -1:
+        return header + "\n" + md
+
+    raw_frontmatter = md[3:second_dash]
+    body = md[second_dash + 3 :]
+
+    try:
+        loaded = yaml.safe_load(raw_frontmatter)
+    except yaml.YAMLError:
+        return header + "\n" + md
+
+    data = loaded if isinstance(loaded, dict) else {}
+    data["source_lang"] = source_lang
+    data["target_lang"] = target_lang
+
+    dumped = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    return f"---\n{dumped}---\n{body}"
 
 
 @dataclass
@@ -48,10 +121,16 @@ def resolve_source_lang(source_lang: str = "") -> str:
 class OLAdapter(BaseOmniAdapter):
     config_path: str
 
-    def __init__(self, config_path: str = "ol_config.yaml") -> None:
-        """Initialize the OL adapter with a path to the OL config YAML."""
+    def __init__(self, config_path: str | None = None) -> None:
+        """Initialize the OL adapter with a path to the OL config YAML.
+
+        An explicit *config_path* always wins.  Otherwise the path is
+        resolved via :func:`resolve_config_path` (env → cwd →
+        ``~/.automedia/omni/``), possibly becoming an empty string when no
+        candidate exists.
+        """
         super().__init__()
-        self.config_path = config_path
+        self.config_path = config_path if config_path is not None else (resolve_config_path() or "")
 
     @property
     @override
@@ -98,14 +177,32 @@ class OLAdapter(BaseOmniAdapter):
         Returns
         -------
         TranslationResult
-            Translated markdown, optional XLIFF path, and warnings.
-
-        Raises
-        ------
-        ValueError
-            If no ``config_path`` is provided and ``self.config_path``
-            is also not set.
+            Translated markdown, optional XLIFF path, and warnings.  When no
+            config path can be resolved, fake LLM mode returns the source
+            unchanged as a deterministic passthrough; otherwise
+            ``translated_md`` is empty and ``warnings`` explains why — no
+            exception is raised.
         """
+        resolved = config_path or self.config_path
+        if not resolved:
+            from automedia.core.llm_client import _is_fake_mode
+
+            if _is_fake_mode():
+                # FAKE_LLM: no network, no config required — pass the source
+                # through and annotate it so downstream write paths can still
+                # be exercised end-to-end deterministically.
+                return TranslationResult(
+                    translated_md=md_content,
+                    warnings=["fake LLM mode: passthrough translation (no OL config required)"],
+                )
+            return TranslationResult(
+                translated_md="",
+                warnings=[
+                    "Config not found: no OL config path available. "
+                    "Set AUTOMEDIA_OL_CONFIG or create ~/.automedia/omni/ol_config.yaml."
+                ],
+            )
+
         # Lazy imports — the full OL dependency tree is heavy and should
         # not be pulled in at module load time.
         try:
@@ -113,8 +210,7 @@ class OLAdapter(BaseOmniAdapter):
         except ImportError:
             # When ol_mcp is not installed, check if the config path at least
             # exists so we can report the right warning.
-            resolved = config_path or self.config_path
-            if resolved and not Path(resolved).is_file():
+            if not Path(resolved).is_file():
                 return TranslationResult(
                     translated_md="",
                     warnings=[
@@ -131,13 +227,6 @@ class OLAdapter(BaseOmniAdapter):
                     "ol_mcp package not available — OL translation disabled. "
                     "Install with: pip install automedia-pipeline[omni]"
                 ],
-            )
-
-        resolved = config_path or self.config_path
-        if not resolved:
-            raise ValueError(
-                "No config_path provided to translate() and no config_path "
-                + "set on OLAdapter instance."
             )
 
         try:

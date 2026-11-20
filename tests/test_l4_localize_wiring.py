@@ -321,3 +321,60 @@ class TestCliLocalizeSourceLang:
         assert result.exit_code == 0, result.output
         assert translate_spy[0]["source_lang"] == "en"
         assert l4_spy[0]["source_lang"] == "en"
+
+
+# ---------------------------------------------------------------------------
+# Fix #588 — empty translations are failures, adapter stamps frontmatter
+# ---------------------------------------------------------------------------
+
+
+def test_empty_translation_is_not_written(
+    default_zh: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """An empty translation is a failure: no file, non-zero exit (#588)."""
+    import automedia.omni.ol_adapter as ol_mod
+
+    _make_project(tmp_path)
+
+    def _empty_translate(
+        self: object,
+        md_content: str,
+        source_lang: str = "auto",
+        target_lang: str = "auto",
+        config_path: str | None = None,
+    ) -> ol_mod.TranslationResult:
+        return ol_mod.TranslationResult(
+            translated_md="",
+            warnings=["Config not found: no OL config path available."],
+        )
+
+    monkeypatch.setattr(ol_mod.OLAdapter, "translate", _empty_translate)
+    result = runner.invoke(
+        app,
+        ["omni", "localize", "--project", str(tmp_path), "--target-langs", "en"],
+    )
+
+    assert result.exit_code != 0
+    assert not (tmp_path / "06_publish" / "en" / "article.md").exists()
+
+
+def test_l4_passes_on_stamped_translation() -> None:
+    """Frontmatter stamped by the adapter makes the unmodified L4 gate pass (#588)."""
+    from automedia.omni.ol_adapter import (
+        TranslationResult,
+        stamp_translation_frontmatter,
+    )
+
+    stamped = stamp_translation_frontmatter("# Hello", "zh", "en")
+    verdict = L4TranslationQuality().execute(
+        {
+            "translation_result": TranslationResult(translated_md=stamped),
+            "source_lang": "zh",
+            "target_lang": "en",
+        }
+    )
+
+    assert verdict["passed"] is True
+    assert verdict["failures"] == []
