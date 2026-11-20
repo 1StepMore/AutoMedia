@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -396,6 +397,90 @@ class TestIdempotence:
             _produce_media_assets(ctx)
 
         assert ctx.get("_media_stage_done") is True
+
+
+class TestNarrationProvenance:
+    """旁白落盘时写溯源（#599）：记录的必须是**真正被念的那份草稿**。
+
+    复现的真实故障：同一次运行里存在三份草稿，SRT 正文与第二份逐字一致，
+    但场景按 mtime 取到最新那份 ⇒ text_similarity 0.26。这里同时放一份"更新
+    的草稿"，断言溯源仍指向 ``output_files`` 登记的那份。
+    """
+
+    def _run_chain(self, ctx: GateContext) -> None:
+        with (
+            patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
+            patch(_AUDIO_PATH, _FakeAudioPipeline),
+            patch(_IMAGE_PATH, _FakeImagePipeline),
+            patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
+        ):
+            _produce_media_assets(ctx)
+
+    def _draft(self, project: Path, name: str, body: str, mtime: float) -> Path:
+        path = project / "01_content" / "drafts" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8", newline="\n")
+        os.utime(path, (mtime, mtime))
+        return path
+
+    def test_records_the_draft_registered_by_cw(self, tmp_path: Path) -> None:
+        narrated = self._draft(tmp_path, "20260101_000000_draft.md", "真正的旁白内容", 1_000_000)
+        # 更新的一份"另一篇草稿"——旧实现按 mtime 会误取它。
+        self._draft(tmp_path, "20260101_010000_draft.md", "后来重写的另一篇", 2_000_000)
+
+        ctx = _video_context(tmp_path, content="真正的旁白内容")
+        ctx["output_files"] = [{"type": "article", "path": str(narrated)}]
+        self._run_chain(ctx)
+
+        provenance = tmp_path / "04_audio" / "narration.provenance.json"
+        assert provenance.is_file()
+        payload = json.loads(provenance.read_text(encoding="utf-8"))
+        assert payload["source_draft"] == "01_content/drafts/20260101_000000_draft.md"
+        assert payload["source_sha256"] == hashlib.sha256(narrated.read_bytes()).hexdigest()
+        assert payload["narration_chars"] == len("真正的旁白内容")
+        assert payload["generated_at"]
+
+    def test_relative_output_path_resolves_against_project_root(self, tmp_path: Path) -> None:
+        self._draft(tmp_path, "20260101_000000_draft.md", "relative body", 1_000_000)
+
+        ctx = _video_context(tmp_path, content="relative body")
+        ctx["output_files"] = [
+            {"type": "article", "path": "01_content/drafts/20260101_000000_draft.md"}
+        ]
+        self._run_chain(ctx)
+
+        payload = json.loads(
+            (tmp_path / "04_audio" / "narration.provenance.json").read_text(encoding="utf-8")
+        )
+        assert payload["source_draft"] == "01_content/drafts/20260101_000000_draft.md"
+
+    def test_no_registered_draft_is_best_effort(self, tmp_path: Path) -> None:
+        """没有可登记的草稿（如纯 source_content）⇒ 不写溯源，也不让管线失败。"""
+        ctx = _video_context(tmp_path, content="source only")
+        ctx["source_content"] = "source only"
+        self._run_chain(ctx)
+
+        assert os.path.isfile(str(ctx.get("audio_path")))
+        assert not (tmp_path / "04_audio" / "narration.provenance.json").exists()
+
+    def test_unwritable_provenance_does_not_fail_the_stage(self, tmp_path: Path) -> None:
+        """溯源写失败必须只记 warning：音频/SRT 仍照常产出。"""
+        draft = self._draft(tmp_path, "20260101_000000_draft.md", "body", 1_000_000)
+        ctx = _video_context(tmp_path, content="body")
+        ctx["output_files"] = [{"type": "article", "path": str(draft)}]
+
+        with (
+            patch.object(Path, "read_bytes", side_effect=OSError("read-only")),
+            patch(_WHICH_PATH, return_value="/usr/bin/fake"),
+            patch(_SMOKE_PATH, return_value=True),
+            patch(_AUDIO_PATH, _FakeAudioPipeline),
+            patch(_IMAGE_PATH, _FakeImagePipeline),
+            patch(_ENGINE_PATH, return_value=_FakeVideoEngine()),
+        ):
+            _produce_media_assets(ctx)
+
+        assert os.path.isfile(str(ctx.get("audio_path")))
 
 
 class TestEngineAvailabilityFallback:

@@ -6,6 +6,7 @@ execution, and MD5 recording.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -14,6 +15,7 @@ import sys
 import time
 import warnings
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -1350,6 +1352,9 @@ def _build_pipeline_context(
         if draft_text:
             gate_context["content"] = draft_text
             gate_context["draft"] = draft_text
+            # #599: remember WHICH draft was rehydrated. Downstream narration
+            # provenance must name this file, not re-glob for the newest one.
+            gate_context["content_source_path"] = str(draft_path)
             log.info(
                 "pipeline.resume.draft_rehydrated",
                 path=str(draft_path),
@@ -2271,6 +2276,95 @@ def _expected_voice_from_brand(brand_profile: dict[str, Any] | None) -> str:
     return str(_ZH_DEFAULTS["tts_voice"])
 
 
+def _narration_source_draft(
+    gate_context: GateContext | dict[str, Any],
+) -> tuple[str, str] | None:
+    """Return ``(absolute_path, project_relative_posix_path)`` of the narrated draft.
+
+    The narration text is ``gate_context["content"]``; its on-disk origin is
+    the draft CW registered in ``output_files`` (type ``article``) or, on a
+    resumed run, the file rehydrated into ``content_source_path``.  We never
+    glob for the newest draft here (issue #599): a later rewrite can add a newer
+    file that the narrator never read, so guessing by mtime silently compares
+    the subtitle with the wrong text.
+    """
+    project_dir = str(gate_context.get("project_dir", "") or "")
+    candidates: list[str] = []
+    output_files = gate_context.get("output_files") or []
+    if isinstance(output_files, list):
+        for entry in reversed(output_files):
+            if isinstance(entry, dict) and entry.get("type") == "article":
+                path = entry.get("path")
+                if path:
+                    candidates.append(str(path))
+                    break
+    remembered = gate_context.get("content_source_path")
+    if isinstance(remembered, str) and remembered.strip():
+        candidates.append(remembered)
+
+    for raw in candidates:
+        path = Path(raw)
+        if not path.is_absolute():
+            if not project_dir:
+                continue
+            path = Path(project_dir) / path
+        if not path.is_file():
+            continue
+        if project_dir:
+            try:
+                relative = os.path.relpath(path, project_dir)
+            except ValueError:  # different drive on Windows
+                relative = str(path)
+        else:
+            relative = str(path)
+        return str(path), relative.replace(os.sep, "/")
+    return None
+
+
+def _write_narration_provenance(
+    gate_context: GateContext | dict[str, Any],
+    *,
+    audio_dir: str,
+    narration_text: str,
+) -> None:
+    """Record which draft the narration read (issue #599), best-effort.
+
+    ``04_audio/narration.provenance.json`` lets a validation scenario pin the
+    exact draft that was spoken instead of globbing for the newest one (which
+    may belong to a later rewrite).  A write failure is logged and never fails
+    the pipeline: the subtitle is still a valid artifact, only its provenance
+    is unknown.
+    """
+    try:
+        source = _narration_source_draft(gate_context)
+        if source is None:
+            log.warning(
+                "pipeline.narration_provenance.skipped",
+                reason="no draft path registered for the narration",
+            )
+            return
+        absolute_path, relative_path = source
+        payload = {
+            "source_draft": relative_path,
+            "source_sha256": hashlib.sha256(Path(absolute_path).read_bytes()).hexdigest(),
+            "narration_chars": len(narration_text),
+            "generated_at": datetime.now(UTC).isoformat(),
+        }
+        target = os.path.join(audio_dir, "narration.provenance.json")
+        os.makedirs(audio_dir, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2)
+            fh.write("\n")
+        log.info(
+            "pipeline.narration_provenance.written",
+            path=target,
+            source_draft=relative_path,
+            narration_chars=len(narration_text),
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        log.warning("pipeline.narration_provenance.write_failed", error=str(exc))
+
+
 def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     """音频轨 → 图片 → 视频 → 产物清单，供 V 门真实校验。
 
@@ -2456,6 +2550,11 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         except Exception as exc:
             _note_media_stage(gate_context, "srt_write_failed", error=str(exc)[:200])
             log.warning("pipeline.media_stage.srt_write_failed", error=str(exc))
+
+    # #599: pin the draft the narration actually read next to the audio. The
+    # subtitle scenario compares against this precise file rather than the
+    # newest ``01_content/drafts/*_draft.md`` (which a later rewrite can change).
+    _write_narration_provenance(gate_context, audio_dir=audio_dir, narration_text=text)
 
     transcript_text = str(transcription.get("text", "") or "").strip()
     srt_text = ""

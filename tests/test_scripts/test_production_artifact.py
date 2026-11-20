@@ -131,3 +131,90 @@ def test_emit_text_prints_content_not_json(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert result.stdout == content
     assert not result.stdout.startswith("{")
+
+
+def _write_provenance(project: Path, source_draft: str, mtime: float = 3_000_000) -> Path:
+    path = project / "04_audio" / "narration.provenance.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"source_draft": source_draft}), encoding="utf-8", newline="\n")
+    os.utime(path, (mtime, mtime))
+    return path
+
+
+def test_provenance_wins_over_the_newer_glob_match(tmp_path: Path) -> None:
+    """#599: the narrated draft, not the newest draft, is pinned."""
+    projects = tmp_path / "projects"
+    narrated = _write_artifact(projects / "proj", "060148_draft.md", "narrated\n", 1_000_000)
+    _write_artifact(projects / "proj", "062128_draft.md", "later rewrite\n", 2_000_000)
+    _write_provenance(projects / "proj", "01_content/drafts/060148_draft.md")
+
+    result = _run(
+        projects,
+        DRAFT_GLOB,
+        "--provenance",
+        "04_audio/narration.provenance.json",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["path"] == str(narrated.resolve())
+    assert payload["project"] == "proj"
+
+
+def test_missing_provenance_falls_back_to_newest_glob_match(tmp_path: Path) -> None:
+    projects = tmp_path / "projects"
+    _write_artifact(projects / "proj", "old_draft.md", "old\n", 1_000_000)
+    newer = _write_artifact(projects / "proj", "new_draft.md", "new\n", 2_000_000)
+
+    result = _run(
+        projects,
+        DRAFT_GLOB,
+        "--provenance",
+        "04_audio/narration.provenance.json",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["path"] == str(newer.resolve())
+    assert "falling back to the newest glob match" in result.stderr
+
+
+def test_malformed_provenance_falls_back_to_glob(tmp_path: Path) -> None:
+    projects = tmp_path / "projects"
+    newer = _write_artifact(projects / "proj", "new_draft.md", "new\n", 2_000_000)
+    provenance = projects / "proj" / "04_audio" / "narration.provenance.json"
+    provenance.parent.mkdir(parents=True)
+    provenance.write_text("{not json", encoding="utf-8")
+
+    result = _run(
+        projects,
+        DRAFT_GLOB,
+        "--provenance",
+        "04_audio/narration.provenance.json",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["path"] == str(newer.resolve())
+    assert "falling back" in result.stderr
+
+
+def test_provenance_may_not_escape_the_project(tmp_path: Path) -> None:
+    """``source_draft`` outside its project is rejected, not followed."""
+    projects = tmp_path / "projects"
+    newer = _write_artifact(projects / "proj", "new_draft.md", "new\n", 2_000_000)
+    outside = tmp_path / "outside.md"
+    outside.write_text("outside\n", encoding="utf-8")
+    _write_provenance(projects / "proj", "../outside.md")
+
+    result = _run(
+        projects,
+        DRAFT_GLOB,
+        "--provenance",
+        "04_audio/narration.provenance.json",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["path"] == str(newer.resolve())

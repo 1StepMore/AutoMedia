@@ -20,6 +20,9 @@
 #     pipeline actually narrated (`01_content/drafts/*_draft.md`) by normalized
 #     character-bigram similarity. Structural assertions alone passed a subtitle
 #     full of ASR substitutions; this cell asserts the words, not just timing.
+#   - the narrated draft is pinned from `04_audio/narration.provenance.json`
+#     (issue #599) when present; the mtime glob is only a fallback because it
+#     silently picks the newest draft, which may be a later rewrite.
 
 name: produce-subtitle
 description: "short-video produces a ≥10-cue monotonic SRT whose last cue ends within the produced narration."
@@ -61,7 +64,11 @@ steps:
     kind: cli
     check: The draft the pipeline narrated is pinned so the subtitle text can be compared with what was actually spoken.
     standard: text.similarity
-    command: python3 scripts/production_artifact.py /tmp/automedia/prod-subtitle "01_content/drafts/*_draft.md" --link /tmp/automedia/prod-subtitle/script.md
+    # #599: read the provenance the media stage wrote (04_audio/narration.provenance.json)
+    # so the pin names the draft the narrator actually read. Globbing is only a
+    # fallback: it silently takes the newest draft, which may be a later rewrite
+    # that was never narrated (that produced a 0.26 text_similarity reading).
+    command: python3 scripts/production_artifact.py /tmp/automedia/prod-subtitle "01_content/drafts/*_draft.md" --provenance "04_audio/narration.provenance.json" --link /tmp/automedia/prod-subtitle/script.md
     timeout_seconds: 120
     expect:
       exit_code: 0
