@@ -27,6 +27,8 @@ export AUTOMEDIA_LLM_PROVIDER=openai
 export AUTOMEDIA_LLM_API_KEY=<由人提供，或本机已有>     # 只从环境注入，不许写进仓内文件
 export AUTOMEDIA_LLM_BASE_URL=<端点路径，按提供方规定>   # 形如 https://<host>/v1 或 /v4
 export AUTOMEDIA_LLM_MODEL=<模型名>
+export AUTOMEDIA_LLM_MAX_TOKENS=8192                    # 推理模型会把默认 2048 预算烧在 reasoning 上
+export AUTOMEDIA_LLM_TIMEOUT=180                        # 慢端点内容级 completion 常 >60s 默认超时
 unset AUTOMEDIA_FAKE_LLM                                # 关键：别让 fake 混进质量验收
 ```
 
