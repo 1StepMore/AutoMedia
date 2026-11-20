@@ -47,20 +47,20 @@ def _kill_tree(pid: int) -> None:
         return
 
     try:
-        pgid: int = os.getpgid(pid)
+        pgid: int = os.getpgid(pid)  # type: ignore[attr-defined]  # POSIX-only; the os.name-nt guard returns above and mypy cannot narrow os.name
     except OSError:
         return
     with contextlib.suppress(OSError):
-        os.killpg(pgid, signal.SIGTERM)
+        os.killpg(pgid, signal.SIGTERM)  # type: ignore[attr-defined]  # POSIX-only, same guard
     deadline: float = time.monotonic() + 5.0
     while time.monotonic() < deadline:
         try:
-            os.killpg(pgid, 0)
+            os.killpg(pgid, 0)  # type: ignore[attr-defined]  # POSIX-only, same guard
         except OSError:
             return
         time.sleep(0.1)
     with contextlib.suppress(OSError):
-        os.killpg(pgid, signal.SIGKILL)
+        os.killpg(pgid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, same guard
 
 
 def _run_tree_aware(
@@ -618,9 +618,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 try:
                     tool_path = find_tool(tool_name)
                 except ToolPathError as exc:
-                    logger.debug(
-                        "Could not resolve %s for PATH injection: %s", tool_name, exc
-                    )
+                    logger.debug("Could not resolve %s for PATH injection: %s", tool_name, exc)
                     continue
                 if tool_path:
                     tool_dir = os.path.dirname(tool_path)
