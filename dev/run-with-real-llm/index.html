@@ -2095,6 +2095,8 @@
 <span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_API_KEY</span><span class="o">=</span>&lt;由人提供，或本机已有&gt;<span class="w">     </span><span class="c1"># 只从环境注入，不许写进仓内文件</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_BASE_URL</span><span class="o">=</span>&lt;端点路径，按提供方规定&gt;<span class="w">   </span><span class="c1"># 形如 https://&lt;host&gt;/v1 或 /v4</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_MODEL</span><span class="o">=</span>&lt;模型名&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_MAX_TOKENS</span><span class="o">=</span><span class="m">8192</span><span class="w">                    </span><span class="c1"># 推理模型会把默认 2048 预算烧在 reasoning 上</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOMEDIA_LLM_TIMEOUT</span><span class="o">=</span><span class="m">180</span><span class="w">                        </span><span class="c1"># 慢端点内容级 completion 常 &gt;60s 默认超时</span>
 <span class="nb">unset</span><span class="w"> </span>AUTOMEDIA_FAKE_LLM<span class="w">                                </span><span class="c1"># 关键：别让 fake 混进质量验收</span>
 </code></pre></div>
 <p>映射真身：<code>src/automedia/core/config_loader.py:124-129</code>（六个 <code>AUTOMEDIA_LLM_*</code> → <code>llm.text_generation.*</code>）。
