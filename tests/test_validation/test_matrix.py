@@ -15,7 +15,11 @@ import json
 from pathlib import Path
 
 from automedia.validation.coverage import coverage_audit
-from automedia.validation.matrix import build_matrix
+from automedia.validation.matrix import (
+    _read_last_statuses,
+    _read_status_diagnostics,
+    build_matrix,
+)
 
 # Copied from the committed scenarios/STANDARDS.md handbook (real keys the
 # loader cross-checks against the project registry).
@@ -126,6 +130,13 @@ def _suite_record(status_by_scenario: dict[str, str]) -> dict[str, object]:
         for name, status in status_by_scenario.items()
     ]
     return {"trace_id": "t", "generated_at": "2026-08-14T00:00:00+00:00", "scenarios": rows}
+
+
+def _seed_run_named(root: Path, name: str, record: dict[str, object]) -> None:
+    """Write a run record under an explicit run name (one scenario per run)."""
+    run_dir = root / name
+    run_dir.mkdir(parents=True)
+    (run_dir / "scenarios.json").write_text(json.dumps(record), encoding="utf-8")
 
 
 class TestSurfaces:
@@ -256,6 +267,74 @@ class TestLastStatus:
         matrix = build_matrix(lib, runs_root=runs_root)
         entry = next(s for s in matrix["scenarios"] if s["name"] == "health-fixture")
         assert entry["last_status"] is None
+
+
+class TestCrossRunStatus:
+    """One scenario per run: ``latest.txt`` alone would hide the history."""
+
+    def test_statuses_merge_across_recent_runs(self, tmp_path: Path) -> None:
+        # Given: the newest run holds only A, the one before it only B
+        runs_root = tmp_path / "runs"
+        latest = _suite_record({"scenario-a": "passed"})
+        previous = _suite_record({"scenario-b": "failed"})
+        del latest["generated_at"]
+        del previous["generated_at"]
+        _seed_run_named(runs_root, "20260102-120000-000000", latest)
+        _seed_run_named(runs_root, "20260101-120000-000000", previous)
+        (runs_root / "latest.txt").write_text("20260102-120000-000000", encoding="utf-8")
+
+        # When: statuses are read across runs
+        statuses = _read_last_statuses(runs_root)
+
+        # Then: both scenarios carry their own status
+        assert statuses == {"scenario-a": "passed", "scenario-b": "failed"}
+        assert _read_status_diagnostics(runs_root) == {
+            "runs_scanned": 2,
+            "rows_parsed": 2,
+            "scenarios_with_status": 2,
+        }
+
+    def test_unreadable_records_and_missing_keys_yield_nothing(self, tmp_path: Path) -> None:
+        # Given: one corrupt record and one whose rows carry neither key
+        runs_root = tmp_path / "runs"
+        broken = runs_root / "20260102-120000-000000"
+        broken.mkdir(parents=True)
+        (broken / "scenarios.json").write_text("not json", encoding="utf-8")
+        _seed_run_named(
+            runs_root,
+            "20260101-120000-000000",
+            {"scenarios": [{"summary": {"total": 1}}, "not-a-row"]},
+        )
+
+        # When: statuses are read
+        statuses = _read_last_statuses(runs_root)
+
+        # Then: nothing is claimed and the diagnostics stay honest
+        assert statuses == {}
+        diagnostics = _read_status_diagnostics(runs_root)
+        assert diagnostics["rows_parsed"] == 0
+        assert diagnostics["scenarios_with_status"] == 0
+        assert diagnostics["runs_scanned"] == 2
+
+    def test_newest_observation_wins(self, tmp_path: Path) -> None:
+        # Given: the same scenario passed in an old run and failed in a new one
+        runs_root = tmp_path / "runs"
+        _seed_run_named(
+            runs_root,
+            "20260101-120000-000000",
+            _suite_record({"scenario-a": "passed"}),
+        )
+        _seed_run_named(
+            runs_root,
+            "20260102-120000-000000",
+            _suite_record({"scenario-a": "failed"}),
+        )
+
+        # When: statuses are read newest-first
+        statuses = _read_last_statuses(runs_root)
+
+        # Then: the latest observation is the one reported
+        assert statuses == {"scenario-a": "failed"}
 
 
 class TestDeterminism:
