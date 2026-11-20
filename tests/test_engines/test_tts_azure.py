@@ -145,7 +145,7 @@ class TestSynthesize:
         assert result == os.path.abspath(out)
         assert captured["url"] == "https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1"
         assert captured["headers"]["Ocp-Apim-Subscription-Key"] == "k"
-        assert captured["headers"]["X-Microsoft-OutputFormat"] == "audio-24khz-48kbitrate-mono-mp3"
+        assert captured["headers"]["X-Microsoft-OutputFormat"] == "audio-48khz-192kbitrate-mono-mp3"
         assert "zh-CN-YunyangNeural" in captured["content"].decode("utf-8")
         # speech normalization applied: AI → 人工智能 inside the SSML
         assert "人工智能很热" in captured["content"].decode("utf-8")

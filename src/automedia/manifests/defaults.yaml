@@ -100,7 +100,8 @@ engines:
       # first; the speech_key/region keys below are a non-env fallback for
       # air-gapped config-file deployments — keep secrets out of git).
       voice: zh-CN-YunjianNeural
-      output_format: audio-24khz-48kbitrate-mono-mp3
+      # 判据要求 ≥128kbps；Azure 满足它的最低档位是 160k/192k，故选 192k mono 48kHz。
+      output_format: audio-48khz-192kbitrate-mono-mp3
       speech_normalization: true
       speech_key: null
       region: null
