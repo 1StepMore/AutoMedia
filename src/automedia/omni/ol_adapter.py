@@ -178,16 +178,23 @@ class OLAdapter(BaseOmniAdapter):
         -------
         TranslationResult
             Translated markdown, optional XLIFF path, and warnings.  When no
-            config path can be resolved, ``translated_md`` is empty and
-            ``warnings`` explains why — no exception is raised.
+            config path can be resolved, fake LLM mode returns the source
+            unchanged as a deterministic passthrough; otherwise
+            ``translated_md`` is empty and ``warnings`` explains why — no
+            exception is raised.
         """
         resolved = config_path or self.config_path
         if not resolved:
             from automedia.core.llm_client import _is_fake_mode
 
             if _is_fake_mode():
-                resolved = _OL_CONFIG_NAME  # OL fake mode needs no real config file
-        if not resolved:
+                # FAKE_LLM: no network, no config required — pass the source
+                # through and annotate it so downstream write paths can still
+                # be exercised end-to-end deterministically.
+                return TranslationResult(
+                    translated_md=md_content,
+                    warnings=["fake LLM mode: passthrough translation (no OL config required)"],
+                )
             return TranslationResult(
                 translated_md="",
                 warnings=[
