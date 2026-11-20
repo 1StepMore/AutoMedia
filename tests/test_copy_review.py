@@ -354,6 +354,59 @@ class TestG2Rewrite:
         assert "significant" in result.lower()
 
 
+class TestG2RewriteLongCjkSentence:
+    """#597: the rewrite must actually split the sentence clarity flags.
+
+    Before this, ``_check_clarity`` reported "1 sentence(s) exceed 70
+    characters" but ``_rewrite_content`` had no splitting step, so every LLM
+    retry re-failed on the identical sentence and the quality loop never
+    converged.
+    """
+
+    _PUNCT = "，。；、！？!?;"
+
+    @classmethod
+    def _without_punct(cls, text: str) -> str:
+        return "".join(ch for ch in text if ch not in cls._PUNCT and not ch.isspace())
+
+    def test_long_chinese_sentence_with_commas_is_split(self) -> None:
+        """90+ char sentence with commas → clarity passes after rewrite."""
+        content = (
+            "我们把这套流程拆成了三个清晰明确的步骤，第一步是把每天重复的动作固定成团队都能照做的标准模板，"
+            "第二步是让每一次排期都留下记录方便随时回查，第三步是用每周的数据回看产出并调整下一步的重点。"
+        )
+        assert _check_clarity(content)["passed"] is False, "fixture must start red"
+
+        rewritten = _rewrite_content(content)
+
+        assert _check_clarity(rewritten)["passed"] is True, _check_clarity(rewritten)["detail"]
+        # Only punctuation changed — no sentence may be dropped to go green.
+        assert abs(len(rewritten) - len(content)) / len(content) < 0.20
+        assert self._without_punct(rewritten) == self._without_punct(content)
+
+    def test_long_chinese_sentence_without_punctuation_stays_red(self) -> None:
+        """No legal cut exists → keep the sentence as-is, do not fake a split."""
+        content = (
+            "这是一句非常冗长而且完全没有断句的中文表述用来测试字符阈值是否生效而且还要更长一些"
+            "避免被误判成短句子同时确保它确实超过了七十个字符的界限继续写下去凑够长度还要再加一点内容"
+            "让它稳定超过一百二十个字符这样才能真正覆盖到负分支所要求的场景并且保持不变"
+        )
+        rewritten = _rewrite_content(content)
+
+        assert _check_clarity(rewritten)["passed"] is False
+        assert rewritten == content
+
+    def test_short_chinese_sentence_untouched(self) -> None:
+        """A sentence already within the limit is never re-punctuated."""
+        content = "三个人管六个账号，排期全靠一张嘴？难怪总在最后一刻赶稿。"
+        assert _rewrite_content(content) == content
+
+    def test_english_long_sentence_rule_unchanged(self) -> None:
+        """The word-based English rule is not touched by the CJK split."""
+        content = " ".join(["word"] * 40) + "."
+        assert _rewrite_content(content) == content
+
+
 # =========================================================================
 # Result structure
 # =========================================================================
