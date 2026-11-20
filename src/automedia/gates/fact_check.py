@@ -28,6 +28,7 @@ from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
+from automedia.gates.hook_claims_rewrite import hedge_hook_claims
 from automedia.gates.llm_helpers import (
     G0CheckResult,
     G0RewriteResult,
@@ -762,7 +763,16 @@ def _attempt_g0_rewrite(content: str, reason: str) -> str | None:
     if not isinstance(rewritten, str) or not rewritten.strip():
         log.warning("G0 rewrite returned empty content (fail-closed)")
         return None
-    return rewritten
+    # #598: hedge the closed token list deterministically — an LLM rewrite that
+    # leaves a banned token in the hook area would re-detect it on retry.
+    hedged = hedge_hook_claims(rewritten)
+    leftover = hook_area_violations(hedged)
+    if leftover:
+        log.warning(
+            "g0.hedge_leftover",
+            tokens=sorted({hit.token for hit in leftover}),
+        )
+    return hedged
 
 
 def _finalize_failure(
