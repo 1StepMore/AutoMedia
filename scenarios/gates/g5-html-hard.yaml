@@ -1,0 +1,55 @@
+# G5 coverage — HTML Hard Gate runs for real (issue #99 unreachable note)
+#
+# WHY THIS SCENARIO EXISTS:
+#   G5HtmlHard is registered (gates/__init__.py:36) but is in no preset
+#   (gate_plan.py MODE_GATE_NAMES) and reaches no command path, so coverage.py
+#   classifies it unreachable (#99) — reported via unreachable_gates, never a
+#   missing failure.  This scenario proves the gate CLASS itself executes with
+#   its real checks (tag-integrity pairing, markdown-artifact scan, tag count)
+#   on synthetic HTML, in both directions:
+#     1. well-formed HTML with 5 tags passes all 3 checks;
+#     2. HTML with an unclosed tag is caught by tag_integrity, named.
+#   Wiring G5 into a production flow is a product decision recorded separately;
+#   until then the shipped execution surface for G5 is the gate class.
+#
+# HONESTY NOTES:
+#   - No LLM is needed: all 3 G5 checks are deterministic local checks.
+#   - The red probe asserts the gate FAILS the malformed HTML — a gate that
+#     rubber-stamps everything would fail this step.
+#   - thresholds come from gates/html_hard.py:115-185 (paired-tag balance,
+#     no markdown artifacts, tags ≥ 5).
+
+name: g5-html-hard
+description: "G5HtmlHard executes its 3 real checks on synthetic HTML: well-formed content passes (verdict recorded), unclosed-tag content is caught with tag_integrity named."
+intent: "Prove the registered-but-unwired G5 gate really executes and really inspects: run the shipped gate class over well-formed and malformed HTML, record the verdicts, and require the red probe to be caught."
+category: gates
+user_level: L2
+requires_env: []
+proves_gates:
+  - G5
+steps:
+  - name: well-formed HTML passes all 3 G5 checks
+    kind: cli
+    check: "The shipped G5HtmlHard class grades balanced HTML with five tags and must return passed=true with gate=G5; the verdict is printed so the run record names the gate."
+    standard: tool.contract
+    command: |-
+      python3 -c 'from automedia.gates import G5HtmlHard; ctx = {"content": "<div><p>段落一。</p><p>段落二。</p><p>段落三。</p></div>", "tags": ["AI", "内容", "结构", "质检", "发布"]}; result = G5HtmlHard().execute(ctx); import json, sys; print("G5-VERDICT:", json.dumps({"gate": result["gate"], "passed": result["passed"], "checks": [c["name"] for c in result["checks"]]}, ensure_ascii=False)); sys.exit(0 if result["passed"] else 1)'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "G5-VERDICT:"
+        - '"passed": true'
+  - name: unclosed tag is caught with tag_integrity named
+    kind: cli
+    check: "HTML with an unbalanced <p> violates tag-integrity pairing; the real gate must return passed=false and the failing check list must name tag_integrity — proving the gate inspects instead of rubber-stamping."
+    standard: tool.contract
+    command: |-
+      python3 -c 'from automedia.gates import G5HtmlHard; ctx = {"content": "<div><p>段落一。<p>段落二未闭合</div>", "tags": ["AI", "内容", "结构", "质检", "发布"]}; result = G5HtmlHard().execute(ctx); import json, sys; failed = [c["name"] for c in result["checks"] if not c["passed"]]; ok = (result["passed"] is False) and ("tag_integrity" in failed); print("G5-RED-PROBE:", json.dumps({"gate": result["gate"], "passed": result["passed"], "failed_checks": failed}, ensure_ascii=False)); sys.exit(0 if ok else 1)'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "G5-RED-PROBE:"
+        - '"passed": false'
+        - "tag_integrity"

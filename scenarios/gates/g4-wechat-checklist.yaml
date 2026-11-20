@@ -1,0 +1,56 @@
+# G4 coverage — WeChat Checklist Gate runs for real (issue #99 unreachable note)
+#
+# WHY THIS SCENARIO EXISTS:
+#   G4WechatChecklist is registered (gates/__init__.py:59) but is in no preset
+#   (gate_plan.py MODE_GATE_NAMES) and reaches no command path, so coverage.py
+#   classifies it unreachable (#99) — reported via unreachable_gates, never a
+#   missing failure.  This scenario proves the gate CLASS itself executes with
+#   its real checks (regex/length thresholds, no mock overrides) on synthetic
+#   content, in both directions:
+#     1. a compliant WeChat article context passes all 7 checks;
+#     2. an offending context (title longer than the 9-char bar) is caught,
+#        naming the failing check.
+#   Wiring G4 into a production flow is a product decision recorded separately;
+#   until then the shipped execution surface for G4 is the gate class.
+#
+# HONESTY NOTES:
+#   - No LLM is needed: all 7 G4 checks are deterministic local checks.
+#   - The red probe asserts the gate FAILS the offending context — a gate that
+#     rubber-stamps everything would fail this step.
+#   - thresholds come from gates/wechat_checklist.py:82-163 (title ≤ 9,
+#     digest ≤ 20, tags ≥ 5, body images in [3, 6]).
+
+name: g4-wechat-checklist
+description: "G4WechatChecklist executes its 7 real checks on a synthetic WeChat article context: compliant context passes (verdict recorded), offending context is caught with title_length named."
+intent: "Prove the registered-but-unwired G4 gate really executes and really inspects: run the shipped gate class over a compliant and an offending gate_context, record the verdicts, and require the red probe to be caught."
+category: gates
+user_level: L2
+requires_env: []
+proves_gates:
+  - G4
+steps:
+  - name: compliant WeChat article context passes all 7 G4 checks
+    kind: cli
+    check: "The shipped G4WechatChecklist class grades a context that satisfies every threshold (title ≤ 9, digest ≤ 20, no markdown, cover provided, 5 tags, 3 body images, no sensitive words) and must return passed=true with gate=G4; the verdict is printed so the run record names the gate."
+    standard: tool.contract
+    command: |-
+      python3 -c 'from automedia.gates import G4WechatChecklist; ctx = {"title": "三步内容法", "digest": "小团队内容自动化三步", "content": "<p>第一步定读者，第二步列提纲，第三步统一审校。</p><img src=\"a.png\"><img src=\"b.png\"><img src=\"c.png\">", "cover_image": "cover.png", "tags": ["AI", "内容", "自动化", "效率", "工作流"]}; result = G4WechatChecklist().execute(ctx); import json, sys; print("G4-VERDICT:", json.dumps({"gate": result["gate"], "passed": result["passed"], "checks": [c["name"] for c in result["checks"]]}, ensure_ascii=False)); sys.exit(0 if result["passed"] else 1)'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "G4-VERDICT:"
+        - '"passed": true'
+  - name: offending context is caught with title_length named
+    kind: cli
+    check: "A 10-character title violates the 9-char bar; the real gate must return passed=false and the failing check list must name title_length — proving the gate inspects instead of rubber-stamping."
+    standard: tool.contract
+    command: |-
+      python3 -c 'from automedia.gates import G4WechatChecklist; ctx = {"title": "超过九个字的标题测试", "digest": "短摘要", "content": "<p>正文一段。</p><img src=\"a.png\"><img src=\"b.png\"><img src=\"c.png\">", "cover_image": "cover.png", "tags": ["AI", "内容", "自动化", "效率", "工作流"]}; result = G4WechatChecklist().execute(ctx); import json, sys; failed = [c["name"] for c in result["checks"] if not c["passed"]]; ok = (result["passed"] is False) and ("title_length" in failed); print("G4-RED-PROBE:", json.dumps({"gate": result["gate"], "passed": result["passed"], "failed_checks": failed}, ensure_ascii=False)); sys.exit(0 if ok else 1)'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "G4-RED-PROBE:"
+        - '"passed": false'
+        - "title_length"
