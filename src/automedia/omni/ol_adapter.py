@@ -183,6 +183,11 @@ class OLAdapter(BaseOmniAdapter):
         """
         resolved = config_path or self.config_path
         if not resolved:
+            from automedia.core.llm_client import _is_fake_mode
+
+            if _is_fake_mode():
+                resolved = _OL_CONFIG_NAME  # OL fake mode needs no real config file
+        if not resolved:
             return TranslationResult(
                 translated_md="",
                 warnings=[
