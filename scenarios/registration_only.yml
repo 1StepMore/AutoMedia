@@ -111,11 +111,6 @@ entries:
     reason: "Requires a materialized project dir; covered at the MCP surface."
     expires: "2026-12-31"
   - surface: cli
-    name: rollback
-    owner: validation-maintainer
-    reason: "Destructive archive+revert; Red Line 8 applies."
-    expires: "2026-12-31"
-  - surface: cli
     name: validate sign
     owner: validation-maintainer
     reason: "Mutates a run dir's signed.txt; covered by the signoff unit tests."

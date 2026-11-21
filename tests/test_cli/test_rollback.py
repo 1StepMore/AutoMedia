@@ -271,3 +271,30 @@ class TestRollbackCommand:
         assert data["status"] == "ok"
         assert data["project_id"] == project_with_history["project_id"]
         assert "archive_dir" in data
+
+    def test_rollback_yes_flag_skips_confirmation(
+        self, project_with_history: dict[str, Any]
+    ) -> None:
+        """--yes archives without reading stdin — the non-interactive path (#564).
+
+        Regression guard for the win32 validation scenario: a scenario step
+        cannot pipe an answer into the prompt, so ``--yes`` automedia rollback
+        must archive with no interactive input at all (no ``input=`` here).
+        """
+        result = runner.invoke(
+            app,
+            [
+                "rollback",
+                project_with_history["project_id"],
+                "--base-dir",
+                project_with_history["base_dir"],
+                "--yes",
+            ],
+            input=None,
+        )
+        assert result.exit_code == 0, f"Expected 0, no-input --yes run: {result.output}"
+        assert "Rolled back" in result.output
+        orig_dir = Path(project_with_history["project_dir"])
+        assert not orig_dir.is_dir(), "Original dir should no longer exist"
+        archived_dir = orig_dir.parent / f"{orig_dir.name}_archived"
+        assert archived_dir.is_dir(), f"Archived dir should exist: {archived_dir}"

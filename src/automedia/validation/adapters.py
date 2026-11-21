@@ -240,7 +240,9 @@ class CLIAdapter:
         ``step.command`` is expanded with :func:`os.path.expandvars` (so a
         sandboxed scenario can reference ``${AUTOMEDIA_PROJECTS_DIR}``) and the
         child inherits the engine's environment, which carries the sandbox
-        directories (#333/#334).
+        directories (#333/#334).  A leading bare ``automedia`` token resolves
+        to ``sys.executable -m automedia`` so steps do not depend on the
+        console script being on the child's PATH (#564).
         """
         command = step.command
         if command is None:
@@ -265,6 +267,14 @@ class CLIAdapter:
                     p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in ('"', "'") else p
                     for p in parts
                 ]
+        if isinstance(parts, list) and parts and parts[0] == "automedia":
+            # Bare ``automedia`` is a console-script entry point whose location
+            # is install-layout dependent: the engine's ``Scripts/``/``bin``
+            # directory is not necessarily on a child process' PATH (#564 —
+            # exit 127 under a scenario shell).  Resolve it through the running
+            # interpreter so every CLI step executes the same ``automedia``
+            # package the engine itself runs, on every platform.
+            parts = [sys.executable, "-m", "automedia", *parts[1:]]
         try:
             proc = self._run_process(parts, timeout, shell)
         except subprocess.TimeoutExpired as exc:

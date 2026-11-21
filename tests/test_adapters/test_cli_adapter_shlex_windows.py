@@ -58,3 +58,18 @@ def test_forward_slash_paths_still_work(monkeypatch) -> None:
     """Forward-slash /tmp-style paths keep working on Windows too."""
     result = _run("echo ${NIGHT_PROBE_DIR}", "/tmp/automedia/probe", monkeypatch)
     assert "/tmp/automedia/probe" in (result.output["stdout"] or "")
+
+
+def test_bare_automedia_resolves_through_running_interpreter(monkeypatch) -> None:
+    """#564: a leading bare ``automedia`` token runs the engine's own package.
+
+    The console script's location is install-layout dependent and a child
+    process' PATH may not carry it (exit 127 under scenario shells).  The
+    adapter must resolve ``automedia ...`` to ``sys.executable -m automedia
+    ...`` — this exercises the real entry point end to end.
+    """
+    result = _run("automedia rollback --help", "unused", monkeypatch)
+    assert result.output["success"] is True, result.output
+    stdout = result.output["stdout"] or ""
+    assert "Usage:" in stdout
+    assert "rollback" in stdout

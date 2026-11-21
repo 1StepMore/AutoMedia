@@ -23,6 +23,12 @@ def rollback_cmd(
     base_dir: str = typer.Option(
         ".", "--base-dir", "-d", help="Base directory to scan for projects."
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip the interactive confirmation (non-interactive runs).",
+    ),
 ) -> None:
     """Roll back a project: archive it and revert status to draft.
 
@@ -67,10 +73,10 @@ def rollback_cmd(
         output_error(f"Project {project_id!r} has no pipeline history and cannot be rolled back.")
 
     # ------------------------------------------------------------------
-    # 3. User confirmation
+    # 3. User confirmation (skipped under --yes for non-interactive runs)
     # ------------------------------------------------------------------
     status = str(project_info.get("status", ""))
-    if not typer.confirm(
+    if not yes and not typer.confirm(
         f"Roll back project {project_id!r} (status: {status!r})? Continue?",
         default=False,
     ):
