@@ -170,7 +170,9 @@ def test_input_reachability_does_not_disturb_the_existing_classes() -> None:
     """The fifth dimension ADDS information; it must not reclassify gates."""
     result = coverage_audit()
 
-    assert result["unreachable_gates"] == ["G4", "G5"]
+    # #609 wired G4/G5 onto the wechat publish path, so the execution-
+    # unreachable set is empty; the fifth dimension must leave it that way.
+    assert result["unreachable_gates"] == []
     # The committed scenario library covers most gates, so `missing` is a small
     # residual; what matters is that the fifth dimension did not move it.
     assert isinstance(result["missing_gates"], list)

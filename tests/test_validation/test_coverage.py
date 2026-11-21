@@ -558,8 +558,9 @@ class TestGateModeSurfaces:
         ``gates/**/*.py`` static scan (empty synthetic library: used = ∅,
         everything reachable missing).  The scan is import-free — it must not
         consult the process-global GateRegistry (collection-time test gates
-        would inflate it).  Issue #99: G4/G5 are registered but unreachable, so
-        they are reported as unreachable, not missing."""
+        would inflate it).  Issue #99: since #609 wired G4/G5 onto the wechat
+        publish path, the unreachable set is empty and every declared gate is
+        command-path or preset reachable."""
         result = _audit(tmp_path, {})
         summary = result["summary"]
         assert summary["gates_declared"] == 33
@@ -568,11 +569,11 @@ class TestGateModeSurfaces:
         assert len(result["declared_modes"]) == 9
         assert summary["gates_used"] == 0
         assert summary["modes_used"] == 0
-        assert result["unreachable_gates"] == ["G4", "G5"]
-        assert summary["gates_unreachable"] == 2
-        assert summary["gates_missing"] == 31
+        assert result["unreachable_gates"] == []
+        assert summary["gates_unreachable"] == 0
+        assert summary["gates_missing"] == 33
         assert summary["modes_missing"] == 9
-        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G4", "G5"})
+        assert result["missing_gates"] == sorted(result["declared_gates"])
         assert result["missing_modes"] == result["declared_modes"]
         for key in (
             "declared_gates",
@@ -611,23 +612,20 @@ class TestGateModeSurfaces:
 class TestReachabilityClassification:
     """Issue #99: declared gates are classified by what can actually execute.
 
-    The registered-but-unreachable gates (G4/G5 today) are neither
-    preset-reachable nor command-path-reachable, so they are excluded from
-    ``missing`` — a gate nothing can execute must not be a permanent hard
-    failure — and surfaced loudly as ``unreachable_gates`` instead.
+    Since #609 wired G4/G5 onto the wechat publish path, every declared gate
+    is preset-reachable or command-path-reachable, so ``unreachable_gates`` is
+    empty; the classification machinery (exclusion from ``missing``, loud
+    surfacing of anything unexecutable) stays live for any future
+    registered-but-unwired gate.
     """
 
     def test_unreachable_gates_classified_and_excluded_from_missing(self, tmp_path: Path) -> None:
         result = _audit(tmp_path, {})
-        assert result["unreachable_gates"] == ["G4", "G5"]
-        assert result["summary"]["gates_unreachable"] == 2
-        assert "G4" not in result["missing_gates"]
-        assert "G5" not in result["missing_gates"]
-        assert result["missing_gates"] == sorted(set(result["declared_gates"]) - {"G4", "G5"})
-        # The evidence-half missing bucket (which feeds missing_count) excludes
-        # the same unreachable gates.
-        assert "G4" not in result["missing"]["gates"]
-        assert "G5" not in result["missing"]["gates"]
+        assert result["unreachable_gates"] == []
+        assert result["summary"]["gates_unreachable"] == 0
+        assert result["missing_gates"] == sorted(result["declared_gates"])
+        # The evidence-half missing bucket (which feeds missing_count) mirrors
+        # the audit-half list.
         assert result["missing"]["gates"] == result["missing_gates"]
 
     def test_classification_partitions_declared_gates(self, tmp_path: Path) -> None:
@@ -637,9 +635,9 @@ class TestReachabilityClassification:
         command_path = set(COMMAND_PATH_REACHABLE_GATES)
         preset = declared - command_path - unreachable
         # Every declared gate lands in exactly one bucket; the 20 preset gates
-        # are non-empty and the command-path constant is a declared subset.
+        # are non-empty and the 13 command-path gates are a declared subset.
         assert unreachable | command_path | preset == declared
         assert len(preset) == 20
         assert command_path <= declared
-        assert unreachable == {"G4", "G5"}
+        assert unreachable == set()
         assert not (unreachable & command_path)

@@ -50,9 +50,9 @@ is supplied.
 * derived sets — ``covered`` = declared ∩ used, ``missing`` = declared −
   covered − unreachable, ``phantom`` = used − declared.  ``unreachable``
   (issue #99) = declared − preset-reachable (the union of ``_MODE_MAP``) −
-  command-path-reachable (``COMMAND_PATH_REACHABLE_GATES``); it is G4/G5
-  today, reported via ``unreachable_gates`` and never a permanent missing
-  failure.
+  command-path-reachable (``COMMAND_PATH_REACHABLE_GATES``); it is ∅ since
+  #609 wired G4/G5 onto the wechat publish path, reported via
+  ``unreachable_gates`` and never a permanent missing failure.
 
 Two policy classes shape the output (both pinned in the plan):
 
@@ -167,6 +167,15 @@ COMMAND_PATH_REACHABLE_GATES: frozenset[str] = frozenset(
         # (cli/commands/omni.py:213; advisory MCP localize at
         # mcp/tools/omni.py:258).
         "L4",
+        # G4 (wechat checklist) and G5 (HTML hard) run in
+        # ``prepare_wechat_publish_gates`` (gates/publish_gate_wiring.py),
+        # invoked by the wechat publish path AFTER prepare_publish_log and
+        # BEFORE any platform API call — the MCP ``publish_content`` tool
+        # (mcp/tools/publishing.py), ``distribute_to_platforms``
+        # (adapters/distribution.py), and both cron publish helpers
+        # (cron/runner.py) (issue #609 wiring).
+        "G4",
+        "G5",
     }
 )
 """Gates a shipped standalone command executes, outside every pipeline preset.
@@ -176,10 +185,10 @@ recursive static scan, so a registered gate that no preset AND no command can
 reach would otherwise be a permanent ``missing`` hard failure (the issue #101
 false-alarm disease).  Reachability lets the audit report the residual truth —
 reachable gates no scenario proves — instead of either over-reporting coverage
-or failing forever on G4/G5, which no code path executes.  Preset reachability
-is read live from ``_MODE_MAP``; this constant is the command-path half only.
-Each entry cites the file:line of its execution surface; extend it when a new
-standalone surface ships."""
+or failing forever on a registered gate no code path executes.  Preset
+reachability is read live from ``_MODE_MAP``; this constant is the
+command-path half only.  Each entry cites the file:line of its execution
+surface; extend it when a new standalone surface ships."""
 
 
 #: The module that DECLARES every mode's ordered gate list.  It moved out of
@@ -194,7 +203,7 @@ def _preset_reachable_gates(runner_path: str | Path | None) -> set[str]:
     Read from the live ``_MODE_MAP`` in ``runner.py`` — never hardcoded — so a
     preset change propagates without editing this module.  The complement
     ``declared_gates - preset_reachable - COMMAND_PATH_REACHABLE_GATES`` is
-    exactly the registered-but-unreachable set (G4/G5 today).
+    the registered-but-unreachable set (empty since #609 wired G4/G5).
     """
     runner_src = _read_declared_source(runner_path, _MODE_PLAN_REL)
     reachable: set[str] = set()
@@ -297,8 +306,9 @@ def coverage_audit(
     # Issue #99: classify declared gates by what can actually execute them.
     # Preset reachability is read live from _MODE_MAP; the command-path half is
     # the cited constant.  The complement is the registered-but-unreachable set
-    # (G4/G5 today) — excluded from ``missing`` so an unexecutable gate is
-    # reported via ``unreachable_gates``, not a permanent hard failure.
+    # (∅ since #609 wired G4/G5) — excluded from ``missing`` so an
+    # unexecutable gate is reported via ``unreachable_gates``, not a permanent
+    # hard failure.
     unreachable_gates_set = (
         declared_gates_set - _preset_reachable_gates(runner_path) - COMMAND_PATH_REACHABLE_GATES
     )

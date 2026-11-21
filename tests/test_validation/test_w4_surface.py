@@ -162,10 +162,11 @@ class TestValidateCliRealLibrary:
         assert "Gates:" in result.output
         assert "Modes:" in result.output
         # Issue #99 residual closed: L1-L4 now have run-tested lifecycle
-        # scenarios, so no gate is missing; G4/G5 stay classified unreachable.
+        # scenarios, so no gate is missing; #609 wired G4/G5 onto the wechat
+        # publish path, so no gate is unreachable either.
         assert "Missing gates (declared, not covered):" not in result.output
         assert "missing = 0 (excluding boundary-only, listed above)" in result.output
-        assert "Unreachable gates" in result.output
+        assert "Unreachable gates" not in result.output
         assert "Evidence run:" in result.output
         assert "Buckets:" in result.output
         assert "Unproven" in result.output
@@ -179,9 +180,10 @@ class TestValidateCliRealLibrary:
         evidence buckets and makes the static job exit 1 while surfaces are
         unproven.  Issue #99 corrects the gate truth: preset-covered was 27/33
         (the G4/G5/L1-L4 declarations were lies) and G4/G5 are classified
-        unreachable (2).  The L1-L4 command-path backlog is now closed by the
-        lifecycle scenarios (scenarios/lifecycle/), so 31/33 are covered and
-        missing = 0 — the residual 2 are the unreachable G4/G5.
+        unreachable (2).  The L1-L4 command-path backlog was closed by the
+        lifecycle scenarios; issue #609 then wired G4/G5 onto the wechat
+        publish path and their own lifecycle scenarios proved them — all
+        33/33 are covered, missing = 0, unreachable ∅.
         Issue #86: the 5th validation MCP tool ``validation_matrix`` is now
         declared and covered by ``validation-matrix-meta``. The
         graph-engineering-rollout adds ``get_pipeline_state`` and the
@@ -214,16 +216,17 @@ class TestValidateCliRealLibrary:
         assert summary["cli_covered"] == 21
         assert summary["cli_missing"] == 0
         assert summary["cli_phantom"] == 0
-        # Issue #99 + lifecycle coverage: 33 declared; 31 preset/command-covered
-        # (L1-L4 now proved by scenarios/lifecycle/); G4/G5 classified, not
-        # counted as coverage.
+        # Issue #99 + lifecycle coverage + #609 wiring: 33 declared; all 33
+        # preset/command-covered (L1-L4 proved by scenarios/lifecycle/, G4/G5
+        # wired onto the wechat publish path by gates/publish_gate_wiring.py
+        # and proved by their own lifecycle scenarios).
         assert summary["gates_declared"] == 33
-        assert summary["gates_used"] == 31
-        assert summary["gates_covered"] == 31
+        assert summary["gates_used"] == 33
+        assert summary["gates_covered"] == 33
         assert summary["gates_missing"] == 0
         assert summary["gates_phantom"] == 0
-        assert summary["gates_unreachable"] == 2
-        assert data["unreachable_gates"] == ["G4", "G5"]
+        assert summary["gates_unreachable"] == 0
+        assert data["unreachable_gates"] == []
         # L1-L4 moved from the tracked command-path backlog to run-tested
         # lifecycle scenarios; no declared gate is missing any more.
         assert data["missing"]["gates"] == []
