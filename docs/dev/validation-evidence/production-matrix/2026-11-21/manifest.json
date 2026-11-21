@@ -1,0 +1,88 @@
+{
+  "matrix": "production-matrix",
+  "run-date": "2026-11-21",
+  "produced_by": "code-side Windows machine (auto agent shift, owner:human-agent weekend lane)",
+  "commit": "e88f5a6fa6e752375e5fe11718ca7e476cb1d39e",
+  "summary_doc": "2026-11-21/run-summary.md",
+  "cells": [
+    {
+      "cell": "matrix-coverage-4-sides",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/matrix-final.txt",
+        "reading": "mcp missing=0 (boundary_only=1 = run_validation_suite R-09 recursion allowlist, expires 2026-12-31); cli 21/21; gates missing=0 covered=31/33 (unreachable=[G4,G5] guard-enforced, wiring decision = issue #609); modes 9/9; assertion half 163/163 statused (0 last=-), 148 passed"
+      },
+      "command": "python -m automedia validate matrix --runs-root validation-runs",
+      "produced_at": "2026-11-21T10:20+08:00"
+    },
+    {
+      "cell": "nightly-gap-production-tracks",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/nightly-gap.txt",
+        "reading": "exit 0; three tracks pass; assertion half {'passed': 148, 'failed': 7, 'partial-pass': 3, 'unconfigured': 4, 'recovered': 1}; hard 10/10 passed; gates missing=0 unreachable=2"
+      },
+      "command": "python scripts/nightly_gap.py",
+      "produced_at": "2026-11-21T10:20+08:00"
+    },
+    {
+      "cell": "owner-six-journeys-rerun",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/run-summary.md",
+        "reading": "5/6 green with real model (text-only 5/5, social-thread 4/4, repurpose 4/4 pass-retry, e2e-topic-to-article 5/5, text-with-cover 4/4); G1/G2 fixes (#595/#600) hold — G0-G6 content gates green across all five; auto-journey blocked on V5 cue-anchor quality red (root: 48kbps TTS -> ASR noise), 3 attempts with evidence"
+      },
+      "command": "automedia validate run --scenario <each> (WSL venv PATH + env-layer LLM injection)",
+      "run_records": "validation-runs/20261121-050312/051742/061259/062332/063331/070015/073115/070243 (machine-local)",
+      "produced_at": "2026-11-21T08:40+08:00"
+    },
+    {
+      "cell": "product-fixes-merged",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/run-summary.md section 1",
+        "reading": "#605 win32 local-hook debt (HOME-aware ol_adapter + POSIX mypy attrs + reg208 candidate pinning; local pre-commit suite exit 0 on Windows incl. full pytest hook); #606 AUTOMEDIA_LLM_TIMEOUT mapping (documented-but-never-wired env knob); #608 P4 [TIMESTAMP] literal convergence fix (repurpose-journey attempt2 passed 4/4 real)"
+      },
+      "command": "gh pr merge 605/606/608 --squash",
+      "produced_at": "2026-11-21T07:32+08:00"
+    },
+    {
+      "cell": "assertion-half-fills",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/run-summary.md section 3",
+        "reading": "16 cells flipped green this shift: qa-only, produce-article, produce-subtitle, produce-video (real hyperframes render), produce-cover (pass-retry), rollback-behavior (WSL; #564 POSIX debt cleared on POSIX side), masterkey x5 (synthetic key), publish-draft-only + llm-unavailable recorded as honest unconfigured; red-rerun only, no batch rerun (policy S2)"
+      },
+      "command": "automedia validate run --scenario <each>",
+      "run_records": "validation-runs/20261121-073637../092159 (machine-local)",
+      "produced_at": "2026-11-21T10:16+08:00"
+    },
+    {
+      "cell": "video-track-scenarios",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/run-summary.md",
+        "reading": "produce-video passed 4/4 on WSL with real hyperframes render + edge-tts narration; produce-audio red on the 128kbps bar (edge-tts native 48kbps; >=128 needs Azure TTS key, owner-only, #604 already raised azure default to 192kbps); auto/short-video/video-only journeys blocked on V5 cue-anchor quality red caused by 48kbps ASR noise — V5 gate working correctly, bar not loosened"
+      },
+      "command": "AUTOMEDIA_ENGINES_VIDEO_CHAIN=hyperframes automedia validate run --scenario <each>",
+      "produced_at": "2026-11-21T10:16+08:00"
+    },
+    {
+      "cell": "g4-g5-unreachable-annotation",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-21/run-summary.md section 4",
+        "reading": "scenario-level gate-class proof attempted (PR #607) and withdrawn on the repo's own guard (test_proves_gates_reachability rejects proves_gates for non-preset/command-path gates; baseline count + coverage numbers test-pinned); wiring decision handed to owner via issue #609 (owner:master); gates face stays covered=31/33 missing=0 unreachable=[G4,G5]"
+      },
+      "command": "gh pr close 607; gh issue create #609",
+      "produced_at": "2026-11-21T08:00+08:00"
+    }
+  ]
+}
