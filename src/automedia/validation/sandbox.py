@@ -8,8 +8,11 @@ root, then removes it.
 
 Explicit is honored: a caller who already exported ``AUTOMEDIA_CONFIG_DIR`` or
 ``AUTOMEDIA_PROJECTS_DIR`` keeps that location; the sandbox only fills in the
-missing half.  ``AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1`` preserves the root for
-post-mortem inspection.
+missing half.  A caller value may reference other variables (``${VAR}`` is
+expanded); a value that still names an unresolved reference after expansion
+raises :class:`SandboxEnvError` instead of silently creating literal-named
+directories (#566).  ``AUTOMEDIA_VALIDATION_KEEP_SANDBOX=1`` preserves the root
+for post-mortem inspection.
 
 The owned ``config/`` is seeded with a minimal ``model_config.yaml`` (the same
 template ``automedia init`` writes) because ``automedia run`` refuses to start
@@ -42,6 +45,41 @@ KEEP_ENV = "AUTOMEDIA_VALIDATION_KEEP_SANDBOX"
 ALLOWLIST_ENV = "AUTOMEDIA_MCP_ALLOWLIST_PATH"
 
 _TRUTHY = frozenset({"1", "true", "yes"})
+
+
+class SandboxEnvError(ValueError):
+    """A caller-provided sandbox env value is unusable (issue #566).
+
+    A caller value carrying an unexpanded ``${...}`` reference flows into
+    ``pathlib`` verbatim: scenario steps' one-pass ``os.path.expandvars``
+    substitutes the variable with the poisoned value (whose embedded
+    reference stays literal — expandvars never re-scans substituted text),
+    and the pipeline's ``env_lookup`` reads it verbatim, so project writes
+    land under a literal ``${VAR}/...`` directory relative to the CWD.
+    Failing loud beats silently creating literal dirs.
+    """
+
+
+def _normalize_caller_dir(env_name: str, raw: str) -> str:
+    """Expand ``${VAR}`` references in a caller dir value; reject leftovers.
+
+    Called on every ``AUTOMEDIA_CONFIG_DIR`` / ``AUTOMEDIA_PROJECTS_DIR``
+    value entering the sandbox, in both branches: a resolvable reference is
+    expanded (the caller may legitimately reference another variable); a
+    value that STILL names an unresolved reference after expansion is a
+    caller-environment bug (#566) and raises :class:`SandboxEnvError` with
+    the fix spelled out.
+    """
+    expanded = os.path.expandvars(raw)
+    if "${" in expanded:
+        raise SandboxEnvError(
+            f"{env_name} still contains an unresolved ${{...}} reference after "
+            f"expansion ({expanded!r}) — fix the caller environment before "
+            "exporting (expand the value), or unset the variable to let the "
+            "sandbox own the directory."
+        )
+    return expanded
+
 
 #: Seed written into a sandbox-owned ``config/`` so journey/produce scenarios
 #: clear ``automedia run``'s model-config precheck (#466).  The template is
@@ -144,8 +182,8 @@ def validation_sandbox(environ: Mapping[str, str] | None = None) -> Iterator[San
     removed on exit.
     """
     source = os.environ if environ is None else environ
-    existing_config = source.get(CONFIG_ENV, "")
-    existing_projects = source.get(PROJECTS_ENV, "")
+    existing_config = _normalize_caller_dir(CONFIG_ENV, source.get(CONFIG_ENV, ""))
+    existing_projects = _normalize_caller_dir(PROJECTS_ENV, source.get(PROJECTS_ENV, ""))
     caller_allowlist = source.get(ALLOWLIST_ENV, "")
 
     if existing_config and existing_projects:
