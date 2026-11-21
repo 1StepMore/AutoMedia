@@ -1,0 +1,13 @@
+Coverage audit
+  CLI: declared=21 used=21 covered=21 missing=0 boundary_only=0 phantom=0
+  MCP: declared=64 used=64 covered=63 missing=0 boundary_only=1 phantom=0
+  Gates: declared=33 used=33 covered=33 missing=0 boundary_only=0 phantom=0
+  Modes: declared=9 used=9 covered=9 missing=0 boundary_only=0 phantom=0
+  Evidence run: 20261122-040929-708638 (confidence=real)
+  Scenarios: surface=126 meta=39 (total=165)
+  Unproven mcp (63): add_brand, add_cron_schedule, add_pool_topic, analyze_content, approve_gate, archive_project, cancel_pipeline, configure_llm, connect_account, disconnect_account, distribute_content, evaluate_content_quality, extract_brief, format_output, get_account_health, get_config, get_cron_health, get_gate_report, get_pending_approvals, get_pipeline_progress, get_pipeline_state, get_pipeline_status, get_project_assets, get_redlines, get_validation_report, health_check, health_engine, help_mcp, init_config, list_accounts, list_active_pipelines, list_brands, list_cron_schedules, list_overridable_templates, list_platforms, list_projects, list_topic_pool, list_validation_scenarios, list_workflows, localize_content, localize_output, onboard, pause_pipeline, publish_content, register_platform_adapter, reject_gate, remove_cron_schedule, research_topics, resume_pipeline, retry_gate, review_decision, run_batch, run_brand_strategy, run_pipeline, run_pipeline_from_strategy, run_validation_scenario, search_assets, select_topic, skip_gate, test_cron_schedule, update_engine_config, validation_coverage_audit, validation_matrix
+  Unproven cli (21): account, adapter, archive, cron, demo, distribute, doctor, effects, history, hitl, init, mcp, omni, onboard, pipeline, pool, projects, rollback, run, ui, validate
+  Unproven gates (33): CW, D1, D2, D3, D4, D5, D6, D7, G0, G1, G2, G3, G4, G5, G6, H0, L1, L2, L3, L4, P1, P2, P3, P4, V0, V1, V2, V3, V4, V5, V6, V7, pre-gate
+  Unproven modes (9): auto, image-carousel, qa_only, repurpose, short-video, social-thread, text_only, text_with_cover, video_only
+  Buckets: covered=0 unproven=126 missing=0 allowlisted=1
+  missing = 0 (excluding boundary-only, listed above)

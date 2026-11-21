@@ -78,6 +78,12 @@
 | docs/dev/validation-evidence/production-matrix/2026-11-21/matrix-final.txt | 15870 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-21/nightly-gap.txt | 1383 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-21/run-summary.md | 7962 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22 | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/coverage-final.txt | 2141 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/manifest.json | 4410 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/matrix-final.txt | 14719 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/nightly-gap.txt | 1437 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/run-summary.md | 4162 | file |
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
