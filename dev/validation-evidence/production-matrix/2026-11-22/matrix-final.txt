@@ -1,0 +1,184 @@
+Validation matrix
+  mcp: declared=64 covered=63 missing=0 phantom=0 boundary_only=1
+  cli: declared=21 covered=21 missing=0 phantom=0 boundary_only=0
+  gates: declared=33 covered=33 missing=0 phantom=0 boundary_only=0
+  modes: declared=9 covered=9 missing=0 phantom=0 boundary_only=0
+Scenarios:
+  archive-refusal-redline8 [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  account-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  account-list-cli-behavior [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  adapter-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  archive-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  cli-surface-behavior [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  cron-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  demo-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  distribute-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  doctor-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  effects-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  history-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  hitl-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  init-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  mcp-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  omni-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  onboard-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  pipeline-export-dag-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  pool-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  projects-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  rollback-behavior [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  rollback-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  run-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  ui-cli-surface [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-coverage-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-diff-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-list-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-matrix-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-report-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  validate-run-meta [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  dep-doctor-missing-ffmpeg [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  dep-doctor-structural [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  dep-health-engine-structural [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  doctor-cli-contract [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  effects-cli-contract [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  get-config-baseline [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  health-check-baseline [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  help-mcp-manifest [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  agent-user-lifecycle-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=failed
+  auto-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=failed
+  distribute-dgates-journey [mcp:✗ cli:✓ gates:✓ modes:✗] hard=no last=passed
+  image-carousel-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=failed
+  pipeline-checkpoint-resume [mcp:✓ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  qa-only-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=passed
+  repurpose-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=passed
+  short-video-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=unconfigured
+  social-thread-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=passed
+  text-only-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=passed
+  text-with-cover-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=passed
+  video-only-journey [mcp:✓ cli:✓ gates:✓ modes:✓] hard=no last=unconfigured
+  g4-wechat-checklist-gate [mcp:✓ cli:✗ gates:✓ modes:✗] hard=no last=passed
+  g5-html-hard-gate [mcp:✓ cli:✗ gates:✓ modes:✗] hard=no last=passed
+  l1-publish-log-gate [mcp:✓ cli:✗ gates:✓ modes:✗] hard=no last=passed
+  l2-archive-validation-gate [mcp:✗ cli:✓ gates:✓ modes:✗] hard=no last=passed
+  l3-platform-integrity-gate [mcp:✗ cli:✓ gates:✓ modes:✗] hard=no last=passed
+  l4-translation-quality-gate [mcp:✗ cli:✓ gates:✓ modes:✗] hard=no last=passed
+  list-brands-baseline [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-platforms-baseline [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-projects-tmpdir [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-validation-scenarios-meta [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  validation-matrix-meta [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  validation-self-check [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  validation-suite-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  partial-pass-cli-contract [mcp:✓ cli:✓ gates:✗ modes:✗] hard=no last=partial-pass
+  partial-pass-omni-extraction [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=partial-pass
+  partial-pass-progress-surface [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=partial-pass
+  e2e-topic-to-article [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=passed
+  produce-article [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=passed
+  produce-audio [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=failed
+  produce-carousel [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=failed
+  produce-cover [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=passed
+  produce-subtitle [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=passed
+  produce-video [mcp:✗ cli:✗ gates:✗ modes:✓] hard=no last=passed
+  publish-draft-only-real-adapters [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=unconfigured
+  publish-dry-run-all-platforms [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  publish-stub-contract [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  quality-draft-eval [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  quality-translation-eval [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  init-config-recovery [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=recovered
+  llm-unavailable-error-quality [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=unconfigured
+  regression-100-journey-scenarios-skip-review [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-105-hitl-approval-delivery [mcp:✗ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  regression-207-lazy-dotenv-no-env-leak [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-208-model-config-write-guards [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-219-g0-unsourced-rewrite [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-263-slug-long-topic-filename [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-332-asr-av19-probe [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-333-validation-sandbox [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-335-qa-only-content-gates [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-336-subtitle-text-fidelity [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-496-narration-emoji-srt [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-83-configure-llm-preserves-fallback [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  regression-adr007-gate-verdict-aggregate [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  redteam-credential-exfiltration [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  redteam-path-traversal-refused [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  redteam-prompt-injection-topic [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  connect-account-masterkey [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  disconnect-account-masterkey [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  disconnect-account-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-account-health-masterkey [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-account-health-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-accounts-masterkey [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-pending-approvals-empty [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-pending-approvals-paused [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  asset-ingest-nonempty-search [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  search-assets-empty [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-redlines-contract [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  init-config-tempdir [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  update-engine-config-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  approve-gate-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  approve-gate-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  cancel-pipeline-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  cancel-pipeline-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  hitl-approve-resume [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  hitl-reject-halt [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  pause-pipeline-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  pause-pipeline-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  reject-gate-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  reject-gate-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  resume-pipeline-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  resume-pipeline-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  retry-gate-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  retry-gate-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  skip-gate-boundary [mcp:✓ cli:✗ gates:✗ modes:✗] hard=yes last=passed
+  skip-gate-positive [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  add-cron-schedule-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  cron-run-execution [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-cron-health-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-cron-schedules-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-overridable-templates [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-workflows-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  remove-cron-schedule-cycle [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  test-cron-schedule-valid [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  engine-health-list [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  extract-brief-markdown [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  format-output-contract [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=unconfigured
+  localize-content-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  localize-output-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  orf-format-output-happy [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=unconfigured
+  analyze-content-contract [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  feature-tier-gate-filter [mcp:✗ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  gate-report-surface [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-pipeline-progress-probe [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-pipeline-status-synthetic [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  get-project-assets-synthetic [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-active-pipelines-empty [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  pipeline-state-surface [mcp:✓ cli:✓ gates:✗ modes:✗] hard=no last=passed
+  review-decision-surface [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  run-batch-empty [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  run-pipeline-async-start [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  trace-propagation-assertion [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  add-pool-topic-tempdb [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  list-topic-pool-empty [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  research-topics-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  select-topic-multi-tenant [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  select-topic-pending [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  distribute-content-probe [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  publish-content-probe [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  register-platform-adapter-stub [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  evaluate-content-quality-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  add-brand-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  configure-llm-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  onboard-isolated [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  run-brand-strategy-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+  run-pipeline-from-strategy-llm [mcp:✓ cli:✗ gates:✗ modes:✗] hard=no last=passed
+Hard-safety scenarios: archive-refusal-redline8, get-config-baseline, validation-suite-boundary, approve-gate-boundary, cancel-pipeline-boundary, pause-pipeline-boundary, reject-gate-boundary, resume-pipeline-boundary, retry-gate-boundary, skip-gate-boundary
+
+## Report cards (latest run)
+  video-only-journey [unconfigured ok steps=0/0 diff=stable]
+
+## Assertions (per step)
+  video-only-journey:
+
+## Diff
+  new_passes: (none)
+  new_failures: (none)
+  regressed: (none)
+  improved: (none)

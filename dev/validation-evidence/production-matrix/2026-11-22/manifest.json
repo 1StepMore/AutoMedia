@@ -1,0 +1,75 @@
+{
+  "matrix": "production-matrix",
+  "run-date": "2026-11-22",
+  "produced_by": "code-side Windows machine (auto agent shift, owner:human-agent weekend lane)",
+  "commit": "80fd049fd359dd4204c1cfa22f2f03061a341d6f",
+  "summary_doc": "2026-11-22/run-summary.md",
+  "cells": [
+    {
+      "cell": "gates-coverage-33-of-33",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/coverage-final.txt",
+        "reading": "Gates declared=33 used=33 covered=33 missing=0 boundary_only=0 phantom=0; unreachable=EMPTY (issue #609 wiring landed via PR #615: prepare_wechat_publish_gates executes G5 then G4 on the wechat publish path — mcp publish_content / distribute_to_platforms / cron helpers — and two run-tested lifecycle scenarios claim them). cli 21/21; mcp 63/64 (boundary_only=1, run_validation_suite recursion allowlist); modes 9/9."
+      },
+      "command": "automedia validate coverage",
+      "produced_at": "2026-11-22T04:00+08:00"
+    },
+    {
+      "cell": "matrix-coverage-4-sides",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/matrix-final.txt",
+        "reading": "165/165 scenarios statused (0 last=-), 150 passed / 5 failed / 6 unconfigured (with reasons) / 3 partial-pass (by design) / 1 recovered; hard 10/10; four sides missing=0; scenario library grew 163 -> 165 with two run-tested lifecycle scenarios (g4-wechat-checklist-gate 3/3, g5-html-hard-gate 3/3 on native Windows, confidence=real)."
+      },
+      "command": "automedia validate matrix --runs-root validation-runs",
+      "produced_at": "2026-11-22T04:05+08:00"
+    },
+    {
+      "cell": "nightly-gap-production-tracks",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/nightly-gap.txt",
+        "reading": "exit 0; three production tracks pass; assertion half {'passed': 150, 'failed': 5, 'unconfigured': 6, 'partial-pass': 3, 'recovered': 1}; hard 10/10; gates missing=0 unreachable=0 (2026-11-21 baseline was unreachable=[G4,G5])."
+      },
+      "command": "python3 scripts/nightly_gap.py",
+      "produced_at": "2026-11-22T04:06+08:00"
+    },
+    {
+      "cell": "rollback-behavior-win32",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "validation-runs/20261121-231008-378089 (pre-merge record; PR #614)",
+        "reading": "The #564 scenario ran 4/4 passed exit 0 on native Windows after the portability rewrite (${AUTOMEDIA_PROJECTS_DIR} rooting, --yes flag, bare-automedia resolution in adapters). The registration-only exemption for the rollback leaf retired (T-05)."
+      },
+      "command": "automedia validate run --scenario rollback-behavior",
+      "produced_at": "2026-11-21T23:10+08:00"
+    },
+    {
+      "cell": "issue-566-root-cause",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/run-summary.md #566 section (fix PR #616, merged)",
+        "reading": "Literal ${AUTOMEDIA_PROJECTS_DIR} dir reproduced twice on native Windows (validation-runs/20261122-011900-105499 and 20261122-012518-317853); root cause = caller-env trust branch passing unexpanded ${...} values to pathlib; fix = expand-then-fail-loud boundary in validation_sandbox."
+      },
+      "command": "see PR #616 description",
+      "produced_at": "2026-11-22T02:30+08:00"
+    },
+    {
+      "cell": "tts-v5-piper-core-experiment",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/run-summary.md piper section",
+        "reading": "Local piper voice (zh_CN-huayan-medium, 192 kbps mp3, no Azure key) through the shipped V5Mp3VsSrt gate: cue_anchor_coverage worst cue 78% >= 45% threshold, all 8 checks green, similarity 91.2%. The 4 TTS-blocked cells' audio half is unlocked (piper is already the #2 slot in the default engines.tts chain; install piper-tts + AUTOMEDIA_PIPER_MODEL_PATH is enough). Journey cells remain blocked on win32 LLM-endpoint instability (CW APITimeoutError ~54s, 6+ occurrences today, 3 attempts per the walk rule) and the missing video engine (EXPECT-flag cells honestly unconfigured on win32)."
+      },
+      "command": "piper synthesis + faster-whisper ASR + V5Mp3VsSrt.execute (recorded in run-summary.md)",
+      "produced_at": "2026-11-22T02:10+08:00"
+    }
+  ]
+}
