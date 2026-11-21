@@ -129,6 +129,24 @@ def publish_content(
                 **error_response(MCPErrorCode.GATE_FAILURE, str(exc)),
             }
 
+        # G4/G5 wechat pre-publish checklist (issue #609 wiring): the two
+        # registered checklist gates run here — after the L1 log gate, before
+        # any publish attempt — exactly the surface the owner chose.  A failed
+        # check blocks the publish (stop mode), credential-free.
+        if platform == "wechat":
+            from automedia.gates.publish_gate_wiring import (
+                WechatChecklistGateError,
+                prepare_wechat_publish_gates,
+            )
+
+            try:
+                prepare_wechat_publish_gates(artifact_dir=artifact_dir, project=proj)
+            except WechatChecklistGateError as exc:
+                return {
+                    "published": False,
+                    **error_response(MCPErrorCode.GATE_FAILURE, str(exc)),
+                }
+
         engine = PublishEngine()
         account_ids = [account_id] if account_id else None
         result = engine.publish_all(

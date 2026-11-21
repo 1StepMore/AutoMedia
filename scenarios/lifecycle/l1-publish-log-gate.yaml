@@ -39,10 +39,10 @@ proves_gates:
 steps:
   - name: create the synthetic project for the publish-log gate
     kind: cli
-    check: "A python3 one-liner writes the exact 00_project_info.json shape a real run writes (project_id, topic, brand, tenant_id, created_at, status) plus a non-trivial draft in 01_content/drafts/ so publish_content resolves the project and build_publish_log_entries has real content to gate."
+    check: "A python3 one-liner writes the exact 00_project_info.json shape a real run writes (project_id, topic, brand, tenant_id, created_at, status) plus a non-trivial draft in 01_content/drafts/ so publish_content resolves the project and build_publish_log_entries has real content to gate. The info file also carries the G4 checklist fields (title/digest/tags/cover_image, issue #609 wiring) and the draft converts to HTML with exactly three body images, so the wechat path's G5+G4 pre-publish checklist passes and the flow reaches L1's log write and the publish attempt."
     standard: founder-expectations.F01
     command: |-
-      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "1a1b1c1d1e01", "topic": "publish log lifecycle probe", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "published"})); (base / "01_content" / "drafts" / "draft.md").write_text("# Publish log probe\n\nThis synthetic draft exists so the L1 publish-log gate has real project content to grade. It is long enough to be non-trivial and is never published anywhere.\n")'
+      python3 -c 'import json, pathlib; base = pathlib.Path("/tmp/automedia/lifecycle-projects/1a1b1c1d1e01"); (base / "01_content" / "drafts").mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "1a1b1c1d1e01", "topic": "publish log lifecycle probe", "title": "l1probe", "digest": "l1 probe digest", "tags": ["l1", "publish", "log", "gate", "probe"], "cover_image": "cover.png", "brand": "", "tenant_id": "", "created_at": "2026-11-19T00:00:00+00:00", "status": "published"})); (base / "01_content" / "drafts" / "draft.md").write_text("# l1probe\n\n![a](1.png)\n\n![b](2.png)\n\n![c](3.png)\n\nThis synthetic draft exists so the L1 publish-log gate has real project content to grade. It is long enough to be non-trivial and is never published anywhere.\n")'
     timeout_seconds: 60
     expect:
       exit_code: 0

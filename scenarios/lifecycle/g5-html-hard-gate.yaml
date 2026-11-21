@@ -1,0 +1,82 @@
+# Lifecycle gate coverage — G5 HTML hard (issue #609 wiring)
+#
+# WHY THIS SCENARIO EXISTS (issue #609, owner decision: wiring):
+#   G5 was registered but sat in NO preset and on NO command path (the audit's
+#   git history: unreachable_gates).  The owner chose the wechat publish path:
+#   the two checklist gates now run in ``prepare_wechat_publish_gates``
+#   (gates/publish_gate_wiring.py) — G5 (tag integrity, no markdown, tag
+#   count) grades the article HTML exactly the way the wechat publisher
+#   submits it (drafts/*.html preferred, drafts/*.md converted with the
+#   publisher's own converter).
+#
+# HOW IT IS PROVEN (run-tested, not declarative — the #585 L1-L4 precedent):
+#   1. A compliant synthetic project is created under ${AUTOMEDIA_PROJECTS_DIR}
+#      whose markdown draft converts to clean paired-tag HTML.
+#   2. The shipped MCP tool ``publish_content`` runs the real wechat publish
+#      path, which executes G5+G4 before any publish attempt.
+#   3. The shipped ``prepare_wechat_publish_gates`` is re-executed over the
+#      same real project data and the G5 verdict is printed into the run
+#      record.
+#
+# HONESTY NOTES:
+#   - No LLM and no platform credentials are needed; the publish tail may
+#     report published: false without credentials — irrelevant to the gate
+#     proof.
+#   - Paths stay portable (${AUTOMEDIA_PROJECTS_DIR} everywhere, no /tmp pins,
+#     no bash-isms) so the scenario runs on POSIX CI and native Windows alike.
+
+name: g5-html-hard-gate
+description: "publish_content's G5 wiring is proven end to end: a synthetic project resolves through the real MCP wechat publish path, prepare_wechat_publish_gates grades the converted article HTML with G5 before any publish attempt, and the G5 verdict is recorded."
+intent: "Prove G5 (HTML hard) really executes on the shipped wechat publish surface instead of only being declared: the MCP publish_content path runs prepare_wechat_publish_gates (gates/publish_gate_wiring.py) over the article HTML the publisher would submit, and a direct re-execution records the G5 verdict in the run record."
+category: lifecycle
+user_level: L2
+requires_env: []
+proves_gates:
+  - G5
+steps:
+  - name: create the compliant synthetic project for the HTML hard gate
+    kind: cli
+    check: "A python3 one-liner writes a published project with a markdown draft that converts to clean paired-tag HTML (three body images, no markdown artifacts) and an info file satisfying the checklist context (≤9-char title, five tags)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, os, pathlib; base = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g5-gate-projects" / "5a5b5c5d5e05"; drafts = base / "01_content" / "drafts"; drafts.mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "5a5b5c5d5e05", "topic": "html hard gate probe", "title": "短标题", "digest": "weekly digest", "tags": ["t1", "t2", "t3", "t4", "t5"], "cover_image": "cover-ref.png", "brand": "", "tenant_id": "", "created_at": "2026-11-22T00:00:00+00:00", "status": "published"})); (drafts / "draft.md").write_text("# 短标题\n\n![a](1.png)\n\n![b](2.png)\n\n![c](3.png)\n\nBody of the synthetic html-hard probe draft.\n", encoding="utf-8")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: publish_content runs the G5 gate for wechat
+    kind: tool
+    check: "The shipped publish_content tool resolves the synthetic project and the wechat publish path grades the converted article HTML with G5 (then G4) before any publish attempt; the tool envelope succeeds and names the platform."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: "5a5b5c5d5e05"
+      platform: wechat
+      base_dir: ${AUTOMEDIA_PROJECTS_DIR}/g5-gate-projects
+    timeout_seconds: 90
+    expect:
+      success: true
+      output_has:
+        - published
+        - platform
+  - name: re-run the shipped gate over the real project and record the G5 verdict
+    kind: cli
+    check: "prepare_wechat_publish_gates — the exact function the wechat publish path calls — executes over the real project data and the G5 verdict is printed as JSON (gate name, pass state, check count), so the run record carries explicit G5 execution evidence."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, os, pathlib; from automedia.gates.publish_gate_wiring import prepare_wechat_publish_gates; base = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g5-gate-projects" / "5a5b5c5d5e05"; verdicts = prepare_wechat_publish_gates(str(base), {}); print(json.dumps({"gate": "G5", "passed": bool(verdicts["G5"]["passed"]), "checks": len(verdicts["G5"]["checks"])}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"G5\""
+        - "\"passed\": true"
+cleanup_steps:
+  - name: remove the synthetic html-hard-gate project
+    kind: cli
+    check: "python shutil.rmtree removes the scenario's private subtree under ${AUTOMEDIA_PROJECTS_DIR} (no shell built-ins)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import os, pathlib, shutil; tree = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g5-gate-projects"; shutil.rmtree(tree, ignore_errors=True); assert not tree.exists()'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0

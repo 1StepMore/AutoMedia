@@ -200,6 +200,25 @@ def distribute_to_platforms(
             "error": str(exc),
         }
 
+    # G4/G5 wechat pre-publish checklist (issue #609 wiring): after the L1 log
+    # gate, before the engine — a failed check blocks the publish (stop mode),
+    # credential-free, mirroring the PublishLogGateError handling above.
+    if "wechat" in target_platforms:
+        from automedia.gates.publish_gate_wiring import (
+            WechatChecklistGateError,
+            prepare_wechat_publish_gates,
+        )
+
+        try:
+            prepare_wechat_publish_gates(artifact_dir=artifact_dir, project=proj)
+        except WechatChecklistGateError as exc:
+            return {
+                "platforms": {},
+                "summary": str(exc),
+                "dry_run": False,
+                "error": str(exc),
+            }
+
     engine = PublishEngine()
     try:
         raw_results = engine.publish_all(

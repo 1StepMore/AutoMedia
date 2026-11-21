@@ -101,6 +101,14 @@ def _publish_to_platform(
         declared_platforms=[platform],
     )
 
+    # G4/G5 wechat pre-publish checklist (issue #609 wiring): after the L1 log
+    # gate, before the engine.  A WechatChecklistGateError propagates exactly
+    # like the PublishLogGateError above it does.
+    if platform == "wechat":
+        from automedia.gates.publish_gate_wiring import prepare_wechat_publish_gates
+
+        prepare_wechat_publish_gates(artifact_dir=artifact_dir, project=project)
+
     engine = PublishEngine()
     results = engine.publish_all(
         artifact_dir=artifact_dir,
@@ -139,6 +147,7 @@ def _publish_to_all_platforms(
     from automedia.gates.publish_log_wiring import (
         brand_declared_platforms,
         prepare_publish_log,
+        resolve_target_platforms,
     )
 
     project: dict[str, Any] = {
@@ -147,11 +156,21 @@ def _publish_to_all_platforms(
         "brand": brand,
     }
 
+    resolved_targets = resolve_target_platforms(brand_declared_platforms(brand))
+
     prepare_publish_log(
         artifact_dir=artifact_dir,
         topic=topic,
         declared_platforms=brand_declared_platforms(brand),
     )
+
+    # G4/G5 wechat pre-publish checklist (issue #609 wiring): after the L1 log
+    # gate, before the engine.  A WechatChecklistGateError propagates exactly
+    # like the PublishLogGateError above it does.
+    if "wechat" in resolved_targets:
+        from automedia.gates.publish_gate_wiring import prepare_wechat_publish_gates
+
+        prepare_wechat_publish_gates(artifact_dir=artifact_dir, project=project)
 
     engine = PublishEngine()
     return engine.publish_all(

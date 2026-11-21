@@ -24,9 +24,16 @@ import yaml
 # ===========================================================================
 
 _SAMPLE_PROJECT_ID: str = "a1b2c3d4e5f6"
+# NOTE: title/digest/tags satisfy the G4 wechat checklist (issue #609 wired
+# the checklist gates onto the wechat publish path — every wechat-targeted
+# publish now runs G5+G4 before the engine), so the synthetic project must be
+# checklist-compliant for the success-path tests to reach the engine.
 _SAMPLE_PROJECT: dict[str, Any] = {
     "project_id": _SAMPLE_PROJECT_ID,
     "topic": "AI technology trends 2025",
+    "title": "Trends25",
+    "digest": "weekly trends digest",
+    "tags": ["ai", "tech", "trends", "2025", "daily"],
     "brand": "TestBrand",
     "mode": "auto",
     "_dir": "test-project",
@@ -34,13 +41,31 @@ _SAMPLE_PROJECT: dict[str, Any] = {
 
 _FAKE_REGISTERED_PLATFORMS: list[str] = ["wechat", "zhihu", "twitter", "xiaohongshu"]
 
+# Markdown draft that converts to checklist-compliant HTML: exactly three
+# body images (G4 wants 3-6) and no markdown artifacts after conversion.
+_COMPLIANT_DRAFT_MD: str = (
+    "# Trends25\n\n"
+    "![chart one](01.png)\n\n"
+    "![chart two](02.png)\n\n"
+    "![chart three](03.png)\n\n"
+    "Body text of the synthetic draft.\n"
+)
+
 
 def _sample_project_with_content(base: Path) -> dict[str, Any]:
-    """Materialize ``_SAMPLE_PROJECT`` on disk with a draft so L1 passes."""
+    """Materialize ``_SAMPLE_PROJECT`` on disk, G4/G5-checklist compliant.
+
+    Writes the draft plus the ``02_images/cover/cover.png`` the G4 cover
+    check resolves, so a wechat-targeted publish passes the pre-publish
+    checklist and reaches the (mocked) engine.
+    """
     proj_dir = base / "test-project"
     drafts = proj_dir / "01_content" / "drafts"
     drafts.mkdir(parents=True)
-    (drafts / "draft.md").write_text("# Title\n\nBody text", encoding="utf-8")
+    (drafts / "draft.md").write_text(_COMPLIANT_DRAFT_MD, encoding="utf-8")
+    cover = proj_dir / "02_images" / "cover"
+    cover.mkdir(parents=True)
+    (cover / "cover.png").write_bytes(b"")
     return {**_SAMPLE_PROJECT, "_dir": str(proj_dir)}
 
 

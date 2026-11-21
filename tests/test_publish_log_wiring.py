@@ -124,13 +124,22 @@ def registry_publish_targets() -> Iterator[RegisterTargets]:
     ensure_registered()
 
 
+# Markdown draft that converts to checklist-compliant HTML: exactly three
+# body images (G4 wants 3-6), no markdown artifacts after conversion.  The
+# #609 wiring runs the G4/G5 checklist on every wechat publish, so the
+# default synthetic project must satisfy it to reach publish_all.
+_COMPLIANT_DRAFT_MD: str = (
+    "# AI Topic\n\n![a](1.png)\n\n![b](2.png)\n\n![c](3.png)\n\nBody text for publishing.\n"
+)
+
+
 def _make_project(
     base_dir: Path,
     *,
     project_id: str,
     topic: str = "AI Topic",
     brand: str = _BRAND,
-    draft_body: str = "# AI Topic\n\nBody text for publishing.",
+    draft_body: str = _COMPLIANT_DRAFT_MD,
     media: bool = False,
 ) -> Path:
     """Create a synthetic project skeleton under *base_dir*."""
@@ -146,6 +155,13 @@ def _make_project(
     info = {
         "project_id": project_id,
         "topic": topic,
+        # G4 checklist fields (issue #609 wiring): every wechat-targeted
+        # publish runs the checklist before the engine, so the default
+        # synthetic project carries a compliant title/digest/tags/cover.
+        "title": "AI Topic",
+        "digest": "AI topic digest",
+        "tags": ["ai", "tech", "daily", "digest", "trend"],
+        "cover_image": "cover.png",
         "brand": brand,
         "tenant_id": "default",
         "created_at": "2026-07-07T00:00:00+00:00",

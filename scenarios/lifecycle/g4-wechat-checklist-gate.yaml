@@ -1,0 +1,88 @@
+# Lifecycle gate coverage — G4 WeChat checklist (issue #609 wiring)
+#
+# WHY THIS SCENARIO EXISTS (issue #609, owner decision: wiring):
+#   G4 was registered but sat in NO preset and on NO command path (the audit's
+#   unreachable_gates).  The owner chose the wechat publish path: the two
+#   checklist gates now run in ``prepare_wechat_publish_gates``
+#   (gates/publish_gate_wiring.py), called AFTER ``prepare_publish_log`` (L1)
+#   and BEFORE ``PublishEngine.publish_all`` on every wechat publish — via the
+#   MCP ``publish_content`` tool, ``distribute_to_platforms``, and the cron
+#   publish helpers.
+#
+# HOW IT IS PROVEN (run-tested, not declarative — the #585 L1-L4 precedent):
+#   1. A checklist-compliant synthetic project (title ≤9, digest ≤20, tags ≥5,
+#      cover ref, a markdown draft that converts to HTML with exactly 3 body
+#      images) is created under ${AUTOMEDIA_PROJECTS_DIR}.
+#   2. The shipped MCP tool ``publish_content`` (mcp/tools/publishing.py) is
+#      called for platform "wechat" — the production path that now runs G5+G4
+#      before any publish attempt (the publish itself may return published:
+#      false without platform credentials; that is irrelevant — this scenario
+#      proves the CHECKLIST GATES, not a publish).
+#   3. The shipped ``prepare_wechat_publish_gates`` is re-executed over the
+#      same real project data and the G4 verdict is printed into the run
+#      record, so the evidence names the gate that executed instead of
+#      relying on inference.
+#
+# HONESTY NOTES:
+#   - No LLM and no platform credentials are needed: G4 is a pure local
+#     checklist; a missing WX credential only degrades the (irrelevant) tail
+#     publish attempt to published: false.
+#   - Paths stay portable (${AUTOMEDIA_PROJECTS_DIR}, no /tmp pins, no
+#     bash-isms) so the scenario runs on POSIX CI and native Windows alike.
+#   - The fixed project id makes the path statically addressable.
+
+name: g4-wechat-checklist-gate
+description: "publish_content's G4 wiring is proven end to end: a checklist-compliant synthetic project resolves through the real MCP wechat publish path, prepare_wechat_publish_gates runs G5 then G4 before any publish attempt, and the G4 verdict is recorded."
+intent: "Prove G4 (wechat checklist) really executes on the shipped wechat publish surface instead of only being declared: the MCP publish_content path runs prepare_wechat_publish_gates (gates/publish_gate_wiring.py) after the L1 log gate, and a direct re-execution over the same project data records the G4 verdict in the run record."
+category: lifecycle
+user_level: L2
+requires_env: []
+proves_gates:
+  - G4
+steps:
+  - name: create the checklist-compliant synthetic project
+    kind: cli
+    check: "A python3 one-liner writes a published project whose info file carries a ≤9-char title, a ≤20-char digest, five tags, and a cover reference, plus a markdown draft that converts to HTML with exactly three body images — everything G4's 7 checks demand."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import json, os, pathlib; base = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g4-gate-projects" / "4a4b4c4d4e04"; drafts = base / "01_content" / "drafts"; drafts.mkdir(parents=True, exist_ok=True); (base / "00_project_info.json").write_text(json.dumps({"project_id": "4a4b4c4d4e04", "topic": "wechat checklist gate probe", "title": "短标题", "digest": "weekly digest", "tags": ["t1", "t2", "t3", "t4", "t5"], "cover_image": "cover-ref.png", "brand": "", "tenant_id": "", "created_at": "2026-11-22T00:00:00+00:00", "status": "published"})); (drafts / "draft.md").write_text("# 短标题\n\n![a](1.png)\n\n![b](2.png)\n\n![c](3.png)\n\nBody of the synthetic wechat checklist probe draft.\n", encoding="utf-8")'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+  - name: publish_content runs the G4 checklist for wechat
+    kind: tool
+    check: "The shipped publish_content tool resolves the synthetic project and runs prepare_wechat_publish_gates (G5 then G4) after prepare_publish_log and before any publish attempt; the tool envelope succeeds and names the platform, while the publish tail may report published: false on missing platform credentials."
+    standard: tool.contract
+    tool: publish_content
+    arguments:
+      project_id: "4a4b4c4d4e04"
+      platform: wechat
+      base_dir: ${AUTOMEDIA_PROJECTS_DIR}/g4-gate-projects
+    timeout_seconds: 90
+    expect:
+      success: true
+      output_has:
+        - published
+        - platform
+  - name: re-run the shipped checklist over the real project and record the G4 verdict
+    kind: cli
+    check: "prepare_wechat_publish_gates — the exact function the wechat publish path calls — executes over the real project data and the G4 verdict is printed as JSON (gate name, pass state, check count), so the run record carries explicit G4 execution evidence."
+    standard: founder-expectations.F02
+    command: |-
+      python3 -c 'import json, os, pathlib; from automedia.gates.publish_gate_wiring import prepare_wechat_publish_gates; base = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g4-gate-projects" / "4a4b4c4d4e04"; verdicts = prepare_wechat_publish_gates(str(base), {}); print(json.dumps({"gate": "G4", "passed": bool(verdicts["G4"]["passed"]), "checks": len(verdicts["G4"]["checks"])}))'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "\"gate\": \"G4\""
+        - "\"passed\": true"
+cleanup_steps:
+  - name: remove the synthetic checklist-gate project
+    kind: cli
+    check: "python shutil.rmtree removes the scenario's private subtree under ${AUTOMEDIA_PROJECTS_DIR} (no shell built-ins)."
+    standard: founder-expectations.F01
+    command: |-
+      python3 -c 'import os, pathlib, shutil; tree = pathlib.Path(os.environ["AUTOMEDIA_PROJECTS_DIR"]) / "g4-gate-projects"; shutil.rmtree(tree, ignore_errors=True); assert not tree.exists()'
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
