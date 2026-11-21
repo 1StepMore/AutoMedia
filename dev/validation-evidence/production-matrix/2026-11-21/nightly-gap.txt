@@ -1,0 +1,18 @@
+# AutoMedia 差距矩阵
+
+- 判定：**三轨全达标（机器可判部分完成）**
+
+- 项目目录：113 个（真模型 cost_log 非空：8 个）
+- bench：main@e88f5a6f
+- ✅ **文本轨**：3 个达标；证据：20261117_三条内容复用规则的实际收益、20261117_给小团队的三条内容复用规则、20261118_三条内容复用规则的落地经验
+- ✅ **图文轨**：3 个达标；证据：20261117_三条内容复用规则的实际收益、20261117_给小团队的三条内容复用规则、20261118_三条内容复用规则的落地经验
+- ✅ **视频轨**：1 个达标；证据：20261118_三条内容复用规则的落地经验
+
+## 验证矩阵（自动生成，复用 automedia 自带）
+- 场景 163 条：{'passed': 148, 'failed': 7, 'partial-pass': 3, 'unconfigured': 4, 'recovered': 1}
+- 最近整库 suite 记录：20261121-101517-710672
+- hard 场景 10 条：已执行-通过 10（archive-refusal-redline8、get-config-baseline、validation-suite-boundary、approve-gate-boundary、cancel-pipeline-boundary、pause-pipeline-boundary、reject-gate-boundary、resume-pipeline-boundary、retry-gate-boundary、skip-gate-boundary）；已执行-失败 0（无）；未执行 0（无）
+- 门：missing=0 unreachable=2（G4、G5）
+- 本次执行（--validate-scope hard）：0 条：
+- 验证链：连续未执行 0 天；本次已执行场景
+
