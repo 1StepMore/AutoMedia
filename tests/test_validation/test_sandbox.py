@@ -84,6 +84,70 @@ class TestSandboxDirectories:
         shutil.rmtree(root, ignore_errors=True)
 
 
+class TestCallerEnvLiteralGuard:
+    """Issue #566: caller values with unresolved ${...} must fail loud.
+
+    A caller value carrying a self-referential ``${VAR}`` used to flow into
+    pathlib verbatim: scenario steps' one-pass ``os.path.expandvars``
+    substitutes the variable with the poisoned value (the embedded reference
+    stays literal) and the pipeline's ``env_lookup`` reads it verbatim, so
+    project writes landed under a literal ``${AUTOMEDIA_PROJECTS_DIR}/...``
+    directory relative to the CWD.  The sandbox now expands what resolves and
+    rejects the rest before any directory is touched.
+    """
+
+    def test_self_referential_value_raises_instead_of_creating_literal_dirs(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.validation.sandbox import SandboxEnvError
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv(CONFIG_ENV, str(tmp_path / "cfg"))
+        monkeypatch.setenv(PROJECTS_ENV, "${AUTOMEDIA_PROJECTS_DIR}")
+        with pytest.raises(SandboxEnvError) as excinfo:
+            validation_sandbox().__enter__()
+        assert "${AUTOMEDIA_PROJECTS_DIR}" in str(excinfo.value)
+        # No literal-named residue in the CWD.
+        assert not list(tmp_path.iterdir()), sorted(p.name for p in tmp_path.iterdir())
+
+    def test_resolvable_reference_is_expanded(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        base = tmp_path / "base"
+        base.mkdir()
+        monkeypatch.setenv("REPRO_566_BASE", str(base))
+        monkeypatch.setenv(CONFIG_ENV, "${REPRO_566_BASE}/cfg")
+        monkeypatch.setenv(PROJECTS_ENV, "${REPRO_566_BASE}/proj")
+        with validation_sandbox() as sandbox:
+            assert sandbox.temporary is False
+            assert sandbox.config_dir == (base / "cfg").resolve()
+            assert sandbox.projects_dir == (base / "proj").resolve()
+
+    def test_plain_values_pass_through_unchanged(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config = tmp_path / "cfg"
+        config.mkdir()
+        monkeypatch.setenv(CONFIG_ENV, str(config))
+        monkeypatch.setenv(PROJECTS_ENV, str(tmp_path / "proj"))
+        with validation_sandbox() as sandbox:
+            assert sandbox.config_dir == config.resolve()
+            assert sandbox.projects_dir == (tmp_path / "proj").resolve()
+
+    def test_mixed_branch_rejects_a_literal_projects_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The owned-config/caller-projects mix normalizes the caller half too."""
+        from automedia.validation.sandbox import SandboxEnvError
+
+        config = tmp_path / "cfg"
+        config.mkdir()
+        monkeypatch.setenv(CONFIG_ENV, str(config))
+        monkeypatch.setenv(PROJECTS_ENV, "${UNSET_VAR_566}/proj")
+        with pytest.raises(SandboxEnvError):
+            validation_sandbox().__enter__()
+
+
 class TestSandboxAllowlistProvisioning:
     """The sandbox provisions a scoped allowlist (T2-2 pairing).
 
