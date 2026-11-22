@@ -52,6 +52,10 @@ class EdgeTTSEngine(BaseTTSEngine):
     engine_name: ClassVar[str] = "edge-tts"
     modality: ClassVar[str] = "tts"
 
+    #: Fixed output format the edge-tts CLI produces (24 kHz mono MP3,
+    #: 48 kbps) — recorded in narration provenance (#630).
+    output_format: ClassVar[str] = "audio-24khz-48kbitrate-mono-mp3"
+
     # ------------------------------------------------------------------
     # Dependency check
     # ------------------------------------------------------------------

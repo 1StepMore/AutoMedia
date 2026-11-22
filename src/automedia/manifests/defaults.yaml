@@ -86,15 +86,16 @@ gate_engine:
 engines:
   tts:
     default: piper
-    # Ordered fallback chain (highest priority first). Azure (commercial,
-    # reliable narration) leads the chain but is transparently skipped
-    # unless AUTOMEDIA_AZURE_SPEECH_KEY/_REGION are set; Piper is the
+    # Ordered fallback chain (highest priority first). azure-tts (commercial,
+    # reliable narration, 192 kbps — #630) leads the chain but is
+    # transparently skipped with a WARNING unless
+    # AUTOMEDIA_AZURE_SPEECH_KEY/_REGION are set; Piper is the
     # offline guarantee and matches ``default`` above; Edge-TTS is the
     # cloud fallback for machines with no Piper voice model installed.
-    chain: [azure, piper, edge-tts]
+    chain: [azure-tts, piper, edge-tts]
     fallback:
       - edge-tts
-    azure:
+    azure-tts:
       # Azure Speech REST (httpx, no SDK). Credentials come from
       # AUTOMEDIA_AZURE_SPEECH_KEY / AUTOMEDIA_AZURE_SPEECH_REGION (env
       # first; the speech_key/region keys below are a non-env fallback for

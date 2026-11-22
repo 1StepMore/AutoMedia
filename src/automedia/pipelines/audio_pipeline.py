@@ -1,8 +1,9 @@
-"""Audio pipeline — edge-tts TTS, Whisper ASR, SRT subtitle generation.
+"""Audio pipeline — TTS (azure-tts preferred, edge-tts fallback, #630), Whisper ASR, SRT generation.
 
 Provides:
-    - :class:`AudioPipeline` — generates TTS audio via edge-tts, transcribes
-      via Whisper, generates SRT subtitles, and proofreads SRT for brand name
+    - :class:`AudioPipeline` — generates TTS audio via the configured engine
+      chain (azure-tts first; edge-tts is the fallback), transcribes via
+      Whisper, generates SRT subtitles, and proofreads SRT for brand name
       correctness.
 
 Usage::
@@ -23,6 +24,7 @@ from typing import Any, cast
 
 from automedia.engines import resolve_engine_chain
 from automedia.engines.base import BaseASREngine, BaseTTSEngine
+from automedia.engines.implementations.tts_edge import EdgeTTSEngine
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,11 @@ class AudioPipeline:
         self._asr_chain: list[BaseASREngine] | None = None
         self._tts_fallback: bool = False
         self._asr_fallback: bool = False
+        # Provenance of the last successful generate_tts call (#630): which
+        # engine actually produced the audio and in what format. Empty until
+        # a synthesis succeeds.
+        self.last_engine_name: str = ""
+        self.last_output_format: str = ""
 
     # ------------------------------------------------------------------
     # Engine resolution (lazy)
@@ -184,6 +191,8 @@ class AudioPipeline:
         # pitch 本流水线从未配置，恒为 0.0——V4 的语速判据据此如实 skip。
         # 风险注记：若未来引擎在内部改写参数，这里的登记值会滞后于实际值。
         self.last_voice_params = {"voice_id": voice, "rate": 0.0, "pitch": 0.0}
+        self.last_engine_name = ""
+        self.last_output_format = ""
 
         # Try the engine chain first; fall back to direct subprocess call
         chain = self._tts_engine_chain()
@@ -191,7 +200,7 @@ class AudioPipeline:
             last_exc: Exception | None = None
             for engine in chain:
                 try:
-                    return engine.synthesize(text, voice=voice, output_path=output_path)
+                    result = engine.synthesize(text, voice=voice, output_path=output_path)
                 except Exception as exc:
                     logger.warning(
                         "TTS engine %s failed: %s — trying next engine",
@@ -199,6 +208,11 @@ class AudioPipeline:
                         exc,
                     )
                     last_exc = exc
+                else:
+                    # #630: record the engine that actually produced the audio.
+                    self.last_engine_name = str(getattr(engine, "engine_name", "") or "")
+                    self.last_output_format = str(getattr(engine, "output_format", "") or "")
+                    return result
             if last_exc is not None:
                 raise last_exc
 
@@ -229,6 +243,8 @@ class AudioPipeline:
             )
 
         logger.info("edge-tts: wrote %s", output_path)
+        self.last_engine_name = EdgeTTSEngine.engine_name
+        self.last_output_format = EdgeTTSEngine.output_format
         return os.path.abspath(output_path)
 
     # ------------------------------------------------------------------

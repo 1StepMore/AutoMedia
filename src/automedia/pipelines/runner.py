@@ -2335,6 +2335,7 @@ def _write_narration_provenance(
     *,
     audio_dir: str,
     narration_text: str,
+    tts_meta: dict[str, str] | None = None,
 ) -> None:
     """Record which draft the narration read (issue #599), best-effort.
 
@@ -2343,6 +2344,11 @@ def _write_narration_provenance(
     may belong to a later rewrite).  A write failure is logged and never fails
     the pipeline: the subtitle is still a valid artifact, only its provenance
     is unknown.
+
+    ``tts_meta`` (#630) adds which TTS engine produced the audio and how:
+    ``engine`` / ``output_format`` / ``voice`` — non-empty values only.
+    Credentials are never recorded: the caller passes no key/region and this
+    writer copies none.
     """
     try:
         source = _narration_source_draft(gate_context)
@@ -2359,6 +2365,10 @@ def _write_narration_provenance(
             "narration_chars": len(narration_text),
             "generated_at": datetime.now(UTC).isoformat(),
         }
+        for key in ("engine", "output_format", "voice"):
+            value = str((tts_meta or {}).get(key, "") or "").strip()
+            if value:
+                payload[key] = value
         target = os.path.join(audio_dir, "narration.provenance.json")
         os.makedirs(audio_dir, exist_ok=True)
         with open(target, "w", encoding="utf-8") as fh:
@@ -2563,7 +2573,18 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     # #599: pin the draft the narration actually read next to the audio. The
     # subtitle scenario compares against this precise file rather than the
     # newest ``01_content/drafts/*_draft.md`` (which a later rewrite can change).
-    _write_narration_provenance(gate_context, audio_dir=audio_dir, narration_text=text)
+    # #630: also record which TTS engine/output format/voice produced the
+    # audio — never the credentials.
+    _write_narration_provenance(
+        gate_context,
+        audio_dir=audio_dir,
+        narration_text=text,
+        tts_meta={
+            "engine": str(getattr(audio, "last_engine_name", "") or ""),
+            "output_format": str(getattr(audio, "last_output_format", "") or ""),
+            "voice": str(voice_params.get("voice_id") or ""),
+        },
+    )
 
     transcript_text = str(transcription.get("text", "") or "").strip()
     srt_text = ""

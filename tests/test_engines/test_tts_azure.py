@@ -65,15 +65,15 @@ def _azure_registered() -> None:
     """
     from automedia.engines.registry import EngineRegistry
 
-    if "azure" not in EngineRegistry():
-        EngineRegistry().register("azure", AzureTTSEngine, modality="tts")
+    if "azure-tts" not in EngineRegistry():
+        EngineRegistry().register("azure-tts", AzureTTSEngine, modality="tts")
 
 
 class TestRegistration:
     def test_registered_as_tts_engine(self) -> None:
         from automedia.engines.registry import EngineRegistry
 
-        assert "azure" in EngineRegistry().list_by_modality("tts")
+        assert "azure-tts" in EngineRegistry().list_by_modality("tts")
 
 
 class TestSpeechFriendlyText:
@@ -245,20 +245,20 @@ class TestChainIntegration:
 
         monkeypatch.setenv(SPEECH_KEY_ENV, "k")
         monkeypatch.setenv(SPEECH_REGION_ENV, "eastasia")
-        config = {"engines": {"tts": {"chain": ["azure", "edge-tts"]}}}
+        config = {"engines": {"tts": {"chain": ["azure-tts", "edge-tts"]}}}
         with patch(_HTTPX, MagicMock()):
             chain = resolve_engine_chain("tts", config)
-        assert [e.engine_name for e in chain][:1] == ["azure"]
+        assert [e.engine_name for e in chain][:1] == ["azure-tts"]
 
     def test_azure_skipped_without_credentials(self) -> None:
         from automedia.engines import resolve_engine_chain
         from automedia.engines.implementations import tts_piper as _piper_mod  # noqa: F401
 
-        config = {"engines": {"tts": {"chain": ["azure", "edge-tts"]}}}
+        config = {"engines": {"tts": {"chain": ["azure-tts", "edge-tts"]}}}
         chain = resolve_engine_chain("tts", config)
         # azure is absent (no creds); edge-tts is present only if the CLI
         # exists on this machine — assert on azure's absence, not the tail.
-        assert "azure" not in [e.engine_name for e in chain]
+        assert "azure-tts" not in [e.engine_name for e in chain]
 
 
 class TestLiveSmoke:
