@@ -1185,6 +1185,19 @@ class GateEngine:
                             return False, results
                         return results
 
+                    # Non-retryable failure (#640): the gate's own verdict
+                    # says the findings are structural/style-level and no
+                    # rewrite can fix them — skip the quality-retry loop
+                    # entirely instead of burning the remaining budget on
+                    # attempts that can never converge.
+                    if result.get("non_retryable"):
+                        result["retries_skipped"] = True
+                        log.warning(
+                            "gate.non_retryable",
+                            gate_name=gate_name,
+                            reason=result.get("non_retryable_reason"),
+                        )
+
                     # Level 1: quality-feedback retry.  A gate's own
                     # ``max_quality_retries`` ClassVar wins when not None.
                     _gate_max_quality = getattr(gate, "max_quality_retries", None)
@@ -1194,7 +1207,7 @@ class GateEngine:
                         else gate_context.get("max_quality_retries", self._max_quality_retries)
                     )
                     _quality_attempt = 0
-                    while _quality_attempt < _local_max_quality:
+                    while _quality_attempt < _local_max_quality and not result.get("non_retryable"):
                         _quality_attempt += 1
                         gate_context["_quality_retry_count"] = _quality_attempt
                         _remaining = _local_max_quality - _quality_attempt
@@ -1278,6 +1291,19 @@ class GateEngine:
                                 attempt=_quality_attempt,
                                 remaining=_remaining,
                             )
+
+                            # Non-retryable verdict surfaced mid-chain (#640):
+                            # a retry attempt re-entered the LLM judge and it
+                            # still reports unfixable findings — stop here
+                            # rather than spending the remaining budget.
+                            if result.get("non_retryable"):
+                                result["retries_skipped"] = True
+                                log.warning(
+                                    "gate.non_retryable",
+                                    gate_name=gate_name,
+                                    reason=result.get("non_retryable_reason"),
+                                )
+                                break
 
                             # Non-convergence detection (#637): when the two
                             # most recent transitions each shrank the rewrite
