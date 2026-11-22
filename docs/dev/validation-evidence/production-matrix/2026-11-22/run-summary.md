@@ -1,6 +1,26 @@
 # Run summary — 2026-11-22 code-side Windows shift
 
-Bench: main@80fd049f (three PRs merged this shift: #614 #615 #616).
+Bench: main@8c9869c5 for the gap2/gap3 close-out (base after #620/#622/#623 merged); earlier sections benched at main@80fd049f (three PRs merged that earlier shift: #614 #615 #616).
+
+## Close-out: gaps 2 & 3 (human-agent harness shift, 2026-11-22)
+
+Two owner-named gaps fixed via separate PRs, each one commit, DCO, squash, CI green, independently QA-accepted with confidence=real. Both real-model runs are captured in `gap2-gap3/` (raw QA logs) and in `manifest.json` (two added cells).
+
+- **Gap 2 — produce-cover G0 misrejection (PR #623, commit 3e7adb6b).** Root cause: `text_cleaning.py:267-321` `clean_publishable_copy()` strips `#` headings and blank lines in the image track before the draft lands, while `hook_claims.py:115-182` hook segmentation relies on both — so the whole draft is read as one first paragraph and body tokens 决定/保证 are flagged as hook outcome-promises (first-pass misfire; #598's post-rewrite hedge cannot help a first pass). Fix is generation-side only: 21 `content_writer.j2` templates ban the shared list in every paragraph; the image-track publish boundary (`content_writer.py:_publishable_image_track_copy`) applies #598's closed `HEDGE_MAP` deterministically; `HEDGE_MAP["保证"]` changed 通常→注意 so verb-object phrases stay grammatical. **G0 ban list / thresholds / logic untouched** (`git diff` vs `prompts/hook_claims.py` + `gates/fact_check.py` empty). Real run: `python3 -m automedia run --brand my-brand --mode text_with_cover --topic "封面设计如何提升文章点击率" --skip-review` → exit 0, 7/7 gates, G0 first-pass green (no rewrite), cover.png 125,984 B @12:25:33 (> start 12:23:45). QA: accept / NoOne / confidence=real; 21/21 templates, unmapped token stays honestly red (in-memory injection probe), 87+57 tests pass, CI 16/16.
+- **Gap 3 — issue #612 CW reasoning max_tokens (PR #624, commit 76707bed).** Root cause: plain `llm_complete()` in `llm_client.py` ignored `finish_reason`, so a reasoning model's empty content went straight to CW (empty-content stop). #560 covered only the structured fallback, #525 only thinking-disable. Fix: empty content **and** `finish_reason=="length"` → retry once with 2× budget (cap 16000); non-truncated empty stays at original budget; thread-local provenance (finish_reason/attempt/truncated/max_tokens/provider/model) on every completion; CW failure context carries provenance. Empty-string return contract and `defaults.yaml` unchanged; no gate thresholds / vendor names / second config entry. Real run: `python3 -m automedia run --brand my-brand --mode text_only --topic "小团队内容复用规则的落地经验" --skip-review` → exit 0, 7/7 gates, draft 5,722 B @12:49:30 (> start 12:48:41), two `llm_complete.provenance finish_reason=stop attempt=1 truncated=False max_tokens=2048` lines, AUTOMEDIA_FAKE_LLM unset. QA: accept / NoOne / confidence=real; escalation 4-boundary strong asserts, 8-thread concurrency no cross-talk, 166+71 tests pass (1 env-red reproduced on clean baseline cb54f733), CI green.
+
+### Honest scope / DEBT (not claimed as passing)
+
+1. **Issue #612 primary acceptance `auto-journey` is NOT 4/4.** QA ran it twice (12:51 and 12:58): both EXIT=1, 1/4 steps. step1 CW stops at gate 2/16 with `openai: Connection error` (transient, 98s), V0–V7 all "Downstream affected" — never executed (**not a video-chain block**; the original PR-body claim was corrected). step3 fails in consequence; step4 `evaluate_content_quality` structured output is truncated (`reasoning_tokens=1603` ate the 2048 budget → `Unterminated string` / `NoneType.model_dump`). Per the no-unverified-as-verified rule, this close-out claims only the plain-text CW path for gap 3; step4 is tracked in **issue #625** (opened this shift, independent root cause from #621 wall-clock and #560 LengthFinishReasonError fallback).
+2. **DEBT:** gap-3 escalation triggers on "empty content **and** length" (conservative hit-only), while issue #612 wording was "empty **or** length" — a non-empty-but-length (half output) is not escalated. QA probe confirmed this; engineer acknowledged. Recorded to avoid reading it as full coverage.
+3. **Pre-existing env red:** `tests/test_doctor/test_llm_probe.py::test_single_spec_blackhole_is_bounded_and_unreachable` (proxy 502, elapsed 10.3s < 14s) reproduces on clean baseline cb54f733 in a separate worktree — not introduced by either PR. Both PRs skipped 3 pre-commit hooks that are red on a clean HEAD (ruff S603 in untouched `scripts/agent/autonomy.py`; ruff-format rewriting unrelated files; pytest hanging on an existing real-LLM unit test); all other hooks passed.
+
+### Matrix verdicts re-verified on main@8c9869c5 (after #623 merged)
+
+- Judgement 1 (matrix full + 0 missing): `python3 scripts/nightly_gap.py` exit 0, total_units=3 / passing=3 / gap=[]; four sides missing=0 (mcp 63/64 boundary_only=1, cli 21/21, gates 33/33, modes 9/9).
+- Judgement 2 (quality gates green): both PRs' CI fully green after rebase; gates 33/33 unreachable=0; failed journeys all `blocked:missing-dep` / `blocked:llm-endpoint-unstable` (not counted in coverage per owner rule, written to handoff).
+- Judgement 3 (evidence committed): this section + two manifest cells + raw QA logs in `gap2-gap3/` (this PR).
+
 
 ## What landed (each via its own PR, squash, DCO, CI fully green)
 

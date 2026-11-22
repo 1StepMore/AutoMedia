@@ -2,7 +2,7 @@
   "matrix": "production-matrix",
   "run-date": "2026-11-22",
   "produced_by": "code-side Windows machine (auto agent shift, owner:human-agent weekend lane)",
-  "commit": "80fd049fd359dd4204c1cfa22f2f03061a341d6f",
+  "commit": "e4abbdfadef419fc6bbdcf1cd9f6896d00938326",
   "summary_doc": "2026-11-22/run-summary.md",
   "cells": [
     {
@@ -70,6 +70,28 @@
       },
       "command": "piper synthesis + faster-whisper ASR + V5Mp3VsSrt.execute (recorded in run-summary.md)",
       "produced_at": "2026-11-22T02:10+08:00"
+    },
+    {
+      "cell": "gap2-produce-cover-g0",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/gap2-gap3/qa-gap2-run.log + qa-gap2-meta.txt",
+        "reading": "PR #623 (commit 3e7adb6b on main@8c9869c5): produce-cover G0 misrejection fixed at the generation side (21 writer templates ban outcome-promise tokens in every paragraph; image-track publish boundary applies #598 closed HEDGE_MAP deterministically). G0 ban list / thresholds / logic untouched (git diff vs hook_claims.py + fact_check.py empty). Real-model run text_with_cover topic=封面设计如何提升文章点击率 exit 0, 7/7 gates, G0 first-pass green no rewrite, cover.png 125984B @12:25:33 (> start 12:23:45). QA verdict=accept / NoOne / confidence=real; 21/21 templates, unmapped token stays honestly red, 87+57 tests pass, CI 16/16 green."
+      },
+      "command": "python3 -m automedia run --brand my-brand --mode text_with_cover --topic 封面设计如何提升文章点击率 --skip-review",
+      "produced_at": "2026-11-22T12:25+08:00"
+    },
+    {
+      "cell": "gap3-612-cw-reasoning-maxtokens",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/gap2-gap3/qa-gap3-run.log + qa-gap3-meta.txt + qa-gap3-auto-rerun-meta.txt",
+        "reading": "PR #624 (commit 76707bed): plain llm_complete now escalates empty+finish_reason=length to 2x budget (cap 16000) exactly once and records thread-local provenance; CW failure context carries provenance; empty-string return contract and defaults.yaml unchanged; no gate thresholds / vendor names / second config entry. Real-model text_only run exit 0, 7/7 gates, draft 5722B @12:49:30 (> start 12:48:41), provenance finish_reason=stop attempt=1 truncated=False max_tokens=2048, AUTOMEDIA_FAKE_LLM unset. QA verdict=accept / NoOne / confidence=real; escalation 4-boundary strong asserts, 8-thread concurrency no cross-talk, 166+71 tests pass (1 env-red reproduced clean baseline), CI green. HONEST SCOPE: issue #612 primary acceptance auto-journey NOT 4/4 (1/4 twice: step1 CW connection error at gate 2/16 V gates never ran; step4 structured output reasoning_tokens=1603 ate 2048 budget -> Unterminated string) — tracked separately in issue #625; this cell only claims the plain-text CW path."
+      },
+      "command": "python3 -m automedia run --brand my-brand --mode text_only --topic 小团队内容复用规则的落地经验 --skip-review",
+      "produced_at": "2026-11-22T12:49+08:00"
     }
   ]
 }

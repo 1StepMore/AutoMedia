@@ -80,10 +80,14 @@
 | docs/dev/validation-evidence/production-matrix/2026-11-21/run-summary.md | 7962 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22 | — | dir |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/coverage-final.txt | 2141 | file |
-| docs/dev/validation-evidence/production-matrix/2026-11-22/manifest.json | 4410 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3 | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap2-meta.txt | 54 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap3-auto-rerun-meta.txt | 77 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap3-meta.txt | 52 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/manifest.json | 6950 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/matrix-final.txt | 14719 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/nightly-gap.txt | 1437 | file |
-| docs/dev/validation-evidence/production-matrix/2026-11-22/run-summary.md | 4162 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/run-summary.md | 9355 | file |
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |
