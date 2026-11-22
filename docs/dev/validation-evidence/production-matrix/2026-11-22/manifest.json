@@ -2,7 +2,7 @@
   "matrix": "production-matrix",
   "run-date": "2026-11-22",
   "produced_by": "code-side Windows machine (auto agent shift, owner:human-agent weekend lane)",
-  "commit": "e4abbdfadef419fc6bbdcf1cd9f6896d00938326",
+  "commit": "02eb6c973f715c1bf3da3c6715cc2c541af06bf7",
   "summary_doc": "2026-11-22/run-summary.md",
   "cells": [
     {
@@ -88,10 +88,32 @@
         "verdict": "pass",
         "confidence": "real",
         "evidence": "2026-11-22/gap2-gap3/qa-gap3-run.log + qa-gap3-meta.txt + qa-gap3-auto-rerun-meta.txt",
-        "reading": "PR #624 (commit 76707bed): plain llm_complete now escalates empty+finish_reason=length to 2x budget (cap 16000) exactly once and records thread-local provenance; CW failure context carries provenance; empty-string return contract and defaults.yaml unchanged; no gate thresholds / vendor names / second config entry. Real-model text_only run exit 0, 7/7 gates, draft 5722B @12:49:30 (> start 12:48:41), provenance finish_reason=stop attempt=1 truncated=False max_tokens=2048, AUTOMEDIA_FAKE_LLM unset. QA verdict=accept / NoOne / confidence=real; escalation 4-boundary strong asserts, 8-thread concurrency no cross-talk, 166+71 tests pass (1 env-red reproduced clean baseline), CI green. HONEST SCOPE: issue #612 primary acceptance auto-journey NOT 4/4 (1/4 twice: step1 CW connection error at gate 2/16 V gates never ran; step4 structured output reasoning_tokens=1603 ate 2048 budget -> Unterminated string) — tracked separately in issue #625; this cell only claims the plain-text CW path."
+        "reading": "PR #624 (commit 76707bed): plain llm_complete now escalates empty+finish_reason=length to 2x budget (cap 16000) exactly once and records thread-local provenance; CW failure context carries provenance; empty-string return contract and defaults.yaml unchanged; no gate thresholds / vendor names / second config entry. Real-model text_only run exit 0, 7/7 gates, draft 5722B @12:49:30 (> start 12:48:41), provenance finish_reason=stop attempt=1 truncated=False max_tokens=2048, AUTOMEDIA_FAKE_LLM unset. QA verdict=accept / NoOne / confidence=real; escalation 4-boundary strong asserts, 8-thread concurrency no cross-talk, 166+71 tests pass (1 env-red reproduced clean baseline), CI green. HONEST SCOPE (corrected 2026-11-22 16:4x): the auto-journey 1/4 failures were NOT an endpoint problem — logs show HTTP 200 throughout; step1 was the sandbox seed (_MODEL_CONFIG_SEED hardcodes openai/gpt-4o-mini, so exporting only the API key produced a fake 'openai: Connection error'; issue #632) and step4 was structured-output truncation (#625). This cell still claims only the plain-text CW path; the journey is covered by the gap4 cells below."
       },
       "command": "python3 -m automedia run --brand my-brand --mode text_only --topic 小团队内容复用规则的落地经验 --skip-review",
       "produced_at": "2026-11-22T12:49+08:00"
+    },
+    {
+      "cell": "issue-625-structured-budget-escalation",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/gap4-625-633/README.md #631 节",
+        "reading": "PR #631 (squash b97459ec): structured completions now detect truncation (LengthFinishReasonError / finish_reason=length / completion_tokens>=budget) and retry exactly once with 2x budget capped at 16000, skipping the same-budget repair, no longer poisoning the beta cache, recording thread-local provenance on every attempt and attaching it to the final chain error; the single retry also widens the wall clock (2x, <=600s). defaults.yaml, gate thresholds, vendor/model literals and config entry points untouched. Real-run proof: auto-journey step4 flipped red->green via length@2048 attempt1 -> escalated 4096 -> stop@4096 attempt2. QA accept/NoOne/confidence=real; 6 unit tests incl. second-truncation-stops; mutation M1-M4 all killed; CI 16/16. Residuals recorded: G4 stale thread-local provenance on pre-attempt provider failure; G5 beta-truncation followed by two json_object exceptions does not escalate."
+      },
+      "command": "python3 -m automedia validate run --scenario auto-journey (step4 evidence)",
+      "produced_at": "2026-11-22T16:09+08:00"
+    },
+    {
+      "cell": "auto-journey-win32-4of4",
+      "quality": {
+        "verdict": "pass",
+        "confidence": "real",
+        "evidence": "2026-11-22/gap4-625-633/scenarios-auto-journey-4of4.json + README.md",
+        "reading": "Real-model run (no fake): AUTOMEDIA_LLM_PROVIDER=spark / BASE_URL=maas-api.cn-huabei-1.xf-yun.com/v2 / MODEL=spark-x2.6 / TIMEOUT=240 python3 -m automedia validate run --scenario auto-journey -> Status: passed (4/4 steps passed), exit 0, 24m39s; all four steps passed=true with failures=[]; step1 1206.5s (Assets produced: 1 -> 01_content/drafts/20261122_074813_draft.md), step2 2.8s, step3 0.1s (stdout contains the draft path; before #633 it was exit 2 with Windows find.exe), step4 260.8s via the #625 escalation path; run record confidence=real, trusted=true, blocked=false. Tree equivalence: PR #633 head tree 1750bb7dff47ef4423c0ddd4538321f64e1141f6 equals the acceptance tree. QA accept/NoOne/confidence=real; 10 tests, reverse verification (identity resolver -> exit 2 reproduces the pre-fix symptom); CI 18/18."
+      },
+      "command": "AUTOMEDIA_LLM_PROVIDER=spark AUTOMEDIA_LLM_BASE_URL=... AUTOMEDIA_LLM_MODEL=spark-x2.6 AUTOMEDIA_LLM_TIMEOUT=240 python3 -m automedia validate run --scenario auto-journey",
+      "produced_at": "2026-11-22T16:09+08:00"
     }
   ]
 }
