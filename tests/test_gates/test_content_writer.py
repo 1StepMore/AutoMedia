@@ -622,3 +622,63 @@ class TestSourceMaterialInjection:
         for path in variants:
             text = path.read_text(encoding="utf-8")
             assert _SOURCED_NUMBERS_MARKER in text, f"missing constraint in {path}"
+
+
+# =========================================================================
+# Image-track publish boundary — outcome-promise tokens (#gap2 produce-cover)
+# =========================================================================
+
+
+class TestImageTrackHookClaimHedge:
+    """text_with_cover must not hand G0 a draft that trips the ban list.
+
+    The #464 cleaner strips the ``#`` markers and blank lines G0 uses to find
+    hook areas, so body tokens get judged as hook claims. The generation
+    boundary hedges the closed #598 list deterministically; text_only keeps
+    the writer output byte-identical.
+    """
+
+    DRAFT: str = (
+        "# 封面设计如何提升文章点击率\n\n"
+        "很多创作者把精力全压在标题上，结果发现点击率没有起色。\n\n"
+        "读者在极短时间内决定要不要点进去，封面图其实很关键。\n\n"
+        "重点文字要保证在小尺寸下依然清晰可辨。"
+    )
+
+    def _execute(self, tmp_path: Path, mode: str) -> dict[str, Any]:
+        ctx = _make_context(
+            topic="封面设计如何提升文章点击率",
+            project_dir=str(tmp_path),
+            config=_minimal_config(),
+        )
+        ctx["mode"] = mode
+        with patch(
+            "automedia.gates.content_writer.llm_complete",
+            return_value=self.DRAFT,
+        ):
+            return ContentWriterGate().execute(ctx)
+
+    def test_text_with_cover_draft_has_no_banned_tokens(self, tmp_path: Path) -> None:
+        from automedia.prompts.hook_claims import HOOK_CLAIMS_BANNED_TOKENS, hook_area_violations
+
+        result = self._execute(tmp_path, "text_with_cover")
+
+        assert result["passed"] is True
+        for token in HOOK_CLAIMS_BANNED_TOKENS:
+            assert token not in result["content"], token
+        assert hook_area_violations(result["content"]) == []
+        with open(result["output_path"], encoding="utf-8") as fh:
+            assert fh.read() == result["content"]
+
+    def test_text_only_keeps_writer_output_unchanged(self, tmp_path: Path) -> None:
+        result = self._execute(tmp_path, "text_only")
+
+        assert result["passed"] is True
+        assert result["content"] == self.DRAFT
+
+    def test_writer_prompt_bans_tokens_everywhere(self) -> None:
+        from automedia.prompts import load_prompt
+
+        prompt = load_prompt("content_writer", platform="")
+        assert "BANNED ANYWHERE in the article" in prompt
+        assert "every paragraph (including body paragraphs)" in prompt

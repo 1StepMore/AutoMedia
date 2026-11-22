@@ -22,6 +22,7 @@ from automedia.core.llm_client import LLMError, llm_complete
 from automedia.core.text_cleaning import clean_publishable_copy
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
+from automedia.gates.hook_claims_rewrite import hedge_all_hook_claims
 from automedia.prompts import load_prompt
 
 log = get_logger(__name__)
@@ -90,6 +91,19 @@ _SOURCED_NUMBERS_RULE: str = (
     "qualitatively.\n"
     "- Do not fabricate citations."
 )
+
+
+def _publishable_image_track_copy(content: str) -> str:
+    """Clean image-track copy and keep it free of outcome-promise tokens.
+
+    ``clean_publishable_copy`` strips the ``#`` markers and blank lines that
+    G0's hook-area criteria use to identify the title, headings and first
+    paragraph. The whole draft is then read as one flat hook block, so a
+    banned token in body prose is judged like a hook claim. Hedging the closed
+    token list here (the generation boundary) keeps the product clean without
+    relaxing G0's list or threshold, and reuses #598's replacement table.
+    """
+    return hedge_all_hook_claims(clean_publishable_copy(content))
 
 
 def _build_source_material_block(source_content: str, source_reference: str) -> str:
@@ -431,7 +445,7 @@ class ContentWriterGate(BaseGate):
         # lands on disk.  Downstream gates (G0-G6) validate exactly this
         # publishable text.
         if pipeline_mode in _IMAGE_TRACK_PUBLISH_MODES:
-            content = clean_publishable_copy(content)
+            content = _publishable_image_track_copy(content)
 
         # --- Write to disk ----------------------------------------------------------
         content_dir = os.path.join(project_dir, CONTENT, "drafts")
@@ -515,7 +529,7 @@ class ContentWriterGate(BaseGate):
             seo_retries_remaining -= 1
             # An SEO rewrite re-enters the publish boundary (#464).
             if pipeline_mode in _IMAGE_TRACK_PUBLISH_MODES:
-                content = clean_publishable_copy(content)
+                content = _publishable_image_track_copy(content)
 
         gate_context.setdefault("extra", {})["seo_scores"] = seo_scores
         if seo_rewritten:

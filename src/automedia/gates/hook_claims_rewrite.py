@@ -7,10 +7,20 @@ retry and can never converge. This module closes that loop the same way #594
 over the closed token list, applied only to the sentences the criteria already
 flagged.
 
+An image-track generation boundary also uses this table via
+:func:`hedge_all_hook_claims`: for ``text_with_cover`` / ``social-thread`` the
+publishable-copy cleaner strips ``#`` markers and blank lines, so G0's
+hook-area scan reads the whole draft as one flat hook block. Hedging the closed
+list across that draft at generation time keeps absolute claims out of the
+product without touching G0's criteria.
+
 Contract:
 
-- Only the hit sentences (:attr:`HookClaimHit.text`) are rewritten — body text
-  outside the flagged hook segments is returned byte-identical.
+- :func:`hedge_hook_claims` rewrites only the hit sentences
+  (:attr:`HookClaimHit.text`) — body text outside the flagged hook segments is
+  returned byte-identical.
+- :func:`hedge_all_hook_claims` rewrites every occurrence in the supplied
+  text; it is opt-in for the image-track generation boundary only.
 - Longer tokens win (``轻松搞定`` before ``轻松``).
 - A token with no entry in :data:`HEDGE_MAP` is left alone; the gate then keeps
   failing honestly instead of faking a pass.
@@ -32,7 +42,10 @@ HEDGE_MAP: dict[str, str] = {
     "学会": "掌握",
     "包会": "能上手",
     "速成": "快速入门",
-    "保证": "通常",
+    # "通常" reads as an adverb and breaks verb-object body prose
+    # (「保证清晰度」→「通常清晰度」); "注意" keeps the sentence grammatical
+    # in both hook and body positions while promising process, not outcome.
+    "保证": "注意",
     "决定": "影响",
     "必然": "多半",
     "一定": "往往",
@@ -97,6 +110,22 @@ def _locate(text: str, sentence: str, cursor: int) -> tuple[int, int] | None:
         block_end = _BLOCK_END_RE.search(text, end)
         end = block_end.start() if block_end else len(text)
     return start, end
+
+
+def hedge_all_hook_claims(content: str) -> str:
+    """Hedge every closed-list occurrence in *content* (generation boundary).
+
+    Unlike :func:`hedge_hook_claims`, this pass is not scoped to the sentences
+    G0 flagged. It exists for the image-track draft → publishable-copy boundary
+    (#464), where the cleaner removes the markdown headings and blank lines
+    that G0's hook-area criteria rely on. Hedging the whole draft there makes
+    the generated product free of outcome-promise tokens regardless of how the
+    gate later segments it. The replacement table is the same closed
+    :data:`HEDGE_MAP`; unlisted tokens are never invented or faked away.
+    """
+    if not content:
+        return content
+    return _hedge_sentence(content)
 
 
 def hedge_hook_claims(content: str) -> str:
