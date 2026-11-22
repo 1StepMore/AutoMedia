@@ -258,3 +258,86 @@ class TestUnreadableIsUnjudgedNotFailed:
 
         result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
         assert result["passed"] is True
+
+
+class TestJudgeModelAndCoverageAccounting:
+    """#646：证据要能区分「真判过」和「空过」。
+
+    sandbox 此前只 seed ``text_generation`` ⇒ ``llm.vision`` 不存在 ⇒ V1 六幕
+    全 ``unjudged`` 却因「没有 failed」整门读绿。修完 seed/env 注入后，证据
+    文件还必须回答两个问题：判官是谁（``model``）、判了多少（``judged`` /
+    ``unjudged`` / ``judged_ratio``）。
+    """
+
+    def test_vision_qa_json_records_model(self, tmp_path: Any) -> None:
+        """真判过的场次带判官身份：顶层 ``model`` = MockVLMClient 的 ``mock``。"""
+        entries = _build_entries(tmp_path, vlm=MockVLMClient(default_related=True))
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True
+
+        data = _read_evidence(tmp_path)
+        assert data["model"] == "mock"
+        assert data["judged"] == len(entries)
+        assert data["unjudged"] == 0
+        assert data["judged_ratio"] == 1.0
+
+    def test_vision_entries_stamp_judge_model_on_judged_entries(self, tmp_path: Any) -> None:
+        """生产者只在 VLM 真判过的场次落 ``judge_model``；面板/未判定留空。"""
+        entries = _build_entries(
+            tmp_path,
+            kinds=["panel", "generated"],
+            vlm=MockVLMClient(default_related=True),
+        )
+        assert entries[0]["checked"] is True
+        assert entries[0]["judge_model"] == ""  # panel: 构造保证，无判官
+        assert entries[1]["checked"] is True
+        assert entries[1]["judge_model"] == "mock"
+
+    def test_unjudged_ratio_is_reported(self, tmp_path: Any) -> None:
+        """6 幕全 unjudged ⇒ judged_ratio == 0.0、unjudged == 6，passed 仍为 true。
+
+        判定语义不变（#387：unjudged 不算 fail），只是把「空过」说出来。
+        """
+        scenes = [
+            {"id": i + 1, "index": i, "start": float(i * 4), "duration": 4.0, "text": f"第{i + 1}场"}
+            for i in range(6)
+        ]
+        entries, stats = build_vision_entries(
+            str(tmp_path / "output.mp4"),
+            scenes,
+            [""] * 6,
+            ["generated"] * 6,
+            str(tmp_path / "frames"),
+            ffmpeg_path="ffmpeg",
+            ffprobe_path="ffprobe",
+            run=_FakeRun(),
+            vlm_client=_StaticVLM(
+                {"determinable": False, "related": False, "reason": "图像内容无法解析"}
+            ),
+        )
+        assert stats["unjudged"] == 6 and stats["judged"] == 0
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True  # 语义不变：unjudged 不是 fail
+
+        data = _read_evidence(tmp_path)
+        assert data["passed"] is True
+        assert data["judged"] == 0
+        assert data["unjudged"] == 6
+        assert data["judged_ratio"] == 0.0
+        assert data["model"] is None
+
+    def test_partial_coverage_judged_counts_in_check_detail(self, tmp_path: Any) -> None:
+        """部分覆盖：``all_entries_passed`` detail 直接给 judged/unjudged 计数。"""
+        entries = _build_entries(
+            tmp_path,
+            kinds=["panel", "generated"],
+            vlm=_StaticVLM(
+                {"determinable": False, "related": False, "reason": "图像内容无法解析"}
+            ),
+        )
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True
+        check = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert check["passed"] is True
+        assert "1/2 entries judged (1 unjudged)" in check["detail"]

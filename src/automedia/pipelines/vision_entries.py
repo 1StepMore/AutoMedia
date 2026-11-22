@@ -187,6 +187,10 @@ def build_vision_entries(
             vlm_client = create_vlm_client()
         except Exception:  # pragma: no cover — defensive; create_vlm_client never raises
             vlm_client = None
+    # 判官身份（#646）：成功判定的场次带上 ``judge_model``，证据文件据此写
+    # 顶层 ``model``——「V1 绿了」才能一眼看出是不是真判过。鸭子类型安全：
+    # 测试桩可能没有该属性，取不到就留空。
+    judge_model = str(getattr(vlm_client, "model_name", "") or "")
     # ffprobe 缺席时给末帧留保守余量，避免 -ss 越过 EOF 抽到空。
     end_margin = 0.05 if duration is not None else 0.25
 
@@ -306,6 +310,8 @@ def build_vision_entries(
                 # 判官理由原文（#638）：不截断地留给证据文件；面板/未判定场次
                 # 的理由即 verdict 全文。
                 "reason": full_reason if verdict_vlm is not None else verdict,
+                # 判官身份（#646）：仅 VLM 真判过的场次带；面板短路/未判定留空。
+                "judge_model": judge_model if verdict_vlm is not None else "",
             }
         )
 

@@ -264,6 +264,63 @@ class TestModelConfigSeeding:
         assert data["llm"]["text_generation"]["model"] == "gpt-4o-mini"
         assert data["llm"]["text_generation"]["api_key"] == ""
 
+    def test_seed_covers_all_llm_slots(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """#646: owned-config seed 写出全部四个 LLM task slot。
+
+        只有 ``text_generation`` 时，validation 的 owned config dir 是运行期
+        唯一的文件层配置，``llm.vision`` 解析为空 ⇒ V1 每一场都 ``unjudged``
+        却因「没有 failed」整门读绿。四个 slot 都必须在 seed 里；凭据仍走
+        ``AUTOMEDIA_LLM_*`` 环境层，``api_key`` 只是占位骨架。
+        """
+        import yaml
+
+        monkeypatch.delenv(CONFIG_ENV, raising=False)
+        monkeypatch.delenv(PROJECTS_ENV, raising=False)
+        with validation_sandbox() as sandbox:
+            seed_path = sandbox.config_dir / "model_config.yaml"
+            assert seed_path.is_file()
+            data = yaml.safe_load(seed_path.read_text(encoding="utf-8"))
+        slots = data["llm"]
+        assert set(slots) == {
+            "text_generation",
+            "vision",
+            "subtitle_proofread",
+            "translation",
+        }
+        for name, slot in slots.items():
+            assert slot["provider"] == "openai", name
+            assert slot["model"] == "gpt-4o-mini", name
+            assert slot["api_key"] == "", name
+
+    def test_caller_config_dir_untouched(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#646 回归保护：显式 export ``AUTOMEDIA_CONFIG_DIR`` 时目录零变化。
+
+        seed 扩容只对 sandbox **owned** 的 config dir 生效；调用方自己的目录
+        里的每个文件（内容与字节）在 sandbox 进出后都必须原样。
+        """
+        config_dir = tmp_path / "config"
+        projects_dir = tmp_path / "projects"
+        config_dir.mkdir()
+        projects_dir.mkdir()
+        (config_dir / "model_config.yaml").write_text(
+            "llm:\n  text_generation:\n    provider: glm\n", encoding="utf-8"
+        )
+        (config_dir / "brand.yaml").write_text("brand:\n  tone: mine\n", encoding="utf-8")
+        before = {p.name: p.read_bytes() for p in config_dir.iterdir()}
+
+        monkeypatch.setenv(CONFIG_ENV, str(config_dir))
+        monkeypatch.setenv(PROJECTS_ENV, str(projects_dir))
+        with validation_sandbox():
+            pass
+
+        after = {p.name: p.read_bytes() for p in config_dir.iterdir()}
+        assert after == before
+        assert (config_dir / "model_config.yaml").read_text(encoding="utf-8") == (
+            "llm:\n  text_generation:\n    provider: glm\n"
+        )
+
     def test_seed_is_removed_with_the_sandbox(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(CONFIG_ENV, raising=False)
         monkeypatch.delenv(PROJECTS_ENV, raising=False)
