@@ -336,7 +336,96 @@ The request that produced this response follows verbatim:
 
 
 class LLMError(AutoMediaError):
-    """Raised when the LLM provider returns an error or is unreachable."""
+    """Raised when the LLM provider returns an error or is unreachable.
+
+    Empty-content failures carry structured provenance on the exception
+    (:attr:`provenance`, plus ``finish_reason`` / ``attempt`` / ``truncated``
+    attributes) so the gate report can attribute the failure instead of
+    showing a bare "empty content" line (#612). The attributes are optional:
+    only empty-completion errors set them.
+    """
+
+    provenance: dict[str, Any]
+    finish_reason: object
+    attempt: int
+    truncated: bool
+
+
+# Empty/truncated completion escalation (#612). A reasoning model can spend
+# the whole ``max_tokens`` budget on its thinking trace and return an empty
+# ``message.content``; one retry with a larger budget recovers it. The cap
+# keeps the budget bounded and there is never more than one escalation.
+_EMPTY_CONTENT_ESCALATION_FACTOR: int = 2
+_EMPTY_CONTENT_ESCALATION_CAP: int = 16000
+
+
+def _escalated_budget(max_tokens: int) -> int:
+    """Return the retry budget: ``2x`` the base, capped at 16000 (#612)."""
+    return min(max_tokens * _EMPTY_CONTENT_ESCALATION_FACTOR, _EMPTY_CONTENT_ESCALATION_CAP)
+
+
+_completion_provenance = threading.local()
+
+
+def get_last_completion_provenance() -> dict[str, Any]:
+    """Return the most recent :func:`llm_complete` provenance for this thread.
+
+    The dict always carries ``finish_reason``, ``attempt``, ``truncated`` and
+    ``max_tokens`` once a completion has been attempted; an empty dict means
+    no ``llm_complete`` call has happened on this thread yet.
+    """
+    return dict(getattr(_completion_provenance, "last", {}))
+
+
+def _record_completion_provenance(
+    *,
+    finish_reason: object,
+    attempt: int,
+    truncated: bool,
+    max_tokens: int,
+    provider: str,
+    model: str,
+) -> dict[str, Any]:
+    """Record and log the provenance of one completion attempt (#612)."""
+    provenance: dict[str, Any] = {
+        "finish_reason": finish_reason,
+        "attempt": attempt,
+        "truncated": truncated,
+        "max_tokens": max_tokens,
+        "provider": provider,
+        "model": model,
+    }
+    _completion_provenance.last = provenance
+    logger.info(
+        "llm_complete.provenance finish_reason=%s attempt=%d truncated=%s max_tokens=%d",
+        finish_reason,
+        attempt,
+        truncated,
+        max_tokens,
+    )
+    return provenance
+
+
+def _empty_content_error(
+    provenance: dict[str, Any],
+    *,
+    escalated_max_tokens: int,
+) -> LLMError:
+    """Build an attributable empty-content error carrying provenance (#612)."""
+    detail = (
+        "LLM completion returned empty content "
+        f"(finish_reason={provenance['finish_reason']!r}, "
+        f"attempt={provenance['attempt']}, "
+        f"truncated={provenance['truncated']}, "
+        f"max_tokens={provenance['max_tokens']}, "
+        f"escalated_max_tokens={escalated_max_tokens})"
+    )
+    error = LLMError(detail)
+    error.provenance = {**provenance, "escalated_max_tokens": escalated_max_tokens}
+    error.finish_reason = provenance["finish_reason"]
+    error.attempt = provenance["attempt"]
+    error.truncated = provenance["truncated"]
+    return error
 
 
 # ---------------------------------------------------------------------------
@@ -1412,17 +1501,78 @@ def llm_complete(
                 max_tokens if max_tokens is not None else spec.get("max_tokens", 2048)
             )
 
-            response = _llm_chat_completion_with_retry(
-                client,
-                model=resolved_model,
-                messages=messages,
-                temperature=resolved_temp,
-                max_tokens=resolved_max,
-                max_attempts=max_attempts,
-                extra_body=resolve_extra_body(spec),
+            extra_body = resolve_extra_body(spec)
+
+            def _complete(
+                budget: int,
+                active_client: OpenAI,
+                active_model: str,
+                active_temperature: float,
+                active_body: dict[str, Any] | None,
+            ) -> tuple[str, object]:
+                """Issue one completion and return ``(content, finish_reason)``."""
+                completion = _llm_chat_completion_with_retry(
+                    active_client,
+                    model=active_model,
+                    messages=messages,
+                    temperature=active_temperature,
+                    max_tokens=budget,
+                    max_attempts=max_attempts,
+                    extra_body=active_body,
+                )
+                picked = completion.choices[0]
+                return str(picked.message.content or ""), getattr(picked, "finish_reason", None)
+
+            # #612: a reasoning model can burn the whole budget on its thinking
+            # trace and return empty content with finish_reason="length". Retry
+            # ONCE with a larger budget; every attempt records provenance so a
+            # remaining empty response is attributable at the gate boundary.
+            content, finish_reason = _complete(
+                resolved_max, client, resolved_model, resolved_temp, extra_body
             )
-            choice = response.choices[0]
-            content: str = choice.message.content or ""
+            attempt = 1
+            budget = resolved_max
+            truncated = finish_reason == "length"
+            _record_completion_provenance(
+                finish_reason=finish_reason,
+                attempt=attempt,
+                truncated=truncated,
+                max_tokens=budget,
+                provider=spec_provider,
+                model=resolved_model,
+            )
+
+            escalated_max = _escalated_budget(resolved_max)
+            if not content.strip() and truncated and escalated_max > resolved_max:
+                logger.warning(
+                    "llm_complete empty truncated response — retrying once with "
+                    "escalated max_tokens %d -> %d",
+                    resolved_max,
+                    escalated_max,
+                )
+                budget = escalated_max
+                content, finish_reason = _complete(
+                    budget, client, resolved_model, resolved_temp, extra_body
+                )
+                attempt = 2
+                truncated = finish_reason == "length"
+                _record_completion_provenance(
+                    finish_reason=finish_reason,
+                    attempt=attempt,
+                    truncated=truncated,
+                    max_tokens=budget,
+                    provider=spec_provider,
+                    model=resolved_model,
+                )
+
+            if not content.strip():
+                # Preserve the historical empty-string return contract; the
+                # failure is attributable through the recorded provenance,
+                # which the CW gate copies into its result (#612).
+                error = _empty_content_error(
+                    get_last_completion_provenance(), escalated_max_tokens=escalated_max
+                )
+                logger.warning("llm_complete empty content: %s", error)
             return content
         except Exception as exc:
             errors.append(f"{spec_provider}: {exc}")
@@ -1436,7 +1586,18 @@ def llm_complete(
                 raise LLMError(f"LLM completion failed: {exc}") from exc
             continue
 
-    raise LLMError(f"LLM completion failed for all {len(specs)} provider(s): " + "; ".join(errors))
+    error = LLMError(
+        f"LLM completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
+    )
+    # Keep provenance on the wrapped error too, so callers that only see the
+    # final provider-chain error can still attribute an empty completion.
+    provenance = get_last_completion_provenance()
+    if provenance:
+        error.provenance = provenance
+        error.finish_reason = provenance["finish_reason"]
+        error.attempt = provenance["attempt"]
+        error.truncated = provenance["truncated"]
+    raise error
 
 
 def llm_complete_structured(

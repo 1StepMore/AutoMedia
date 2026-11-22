@@ -18,7 +18,11 @@ from typing import Any
 from structlog import get_logger
 
 from automedia.core.layout import CONTENT
-from automedia.core.llm_client import LLMError, llm_complete
+from automedia.core.llm_client import (
+    LLMError,
+    get_last_completion_provenance,
+    llm_complete,
+)
 from automedia.core.text_cleaning import clean_publishable_copy
 from automedia.gates._context import GateContext
 from automedia.gates.base import BaseGate
@@ -395,6 +399,11 @@ class ContentWriterGate(BaseGate):
                 system_prompt=writer_prompt,
             )
         except LLMError as exc:
+            # #612: empty-content failures carry completion provenance. Surface
+            # it in the gate result so an empty draft is attributable instead
+            # of a bare "LLM call failed" line.
+            provenance = getattr(exc, "provenance", None)
+            context = dict(provenance) if isinstance(provenance, dict) else {}
             return {
                 "passed": False,
                 "gate": "CW",
@@ -413,7 +422,7 @@ class ContentWriterGate(BaseGate):
                     "check": "llm_success",
                     "expected": _derive_expected("llm_success"),
                     "actual": f"LLM call failed: {exc}",
-                    "context": {},
+                    "context": context,
                 },
             }
 
@@ -436,7 +445,9 @@ class ContentWriterGate(BaseGate):
                     "check": "content_not_empty",
                     "expected": _derive_expected("content_not_empty"),
                     "actual": "LLM returned empty or whitespace-only content",
-                    "context": {},
+                    # #612: make an empty draft attributable rather than a bare
+                    # "empty content" line.
+                    "context": get_last_completion_provenance(),
                 },
             }
 
