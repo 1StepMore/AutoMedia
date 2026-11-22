@@ -150,6 +150,48 @@ def _validate_mode(value: str) -> str:
     return value
 
 
+#: A short-video run names the vertical format, so an unspecified platform
+#: defaults to douyin — the same default the UI applies (#494, #630).  Without
+#: it the prompt loader sees ``platform=None``, skips every
+#: ``prompts/platforms/<platform>/`` template (douyin's writer asks for a
+#: 100-250-character script with shot markers) and renders the generic template
+#: instead, which injects no length target: the writer emits a ~100-character
+#: social caption and the video stages cannot stretch it to 30s.
+_SHORT_VIDEO_DEFAULT_PLATFORM = "douyin"
+_SHORT_VIDEO_MODES: tuple[str, ...] = ("short-video", "video_only")
+
+
+def _split_platforms(value: str | None) -> list[str] | None:
+    """Split a comma-separated ``--platform`` value; ``None`` when it is unset."""
+    if value is None:
+        return None
+    items = [part.strip() for part in value.split(",") if part.strip()]
+    return items or None
+
+
+def _resolve_platforms(value: str | None, mode: str) -> list[str] | None:
+    """Resolve the platform list handed to the pipeline (#630).
+
+    An explicit ``--platform`` always wins.  Otherwise a video mode
+    (``short-video`` / ``video_only``) defaults to douyin, and every other mode
+    returns ``None`` so the brand profile's platforms stay in charge — the
+    pre-#630 behaviour, unchanged.
+
+    Args:
+        value: Raw ``--platform`` option value (comma-separated), or ``None``.
+        mode: Validated pipeline mode.
+
+    Returns:
+        The platforms to pass to ``run_full_pipeline``, or ``None``.
+    """
+    explicit = _split_platforms(value)
+    if explicit is not None:
+        return explicit
+    if mode in _SHORT_VIDEO_MODES:
+        return [_SHORT_VIDEO_DEFAULT_PLATFORM]
+    return None
+
+
 def _resolve_resume_identity(project_id: str) -> tuple[str, str] | None:
     """Return ``(topic, brand)`` recorded on the parked *project_id*.
 
@@ -205,6 +247,16 @@ def run_cmd(
             "video: without a configured video engine (or with no image/audio "
             "input to build it from) their V gates are reported as skipped and "
             "the run is marked partial."
+        ),
+    ),
+    platform: str | None = typer.Option(
+        None,
+        "--platform",
+        "-p",
+        help=(
+            "Target platform(s), comma-separated (e.g. douyin, xiaohongshu). "
+            "Defaults to douyin for short-video/video_only; other modes fall "
+            "back to the brand profile's platforms."
         ),
     ),
     decision_mode: str = typer.Option(
@@ -315,6 +367,10 @@ def run_cmd(
             "Run 'automedia init' first to create it."
         )
 
+    # Resolved once for both entry paths so batch and single-topic runs hand the
+    # pipeline the same platform list (#630).
+    platforms = _resolve_platforms(platform, mode)
+
     # ------------------------------------------------------------------
     # Batch mode (--topics)
     # ------------------------------------------------------------------
@@ -360,6 +416,7 @@ def run_cmd(
                     progress=cli_progress,
                     source_path=source_path,
                     source_url=source_url,
+                    platforms=platforms,
                     block_on_hitl=(True if hitl_block else None),
                     resume_project_id=project_id,
                 )
@@ -479,6 +536,8 @@ def run_cmd(
 
     if get_output_mode() == OutputMode.TEXT:
         typer.echo(f"Starting pipeline: topic={topic!r}  brand={brand!r}  mode={mode}")
+        if platforms:
+            typer.echo(f"Platforms: {', '.join(platforms)}")
         if resume_from:
             typer.echo(f"Resuming from gate: {resume_from}")
         if source_path:
@@ -514,6 +573,7 @@ def run_cmd(
             progress=cli_progress,
             source_path=source_path,
             source_url=source_url,
+            platforms=platforms,
             block_on_hitl=(True if hitl_block else None),
             resume_project_id=project_id,
         )
