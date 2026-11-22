@@ -364,6 +364,33 @@ def _escalated_budget(max_tokens: int) -> int:
     return min(max_tokens * _EMPTY_CONTENT_ESCALATION_FACTOR, _EMPTY_CONTENT_ESCALATION_CAP)
 
 
+#: Upper bound (seconds) for the escalated retry's wall clock.  Same policy
+#: shape as the budget cap: one bounded escalation, never a runaway wait.
+_TIMEOUT_ESCALATION_CAP: float = 600.0
+
+
+def _escalated_timeout(timeout: float | int | str | None) -> float | None:
+    """Return the wall clock a 2x-budget retry needs, ``None`` when unset.
+
+    A retry at twice the budget takes proportionally longer than the call that
+    only *just* came back truncated inside the configured timeout — with the
+    shipped ``max_tokens=2048`` / ``timeout=60`` pair a reasoning model already
+    spends close to the whole timeout.  Without widening the clock for that one
+    retry, the escalation is killed by the same timeout and a truncation simply
+    turns into ``APITimeoutError`` (#625).  ``None`` (no configured timeout)
+    keeps the SDK default and the request byte-identical.
+    """
+    if timeout is None or isinstance(timeout, bool):
+        return None
+    try:
+        value = float(timeout)
+    except (TypeError, ValueError):
+        return None
+    if value <= 0:
+        return None
+    return min(value * _EMPTY_CONTENT_ESCALATION_FACTOR, _TIMEOUT_ESCALATION_CAP)
+
+
 _completion_provenance = threading.local()
 
 
@@ -426,6 +453,114 @@ def _empty_content_error(
     error.attempt = provenance["attempt"]
     error.truncated = provenance["truncated"]
     return error
+
+
+# ---------------------------------------------------------------------------
+# Structured-output truncation escalation + provenance (#625)
+# ---------------------------------------------------------------------------
+#
+# A reasoning model shares one ``max_tokens`` budget between its thinking trace
+# and the payload.  On the structured path that shows up as:
+#
+#   beta parse   -> ``LengthFinishReasonError`` (payload never terminated)
+#   json_object  -> ``finish_reason="length"`` and/or ``completion_tokens``
+#                   pinned to ``max_tokens``, with JSON cut mid-string
+#
+# #624 fixed the plain-text path only, so a structured call re-asked every
+# provider in the chain with the same thin budget and ended in "0 provider(s)
+# remaining".  The policy here is deliberately the same as #624: retry exactly
+# once at ``_escalated_budget()`` (2x, capped at 16000) and only when the
+# failure is a truncation — any other failure keeps the configured budget.
+
+
+class _StructuredTruncationError(LLMError):
+    """Internal signal: one structured attempt was cut off by ``max_tokens``.
+
+    Subclasses :class:`LLMError` on purpose: once the escalation ladder is
+    exhausted the error joins the provider-chain error list like any other
+    structured failure, so the caller-visible contract (an ``LLMError`` whose
+    message names every provider) is unchanged.
+    """
+
+
+_structured_provenance = threading.local()
+
+
+def get_last_structured_provenance() -> dict[str, Any]:
+    """Return the most recent structured-completion provenance for this thread.
+
+    The structured counterpart of :func:`get_last_completion_provenance`
+    (#625).  The dict carries ``finish_reason``, ``attempt``, ``truncated``,
+    ``max_tokens``, ``provider``, ``model`` and ``completion_tokens``; an
+    empty dict means no structured call has happened on this thread yet.
+    """
+    return dict(getattr(_structured_provenance, "last", {}))
+
+
+def _record_structured_provenance(
+    *,
+    finish_reason: object,
+    attempt: int,
+    truncated: bool,
+    max_tokens: int,
+    provider: str,
+    model: str,
+    completion_tokens: int | None,
+) -> dict[str, Any]:
+    """Record and log the provenance of one structured-completion attempt."""
+    provenance: dict[str, Any] = {
+        "finish_reason": finish_reason,
+        "attempt": attempt,
+        "truncated": truncated,
+        "max_tokens": max_tokens,
+        "provider": provider,
+        "model": model,
+        "completion_tokens": completion_tokens,
+    }
+    _structured_provenance.last = provenance
+    logger.info(
+        "llm_complete_structured.provenance finish_reason=%s attempt=%d "
+        "truncated=%s max_tokens=%d completion_tokens=%s",
+        finish_reason,
+        attempt,
+        truncated,
+        max_tokens,
+        completion_tokens,
+    )
+    return provenance
+
+
+def _completion_tokens(response: object) -> int | None:
+    """Return ``usage.completion_tokens`` from *response* when reported.
+
+    ``None`` (rather than ``0``) keeps usage-less and mocked responses from
+    being mistaken for a budget truncation.
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    tokens = getattr(usage, "completion_tokens", None)
+    if not isinstance(tokens, int):
+        return None
+    return tokens
+
+
+def _completion_hit_budget(response: object, max_tokens: int) -> bool:
+    """True when the response consumed the whole ``max_tokens`` budget (#625).
+
+    Some gateways report ``finish_reason="stop"`` (or ``None``) even on a
+    truncated payload, so the usage counter is the only reliable signal there.
+    """
+    tokens = _completion_tokens(response)
+    return tokens is not None and tokens >= max_tokens
+
+
+def _finish_reason(response: object) -> object:
+    """Return ``choices[0].finish_reason`` from *response* when present."""
+    choices = getattr(response, "choices", None)
+    if not isinstance(choices, list) or not choices:
+        return None
+    return getattr(choices[0], "finish_reason", None)
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +1024,34 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
 
 _FALLBACK_STRUCTURED_ERRORS: tuple[type[BaseException], ...] = _get_fallback_structured_errors()
 
+
+def _get_length_finish_errors() -> tuple[type[BaseException], ...]:
+    """Return the SDK's ``LengthFinishReasonError`` type when available (#625)."""
+    try:
+        import openai
+    except ImportError:
+        return ()
+    length_error = getattr(openai, "LengthFinishReasonError", None)
+    if isinstance(length_error, type) and issubclass(length_error, BaseException):
+        return (length_error,)
+    return ()
+
+
+_LENGTH_FINISH_ERRORS: tuple[type[BaseException], ...] = _get_length_finish_errors()
+
+
+def _is_length_finish_error(exc: BaseException) -> bool:
+    """True when *exc* means "the payload was cut off by ``max_tokens``".
+
+    The OpenAI SDK reports it as ``LengthFinishReasonError``.  A gateway
+    library that re-implements the same condition keeps the class name, which
+    is the only signal left once the SDK type is unavailable (#625).
+    """
+    if _LENGTH_FINISH_ERRORS and isinstance(exc, _LENGTH_FINISH_ERRORS):
+        return True
+    return type(exc).__name__ == "LengthFinishReasonError"
+
+
 # Cache: once a provider fails the beta structured API, skip it on subsequent calls
 # to avoid wasting 2-3s per gate on the inevitable 400 response.
 # Keyed by provider so the fallback chain can switch to a provider that
@@ -1063,8 +1226,19 @@ def _parse_structured_with_repair(
     temperature: float,
     max_tokens: int,
     extra_body: dict[str, Any] | None = None,
+    allow_repair: bool = True,
 ) -> _ModelT:
-    """Parse *raw_text* tolerantly, with at most one repair call on failure."""
+    """Parse *raw_text* tolerantly, with at most one repair call on failure.
+
+    Parameters
+    ----------
+    allow_repair:
+        When ``False`` a failed tolerant parse raises instead of spending one
+        more call at the same ``max_tokens``.  Callers pass ``False`` for a
+        response already known to be truncated by the budget: re-asking with
+        the same budget cannot terminate the payload, so the recovery is an
+        escalated retry, not a repair (#625).
+    """
     instance, invalid_fields, error_detail = _tolerant_validate(response_format, raw_text)
     if instance is not None:
         if invalid_fields:
@@ -1074,6 +1248,13 @@ def _parse_structured_with_repair(
                 invalid_fields,
             )
         return instance
+
+    if not allow_repair:
+        raise LLMError(
+            f"Failed to parse LLM response as {response_format.__name__} "
+            f"(repair skipped: response was truncated): "
+            f"{error_detail or 'unknown validation error'}"
+        )
 
     logger.warning(
         "structured output for %s failed validation (invalid_fields=%s): %s — "
@@ -1205,110 +1386,234 @@ def _structured_completion_with_fallback(
             # carry the same body.
             resolved_extra_body: dict[str, Any] | None = resolve_extra_body(spec)
 
-            # Skip beta API entirely if the provider already proved it doesn't support it
-            response: ChatCompletion | ParsedChatCompletion | None = None
-            if not _provider_no_beta_api.get(provider_key, False):
-                beta_started = time.monotonic()
-                try:
-                    logger.info("Attempting structured completion via beta API")
-                    response = _llm_structured_completion_with_retry(
-                        client,
-                        model=resolved_model,
-                        messages=messages,
-                        response_format=response_format,
-                        temperature=resolved_temp,
-                        max_tokens=resolved_max,
-                        extra_body=resolved_extra_body,
-                    )
+            def _attempt(
+                budget: int,
+                attempt_number: int,
+                provider: str,
+                active_client: OpenAI,
+                active_model: str,
+                active_temperature: float,
+                active_body: dict[str, Any] | None,
+            ) -> tuple[_ModelT, dict[str, Any]]:
+                """Run one structured attempt at *budget* and record provenance.
+
+                Returns the parsed model.  Raises :class:`_StructuredTruncationError`
+                only when the attempt was cut off by ``max_tokens`` *and* could
+                not be parsed — the single condition the caller escalates
+                (#625).  Every other failure keeps its historical meaning.
+                """
+                # Skip beta API entirely if the provider already proved it
+                # does not support structured output.
+                response: ChatCompletion | ParsedChatCompletion | None = None
+                truncated = False
+                if not _provider_no_beta_api.get(provider, False):
+                    beta_started = time.monotonic()
                     try:
-                        return cast(_ModelT, response.choices[0].message.parsed)
+                        logger.info("Attempting structured completion via beta API")
+                        beta_response = _llm_structured_completion_with_retry(
+                            active_client,
+                            model=active_model,
+                            messages=messages,
+                            response_format=response_format,
+                            temperature=active_temperature,
+                            max_tokens=budget,
+                            extra_body=active_body,
+                        )
+                        response = beta_response
                     except ValidationError:
-                        # Lazy-parse SDKs raise here.  Fall through to the manual
-                        # parse path, which reuses the response content and strips
-                        # markdown fences.
+                        # openai >=2.0 parses eagerly inside parse(): the SDK raises
+                        # ValidationError for fenced/non-schema JSON before returning.
+                        # Cache the skip — a provider that ignores the schema contract
+                        # (e.g. bigmodel.cn) will fail identically on every call.
                         logger.warning(
                             "Beta structured completion returned content that failed "
-                            "schema validation (%s) — falling back to manual JSON parse.",
+                            "schema validation (%s) — caching skip, falling back to "
+                            "manual JSON parse.",
                             response_format.__name__,
                         )
-                except ValidationError:
-                    # openai >=2.0 parses eagerly inside parse(): the SDK raises
-                    # ValidationError for fenced/non-schema JSON before returning.
-                    # Cache the skip — a provider that ignores the schema contract
-                    # (e.g. bigmodel.cn) will fail identically on every call.
-                    logger.warning(
-                        "Beta structured completion returned content that failed "
-                        "schema validation (%s) — caching skip, falling back to "
-                        "manual JSON parse.",
-                        response_format.__name__,
+                        _provider_no_beta_api[provider] = True
+                    except _FALLBACK_STRUCTURED_ERRORS as exc:
+                        elapsed_s = time.monotonic() - beta_started
+                        if _is_length_finish_error(exc):
+                            # A payload cut off by max_tokens is a BUDGET problem,
+                            # not a missing capability: keep the provider on the
+                            # beta path so the escalated retry can use native
+                            # schema parsing again (#625).
+                            truncated = True
+                            logger.warning(
+                                "Structured beta API returned a truncated payload "
+                                "(provider=%s model=%s max_tokens=%d elapsed_s=%.2f "
+                                "error=%s: %s) — degrading to manual JSON parse.",
+                                provider,
+                                active_model,
+                                budget,
+                                elapsed_s,
+                                type(exc).__name__,
+                                exc,
+                            )
+                        else:
+                            logger.warning(
+                                "Structured beta API unavailable — degrading to manual "
+                                "JSON parse (provider=%s model=%s elapsed_s=%.2f error=%s: %s).",
+                                provider,
+                                active_model,
+                                elapsed_s,
+                                type(exc).__name__,
+                                exc,
+                            )
+                            _provider_no_beta_api[provider] = True
+                    else:
+                        try:
+                            parsed = cast(_ModelT, beta_response.choices[0].message.parsed)
+                        except ValidationError:
+                            # Lazy-parse SDKs raise here.  Fall through to the manual
+                            # parse path, which reuses the response content and strips
+                            # markdown fences.
+                            logger.warning(
+                                "Beta structured completion returned content that failed "
+                                "schema validation (%s) — falling back to manual JSON parse.",
+                                response_format.__name__,
+                            )
+                        else:
+                            return parsed, _record_structured_provenance(
+                                finish_reason=_finish_reason(beta_response),
+                                attempt=attempt_number,
+                                truncated=False,
+                                max_tokens=budget,
+                                provider=provider,
+                                model=active_model,
+                                completion_tokens=_completion_tokens(beta_response),
+                            )
+                else:
+                    logger.info(
+                        "Skipping beta API (cached — provider does not support structured output)"
                     )
-                    _provider_no_beta_api[provider_key] = True
-                except _FALLBACK_STRUCTURED_ERRORS as exc:
-                    elapsed_s = time.monotonic() - beta_started
-                    logger.warning(
-                        "Structured beta API unavailable — degrading to manual "
-                        "JSON parse (provider=%s model=%s elapsed_s=%.2f error=%s: %s).",
-                        provider_key,
-                        resolved_model,
-                        elapsed_s,
-                        type(exc).__name__,
-                        exc,
-                    )
-                    _provider_no_beta_api[provider_key] = True
-            else:
-                logger.info(
-                    "Skipping beta API (cached — provider does not support structured output)"
-                )
 
-            if response is None:
-                try:
-                    response = _llm_chat_completion_with_retry(
-                        client,
-                        model=resolved_model,
-                        messages=messages,
-                        temperature=resolved_temp,
-                        max_tokens=resolved_max,
-                        response_format={"type": "json_object"},
-                        extra_body=resolved_extra_body,
-                    )
-                except _FALLBACK_STRUCTURED_ERRORS:
-                    # Provider may reject json_object mode (e.g. OpenAI requires the
-                    # word "json" in the prompt; some providers refuse it outright).
-                    # Retry once without the format constraint.
-                    logger.warning(
-                        "Provider rejected response_format=json_object — retrying "
-                        "without the format constraint."
-                    )
+                if response is None:
                     try:
                         response = _llm_chat_completion_with_retry(
-                            client,
-                            model=resolved_model,
+                            active_client,
+                            model=active_model,
                             messages=messages,
-                            temperature=resolved_temp,
-                            max_tokens=resolved_max,
-                            extra_body=resolved_extra_body,
+                            temperature=active_temperature,
+                            max_tokens=budget,
+                            response_format={"type": "json_object"},
+                            extra_body=active_body,
                         )
+                    except _FALLBACK_STRUCTURED_ERRORS:
+                        # Provider may reject json_object mode (e.g. OpenAI requires the
+                        # word "json" in the prompt; some providers refuse it outright).
+                        # Retry once without the format constraint.
+                        logger.warning(
+                            "Provider rejected response_format=json_object — retrying "
+                            "without the format constraint."
+                        )
+                        try:
+                            response = _llm_chat_completion_with_retry(
+                                active_client,
+                                model=active_model,
+                                messages=messages,
+                                temperature=active_temperature,
+                                max_tokens=budget,
+                                extra_body=active_body,
+                            )
+                        except Exception as exc:
+                            raise LLMError(
+                                f"LLM completion failed during structured fallback: {exc}"
+                            ) from exc
                     except Exception as exc:
                         raise LLMError(
                             f"LLM completion failed during structured fallback: {exc}"
                         ) from exc
-                except Exception as exc:
-                    raise LLMError(
-                        f"LLM completion failed during structured fallback: {exc}"
-                    ) from exc
 
-            raw_text: str = response.choices[0].message.content or ""
+                raw_text: str = response.choices[0].message.content or ""
+                finish_reason = _finish_reason(response)
+                truncated = (
+                    truncated
+                    or finish_reason == "length"
+                    or _completion_hit_budget(response, budget)
+                )
+                provenance = _record_structured_provenance(
+                    finish_reason=finish_reason,
+                    attempt=attempt_number,
+                    truncated=truncated,
+                    max_tokens=budget,
+                    provider=provider,
+                    model=active_model,
+                    completion_tokens=_completion_tokens(response),
+                )
+                try:
+                    parsed_body = _parse_structured_with_repair(
+                        response_format=response_format,
+                        raw_text=raw_text,
+                        client=active_client,
+                        model=active_model,
+                        messages=messages,
+                        temperature=active_temperature,
+                        max_tokens=budget,
+                        extra_body=active_body,
+                        # A truncated payload cannot be repaired at the budget
+                        # that just truncated it — escalate instead (#625).
+                        allow_repair=not truncated,
+                    )
+                except LLMError as exc:
+                    if not truncated:
+                        raise
+                    error = _StructuredTruncationError(
+                        "structured output truncated by max_tokens "
+                        f"(response_format={response_format.__name__} "
+                        f"provider={provider!r} model={active_model!r} "
+                        f"attempt={attempt_number} budget={budget} "
+                        f"finish_reason={finish_reason!r} "
+                        f"completion_tokens={provenance['completion_tokens']}): {exc}"
+                    )
+                    error.provenance = provenance
+                    error.finish_reason = finish_reason
+                    error.attempt = attempt_number
+                    error.truncated = True
+                    raise error from exc
+                return parsed_body, provenance
 
-            return _parse_structured_with_repair(
-                response_format=response_format,
-                raw_text=raw_text,
-                client=client,
-                model=resolved_model,
-                messages=messages,
-                temperature=resolved_temp,
-                max_tokens=resolved_max,
-                extra_body=resolved_extra_body,
-            )
+            # #625: retry exactly ONCE with a larger budget (2x, capped at
+            # 16000) when the attempt was cut off by max_tokens.  Any other
+            # failure keeps the configured budget and its historical path.
+            escalation_target: int = _escalated_budget(resolved_max)
+            escalated_timeout: float | None = _escalated_timeout(spec.get("timeout"))
+            attempt: int = 1
+            budget: int = resolved_max
+            attempt_client = client
+            while True:
+                try:
+                    parsed_result, _last_provenance = _attempt(
+                        budget,
+                        attempt,
+                        provider_key,
+                        attempt_client,
+                        resolved_model,
+                        resolved_temp,
+                        resolved_extra_body,
+                    )
+                    return parsed_result
+                except _StructuredTruncationError:
+                    if budget >= escalation_target:
+                        # Already at (or above) the cap: no further escalation.
+                        raise
+                    logger.warning(
+                        "structured completion for %s truncated at max_tokens=%d — "
+                        "retrying once with escalated budget %d",
+                        response_format.__name__,
+                        budget,
+                        escalation_target,
+                    )
+                    attempt = 2
+                    budget = escalation_target
+                    if escalated_timeout is not None:
+                        # The bigger budget needs wall clock; bound the whole
+                        # retry with the widened timeout instead of the SDK
+                        # default (#625).
+                        attempt_client = client.with_options(
+                            timeout=escalated_timeout, max_retries=0
+                        )
         except Exception as exc:
             errors.append(f"{provider_key}: {exc}")
             logger.warning(
@@ -1321,9 +1626,18 @@ def _structured_completion_with_fallback(
                 raise
             continue
 
-    raise LLMError(
+    error = LLMError(
         f"LLM structured completion failed for all {len(specs)} provider(s): " + "; ".join(errors)
     )
+    # Keep the last attempt's provenance on the wrapped error too, so a caller
+    # that only sees the chain error can still attribute a truncation (#625).
+    provenance = get_last_structured_provenance()
+    if provenance:
+        error.provenance = provenance
+        error.finish_reason = provenance["finish_reason"]
+        error.attempt = provenance["attempt"]
+        error.truncated = provenance["truncated"]
+    raise error
 
 
 def llm_complete_structured_safe(
