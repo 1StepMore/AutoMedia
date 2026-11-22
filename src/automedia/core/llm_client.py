@@ -9,12 +9,14 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
 from tenacity import (
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -195,6 +197,38 @@ def _get_retryable_errors() -> tuple[type[BaseException], ...]:
 _RETRYABLE_ERRORS: tuple[type[BaseException], ...] = _get_retryable_errors()
 
 logger = logging.getLogger(__name__)
+
+
+def _is_timeout_or_connection_error(exc: BaseException) -> bool:
+    """Whether *exc* is an OpenAI timeout/connection failure.
+
+    The structured beta call must not retry these: a hung or unreachable
+    provider is a signal to degrade to the manual JSON path right away,
+    not to burn another timeout (issue #621).
+    """
+    try:
+        import openai
+    except ImportError:
+        return False
+
+    error_types = tuple(
+        error_type
+        for name in ("APITimeoutError", "APIConnectionError")
+        if isinstance(error_type := getattr(openai, name, None), type)
+    )
+    return bool(error_types) and isinstance(exc, error_types)
+
+
+def _retry_structured_call(exc: BaseException) -> bool:
+    """Retry predicate for the structured beta call.
+
+    Retries transient errors from :data:`_RETRYABLE_ERRORS`, except
+    timeouts/connection failures which immediately trigger the manual
+    fallback (see :func:`_is_timeout_or_connection_error`).
+    """
+    if _is_timeout_or_connection_error(exc):
+        return False
+    return isinstance(exc, _RETRYABLE_ERRORS)
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +414,19 @@ def _build_client(
     client_kwargs: dict[str, Any] = {"api_key": api_key}
     if base_url:
         client_kwargs["base_url"] = base_url
+
+    # Consume the configured wall-clock timeout (issue #621).  The config
+    # layer already maps AUTOMEDIA_LLM_TIMEOUT onto llm.<task>.timeout; until
+    # now nobody read it, so the SDK silently used its 600s default and a
+    # hung provider could stall a whole pipeline.  When no timeout is
+    # configured we leave the kwargs untouched so behavior is byte-identical
+    # to before this change (SDK default + SDK retries).
+    timeout = llm_cfg.get("timeout")
+    if timeout is not None and timeout != "":
+        client_kwargs["timeout"] = float(timeout)
+        # The timeout is our own hard bound; disable the SDK's transparent
+        # retries (default 2) so a slow host cannot cost timeout x 3.
+        client_kwargs["max_retries"] = 0
 
     return OpenAI(**client_kwargs)
 
@@ -673,9 +720,9 @@ def _llm_structured_completion_with_retry(
     """
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
+        retry=retry_if_exception(_retry_structured_call),
         reraise=True,
     )
     def _call() -> ParsedChatCompletion:
@@ -718,6 +765,12 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
     (raised when a reasoning model burns the whole ``max_tokens`` budget on
     thinking and the beta parse never terminates) also routes to the manual
     parse path.
+
+    ``APITimeoutError`` / ``APIConnectionError`` are listed explicitly
+    (issue #621): a provider whose beta endpoint hangs or drops the
+    connection is treated exactly like one that does not implement it, so
+    the manual ``response_format={"type": "json_object"}`` path takes over
+    immediately instead of the caller waiting out repeated timeouts.
     """
     try:
         import openai
@@ -732,6 +785,14 @@ def _get_fallback_structured_errors() -> tuple[type[BaseException], ...]:
         length_error = getattr(openai, "LengthFinishReasonError", None)
         if isinstance(length_error, type) and issubclass(length_error, BaseException):
             errors = (*errors, length_error)
+        for name in ("APITimeoutError", "APIConnectionError"):
+            error_type = getattr(openai, name, None)
+            if (
+                isinstance(error_type, type)
+                and issubclass(error_type, BaseException)
+                and error_type not in errors
+            ):
+                errors = (*errors, error_type)
         return errors
     except ImportError:
         return (AttributeError, NotImplementedError)
@@ -1058,6 +1119,7 @@ def _structured_completion_with_fallback(
             # Skip beta API entirely if the provider already proved it doesn't support it
             response: ChatCompletion | ParsedChatCompletion | None = None
             if not _provider_no_beta_api.get(provider_key, False):
+                beta_started = time.monotonic()
                 try:
                     logger.info("Attempting structured completion via beta API")
                     response = _llm_structured_completion_with_retry(
@@ -1093,9 +1155,13 @@ def _structured_completion_with_fallback(
                     )
                     _provider_no_beta_api[provider_key] = True
                 except _FALLBACK_STRUCTURED_ERRORS as exc:
+                    elapsed_s = time.monotonic() - beta_started
                     logger.warning(
-                        "Structured beta API not supported by provider (%s: %s). "
-                        "Caching result — falling back for subsequent calls.",
+                        "Structured beta API unavailable — degrading to manual "
+                        "JSON parse (provider=%s model=%s elapsed_s=%.2f error=%s: %s).",
+                        provider_key,
+                        resolved_model,
+                        elapsed_s,
                         type(exc).__name__,
                         exc,
                     )
