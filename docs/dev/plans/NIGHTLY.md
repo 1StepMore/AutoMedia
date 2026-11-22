@@ -85,6 +85,25 @@ cd <repo>
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 
+### 2026-11-22 夜间复跑（在最新 main `abddf4c` 上）
+
+批跑（02:00，systemd，网关进程树外）：**2 / 3 轨达标，视频轨未达标**（`nightly/gap.json`：`total_units 3` / `passing_units 2` / `gap: ["视频轨"]`）—— 文本轨 2 个达标（`20261103_沈阳中小企业内容营销越做越累`、`20261121_automated-content-pipelines-for-solo-founders`）、图文轨 1 个达标（`20261121_automated-content-pipelines-for-solo-founders`）、视频轨 0 个。
+
+视频轨判红原因（原样取自 `nightly/gap.md`，前 5 条）：
+
+- `20261121_automated-content-pipelines-for-solo-founders`：must-run gate not passed: **V3**
+- `20261111_小团队内容排期的实用做法`：must-run gate not passed: **V3**
+- `20261109_ai-企业用做内容为什么先跑通流程再谈产量`：no gate-report
+- `20261111_本地化团队的三步交付法`：gates missing from report: V2,V3,V4,V5,V6,V7
+- `20261105_小团队内容排期的实用做法`：video degraded to slideshow —— `Engine 'hyperframes' execution failed: hyperframes render failed (exit code 1)`
+
+即：**判红不是单一根因** —— 两个项目卡在 V3 门未过（内容侧判据）、一个无 gate-report、一个 gate-report 缺 V2–V7、一个渲染失败降级成幻灯片。
+
+- 项目目录 20 个（真模型 `cost_log` 非空 8 个）；bench：main@`abddf4c`。
+- 验证场景 163 条：passed 113 / None 35 / unconfigured 2 / failed 9 / partial-pass 3 / recovered 1；hard 场景 10 条全部执行且通过（已执行-失败 0、未执行 0）；门：missing 0 / unreachable 2（G4、G5）。
+- **与 2026-10-21「三轨全达标」的记录不再一致**：本轮视频轨判 ❌ ⇒ 10-21 那条只能读作「当时那一刻的状态」，不代表现状。
+- **最终裁决仍由 owner 保留**（见【冻结区】）。
+
 ### 2026-11-09 口径修订：验证矩阵「未过」→「未执行/失败」分开报（issue #415）
 
 `scripts/nightly_gap.py` 的验证矩阵小节改口径（属脚本判据，非冻结区 DoD）：
@@ -179,6 +198,7 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 - 2026-10-15：**图文轨 3 → 4**（`20261014_a-practical-guide-to-weekly-content-reviews-for-small-teams`：真 draft 5,953B + cost_log 8 行 + 2.12MB 真图）→ 队列第 1 项（打穿图文轨）闭合。
 - 2026-10-15：**队列第 3 项（持久落盘体检）复核闭合** —— 本轮 3 次真跑的 `00_project_info.json` / `01_content/drafts/` / `03_video/output.mp4` 全落在 **repo 内项目目录**（非 `/tmp`）；产品侧 hyperframes 的临时工程目录仍在 `/tmp/hyperframes_*`，但出片产物落项目目录，符合 DoD 附加硬要求 1。
 - 2026-10-19：**视频轨 0 → 1 —— 三轨全达标**（`nightly_gap.py` exit 0；证据见上「2026-10-19 夜间复跑」）。
+- 2026-11-22：视频轨 **1 → 0（回归）** —— 见上方 2026-11-22 复跑小节。判红不成单一根因（V3 门未过 ×2 / 无 gate-report / gate-report 缺 V2–V7 / hyperframes 渲染失败降级），先修哪条交 owner 定。
 
 ---
 
