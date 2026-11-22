@@ -123,14 +123,17 @@ def _check_all_entries_passed(entries: list[dict[str, Any]]) -> CheckResult:
         return {"name": name, "passed": False, "detail": detail}
     unjudged = sum(1 for e in entries if not e.get("checked", False))
     if unjudged:
-        return {
-            "name": name,
-            "passed": True,
-            "detail": (
-                f"all judged entries passed vision QA ({unjudged} scene(s) "
-                f"recorded unjudged — see red_line_6)"
-            ),
-        }
+        # #646：判定语义不变（unjudged 不算 fail），但要把「空过」说出来——
+        # judged=0 时这个 pass 是 vacuous，detail 必须直说，不能读成
+        # "画面质量已判定"。
+        judged_n = len(entries) - unjudged
+        detail = (
+            f"{judged_n}/{len(entries)} entries judged ({unjudged} unjudged) — "
+            "all judged entries passed vision QA"
+            if judged_n
+            else f"0/{len(entries)} entries judged ({unjudged} unjudged) — pass is vacuous"
+        )
+        return {"name": name, "passed": True, "detail": detail}
     return {"name": name, "passed": True, "detail": f"all {len(entries)} entries passed vision QA"}
 
 
@@ -193,12 +196,27 @@ def _write_vision_qa_evidence(
     pass 与 fail **都写**——成功路径此前什么都不留，判红时只能靠重跑复现。
     每条 entry 保留判官理由**原文**（不截断），并带 ``kind``（reused/generated/
     panel）区分素材来源。空 ``project_dir`` 或空 ``entries`` 时不写（无可记录）。
+
+    顶层记账（#646）：``judged`` / ``unjudged`` / ``judged_ratio`` 写清判定
+    覆盖率，``model`` 记录判官身份（``<provider>/<model>``，取自判过场次的
+    ``judge_model``；没有任何真判过的场次时为 ``null``）——「V1 绿了」才能
+    一眼看出是不是真判过。
     """
     if not project_dir or not entries:
         return None
+    judged_n = sum(1 for e in entries if e.get("checked", False))
+    unjudged_n = len(entries) - judged_n
+    judge_model = next(
+        (str(e.get("judge_model") or "") for e in entries if e.get("judge_model")),
+        "",
+    )
     record: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "passed": bool(passed),
+        "judged": judged_n,
+        "unjudged": unjudged_n,
+        "judged_ratio": round(judged_n / len(entries), 4),
+        "model": judge_model or None,
         "entries": [
             {
                 "index": i,
@@ -320,7 +338,8 @@ class V1VisionQA(BaseGate):
                 "status": "skipped",
                 "reason": (
                     f"V1 entries produced ({len(entries)} scene(s)) but none judgeable — "
-                    f"no vision-capable model configured and no text panel to "
+                    f"0/{len(entries)} entries judged ({len(entries)} unjudged), pass is "
+                    f"vacuous; no vision-capable model configured and no text panel to "
                     f"short-circuit; frames recorded unjudged ({paths}…)"
                 ),
             }

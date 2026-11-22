@@ -100,6 +100,9 @@ class MockVLMClient:
     contains any of them, or when ``default_related`` says so.
     """
 
+    #: evidence label (#646): a mock judged nothing real, say so.
+    model_name = "mock"
+
     def __init__(
         self,
         *,
@@ -130,12 +133,24 @@ class OpenAICompatVLMClient:
         client: Any,  # noqa: ANN401 — any OpenAI-compatible SDK client
         model: str,
         extra_body: dict[str, Any] | None = None,
+        provider: str = "",
     ) -> None:
         self._client = client
         self._model = model
+        self._provider = provider
         # Thinking-disable pathway (#525): resolved once via the shared
         # resolver, never a per-site literal.
         self._extra_body = extra_body
+
+    @property
+    def model_name(self) -> str:
+        """Who judged the frame — ``<provider>/<model>`` (#646).
+
+        Evidence files record this so a green V1 can be told apart from a
+        vacuous one (every scene ``unjudged`` because no channel existed).
+        Without a provider, the bare model name is returned.
+        """
+        return f"{self._provider}/{self._model}" if self._provider else self._model
 
     @staticmethod
     def _data_url(image_path: str) -> str:
@@ -200,11 +215,13 @@ def create_vlm_client(config: dict[str, Any] | None = None) -> VLMClient | None:
         model = str(vision_cfg.get("model") or "").strip()
         if not model:
             return None
+        provider = str(vision_cfg.get("provider") or "").strip()
         client = _build_client(cfg, task_type="vision")
         return OpenAICompatVLMClient(
             client,
             model,
             extra_body=resolve_extra_body(vision_cfg if isinstance(vision_cfg, dict) else None),
+            provider=provider,
         )
     except Exception as exc:  # no key, no provider, bad config — all "no channel"
         log.info("vlm_client.unavailable", error=str(exc))
