@@ -161,3 +161,100 @@ class TestVisionQAEvidence:
             c for c in result_bare["checks"] if c["name"] == "all_entries_passed"
         )
         assert check_bare["detail"] == "entries [0] failed vision QA"
+
+
+class _StaticVLM:
+    """``judge_frame`` 返回固定 payload——#638 determinable/判不了用例的注入桩。"""
+
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self._payload = payload
+
+    def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
+        return dict(self._payload)
+
+
+class TestUnreadableIsUnjudgedNotFailed:
+    """「判不了」≠「判不过」（issue #638）：判官读不了画面时记 unjudged。"""
+
+    def test_unreadable_reason_is_unjudged_not_failed(self, tmp_path: Any) -> None:
+        """判官说"图像内容无法解析"⇒ checked=False、verdict 以 unjudged 开头，
+        且门不因此判红（panel 场已判过，unjudged 场由 red_line_6 记账）。"""
+        entries = _build_entries(
+            tmp_path,
+            kinds=["panel", "generated"],
+            vlm=_StaticVLM(
+                {"related": False, "reason": "图像内容无法解析，无法确认画面与旁白描述是否一致"}
+            ),
+        )
+        entry = entries[1]
+        assert entry["checked"] is False
+        assert entry["qa_passed"] is False
+        assert entry["verdict"].startswith("unjudged")
+        assert "图像内容无法解析" in entry["verdict"]
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True
+        check = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert check["passed"] is True
+
+    def test_explicit_unrelated_still_fails(self, tmp_path: Any) -> None:
+        """判官明确判"不相关"（给出实质依据）⇒ 仍判负，负样本路径不松动（#387）。"""
+        entries = _build_entries(
+            tmp_path,
+            vlm=_StaticVLM({"related": False, "reason": "画面是风景，与旁白讲的产品无关"}),
+        )
+        for entry in entries:
+            assert entry["checked"] is True
+            assert entry["qa_passed"] is False
+            assert entry["verdict"].startswith("vlm: unrelated")
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is False
+        check = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert check["passed"] is False
+
+    def test_mixed_reason_with_unrelated_evidence_fails(self, tmp_path: Any) -> None:
+        """reason 既有"看不清"又有"不符"⇒ 仍判负——不能借"读不清"放过真负样本。"""
+        entries = _build_entries(
+            tmp_path,
+            vlm=_StaticVLM(
+                {"related": False, "reason": "画面细节看不清，且画面内容与旁白描述不符"}
+            ),
+        )
+        for entry in entries:
+            assert entry["checked"] is True
+            assert entry["qa_passed"] is False
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is False
+        check = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert check["passed"] is False
+
+    def test_determinable_false_field_wins(self, tmp_path: Any) -> None:
+        """结构化 ``determinable=False`` 优先于文本兜底：即使 reason 带不相关
+        字样（旧模型瞎猜的相关性），也记 unjudged 而非 unrelated。"""
+        entries = _build_entries(
+            tmp_path,
+            kinds=["panel", "generated"],
+            vlm=_StaticVLM({"determinable": False, "related": False, "reason": "画面与旁白无关"}),
+        )
+        entry = entries[1]
+        assert entry["checked"] is False
+        assert entry["qa_passed"] is False
+        assert entry["verdict"].startswith("unjudged")
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True
+        check = next(c for c in result["checks"] if c["name"] == "all_entries_passed")
+        assert check["passed"] is True
+
+    def test_related_true_unchanged(self, tmp_path: Any) -> None:
+        """回归保护：正常 ``related=True`` 的判定路径与改动前一致（judged + pass）。"""
+        entries = _build_entries(tmp_path, vlm=MockVLMClient(default_related=True))
+        for entry in entries:
+            assert entry["checked"] is True
+            assert entry["qa_passed"] is True
+            assert entry["verdict"].startswith("vlm: related")
+
+        result = V1VisionQA().execute({"entries": entries, "project_dir": str(tmp_path)})
+        assert result["passed"] is True
