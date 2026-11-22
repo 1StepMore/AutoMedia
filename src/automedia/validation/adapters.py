@@ -35,6 +35,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -61,6 +62,94 @@ _ANSI_ESCAPE_RE = re.compile(
     r"|\x1b[@-Z\\-_]"  # two-byte escapes (e.g. save/restore cursor)
 )
 """Terminal escape sequences stripped from captured CLI streams."""
+
+_POSIX_UTIL_NAMES: frozenset[str] = frozenset(
+    {
+        "awk",
+        "cat",
+        "cut",
+        "find",
+        "grep",
+        "head",
+        "ls",
+        "sed",
+        "sort",
+        "tail",
+        "tr",
+        "uniq",
+        "wc",
+        "xargs",
+    }
+)
+"""Bare POSIX utility names a committed scenario command may use.
+
+Only these are resolved to an absolute path on Windows (see
+:func:`_resolve_posix_util`); anything else is left exactly as written.
+"""
+
+
+def _is_under_windows_system_dir(candidate: str) -> bool:
+    """True when *candidate* lives under ``%SystemRoot%`` / ``%windir%``."""
+    normalised = os.path.normcase(os.path.normpath(candidate))
+    for variable in ("SystemRoot", "windir"):
+        root = os.environ.get(variable)
+        if not root:
+            continue
+        prefix = os.path.normcase(os.path.normpath(root))
+        if normalised == prefix or normalised.startswith(prefix + os.sep):
+            return True
+    return False
+
+
+def _posix_util_candidates(token: str) -> list[str]:
+    """Return PATH candidates named *token*, ``token.exe`` form included.
+
+    ``shutil.which`` is asked first, then every ``PATH`` entry is scanned for
+    both names.  Duplicates are dropped so the ordering below is stable.
+    """
+    candidates: list[str] = []
+    found = shutil.which(token)
+    if found:
+        candidates.append(found)
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        if not directory:
+            continue
+        for name in (token, f"{token}.exe"):
+            candidate = os.path.join(directory, name)
+            if os.path.isfile(candidate) and candidate not in candidates:
+                candidates.append(candidate)
+    return candidates
+
+
+def _resolve_posix_util(token: str) -> str:
+    """Resolve a bare POSIX utility name to a non-system executable.
+
+    Windows ``CreateProcess`` searches ``%SystemRoot%\\system32`` *before*
+    ``PATH``, so a bare ``find`` in a scenario command always lands on
+    ``C:\\Windows\\system32\\find.exe`` — the Windows *text* search tool, which
+    rejects ``-name``/``-size`` and exits 2.  That is why ``auto-journey``
+    step 3 ("a ``*_draft.md`` of at least 500 bytes exists") failed on every
+    Windows harness run even though the draft was produced (#625 follow-up).
+
+    Resolving the *token* to an absolute path keeps the command portable
+    without editing ``scenarios/`` (expectations are owner-only) and without
+    weakening the assertion: it still asks for that glob and that size.
+
+    Returns *token* unchanged when there is nothing better to use — an honest
+    fallback that preserves the pre-existing behaviour instead of inventing a
+    failure.
+    """
+    if sys.platform != "win32":
+        return token
+    if not token or "/" in token or "\\" in token:
+        return token
+    if token.lower() not in _POSIX_UTIL_NAMES:
+        return token
+    for candidate in _posix_util_candidates(token):
+        if _is_under_windows_system_dir(candidate):
+            continue
+        return candidate
+    return token
 
 
 def _plain(text: str) -> str:
@@ -275,6 +364,13 @@ class CLIAdapter:
             # interpreter so every CLI step executes the same ``automedia``
             # package the engine itself runs, on every platform.
             parts = [sys.executable, "-m", "automedia", *parts[1:]]
+        if isinstance(parts, list) and parts:
+            # Windows resolves a bare executable name through system32 before
+            # PATH, so ``find``/``grep``/... would hit the Windows text tools
+            # instead of the POSIX ones a scenario means (#625 follow-up).
+            # An absolute non-system path is used when one exists; otherwise
+            # the token is left untouched.
+            parts = [_resolve_posix_util(parts[0]), *parts[1:]]
         try:
             proc = self._run_process(parts, timeout, shell)
         except subprocess.TimeoutExpired as exc:
