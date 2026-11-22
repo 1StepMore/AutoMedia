@@ -28,6 +28,10 @@ import pytest
 
 _PORTABLE_MODULES = {
     "test_rollback_behavior.py",
+    # Resolves bare POSIX utilities (find/grep/...) for CLI steps: the module
+    # exists precisely to make a Windows host behave, so it must run there
+    # (#625 follow-up).
+    "test_cli_adapter_posix_util.py",
 }
 
 
