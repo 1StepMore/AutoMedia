@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from typing import Any
@@ -39,6 +40,21 @@ Runner = Callable[..., subprocess.CompletedProcess[bytes]]
 # 落盘 JPEG 质量（ffmpeg -q:v 2 ≈ 视觉上无损；PNG 对抽帧太大且更慢）。
 _FFMPEG_FRAME_ARGS = ["-frames:v", "1", "-q:v", "2", "-y"]
 _SUBPROCESS_TIMEOUT_S = 60
+
+#: 「判不了」的表述（#638）：判官说它读不了画面（无法解析/看不清/…）时，
+#: 那是"无法判定"而非"判定为不相关"，不得据此判红。中英都要认，大小写不敏感。
+_UNREADABLE_RE = re.compile(
+    r"无法解析|无法确认|无法判断|看不清|无法识别|图片(?:内容)?不可读|无法读取"
+    r"|cannot\s+(?:determine|parse|read|tell)|unable\s+to\s+(?:determine|parse|read)"
+    r"|unreadable|illegible|not\s+(?:legible|parseable)",
+    re.IGNORECASE,
+)
+#: 实质的"不相关"依据（#638）：理由里同时给出这类依据时，即使也带"看不清"
+#: 字样，仍按 unrelated 判定——不能借"读不清"放过真负样本（#387 不松动）。
+_UNRELATED_RE = re.compile(
+    r"无关|不符|不一致|不匹配|unrelated|does\s+not\s+match|inconsistent",
+    re.IGNORECASE,
+)
 
 
 def _probe_duration(ffprobe_path: str, video_path: str, run: Runner) -> float | None:
@@ -216,6 +232,7 @@ def build_vision_entries(
             # 判定，绝不默认 pass（#387）。VLM 判定失败按单场降级为
             # unjudged，不外抛、不丢其余场的判定。
             vlm_error = ""
+            unjudged_note: str | None = None
             if vlm_client is not None and mid:
                 try:
                     judged = vlm_client.judge_frame(mid, str(scene.get("text", "") or ""))
@@ -226,9 +243,24 @@ def build_vision_entries(
                         full_reason = "; ".join(str(item) for item in raw_reason)
                     else:
                         full_reason = str(raw_reason or "")
-                    reason = full_reason[:200]
-                    verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
-                    checked, qa_passed = True, related
+                    determinable = judged.get("determinable")
+                    # 「判不了」≠「判不过」（#638）：判官明确给
+                    # ``determinable=False``（结构化字段优先，不看文本），或
+                    # 未给该字段且 ``related=False``、理由是"读不了图"类表述
+                    # （且没同时给出实质不相关依据）时，记 unjudged 而非
+                    # unrelated——一次读图失败不该一票否决整个门。
+                    unreadable = determinable is False or (
+                        determinable is not True
+                        and not related
+                        and bool(_UNREADABLE_RE.search(full_reason))
+                        and not _UNRELATED_RE.search(full_reason)
+                    )
+                    if unreadable:
+                        unjudged_note = full_reason[:200] or "(no reason given)"
+                    else:
+                        reason = full_reason[:200]
+                        verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
+                        checked, qa_passed = True, related
                 except Exception as exc:
                     verdict_vlm = None
                     vlm_error = str(exc)[:150]
@@ -237,7 +269,9 @@ def build_vision_entries(
             else:
                 checked, qa_passed = False, False
                 stats["unjudged"] += 1
-            if verdict_vlm is None:
+            if unjudged_note is not None:
+                verdict = f"unjudged: VLM could not read the frame — {unjudged_note}"
+            elif verdict_vlm is None:
                 if vlm_client is not None and mid:
                     verdict = (
                         f"unjudged: VLM judging failed ({vlm_error}) — frame "

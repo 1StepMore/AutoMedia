@@ -4,7 +4,9 @@ V1's per-frame relevance verdicts need an image-input LLM.  This module is the
 single seam:
 
 - :class:`VLMClient` — the protocol every backend implements:
-  ``judge_frame(image_path, narration) -> {"related": bool, "reason": str}``.
+  ``judge_frame(image_path, narration) -> {"related": bool, "reason": str}``
+  (backends may additionally report ``"determinable": bool`` when the frame
+  could not be read at all — #638).
 - :class:`OpenAICompatVLMClient` — the real backend: an OpenAI-compatible
   chat-completions endpoint with image content parts (base64 data URL),
   configured from the ``llm.vision`` task slot (provider/model/base_url/api_key
@@ -39,9 +41,13 @@ __all__ = [
 _JUDGE_SYSTEM_PROMPT = (
     "You are a strict video QA judge. You see one video frame and the "
     "narration line it illustrates. Answer with a single JSON object: "
-    '{"related": true|false, "reason": "<one short sentence>"}. '
-    '"related" means the visual content of the frame matches what the '
-    "narration describes. Never answer with anything except the JSON object."
+    '{"determinable": true|false, "related": true|false, '
+    '"reason": "<one short sentence>"}. '
+    '"determinable" is false when the frame cannot be reliably read '
+    "(unreadable, illegible, or no usable image content); in that case do "
+    "not guess relevance. \"related\" means the visual content of the frame "
+    "matches what the narration describes. Never answer with anything "
+    "except the JSON object."
 )
 
 _JSON_OBJECT_RE = re.compile(r"\{[^{}]*\}")
@@ -78,7 +84,9 @@ class VLMClient(Protocol):
     def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
         """Judge one frame against its narration line.
 
-        Returns ``{"related": bool, "reason": str}``.  Implementations must
+        Returns ``{"related": bool, "reason": str}``; backends may add
+        ``"determinable": bool`` (false = frame unreadable, #638).
+        Implementations must
         raise on transport errors — the caller decides the honest fallback.
         """
         ...  # pragma: no cover
@@ -167,7 +175,13 @@ class OpenAICompatVLMClient:
             return {"related": False, "reason": f"unparseable VLM answer: {raw[:120]}"}
         related = bool(parsed.get("related"))
         reason = str(parsed.get("reason") or "")[:200]
-        return {"related": related, "reason": reason}
+        verdict: dict[str, Any] = {"related": related, "reason": reason}
+        determinable = parsed.get("determinable")
+        if isinstance(determinable, bool):
+            # 结构化「判不了」标记（#638）：旧模型不给该字段时保持缺省，
+            # 调用方走文本兜底，不会把"判不了"误记成"判不过"。
+            verdict["determinable"] = determinable
+        return verdict
 
 
 def create_vlm_client(config: dict[str, Any] | None = None) -> VLMClient | None:
