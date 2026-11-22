@@ -122,8 +122,8 @@ def _azure_registered() -> None:
     from automedia.engines.implementations.tts_azure import AzureTTSEngine
 
     registry = EngineRegistry()
-    if "azure" not in registry:
-        registry.register("azure", AzureTTSEngine, modality="tts")
+    if "azure-tts" not in registry:
+        registry.register("azure-tts", AzureTTSEngine, modality="tts")
 
 
 class TestDefaultsYamlChains:
@@ -138,7 +138,7 @@ class TestDefaultsYamlChains:
         defaults = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
         engines = defaults["engines"]
 
-        assert engines["tts"]["chain"] == ["azure", "piper", "edge-tts"]
+        assert engines["tts"]["chain"] == ["azure-tts", "piper", "edge-tts"]
         assert engines["asr"]["chain"] == ["whisper", "faster-whisper"]
         assert engines["image"]["chain"] == ["comfyui", "local"]
         assert engines["video"]["chain"] == ["remotion", "hyperframes"]
@@ -294,8 +294,8 @@ class TestChainCandidateLogging:
         config = {
             "engines": {
                 "tts": {
-                    "chain": ["azure"],
-                    "azure": {"voice": "zh-CN-YunjianNeural"},
+                    "chain": ["azure-tts"],
+                    "azure-tts": {"voice": "zh-CN-YunjianNeural"},
                 }
             }
         }
@@ -305,7 +305,7 @@ class TestChainCandidateLogging:
         assert chain == []
         warnings = [entry for entry in logs if entry["log_level"] == "warning"]
         assert any(
-            "azure" in entry["event"]
+            "azure-tts" in entry["event"]
             and "AUTOMEDIA_AZURE_SPEECH_KEY" in " ".join(str(value) for value in entry.values())
             for entry in warnings
         )
@@ -317,13 +317,13 @@ class TestChainCandidateLogging:
         _azure_registered: None,
     ) -> None:
         fake = _install_fake_tts(monkeypatch)
-        config = {"engines": {"tts": {"chain": [fake, "azure"]}}}
+        config = {"engines": {"tts": {"chain": [fake, "azure-tts"]}}}
         with capture_logs() as logs:
             chain = resolve_engine_chain("tts", config)
 
         assert [engine.engine_name for engine in chain] == [fake]
         warnings = [entry for entry in logs if entry["log_level"] == "warning"]
-        assert any("azure" in entry["event"] for entry in warnings)
+        assert any("azure-tts" in entry["event"] for entry in warnings)
 
     def test_no_warning_when_all_candidates_available(
         self, monkeypatch: pytest.MonkeyPatch

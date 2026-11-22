@@ -6,9 +6,9 @@ Provides:
       microsoft.com/cognitiveservices/v1``) directly over ``httpx`` — no
       ``azure-*`` SDK dependency.
 
-Configuration (``engines.tts.azure`` in ``.automedia/config.yaml``)::
+Configuration (``engines.tts.azure-tts`` in ``.automedia/config.yaml``)::
 
-    azure:
+    azure-tts:
       voice: zh-CN-YunjianNeural          # kit baseline: 有力男声
       output_format: audio-48khz-192kbitrate-mono-mp3
       speech_key: null                    # prefer the env var below
@@ -23,7 +23,7 @@ not configured.
 Speech-text normalization: per the narration methodology (``promo/docs/tts.md``),
 the spoken form of "AI" is「人工智能」— :func:`speech_friendly_text` rewrites
 standalone ``AI`` (not ``AIGC``-style tokens) before synthesis. Disable with
-``engines.tts.azure.speech_normalization: false``.
+``engines.tts.azure-tts.speech_normalization: false``.
 """
 
 from __future__ import annotations
@@ -88,13 +88,22 @@ class AzureTTSEngine(BaseTTSEngine):
     Attributes
     ----------
     engine_name : str
-        Registration key in the :class:`EngineRegistry` (``"azure"``).
+        Registration key in the :class:`EngineRegistry` (``"azure-tts"``).
     modality : str
         Modality grouping (``"tts"``).
     """
 
-    engine_name: ClassVar[str] = "azure"
+    engine_name: ClassVar[str] = "azure-tts"
     modality: ClassVar[str] = "tts"
+
+    # ------------------------------------------------------------------
+    # Provenance surface (#630)
+    # ------------------------------------------------------------------
+
+    @property
+    def output_format(self) -> str:
+        """Resolved Azure output format (config override → 192 kbps default)."""
+        return str(self._config.get("output_format", DEFAULT_OUTPUT_FORMAT))
 
     # ------------------------------------------------------------------
     # Credentials
@@ -125,9 +134,9 @@ class AzureTTSEngine(BaseTTSEngine):
 
         key, region = self._credentials()
         if not key:
-            return False, f"{SPEECH_KEY_ENV} not set (and engines.tts.azure.speech_key empty)"
+            return False, f"{SPEECH_KEY_ENV} not set (and engines.tts.azure-tts.speech_key empty)"
         if not region:
-            return False, f"{SPEECH_REGION_ENV} not set (and engines.tts.azure.region empty)"
+            return False, f"{SPEECH_REGION_ENV} not set (and engines.tts.azure-tts.region empty)"
         return True, f"Azure Speech configured for region {region!r}"
 
     # ------------------------------------------------------------------
@@ -148,7 +157,7 @@ class AzureTTSEngine(BaseTTSEngine):
         text:
             Text to synthesize.  Must be non-empty.  Normalized through
             :func:`speech_friendly_text` unless
-            ``engines.tts.azure.speech_normalization`` is ``false``.
+            ``engines.tts.azure-tts.speech_normalization`` is ``false``.
         voice:
             Azure neural voice identifier (e.g. ``"zh-CN-YunjianNeural"``).
             Falls back to ``self._config.get("voice", DEFAULT_VOICE)`` when
@@ -178,7 +187,7 @@ class AzureTTSEngine(BaseTTSEngine):
         if not key or not region:
             raise ValueError(
                 f"Azure Speech credentials missing — set {SPEECH_KEY_ENV} and "
-                f"{SPEECH_REGION_ENV} (or engines.tts.azure.speech_key/region)"
+                f"{SPEECH_REGION_ENV} (or engines.tts.azure-tts.speech_key/region)"
             )
 
         if not voice:

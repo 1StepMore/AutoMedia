@@ -18,7 +18,9 @@ from automedia.core.registry import BaseRegistry
 # ---------------------------------------------------------------------------
 
 _DEFAULT_ENGINES: dict[str, str] = {
-    "tts": "edge-tts",
+    # azure-tts first (#630): commercial 192 kbps narration when credentials
+    # are present; edge-tts (48 kbps) is the fallback via chain resolution.
+    "tts": "azure-tts",
     "asr": "whisper",
     "image": "comfyui",
     "video": "hyperframes",
