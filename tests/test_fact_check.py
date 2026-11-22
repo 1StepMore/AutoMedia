@@ -78,10 +78,16 @@ class TestG0FactCheckMetadata:
         assert gate.failure_mode == "retry"
 
     def test_quality_retry_contract(self) -> None:
-        """G0 retries once, emits at most one rewrite, then halts (#219)."""
+        """G0 retries once, emits at most one rewrite, then continues (#219/#626).
+
+        ``halt_on_exhaustion`` remains the gate's declared retry posture, but
+        ``continue_on_exhaustion`` wins in the engine: a G0 failure is recorded
+        and the downstream gates still run and report their own verdicts.
+        """
         gate = G0FactCheck()
         assert gate.max_quality_retries == 1
         assert gate.halt_on_exhaustion is True
+        assert gate.continue_on_exhaustion is True
 
     def test_is_base_gate_subclass(self) -> None:
         assert issubclass(G0FactCheck, BaseGate)
@@ -684,3 +690,113 @@ class TestG0LlmIntegration:
         # LLM should NOT have been called
         assert mock.call_count == 0
         assert result.get("method") == "deterministic"
+
+
+# =========================================================================
+# #626 — plausibility scope: only verifiable assertions may fail
+# =========================================================================
+
+
+class TestPlausibilityScope:
+    """Rhetorical/causal strength is advisory; only verifiable claims fail."""
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "图文轮播在品牌营销中扮演着重要角色",
+            "一个好的标题，可以瞬间抓住消费者的眼球",
+            "打造爆款短视频需要时间和努力！",
+            "通过优化封面设计，我们可以提高文章的点击率",
+            "据 Gartner 2025 报告，播客转化率比图文高 2 倍",
+        ],
+    )
+    def test_rhetoric_and_sourced_claims_do_not_fail(self, content: str) -> None:
+        ctx = _make_context(
+            content=content,
+            source_data={},
+            config={"enable_llm": True},
+        )
+        with mock_llm_response(G0CheckResult(passed=True, issues=[], confidence=0.9)):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["gate"] == "G0"
+        assert result["passed"] is True, result.get("error")
+        assert result["checks"][0]["name"] == "plausibility_check"
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "每天只需 20 分钟，轻松提升 300% 销量",
+            "保证 7 天见效，行业第一",
+        ],
+    )
+    def test_verifiable_promises_fail(self, content: str) -> None:
+        ctx = _make_context(
+            content=content,
+            source_data={},
+            config={"enable_llm": True},
+        )
+        # Deterministic failure happens before the judge; the rewrite fails
+        # closed, so no network call escapes.
+        with mock_llm_failure():
+            result = G0FactCheck().execute(ctx)
+
+        assert result["gate"] == "G0"
+        assert result["passed"] is False
+        assert result.get("method") == "deterministic"
+        assert result["checks"][0]["name"] == "plausibility_check"
+        assert result.get("error")
+
+    def test_token_hit_with_evidence_anchor_is_advisory(self) -> None:
+        """A banned token rescued by a source anchor is recorded, not failed."""
+        content = "据 Gartner 2025 报告，播客能轻松打造品牌影响力"
+        ctx = _make_context(
+            content=content,
+            source_data={},
+            config={"enable_llm": True},
+        )
+        with mock_llm_response(G0CheckResult(passed=True, issues=[], confidence=0.9)):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is True, result.get("error")
+        advisories = result.get("advisories") or []
+        assert any("轻松" in advisory for advisory in advisories)
+
+    def test_judge_rhetorical_flag_is_downgraded_to_advisory(self) -> None:
+        """The judge flagging causal strength alone cannot fail the gate."""
+        content = "图文轮播在品牌营销中扮演着重要角色"
+        ctx = _make_context(
+            content=content,
+            source_data={},
+            config={"enable_llm": True},
+        )
+        judge = G0CheckResult(
+            passed=False,
+            issues=["因果太绝对：扮演重要角色"],
+            confidence=0.4,
+        )
+        with mock_llm_response(judge):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is True
+        assert result["checks"][0]["passed"] is True
+        advisories = result.get("advisories") or []
+        assert any("扮演重要角色" in advisory for advisory in advisories)
+
+    def test_judge_factual_contradiction_still_fails(self) -> None:
+        """Non-rhetorical factual claims keep the pre-existing fail behaviour."""
+        ctx = _make_context(
+            content="The Earth is flat.",
+            source_data={},
+            config={"enable_llm": True},
+        )
+        judge = G0CheckResult(
+            passed=False,
+            issues=["Claims 'Earth is flat' contradicts established scientific consensus"],
+            confidence=0.3,
+        )
+        with mock_llm_response(judge):
+            result = G0FactCheck().execute(ctx)
+
+        assert result["passed"] is False
+        assert result["checks"][0]["passed"] is False

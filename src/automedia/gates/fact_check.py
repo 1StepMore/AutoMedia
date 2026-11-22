@@ -498,8 +498,179 @@ def _check_entities(content: str, source_data: dict[str, Any]) -> CheckResult:
 # Plausibility check (no source material)
 # ---------------------------------------------------------------------------
 
+# #626 — the plausibility check used to fail marketing copy for ordinary
+# rhetoric ("提高点击率" / "抓住眼球"), which is the *skeleton* of marketing
+# text, not a factual defect.  The criteria now separate two things:
+#
+# A. an outcome-promise *token* hit is downgraded to advisory when the same
+#    paragraph carries an evidence anchor (source, hedge, or number+unit);
+# D. only a *verifiable assertion* may fail — a quantified outcome, a time
+#    promise, or a ranking/comparative with no source/hedge anchor.
+#
+# Causal/rhetorical strength is advisory-only.  The direction is deliberate:
+# a false pass is acceptable, a false kill is not.
 
-def _build_hook_claim_failure(violations: list[HookClaimHit]) -> dict[str, Any]:
+# A source anchor makes a claim checkable by the reader.
+_SOURCE_ANCHOR_RE = re.compile(
+    r"据[^，。；\n]{0,24}(?:报告|研究|数据|统计|调查|显示|表明|指出)"
+    r"|(?:报告|研究|数据|统计|调查)(?:显示|表明|指出|发现)"
+    r"|(?:Gartner|IDC|Forrester|McKinsey|Nielsen|QuestMobile|CNNIC)"
+    r"|(?:麦肯锡|艾瑞|尼尔森|国家统计局|世界银行)"
+    r"|来源\s*[:：]"
+)
+
+# A conditional or negated claim is hedged: it promises effort/process, not a
+# guaranteed outcome.
+_CONDITIONAL_ANCHOR_RE = re.compile(
+    r"不一定|未必|并非|并不是|不能保证|无法保证|并不能|很难保证|"
+    r"需要时间|需要努力|需要投入|需要积累|"
+    r"除非|如果|假如|可能|或许|往往|大多数|多数|通常|一般来说|仅供参考"
+)
+
+# A concrete number carrying a unit.  This anchors a *token* hit, but it does
+# not by itself exempt a verifiable assertion: a number that quantifies the
+# promise (「提升 300%」/「7 天见效」) still fails under (D).
+_NUMBER_UNIT_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:%|％|倍|天|周|个月|月|年|小时|分钟|秒|"
+    r"万|亿|元|人|家|个|次|项|条|份|款|GB|MB|G)"
+)
+
+_OUTCOME_WORDS = (
+    "提升|提高|增长|增加|降低|减少|节省|达到|超过|翻倍|见效|学会|掌握|"
+    "搞定|完成|打造|实现|达成|逆袭|成功|销量|转化|收入|回报|利润|效率|"
+    "速度|成本|点击率"
+)
+
+# Quantified outcome: 「提升 300%」/「300% 销量」/「增长 2 倍」.
+_QUANTIFIED_OUTCOME_RE = re.compile(
+    r"(?:\d+(?:\.\d+)?\s*(?:%|％|倍)[^，。；\n]{0,8}(?:" + _OUTCOME_WORDS + r"))"
+    r"|(?:(?:" + _OUTCOME_WORDS + r")[^，。；\n]{0,8}\d+(?:\.\d+)?\s*(?:%|％|倍))"
+)
+
+# Time promise: 「7 天见效」/「5 分钟内打造」/「30 天学会」.
+_TIME_PROMISE_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:天|周|个月|月|年|小时|分钟|秒)[内之]?[^，。；\n]{0,8}"
+    r"(?:" + _OUTCOME_WORDS + r"|见效|上手|瘦|减|赚|蜕变)"
+)
+
+# Ranking / comparative: 「行业第一」/「比 X 快 2 倍」/「最好」.
+_RANKING_RE = re.compile(
+    r"行业第一|全国第一|全球第一|世界第一|排名第一|第一名|销量第一|"
+    r"最(?:好|佳|优|强|快|高|低|便宜)|"
+    r"比[^，。；\n]{0,12}(?:快|高|低|强|多|少|好)[^，。；\n]{0,4}\d+\s*(?:%|％|倍)"
+)
+
+# Soft rhetorical tokens from the shared ban list: used as ordinary marketing
+# modifiers they are not verifiable assertions.  They are advisory even without
+# an explicit anchor (「播客音频，轻松打造品牌影响力」); a quantified promise
+# containing them (「轻松提升 300%」) is still a verifiable assertion and fails.
+_SOFT_RHETORICAL_TOKENS: frozenset[str] = frozenset(
+    {"轻松", "轻松搞定", "爆款", "达人", "精准"}
+)
+
+# Causal / rhetorical strength: the ordinary skeleton of marketing copy.
+# Flagged by the judge it is downgraded to advisory, never a failure.
+_RHETORICAL_STRENGTH_RE = re.compile(
+    r"扮演[^，。；\n]{0,8}角色|发挥[^，。；\n]{0,8}作用|"
+    r"抓住[^，。；\n]{0,6}眼球|吸引[^，。；\n]{0,6}(?:眼球|注意)|"
+    r"提高[^，。；\n]{0,8}(?:点击率|转化率|曝光|关注|销量)|"
+    r"与用户互动|互动[^，。；\n]{0,6}过程|"
+    r"重要角色|关键作用|很重要|事半功倍|"
+    r"瞬间|轻松|爆款|达人|精准"
+)
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？!?；;\n])")
+
+
+def _has_source_anchor(text: str) -> bool:
+    return bool(_SOURCE_ANCHOR_RE.search(text))
+
+
+def _has_conditional_anchor(text: str) -> bool:
+    return bool(_CONDITIONAL_ANCHOR_RE.search(text))
+
+
+def _has_numeric_anchor(text: str) -> bool:
+    return bool(_NUMBER_UNIT_RE.search(text))
+
+
+def _claim_has_evidence_anchor(text: str) -> bool:
+    """Token hit + same-paragraph evidence anchor → advisory (#626 A)."""
+    return (
+        _has_source_anchor(text)
+        or _has_conditional_anchor(text)
+        or _has_numeric_anchor(text)
+    )
+
+
+def _is_verifiable_assertion(text: str) -> bool:
+    """A claim a reader can verify or refute (#626 D).
+
+    Only quantified outcomes, time promises and rankings/comparatives qualify.
+    Causal or rhetorical strength (「扮演重要角色」/「抓住眼球」/「提高点击率」)
+    is not a verifiable assertion and is never failed.
+    """
+    return bool(
+        _QUANTIFIED_OUTCOME_RE.search(text)
+        or _TIME_PROMISE_RE.search(text)
+        or _RANKING_RE.search(text)
+    )
+
+
+def _is_rhetorical_strength(text: str) -> bool:
+    """Causal/rhetorical strength — advisory-only, never a fail."""
+    return bool(_RHETORICAL_STRENGTH_RE.search(text))
+
+
+def _iter_sentences(content: str) -> list[str]:
+    return [part.strip() for part in _SENTENCE_SPLIT_RE.split(content or "") if part.strip()]
+
+
+def _find_verifiable_assertions(content: str) -> list[str]:
+    """Unanchored verifiable assertions — the only deterministic fail scope.
+
+    A sourced assertion (「据 Gartner 2025 报告…」) or a hedged one
+    (「并不能保证…」) is checkable but not questionable, so it is not failed.
+    """
+    found: list[str] = []
+    for sentence in _iter_sentences(content):
+        if not _is_verifiable_assertion(sentence):
+            continue
+        if _has_source_anchor(sentence) or _has_conditional_anchor(sentence):
+            continue
+        found.append(sentence)
+    return found
+
+
+def _issue_is_fail_worthy(text: str) -> bool:
+    """Whether a judge-flagged claim is inside the fail scope (#626 D).
+
+    Sourced/hedged claims and rhetorical strength are advisory.  Any other
+    concrete factual claim (e.g. 「The Earth is flat」) keeps the pre-existing
+    behaviour and still fails.
+    """
+    if _has_source_anchor(text) or _has_conditional_anchor(text):
+        return False
+    if _is_verifiable_assertion(text):
+        return True
+    return not _is_rhetorical_strength(text)
+
+
+def _flagged_claim_texts(result: G0CheckResult) -> list[str]:
+    """Sentence-level texts a judge flagged, falling back to issue strings."""
+    texts: list[str] = []
+    for issue in result.structured_issues or []:
+        sentence = issue.get("sentence")
+        if isinstance(sentence, str) and sentence.strip():
+            texts.append(sentence.strip())
+    texts.extend(str(issue) for issue in result.issues)
+    return texts
+
+
+def _build_hook_claim_failure(
+    violations: list[HookClaimHit],
+    advisories: list[str] | None = None,
+) -> dict[str, Any]:
     """Deterministic plausibility failure naming the banned hook tokens (#520).
 
     The hook-claim criteria share the HOOK CLAIMS ban list with the content
@@ -544,6 +715,52 @@ def _build_hook_claim_failure(violations: list[HookClaimHit]) -> dict[str, Any]:
         status="completed",
     )
     gate_result["error"] = _build_failure_reason([check])
+    if advisories:
+        gate_result["advisories"] = list(advisories)
+    return gate_result
+
+
+def _build_verifiable_assertion_failure(
+    assertions: list[str],
+    advisories: list[str] | None = None,
+) -> dict[str, Any]:
+    """Deterministic failure for an unanchored verifiable assertion (#626 D).
+
+    Unlike the token path, this fires on what the sentence *claims* — a
+    specific number/percentage/time promise or a ranking/comparative with no
+    source or hedge in the same sentence.  Rhetorical strength never reaches
+    this branch.
+    """
+    first = assertions[0]
+    check: CheckResult = {
+        "name": "plausibility_check",
+        "passed": False,
+        "detail": (
+            "verifiable assertion(s) without a source anchor — "
+            f"「{first}」 makes a specific, checkable claim (number / time "
+            "promise / ranking) that the content does not support"
+        ),
+        "sentence": first,
+    }
+    hints = _issue_details(first)
+    if hints.get("number"):
+        check["number"] = hints["number"]
+    gate_result = build_gate_result(
+        [check],
+        gate="G0",
+        expected_map={
+            "plausibility_check": (
+                "Verifiable assertions carry a source/hedge anchor; rhetorical "
+                "strength is advisory only"
+            )
+        },
+        confidence=0.0,
+        method="deterministic",
+        status="completed",
+    )
+    gate_result["error"] = _build_failure_reason([check])
+    if advisories:
+        gate_result["advisories"] = list(advisories)
     return gate_result
 
 
@@ -587,10 +804,40 @@ def _run_plausibility_check(
         # hedged, checkable statements pass through to the LLM judge below,
         # whose prompt carries the same list plus the explicit rule that a
         # hedged, checkable statement is not questionable.
-        violations = hook_area_violations(content)
-        if violations:
+        advisories: list[str] = []
+        failing_violations: list[HookClaimHit] = []
+        for hit in hook_area_violations(content):
+            if _claim_has_evidence_anchor(hit.text):
+                advisories.append(
+                    f"outcome-promise token 「{hit.token}」 in {hit.area} has an "
+                    f"evidence anchor — advisory only: 「{hit.text}」"
+                )
+            elif _is_rhetorical_strength(hit.text) and not _is_verifiable_assertion(
+                hit.text
+            ):
+                # A token used as ordinary marketing rhetoric (「轻松打造品牌
+                # 影响力」) is not a verifiable assertion — advisory only, even
+                # without an explicit anchor (#626 D).  A guarantee/absolute
+                # token still fails here; quantified promises are caught by the
+                # verifiable-assertion scan below.
+                advisories.append(
+                    f"outcome-promise token 「{hit.token}」 in {hit.area} is "
+                    f"rhetorical strength, not a verifiable assertion — advisory "
+                    f"only: 「{hit.text}」"
+                )
+            else:
+                failing_violations.append(hit)
+        if failing_violations:
             return _finalize_failure(
-                _build_hook_claim_failure(violations),
+                _build_hook_claim_failure(failing_violations, advisories),
+                gate_context or {},
+                rewrite_allowed=rewrite_allowed,
+            )
+
+        verifiable_assertions = _find_verifiable_assertions(content)
+        if verifiable_assertions:
+            return _finalize_failure(
+                _build_verifiable_assertion_failure(verifiable_assertions, advisories),
                 gate_context or {},
                 rewrite_allowed=rewrite_allowed,
             )
@@ -609,14 +856,30 @@ def _run_plausibility_check(
 
         check_name = "plausibility_check"
 
+        llm_passed = result.passed
         if result.passed:
             detail = "All claims appear factually plausible based on general knowledge"
         else:
-            detail = "; ".join(result.issues) if result.issues else "Questionable claims found"
+            # #626 D: the judge may only fail verifiable assertions.  Rhetorical
+            # or causal strength (「扮演重要角色」/「抓住眼球」/「提高点击率」)
+            # is downgraded to an advisory instead of killing the gate.  A
+            # concrete factual claim the judge rejects (e.g. 「The Earth is
+            # flat」) keeps the pre-existing fail behaviour.
+            flagged = _flagged_claim_texts(result)
+            fail_worthy = [text for text in flagged if _issue_is_fail_worthy(text)]
+            if not fail_worthy:
+                llm_passed = True
+                advisories.extend(
+                    f"judge flagged non-verifiable claim (advisory only): {issue}"
+                    for issue in result.issues
+                )
+                detail = "No verifiable assertions found questionable"
+            else:
+                detail = "; ".join(result.issues) if result.issues else "Questionable claims found"
 
         check: CheckResult = {
             "name": check_name,
-            "passed": result.passed,
+            "passed": llm_passed,
             "detail": detail,
         }
 
@@ -630,6 +893,8 @@ def _run_plausibility_check(
             method="llm",
             status="completed",
         )
+        if advisories:
+            gate_result["advisories"] = list(advisories)
         if gate_result.get("passed") is False:
             _enrich_failing_checks_with_issue_details([check], result.structured_issues)
             gate_result["error"] = _build_failure_reason([check])
@@ -834,6 +1099,10 @@ class G0FactCheck(BaseGate):
     _failure_mode = "retry"
     max_quality_retries: ClassVar[int | None] = 1
     halt_on_exhaustion: ClassVar[bool] = True
+    # #626 C: a G0 failure is recorded, but it must not erase the downstream
+    # gates (G1/G2/G3/G6/H0) from the report.  They judge their own dimensions
+    # and each must report its own verdict; the failure stays visible on G0.
+    continue_on_exhaustion: ClassVar[bool] = True
 
     def execute(self, gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
         """Run 5-step fact-check and return structured result."""

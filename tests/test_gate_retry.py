@@ -1451,3 +1451,80 @@ def test_h0_timeout_auto_approve_still_passes() -> None:
     assert ok is True
     assert [r.get("gate") for r in results] == ["H0", "L1"]
     assert results[0].get("_hitl_approved") is True
+
+
+# ---------------------------------------------------------------------------
+# (g3) #626 — continue_on_exhaustion keeps downstream gates in the report
+# ---------------------------------------------------------------------------
+
+
+class _ContinuingFakeGate(_FakeGate):
+    """Fake gate that records failure and lets the run continue (#626)."""
+
+    max_quality_retries = 1
+    continue_on_exhaustion = True
+
+
+class _DependentFakeGate(_FakeGate):
+    """Fake gate that cannot judge without its declared upstream."""
+
+    requires_upstream = ("G0",)
+
+
+def test_continue_on_exhaustion_runs_downstream_gates() -> None:
+    """A failed G0 must not erase G1 from the report (#626 C)."""
+    call_count = {"n": 0}
+
+    def _always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        call_count["n"] += 1
+        return {"passed": False, "gate": "G0", "error": "questionable claim"}
+
+    downstream_calls = {"n": 0}
+
+    def _downstream(ctx: dict[str, Any]) -> dict[str, Any]:
+        downstream_calls["n"] += 1
+        return {"passed": True, "gate": "G1"}
+
+    gate = _ContinuingFakeGate("G0", "retry", _always_fail)
+    downstream = _FakeGate("G1", "stop", _downstream)
+    engine = GateEngine(
+        [gate, downstream],  # type: ignore[arg-type]  # duck-typed gate stub
+        max_quality_retries=5,  # ignored — the gate caps itself at 1
+        max_regenerations=0,
+    )
+
+    ok, results = engine.run({"topic": "test"})
+
+    assert ok is False
+    assert [r["gate"] for r in results] == ["G0", "G1"]
+    assert results[0]["passed"] is False
+    assert results[0]["quality_retry_count"] == 1
+    assert results[1]["passed"] is True
+    assert call_count["n"] == 2  # initial attempt + one quality retry
+    assert downstream_calls["n"] == 1
+
+
+def test_failed_upstream_is_recorded_as_skipped_not_silently_dropped() -> None:
+    """A gate that declares an upstream dependency is a first-class skip."""
+    def _always_fail(ctx: dict[str, Any]) -> dict[str, Any]:
+        return {"passed": False, "gate": "G0", "error": "questionable claim"}
+
+    gate = _ContinuingFakeGate("G0", "retry", _always_fail)
+    dependent = _DependentFakeGate(
+        "G1", "stop", lambda ctx: {"passed": True, "gate": "G1"}
+    )
+    engine = GateEngine(
+        [gate, dependent],  # type: ignore[arg-type]  # duck-typed gate stub
+        max_quality_retries=1,
+        max_regenerations=0,
+    )
+
+    ok, results = engine.run({"topic": "test"})
+
+    assert ok is False
+    assert [r["gate"] for r in results] == ["G0", "G1"]
+    skipped = results[1]
+    assert skipped["passed"] is True
+    assert skipped["status"] == "skipped"
+    assert skipped["skip_reason"] == "skipped:upstream-g0"
+    assert "G0" in skipped["reason"]
