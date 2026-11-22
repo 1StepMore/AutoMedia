@@ -192,11 +192,14 @@ def build_vision_entries(
         stats["frames_failed"] += int(not mid) + int(not end)
 
         kind = scene_media_kinds[i] if i < len(scene_media_kinds) else "missing"
+        full_reason = ""
+        verdict_vlm: str | None = None
         if not mid and not end:
             # 两帧都抽失败：该场没有视觉证据，谈不上判定——记 unjudged 并写明
             # 原因；若**所有**场次都如此，下面会整体 raise（不写 entries）。
             checked, qa_passed = False, False
             verdict = "unjudged: frame extraction failed — no visual evidence"
+            full_reason = verdict
             stats["unjudged"] += 1
         elif kind == "panel":
             # 文字面板：面板文字就是该场文案，相关性由构造保证——只登记。
@@ -205,19 +208,25 @@ def build_vision_entries(
                 True,
                 ("panel (by construction: the panel text is this scene's copy)"),
             )
+            full_reason = verdict
             stats["judged"] += 1
         else:
             # 生成图/复用图：需要视觉模型判相关性（#473）。有可插拔 VLM 通道
             # → 抽出的中帧对场文案真判（相关 + 理由）；无通道 → 如实记未
             # 判定，绝不默认 pass（#387）。VLM 判定失败按单场降级为
             # unjudged，不外抛、不丢其余场的判定。
-            verdict_vlm: str | None = None
             vlm_error = ""
             if vlm_client is not None and mid:
                 try:
                     judged = vlm_client.judge_frame(mid, str(scene.get("text", "") or ""))
                     related = bool(judged.get("related"))
-                    reason = str(judged.get("reason") or "")[:200]
+                    raw_reason = judged.get("reason")
+                    if isinstance(raw_reason, list):
+                        # 判官给多条理由就全留（#638），不截成一句。
+                        full_reason = "; ".join(str(item) for item in raw_reason)
+                    else:
+                        full_reason = str(raw_reason or "")
+                    reason = full_reason[:200]
                     verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
                     checked, qa_passed = True, related
                 except Exception as exc:
@@ -245,14 +254,24 @@ def build_vision_entries(
         entries.append(
             {
                 "scene_id": scene_no,
+                # 人读场景名（#638）：与逐场素材文件 ``02_images/scenes/scene-NN.png``
+                # 同一套 1-based 零填充编号，detail/证据里不用再换算 0-based 索引。
+                "name": f"scene-{i + 1:02d}",
                 "scene_index": i,
                 "scene_text": str(scene.get("text", "") or ""),
                 "mid_frame_path": mid,
                 "end_silence_frame_path": end,
                 "source": kind,
+                # 来源标注（#638）：runner 的 reused/generated 记账随
+                # ``scene_media_kinds`` 传进来，这里以 ``kind`` 落进 entry，
+                # 报告能区分"复用的封面图"和"为这一幕生成的图"。
+                "kind": kind,
                 "checked": checked,
                 "qa_passed": qa_passed,
                 "verdict": verdict,
+                # 判官理由原文（#638）：不截断地留给证据文件；面板/未判定场次
+                # 的理由即 verdict 全文。
+                "reason": full_reason if verdict_vlm is not None else verdict,
             }
         )
 
