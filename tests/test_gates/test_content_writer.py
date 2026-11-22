@@ -366,6 +366,52 @@ class TestExecute:
         assert "LLM" in result["error"]
         assert result["expected_vs_actual"]["check"] == "llm_success"
 
+    def test_empty_draft_surfaces_completion_provenance(self, tmp_path: Path) -> None:
+        """#612: an empty draft names finish_reason/attempt/truncated."""
+        from automedia.core import llm_client as llm_module
+
+        ctx = _make_context(project_dir=str(tmp_path), config=_minimal_config())
+        provenance = {
+            "finish_reason": "length",
+            "attempt": 2,
+            "truncated": True,
+            "max_tokens": 4096,
+            "provider": "test",
+            "model": "test-model",
+        }
+        with (
+            patch.object(llm_module._completion_provenance, "last", provenance, create=True),
+            patch("automedia.gates.content_writer.llm_complete", return_value=""),
+        ):
+            result = ContentWriterGate().execute(ctx)
+
+        assert result["passed"] is False
+        assert result["expected_vs_actual"]["check"] == "content_not_empty"
+        assert result["expected_vs_actual"]["context"]["finish_reason"] == "length"
+        assert result["expected_vs_actual"]["context"]["attempt"] == 2
+        assert result["expected_vs_actual"]["context"]["truncated"] is True
+
+    def test_llm_failure_surfaces_completion_provenance(self, tmp_path: Path) -> None:
+        """#612: finish_reason/attempt/truncated reach the gate result context."""
+        from automedia.core.llm_client import LLMError
+
+        error = LLMError("LLM completion returned empty content")
+        error.provenance = {
+            "finish_reason": "length",
+            "attempt": 2,
+            "truncated": True,
+            "max_tokens": 4096,
+        }
+        ctx = _make_context(project_dir=str(tmp_path), config=_minimal_config())
+
+        with patch("automedia.gates.content_writer.llm_complete", side_effect=error):
+            result = ContentWriterGate().execute(ctx)
+
+        assert result["passed"] is False
+        assert result["expected_vs_actual"]["context"]["finish_reason"] == "length"
+        assert result["expected_vs_actual"]["context"]["attempt"] == 2
+        assert result["expected_vs_actual"]["context"]["truncated"] is True
+
     # ------------------------------------------------------------------
     # Writer system prompt override
     # ------------------------------------------------------------------

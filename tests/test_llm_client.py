@@ -31,6 +31,7 @@ from automedia.core.llm_client import (
     _get_retryable_errors,
     _llm_chat_completion_with_retry,
     _llm_structured_completion_with_retry,
+    get_last_completion_provenance,
     llm_complete,
     llm_complete_structured,
     llm_complete_structured_safe,
@@ -559,6 +560,89 @@ class TestLlmComplete:
         messages = mock_retry.call_args[1]["messages"]
         assert len(messages) == 1
         assert messages[0]["role"] == "user"
+
+
+# =========================================================================
+# 4b. Empty-content escalation + provenance (#612)
+# =========================================================================
+
+
+def _completion(content: str, finish_reason: str) -> MagicMock:
+    """Build a minimal chat-completion mock with an explicit finish_reason."""
+    response = MagicMock()
+    choice = MagicMock()
+    choice.message.content = content
+    choice.finish_reason = finish_reason
+    response.choices = [choice]
+    return response
+
+
+class TestEmptyContentEscalation:
+    """Reasoning-model empty completions escalate exactly once (#612)."""
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_length_truncation_escalates_budget_once(
+        self, mock_build: MagicMock, mock_retry: MagicMock
+    ) -> None:
+        mock_build.return_value = MagicMock()
+        mock_retry.side_effect = [
+            _completion("", "length"),
+            _completion("写好的文章正文", "stop"),
+        ]
+        config = _make_llm_config(max_tokens=2048)
+
+        result = llm_complete("写一篇封面文章", config=config)
+
+        assert result == "写好的文章正文"
+        assert mock_retry.call_count == 2
+        assert mock_retry.call_args_list[0][1]["max_tokens"] == 2048
+        assert mock_retry.call_args_list[1][1]["max_tokens"] == 4096
+        provenance = get_last_completion_provenance()
+        assert provenance["finish_reason"] == "stop"
+        assert provenance["attempt"] == 2
+        assert provenance["truncated"] is False
+        assert provenance["max_tokens"] == 4096
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_non_truncated_empty_keeps_budget_and_is_attributable(
+        self, mock_build: MagicMock, mock_retry: MagicMock
+    ) -> None:
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = _completion("", "stop")
+        config = _make_llm_config(max_tokens=2048)
+
+        result = llm_complete("写一篇封面文章", config=config)
+
+        # The historical empty-string contract is preserved; attribution is
+        # carried by provenance instead of changing the return type.
+        assert result == ""
+        assert mock_retry.call_count == 1
+        assert mock_retry.call_args[1]["max_tokens"] == 2048
+        provenance = get_last_completion_provenance()
+        assert provenance["finish_reason"] == "stop"
+        assert provenance["attempt"] == 1
+        assert provenance["truncated"] is False
+        assert provenance["max_tokens"] == 2048
+
+    @patch("automedia.core.llm_client._llm_chat_completion_with_retry")
+    @patch("automedia.core.llm_client._build_client")
+    def test_escalation_cap_does_not_retry_at_the_cap(
+        self, mock_build: MagicMock, mock_retry: MagicMock
+    ) -> None:
+        mock_build.return_value = MagicMock()
+        mock_retry.return_value = _completion("", "length")
+        config = _make_llm_config(max_tokens=16000)
+
+        result = llm_complete("写一篇封面文章", config=config)
+
+        assert result == ""
+        assert mock_retry.call_count == 1
+        provenance = get_last_completion_provenance()
+        assert provenance["truncated"] is True
+        assert provenance["attempt"] == 1
+        assert provenance["max_tokens"] == 16000
 
 
 # =========================================================================
