@@ -46,11 +46,12 @@ Write a complete Twitter thread that includes:
 
 ## HOOK CLAIMS — verifiable only (hard constraint)
 
-- BANNED in the H1 title and the first paragraph (for script formats: the golden opening line): {{ hook_claims_banned_tokens }} — and any synonym or sentence pattern {{ hook_claims_patterns }}.
+- BANNED ANYWHERE in the article — H1 title, every paragraph (including body paragraphs), every section heading (小标题) and the call-to-action (CTA): {{ hook_claims_banned_tokens }} — and any synonym or sentence pattern {{ hook_claims_patterns }}.
 - The title and opening hook MUST instead: state a concrete, checkable observation, name a common pattern ("很多人……" / "大部分……"), or ask a concrete question about the topic itself.
 - Example REJECTED: {{ hook_claims_examples_rejected }}
 - Example ACCEPTED: {{ hook_claims_examples_accepted }}
-- This constraint overrides every platform-specific request for a "bold" or "punchy" hook: bold means specific and concrete, not absolute. It also applies to every section heading (小标题) and the call-to-action (CTA): promise effort and process, never promise results.
+- This constraint overrides every platform-specific request for a "bold" or "punchy" hook: bold means specific and concrete, not absolute. Promise effort and process, never promise results.
+- Why EVERY paragraph counts: image-track modes (text_with_cover / social-thread) strip markdown heading markers and blank lines at the draft → publishable-copy boundary. Gate G0 then reads the whole draft as one flat hook block, so a banned token used in body prose is judged exactly like one in the title. Rephrase the claim as a hedged, checkable observation instead of relying on its position in the article.
 
 ## SOURCED NUMBERS ONLY — hard constraint
 

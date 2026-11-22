@@ -11,7 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from automedia.gates.hook_claims_rewrite import HEDGE_MAP, hedge_hook_claims
+from automedia.gates.hook_claims_rewrite import (
+    HEDGE_MAP,
+    hedge_all_hook_claims,
+    hedge_hook_claims,
+)
 from automedia.prompts.hook_claims import HOOK_CLAIMS_BANNED_TOKENS, hook_area_violations
 
 HIT_HOOK = (
@@ -86,6 +90,55 @@ def test_tokens_past_the_160_char_cap_are_still_hedged() -> None:
 def test_every_banned_token_has_a_hedge_entry() -> None:
     """The table covers the closed list — drift is caught here, not in prod."""
     assert set(HOOK_CLAIMS_BANNED_TOKENS) <= set(HEDGE_MAP)
+
+
+class TestHedgeAllHookClaims:
+    """Generation-boundary hedge (image-track drafts, no markdown headings)."""
+
+    def test_body_token_is_hedged_too(self) -> None:
+        content = (
+            "文章封面并不是标题的附属装饰\n"
+            "读者在极短时间内决定要不要点进去\n"
+            "重点信息保证在小尺寸下依然清晰可辨"
+        )
+        hedged = hedge_all_hook_claims(content)
+        assert "决定" not in hedged and "保证" not in hedged
+        assert "影响要不要点进去" in hedged
+        assert "注意" in hedged
+
+    def test_no_banned_token_survives_anywhere(self) -> None:
+        content = "标题一定轻松\n正文一定轻松，保证学会，一招搞定。"
+        hedged = hedge_all_hook_claims(content)
+        assert [hit.token for hit in hook_area_violations(hedged)] == []
+        for token in HOOK_CLAIMS_BANNED_TOKENS:
+            assert token not in hedged
+
+    def test_verb_object_body_phrases_stay_grammatical(self) -> None:
+        """「保证＋名词」must not become the adverb「通常＋名词」(#gap2)."""
+        hedged = hedge_all_hook_claims("保证清晰度，保证明暗对比。")
+        assert "注意清晰度" in hedged
+        assert "注意明暗对比" in hedged
+        assert "通常" not in hedged
+
+    def test_longer_token_still_wins(self) -> None:
+        hedged = hedge_all_hook_claims("三步轻松搞定")
+        assert "不那么费劲地处理" in hedged
+        assert "搞定" not in hedged
+
+    def test_unmapped_token_is_not_faked_away(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from automedia.gates import hook_claims_rewrite as module
+
+        partial = {k: v for k, v in HEDGE_MAP.items() if k != "一定"}
+        monkeypatch.setattr(module, "HEDGE_MAP", partial)
+        monkeypatch.setattr(module, "_HEDGE_ORDER", tuple(sorted(partial, key=len, reverse=True)))
+        content = "正文里一定会出现这个词"
+        assert hedge_all_hook_claims(content) == content
+
+    def test_idempotent_and_empty_safe(self) -> None:
+        content = "一定轻松搞定"
+        hedged = hedge_all_hook_claims(content)
+        assert hedge_all_hook_claims(hedged) == hedged
+        assert hedge_all_hook_claims("") == ""
 
 
 def test_empty_content_is_returned_unchanged() -> None:
