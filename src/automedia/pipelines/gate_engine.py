@@ -519,8 +519,10 @@ class GateEngine:
         Before the rewrite is applied, a per-gate diff record is persisted to
         ``<project_dir>/.automedia/gate_diffs/<gate>_<seq>.json`` (texts only —
         before/after content plus the failing result's per-check reasons; the
-        unified diff is computed at render time).  A write failure never fails
-        the pipeline.
+        unified diff is computed at render time).  The rewrite is also carried
+        as an entry in the record's ``candidates[]`` (#637) so a chain of
+        candidates stays inspectable even though only the applied text lands
+        in the flow.  A write failure never fails the pipeline.
 
         An explicit allowlist scopes this to the main content flow so a
         D-gate/P-gate style platform rewrite (which also emits
@@ -552,6 +554,19 @@ class GateEngine:
                         error=str(exc),
                     )
 
+        # Record this rewrite as a retry candidate BEFORE applying (#637).
+        # Without a per-attempt record the chain only keeps the first-apply
+        # original and the last applied rewrite, so "which candidate was
+        # best" is unanswerable and the last round always wins.
+        apply_state.setdefault("candidates", []).append(
+            {
+                "attempt": int(gate_context.get("_quality_retry_count", 1) or 1),
+                "gate": gate_name,
+                "chars": len(rewrite),
+                "content": rewrite,
+            }
+        )
+
         gate_context["content"] = rewrite
         apply_state["applied"] = True
         try:
@@ -562,6 +577,7 @@ class GateEngine:
                 after=str(rewrite),
                 result=result,
                 applied=True,
+                candidates=list(apply_state.get("candidates") or []),
             )
         except Exception as exc:  # diff capture must never fail the pipeline
             log.warning("gate.diff_record.write_failed", gate_name=gate_name, error=str(exc))
@@ -606,7 +622,9 @@ class GateEngine:
         Called when a content gate fails through all quality retries (or an
         exception aborts the retry chain): the failed chain's rewrites must
         not survive as final content — the pipeline failure state must match
-        the pre-change behavior exactly.
+        the pre-change behavior exactly (no partial write).  Downstream
+        consumers treat the draft as quality-checked output, so the restore
+        is unconditional once the chain failed.
 
         When *result* carries the final failing attempt's ``modified_content``
         and no diff record was written during the retry chain (i.e. the chain
@@ -617,7 +635,10 @@ class GateEngine:
         failing attempt's unapplied rewrite is recorded with ``applied=False``
         BEFORE the restore, so the director also sees the final attempt that
         exhausted the budget (and still sees every applied rewrite, whose
-        records were written at apply time with ``applied=True``).
+        records were written at apply time with ``applied=True``).  Every
+        candidate the chain produced is carried in the record's
+        ``candidates[]`` (#637) — diagnostics only; the content flow keeps
+        the original.
         """
         rewrite = (result or {}).get("modified_content")
         if (
@@ -638,6 +659,7 @@ class GateEngine:
                     after=str(rewrite),
                     result=result or {},
                     applied=False,
+                    candidates=list(apply_state.get("candidates") or []),
                 )
             except Exception as exc:  # diff capture must never fail the pipeline
                 log.warning(
@@ -683,6 +705,7 @@ class GateEngine:
         after: str,
         result: dict[str, Any],
         applied: bool,
+        candidates: list[dict[str, Any]] | None = None,
     ) -> None:
         """Persist one original-vs-modified diff record for *gate_name*.
 
@@ -690,6 +713,12 @@ class GateEngine:
         the pre-change content, the rewrite, the failing result's per-check
         reasons, and the applied flag.          TEXTS ONLY — the unified diff is
         computed at render time, never stored.
+
+        *candidates* (#637) carries the retry chain's rewrite candidates —
+        each entry ``{attempt, chars, content}`` — so the candidate bodies
+        stay inspectable in the diff records even though a failed chain never
+        promotes any of them into the content flow.  Entries are individually
+        capped at the same per-record size limit.
         """
         try:
             project_dir = str(gate_context.get("project_dir", "") or "")
@@ -709,7 +738,7 @@ class GateEngine:
                 before = before[:max_chars]
                 after = after[:max_chars]
 
-            record = {
+            record: dict[str, Any] = {
                 "gate": gate_name,
                 "timestamp": datetime.now(UTC).isoformat(),
                 "before": before,
@@ -719,6 +748,20 @@ class GateEngine:
                 "applied": applied,
                 "truncated": truncated,
             }
+            if candidates:
+                capped: list[dict[str, Any]] = []
+                for c in candidates:
+                    content = str(c.get("content", ""))
+                    over = len(content) > max_chars
+                    capped.append(
+                        {
+                            "attempt": int(c.get("attempt", 0)),
+                            "chars": int(c.get("chars", 0)),
+                            "content": content[:max_chars] if over else content,
+                            "truncated": over,
+                        }
+                    )
+                record["candidates"] = capped
 
             diffs_dir = Path(project_dir) / ".automedia" / "gate_diffs"
             diffs_dir.mkdir(parents=True, exist_ok=True)
@@ -1052,9 +1095,7 @@ class GateEngine:
                 )
                 results.append(skip_result)
                 if progress:
-                    progress.on_gate_end(
-                        gate_name, True, 0.0, detail=skip_result["reason"]
-                    )
+                    progress.on_gate_end(gate_name, True, 0.0, detail=skip_result["reason"])
                 _gate_loop_idx += 1
                 continue
 
@@ -1238,6 +1279,33 @@ class GateEngine:
                                 remaining=_remaining,
                             )
 
+                            # Non-convergence detection (#637): when the two
+                            # most recent transitions each shrank the rewrite
+                            # to <=50% of its predecessor, the retry chain is
+                            # compressing instead of improving — further
+                            # attempts only burn tokens.  The just-failed
+                            # attempt's rewrite is not yet a candidate (it is
+                            # recorded at the next apply), so the observed
+                            # sequence is candidates + the current rewrite.
+                            _candidates = _rewrite_apply_state.get("candidates") or []
+                            _chars_seq = [int(c["chars"]) for c in _candidates]
+                            _current_rewrite = result.get("modified_content")
+                            if _current_rewrite:
+                                _chars_seq.append(len(_current_rewrite))
+                            if (
+                                len(_chars_seq) >= 3
+                                and _chars_seq[-1] <= 0.5 * _chars_seq[-2]
+                                and _chars_seq[-2] <= 0.5 * _chars_seq[-3]
+                            ):
+                                result["retry_non_converging"] = True
+                                result["retry_shrinking"] = _chars_seq[-3:]
+                                log.warning(
+                                    "gate.retry_non_converging",
+                                    gate=gate_name,
+                                    chars=_chars_seq[-3:],
+                                )
+                                break
+
                         except _PERMANENT_EXCEPTIONS as exc:
                             duration = time.monotonic() - start
                             tb = traceback.format_exc()
@@ -1343,8 +1411,33 @@ class GateEngine:
                             raise
 
                     if not passed:
-                        # Retries exhausted — undo any applied rewrite so the
-                        # failed chain leaves no partial write behind.
+                        # Retries exhausted — no partial write (#637): the
+                        # failed chain's rewrites must never survive as final
+                        # content.  Downstream consumers (publishing,
+                        # distribution, human review) treat the draft as
+                        # quality-checked output, so context and disk draft
+                        # are restored to the pre-apply original
+                        # unconditionally.  The chain's candidates survive
+                        # only as diagnostics: result fields (metadata only)
+                        # and candidate bodies inside the gate-diff records.
+                        _retry_candidates = _rewrite_apply_state.get("candidates") or []
+                        if _retry_candidates:
+                            result["degraded"] = True
+                            result["degraded_reason"] = (
+                                "all retries failed; candidate list recorded for diagnosis"
+                            )
+                            result["retry_candidates"] = [
+                                {
+                                    "attempt": int(c.get("attempt", 0)),
+                                    "chars": int(c.get("chars", 0)),
+                                }
+                                for c in _retry_candidates
+                            ]
+                            log.warning(
+                                "gate.retry_all_failed_rolled_back",
+                                gate=gate_name,
+                                candidates=result["retry_candidates"],
+                            )
                         self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
                         _failed_gates.add(gate_name)
                         if self._hitl_rejected_halt:
