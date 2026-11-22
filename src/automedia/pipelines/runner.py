@@ -1579,7 +1579,16 @@ def _finalize_pipeline(
         (e.gate_name for e in gates_log if e.status in ("failed", "error")),
         None,
     )
-    affected_downstream = _compute_affected_downstream(mode_gates, failed_gate)
+    # A gate that opted into ``continue_on_exhaustion`` (G0, #626) records its
+    # failure but lets the remaining gates run.  Those gates DO appear in the
+    # report, so they are not "affected" — only gates the failure genuinely
+    # prevented from running stay in the affected set.
+    executed_gates = {entry.gate_name for entry in gates_log}
+    affected_downstream = [
+        gate
+        for gate in _compute_affected_downstream(mode_gates, failed_gate)
+        if gate not in executed_gates
+    ]
 
     return PipelineResult(
         status=cast(Literal["success", "failed", "partial", "awaiting_review"], status),

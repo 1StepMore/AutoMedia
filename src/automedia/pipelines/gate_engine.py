@@ -989,6 +989,12 @@ class GateEngine:
         # The media stage fires at most once per run: one production pass, many
         # V gates inspecting it.  Kept local so each _run() starts fresh.
         _media_stage_done = False
+        # Gates that failed earlier in this run.  A gate may declare explicit
+        # ``requires_upstream`` dependencies; when one of them failed it is
+        # recorded as ``skipped:upstream-<gate>`` rather than silently dropped
+        # (#626).  Gates without declared dependencies still run and report
+        # their own verdict.
+        _failed_gates: set[str] = set()
         while _gate_loop_idx < len(self._gates):
             gate = self._gates[_gate_loop_idx]
             gate_idx = _gate_loop_idx + 1
@@ -1015,6 +1021,42 @@ class GateEngine:
             # NEW: Wait if paused (between gates, not during a gate)
             if progress and not progress.wait_if_paused():
                 break  # cancelled during pause
+
+            # Explicit upstream dependency: a gate that cannot judge anything
+            # because a gate it declares as required already failed is recorded
+            # as a first-class skip (with the reason), never silently dropped.
+            _missing_upstream = [
+                upstream
+                for upstream in getattr(gate, "requires_upstream", ())
+                if upstream in _failed_gates
+            ]
+            if _missing_upstream:
+                upstream = _missing_upstream[0]
+                skip_reason = f"skipped:upstream-{upstream.lower()}"
+                skip_result: dict[str, Any] = {
+                    "passed": True,
+                    "gate": gate_name,
+                    "status": "skipped",
+                    "skip_reason": skip_reason,
+                    "reason": (
+                        f"{gate_name} requires upstream gate {upstream}, which failed "
+                        f"earlier in this run; its own verdict is unavailable "
+                        f"({skip_reason})"
+                    ),
+                }
+                log.info(
+                    "gate_engine.skipped_upstream",
+                    gate_name=gate_name,
+                    upstream=upstream,
+                    skip_reason=skip_reason,
+                )
+                results.append(skip_result)
+                if progress:
+                    progress.on_gate_end(
+                        gate_name, True, 0.0, detail=skip_result["reason"]
+                    )
+                _gate_loop_idx += 1
+                continue
 
             # Media production: a V gate inspects artifacts this pipeline must
             # produce first (TTS audio, transcription, SRT, rendered video).
@@ -1304,13 +1346,27 @@ class GateEngine:
                         # Retries exhausted — undo any applied rewrite so the
                         # failed chain leaves no partial write behind.
                         self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
+                        _failed_gates.add(gate_name)
                         if self._hitl_rejected_halt:
                             # A human rejection is terminal — it must not be
                             # consumed by level-2 regeneration retries.
                             if early_stop:
                                 return False, results
                             return results
-                        if getattr(gate, "halt_on_exhaustion", False):
+                        if getattr(gate, "continue_on_exhaustion", False):
+                            # Gate opted into continuing: record the failure
+                            # and let the remaining gates run and report their
+                            # own verdicts (#626).  No level-2 regeneration and
+                            # no halt — a fact-check failure must not erase the
+                            # downstream gates from the report.
+                            log.warning(
+                                "gate.quality_retry.continue_on_exhaustion",
+                                gate_name=gate_name,
+                                quality_retry_count=_quality_attempt,
+                                max_quality_retries=_local_max_quality,
+                            )
+                            self._dispatch_after(gate_name, gate_context, result)
+                        elif getattr(gate, "halt_on_exhaustion", False):
                             # Gate opted into halting once its own quality
                             # retries are exhausted: no level-2 regeneration.
                             # dispatch_after records the failed result (with
@@ -1325,54 +1381,55 @@ class GateEngine:
                             if early_stop:
                                 return False, results
                             return results
-                        level2 = gate_context.get("_level2_handler")
-                        if level2:
-                            log.info(
-                                "gate.quality_retry.level2",
-                                gate_name=gate_name,
-                                quality_retry_count=_quality_attempt,
-                                handler=str(level2),
-                            )
-                            _regen_ok, regen_results = level2(
-                                gate_context=gate_context,
-                                failed_gate_name=gate_name,
-                                failure_result=result,
-                                progress=progress,
-                            )
-                            if regen_results:
-                                # Stitch regen results into full result list
-                                cw_result_idx = None
-                                for i_r, r in enumerate(results):
-                                    if r.get("gate") == "CW":
-                                        cw_result_idx = i_r
-                                        break
-                                if cw_result_idx is not None:
-                                    results = results[:cw_result_idx] + regen_results
-                                else:
-                                    results = results + regen_results
-                                all_ok = all(r.get("passed", True) for r in regen_results)
-                                # When level 2 is exhausted, check if H0
-                                # approved the escalation — if so, the
-                                # pipeline is successful despite earlier
-                                # gate failures.
-                                if gate_context.get("_level2_exhausted"):
-                                    h0_result = next(
-                                        (r for r in regen_results if r.get("gate") == "H0"),
-                                        None,
-                                    )
-                                    if h0_result and h0_result.get("passed"):
-                                        all_ok = True
-                                if early_stop:
-                                    return all_ok, results
-                                return results
                         else:
-                            log.info(
-                                "gate.quality_retry.exhausted",
-                                gate_name=gate_name,
-                                quality_retry_count=_quality_attempt,
-                                max_quality_retries=_local_max_quality,
-                            )
-                        self._dispatch_after(gate_name, gate_context, result)
+                            level2 = gate_context.get("_level2_handler")
+                            if level2:
+                                log.info(
+                                    "gate.quality_retry.level2",
+                                    gate_name=gate_name,
+                                    quality_retry_count=_quality_attempt,
+                                    handler=str(level2),
+                                )
+                                _regen_ok, regen_results = level2(
+                                    gate_context=gate_context,
+                                    failed_gate_name=gate_name,
+                                    failure_result=result,
+                                    progress=progress,
+                                )
+                                if regen_results:
+                                    # Stitch regen results into full result list
+                                    cw_result_idx = None
+                                    for i_r, r in enumerate(results):
+                                        if r.get("gate") == "CW":
+                                            cw_result_idx = i_r
+                                            break
+                                    if cw_result_idx is not None:
+                                        results = results[:cw_result_idx] + regen_results
+                                    else:
+                                        results = results + regen_results
+                                    all_ok = all(r.get("passed", True) for r in regen_results)
+                                    # When level 2 is exhausted, check if H0
+                                    # approved the escalation — if so, the
+                                    # pipeline is successful despite earlier
+                                    # gate failures.
+                                    if gate_context.get("_level2_exhausted"):
+                                        h0_result = next(
+                                            (r for r in regen_results if r.get("gate") == "H0"),
+                                            None,
+                                        )
+                                        if h0_result and h0_result.get("passed"):
+                                            all_ok = True
+                                    if early_stop:
+                                        return all_ok, results
+                                    return results
+                            else:
+                                log.info(
+                                    "gate.quality_retry.exhausted",
+                                    gate_name=gate_name,
+                                    quality_retry_count=_quality_attempt,
+                                    max_quality_retries=_local_max_quality,
+                                )
+                            self._dispatch_after(gate_name, gate_context, result)
 
             except _PERMANENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start
