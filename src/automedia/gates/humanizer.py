@@ -261,6 +261,7 @@ def _replace_cn_academic(m: re.Match[str]) -> str:
     """Replace a Chinese officialese word, deleting it when unmapped."""
     return _CN_ACADEMIC_REPLACEMENTS.get(m.group(0), "")
 
+
 # Pattern 8: Absolute assertions
 _ABSOLUTE_PATTERNS: list[str] = [
     r"\balways\b",
@@ -836,7 +837,7 @@ class G1Humanizer(BaseGate):
                 max_iterations=max_iterations,
             )
 
-            return build_gate_result(
+            result = build_gate_result(
                 checks,
                 gate="G1",
                 expected_map=_EXPECTED_MAP,
@@ -844,6 +845,20 @@ class G1Humanizer(BaseGate):
                 method=method,
                 **verify_extra,
             )
+            # LLM-judge path only (#640): the judge flags structural/style
+            # issues (三段式, 对偶, 贴纸标题感) the regex-only rewrite cannot
+            # address, so marking non_retryable stops the engine from burning
+            # quality-retry rounds that can never converge.  The deterministic
+            # fallback stays retryable — there the rewrite is effective.
+            # ``modified_content`` is kept: it may still have fixed filler-word
+            # findings and remains valuable in the final report.
+            if method != "deterministic" and not all(c["passed"] for c in checks):
+                result["non_retryable"] = True
+                result["non_retryable_reason"] = (
+                    "llm-judge findings are structural/style-level; "
+                    "regex rewrite cannot address them"
+                )
+            return result
 
         # ------------------------------------------------------------------
         # Deterministic-only path (enable_llm=False or empty content)
