@@ -535,7 +535,11 @@ class GateEngine:
 
         before = gate_context.get("content", "")
 
-        if not apply_state:
+        # First apply snapshots the pre-apply state.  Keyed on the snapshot
+        # marker rather than dict emptiness: the gate may have written its
+        # rewrite-budget counters (#651) into this same shared dict before
+        # the first apply — those must not suppress the snapshot.
+        if "original_content" not in apply_state:
             apply_state["original_content"] = gate_context.get("content", "")
             apply_state["gate_name"] = gate_name
             draft_path = self._resolve_current_draft(gate_context)
@@ -1047,6 +1051,11 @@ class GateEngine:
             # Snapshot/rollback state for modified_content applies in the
             # quality-retry branch (no partial writes on exhausted retries).
             _rewrite_apply_state: dict[str, Any] = {}
+            # Expose the SAME dict to gates (#639/#651): G1's rewrite budget
+            # counters live in it, reachable via gate_context, so they persist
+            # across this gate's quality-retry rounds and die with the gate —
+            # no module-level globals.  Rebound per gate, so counters reset.
+            gate_context["_rewrite_apply_state"] = _rewrite_apply_state
 
             # NEW: Check cancellation
             if progress and progress.is_cancelled():

@@ -33,7 +33,10 @@ result shape when disabled.
 
 from __future__ import annotations
 
+import difflib
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -731,6 +734,26 @@ def _rewrite_content(content: str) -> str:
 # Targeted rewrite for the LLM-judge path (issue #640, plan A)
 # ---------------------------------------------------------------------------
 
+#: Hard wall-clock bound for ONE targeted rewrite call (issue #651).  The
+#: produce-audio run measured single rewrite calls at 522.8s / 470.2s — a
+#: hung provider burned the whole scenario budget.  Same mechanism as
+#: :func:`llm_check_with_fallback`: a worker thread plus
+#: ``future.result(timeout=...)`` — no new threading/signal machinery.
+_G1_REWRITE_TIMEOUT_S = 180
+
+#: Default rewrite-attempt budget for the LLM-judge path (issue #651).
+#: ``llm.text_generation.max_rewrite_attempts`` overrides it; users need not
+#: configure anything — the default applies when the key is absent.
+_G1_REWRITE_BUDGET_DEFAULT = 2
+
+#: Similarity above which two consecutive rewrites count as "no substantive
+#: change" (issue #651) — whitespace-insensitive difflib ratio.
+_G1_NO_PROGRESS_RATIO = 0.95
+
+#: Consecutive no-progress rewrites tolerated before the gate goes
+#: non-retryable (issue #651).
+_G1_NO_PROGRESS_LIMIT = 2
+
 
 class G1RewriteResult(BaseModel):
     """Structured output model for the targeted G1 rewrite (issue #640).
@@ -748,11 +771,17 @@ class G1RewriteResult(BaseModel):
 def _attempt_g1_rewrite(content: str, reason: str) -> str | None:
     """Request one structured rewrite; return content or ``None`` (fail-closed).
 
-    Any provider/parse exception or an empty result yields ``None`` so the
-    caller keeps the #642 stop-the-bleeding behavior instead of emitting a
-    half-product.  A result that is identical to the original once whitespace
-    is stripped is also rejected — that is exactly the ``before == after``
-    idle retry the plan-A rewrite exists to prevent.
+    Any provider/parse exception, an empty result, or a call exceeding
+    ``_G1_REWRITE_TIMEOUT_S`` yields ``None`` so the caller keeps the #642
+    stop-the-bleeding behavior instead of emitting a half-product.  The
+    timeout reuses the ``llm_check_with_fallback`` mechanism (worker thread +
+    ``future.result(timeout=...)``); the executor is shut down WITHOUT
+    waiting because a still-running provider call must not re-block the
+    pipeline after the result was already abandoned — that would defeat the
+    180s bound the budget exists to enforce.  A result that is identical to
+    the original once whitespace is stripped is also rejected — that is
+    exactly the ``before == after`` idle retry the plan-A rewrite exists to
+    prevent.
     """
     try:
         prompt = load_prompt(
@@ -760,7 +789,14 @@ def _attempt_g1_rewrite(content: str, reason: str) -> str | None:
             content=content,
             failure_reason=reason,
         )
-        rewrite = llm_complete_structured_safe(prompt, response_format=G1RewriteResult)
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            future = executor.submit(
+                lambda: llm_complete_structured_safe(prompt, response_format=G1RewriteResult)
+            )
+            rewrite = future.result(timeout=_G1_REWRITE_TIMEOUT_S)
+        finally:
+            executor.shutdown(wait=False)
     except Exception:
         log.warning("G1 rewrite attempt failed (fail-closed)", exc_info=True)
         return None
@@ -772,6 +808,57 @@ def _attempt_g1_rewrite(content: str, reason: str) -> str | None:
         log.warning("G1 rewrite identical to original (fail-closed)")
         return None
     return rewritten
+
+
+def _rewrite_state(gate_context: GateContext | dict[str, Any]) -> dict[str, Any]:
+    """Return the shared #639 apply-state dict for this gate's retry chain.
+
+    ``GateEngine`` creates ``_rewrite_apply_state`` per gate (snapshot /
+    rollback / candidates) and exposes that SAME dict through
+    ``gate_context["_rewrite_apply_state"]``.  The rewrite budget counters
+    (#651) live in it so they persist across the quality-retry rounds of one
+    gate and die with it — no module-level globals.  When the gate is driven
+    directly (unit tests, SDK) without the engine, the key is created on
+    demand on the context object so counters still persist between rounds.
+    """
+    try:
+        state = gate_context.setdefault("_rewrite_apply_state", {})
+    except Exception:  # exotic context object — budget simply won't persist
+        return {}
+    return state if isinstance(state, dict) else {}
+
+
+def _rewrite_similarity(prev: str, new: str) -> float:
+    """Whitespace-insensitive similarity between two rewrite texts (#651).
+
+    Both inputs are compared with all whitespace removed (改写稿 may reflow
+    line breaks freely; that is not a substantive change).
+    """
+    prev_norm = "".join(prev.split())
+    new_norm = "".join(new.split())
+    if not prev_norm or not new_norm:
+        return 0.0
+    return difflib.SequenceMatcher(None, prev_norm, new_norm).ratio()
+
+
+def _resolve_max_rewrite_attempts(config: dict[str, Any] | None) -> int:
+    """Resolve ``llm.text_generation.max_rewrite_attempts`` (default 2, #651).
+
+    Read from the merged config carried in ``gate_context["config"]``; the
+    default applies when the key is absent, so users need not configure
+    anything.  A malformed value falls back to the default instead of
+    failing the gate.
+    """
+    cfg = config if isinstance(config, dict) else {}
+    llm_cfg = cfg.get("llm")
+    tg_cfg = llm_cfg.get("text_generation") if isinstance(llm_cfg, dict) else None
+    raw = tg_cfg.get("max_rewrite_attempts") if isinstance(tg_cfg, dict) else None
+    if raw is None:
+        return _G1_REWRITE_BUDGET_DEFAULT
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return _G1_REWRITE_BUDGET_DEFAULT
 
 
 # ---------------------------------------------------------------------------
@@ -797,6 +884,14 @@ class G1Humanizer(BaseGate):
           result gains ``detector_score`` + ``verify_iterations`` (issue
           #62, Wave-B B4).  Env backstop: ``AUTOMEDIA_HUMANIZER_VERIFY_LOOP``
           (any value other than ``""``/``"0"``) enables the loop.
+        - ``_rewrite_apply_state``: the engine's per-gate apply-state dict
+          (#639).  The LLM-judge rewrite budget counters (#651) live here;
+          ``config["llm"]["text_generation"]["max_rewrite_attempts"]``
+          (default 2) caps the targeted rewrites.  When the budget is
+          exhausted or two consecutive rewrites change nothing substantive
+          (difflib ratio > 0.95 vs the previously applied rewrite), the
+          result is marked ``non_retryable`` and carries ``rewrite_attempts``
+          / ``rewrite_total_s`` / ``rewrite_rejected_reason`` bookkeeping.
 
     Returns:
         dict with keys: ``passed``, ``gate``, ``checks``, ``modified_content``,
@@ -913,8 +1008,47 @@ class G1Humanizer(BaseGate):
                     "；".join(c["detail"] for c in checks if not c["passed"])
                     or "humanizer check failed"
                 )
-                rewritten = _attempt_g1_rewrite(content, reason)
-                if rewritten is not None:
+                # Rewrite budget (#651): counters live in the shared #639
+                # apply-state dict so they persist across the quality-retry
+                # rounds of this gate.  The budget caps ONLY the targeted
+                # LLM rewrite — ``max_quality_retries`` semantics and the
+                # deterministic regex-rewrite path are untouched.
+                rewrite_state = _rewrite_state(gate_context)
+                max_attempts = _resolve_max_rewrite_attempts(config)
+                attempts = int(rewrite_state.get("rewrite_attempts", 0) or 0)
+                total_s = float(rewrite_state.get("rewrite_total_s", 0.0) or 0.0)
+                no_progress = int(rewrite_state.get("consecutive_no_progress", 0) or 0)
+
+                rejected: str | None = None
+                rewritten: str | None = None
+                if attempts >= max_attempts:
+                    # Budget spent in earlier rounds — do not call the LLM
+                    # again; the scenario timeout must not be burned here.
+                    rejected = f"rewrite budget exhausted after {attempts} attempts"
+                else:
+                    started = time.monotonic()
+                    rewritten = _attempt_g1_rewrite(content, reason)
+                    total_s += time.monotonic() - started
+                    if rewritten is not None:
+                        attempts += 1
+                        # No-progress stop (#651): ``content`` IS the
+                        # previously applied rewrite when the engine applies
+                        # each round's ``modified_content`` before retrying,
+                        # so comparing against it answers "did this rewrite
+                        # change anything the last one did not".  The #639
+                        # char-halving criterion does not apply here —
+                        # rewrite outputs fluctuate / grow.
+                        if _rewrite_similarity(content, rewritten) > _G1_NO_PROGRESS_RATIO:
+                            no_progress += 1
+                        else:
+                            no_progress = 0
+                        if no_progress >= _G1_NO_PROGRESS_LIMIT:
+                            rejected = "rewrite produced no substantive change twice in a row"
+                    rewrite_state["rewrite_attempts"] = attempts
+                    rewrite_state["rewrite_total_s"] = total_s
+                    rewrite_state["consecutive_no_progress"] = no_progress
+
+                if rewritten is not None and rejected is None:
                     # 方案 A (#640): the judge's targeted rewrite succeeded —
                     # ship it as the retry input and let the engine retry.
                     # ``passed``/``checks`` keep the judge's verdict; the
@@ -922,15 +1056,31 @@ class G1Humanizer(BaseGate):
                     result["modified_content"] = rewritten
                     result.pop("non_retryable", None)
                     result.pop("non_retryable_reason", None)
+                    result["rewrite_attempts"] = attempts
+                    result["rewrite_total_s"] = total_s
                     log.info(
                         "g1.rewrite_from_judge",
                         chars_before=len(content),
                         chars_after=len(rewritten),
+                        attempts=attempts,
+                    )
+                elif rejected is not None:
+                    result["non_retryable"] = True
+                    result["non_retryable_reason"] = rejected
+                    result["rewrite_attempts"] = attempts
+                    result["rewrite_total_s"] = total_s
+                    result["rewrite_rejected_reason"] = rejected
+                    log.warning(
+                        "g1.rewrite_rejected",
+                        reason=rejected,
+                        attempts=attempts,
+                        total_s=round(total_s, 1),
                     )
                 else:
                     # 改不出来 ⇒ keep the #642 stop-the-bleeding behavior:
                     # the regex-only rewrite cannot address structural
                     # findings, so retrying would burn tokens for nothing.
+                    # No rewrite happened → no bookkeeping keys.
                     result["non_retryable"] = True
                     result["non_retryable_reason"] = (
                         "llm-judge findings are structural/style-level and the "
