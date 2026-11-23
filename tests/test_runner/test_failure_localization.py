@@ -133,6 +133,24 @@ class TestFinalizePipelineAttachesField:
             "H0",
         ]
 
+    def test_g0_failure_that_continued_has_no_affected_downstream(
+        self, project: MagicMock
+    ) -> None:
+        """#626: downstream gates that ran are not "affected" by a G0 failure."""
+        results = [
+            {"passed": True, "gate": "CW", "duration_s": 0.1},
+            {"passed": False, "gate": "G0", "error": "questionable claim", "duration_s": 0.2},
+            {"passed": True, "gate": "G1", "duration_s": 0.1},
+            {"passed": True, "gate": "G2", "duration_s": 0.1},
+            {"passed": True, "gate": "G3", "duration_s": 0.1},
+            {"passed": True, "gate": "G6", "duration_s": 0.1},
+            {"passed": True, "gate": "H0", "duration_s": 0.1},
+        ]
+        result = self._finalize(project, results)
+
+        assert result.status == "partial"
+        assert result.affected_downstream == []
+
     def test_success_result_has_empty_affected_downstream(self, project: MagicMock) -> None:
         results = [{"passed": True, "gate": "CW", "duration_s": 0.1}]
         result = self._finalize(project, results, success=True)

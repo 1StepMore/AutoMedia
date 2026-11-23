@@ -264,6 +264,41 @@ class TestEnvToConfig:
         assert result.get("foo") == "bar"
         reset_dotenv_overlay_cache()
 
+    # -- per-slot LLM env injection (#646) ----------------------------------
+
+    def test_vision_slot_env_injection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """AUTOMEDIA_LLM_VISION_MODEL 落到 llm.vision.model，text_generation 不受影响。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_MODEL", "glm-4v-flash")
+        result = _env_to_config()
+        assert result["llm"]["vision"]["model"] == "glm-4v-flash"
+        assert result["llm"].get("text_generation") is None
+
+    def test_vision_slot_full_fields(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """provider/base_url/api_key 三个字段同规则注入（base_url 不得被下划线拆层）。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_PROVIDER", "openai")
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_BASE_URL", "https://example.invalid/v1")
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_API_KEY", "sk-vision")
+        result = _env_to_config()
+        assert result["llm"]["vision"] == {
+            "provider": "openai",
+            "base_url": "https://example.invalid/v1",
+            "api_key": "sk-vision",
+        }
+
+    def test_proofread_translation_env_injection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """PROOFREAD → subtitle_proofread slot（通用切分表达不了的多词槽位）；TRANSLATION 同理。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_PROOFREAD_MODEL", "glm-4-flash")
+        monkeypatch.setenv("AUTOMEDIA_LLM_TRANSLATION_MODEL", "glm-4.5-air")
+        monkeypatch.setenv("AUTOMEDIA_LLM_TRANSLATION_API_KEY", "sk-trans")
+        result = _env_to_config()
+        assert result["llm"]["subtitle_proofread"]["model"] == "glm-4-flash"
+        assert result["llm"]["translation"]["model"] == "glm-4.5-air"
+        assert result["llm"]["translation"]["api_key"] == "sk-trans"
+
+    def test_env_absent_no_change(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """都不设 ⇒ 映射为空：不引入任何幻影 slot，与改动前逐字节一致。"""
+        assert _env_to_config() == {}
+
 
 # ---------------------------------------------------------------------------
 # load_config – integration tests

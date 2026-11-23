@@ -37,6 +37,11 @@ _DEPENDENCIES: list[dict[str, Any]] = [
     },  # model file presence (informational)
     {"name": "chrome", "check_cmd": None, "version_flag": None},  # detected via shutil
     {"name": "llm_api", "check_cmd": None, "version_flag": None},  # API connectivity test
+    {
+        "name": "vision_slot",
+        "check_cmd": None,
+        "version_flag": None,
+    },  # static vision-slot config check
     {"name": "env_file", "check_cmd": None, "version_flag": None},  # .env source resolution
 ]
 
@@ -507,6 +512,43 @@ class Doctor:
             return False, msg or "API check failed"
 
     @staticmethod
+    def _check_vision_slot(config: dict[str, Any]) -> tuple[bool, str | None]:
+        """Statically verify the ``llm.vision`` slot is plausibly multimodal.
+
+        Issue #638 follow-up: ``llm_api`` probes ``text_generation`` only, so a
+        ``llm.vision.model`` pointed at a plain text model (e.g. ``spark-x2.6``)
+        passed ``automedia doctor`` silently while V1 recorded every frame as
+        unjudged. This check is deliberately static (no HTTP): doctor must stay
+        fast and work offline; real vision reachability surfaces in the
+        validation report's ``judged``/``unjudged`` counts.
+
+        Purely heuristic on the model-identity case: some models are both text
+        and multimodal (e.g. ``gpt-4o``), so the message asks the operator to
+        confirm image-input support rather than asserting impossibility.
+        """
+        llm_cfg = config.get("llm") or {}
+        vision_cfg = llm_cfg.get("vision") or {}
+        vision_model = str(vision_cfg.get("model") or "").strip()
+        if not vision_model:
+            return False, (
+                "no vision model configured — V1 vision QA will record every "
+                "entry as unjudged (frames never judged)"
+            )
+
+        text_cfg = llm_cfg.get("text_generation") or {}
+        text_model = str(text_cfg.get("model") or "").strip()
+        if text_model and vision_model == text_model:
+            return False, (
+                f"llm.vision.model == llm.text_generation.model ({vision_model!r}) — "
+                "this is very likely a text-only model that cannot read frames; "
+                "point llm.vision at a multimodal model (e.g. zhipu/glm-4v-flash) "
+                "unless you have confirmed this model supports image input"
+            )
+
+        provider = str(vision_cfg.get("provider") or "").strip() or "openai"
+        return True, f"{provider}/{vision_model}"
+
+    @staticmethod
     def _check_chrome_headless(chrome_path: str) -> tuple[bool, str | None]:
         """Verify *chrome_path* can start in headless mode.
 
@@ -656,6 +698,25 @@ class Doctor:
             # --- LLM API connectivity check -------------------------------
             if name == "llm_api":
                 installed, version = self._check_llm_api()
+                results.append(
+                    {
+                        "name": name,
+                        "installed": installed,
+                        "version": version,
+                        "path": None,
+                    }
+                )
+                continue
+
+            # --- Vision slot static config check (issue #638) -------------
+            if name == "vision_slot":
+                try:
+                    from automedia.core.config_loader import load_config
+
+                    config = load_config()
+                except Exception:
+                    config = {}
+                installed, version = self._check_vision_slot(config)
                 results.append(
                     {
                         "name": name,

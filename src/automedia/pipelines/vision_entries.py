@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from typing import Any
@@ -39,6 +40,21 @@ Runner = Callable[..., subprocess.CompletedProcess[bytes]]
 # 落盘 JPEG 质量（ffmpeg -q:v 2 ≈ 视觉上无损；PNG 对抽帧太大且更慢）。
 _FFMPEG_FRAME_ARGS = ["-frames:v", "1", "-q:v", "2", "-y"]
 _SUBPROCESS_TIMEOUT_S = 60
+
+#: 「判不了」的表述（#638）：判官说它读不了画面（无法解析/看不清/…）时，
+#: 那是"无法判定"而非"判定为不相关"，不得据此判红。中英都要认，大小写不敏感。
+_UNREADABLE_RE = re.compile(
+    r"无法解析|无法确认|无法判断|看不清|无法识别|图片(?:内容)?不可读|无法读取"
+    r"|cannot\s+(?:determine|parse|read|tell)|unable\s+to\s+(?:determine|parse|read)"
+    r"|unreadable|illegible|not\s+(?:legible|parseable)",
+    re.IGNORECASE,
+)
+#: 实质的"不相关"依据（#638）：理由里同时给出这类依据时，即使也带"看不清"
+#: 字样，仍按 unrelated 判定——不能借"读不清"放过真负样本（#387 不松动）。
+_UNRELATED_RE = re.compile(
+    r"无关|不符|不一致|不匹配|unrelated|does\s+not\s+match|inconsistent",
+    re.IGNORECASE,
+)
 
 
 def _probe_duration(ffprobe_path: str, video_path: str, run: Runner) -> float | None:
@@ -171,6 +187,10 @@ def build_vision_entries(
             vlm_client = create_vlm_client()
         except Exception:  # pragma: no cover — defensive; create_vlm_client never raises
             vlm_client = None
+    # 判官身份（#646）：成功判定的场次带上 ``judge_model``，证据文件据此写
+    # 顶层 ``model``——「V1 绿了」才能一眼看出是不是真判过。鸭子类型安全：
+    # 测试桩可能没有该属性，取不到就留空。
+    judge_model = str(getattr(vlm_client, "model_name", "") or "")
     # ffprobe 缺席时给末帧留保守余量，避免 -ss 越过 EOF 抽到空。
     end_margin = 0.05 if duration is not None else 0.25
 
@@ -192,11 +212,14 @@ def build_vision_entries(
         stats["frames_failed"] += int(not mid) + int(not end)
 
         kind = scene_media_kinds[i] if i < len(scene_media_kinds) else "missing"
+        full_reason = ""
+        verdict_vlm: str | None = None
         if not mid and not end:
             # 两帧都抽失败：该场没有视觉证据，谈不上判定——记 unjudged 并写明
             # 原因；若**所有**场次都如此，下面会整体 raise（不写 entries）。
             checked, qa_passed = False, False
             verdict = "unjudged: frame extraction failed — no visual evidence"
+            full_reason = verdict
             stats["unjudged"] += 1
         elif kind == "panel":
             # 文字面板：面板文字就是该场文案，相关性由构造保证——只登记。
@@ -205,21 +228,43 @@ def build_vision_entries(
                 True,
                 ("panel (by construction: the panel text is this scene's copy)"),
             )
+            full_reason = verdict
             stats["judged"] += 1
         else:
             # 生成图/复用图：需要视觉模型判相关性（#473）。有可插拔 VLM 通道
             # → 抽出的中帧对场文案真判（相关 + 理由）；无通道 → 如实记未
             # 判定，绝不默认 pass（#387）。VLM 判定失败按单场降级为
             # unjudged，不外抛、不丢其余场的判定。
-            verdict_vlm: str | None = None
             vlm_error = ""
+            unjudged_note: str | None = None
             if vlm_client is not None and mid:
                 try:
                     judged = vlm_client.judge_frame(mid, str(scene.get("text", "") or ""))
                     related = bool(judged.get("related"))
-                    reason = str(judged.get("reason") or "")[:200]
-                    verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
-                    checked, qa_passed = True, related
+                    raw_reason = judged.get("reason")
+                    if isinstance(raw_reason, list):
+                        # 判官给多条理由就全留（#638），不截成一句。
+                        full_reason = "; ".join(str(item) for item in raw_reason)
+                    else:
+                        full_reason = str(raw_reason or "")
+                    determinable = judged.get("determinable")
+                    # 「判不了」≠「判不过」（#638）：判官明确给
+                    # ``determinable=False``（结构化字段优先，不看文本），或
+                    # 未给该字段且 ``related=False``、理由是"读不了图"类表述
+                    # （且没同时给出实质不相关依据）时，记 unjudged 而非
+                    # unrelated——一次读图失败不该一票否决整个门。
+                    unreadable = determinable is False or (
+                        determinable is not True
+                        and not related
+                        and bool(_UNREADABLE_RE.search(full_reason))
+                        and not _UNRELATED_RE.search(full_reason)
+                    )
+                    if unreadable:
+                        unjudged_note = full_reason[:200] or "(no reason given)"
+                    else:
+                        reason = full_reason[:200]
+                        verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
+                        checked, qa_passed = True, related
                 except Exception as exc:
                     verdict_vlm = None
                     vlm_error = str(exc)[:150]
@@ -228,7 +273,9 @@ def build_vision_entries(
             else:
                 checked, qa_passed = False, False
                 stats["unjudged"] += 1
-            if verdict_vlm is None:
+            if unjudged_note is not None:
+                verdict = f"unjudged: VLM could not read the frame — {unjudged_note}"
+            elif verdict_vlm is None:
                 if vlm_client is not None and mid:
                     verdict = (
                         f"unjudged: VLM judging failed ({vlm_error}) — frame "
@@ -245,14 +292,26 @@ def build_vision_entries(
         entries.append(
             {
                 "scene_id": scene_no,
+                # 人读场景名（#638）：与逐场素材文件 ``02_images/scenes/scene-NN.png``
+                # 同一套 1-based 零填充编号，detail/证据里不用再换算 0-based 索引。
+                "name": f"scene-{i + 1:02d}",
                 "scene_index": i,
                 "scene_text": str(scene.get("text", "") or ""),
                 "mid_frame_path": mid,
                 "end_silence_frame_path": end,
                 "source": kind,
+                # 来源标注（#638）：runner 的 reused/generated 记账随
+                # ``scene_media_kinds`` 传进来，这里以 ``kind`` 落进 entry，
+                # 报告能区分"复用的封面图"和"为这一幕生成的图"。
+                "kind": kind,
                 "checked": checked,
                 "qa_passed": qa_passed,
                 "verdict": verdict,
+                # 判官理由原文（#638）：不截断地留给证据文件；面板/未判定场次
+                # 的理由即 verdict 全文。
+                "reason": full_reason if verdict_vlm is not None else verdict,
+                # 判官身份（#646）：仅 VLM 真判过的场次带；面板短路/未判定留空。
+                "judge_model": judge_model if verdict_vlm is not None else "",
             }
         )
 

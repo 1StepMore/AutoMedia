@@ -232,9 +232,11 @@ def _chain_plan(
     default comes first, followed by the legacy ``fallback`` list and then
     every other engine registered for the modality in registration order.
 
-    Returns the ordered names plus the subset the user explicitly named in
-    config (``chain``, ``default`` or ``fallback``) — candidates that only
-    appear because of registration order are implicit.
+    Returns the ordered names plus the subset that skipping should warn about:
+    engines the user explicitly named in config (``chain``, ``default`` or
+    ``fallback``) **and the built-in default** for the modality (#630) — the
+    shipped default silently disappearing is worth a warning.  Candidates that
+    only appear because of registration order are implicit.
     """
     if isinstance(engine_cfg, dict):
         chain = engine_cfg.get("chain")
@@ -268,8 +270,10 @@ def _chain_plan(
 
     ordered = ([default_name] if default_name else []) + fallback_names + registered
     explicit_names = set(fallback_names)
-    if configured_default is not None:
-        explicit_names.add(configured_default)
+    if default_name is not None:
+        # Both a configured default and the built-in default are "expected"
+        # engines: dropping either from the chain deserves a warning (#630).
+        explicit_names.add(default_name)
     return _dedupe(ordered), explicit_names
 
 

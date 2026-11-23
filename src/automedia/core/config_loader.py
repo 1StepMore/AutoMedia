@@ -130,6 +130,16 @@ def _env_to_config() -> dict[str, Any]:
         AUTOMEDIA_LLM_TIMEOUT → llm.text_generation.timeout
         AUTOMEDIA_LLM_REASONING_MODEL → llm.text_generation.reasoning_model
 
+    Per-slot LLM keys (#646) map to their own task slot — present-only (an
+    unset variable never creates the slot), string values:
+
+        AUTOMEDIA_LLM_VISION_PROVIDER / _MODEL / _BASE_URL / _API_KEY
+            → llm.vision.*
+        AUTOMEDIA_LLM_PROOFREAD_PROVIDER / _MODEL / _BASE_URL / _API_KEY
+            → llm.subtitle_proofread.*
+        AUTOMEDIA_LLM_TRANSLATION_PROVIDER / _MODEL / _BASE_URL / _API_KEY
+            → llm.translation.*
+
     Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
     remain the fallback.
 
@@ -154,6 +164,27 @@ def _env_to_config() -> dict[str, Any]:
         # nothing reads, so the documented override silently did nothing.
         "llm_timeout": ["llm", "text_generation", "timeout"],
         "llm_reasoning_model": ["llm", "text_generation", "reasoning_model"],
+    }
+
+    # Per-slot LLM env injection (#646): the generic underscore split cannot
+    # express the ``subtitle_proofread`` slot (multi-word name) and mangles
+    # ``base_url``/``api_key`` into two nested levels, so the other task slots
+    # get explicit mappings.  Each variable is written only when present —
+    # absence never touches the slot (backward compat: bare ``AUTOMEDIA_LLM_*``
+    # keeps its ``text_generation`` contract via ``_llm_key_map``).
+    _llm_slot_key_map: dict[str, list[str]] = {
+        "llm_vision_provider": ["llm", "vision", "provider"],
+        "llm_vision_model": ["llm", "vision", "model"],
+        "llm_vision_base_url": ["llm", "vision", "base_url"],
+        "llm_vision_api_key": ["llm", "vision", "api_key"],
+        "llm_proofread_provider": ["llm", "subtitle_proofread", "provider"],
+        "llm_proofread_model": ["llm", "subtitle_proofread", "model"],
+        "llm_proofread_base_url": ["llm", "subtitle_proofread", "base_url"],
+        "llm_proofread_api_key": ["llm", "subtitle_proofread", "api_key"],
+        "llm_translation_provider": ["llm", "translation", "provider"],
+        "llm_translation_model": ["llm", "translation", "model"],
+        "llm_translation_base_url": ["llm", "translation", "base_url"],
+        "llm_translation_api_key": ["llm", "translation", "api_key"],
     }
 
     # Non-LLM special key remapping (flatter nesting than generic split)
@@ -196,6 +227,17 @@ def _env_to_config() -> dict[str, Any]:
                 node[last_key] = typed_value
                 continue
             node[last_key] = value
+            continue
+
+        # Check for per-slot LLM keys (#646): vision / subtitle_proofread /
+        # translation inject into their own task slot; present-only, string
+        # values (no numeric coercion needed for these four fields).
+        slot_mapped = _llm_slot_key_map.get(suffix.lower())
+        if slot_mapped is not None:
+            node = result
+            for part in slot_mapped[:-1]:
+                node = node.setdefault(part, {})
+            node[slot_mapped[-1]] = value
             continue
 
         # Check for extra remapped keys (non-LLM, cleaner nesting)
@@ -253,6 +295,7 @@ _SCALAR_RULES: tuple[tuple[tuple[str, ...], str, Callable[[object], bool]], ...]
     (("llm", "text_generation", "temperature"), "int or float", _is_number),
     (("llm", "text_generation", "timeout"), "int or float", _is_number),
     (("llm", "text_generation", "max_tokens"), "int", _is_int),
+    (("llm", "text_generation", "max_rewrite_attempts"), "int", _is_int),
     (("content", "min_title_length"), "int", _is_int),
     (("content", "max_title_length"), "int", _is_int),
     (("project", "name"), "str", _is_str),

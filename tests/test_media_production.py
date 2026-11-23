@@ -18,6 +18,7 @@ import json
 import os
 import shutil
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
@@ -37,6 +38,30 @@ _AUDIO_ENGINE_PATH = "automedia.pipelines.audio_pipeline.resolve_engine_chain"
 _WHICH_PATH = "shutil.which"
 _SMOKE_PATH = "automedia.pipelines.runner._cli_smoke_probe"
 _RUNNER_SUBPROCESS_RUN = "automedia.pipelines.runner.subprocess.run"
+
+
+@pytest.fixture(autouse=True)
+def _no_machine_azure_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[None]:
+    """把本机真实 Azure 凭据挡在门外（#630）。
+
+    开发机的 ``~/.automedia/.env`` 可能带着真实 ``AUTOMEDIA_AZURE_SPEECH_KEY``
+    overlay——azure-tts 引擎据此 ``check_available`` 返回 True，"工具全缺失"
+    的语义就会因环境而异。本模块锁定的是裸机行为，统一指向空的 .env。
+    """
+    from automedia.core.env_overlay import reset_dotenv_overlay_cache
+    from automedia.engines.implementations.tts_azure import (
+        SPEECH_KEY_ENV,
+        SPEECH_REGION_ENV,
+    )
+
+    monkeypatch.delenv(SPEECH_KEY_ENV, raising=False)
+    monkeypatch.delenv(SPEECH_REGION_ENV, raising=False)
+    monkeypatch.setenv("AUTOMEDIA_DOTENV_PATH", str(tmp_path / "empty.env"))
+    reset_dotenv_overlay_cache()
+    yield
+    reset_dotenv_overlay_cache()
 
 
 class _FakeAudioPipeline:

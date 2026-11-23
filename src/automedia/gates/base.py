@@ -114,8 +114,21 @@ class BaseGate(ABC):
     # - ``halt_on_exhaustion`` makes the engine halt the pipeline (instead of
     #   continuing or handing off to level-2 regeneration) once those retries
     #   are exhausted, so a failed attempt is terminal for that gate.
+    # - ``continue_on_exhaustion`` makes a failed gate *record its failure and
+    #   let the run continue* to the remaining gates instead of halting the
+    #   pipeline.  This is the G0 contract (#626): a fact-check failure must
+    #   not silently delete G1/G2/G3/G6/H0 from the report — those gates judge
+    #   their own dimensions and must report their own verdicts.
     max_quality_retries: ClassVar[int | None] = None
     halt_on_exhaustion: ClassVar[bool] = False
+    continue_on_exhaustion: ClassVar[bool] = False
+
+    # Optional explicit upstream dependencies (gate names).  When one of these
+    # gates failed earlier in the same run, the engine records this gate as
+    # ``skipped`` with ``skip_reason="skipped:upstream-<gate>"`` instead of
+    # silently omitting it from the report.  Empty by default: a gate that can
+    # still judge its own dimension despite an upstream failure keeps running.
+    requires_upstream: ClassVar[tuple[str, ...]] = ()
 
     @property
     def gate_name(self) -> str:

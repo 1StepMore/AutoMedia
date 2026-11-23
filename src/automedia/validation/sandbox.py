@@ -86,11 +86,30 @@ def _normalize_caller_dir(env_name: str, raw: str) -> str:
 #: the same minimal shape ``automedia init`` writes (``init_cmd._init_minimal``:
 #: provider/model placeholders with an empty ``api_key``) — credentials keep
 #: coming from the ``AUTOMEDIA_LLM_*`` environment layer, which outranks file
-#: config.  Callers who export their own ``AUTOMEDIA_CONFIG_DIR`` keep their
+#: config.  All four LLM task slots are seeded (#646): with only
+#: ``text_generation`` present, an owned config dir is the *only* file-layer
+#: config in a validation run, so ``llm.vision`` resolved to nothing and V1
+#: silently recorded every scene ``unjudged`` while the gate still read as
+#: green.  Callers who export their own ``AUTOMEDIA_CONFIG_DIR`` keep their
 #: directory untouched (explicit wins, same as the config/projects vars).
 _MODEL_CONFIG_SEED: dict[str, object] = {
     "llm": {
         "text_generation": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "",
+        },
+        "vision": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "",
+        },
+        "subtitle_proofread": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "",
+        },
+        "translation": {
             "provider": "openai",
             "model": "gpt-4o-mini",
             "api_key": "",

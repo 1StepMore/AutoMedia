@@ -519,8 +519,10 @@ class GateEngine:
         Before the rewrite is applied, a per-gate diff record is persisted to
         ``<project_dir>/.automedia/gate_diffs/<gate>_<seq>.json`` (texts only —
         before/after content plus the failing result's per-check reasons; the
-        unified diff is computed at render time).  A write failure never fails
-        the pipeline.
+        unified diff is computed at render time).  The rewrite is also carried
+        as an entry in the record's ``candidates[]`` (#637) so a chain of
+        candidates stays inspectable even though only the applied text lands
+        in the flow.  A write failure never fails the pipeline.
 
         An explicit allowlist scopes this to the main content flow so a
         D-gate/P-gate style platform rewrite (which also emits
@@ -533,7 +535,11 @@ class GateEngine:
 
         before = gate_context.get("content", "")
 
-        if not apply_state:
+        # First apply snapshots the pre-apply state.  Keyed on the snapshot
+        # marker rather than dict emptiness: the gate may have written its
+        # rewrite-budget counters (#651) into this same shared dict before
+        # the first apply — those must not suppress the snapshot.
+        if "original_content" not in apply_state:
             apply_state["original_content"] = gate_context.get("content", "")
             apply_state["gate_name"] = gate_name
             draft_path = self._resolve_current_draft(gate_context)
@@ -552,6 +558,19 @@ class GateEngine:
                         error=str(exc),
                     )
 
+        # Record this rewrite as a retry candidate BEFORE applying (#637).
+        # Without a per-attempt record the chain only keeps the first-apply
+        # original and the last applied rewrite, so "which candidate was
+        # best" is unanswerable and the last round always wins.
+        apply_state.setdefault("candidates", []).append(
+            {
+                "attempt": int(gate_context.get("_quality_retry_count", 1) or 1),
+                "gate": gate_name,
+                "chars": len(rewrite),
+                "content": rewrite,
+            }
+        )
+
         gate_context["content"] = rewrite
         apply_state["applied"] = True
         try:
@@ -562,6 +581,7 @@ class GateEngine:
                 after=str(rewrite),
                 result=result,
                 applied=True,
+                candidates=list(apply_state.get("candidates") or []),
             )
         except Exception as exc:  # diff capture must never fail the pipeline
             log.warning("gate.diff_record.write_failed", gate_name=gate_name, error=str(exc))
@@ -606,7 +626,9 @@ class GateEngine:
         Called when a content gate fails through all quality retries (or an
         exception aborts the retry chain): the failed chain's rewrites must
         not survive as final content — the pipeline failure state must match
-        the pre-change behavior exactly.
+        the pre-change behavior exactly (no partial write).  Downstream
+        consumers treat the draft as quality-checked output, so the restore
+        is unconditional once the chain failed.
 
         When *result* carries the final failing attempt's ``modified_content``
         and no diff record was written during the retry chain (i.e. the chain
@@ -617,7 +639,10 @@ class GateEngine:
         failing attempt's unapplied rewrite is recorded with ``applied=False``
         BEFORE the restore, so the director also sees the final attempt that
         exhausted the budget (and still sees every applied rewrite, whose
-        records were written at apply time with ``applied=True``).
+        records were written at apply time with ``applied=True``).  Every
+        candidate the chain produced is carried in the record's
+        ``candidates[]`` (#637) — diagnostics only; the content flow keeps
+        the original.
         """
         rewrite = (result or {}).get("modified_content")
         if (
@@ -638,6 +663,7 @@ class GateEngine:
                     after=str(rewrite),
                     result=result or {},
                     applied=False,
+                    candidates=list(apply_state.get("candidates") or []),
                 )
             except Exception as exc:  # diff capture must never fail the pipeline
                 log.warning(
@@ -683,6 +709,7 @@ class GateEngine:
         after: str,
         result: dict[str, Any],
         applied: bool,
+        candidates: list[dict[str, Any]] | None = None,
     ) -> None:
         """Persist one original-vs-modified diff record for *gate_name*.
 
@@ -690,6 +717,12 @@ class GateEngine:
         the pre-change content, the rewrite, the failing result's per-check
         reasons, and the applied flag.          TEXTS ONLY — the unified diff is
         computed at render time, never stored.
+
+        *candidates* (#637) carries the retry chain's rewrite candidates —
+        each entry ``{attempt, chars, content}`` — so the candidate bodies
+        stay inspectable in the diff records even though a failed chain never
+        promotes any of them into the content flow.  Entries are individually
+        capped at the same per-record size limit.
         """
         try:
             project_dir = str(gate_context.get("project_dir", "") or "")
@@ -709,7 +742,7 @@ class GateEngine:
                 before = before[:max_chars]
                 after = after[:max_chars]
 
-            record = {
+            record: dict[str, Any] = {
                 "gate": gate_name,
                 "timestamp": datetime.now(UTC).isoformat(),
                 "before": before,
@@ -719,6 +752,20 @@ class GateEngine:
                 "applied": applied,
                 "truncated": truncated,
             }
+            if candidates:
+                capped: list[dict[str, Any]] = []
+                for c in candidates:
+                    content = str(c.get("content", ""))
+                    over = len(content) > max_chars
+                    capped.append(
+                        {
+                            "attempt": int(c.get("attempt", 0)),
+                            "chars": int(c.get("chars", 0)),
+                            "content": content[:max_chars] if over else content,
+                            "truncated": over,
+                        }
+                    )
+                record["candidates"] = capped
 
             diffs_dir = Path(project_dir) / ".automedia" / "gate_diffs"
             diffs_dir.mkdir(parents=True, exist_ok=True)
@@ -989,6 +1036,12 @@ class GateEngine:
         # The media stage fires at most once per run: one production pass, many
         # V gates inspecting it.  Kept local so each _run() starts fresh.
         _media_stage_done = False
+        # Gates that failed earlier in this run.  A gate may declare explicit
+        # ``requires_upstream`` dependencies; when one of them failed it is
+        # recorded as ``skipped:upstream-<gate>`` rather than silently dropped
+        # (#626).  Gates without declared dependencies still run and report
+        # their own verdict.
+        _failed_gates: set[str] = set()
         while _gate_loop_idx < len(self._gates):
             gate = self._gates[_gate_loop_idx]
             gate_idx = _gate_loop_idx + 1
@@ -998,6 +1051,11 @@ class GateEngine:
             # Snapshot/rollback state for modified_content applies in the
             # quality-retry branch (no partial writes on exhausted retries).
             _rewrite_apply_state: dict[str, Any] = {}
+            # Expose the SAME dict to gates (#639/#651): G1's rewrite budget
+            # counters live in it, reachable via gate_context, so they persist
+            # across this gate's quality-retry rounds and die with the gate —
+            # no module-level globals.  Rebound per gate, so counters reset.
+            gate_context["_rewrite_apply_state"] = _rewrite_apply_state
 
             # NEW: Check cancellation
             if progress and progress.is_cancelled():
@@ -1015,6 +1073,40 @@ class GateEngine:
             # NEW: Wait if paused (between gates, not during a gate)
             if progress and not progress.wait_if_paused():
                 break  # cancelled during pause
+
+            # Explicit upstream dependency: a gate that cannot judge anything
+            # because a gate it declares as required already failed is recorded
+            # as a first-class skip (with the reason), never silently dropped.
+            _missing_upstream = [
+                upstream
+                for upstream in getattr(gate, "requires_upstream", ())
+                if upstream in _failed_gates
+            ]
+            if _missing_upstream:
+                upstream = _missing_upstream[0]
+                skip_reason = f"skipped:upstream-{upstream.lower()}"
+                skip_result: dict[str, Any] = {
+                    "passed": True,
+                    "gate": gate_name,
+                    "status": "skipped",
+                    "skip_reason": skip_reason,
+                    "reason": (
+                        f"{gate_name} requires upstream gate {upstream}, which failed "
+                        f"earlier in this run; its own verdict is unavailable "
+                        f"({skip_reason})"
+                    ),
+                }
+                log.info(
+                    "gate_engine.skipped_upstream",
+                    gate_name=gate_name,
+                    upstream=upstream,
+                    skip_reason=skip_reason,
+                )
+                results.append(skip_result)
+                if progress:
+                    progress.on_gate_end(gate_name, True, 0.0, detail=skip_result["reason"])
+                _gate_loop_idx += 1
+                continue
 
             # Media production: a V gate inspects artifacts this pipeline must
             # produce first (TTS audio, transcription, SRT, rendered video).
@@ -1102,6 +1194,19 @@ class GateEngine:
                             return False, results
                         return results
 
+                    # Non-retryable failure (#640): the gate's own verdict
+                    # says the findings are structural/style-level and no
+                    # rewrite can fix them — skip the quality-retry loop
+                    # entirely instead of burning the remaining budget on
+                    # attempts that can never converge.
+                    if result.get("non_retryable"):
+                        result["retries_skipped"] = True
+                        log.warning(
+                            "gate.non_retryable",
+                            gate_name=gate_name,
+                            reason=result.get("non_retryable_reason"),
+                        )
+
                     # Level 1: quality-feedback retry.  A gate's own
                     # ``max_quality_retries`` ClassVar wins when not None.
                     _gate_max_quality = getattr(gate, "max_quality_retries", None)
@@ -1111,7 +1216,7 @@ class GateEngine:
                         else gate_context.get("max_quality_retries", self._max_quality_retries)
                     )
                     _quality_attempt = 0
-                    while _quality_attempt < _local_max_quality:
+                    while _quality_attempt < _local_max_quality and not result.get("non_retryable"):
                         _quality_attempt += 1
                         gate_context["_quality_retry_count"] = _quality_attempt
                         _remaining = _local_max_quality - _quality_attempt
@@ -1195,6 +1300,46 @@ class GateEngine:
                                 attempt=_quality_attempt,
                                 remaining=_remaining,
                             )
+
+                            # Non-retryable verdict surfaced mid-chain (#640):
+                            # a retry attempt re-entered the LLM judge and it
+                            # still reports unfixable findings — stop here
+                            # rather than spending the remaining budget.
+                            if result.get("non_retryable"):
+                                result["retries_skipped"] = True
+                                log.warning(
+                                    "gate.non_retryable",
+                                    gate_name=gate_name,
+                                    reason=result.get("non_retryable_reason"),
+                                )
+                                break
+
+                            # Non-convergence detection (#637): when the two
+                            # most recent transitions each shrank the rewrite
+                            # to <=50% of its predecessor, the retry chain is
+                            # compressing instead of improving — further
+                            # attempts only burn tokens.  The just-failed
+                            # attempt's rewrite is not yet a candidate (it is
+                            # recorded at the next apply), so the observed
+                            # sequence is candidates + the current rewrite.
+                            _candidates = _rewrite_apply_state.get("candidates") or []
+                            _chars_seq = [int(c["chars"]) for c in _candidates]
+                            _current_rewrite = result.get("modified_content")
+                            if _current_rewrite:
+                                _chars_seq.append(len(_current_rewrite))
+                            if (
+                                len(_chars_seq) >= 3
+                                and _chars_seq[-1] <= 0.5 * _chars_seq[-2]
+                                and _chars_seq[-2] <= 0.5 * _chars_seq[-3]
+                            ):
+                                result["retry_non_converging"] = True
+                                result["retry_shrinking"] = _chars_seq[-3:]
+                                log.warning(
+                                    "gate.retry_non_converging",
+                                    gate=gate_name,
+                                    chars=_chars_seq[-3:],
+                                )
+                                break
 
                         except _PERMANENT_EXCEPTIONS as exc:
                             duration = time.monotonic() - start
@@ -1301,16 +1446,55 @@ class GateEngine:
                             raise
 
                     if not passed:
-                        # Retries exhausted — undo any applied rewrite so the
-                        # failed chain leaves no partial write behind.
+                        # Retries exhausted — no partial write (#637): the
+                        # failed chain's rewrites must never survive as final
+                        # content.  Downstream consumers (publishing,
+                        # distribution, human review) treat the draft as
+                        # quality-checked output, so context and disk draft
+                        # are restored to the pre-apply original
+                        # unconditionally.  The chain's candidates survive
+                        # only as diagnostics: result fields (metadata only)
+                        # and candidate bodies inside the gate-diff records.
+                        _retry_candidates = _rewrite_apply_state.get("candidates") or []
+                        if _retry_candidates:
+                            result["degraded"] = True
+                            result["degraded_reason"] = (
+                                "all retries failed; candidate list recorded for diagnosis"
+                            )
+                            result["retry_candidates"] = [
+                                {
+                                    "attempt": int(c.get("attempt", 0)),
+                                    "chars": int(c.get("chars", 0)),
+                                }
+                                for c in _retry_candidates
+                            ]
+                            log.warning(
+                                "gate.retry_all_failed_rolled_back",
+                                gate=gate_name,
+                                candidates=result["retry_candidates"],
+                            )
                         self._rollback_applied_content(gate_context, _rewrite_apply_state, result)
+                        _failed_gates.add(gate_name)
                         if self._hitl_rejected_halt:
                             # A human rejection is terminal — it must not be
                             # consumed by level-2 regeneration retries.
                             if early_stop:
                                 return False, results
                             return results
-                        if getattr(gate, "halt_on_exhaustion", False):
+                        if getattr(gate, "continue_on_exhaustion", False):
+                            # Gate opted into continuing: record the failure
+                            # and let the remaining gates run and report their
+                            # own verdicts (#626).  No level-2 regeneration and
+                            # no halt — a fact-check failure must not erase the
+                            # downstream gates from the report.
+                            log.warning(
+                                "gate.quality_retry.continue_on_exhaustion",
+                                gate_name=gate_name,
+                                quality_retry_count=_quality_attempt,
+                                max_quality_retries=_local_max_quality,
+                            )
+                            self._dispatch_after(gate_name, gate_context, result)
+                        elif getattr(gate, "halt_on_exhaustion", False):
                             # Gate opted into halting once its own quality
                             # retries are exhausted: no level-2 regeneration.
                             # dispatch_after records the failed result (with
@@ -1325,54 +1509,55 @@ class GateEngine:
                             if early_stop:
                                 return False, results
                             return results
-                        level2 = gate_context.get("_level2_handler")
-                        if level2:
-                            log.info(
-                                "gate.quality_retry.level2",
-                                gate_name=gate_name,
-                                quality_retry_count=_quality_attempt,
-                                handler=str(level2),
-                            )
-                            _regen_ok, regen_results = level2(
-                                gate_context=gate_context,
-                                failed_gate_name=gate_name,
-                                failure_result=result,
-                                progress=progress,
-                            )
-                            if regen_results:
-                                # Stitch regen results into full result list
-                                cw_result_idx = None
-                                for i_r, r in enumerate(results):
-                                    if r.get("gate") == "CW":
-                                        cw_result_idx = i_r
-                                        break
-                                if cw_result_idx is not None:
-                                    results = results[:cw_result_idx] + regen_results
-                                else:
-                                    results = results + regen_results
-                                all_ok = all(r.get("passed", True) for r in regen_results)
-                                # When level 2 is exhausted, check if H0
-                                # approved the escalation — if so, the
-                                # pipeline is successful despite earlier
-                                # gate failures.
-                                if gate_context.get("_level2_exhausted"):
-                                    h0_result = next(
-                                        (r for r in regen_results if r.get("gate") == "H0"),
-                                        None,
-                                    )
-                                    if h0_result and h0_result.get("passed"):
-                                        all_ok = True
-                                if early_stop:
-                                    return all_ok, results
-                                return results
                         else:
-                            log.info(
-                                "gate.quality_retry.exhausted",
-                                gate_name=gate_name,
-                                quality_retry_count=_quality_attempt,
-                                max_quality_retries=_local_max_quality,
-                            )
-                        self._dispatch_after(gate_name, gate_context, result)
+                            level2 = gate_context.get("_level2_handler")
+                            if level2:
+                                log.info(
+                                    "gate.quality_retry.level2",
+                                    gate_name=gate_name,
+                                    quality_retry_count=_quality_attempt,
+                                    handler=str(level2),
+                                )
+                                _regen_ok, regen_results = level2(
+                                    gate_context=gate_context,
+                                    failed_gate_name=gate_name,
+                                    failure_result=result,
+                                    progress=progress,
+                                )
+                                if regen_results:
+                                    # Stitch regen results into full result list
+                                    cw_result_idx = None
+                                    for i_r, r in enumerate(results):
+                                        if r.get("gate") == "CW":
+                                            cw_result_idx = i_r
+                                            break
+                                    if cw_result_idx is not None:
+                                        results = results[:cw_result_idx] + regen_results
+                                    else:
+                                        results = results + regen_results
+                                    all_ok = all(r.get("passed", True) for r in regen_results)
+                                    # When level 2 is exhausted, check if H0
+                                    # approved the escalation — if so, the
+                                    # pipeline is successful despite earlier
+                                    # gate failures.
+                                    if gate_context.get("_level2_exhausted"):
+                                        h0_result = next(
+                                            (r for r in regen_results if r.get("gate") == "H0"),
+                                            None,
+                                        )
+                                        if h0_result and h0_result.get("passed"):
+                                            all_ok = True
+                                    if early_stop:
+                                        return all_ok, results
+                                    return results
+                            else:
+                                log.info(
+                                    "gate.quality_retry.exhausted",
+                                    gate_name=gate_name,
+                                    quality_retry_count=_quality_attempt,
+                                    max_quality_retries=_local_max_quality,
+                                )
+                            self._dispatch_after(gate_name, gate_context, result)
 
             except _PERMANENT_EXCEPTIONS as exc:
                 duration = time.monotonic() - start

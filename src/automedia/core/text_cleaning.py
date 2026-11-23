@@ -191,6 +191,47 @@ def strip_stage_directions(text: str) -> str:
     return "\n".join(line for line in lines if line).strip()
 
 
+#: 行尾残留的未配对加重标记（``**`` / ``__``）——念出来是「星星星星」。
+_TRAILING_EMPHASIS_RE = re.compile(r"(?:\*{2,}|_{2,})$")
+
+#: 行首的列表/连字符脚手架（``+``、``·``、``-``、``*``、``1.``、``2、``）——
+#: 分行记号，不是口语（#654）。``(?!\d)`` 防 ``1.5万`` 被误剥成 ``5万``。
+_LINE_LEAD_MARK_RE = re.compile(r"^(?:[+·*\-]|\d{1,3}[.、](?!\d))\s*")
+
+#: 行首可剥的引号——行首的开场引号（含孤立的）是台词包装，不是正文。
+_LEADING_QUOTE_CHARS = "「『“‘\"'"
+
+#: 行尾闭引号 → 其配对的开场引号。行尾闭引号若在行内还有配对的开场引号
+#: （``他说「你好」`` 的尾巴），是行中引号内容的收尾，保留。
+_TRAILING_QUOTE_OPENERS: dict[str, str] = {
+    "」": "「",
+    "』": "『",
+    "”": "“",
+    "’": "‘",
+    '"': '"',
+    "'": "'",
+}
+
+
+def trim_line_edges(line: str) -> str:
+    """Trim line-edge scaffolding that is never spoken (#654).
+
+    结构化抽取或词表层清洗得到的行，边缘还可能挂着分行脚手架：行首的
+    ``+`` / ``·`` / ``-`` / ``*`` / ``1.`` / ``2、`` 列表记号，行首/行尾的
+    成对或孤立引号（``「播客≠硬广！」``），行尾残留的 ``**`` / ``__``。
+    只碰行边界——正文中间的引号与记号一律不动。
+    """
+    trimmed = (line or "").strip()
+    trimmed = _LINE_LEAD_MARK_RE.sub("", trimmed)
+    while trimmed and trimmed[0] in _LEADING_QUOTE_CHARS:
+        trimmed = trimmed[1:]
+    while trimmed and trimmed[-1] in _TRAILING_QUOTE_OPENERS:
+        if _TRAILING_QUOTE_OPENERS[trimmed[-1]] in trimmed:
+            break  # 行内还有配对的开场引号——这是引号内容的收尾，保留
+        trimmed = trimmed[:-1]
+    return _TRAILING_EMPHASIS_RE.sub("", trimmed).strip()
+
+
 def strip_structure_labels(text: str) -> str:
     """Drop script structure — metadata rows, shot headers, spoken prefixes.
 
@@ -328,4 +369,5 @@ __all__ = [
     "strip_narration_markup",
     "strip_stage_directions",
     "strip_structure_labels",
+    "trim_line_edges",
 ]
