@@ -40,7 +40,12 @@ _OVERRIDE_DIR = get_user_config_dir() / "overrides" / "prompts"
 # — for these names, so the built-in templates, the platform variants and any
 # user override all render the same tokens without hand-copying them.
 _HOOK_CLAIMS_TEMPLATES: frozenset[str] = frozenset(
-    {"content_writer", "fact_check_g0_plausibility", "fact_check_g0_rewrite"}
+    {
+        "content_writer",
+        "fact_check_g0_plausibility",
+        "fact_check_g0_rewrite",
+        "humanizer_g1_rewrite",
+    }
 )
 
 # ---------------------------------------------------------------------------
