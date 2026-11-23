@@ -95,6 +95,8 @@ MEDIA_EXPECT_FIELDS: tuple[str, ...] = (
     "min_count",
     "min_width",
     "min_height",
+    "min_long_edge",
+    "min_short_edge",
     "same_size",
     "min_duration_s",
     "max_duration_s",
@@ -107,7 +109,10 @@ MEDIA_EXPECT_FIELDS: tuple[str, ...] = (
 
 ``min_count``/``same_size`` count and compare the multi-file set named by
 ``artifact_glob``; ``min_width``/``min_height`` apply to image and video
-frames; ``min_duration_s``/``max_duration_s``/``min_bitrate_kbps``/``codec``
+frames; ``min_long_edge``/``min_short_edge`` grade max(width, height) and
+min(width, height) so a resolution floor can be orientation-agnostic (they
+coexist with ``min_width``/``min_height``, which keep grading per-axis);
+``min_duration_s``/``max_duration_s``/``min_bitrate_kbps``/``codec``
 apply to audio/video streams; ``decodable`` requires a successful ``ffprobe``
 parse; ``non_uniform`` rejects flat image fills.  There is no ``max_count``: a
 set's upper bound is not part of the Phase 1.1 contract.
@@ -145,6 +150,8 @@ class MediaExpect:
     min_count: int | None = None
     min_width: int | None = None
     min_height: int | None = None
+    min_long_edge: int | None = None
+    min_short_edge: int | None = None
     same_size: bool | None = None
     min_duration_s: float | None = None
     max_duration_s: float | None = None
@@ -158,7 +165,7 @@ class MediaExpect:
         """Parse a media block; unknown keys and wrong types raise :class:`SchemaError`."""
         data = _reject_unknown(data, MEDIA_EXPECT_FIELDS, where)
         prefix = f"{where}."
-        ints = ("min_count", "min_width", "min_height")
+        ints = ("min_count", "min_width", "min_height", "min_long_edge", "min_short_edge")
         numbers = ("min_duration_s", "max_duration_s", "min_bitrate_kbps")
         kwargs: dict[str, Any] = {}
         for name in ints:

@@ -536,7 +536,14 @@ def _media_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
     check_type = _standard_check_type(step)
     needs_image = any(
         value is not None
-        for value in (media.min_width, media.min_height, media.non_uniform, media.same_size)
+        for value in (
+            media.min_width,
+            media.min_height,
+            media.min_long_edge,
+            media.min_short_edge,
+            media.non_uniform,
+            media.same_size,
+        )
     )
     needs_media = check_type in {"media.video", "media.audio"} or any(
         value is not None
@@ -544,6 +551,8 @@ def _media_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
             media.min_duration_s,
             media.max_duration_s,
             media.min_bitrate_kbps,
+            media.min_long_edge,
+            media.min_short_edge,
             media.decodable,
             media.codec,
         )
@@ -595,10 +604,20 @@ def _media_failures(expect: Expect, step: Step | None, base: Path) -> list[str]:
     return failures
 
 
-def _image_criterion_failures(path: Path, probe: dict[str, Any], media: MediaExpect) -> list[str]:
+def _dimension_failures(
+    path: Path,
+    width: int | None,
+    height: int | None,
+    media: MediaExpect,
+) -> list[str]:
+    """Grade per-axis and long/short-edge resolution floors against a probe.
+
+    Shared by image and video probes: ``min_width``/``min_height`` keep their
+    per-axis semantics; ``min_long_edge``/``min_short_edge`` grade
+    ``max(width, height)`` / ``min(width, height)`` so a resolution floor can
+    be orientation-agnostic.  All four coexist.
+    """
     failures: list[str] = []
-    width = probe.get("width")
-    height = probe.get("height")
     if media.min_width is not None and (width is None or width < media.min_width):
         failures.append(
             f"expect.media.min_width: {path.name} observed {width} < min {media.min_width}"
@@ -607,6 +626,31 @@ def _image_criterion_failures(path: Path, probe: dict[str, Any], media: MediaExp
         failures.append(
             f"expect.media.min_height: {path.name} observed {height} < min {media.min_height}"
         )
+    if media.min_long_edge is not None or media.min_short_edge is not None:
+        long_edge = max(width, height) if width is not None and height is not None else None
+        short_edge = min(width, height) if width is not None and height is not None else None
+        if media.min_long_edge is not None and (
+            long_edge is None or long_edge < media.min_long_edge
+        ):
+            failures.append(
+                f"expect.media.min_long_edge: {path.name} observed long edge {long_edge} "
+                f"(width {width}, height {height}) < min {media.min_long_edge}"
+            )
+        if media.min_short_edge is not None and (
+            short_edge is None or short_edge < media.min_short_edge
+        ):
+            failures.append(
+                f"expect.media.min_short_edge: {path.name} observed short edge {short_edge} "
+                f"(width {width}, height {height}) < min {media.min_short_edge}"
+            )
+    return failures
+
+
+def _image_criterion_failures(path: Path, probe: dict[str, Any], media: MediaExpect) -> list[str]:
+    failures: list[str] = []
+    width = probe.get("width")
+    height = probe.get("height")
+    failures.extend(_dimension_failures(path, width, height, media))
     observed_non_uniform = probe.get("non_uniform")
     if (
         media.non_uniform is not None
@@ -665,14 +709,7 @@ def _media_criterion_failures(
     if check_type != "media.audio":
         width = probe.get("width")
         height = probe.get("height")
-        if media.min_width is not None and (width is None or width < media.min_width):
-            failures.append(
-                f"expect.media.min_width: {path.name} observed {width} < min {media.min_width}"
-            )
-        if media.min_height is not None and (height is None or height < media.min_height):
-            failures.append(
-                f"expect.media.min_height: {path.name} observed {height} < min {media.min_height}"
-            )
+        failures.extend(_dimension_failures(path, width, height, media))
     return failures
 
 
