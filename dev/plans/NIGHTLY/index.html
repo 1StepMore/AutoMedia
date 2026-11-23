@@ -2160,6 +2160,26 @@
 </code></pre></div>
 <hr />
 <h2 id="2026-09-30">【活区】当前差距矩阵（基线 2026-09-30）<a class="headerlink" href="#2026-09-30" title="Permanent link">&para;</a></h2>
+<h3 id="2026-11-23-bench-fix638-v1-evidencedbc9fc5-main">2026-11-23 夜间复跑（bench <code>fix/638-v1-evidence@dbc9fc5</code> —— <strong>非 main</strong>）<a class="headerlink" href="#2026-11-23-bench-fix638-v1-evidencedbc9fc5-main" title="Permanent link">&para;</a></h3>
+<p>批跑（02:00，systemd，网关进程树外）：<strong>2 / 3 轨达标，视频轨未达标</strong>（<code>nightly/gap.json</code>：<code>total_units 3</code> / <code>passing_units 2</code> / <code>gap: ["视频轨"]</code>）—— 文本轨 3 个达标（<code>20261103_沈阳中小企业内容营销越做越累</code>、<code>20261122_test-topic</code>、<code>20261121_automated-content-pipelines-for-solo-founders</code>）、图文轨 2 个达标（<code>20261122_test-topic</code>、<code>20261121_automated-content-pipelines-for-solo-founders</code>）、视频轨 0 个。</p>
+<p>视频轨判红原因（原样取自 <code>nightly/gap.md</code>，前 5 条）：</p>
+<ul>
+<li><code>20261121_automated-content-pipelines-for-solo-founders</code>：must-run gate not passed: <strong>V3</strong></li>
+<li><code>20261109_ai-企业用做内容为什么先跑通流程再谈产量</code>：no gate-report</li>
+<li><code>20261111_本地化团队的三步交付法</code>：gates missing from report: V2,V3,V4,V5,V6,V7</li>
+<li><code>20261111_小团队内容排期的实用做法</code>：must-run gate not passed: <strong>V3</strong></li>
+<li>
+<p><code>20261105_小团队内容排期的实用做法</code>：video degraded to slideshow —— <code>Engine 'hyperframes' execution failed: hyperframes render failed (exit code 1)</code></p>
+</li>
+<li>
+<p>项目目录 <strong>24</strong> 个（真模型 <code>cost_log</code> 非空 <strong>9</strong> 个）；11-22 为 20 / 8。</p>
+</li>
+<li>验证矩阵：<strong>165</strong> 条场景（passed 30 / None 126 / failed 9；11-22 为 163 条）；hard 10 条全部执行且通过（已执行-失败 0、未执行 0）；门：missing 0 / unreachable 0（名单读取失败，见 validate coverage 段）。</li>
+<li>🔴 <strong>bench 不是 main</strong>：<code>scripts/nightly_gap.py:606 _bench_line()</code> 读的是运行时的 <code>git rev-parse HEAD</code> ⇒ 本行 <code>fix/638-v1-evidence@dbc9fc5</code> 说明<strong>当晚矩阵测在特性分支上</strong>（当晚 base 同步记录的主线是 <code>48ea7ed9</code>，当前 main 已是 <code>3e24c55</code>；该分支与 main 差 15 文件）。读数可用于「现状」判断，<strong>不可当作 main 的达标证据</strong>；根因在批跑 base 同步（本仓 <code>FETCH_FAILED</code>，未把工作树拉回 main），已按摩擦账本记账。</li>
+<li>与 11-22 对照：视频轨仍 ❌，判红构成相同（V3 未过 / 无 gate-report / gate 报告缺项 / 渲染降级），<strong>无新增判红类型</strong>。</li>
+<li>能力债：视频轨 <code>registered_gates: [V6]</code>、<code>tracked_by #193</code>（沿用既有裁定，本轮未改动口径）。</li>
+<li><strong>最终裁决仍由 owner 保留</strong>（见【冻结区】）。</li>
+</ul>
 <h3 id="2026-11-22-main-abddf4c">2026-11-22 夜间复跑（在最新 main <code>abddf4c</code> 上）<a class="headerlink" href="#2026-11-22-main-abddf4c" title="Permanent link">&para;</a></h3>
 <p>批跑（02:00，systemd，网关进程树外）：<strong>2 / 3 轨达标，视频轨未达标</strong>（<code>nightly/gap.json</code>：<code>total_units 3</code> / <code>passing_units 2</code> / <code>gap: ["视频轨"]</code>）—— 文本轨 2 个达标（<code>20261103_沈阳中小企业内容营销越做越累</code>、<code>20261121_automated-content-pipelines-for-solo-founders</code>）、图文轨 1 个达标（<code>20261121_automated-content-pipelines-for-solo-founders</code>）、视频轨 0 个。</p>
 <p>视频轨判红原因（原样取自 <code>nightly/gap.md</code>，前 5 条）：</p>
@@ -2347,6 +2367,12 @@ hard 场景 <strong>10 条全过</strong>；门 <code>missing=4</code>（L1–L4
 <td style="text-align: left;">同题重复跑<strong>复用同一项目目录</strong>（<code>20261014_&lt;slug&gt;</code>）：<code>00_project_info.json</code> 被后跑覆盖（<code>project_id</code> 变）、<code>01_content/drafts/</code> 并列多份（本轮 4 份）、<code>cost_log.jsonl</code> 累积（本轮 3 跑 → 8 行）→ 一个项目目录不再对应单轮证据</td>
 <td style="text-align: left;">否</td>
 <td style="text-align: left;">记账（如需分轮证据，换题目或让产品按 <code>project_id</code> 分目录；不自行改产品）</td>
+</tr>
+<tr>
+<td style="text-align: left;">2026-11-23</td>
+<td style="text-align: left;">批跑 base 同步对本仓 <code>FETCH_FAILED</code>，<strong>工作树没被拉回 main</strong>（02:03 记的是 main@<code>48ea7ed9</code>，而 03:45 跑 gap 时 HEAD 是 <code>fix/638-v1-evidence@dbc9fc5</code>，与 main 差 15 文件）⇒ 当晚矩阵的代码基底是特性分支</td>
+<td style="text-align: left;">否（三轨判定本身不依赖这几处差异，但「测的是哪棵树」失真）</td>
+<td style="text-align: left;">记账（改 base 同步属 e2e 跨仓编排，不在本仓；本轮只在 <code>NIGHTLY.md</code> 如实标注 bench，未改脚本）</td>
 </tr>
 </tbody>
 </table>
