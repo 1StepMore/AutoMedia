@@ -85,6 +85,25 @@ cd <repo>
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 
+### 2026-11-23 夜间复跑（bench `fix/638-v1-evidence@dbc9fc5` —— **非 main**）
+
+批跑（02:00，systemd，网关进程树外）：**2 / 3 轨达标，视频轨未达标**（`nightly/gap.json`：`total_units 3` / `passing_units 2` / `gap: ["视频轨"]`）—— 文本轨 3 个达标（`20261103_沈阳中小企业内容营销越做越累`、`20261122_test-topic`、`20261121_automated-content-pipelines-for-solo-founders`）、图文轨 2 个达标（`20261122_test-topic`、`20261121_automated-content-pipelines-for-solo-founders`）、视频轨 0 个。
+
+视频轨判红原因（原样取自 `nightly/gap.md`，前 5 条）：
+
+- `20261121_automated-content-pipelines-for-solo-founders`：must-run gate not passed: **V3**
+- `20261109_ai-企业用做内容为什么先跑通流程再谈产量`：no gate-report
+- `20261111_本地化团队的三步交付法`：gates missing from report: V2,V3,V4,V5,V6,V7
+- `20261111_小团队内容排期的实用做法`：must-run gate not passed: **V3**
+- `20261105_小团队内容排期的实用做法`：video degraded to slideshow —— `Engine 'hyperframes' execution failed: hyperframes render failed (exit code 1)`
+
+- 项目目录 **24** 个（真模型 `cost_log` 非空 **9** 个）；11-22 为 20 / 8。
+- 验证矩阵：**165** 条场景（passed 30 / None 126 / failed 9；11-22 为 163 条）；hard 10 条全部执行且通过（已执行-失败 0、未执行 0）；门：missing 0 / unreachable 0（名单读取失败，见 validate coverage 段）。
+- 🔴 **bench 不是 main**：`scripts/nightly_gap.py:606 _bench_line()` 读的是运行时的 `git rev-parse HEAD` ⇒ 本行 `fix/638-v1-evidence@dbc9fc5` 说明**当晚矩阵测在特性分支上**（当晚 base 同步记录的主线是 `48ea7ed9`，当前 main 已是 `3e24c55`；该分支与 main 差 15 文件）。读数可用于「现状」判断，**不可当作 main 的达标证据**；根因在批跑 base 同步（本仓 `FETCH_FAILED`，未把工作树拉回 main），已按摩擦账本记账。
+- 与 11-22 对照：视频轨仍 ❌，判红构成相同（V3 未过 / 无 gate-report / gate 报告缺项 / 渲染降级），**无新增判红类型**。
+- 能力债：视频轨 `registered_gates: [V6]`、`tracked_by #193`（沿用既有裁定，本轮未改动口径）。
+- **最终裁决仍由 owner 保留**（见【冻结区】）。
+
 ### 2026-11-22 夜间复跑（在最新 main `abddf4c` 上）
 
 批跑（02:00，systemd，网关进程树外）：**2 / 3 轨达标，视频轨未达标**（`nightly/gap.json`：`total_units 3` / `passing_units 2` / `gap: ["视频轨"]`）—— 文本轨 2 个达标（`20261103_沈阳中小企业内容营销越做越累`、`20261121_automated-content-pipelines-for-solo-founders`）、图文轨 1 个达标（`20261121_automated-content-pipelines-for-solo-founders`）、视频轨 0 个。
@@ -216,6 +235,7 @@ hard 场景 **10 条全过**；门 `missing=4`（L1–L4）· `unreachable=2`（
 | 2026-10-15 | `whisper` 不在 PATH（产品按 `runner.py:1990` 的 `shutil.which` 解析；跑批 preflight 认 `~/mamba/envs/whisper/bin`，产品侧不认）→ 媒体阶段 `tools_missing=['whisper']`，音频/视频/V 门输入全不产 | **是**（挡视频轨） | 环境层已修：`~/bin/whisper` → `~/mamba/envs/whisper/bin/whisper`；实测 `shutil.which('whisper')` = `/home/renanzai/bin/whisper` |
 | 2026-10-15 | `edge-tts` 经 PATH 解析到 hermes venv **7.2.7** → 合成 `WSServerHandshakeError: 403`（0 字节），媒体阶段 `media_stage_failed`；本仓 `.venv` 的 **7.3.1** 可用 | **是**（挡视频轨） | 环境层已修：`~/bin/edge-tts` → 本仓 `.venv/bin/edge-tts`；实测 7.3.1 出 26,064B mp3，复跑后媒体链路真出片 |
 | 2026-10-15 | 同题重复跑**复用同一项目目录**（`20261014_<slug>`）：`00_project_info.json` 被后跑覆盖（`project_id` 变）、`01_content/drafts/` 并列多份（本轮 4 份）、`cost_log.jsonl` 累积（本轮 3 跑 → 8 行）→ 一个项目目录不再对应单轮证据 | 否 | 记账（如需分轮证据，换题目或让产品按 `project_id` 分目录；不自行改产品） |
+| 2026-11-23 | 批跑 base 同步对本仓 `FETCH_FAILED`，**工作树没被拉回 main**（02:03 记的是 main@`48ea7ed9`，而 03:45 跑 gap 时 HEAD 是 `fix/638-v1-evidence@dbc9fc5`，与 main 差 15 文件）⇒ 当晚矩阵的代码基底是特性分支 | 否（三轨判定本身不依赖这几处差异，但「测的是哪棵树」失真） | 记账（改 base 同步属 e2e 跨仓编排，不在本仓；本轮只在 `NIGHTLY.md` 如实标注 bench，未改脚本） |
 
 ---
 
