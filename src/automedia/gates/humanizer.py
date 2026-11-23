@@ -36,12 +36,19 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pydantic import BaseModel, Field
+from structlog import get_logger
+
 from automedia.core.env_overlay import env_lookup
+from automedia.core.llm_client import llm_complete_structured_safe
 from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.lexicon import CN_OFFICIALESE_RE, CN_OFFICIALESE_WORDS
 from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
+from automedia.prompts import load_prompt
+
+log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -721,6 +728,53 @@ def _rewrite_content(content: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Targeted rewrite for the LLM-judge path (issue #640, plan A)
+# ---------------------------------------------------------------------------
+
+
+class G1RewriteResult(BaseModel):
+    """Structured output model for the targeted G1 rewrite (issue #640).
+
+    ``rewritten_content`` carries the full rewritten content; every other
+    field is optional so a sparse provider response still parses.  Mirrors
+    ``G0RewriteResult`` (the field name contains ``content`` so the
+    regression driver's response coercion fills it).
+    """
+
+    rewritten_content: str = ""
+    notes: list[str] = Field(default_factory=list)
+
+
+def _attempt_g1_rewrite(content: str, reason: str) -> str | None:
+    """Request one structured rewrite; return content or ``None`` (fail-closed).
+
+    Any provider/parse exception or an empty result yields ``None`` so the
+    caller keeps the #642 stop-the-bleeding behavior instead of emitting a
+    half-product.  A result that is identical to the original once whitespace
+    is stripped is also rejected — that is exactly the ``before == after``
+    idle retry the plan-A rewrite exists to prevent.
+    """
+    try:
+        prompt = load_prompt(
+            "humanizer_g1_rewrite",
+            content=content,
+            failure_reason=reason,
+        )
+        rewrite = llm_complete_structured_safe(prompt, response_format=G1RewriteResult)
+    except Exception:
+        log.warning("G1 rewrite attempt failed (fail-closed)", exc_info=True)
+        return None
+    rewritten = getattr(rewrite, "rewritten_content", None)
+    if not isinstance(rewritten, str) or not rewritten.strip():
+        log.warning("G1 rewrite returned empty content (fail-closed)")
+        return None
+    if "".join(rewritten.split()) == "".join(content.split()):
+        log.warning("G1 rewrite identical to original (fail-closed)")
+        return None
+    return rewritten
+
+
+# ---------------------------------------------------------------------------
 # G1Humanizer gate
 # ---------------------------------------------------------------------------
 
@@ -847,17 +901,42 @@ class G1Humanizer(BaseGate):
             )
             # LLM-judge path only (#640): the judge flags structural/style
             # issues (三段式, 对偶, 贴纸标题感) the regex-only rewrite cannot
-            # address, so marking non_retryable stops the engine from burning
-            # quality-retry rounds that can never converge.  The deterministic
-            # fallback stays retryable — there the rewrite is effective.
-            # ``modified_content`` is kept: it may still have fixed filler-word
-            # findings and remains valuable in the final report.
+            # address.  Plan A asks the LLM for one targeted rewrite fixing
+            # those findings; when it produces usable content the result
+            # stays retryable and carries the rewrite as ``modified_content``.
+            # When it does not (fail-closed), the #642 non_retryable marking
+            # stops the engine from burning quality-retry rounds that can
+            # never converge.  The deterministic fallback stays retryable —
+            # there the regex rewrite is effective.
             if method != "deterministic" and not all(c["passed"] for c in checks):
-                result["non_retryable"] = True
-                result["non_retryable_reason"] = (
-                    "llm-judge findings are structural/style-level; "
-                    "regex rewrite cannot address them"
+                reason = (
+                    "；".join(c["detail"] for c in checks if not c["passed"])
+                    or "humanizer check failed"
                 )
+                rewritten = _attempt_g1_rewrite(content, reason)
+                if rewritten is not None:
+                    # 方案 A (#640): the judge's targeted rewrite succeeded —
+                    # ship it as the retry input and let the engine retry.
+                    # ``passed``/``checks`` keep the judge's verdict; the
+                    # rewrite must never turn a red verdict green.
+                    result["modified_content"] = rewritten
+                    result.pop("non_retryable", None)
+                    result.pop("non_retryable_reason", None)
+                    log.info(
+                        "g1.rewrite_from_judge",
+                        chars_before=len(content),
+                        chars_after=len(rewritten),
+                    )
+                else:
+                    # 改不出来 ⇒ keep the #642 stop-the-bleeding behavior:
+                    # the regex-only rewrite cannot address structural
+                    # findings, so retrying would burn tokens for nothing.
+                    result["non_retryable"] = True
+                    result["non_retryable_reason"] = (
+                        "llm-judge findings are structural/style-level and the "
+                        "targeted rewrite produced no usable content; "
+                        "regex rewrite cannot address them"
+                    )
             return result
 
         # ------------------------------------------------------------------

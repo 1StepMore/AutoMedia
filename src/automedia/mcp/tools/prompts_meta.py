@@ -81,6 +81,11 @@ _PROMPT_METADATA: dict[str, dict[str, Any]] = {
         "variables": ["content"],
         "purpose": "Detect AI writing patterns and assess natural readability (Gate G1).",
     },
+    "humanizer_g1_rewrite": {
+        "variables": ["content", "failure_reason"],
+        "purpose": "Targeted rewrite fixing the specific AI-taste findings the G1 "
+        "judge flagged, preserving meaning and structure markers (Gate G1).",
+    },
     "image_prompt": {
         "variables": ["topic", "brand", "image_index"],
         "purpose": "Generate Stable Diffusion / ComfyUI image prompts for cover art.",
