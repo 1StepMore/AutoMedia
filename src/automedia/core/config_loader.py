@@ -295,6 +295,7 @@ _SCALAR_RULES: tuple[tuple[tuple[str, ...], str, Callable[[object], bool]], ...]
     (("llm", "text_generation", "temperature"), "int or float", _is_number),
     (("llm", "text_generation", "timeout"), "int or float", _is_number),
     (("llm", "text_generation", "max_tokens"), "int", _is_int),
+    (("llm", "text_generation", "max_rewrite_attempts"), "int", _is_int),
     (("content", "min_title_length"), "int", _is_int),
     (("content", "max_title_length"), "int", _is_int),
     (("project", "name"), "str", _is_str),

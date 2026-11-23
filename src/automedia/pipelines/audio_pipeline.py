@@ -41,6 +41,69 @@ DEFAULT_VOICE: str = "zh-CN-YunxiNeural"
 DEFAULT_WHISPER_MODEL: str = "small"
 DEFAULT_LANGUAGE: str = "zh"
 
+#: ``口播：`` / ``旁白：`` / ``画外音：``（含 ``口播文案：``）——标签本体不念，
+#: 标签之后到行尾才是口播（#654）。加粗标记先由 emphasis 剥离，因此
+#: ``**口播**：`` / ``- **口播**：`` 无需在此单独处理。
+_SPOKEN_LABEL_RE = re.compile(r"(?:口播|旁白|画外音)(?:文案)?\s*[:：]")
+
+
+# ---------------------------------------------------------------------------
+# Structured spoken-line extraction (#654)
+# ---------------------------------------------------------------------------
+
+
+def extract_spoken_lines(text: str) -> list[str]:
+    """只返回真正被念出来的行。
+
+    分镜脚本里同一行可能是口播、也可能是舞台指示，而舞台指示不一定待在
+    方括号里：``- **[切]** 创作者对镜说话，语速快`` 的后半截在括号外面，
+    ``strip_narration_markup`` 的词表层清洗（#390/#455/#459）保不住它，
+    「快切手机播客页面」「语速快」因此漏进了 SRT（#654）。这里升级为
+    结构判断，规则按优先级：
+
+    1. 文本中存在口播标签 ⇒ 只收集标签之后到行尾的文本，逐行保持原顺序；
+       一行里有多个标签时全部收集。``[画面：…]`` / ``[切]`` 等舞台指示在
+       标签搜索**之前**先剥掉——它们后面的文字不是口播（这正是本次 bug）。
+    2. 完全没有口播标签的自由格式稿件 ⇒ 退回既有行为
+       ``strip_narration_markup(整段)``。
+    3. 两条路径产出的每一行再过一道行尾修剪（:func:`trim_line_edges`）。
+    """
+    from automedia.core.text_cleaning import (
+        strip_emoji,
+        strip_emphasis_markers,
+        strip_narration_markup,
+        strip_stage_directions,
+        trim_line_edges,
+    )
+
+    source = text or ""
+    if not source.strip():
+        return []
+
+    spoken: list[str] = []
+    for raw in source.splitlines():
+        line = strip_emphasis_markers(raw.strip())
+        # 舞台指示先剥：``[音效：口播：大声]`` 这类括号内的「口播：」不是标签。
+        line = strip_stage_directions(line)
+        if not line:
+            continue
+        labels = list(_SPOKEN_LABEL_RE.finditer(line))
+        if not labels:
+            continue
+        for position, match in enumerate(labels):
+            end = match.end()
+            stop = labels[position + 1].start() if position + 1 < len(labels) else len(line)
+            segment = trim_line_edges(strip_emoji(line[end:stop]))
+            if segment:
+                spoken.append(segment)
+
+    if spoken:
+        return spoken
+
+    # 自由格式：没有任何口播标签 → 退回词表层清洗（原 #390/#455 行为）。
+    cleaned = strip_narration_markup(source)
+    return [trimmed for line in cleaned.splitlines() if (trimmed := trim_line_edges(line))]
+
 
 # ---------------------------------------------------------------------------
 # AudioPipeline
@@ -493,15 +556,16 @@ class AudioPipeline:
         """Split narration into caption-sized cues, preserving the words.
 
         Sentence punctuation ends a cue; over-long sentences are hard-wrapped
-        at :data:`_SRT_CUE_MAX_CHARS`.  Markdown heading/bullet markers are
-        dropped — they are structure, not narration — and so are bracketed
-        production cues such as ``[画面：…]`` (#390): stripping them *before*
-        the sentence split matters, otherwise a cue break lands inside the
-        bracket and the subtitle opens with "音效：".
+        at :data:`_SRT_CUE_MAX_CHARS`.  The entry text first goes through
+        :func:`extract_spoken_lines` (#654): lines labelled ``口播：`` /
+        ``旁白：`` contribute only what follows the label — stage directions
+        such as ``[切] 创作者对镜说话，语速快`` or ``「播客≠硬广！」+ 快切…``
+        never reach the captions — while free-form scripts fall back to
+        ``strip_narration_markup`` (#390): bracketed production cues are
+        stripped *before* the sentence split, otherwise a cue break lands
+        inside the bracket and the subtitle opens with "音效：".
         """
-        from automedia.pipelines.narration import strip_narration_markup
-
-        cleaned = strip_narration_markup(text or "")
+        cleaned = "\n".join(extract_spoken_lines(text or ""))
         if not cleaned:
             return []
 

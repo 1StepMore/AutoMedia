@@ -13,7 +13,8 @@ Checks (each one can fail the gate on its own):
     2. cue_order_consistency — cue order follows the ASR time order (block swap)
     3. uncovered_speech      — ASR speech that no cue covers (narration extra)
     4. structure_label_residue — no script-structure labels in SRT or whisper
-       text (#455)
+       text (#455); since #654 it also fails on any SRT cue carrying
+       stage-direction residue (快切/贴纸/语速/空镜/``[画面：…]``… )
     5. srt_not_empty         — SRT file content is non-empty
     6. whisper_not_empty     — Whisper transcription is non-empty
     7. whisper_vs_srt_diff   — retired criterion, kept as an observation field
@@ -111,6 +112,17 @@ _STRUCTURE_RESIDUE_RES: tuple[tuple[str, re.Pattern[str]], ...] = (
         "transition_tag",
         re.compile(r"\[(?:切|转场|切换|停顿|暂停|淡入|淡出|黑场|闪回|叠化|白闪|黑闪|分屏)\]"),
     ),
+)
+
+#: 舞台指示关键词（#654）。SRT 的**任意一条 cue 文本**命中即 fail，判据刻意
+#: 从严：快切/贴纸/语速/空镜/推近这些词只出现在分镜说明里，不该出现在观众
+#: 可见的字幕中——命中即说明结构化抽取（``extract_spoken_lines``）没跑到或
+#: 漏了。只扫 SRT cue 文本，不扫 whisper（ASR 转写无此约束，普通叙述里出现
+#: 「镜头」不构成缺陷）。
+_STAGE_MARKER_RE = re.compile(
+    r"\[(?:画面|音效|转场|切|镜头|特写|字幕|花字|旁白|视觉|bgm|sfx)\s*[:：\]]"
+    r"|口播\s*[:：]|镜头|语速|贴纸|快切|特写|推近|空镜",
+    re.IGNORECASE,
 )
 
 #: Everything that is not a word character or a CJK ideograph — dropped before
@@ -374,18 +386,38 @@ def _structure_residue_hits(text: str) -> list[str]:
     return hits
 
 
-def _check_structure_label_residue(whisper_text: str, srt_text: str) -> CheckResult:
-    """Check 4: no script-structure labels in SRT or whisper text (#455).
+def _stage_marker_cue_hits(cues: list[_Cue]) -> list[str]:
+    """Return ``cue N 混入舞台指示：<命中片段>`` for every cue that hits #654."""
+    hits: list[str] = []
+    for cue in cues:
+        match = _STAGE_MARKER_RE.search(cue.text)
+        if match:
+            hits.append(f"cue {cue.index} 混入舞台指示：{match.group(0)}")
+    return hits
+
+
+def _check_structure_label_residue(
+    whisper_text: str,
+    srt_text: str,
+    cues: list[_Cue],
+) -> CheckResult:
+    """Check 4: no script-structure labels or stage directions in SRT/whisper (#455, #654).
 
     SRT and whisper both derive from the cleaned narration, so shared
     pollution (``镜头1｜0:03-0:09`` / ``主题：`` / ``口播：`` / ``[切]`` /
     timecodes) shows up on *both* sides.  This check fails on residue alone —
     a perfect anchor coverage cannot green a polluted film.
+
+    #654 adds one more fail path to the same check: any *cue* whose text hits
+    the stage-direction regex (``快切`` / ``贴纸`` / ``语速`` / bare ``镜头`` /
+    ``[画面：…]`` outside brackets…) fails the gate with the offending cue
+    named.  The existing skipped/review semantics are untouched.
     """
     name = "structure_label_residue"
     srt_hits = _structure_residue_hits(_strip_srt_timestamps(srt_text))
     whisper_hits = _structure_residue_hits(whisper_text)
-    if not srt_hits and not whisper_hits:
+    stage_hits = _stage_marker_cue_hits(cues)
+    if not srt_hits and not whisper_hits and not stage_hits:
         return {
             "name": name,
             "passed": True,
@@ -396,6 +428,8 @@ def _check_structure_label_residue(whisper_text: str, srt_text: str) -> CheckRes
         parts.append("srt: " + ", ".join(srt_hits))
     if whisper_hits:
         parts.append("whisper: " + ", ".join(whisper_hits))
+    if stage_hits:
+        parts.append("; ".join(stage_hits))
     return {
         "name": name,
         "passed": False,
@@ -511,7 +545,7 @@ class V5Mp3VsSrt(BaseGate):
             ("uncovered_speech", lambda: _check_uncovered_speech(alignment)),
             (
                 "structure_label_residue",
-                lambda: _check_structure_label_residue(whisper_text, srt_text),
+                lambda: _check_structure_label_residue(whisper_text, srt_text, cues),
             ),
             ("srt_not_empty", lambda: _check_srt_not_empty(srt_text)),
             ("whisper_not_empty", lambda: _check_whisper_not_empty(whisper_text)),
