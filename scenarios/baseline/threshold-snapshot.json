@@ -72,9 +72,7 @@
     "produce-video": {
       "steps": {
         "03:video properties": {
-          "expect.media.min_duration_s": 30.0,
-          "expect.media.min_height": 1080,
-          "expect.media.min_width": 1920
+          "expect.media.min_duration_s": 30.0
         }
       }
     },

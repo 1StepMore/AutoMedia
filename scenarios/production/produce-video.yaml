@@ -20,8 +20,8 @@
 #     width, height and decodability are measured on the produced mp4.
 
 name: produce-video
-description: "short-video produces a decodable ≥30s 1080p mp4 (measured with ffprobe)."
-intent: "Prove the video cell of the production capability matrix: the shipped video track (TTS → ASR/SRT → image → ffmpeg render) yields a real 1080p video of real length, not an 8-second 1600×1200 slideshow."
+description: "short-video produces a decodable ≥30s 1080p-level mp4 (long edge ≥1920, short edge ≥1080, orientation-agnostic; measured with ffprobe)."
+intent: "Prove the video cell of the production capability matrix: the shipped video track (TTS → ASR/SRT → image → ffmpeg render) yields a real 1080p-level video (long edge ≥1920, short edge ≥1080, either orientation) of real length, not an 8-second 1600×1200 slideshow."
 category: production
 user_level: L1
 requires_env:
@@ -57,7 +57,7 @@ steps:
       exit_code: 0
   - name: video properties
     kind: file
-    check: The produced mp4 decodes, is at least 30 seconds long and at least 1920x1080 (ffprobe facts, not filenames).
+    check: The produced mp4 decodes, is at least 30 seconds long and is 1080p-level (long edge ≥1920, short edge ≥1080, orientation-agnostic; ffprobe facts, not filenames).
     standard: media.video
     command: /tmp/automedia/prod-video/video.mp4
     timeout_seconds: 120
@@ -65,6 +65,6 @@ steps:
       artifact_exists: /tmp/automedia/prod-video/video.mp4
       media:
         min_duration_s: 30
-        min_width: 1920
-        min_height: 1080
+        min_long_edge: 1920
+        min_short_edge: 1080
         decodable: true
