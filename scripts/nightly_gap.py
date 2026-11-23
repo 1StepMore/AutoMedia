@@ -40,6 +40,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import date, timedelta
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -84,6 +85,37 @@ def _files(d: Path) -> list[Path]:
 def _biggest(files: list[Path], exts: set[str] | None = None) -> int:
     cand = [f for f in files if exts is None or f.suffix.lower() in exts]
     return max((f.stat().st_size for f in cand), default=0)
+
+
+def _project_date(project_dir: Path) -> date:
+    """项目日期：目录名开头 8 位 ``YYYYMMDD``；解析失败回退到目录 mtime。"""
+    m = re.match(r"^(\d{8})", project_dir.name)
+    if m:
+        raw = m.group(1)
+        try:
+            return date(int(raw[:4]), int(raw[4:6]), int(raw[6:8]))
+        except ValueError:
+            pass
+    try:
+        return date.fromtimestamp(project_dir.stat().st_mtime)
+    except OSError:
+        return date.today()
+
+
+def _video_window_cutoff(today: date, days: int) -> date | None:
+    """视频窗口起点；``days <= 0`` 表示不设窗口（返回 None）。"""
+    if days <= 0:
+        return None
+    return today - timedelta(days=days - 1)
+
+
+def bench_state(branch: str, is_ancestor: bool) -> str:
+    """纯函数：只有「在 main 上且 main 是 origin/main 祖先」才认 main 读数。
+
+    任何其它分支、或无法证明 HEAD 已包含于 origin/main，一律标 ``unverified``
+    ——矩阵不得用非 main 的树冒充主线读数。
+    """
+    return "main" if branch == "main" and is_ancestor else "unverified"
 
 
 def _read_gate_report(path: Path) -> dict | None:
@@ -355,6 +387,7 @@ def scan_projects(root: Path | None = None, extra_root: Path | None = None) -> l
             out.append(
                 {
                     "project": d.name,
+                    "project_date": _project_date(d).isoformat(),
                     "cost_log_lines": cost_lines,
                     "draft_count": len(drafts),
                     "draft_max_bytes": draft_max,
@@ -614,6 +647,37 @@ def _bench_line() -> str:
     return f"- bench：{branch}@{sha}"
 
 
+def _git_ok(*args: str) -> bool:
+    """跑一条只靠退出码回答问题的 git 命令；异常 / 非零一律 False。"""
+    try:
+        r = subprocess.run(  # noqa: S603 — argv is literals from _git_ok callers, no shell
+            ["git", *args],  # noqa: S607 — bare `git` resolved via PATH is intended
+            capture_output=True,
+            text=True,
+            cwd=REPO,
+            timeout=10,
+        )
+    except Exception:
+        return False
+    return r.returncode == 0
+
+
+def _bench_snapshot() -> dict:
+    """机器可读的 bench 读数（bench_branch / bench_head / bench_state）。
+
+    ``bench_state`` 只有在 HEAD 位于 main 且 main 是 origin/main 祖先时才是
+    ``main``；否则是 ``unverified``——非 main 读数不得被当作主线结论。
+    """
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    head = _git("rev-parse", "--short", "HEAD")
+    ancestor = _git_ok("merge-base", "--is-ancestor", "HEAD", "origin/main")
+    return {
+        "bench_branch": branch,
+        "bench_head": head,
+        "bench_state": bench_state(branch, ancestor),
+    }
+
+
 def run_validation_scope(python: str, scope: str) -> dict:
     """按 ``--validate-scope`` 真执行场景（issue #415 选项 A：要么跑、要么别报）。
 
@@ -710,6 +774,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
+    ap.add_argument(
+        "--video-window-days",
+        type=int,
+        default=14,
+        help=(
+            "视频轨只聚合最近 N 天的项目（按目录名 YYYYMMDD，解析失败用 mtime）；"
+            "0 = 不设窗口（默认 14）"
+        ),
+    )
     return ap
 
 
@@ -721,15 +794,45 @@ def main(argv: list[str] | None = None) -> int:
     extra = explicit or (Path(env_dir) if env_dir else None)
     projects = scan_projects(extra_root=extra)
 
-    def _track(key: str) -> dict:
+    # 视频轨只看近 N 天的新项目：窗口外的旧项目不参与 pass/fail，改记历史债务。
+    cutoff = _video_window_cutoff(date.today(), args.video_window_days)
+    if cutoff is None:
+        video_projects = list(projects)
+        history_debt: list[dict] = []
+    else:
+        video_projects = [p for p in projects if date.fromisoformat(p["project_date"]) >= cutoff]
+        window_ids = {p["project"] for p in video_projects}
+        history_debt = [
+            {
+                "project": p["project"],
+                "state": p["video_state"],
+                "reason": ("" if p["video_state"] == "pass" else _track_red_reason(p, "视频轨")),
+            }
+            for p in projects
+            if p["project"] not in window_ids and p["video_state"] != "unverified"
+        ]
+
+    # 三轨各自的候选集：文本/图文仍是全量项目，视频轨只认窗口内项目。
+    track_items = {"文本轨": projects, "图文轨": projects, "视频轨": video_projects}
+
+    def _track(key: str, items: list[dict], *, fail_overrides: bool = False) -> dict:
         """单轨三态聚合（issue #361）：有 pass 即 pass；否则有证据即 fail；
-        全体项目都无该轨证据 ⇒ unverified（不作能力宣称）。"""
+        全体项目都无该轨证据 ⇒ unverified（不作能力宣称）。
+
+        视频轨用 ``fail_overrides=True``：窗口内任一项目判红即整轨判红，
+        否则一个 green 会把窗口里的 red 盖掉（``--video-window-days 0``
+        回到全量时尤其明显）。文本/图文轨维持原「有 pass 即 pass」。
+        """
+        has_fail = any(p[key] == "fail" for p in items)
+        has_pass = any(p[key] == "pass" for p in items)
         state = "unverified"
-        if any(p[key] == "fail" for p in projects):
+        if fail_overrides and has_fail:
             state = "fail"
-        if any(p[key] == "pass" for p in projects):
+        elif has_pass:
             state = "pass"
-        passing = [p["project"] for p in projects if p[key] == "pass"]
+        elif has_fail:
+            state = "fail"
+        passing = [p["project"] for p in items if p[key] == "pass"]
         return {
             "ok": state == "pass",
             "state": state,
@@ -738,9 +841,9 @@ def main(argv: list[str] | None = None) -> int:
         }
 
     tracks = {
-        "文本轨": _track("text_state"),
-        "图文轨": _track("image_state"),
-        "视频轨": _track("video_state"),
+        "文本轨": _track("text_state", track_items["文本轨"]),
+        "图文轨": _track("image_state", track_items["图文轨"]),
+        "视频轨": _track("video_state", track_items["视频轨"], fail_overrides=True),
     }
     fail_tracks = [k for k, v in tracks.items() if v["state"] == "fail"]
     unverified_tracks = [k for k, v in tracks.items() if v["state"] == "unverified"]
@@ -754,6 +857,7 @@ def main(argv: list[str] | None = None) -> int:
     chain = _update_unexecuted_streak(
         "none" if args.skip_validate else args.validate_scope, executed
     )
+    bench = _bench_snapshot()
 
     n_pass, n_fail, n_unv = 3 - len(gap), len(fail_tracks), len(unverified_tracks)
     result = {
@@ -765,13 +869,23 @@ def main(argv: list[str] | None = None) -> int:
         "gap": gap,
         "tracks": tracks,
         "projects": projects,
+        "video_window_days": args.video_window_days,
+        "history_debt": history_debt,
+        "bench_state": bench["bench_state"],
+        "bench_branch": bench["bench_branch"],
+        "bench_head": bench["bench_head"],
         "validate": vs,
         "validation_chain": chain,
         "capability_debt": {
             "视频轨": {
                 "registered_gates": list(VIDEO_GATES_CAPABILITY_DEBT),
                 "skipped_in_evidence": sorted(
-                    {g for p in projects if p["video_ok"] for g in p["video_gates"]["debt_skipped"]}
+                    {
+                        g
+                        for p in video_projects
+                        if p["video_ok"]
+                        for g in p["video_gates"]["debt_skipped"]
+                    }
                 ),
                 "reason": (
                     "四门无诚实生产者（#193 登记；V1 自 #387 起有生产者、"
@@ -798,7 +912,12 @@ def main(argv: list[str] | None = None) -> int:
         if fail_tracks:
             names = "、".join(fail_tracks)
             first_failer = next(
-                (p for p in projects if p[TRACK_STATE_KEYS[fail_tracks[0]]] == "fail"), None
+                (
+                    p
+                    for p in track_items[fail_tracks[0]]
+                    if p[TRACK_STATE_KEYS[fail_tracks[0]]] == "fail"
+                ),
+                None,
             )
             red = _track_red_reason(first_failer, fail_tracks[0]) if first_failer else ""
             seg.append(
@@ -816,25 +935,27 @@ def main(argv: list[str] | None = None) -> int:
         f"- 项目目录：{len(projects)} 个（真模型 cost_log 非空："
         f"{sum(1 for p in projects if p['cost_log_lines'] > 0)} 个）",
         _bench_line(),
+        f"- bench_state：{bench['bench_state']}",
     ]
     for name, v in tracks.items():
         state = v["state"]
         key = TRACK_STATE_KEYS[name]
+        items = track_items[name]
         if state == "pass":
             ev = "、".join(v["evidence"]) if v["evidence"] else "无"
             md.append(f"- ✅ **{name}**：{v['count']} 个达标；证据：{ev}")
         elif state == "fail":
             reds = [
-                f"{p['project']}: {_track_red_reason(p, name)}"
-                for p in projects
-                if p[key] == "fail"
+                f"{p['project']}: {_track_red_reason(p, name)}" for p in items if p[key] == "fail"
             ][:5]
             reds_line = "；".join(reds) or "无项目"
             md.append(f"- ❌ **{name}**：未达标；判红原因（前 5 个）：{reds_line}")
         else:
             md.append(f"- ⏳ **{name}**：未验证（无证据，不作能力宣称）")
         if name == "视频轨" and state == "fail":
-            md.append(_video_track_note(projects, v))
+            md.append(_video_track_note(items, v))
+    md.append(f"- 历史债务：{len(history_debt)} 个（不参与判定）")
+    md.extend(f"  - {h['project']}: {h['reason'] or h['state']}" for h in history_debt)
     if vs and "error" not in vs:
         # 「未过」与「未执行」分开报（#415）：last_status=None 是「没人跑过」，
         # 不是「跑红了」；最近一次 suite 记录的时间戳一并给出，读者能区分

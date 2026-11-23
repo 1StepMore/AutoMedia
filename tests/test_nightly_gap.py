@@ -10,6 +10,7 @@ the real ``REPO`` is never touched or mocked.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from scripts.nightly_gap import (
@@ -18,6 +19,7 @@ from scripts.nightly_gap import (
     _track_red_reason,
     _video_red_reason,
     _video_track_note,
+    bench_state,
     scan_projects,
     video_gate_evidence,
 )
@@ -501,6 +503,7 @@ def test_main_all_pass_exits_zero(tmp_path: Path, monkeypatch) -> None:
 
     _project(
         tmp_path,
+        name=time.strftime("%Y%m%d") + "_demo-topic",  # 视频窗口内
         image_bytes=2 * 1024,
         video_bytes=10 * 1024,
         reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), []))],
@@ -788,3 +791,96 @@ def test_real_execution_resets_the_streak(tmp_path: Path, monkeypatch) -> None:
 
     assert json.loads(state.read_text(encoding="utf-8"))["streak"] == 0
     assert "连续未执行 0 天" in out.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# 视频窗口：只看近 N 天；窗口外旧项目记历史债务，不参与 pass/fail
+# ---------------------------------------------------------------------------
+
+
+def _run_main_with_projects(tmp_path: Path, monkeypatch, extra_args: list[str]):
+    from scripts import nightly_gap
+
+    real_scan = nightly_gap.scan_projects
+    monkeypatch.setattr(nightly_gap, "REPO", tmp_path)
+    monkeypatch.setattr(
+        nightly_gap,
+        "scan_projects",
+        lambda root=None, extra_root=None: real_scan(root=tmp_path),
+    )
+    out_json = tmp_path / "gap.json"
+    out_md = tmp_path / "gap.md"
+    rc = nightly_gap.main(
+        ["--skip-validate", "--json-out", str(out_json), "--md-out", str(out_md), *extra_args]
+    )
+    data = json.loads(out_json.read_text(encoding="utf-8"))
+    return rc, data, out_md.read_text(encoding="utf-8")
+
+
+def test_video_window_excludes_old_red_project(tmp_path: Path, monkeypatch) -> None:
+    """窗口内新 green ⇒ 视频轨 pass；窗口外老 red ⇒ 进 history_debt 不参与判定。"""
+    old_name = time.strftime("%Y%m%d", time.localtime(time.time() - 30 * 86400)) + "_old-red"
+    new_name = time.strftime("%Y%m%d") + "_new-green"
+    # 老项目：视频门全 skipped ⇒ 视频轨 fail；文本/图文证据齐全。
+    _project(
+        tmp_path,
+        name=old_name,
+        image_bytes=2 * 1024,
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report([], []))],
+    )
+    # 新项目：视频门全 pass ⇒ 视频轨 pass。
+    _project(
+        tmp_path,
+        name=new_name,
+        image_bytes=2 * 1024,
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), []))],
+    )
+
+    rc, data, md = _run_main_with_projects(tmp_path, monkeypatch, [])
+
+    assert rc == 0
+    assert data["video_window_days"] == 14
+    assert data["tracks"]["视频轨"]["state"] == "pass"
+    assert len(data["history_debt"]) == 1
+    debt = data["history_debt"][0]
+    assert debt["project"] == old_name
+    assert debt["state"] == "fail"
+    assert debt["reason"]
+    assert "历史债务：1 个（不参与判定）" in md
+    assert old_name in md
+
+
+def test_video_window_zero_counts_old_red_project(tmp_path: Path, monkeypatch) -> None:
+    """--video-window-days 0 ⇒ 不设窗口，老 red 参与判定 ⇒ 视频轨 fail。"""
+    old_name = time.strftime("%Y%m%d", time.localtime(time.time() - 30 * 86400)) + "_old-red"
+    new_name = time.strftime("%Y%m%d") + "_new-green"
+    _project(
+        tmp_path,
+        name=old_name,
+        image_bytes=2 * 1024,
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report([], []))],
+    )
+    _project(
+        tmp_path,
+        name=new_name,
+        image_bytes=2 * 1024,
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), []))],
+    )
+
+    rc, data, _ = _run_main_with_projects(tmp_path, monkeypatch, ["--video-window-days", "0"])
+
+    assert rc == 1
+    assert data["video_window_days"] == 0
+    assert data["tracks"]["视频轨"]["state"] == "fail"
+    assert data["history_debt"] == []
+
+
+def test_bench_state_pure_function() -> None:
+    """bench 纯函数：只有 main + 祖先关系成立才是 main，其余 unverified。"""
+    assert bench_state("main", True) == "main"
+    assert bench_state("main", False) == "unverified"
+    assert bench_state("fix/b18-b21-matrix-scope", True) == "unverified"
