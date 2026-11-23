@@ -152,6 +152,9 @@ class TestDoctorCheckDependencies:
                 return_value=(True, "upscale model present"),
             ),
             patch.object(doctor, "_check_llm_api", return_value=(True, "API reachable")),
+            patch.object(
+                doctor, "_check_vision_slot", return_value=(True, "zhipu/glm-4v-flash")
+            ),
             patch.object(doctor, "_check_chrome_headless", return_value=(True, None)),
         ):
             results = doctor.check_dependencies()
@@ -163,6 +166,9 @@ class TestDoctorCheckDependencies:
                 elif dep["name"] == "llm_api":
                     assert dep["path"] is None
                     assert dep["version"] == "API reachable"
+                elif dep["name"] == "vision_slot":
+                    assert dep["path"] is None
+                    assert dep["version"] == "zhipu/glm-4v-flash"
                 elif dep["name"] == "chrome":
                     assert dep["path"] == "/usr/bin/ok"
                     assert dep["version"] is None
@@ -190,6 +196,7 @@ class TestDoctorCheckDependencies:
                 return_value=(False, "upscale model missing"),
             ),
             patch.object(doctor, "_check_llm_api", return_value=(False, "no API key")),
+            patch.object(doctor, "_check_vision_slot", return_value=(False, None)),
         ):
             results = doctor.check_dependencies()
             for dep in results:
@@ -222,6 +229,7 @@ class TestDoctorCheckDependencies:
                 return_value=(False, "upscale model missing"),
             ),
             patch.object(doctor, "_check_llm_api", return_value=(False, "no API key")),
+            patch.object(doctor, "_check_vision_slot", return_value=(False, None)),
         ):
             results = doctor.check_dependencies()
 
@@ -544,3 +552,77 @@ class TestDoctorEnvFile:
         assert dep["env_source"] == "AUTOMEDIA_DOTENV_PATH"
         assert dep["installed"] is True
         assert dep["path"] == str(env_file)
+
+
+class TestDoctorVisionSlot:
+    """Issue #638 follow-up: doctor must flag a vision slot pointed at a
+    text-only model.
+
+    ``llm_api`` probes ``text_generation`` only, so a ``llm.vision.model``
+    pointed at a plain text model passed ``automedia doctor`` silently while
+    V1 recorded every frame as unjudged. ``_check_vision_slot`` is a purely
+    static check — no network, fast, offline-safe.
+    """
+
+    def test_vision_slot_missing_config_fails(self, doctor: Doctor):
+        """No ``llm.vision`` section at all → fail with actionable message."""
+        ok, msg = Doctor._check_vision_slot({"llm": {"text_generation": {"model": "gpt-4o-mini"}}})
+        assert ok is False
+        assert msg is not None
+        assert "no vision model" in msg
+
+    def test_vision_slot_empty_model_fails(self, doctor: Doctor):
+        """``vision.model == ''`` → fail (same as missing)."""
+        ok, msg = Doctor._check_vision_slot(
+            {"llm": {"vision": {"model": ""}, "text_generation": {"model": "gpt-4o-mini"}}}
+        )
+        assert ok is False
+        assert msg is not None
+        assert "no vision model" in msg
+
+    def test_vision_slot_same_model_as_text_fails(self, doctor: Doctor):
+        """vision.model == text_generation.model → fail, name the model."""
+        ok, msg = Doctor._check_vision_slot(
+            {
+                "llm": {
+                    "vision": {"provider": "spark", "model": "spark-x2.6"},
+                    "text_generation": {"provider": "spark", "model": "spark-x2.6"},
+                }
+            }
+        )
+        assert ok is False
+        assert msg is not None
+        assert "spark-x2.6" in msg
+        assert "multimodal" in msg
+
+    def test_vision_slot_distinct_model_passes(self, doctor: Doctor):
+        """A distinct multimodal vision model → pass with provider/model."""
+        ok, msg = Doctor._check_vision_slot(
+            {
+                "llm": {
+                    "vision": {"provider": "zhipu", "model": "glm-4v-flash"},
+                    "text_generation": {"provider": "spark", "model": "spark-x2.6"},
+                }
+            }
+        )
+        assert ok is True
+        assert msg == "zhipu/glm-4v-flash"
+
+    def test_check_dependencies_includes_vision_slot(self, doctor: Doctor):
+        """check_dependencies() must report a ``vision_slot`` entry."""
+        with (
+            patch.object(doctor, "_resolve_path", return_value="/usr/bin/ok"),
+            patch.object(doctor, "_get_version", return_value="1.0"),
+            patch.object(doctor, "_check_comfyui_http", return_value=(True, "ok")),
+            patch.object(doctor, "_check_comfyui_upscale_model", return_value=(True, "present")),
+            patch.object(doctor, "_check_llm_api", return_value=(True, "ok")),
+            patch.object(doctor, "_check_chrome_headless", return_value=(True, None)),
+            patch(
+                "automedia.core.config_loader.load_config",
+                return_value={"llm": {"vision": {"provider": "zhipu", "model": "glm-4v-flash"}}},
+            ),
+        ):
+            results = doctor.check_dependencies()
+        dep = next(r for r in results if r["name"] == "vision_slot")
+        assert dep["installed"] is True
+        assert dep["version"] == "zhipu/glm-4v-flash"
