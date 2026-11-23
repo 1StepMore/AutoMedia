@@ -2062,7 +2062,7 @@
 </ul>
 <h3 id="honest-scope-debt-not-claimed-as-passing">Honest scope / DEBT (not claimed as passing)<a class="headerlink" href="#honest-scope-debt-not-claimed-as-passing" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Issue #612 primary acceptance <code>auto-journey</code> is NOT 4/4.</strong> QA ran it twice (12:51 and 12:58): both EXIT=1, 1/4 steps. step1 CW stops at gate 2/16 with <code>openai: Connection error</code> (transient, 98s), V0–V7 all "Downstream affected" — never executed (<strong>not a video-chain block</strong>; the original PR-body claim was corrected). step3 fails in consequence; step4 <code>evaluate_content_quality</code> structured output is truncated (<code>reasoning_tokens=1603</code> ate the 2048 budget → <code>Unterminated string</code> / <code>NoneType.model_dump</code>). Per the no-unverified-as-verified rule, this close-out claims only the plain-text CW path for gap 3; step4 is tracked in <strong>issue #625</strong> (opened this shift, independent root cause from #621 wall-clock and #560 LengthFinishReasonError fallback).</li>
+<li><strong>Issue #612 primary acceptance <code>auto-journey</code> was NOT 4/4 at the time of this close-out</strong> — it was 1/4 twice (12:51 / 12:58). <strong>CORRECTION (16:4x, same day):</strong> the causes recorded here were partly wrong. step1's <code>openai: Connection error</code> was <strong>not</strong> endpoint instability — the logs show HTTP 200 throughout, and <code>src/automedia/validation/sandbox.py:91-99</code> (<code>_MODEL_CONFIG_SEED</code>) hardcodes <code>provider: openai / model: gpt-4o-mini</code>, so exporting only <code>AUTOMEDIA_LLM_API_KEY</code> produced an "openai endpoint + spark key" failure (tracked as <strong>issue #632</strong>). step3 failed because bare <code>find</code> resolved to <code>C:\Windows\system32\find.exe</code> under Windows <code>CreateProcess</code> search order (fixed by #633). step4 was structured-output truncation under a 2048 budget (#625, fixed by #631). See the "Close-out 2" section below for the now-passing 4/4 run. Per the no-unverified-as-verified rule, this earlier section claimed only the plain-text CW path for gap 3.</li>
 <li><strong>DEBT:</strong> gap-3 escalation triggers on "empty content <strong>and</strong> length" (conservative hit-only), while issue #612 wording was "empty <strong>or</strong> length" — a non-empty-but-length (half output) is not escalated. QA probe confirmed this; engineer acknowledged. Recorded to avoid reading it as full coverage.</li>
 <li><strong>Pre-existing env red:</strong> <code>tests/test_doctor/test_llm_probe.py::test_single_spec_blackhole_is_bounded_and_unreachable</code> (proxy 502, elapsed 10.3s &lt; 14s) reproduces on clean baseline cb54f733 in a separate worktree — not introduced by either PR. Both PRs skipped 3 pre-commit hooks that are red on a clean HEAD (ruff S603 in untouched <code>scripts/agent/autonomy.py</code>; ruff-format rewriting unrelated files; pytest hanging on an existing real-LLM unit test); all other hooks passed.</li>
 </ol>
@@ -2141,6 +2141,69 @@ the audio layer.</p>
 <p>Matrix state recorded this shift: 165/165 statused, 150 passed / 5 failed /
 6 unconfigured / 3 partial-pass / 1 recovered; hard 10/10; nightly_gap
 exit 0; gates 33/33 unreachable=0.</p>
+<hr />
+<h2 id="close-out-2-auto-journey-44-on-win32-625-631-step3-633">Close-out 2 — auto-journey 4/4 on win32 (#625 → #631, step3 → #633)<a class="headerlink" href="#close-out-2-auto-journey-44-on-win32-625-631-step3-633" title="Permanent link">&para;</a></h2>
+<p>Bench: main@02eb6c97. Full write-up: <code>gap4-625-633/README.md</code>; run record:
+<code>gap4-625-633/scenarios-auto-journey-4of4.json</code>.</p>
+<div class="highlight"><pre><span></span><code>AUTOMEDIA_LLM_PROVIDER=spark \
+AUTOMEDIA_LLM_BASE_URL=https://maas-api.cn-huabei-1.xf-yun.com/v2 \
+AUTOMEDIA_LLM_MODEL=spark-x2.6 \
+AUTOMEDIA_LLM_TIMEOUT=240 \
+python3 -m automedia validate run --scenario auto-journey
+→ Status: passed (4/4 steps passed)   exit 0   24m39s   confidence=real
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">step</th>
+<th style="text-align: left;">result</th>
+<th style="text-align: left;">duration</th>
+<th style="text-align: left;">reading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1 auto pipeline completes</td>
+<td style="text-align: left;">passed</td>
+<td style="text-align: left;">1206.5s</td>
+<td style="text-align: left;">16 gates, <code>Assets produced: 1</code> → <code>01_content/drafts/20261122_074813_draft.md</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">2 project visible</td>
+<td style="text-align: left;">passed</td>
+<td style="text-align: left;">2.8s</td>
+<td style="text-align: left;"><code>522db6242d98 my-brand …</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">3 non-trivial draft artifact</td>
+<td style="text-align: left;">passed</td>
+<td style="text-align: left;">0.1s</td>
+<td style="text-align: left;">stdout carries the draft path (was <code>exit 2</code> before #633)</td>
+</tr>
+<tr>
+<td style="text-align: left;">4 real-LLM quality spot-check</td>
+<td style="text-align: left;">passed</td>
+<td style="text-align: left;">260.8s</td>
+<td style="text-align: left;"><code>length@2048 attempt1 → escalated 4096 → stop@4096 attempt2</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two independent fixes, each its own PR, each independently QA-accepted (confidence=real):</p>
+<ul>
+<li><strong>#631 / issue #625</strong> — structured truncation: detect <code>LengthFinishReasonError</code> / <code>finish_reason=length</code> /
+  <code>completion_tokens&gt;=budget</code>, retry exactly once at 2× (cap 16000), skip the same-budget repair, keep the beta
+  cache clean, record provenance per attempt and attach it to the chain error. <code>defaults.yaml</code>, gate thresholds,
+  vendor/model literals and config entry points untouched. Residuals recorded (G4 stale thread-local provenance
+  on pre-attempt failure; G5 narrow no-escalation path).</li>
+<li><strong>#633</strong> — step3 portability: bare POSIX utilities are resolved to their MSYS implementation on Windows
+  (<code>CLIAdapter</code> only rewrites <code>parts[0]</code>; candidates under <code>%SystemRoot%</code>/<code>%windir%</code> rejected; honest fallback
+  keeps current behaviour). <strong><code>scenarios/</code> untouched — the assertion is still <code>-name "*_draft.md" -size +500c</code>.</strong>
+  QA's reverse check (identity resolver ⇒ <code>exit 2</code>, the exact pre-fix symptom) proves the fix is the cause.</li>
+</ul>
+<p>Matrix after both merges (main@02eb6c97): <code>nightly_gap.py</code> exit 0, three tracks pass, <code>units 3/3</code>, <code>gap=[]</code>,
+real-model cost_log non-empty projects 11; scenarios 165 → <strong>151 passed / 4 failed</strong> / 6 unconfigured /
+3 partial-pass / 1 recovered. The remaining 4 failed are all <code>blocked:missing-dep</code>
+(comfyui / orf / bun / video-engine).</p>
 
 
 
