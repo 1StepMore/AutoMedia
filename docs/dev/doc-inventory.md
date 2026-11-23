@@ -48,7 +48,7 @@
 | docs/dev/matrix-verdict-policy.md | 1938 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 28408 | file |
+| docs/dev/plans/NIGHTLY.md | 31262 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
 | docs/dev/project-analysis-20261029.md | 29923 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
