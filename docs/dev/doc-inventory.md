@@ -48,7 +48,7 @@
 | docs/dev/matrix-verdict-policy.md | 1938 | file |
 | docs/dev/override-reference.md | 10342 | file |
 | docs/dev/plans | — | dir |
-| docs/dev/plans/NIGHTLY.md | 28408 | file |
+| docs/dev/plans/NIGHTLY.md | 31262 | file |
 | docs/dev/plans/infrastructure-remediation-plan-20261030.md | 15934 | file |
 | docs/dev/project-analysis-20261029.md | 29923 | file |
 | docs/dev/project-evaluation-2026-09-06.md | 3219 | file |
@@ -84,10 +84,13 @@
 | docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap2-meta.txt | 54 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap3-auto-rerun-meta.txt | 77 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/gap2-gap3/qa-gap3-meta.txt | 52 | file |
-| docs/dev/validation-evidence/production-matrix/2026-11-22/manifest.json | 6950 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap4-625-633 | — | dir |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap4-625-633/README.md | 5099 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/gap4-625-633/scenarios-auto-journey-4of4.json | 38769 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/manifest.json | 9698 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/matrix-final.txt | 14719 | file |
 | docs/dev/validation-evidence/production-matrix/2026-11-22/nightly-gap.txt | 1437 | file |
-| docs/dev/validation-evidence/production-matrix/2026-11-22/run-summary.md | 9355 | file |
+| docs/dev/validation-evidence/production-matrix/2026-11-22/run-summary.md | 11919 | file |
 | docs/dev/validation-loop-log.md | 9998 | file |
 | docs/dev/七阶段AI开发流程-用CodingAgent交付成品的方法论.md | 11945 | file |
 | docs/glossary.md | 13315 | file |

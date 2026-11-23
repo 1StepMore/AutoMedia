@@ -11,7 +11,7 @@ Two owner-named gaps fixed via separate PRs, each one commit, DCO, squash, CI gr
 
 ### Honest scope / DEBT (not claimed as passing)
 
-1. **Issue #612 primary acceptance `auto-journey` is NOT 4/4.** QA ran it twice (12:51 and 12:58): both EXIT=1, 1/4 steps. step1 CW stops at gate 2/16 with `openai: Connection error` (transient, 98s), V0–V7 all "Downstream affected" — never executed (**not a video-chain block**; the original PR-body claim was corrected). step3 fails in consequence; step4 `evaluate_content_quality` structured output is truncated (`reasoning_tokens=1603` ate the 2048 budget → `Unterminated string` / `NoneType.model_dump`). Per the no-unverified-as-verified rule, this close-out claims only the plain-text CW path for gap 3; step4 is tracked in **issue #625** (opened this shift, independent root cause from #621 wall-clock and #560 LengthFinishReasonError fallback).
+1. **Issue #612 primary acceptance `auto-journey` was NOT 4/4 at the time of this close-out** — it was 1/4 twice (12:51 / 12:58). **CORRECTION (16:4x, same day):** the causes recorded here were partly wrong. step1's `openai: Connection error` was **not** endpoint instability — the logs show HTTP 200 throughout, and `src/automedia/validation/sandbox.py:91-99` (`_MODEL_CONFIG_SEED`) hardcodes `provider: openai / model: gpt-4o-mini`, so exporting only `AUTOMEDIA_LLM_API_KEY` produced an "openai endpoint + spark key" failure (tracked as **issue #632**). step3 failed because bare `find` resolved to `C:\Windows\system32\find.exe` under Windows `CreateProcess` search order (fixed by #633). step4 was structured-output truncation under a 2048 budget (#625, fixed by #631). See the "Close-out 2" section below for the now-passing 4/4 run. Per the no-unverified-as-verified rule, this earlier section claimed only the plain-text CW path for gap 3.
 2. **DEBT:** gap-3 escalation triggers on "empty content **and** length" (conservative hit-only), while issue #612 wording was "empty **or** length" — a non-empty-but-length (half output) is not escalated. QA probe confirmed this; engineer acknowledged. Recorded to avoid reading it as full coverage.
 3. **Pre-existing env red:** `tests/test_doctor/test_llm_probe.py::test_single_spec_blackhole_is_bounded_and_unreachable` (proxy 502, elapsed 10.3s < 14s) reproduces on clean baseline cb54f733 in a separate worktree — not introduced by either PR. Both PRs skipped 3 pre-commit hooks that are red on a clean HEAD (ruff S603 in untouched `scripts/agent/autonomy.py`; ruff-format rewriting unrelated files; pytest hanging on an existing real-LLM unit test); all other hooks passed.
 
@@ -100,3 +100,43 @@ the audio layer.
 Matrix state recorded this shift: 165/165 statused, 150 passed / 5 failed /
 6 unconfigured / 3 partial-pass / 1 recovered; hard 10/10; nightly_gap
 exit 0; gates 33/33 unreachable=0.
+
+---
+
+## Close-out 2 — auto-journey 4/4 on win32 (#625 → #631, step3 → #633)
+
+Bench: main@02eb6c97. Full write-up: `gap4-625-633/README.md`; run record:
+`gap4-625-633/scenarios-auto-journey-4of4.json`.
+
+```
+AUTOMEDIA_LLM_PROVIDER=spark \
+AUTOMEDIA_LLM_BASE_URL=https://maas-api.cn-huabei-1.xf-yun.com/v2 \
+AUTOMEDIA_LLM_MODEL=spark-x2.6 \
+AUTOMEDIA_LLM_TIMEOUT=240 \
+python3 -m automedia validate run --scenario auto-journey
+→ Status: passed (4/4 steps passed)   exit 0   24m39s   confidence=real
+```
+
+| step | result | duration | reading |
+|:--|:--|:--|:--|
+| 1 auto pipeline completes | passed | 1206.5s | 16 gates, `Assets produced: 1` → `01_content/drafts/20261122_074813_draft.md` |
+| 2 project visible | passed | 2.8s | `522db6242d98 my-brand …` |
+| 3 non-trivial draft artifact | passed | 0.1s | stdout carries the draft path (was `exit 2` before #633) |
+| 4 real-LLM quality spot-check | passed | 260.8s | `length@2048 attempt1 → escalated 4096 → stop@4096 attempt2` |
+
+Two independent fixes, each its own PR, each independently QA-accepted (confidence=real):
+
+- **#631 / issue #625** — structured truncation: detect `LengthFinishReasonError` / `finish_reason=length` /
+  `completion_tokens>=budget`, retry exactly once at 2× (cap 16000), skip the same-budget repair, keep the beta
+  cache clean, record provenance per attempt and attach it to the chain error. `defaults.yaml`, gate thresholds,
+  vendor/model literals and config entry points untouched. Residuals recorded (G4 stale thread-local provenance
+  on pre-attempt failure; G5 narrow no-escalation path).
+- **#633** — step3 portability: bare POSIX utilities are resolved to their MSYS implementation on Windows
+  (`CLIAdapter` only rewrites `parts[0]`; candidates under `%SystemRoot%`/`%windir%` rejected; honest fallback
+  keeps current behaviour). **`scenarios/` untouched — the assertion is still `-name "*_draft.md" -size +500c`.**
+  QA's reverse check (identity resolver ⇒ `exit 2`, the exact pre-fix symptom) proves the fix is the cause.
+
+Matrix after both merges (main@02eb6c97): `nightly_gap.py` exit 0, three tracks pass, `units 3/3`, `gap=[]`,
+real-model cost_log non-empty projects 11; scenarios 165 → **151 passed / 4 failed** / 6 unconfigured /
+3 partial-pass / 1 recovered. The remaining 4 failed are all `blocked:missing-dep`
+(comfyui / orf / bun / video-engine).
