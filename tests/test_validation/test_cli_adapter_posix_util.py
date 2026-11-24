@@ -26,6 +26,14 @@ import automedia.validation.adapters as adapters
 from automedia.validation.adapters import CLIAdapter, _resolve_posix_util
 from automedia.validation.schema import Step
 
+# These cases drive ``shutil.which`` down its win32 branch; off Windows that
+# reaches ``_winapi``, which is ``None`` here and has no
+# ``NeedCurrentDirectoryForExePath``.  Windows-only, everything else stays.
+WINDOWS_ONLY = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="NeedCurrentDirectoryForExePathW only exists on Windows",
+)
+
 
 def cli_step(command: str) -> Step:
     """A valid cli-kind step with the given command."""
@@ -62,6 +70,7 @@ def _tool_dir(tmp_path: Path, name: str = "tools") -> Path:
 class TestResolvePosixUtil:
     """``_resolve_posix_util`` only rewrites what it can prove is safe."""
 
+    @WINDOWS_ONLY
     def test_win32_resolves_to_the_non_system_candidate(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -73,6 +82,7 @@ class TestResolvePosixUtil:
             str(tools / "find.exe")
         )
 
+    @WINDOWS_ONLY
     def test_system_root_candidate_is_skipped(
         self, tmp_path: Path, fake_system_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -86,6 +96,7 @@ class TestResolvePosixUtil:
         assert os.path.normcase(resolved) == os.path.normcase(str(tools / "find.exe"))
         assert not os.path.normcase(resolved).startswith(os.path.normcase(str(fake_system_root)))
 
+    @WINDOWS_ONLY
     def test_only_system_candidates_fall_back_to_the_token(
         self, tmp_path: Path, fake_system_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
