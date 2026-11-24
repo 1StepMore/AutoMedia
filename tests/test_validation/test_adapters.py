@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +30,7 @@ import pytest
 
 from automedia.validation.adapters import CLIAdapter, FileAdapter, StepResult, ToolAdapter
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Expect, Step
+from automedia.validation.stub_bin import STUB_BIN_ENV
 
 
 def tool_step(**overrides: object) -> Step:
@@ -300,6 +303,43 @@ class TestCLIAdapter:
         result = CLIAdapter().run(cli_step("echo hi"))
         assert result.ok is True
         assert captured["timeout"] == DEFAULT_TIMEOUT_SECONDS
+
+
+class TestScenarioPath:
+    """The child env pins the running interpreter's bin dir (#676)."""
+
+    @staticmethod
+    def _captured_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+        captured: dict[str, Any] = {}
+
+        def fake_run(args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            captured.update(kwargs)
+            return subprocess.CompletedProcess(args, 0, "", "")  # type: ignore[arg-type]
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        CLIAdapter().run(cli_step("echo hi"))
+        return captured["env"]
+
+    def test_interpreter_bin_dir_prepended_to_ambient_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(STUB_BIN_ENV, raising=False)
+        monkeypatch.setenv("PATH", "/usr/bin")
+        env = self._captured_env(monkeypatch)
+        parts = env["PATH"].split(os.pathsep)
+        assert parts[0] == os.path.dirname(sys.executable)
+        assert "/usr/bin" in parts  # only prepend, never replace
+
+    def test_stub_dir_stays_ahead_of_interpreter_bin_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        stub_dir = tmp_path / "stub-bin"
+        stub_dir.mkdir()
+        monkeypatch.setenv(STUB_BIN_ENV, str(stub_dir))
+        monkeypatch.setenv("PATH", os.pathsep.join([str(stub_dir), "/usr/bin"]))
+        parts = self._captured_env(monkeypatch)["PATH"].split(os.pathsep)
+        assert parts[0] == str(stub_dir)  # fake tools still win
+        assert parts.index(os.path.dirname(sys.executable)) > 0
 
 
 class TestFileAdapter:

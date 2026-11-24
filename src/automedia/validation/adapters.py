@@ -52,6 +52,7 @@ from automedia.validation.media_probe import (
     probe_text,
 )
 from automedia.validation.schema import DEFAULT_TIMEOUT_SECONDS, Step
+from automedia.validation.stub_bin import STUB_BIN_ENV
 
 _JSON_PARSE_LIMIT: int = 4 * 1024 * 1024
 """Artifacts larger than this get existence/size facts only — no JSON read."""
@@ -313,6 +314,40 @@ class ToolAdapter:
         return asyncio.run(self.run_async(step))
 
 
+def _active_stub_dir(env: dict[str, str]) -> str | None:
+    """Return the normalised stub-bin dir already on ``env``'s PATH, if any."""
+    raw = env.get(STUB_BIN_ENV, "").strip()
+    if not raw:
+        return None
+    stub_dir = str(Path(raw).expanduser())
+    parts = [part for part in env.get("PATH", "").split(os.pathsep) if part]
+    return stub_dir if stub_dir in parts else None
+
+
+def _scenario_env(environ: dict[str, str] | None = None) -> dict[str, str]:
+    """Build the scenario child env with the running interpreter's bin dir.
+
+    Scenario YAMLs call bare ``python``; launching the suite as
+    ``.venv/bin/python -m automedia validate run`` (without ``.venv/bin`` on
+    PATH) therefore resolved the system interpreter and lost ``mcp`` (#676).
+    Prepending ``dirname(sys.executable)`` — ``Scripts`` on Windows — keeps
+    the ambient PATH intact for ``ffmpeg``/``pandoc``/``pdftotext``.
+
+    An active stub-bin dir (gap T-21) stays ahead of the interpreter dir so a
+    stubbed ``ffmpeg``/``python`` is never shadowed by the real one.
+    """
+    env = dict(os.environ if environ is None else environ)
+    bin_dir = os.path.dirname(sys.executable)
+    if not bin_dir:
+        return env
+    stub_dir = _active_stub_dir(env)
+    parts = [part for part in env.get("PATH", "").split(os.pathsep) if part and part != bin_dir]
+    index = 1 if stub_dir is not None and parts and parts[0] == stub_dir else 0
+    parts.insert(index, bin_dir)
+    env["PATH"] = os.pathsep.join(parts)
+    return env
+
+
 class CLIAdapter:
     """CLI surface: one subprocess run of ``step.command``.
 
@@ -429,6 +464,7 @@ class CLIAdapter:
             timeout=timeout,
             shell=shell,  # nosec B602 — trusted committed scenario config
             check=False,
+            env=_scenario_env(),
         )
         return subprocess.CompletedProcess(
             proc.args,
