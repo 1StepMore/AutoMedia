@@ -96,6 +96,27 @@ ASPECT_RATIO_TOLERANCE: float = 0.02  # ±2%
 # Image prompt generation (LLM-powered with naive fallback)
 # ---------------------------------------------------------------------------
 
+#: Word budget for the positive prompt.  SD 1.5's CLIP encoder silently drops
+#: everything past 77 tokens (~1.4 tokens per English word), so a longer prompt
+#: loses the very part that says what to draw (#681).
+_PROMPT_MAX_WORDS = 45
+
+
+def _trim_prompt_words(text: str, max_words: int = _PROMPT_MAX_WORDS) -> str:
+    """Hard cap on prompt length: CLIP keeps ~77 tokens, ~1.4 tokens/word."""
+    words = text.split()
+    if len(words) <= max_words:
+        return text.strip()
+
+    kept = " ".join(words[:max_words])
+    # Prefer a comma boundary so the kept text ends on a phrase, not mid-clause.
+    cut = kept.rfind(",")
+    if cut > 0:
+        trimmed = kept[:cut].strip()
+        if trimmed:
+            return trimmed
+    return kept
+
 
 def _generate_image_prompt(
     topic: str,
@@ -159,14 +180,19 @@ def _generate_image_prompt(
         result: str = llm_complete(
             user_message,
             system_prompt=(
-                "You are a professional Stable Diffusion prompt engineer. "
-                "Generate detailed, high-quality comma-separated image prompts "
-                "optimized for text-to-image generation. "
+                "You are a professional Stable Diffusion prompt engineer writing "
+                "for SD 1.5, whose CLIP encoder truncates the positive prompt at "
+                "77 tokens. Write ONE line of comma-separated phrases, at most "
+                "45 words in total. Order the phrases: subject, then action, "
+                "then setting, then style — put the subject first, no preamble. "
+                "Do not use 'masterpiece', 'best quality', '8k', "
+                "'ultra-detailed' or 'highly detailed' boilerplate; at most two "
+                "or three short style words at the very end. "
                 "Return ONLY the prompt text — no explanations."
             ),
         )
         if result.strip():
-            return result.strip()
+            return _trim_prompt_words(result.strip())
         logger.warning(
             "LLM returned empty image prompt — using fallback",
             topic=topic,
