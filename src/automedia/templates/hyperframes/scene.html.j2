@@ -74,7 +74,7 @@
       <div class="hair-grid">{% for _ in range(13) %}<i></i>{% endfor %}</div>
       <div class="copy">
         <div id="title" class="scene-title">{{ title }}</div>
-        <div id="text" class="scene-text">{{ content }}</div>
+        <div id="text" class="scene-text">{{ display if display is defined and display else content }}</div>
       </div>
       <div id="foot" class="scene-foot">
         <span>{{ brand_line }}</span>

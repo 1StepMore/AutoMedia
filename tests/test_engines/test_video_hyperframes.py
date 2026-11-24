@@ -39,7 +39,10 @@ import pytest
 
 from automedia.core.tool_paths import ToolPathError
 from automedia.engines.errors import EngineExecutionError
-from automedia.engines.implementations.video_hyperframes import HyperFramesVideoEngine
+from automedia.engines.implementations.video_hyperframes import (
+    HyperFramesVideoEngine,
+    _scene_display_text,
+)
 from automedia.engines.registry import EngineRegistry
 
 # ===================================================================
@@ -2357,3 +2360,78 @@ class TestFallbackPortraitRender:
         assert abs(duration - 4.0) <= 1.0
         assert engine.last_render_degraded is True
         assert "not found" in engine.last_render_reason
+
+
+# ===================================================================
+# Per-scene on-screen text (#660)
+# ===================================================================
+
+_LONG_NARRATION = (
+    "很多小团队在讨论内容自动化时，第一反应是：让AI直接写，写完直接发。"
+    "但实际操作过一轮就会发现，真正消耗时间的环节，往往不是写作本身。"
+) * 2
+
+_FIRST_SENTENCE = "很多小团队在讨论内容自动化时，第一反应是：让AI直接写，写完直接发"
+
+
+class TestSceneDisplayText:
+    """``_scene_display_text`` keeps one screen's worth of whole sentences.
+
+    #660: the scene body used to be the whole narration, so a 200+ character
+    paragraph was poured onto one frame and the VLM (and a human) could not
+    read it.  The screen text is clamped here; ``content`` is untouched.
+    """
+
+    def test_long_narration_is_clamped_at_a_sentence_boundary(self) -> None:
+        display = _scene_display_text(_LONG_NARRATION, _FIRST_SENTENCE)
+
+        assert len(display) <= 60 + 20  # one sentence of slack, never the paragraph
+        assert display[-1] in "。！？!?；;"
+        assert display != _LONG_NARRATION
+
+    def test_title_prefix_is_dropped_so_the_first_sentence_is_not_repeated(self) -> None:
+        display = _scene_display_text(_LONG_NARRATION, _FIRST_SENTENCE)
+
+        assert not display.startswith(_FIRST_SENTENCE[:12])
+        assert display.startswith("但实际操作")
+
+    def test_short_narration_is_kept_verbatim(self) -> None:
+        assert _scene_display_text("短句一。短句二。", "") == "短句一。短句二。"
+
+    def test_falls_back_to_title_when_narration_is_only_the_title(self) -> None:
+        assert _scene_display_text(_FIRST_SENTENCE, _FIRST_SENTENCE) == _FIRST_SENTENCE
+
+    def test_first_sentence_longer_than_max_chars_is_not_cut_mid_sentence(self) -> None:
+        long_sentence = "甲" * 80 + "。"
+
+        assert _scene_display_text(long_sentence, "", max_chars=10) == long_sentence
+
+    def test_provisioned_scene_shows_the_display_text_not_the_full_narration(
+        self, tmp_path: Any
+    ) -> None:
+        """The rendered composition carries the excerpt; ``content`` stays full."""
+        img = tmp_path / "img1.png"
+        img.write_text("fake-png")
+        project = tmp_path / "proj"
+        project.mkdir()
+        assets: dict[str, Any] = {
+            "images": [str(img)],
+            "audio": "",
+            "content": _LONG_NARRATION,
+            "scenes": [
+                {
+                    "id": "scene-1",
+                    "index": 1,
+                    "start": 0.0,
+                    "duration": 5.0,
+                    "text": _LONG_NARRATION,
+                }
+            ],
+        }
+
+        HyperFramesVideoEngine()._provision_default_hyperframes_project(str(project), assets)
+
+        scene_html = (project / "compositions" / "01-scene.html").read_text(encoding="utf-8")
+        display = _scene_display_text(_LONG_NARRATION, _FIRST_SENTENCE)
+        assert display in scene_html
+        assert _LONG_NARRATION not in scene_html
