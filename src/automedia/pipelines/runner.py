@@ -2680,7 +2680,7 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
     if frame:
         gate_context["fallback_frame"] = frame
 
-    # 每场素材（#351 / #377）：优先复用封面/正文图；不足的场**逐场**出图，
+    # 每场素材（#351 / #377）：优先复用正文图（轮播）；不足的场**逐场**出图，
     # 出图失败才降级为本地文字面板。此前是把同一张 fallback 帧复制 N 份，
     # 等于全片只有一张与选题无关的图（#377）。
     timeline_scenes: list[dict[str, Any]] = list(gate_context.get("video_timeline_scenes") or [])
@@ -2693,12 +2693,13 @@ def _produce_video_track(gate_context: GateContext | dict[str, Any]) -> None:
         scene_h = scene_spec.height or BODY_IMAGE_SIZE[1]
         scene_dir = os.path.join(project_dir, IMAGES, "scenes")
         os.makedirs(scene_dir, exist_ok=True)
+        # 只复用正文图（轮播），封面**不参与**场景素材播种（#677）：封面是
+        # 标题卡（大字压在虚化背景上），放进第一场并不能说明开场旁白，V1 会
+        # 如实判 unrelated 并把流水线降级为 partial。封面本身仍照常生成，
+        # 发布阶段继续用它。
         existing_media = [
             p
-            for p in [
-                str(gate_context.get("cover_image", "") or ""),
-                *list(gate_context.get("carousel_images", []) or []),
-            ]
+            for p in list(gate_context.get("carousel_images", []) or [])
             if p and os.path.isfile(p)
         ]
         topic = str(gate_context.get("topic", "") or "")
@@ -2954,8 +2955,8 @@ def _produce_media_assets(gate_context: GateContext | dict[str, Any]) -> None:
         elif mode == "text_with_cover":
             _produce_cover_image(gate_context)
         elif mode == "short-video":
-            # #495: short-video owes a cover too; produce it before the video
-            # track so scene media can reuse it.
+            # #495: short-video owes a cover too. The cover no longer seeds
+            # scene media (#677) — it is still required by the publish stage.
             _produce_cover_image(gate_context)
         if mode == "auto" or mode in _VIDEO_PRODUCING_MODES:
             _produce_video_track(gate_context)

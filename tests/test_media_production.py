@@ -18,7 +18,7 @@ import json
 import os
 import shutil
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
@@ -775,13 +775,39 @@ class _FailingSceneImagePipeline(_FakeImagePipeline):
         )
 
 
+class _RecordingSceneImagePipeline(_FakeImagePipeline):
+    """记录每次 ``generate_scene_image`` 调用，用于锁定"哪些场真的出图"（#677）。"""
+
+    calls: ClassVar[list[dict[str, Any]]] = []
+
+    def generate_scene_image(
+        self,
+        scene_text: str,
+        width: int,
+        height: int,
+        output_path: str,
+        **kwargs: Any,
+    ) -> str:
+        _RecordingSceneImagePipeline.calls.append(
+            {"text": scene_text, "output": output_path, "index": kwargs.get("index")}
+        )
+        return super().generate_scene_image(scene_text, width, height, output_path, **kwargs)
+
+
 class TestSceneMedia:
     """每场素材必须独立（#377）。此前是把同一张 fallback 帧复制 N 份。"""
 
     _CONTENT = "第一句口播在这里。第二句接着讲。第三句收尾。"
 
-    def _run(self, tmp_path: Path, image_pipeline: type) -> GateContext:
+    def _run(
+        self,
+        tmp_path: Path,
+        image_pipeline: type,
+        mutate: Callable[[GateContext], None] | None = None,
+    ) -> GateContext:
         ctx = _video_context(tmp_path, content=self._CONTENT)
+        if mutate is not None:
+            mutate(ctx)
         with (
             patch(_WHICH_PATH, return_value="/usr/bin/fake"),
             patch(_SMOKE_PATH, return_value=True),
@@ -811,6 +837,53 @@ class TestSceneMedia:
         notes = ctx.get("_media_stage_notes")
         assert isinstance(notes, list)
         assert any(note["event"] == "scene_image_failed" for note in notes)
+
+    def test_cover_image_is_never_assigned_to_a_scene(self, tmp_path: Path) -> None:
+        """#677：封面是标题卡，不能在场景槽位里复用（V1 会判 unrelated）。"""
+        cover = tmp_path / "02_images" / "cover" / "cover.png"
+        cover.parent.mkdir(parents=True, exist_ok=True)
+        cover.write_bytes(b"fake-cover")
+        _RecordingSceneImagePipeline.calls.clear()
+
+        ctx = self._run(
+            tmp_path,
+            _RecordingSceneImagePipeline,
+            mutate=lambda c: c.__setitem__("cover_image", str(cover)),
+        )
+
+        scene_media = ctx.get("scene_media")
+        assert isinstance(scene_media, list) and scene_media
+        # 每一场都真的走了出图；封面一次都没被塞进场景素材。
+        assert len(_RecordingSceneImagePipeline.calls) == len(scene_media)
+        assert str(cover) not in scene_media
+        assert ctx.get("scene_media_kinds") == ["generated"] * len(scene_media)
+
+    def test_carousel_images_are_still_reused_for_leading_scenes(self, tmp_path: Path) -> None:
+        """#677：轮播复用保持不变——前 N 场用轮播图，其余照常出图。"""
+        cover = tmp_path / "02_images" / "cover" / "cover.png"
+        cover.parent.mkdir(parents=True, exist_ok=True)
+        cover.write_bytes(b"fake-cover")
+        first = tmp_path / "carousel-a.png"
+        second = tmp_path / "carousel-b.png"
+        first.write_bytes(b"fake-carousel-a")
+        second.write_bytes(b"fake-carousel-b")
+        _RecordingSceneImagePipeline.calls.clear()
+
+        def _mutate(ctx: GateContext) -> None:
+            ctx["cover_image"] = str(cover)
+            ctx["carousel_images"] = [str(first), str(second)]
+
+        ctx = self._run(tmp_path, _RecordingSceneImagePipeline, mutate=_mutate)
+
+        scene_media = ctx.get("scene_media")
+        kinds = ctx.get("scene_media_kinds")
+        assert isinstance(scene_media, list) and isinstance(kinds, list)
+        assert len(scene_media) >= 3, "need at least one generated scene after the carousel pair"
+        assert scene_media[:2] == [str(first), str(second)]
+        assert kinds[:2] == ["reused", "reused"]
+        assert kinds[2:] == ["generated"] * (len(scene_media) - 2)
+        assert len(_RecordingSceneImagePipeline.calls) == len(scene_media) - 2
+        assert str(cover) not in scene_media
 
 
 class TestVideoAssetsCarryPlatformSize:
