@@ -42,10 +42,17 @@ class _FakeRun:
         return _Proc(returncode=0)
 
 
-def _build(tmp_path: Any, *, kinds: list[str] | None = None, run: Any = None, **kw: Any):
+def _build(
+    tmp_path: Any,
+    *,
+    kinds: list[str] | None = None,
+    run: Any = None,
+    scene: dict[str, Any] | None = None,
+    **kw: Any,
+):
     return build_vision_entries(
         str(tmp_path / "output.mp4"),
-        [_SCENE],
+        [scene or _SCENE],
         [str(tmp_path / "scene-01.png")],
         kinds if kinds is not None else ["generated"],
         str(tmp_path / "frames"),
@@ -208,3 +215,41 @@ class TestVLMTransientRetry:
         for raw in ("", "abc", "0", "-3"):
             monkeypatch.setenv("AUTOMEDIA_VLM_ATTEMPTS", raw)
             assert ve._resolve_max_vlm_attempts() == ve._MAX_VLM_ATTEMPTS
+
+
+class _RecordingVLM:
+    """Records the narration text handed to the judge; always returns readable."""
+
+    model_name = "recording-vlm"
+
+    def __init__(self) -> None:
+        self.narrations: list[str] = []
+
+    def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
+        self.narrations.append(narration)
+        return {"related": True, "determinable": True, "reason": "ok"}
+
+
+class TestVLMSeeOnScreenText:
+    """The judge must compare the frame with what the frame shows (#670).
+
+    #660 renders only the narrowed ``display`` excerpt (+ title) on the frame,
+    so handing it the whole narration paragraph makes a correct frame read as
+    unrelated/unreadable.
+    """
+
+    def test_judge_gets_display_when_scene_has_one(self, tmp_path: Any) -> None:
+        scene = {
+            **_SCENE,
+            "display": "自动化的价值",
+            "text": "自动化的价值也不是用机器替代创作者，而是把被重复动作挤占的时间还给你。",
+        }
+        client = _RecordingVLM()
+        _build(tmp_path, scene=scene, vlm_client=client)
+        assert client.narrations == ["自动化的价值"]
+
+    def test_judge_falls_back_to_text_without_display(self, tmp_path: Any) -> None:
+        scene = {**_SCENE, "text": "第一场文案"}
+        client = _RecordingVLM()
+        _build(tmp_path, scene=scene, vlm_client=client)
+        assert client.narrations == ["第一场文案"]
