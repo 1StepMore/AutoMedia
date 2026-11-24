@@ -16,6 +16,7 @@ import pytest
 from automedia.core.text_cleaning import (
     clean_publishable_copy,
     strip_narration_markup,
+    strip_source_citations,
 )
 
 
@@ -164,3 +165,42 @@ class TestEmojiAreNeverSpoken:
 
     def test_emoji_after_a_script_label_is_still_not_narration(self) -> None:
         assert strip_narration_markup("口播：评论区聊聊👇") == "评论区聊聊"
+
+
+class TestSourceCitationsAreNeverSpoken:
+    """行内引用标记不是口播内容（#664）.
+
+    写作提示词要求成稿对数字带出处，``[Source: /home/…/x.md]`` 进了 TTS 后
+    被整条念出来（ASR 记成 ``sourcehomerenanzai鞋杠…``），字幕链路却不含这段，
+    音频于是多出整段无字幕的话、V5 锚点整体错位。
+    """
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("在期限内完成 [Source: /home/u/x.md]。时间不够。", "在期限内完成。时间不够。"),
+            ("完成[Source: x] 。", "完成。"),
+            ("完成。[Source: x] 时间不够。", "完成。时间不够。"),
+            ("完成 [Source: x] ，然后继续。", "完成，然后继续。"),
+            ("[来源：内部文档] 先把链路跑通。", "先把链路跑通。"),
+            ("[SOURCE: ref][source：ref2] 一句话。", "一句话。"),
+            ("done [Source: ref] next", "done next"),
+        ],
+    )
+    def test_citation_goes_and_the_sentence_stays(self, raw: str, expected: str) -> None:
+        assert strip_source_citations(raw) == expected
+
+    def test_citation_only_line_is_dropped(self) -> None:
+        assert strip_source_citations("[Source: x]\n正文。") == "正文。"
+
+    def test_prose_mentioning_sources_is_untouched(self) -> None:
+        prose = "这一段引用的来源是公开报告。[画面：镜头怼脸] 开场。"
+        assert strip_source_citations(prose) == prose
+
+    def test_narration_markup_drops_citations_for_tts_and_srt(self) -> None:
+        raw = "在更紧的期限内完成 [Source: /home/renanzai/.hermes/x.md]。时间不够。"
+        cleaned = strip_narration_markup(raw)
+        assert cleaned == "在更紧的期限内完成。时间不够。"
+        assert "Source" not in cleaned
+        assert "renanzai" not in cleaned
+        assert "  " not in cleaned

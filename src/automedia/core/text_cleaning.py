@@ -191,6 +191,43 @@ def strip_stage_directions(text: str) -> str:
     return "\n".join(line for line in lines if line).strip()
 
 
+#: CJK 字符与全角标点的区间。引用标记去掉后若在两侧留下空格，那是排版
+#: 残留，直接收掉（``完成 [Source: x] 。`` → ``完成。``）。
+_CJK_RUN = r"\u3000-\u303f\u4e00-\u9fff\uff01-\uff60"
+
+#: 行内引用标记（#664）：写作提示词要求对每个数字带出处，成稿里因此有
+#: ``[Source: /home/…/x.md]`` / ``[来源：内部文档]``。那是给读者溯源的排版，
+#: 不是口播内容——TTS 会把绝对路径原样念出来（whisper 把「斜杠」转写成
+#: 「鞋杠」），而字幕走另一条派生链路、不含这段，于是音频多出整段无字幕的
+#: 话、V5 锚点整体错位。只认方括号内以 ``source`` / ``来源`` 开头、带冒号的
+#: 引用；``[画面：…]`` 等其它方括号标记的既有规则不动。
+_SOURCE_CITATION_RE = re.compile(
+    r"[ \t\u3000]*[\[［]\s*(?:source|来源)\s*[:：][^\[\]［］\n]*[\]］]",
+    re.IGNORECASE,
+)
+
+#: 两个 CJK/全角字符之间残留的空格（引用标记原来夹在中间）。
+_CJK_ADJACENT_SPACE_RE = re.compile(rf"(?<=[{_CJK_RUN}])[ \t\u3000]+(?=[{_CJK_RUN}])")
+
+
+def strip_source_citations(text: str) -> str:
+    """Drop inline ``[Source: …]`` / ``[来源：…]`` citations, keep the sentence (#664).
+
+    ``完成 [Source: x]。`` → ``完成。``: the marker goes together with the
+    whitespace that only padded it, so the sentence's own punctuation stays
+    attached (never ``完成 。``).  A line that held nothing but a citation has
+    no words left and is dropped.  Everything inside the brackets other than
+    a ``source``/``来源`` citation is out of scope — ``[画面：…]`` is handled by
+    :func:`strip_stage_directions`.
+    """
+    if not text:
+        return ""
+    cleaned = _SOURCE_CITATION_RE.sub("", text)
+    cleaned = _CJK_ADJACENT_SPACE_RE.sub("", cleaned)
+    lines = [_HSPACE_RUN_RE.sub(" ", line).strip() for line in cleaned.splitlines()]
+    return "\n".join(line for line in lines if line)
+
+
 #: 行尾残留的未配对加重标记（``**`` / ``__``）——念出来是「星星星星」。
 _TRAILING_EMPHASIS_RE = re.compile(r"(?:\*{2,}|_{2,})$")
 
@@ -301,6 +338,9 @@ def strip_narration_markup(text: str) -> str:
     # Cues are stripped before structure rows so ``[画面：…]主题：…`` is still
     # recognised as a metadata row (#455).
     cleaned = strip_stage_directions(cleaned)
+    # Inline citations (``[Source: …]`` / ``[来源：…]``) are reader-facing
+    # provenance, not narration — TTS reads the path out loud (#664).
+    cleaned = strip_source_citations(cleaned)
     cleaned = strip_structure_labels(cleaned)
     return _HSPACE_RUN_RE.sub(" ", strip_emoji(cleaned)).strip()
 
@@ -367,6 +407,7 @@ __all__ = [
     "strip_emoji",
     "strip_emphasis_markers",
     "strip_narration_markup",
+    "strip_source_citations",
     "strip_stage_directions",
     "strip_structure_labels",
     "trim_line_edges",
