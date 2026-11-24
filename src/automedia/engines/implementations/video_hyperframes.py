@@ -98,6 +98,46 @@ def _run_tree_aware(
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
 
+#: Sentence terminators used to cut per-scene on-screen text (#660).
+_SENTENCE_TERMINATORS = "。！？!?；;"
+_SCENE_SENTENCE_RE = re.compile(rf"[^{_SENTENCE_TERMINATORS}\n]+[{_SENTENCE_TERMINATORS}]?")
+
+
+def _scene_display_text(text: str, title: str, *, max_chars: int = 60) -> str:
+    """Return the readable on-screen excerpt for one scene (#660).
+
+    The scene ``content`` stays the full narration (subtitles and the
+    timeline depend on it); the screen only shows the first few complete
+    sentences.  When the narration opens with the title line, that prefix is
+    dropped so the first sentence is not shown twice.  Text is never cut
+    mid-sentence: the first sentence is always kept even if it is longer
+    than ``max_chars``.
+    """
+    body = str(text or "").strip()
+    title_s = str(title or "").strip()
+    if title_s and body.startswith(title_s):
+        body = body[len(title_s) :].lstrip(f" \t，,、：:{_SENTENCE_TERMINATORS}")
+    if not body:
+        return title_s
+
+    sentences = [
+        match.group(0)
+        for match in _SCENE_SENTENCE_RE.finditer(body)
+        if match.group(0) and match.group(0)[-1] in _SENTENCE_TERMINATORS
+    ]
+    if not sentences:
+        return title_s or body
+
+    picked: list[str] = []
+    used = 0
+    for sentence in sentences:
+        if picked and used + len(sentence) > max_chars:
+            break
+        picked.append(sentence)
+        used += len(sentence)
+    return "".join(picked).strip() or title_s
+
+
 class HyperFramesVideoEngine(BaseVideoEngine):
     """Render a video from images, audio, and subtitles.
 
@@ -1199,6 +1239,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                         "duration": float(s.get("duration", 0.0)) or 3.0,
                         "name": title_s[:24] or f"Scene {s.get('index', '')}",
                         "content": text_s,
+                        "display": _scene_display_text(text_s, title_s),
                         "media_src": "",
                     }
                 )
@@ -1283,6 +1324,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                 duration=scene["duration"],
                 title=scene["name"],
                 content=scene["content"],
+                display=scene.get("display", ""),
                 media_src=scene.get("media_src", ""),
                 brand_line=brand_line,
                 scene_index=scene["index"],
