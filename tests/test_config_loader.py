@@ -299,6 +299,59 @@ class TestEnvToConfig:
         """都不设 ⇒ 映射为空：不引入任何幻影 slot，与改动前逐字节一致。"""
         assert _env_to_config() == {}
 
+    # -- typed per-slot keys: headers / max_tokens (#674) -------------------
+
+    def test_vision_slot_headers_and_max_tokens(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """HEADERS 解析成 dict、MAX_TOKENS 解析成 int，落在 llm.vision 槽位。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_HEADERS", '{"x-opencode-session":"abc"}')
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_MAX_TOKENS", "2048")
+        result = _env_to_config()
+        assert result["llm"]["vision"]["headers"] == {"x-opencode-session": "abc"}
+        assert result["llm"]["vision"]["max_tokens"] == 2048
+        assert isinstance(result["llm"]["vision"]["max_tokens"], int)
+
+    def test_vision_slot_typed_keys_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """两个新键都不设 ⇒ llm.vision 里没有它们（present-only 不破）。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_MODEL", "glm-4v-flash")
+        result = _env_to_config()
+        assert result["llm"]["vision"] == {"model": "glm-4v-flash"}
+
+    def test_vision_slot_invalid_values_ignored(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """非 JSON / 非整数 ⇒ 忽略并 warning，不抛异常、不留半成品键。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_HEADERS", "not json")
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_MAX_TOKENS", "abc")
+        with caplog.at_level("WARNING", logger=config_loader.__name__):
+            result = _env_to_config()
+        assert result == {}
+        warnings_text = [r.message for r in caplog.records]
+        assert any("AUTOMEDIA_LLM_VISION_HEADERS" in str(m) for m in warnings_text)
+        assert any("AUTOMEDIA_LLM_VISION_MAX_TOKENS" in str(m) for m in warnings_text)
+
+    def test_vision_slot_json_non_object_ignored(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """JSON 合法但不是对象 ⇒ 同样忽略，不写 headers。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_VISION_HEADERS", '["not", "an", "object"]')
+        with caplog.at_level("WARNING", logger=config_loader.__name__):
+            result = _env_to_config()
+        assert result == {}
+        assert any("not an object" in r.getMessage() for r in caplog.records)
+
+    def test_proofread_translation_typed_keys(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """同规则覆盖 proofread（subtitle_proofread）与 translation 两个槽位。"""
+        monkeypatch.setenv("AUTOMEDIA_LLM_PROOFREAD_HEADERS", '{"x-routing":"b"}')
+        monkeypatch.setenv("AUTOMEDIA_LLM_TRANSLATION_MAX_TOKENS", "4096")
+        result = _env_to_config()
+        assert result["llm"]["subtitle_proofread"]["headers"] == {"x-routing": "b"}
+        assert result["llm"]["translation"]["max_tokens"] == 4096
+        assert isinstance(result["llm"]["translation"]["max_tokens"], int)
+
 
 # ---------------------------------------------------------------------------
 # load_config – integration tests

@@ -13,6 +13,8 @@ Layer priority (lowest → highest):
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import warnings
 from collections.abc import Callable
@@ -27,6 +29,8 @@ from automedia.exceptions import ConfigError
 
 _DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "manifests" / "defaults.yaml"
 _ENV_PREFIX = "AUTOMEDIA_"
+
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +144,12 @@ def _env_to_config() -> dict[str, Any]:
         AUTOMEDIA_LLM_TRANSLATION_PROVIDER / _MODEL / _BASE_URL / _API_KEY
             → llm.translation.*
 
+    Two typed per-slot keys (#674) follow the same present-only rule but are
+    converted, and skipped with a warning when they do not parse:
+
+        AUTOMEDIA_LLM_<SLOT>_MAX_TOKENS  → llm.<slot>.max_tokens (int)
+        AUTOMEDIA_LLM_<SLOT>_HEADERS     → llm.<slot>.headers (JSON object)
+
     Generically-split keys (e.g. ``AUTOMEDIA_FOO_BAR=z`` → ``{"foo": {"bar": "z"}}``)
     remain the fallback.
 
@@ -177,14 +187,22 @@ def _env_to_config() -> dict[str, Any]:
         "llm_vision_model": ["llm", "vision", "model"],
         "llm_vision_base_url": ["llm", "vision", "base_url"],
         "llm_vision_api_key": ["llm", "vision", "api_key"],
+        # #674: the gateway header and the reasoning-model budget both need to
+        # be injectable without putting them in a repo-tracked file.
+        "llm_vision_max_tokens": ["llm", "vision", "max_tokens"],
+        "llm_vision_headers": ["llm", "vision", "headers"],
         "llm_proofread_provider": ["llm", "subtitle_proofread", "provider"],
         "llm_proofread_model": ["llm", "subtitle_proofread", "model"],
         "llm_proofread_base_url": ["llm", "subtitle_proofread", "base_url"],
         "llm_proofread_api_key": ["llm", "subtitle_proofread", "api_key"],
+        "llm_proofread_max_tokens": ["llm", "subtitle_proofread", "max_tokens"],
+        "llm_proofread_headers": ["llm", "subtitle_proofread", "headers"],
         "llm_translation_provider": ["llm", "translation", "provider"],
         "llm_translation_model": ["llm", "translation", "model"],
         "llm_translation_base_url": ["llm", "translation", "base_url"],
         "llm_translation_api_key": ["llm", "translation", "api_key"],
+        "llm_translation_max_tokens": ["llm", "translation", "max_tokens"],
+        "llm_translation_headers": ["llm", "translation", "headers"],
     }
 
     # Non-LLM special key remapping (flatter nesting than generic split)
@@ -230,14 +248,33 @@ def _env_to_config() -> dict[str, Any]:
             continue
 
         # Check for per-slot LLM keys (#646): vision / subtitle_proofread /
-        # translation inject into their own task slot; present-only, string
-        # values (no numeric coercion needed for these four fields).
+        # translation inject into their own task slot; present-only.  The four
+        # string fields pass through untouched; ``max_tokens`` and ``headers``
+        # (#674) are typed, and an unparseable value is dropped with a warning
+        # before any node is created — never a half-written slot entry.
         slot_mapped = _llm_slot_key_map.get(suffix.lower())
         if slot_mapped is not None:
+            slot_field = slot_mapped[-1]
+            slot_value: Any = value
+            if slot_field == "max_tokens":
+                try:
+                    slot_value = int(value)
+                except ValueError:
+                    log.warning("Ignoring %s=%r: not an integer", key, value)
+                    continue
+            elif slot_field == "headers":
+                try:
+                    slot_value = json.loads(value)
+                except ValueError:
+                    log.warning("Ignoring %s: not valid JSON", key)
+                    continue
+                if not isinstance(slot_value, dict):
+                    log.warning("Ignoring %s: JSON value is not an object", key)
+                    continue
             node = result
             for part in slot_mapped[:-1]:
                 node = node.setdefault(part, {})
-            node[slot_mapped[-1]] = value
+            node[slot_field] = slot_value
             continue
 
         # Check for extra remapped keys (non-LLM, cleaner nesting)

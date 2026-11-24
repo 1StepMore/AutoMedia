@@ -590,6 +590,10 @@ def _build_client(
         given, overrides the ``llm.<task_type>`` block for provider,
         model, base_url and api_key.
 
+    Optional ``llm.<task_type>.headers`` (a mapping) is passed to the SDK as
+    ``default_headers``; when absent or empty the constructor call is
+    byte-identical to before (no default headers are invented here).
+
     Returns
     -------
     openai.OpenAI
@@ -651,6 +655,13 @@ def _build_client(
         # The timeout is our own hard bound; disable the SDK's transparent
         # retries (default 2) so a slow host cannot cost timeout x 3.
         client_kwargs["max_retries"] = 0
+
+    # Optional per-slot request headers (gateways that require a session/
+    # routing header).  Only an explicit non-empty mapping switches this on;
+    # otherwise the request stays exactly as before.
+    headers = llm_cfg.get("headers")
+    if isinstance(headers, dict) and headers:
+        client_kwargs["default_headers"] = dict(headers)
 
     return OpenAI(**client_kwargs)
 
