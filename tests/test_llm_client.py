@@ -343,6 +343,58 @@ class TestBuildClient:
             _build_client(config)
             mock_openai.assert_called_once_with(api_key="sk-test")
 
+    def test_passes_slot_headers_as_default_headers(self) -> None:
+        """A: ``llm.<task>.headers`` becomes ``default_headers``."""
+        config: dict[str, Any] = {
+            "llm": {
+                "vision": {
+                    "provider": "vision-provider",
+                    "model": "vision-model",
+                    "api_key": "sk-vision",
+                    "base_url": "https://vision.api.com/v1",
+                    "headers": {"x-session-id": "sess-1"},
+                }
+            }
+        }
+        with _patch_openai_module() as mock_openai:
+            _build_client(config, task_type="vision")
+            mock_openai.assert_called_once_with(
+                api_key="sk-vision",
+                base_url="https://vision.api.com/v1",
+                default_headers={"x-session-id": "sess-1"},
+            )
+
+    def test_omits_default_headers_when_slot_headers_absent(self) -> None:
+        """A: no headers key ⇒ the constructor call is unchanged."""
+        config: dict[str, Any] = {
+            "llm": {
+                "vision": {
+                    "provider": "vision-provider",
+                    "model": "vision-model",
+                    "api_key": "sk-vision",
+                }
+            }
+        }
+        with _patch_openai_module() as mock_openai:
+            _build_client(config, task_type="vision")
+            mock_openai.assert_called_once_with(api_key="sk-vision")
+
+    def test_omits_default_headers_when_slot_headers_empty(self) -> None:
+        """A: an empty headers mapping is treated as absent."""
+        config: dict[str, Any] = {
+            "llm": {
+                "vision": {
+                    "provider": "vision-provider",
+                    "model": "vision-model",
+                    "api_key": "sk-vision",
+                    "headers": {},
+                }
+            }
+        }
+        with _patch_openai_module() as mock_openai:
+            _build_client(config, task_type="vision")
+            mock_openai.assert_called_once_with(api_key="sk-vision")
+
 
 # =========================================================================
 # 4. TestLlmComplete - llm_complete() public API

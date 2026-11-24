@@ -50,18 +50,24 @@ _SCENE = {"id": 1, "index": 0, "start": 0.0, "duration": 4.0, "text": "一张办
 class _FakeResponse:
     """Minimal stand-in for the SDK response object."""
 
-    def __init__(self, content: str) -> None:
-        self.choices = [type("C", (), {"message": type("M", (), {"content": content})()})()]
+    def __init__(self, content: str, reasoning_content: str | None = None) -> None:
+        message = type("M", (), {"content": content, "reasoning_content": reasoning_content})()
+        self.choices = [type("C", (), {"message": message})()]
 
 
-def _make_client(content: str) -> tuple[OpenAICompatVLMClient, dict[str, Any]]:
+def _make_client(
+    content: str,
+    *,
+    reasoning_content: str | None = None,
+    max_tokens: int | None = None,
+) -> tuple[OpenAICompatVLMClient, dict[str, Any]]:
     captured: dict[str, Any] = {}
 
     class _Completions:
         @staticmethod
         def create(**kwargs: Any) -> Any:
             captured.update(kwargs)
-            return _FakeResponse(content)
+            return _FakeResponse(content, reasoning_content)
 
     class _Chat:
         completions = _Completions()
@@ -69,7 +75,7 @@ def _make_client(content: str) -> tuple[OpenAICompatVLMClient, dict[str, Any]]:
     class _Client:
         chat = _Chat()
 
-    return OpenAICompatVLMClient(_Client(), "glm-4v"), captured
+    return OpenAICompatVLMClient(_Client(), "glm-4v", max_tokens=max_tokens), captured
 
 
 class TestOpenAICompatVLMClientParsing:
@@ -100,6 +106,128 @@ class TestOpenAICompatVLMClientParsing:
         assert parts[1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
         encoded = parts[1]["image_url"]["url"].split(",", 1)[1]
         assert base64.b64decode(encoded)
+
+
+class TestOpenAICompatVLMClientRequestShape:
+    def test_max_tokens_forwarded_when_configured(self, tmp_path: Any) -> None:
+        """B: an explicit budget reaches ``chat.completions.create``."""
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, captured = _make_client('{"related": true, "reason": "ok"}', max_tokens=8192)
+        client.judge_frame(str(frame), "旁白")
+        assert captured["max_tokens"] == 8192
+
+    def test_max_tokens_omitted_by_default(self, tmp_path: Any) -> None:
+        """B: no configured budget keeps the historical request shape."""
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, captured = _make_client('{"related": true, "reason": "ok"}')
+        client.judge_frame(str(frame), "旁白")
+        assert "max_tokens" not in captured
+
+    def test_code_fenced_verdict_still_parses(self, tmp_path: Any) -> None:
+        """D: fenced JSON parses exactly as before."""
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, _ = _make_client('```json\n{"related": true, "reason": "aligned"}\n```')
+        assert client.judge_frame(str(frame), "旁白") == {
+            "related": True,
+            "reason": "aligned",
+        }
+
+
+class TestReasoningModelEmptyContent:
+    def test_empty_content_with_reasoning_is_indeterminable(self, tmp_path: Any) -> None:
+        """C: a reasoning model's empty content is "cannot judge", not unrelated."""
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, _ = _make_client("", reasoning_content="thinking…")
+        verdict = client.judge_frame(str(frame), "旁白")
+        assert verdict == {
+            "related": False,
+            "reason": "empty content from reasoning model (raise max_tokens)",
+            "determinable": False,
+        }
+        # and it must never read as a pass
+        assert verdict["related"] is False
+        assert verdict.get("determinable") is False
+
+    def test_whitespace_content_with_reasoning_is_indeterminable(self, tmp_path: Any) -> None:
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, _ = _make_client("   \n ", reasoning_content="thinking…")
+        verdict = client.judge_frame(str(frame), "旁白")
+        assert verdict["determinable"] is False
+
+    def test_empty_content_without_reasoning_stays_unparseable(self, tmp_path: Any) -> None:
+        """No thinking trace ⇒ the historical unparseable path is untouched."""
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        client, _ = _make_client("")
+        verdict = client.judge_frame(str(frame), "旁白")
+        assert verdict["related"] is False
+        assert "unparseable" in verdict["reason"]
+        assert "determinable" not in verdict
+
+
+class TestCreateVLMClientConfig:
+    @staticmethod
+    def _recording_client() -> Any:
+        captured: dict[str, Any] = {}
+
+        class _Completions:
+            @staticmethod
+            def create(**kwargs: Any) -> Any:
+                captured.update(kwargs)
+                return _FakeResponse('{"related": true, "reason": "ok"}')
+
+        class _Client:
+            chat = type("Chat", (), {"completions": _Completions()})()
+
+        return _Client(), captured
+
+    def _make_vlm(self, monkeypatch: Any, vision_cfg: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+        from automedia.pipelines import vlm_client as vlm_module
+
+        sdk_client, captured = self._recording_client()
+        monkeypatch.setattr(
+            "automedia.core.llm_client._build_client",
+            lambda *a, **k: sdk_client,
+        )
+        client = vlm_module.create_vlm_client({"llm": {"vision": vision_cfg}})
+        return client, captured
+
+    def test_reads_max_tokens_from_vision_slot(self, tmp_path: Any, monkeypatch: Any) -> None:
+        """B: ``llm.vision.max_tokens`` is applied to the judged request."""
+        client, captured = self._make_vlm(
+            monkeypatch,
+            {"provider": "p", "model": "m", "max_tokens": 8192},
+        )
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        assert client is not None
+        client.judge_frame(str(frame), "旁白")
+        assert captured["max_tokens"] == 8192
+
+    def test_invalid_max_tokens_is_ignored(self, tmp_path: Any, monkeypatch: Any) -> None:
+        for bad in (0, -5, "8192", 3.5, True):
+            client, captured = self._make_vlm(
+                monkeypatch,
+                {"provider": "p", "model": "m", "max_tokens": bad},
+            )
+            frame = tmp_path / "frame.jpg"
+            frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+            assert client is not None
+            client.judge_frame(str(frame), "旁白")
+            assert "max_tokens" not in captured, bad
+
+    def test_absent_max_tokens_stays_absent(self, tmp_path: Any, monkeypatch: Any) -> None:
+        client, captured = self._make_vlm(monkeypatch, {"provider": "p", "model": "m"})
+        frame = tmp_path / "frame.jpg"
+        frame.write_bytes(bytes([0xFF, 0xD8, 0xFF]) + b"fakejpeg")
+        assert client is not None
+        client.judge_frame(str(frame), "旁白")
+        assert "max_tokens" not in captured
 
 
 class TestVisionEntriesWithMockChannel:

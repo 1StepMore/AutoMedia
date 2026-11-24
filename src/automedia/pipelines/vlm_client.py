@@ -134,6 +134,7 @@ class OpenAICompatVLMClient:
         model: str,
         extra_body: dict[str, Any] | None = None,
         provider: str = "",
+        max_tokens: int | None = None,
     ) -> None:
         self._client = client
         self._model = model
@@ -141,6 +142,10 @@ class OpenAICompatVLMClient:
         # Thinking-disable pathway (#525): resolved once via the shared
         # resolver, never a per-site literal.
         self._extra_body = extra_body
+        # Reasoning models spend the shared budget on their thinking trace; an
+        # explicit ceiling lets them finish the payload (#674).  ``None`` keeps
+        # the request byte-identical to before.
+        self._max_tokens = max_tokens
 
     @property
     def model_name(self) -> str:
@@ -181,8 +186,23 @@ class OpenAICompatVLMClient:
         }
         if self._extra_body is not None:
             kwargs["extra_body"] = self._extra_body
+        if self._max_tokens is not None:
+            kwargs["max_tokens"] = self._max_tokens
         response = self._client.chat.completions.create(**kwargs)
-        raw = (response.choices[0].message.content or "").strip()
+        message = response.choices[0].message
+        raw = (message.content or "").strip()
+        if not raw:
+            # A reasoning model can burn the whole budget on its thinking trace
+            # and return an empty ``content``.  That is "could not judge", not
+            # an unrelated frame: report it via the structured #638 field so
+            # the caller records ``unjudged`` instead of a one-vote veto.
+            reasoning = getattr(message, "reasoning_content", None)
+            if isinstance(reasoning, str) and reasoning.strip():
+                return {
+                    "related": False,
+                    "reason": "empty content from reasoning model (raise max_tokens)",
+                    "determinable": False,
+                }
         parsed = _parse_verdict_json(raw)
         if parsed is None:
             # No JSON object anywhere in the answer: treat as unusable rather
@@ -216,12 +236,24 @@ def create_vlm_client(config: dict[str, Any] | None = None) -> VLMClient | None:
         if not model:
             return None
         provider = str(vision_cfg.get("provider") or "").strip()
+        # Optional output ceiling for reasoning models (#674).  Non-int or
+        # non-positive values are ignored so a typo cannot shrink the budget
+        # to nothing; absent keeps the historical "no max_tokens" request.
+        raw_max_tokens = vision_cfg.get("max_tokens")
+        max_tokens: int | None = None
+        if (
+            isinstance(raw_max_tokens, int)
+            and not isinstance(raw_max_tokens, bool)
+            and raw_max_tokens > 0
+        ):
+            max_tokens = raw_max_tokens
         client = _build_client(cfg, task_type="vision")
         return OpenAICompatVLMClient(
             client,
             model,
             extra_body=resolve_extra_body(vision_cfg if isinstance(vision_cfg, dict) else None),
             provider=provider,
+            max_tokens=max_tokens,
         )
     except Exception as exc:  # no key, no provider, bad config — all "no channel"
         log.info("vlm_client.unavailable", error=str(exc))
