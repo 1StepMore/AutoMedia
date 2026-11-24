@@ -471,6 +471,12 @@ class AudioPipeline:
     #: back into their predecessor.
     _SRT_CUE_MIN_CHARS: int = 6
 
+    #: Characters that end a phrase, so a cue may end right after one of them.
+    #: Counting characters alone cut 「内容发布自动化」 in half (#667): the cue
+    #: ended on 「…和内容」 and the next one opened on 「发布自动化…」, one spoken
+    #: breath split across two captions with no ASR anchor for either.
+    _SRT_CUE_BREAK_CHARS: str = "、，。；：！？,.;:!?"
+
     def generate_srt_from_script(
         self,
         script: str,
@@ -555,8 +561,12 @@ class AudioPipeline:
     def split_caption_cues(self, text: str) -> list[str]:
         """Split narration into caption-sized cues, preserving the words.
 
-        Sentence punctuation ends a cue; over-long sentences are hard-wrapped
-        at :data:`_SRT_CUE_MAX_CHARS`.  The entry text first goes through
+        Sentence punctuation ends a cue; over-long sentences are broken at
+        :data:`_SRT_CUE_BREAK_CHARS` (comma, enumeration comma, colon, …)
+        instead of being sliced at :data:`_SRT_CUE_MAX_CHARS` (#667) — a hard
+        wrap mid-phrase left cues like 「…和内容」+「发布自动化…」 that no ASR
+        anchor could match.  A clause with no punctuation falls back to the
+        character wrap.  The entry text first goes through
         :func:`extract_spoken_lines` (#654): lines labelled ``口播：`` /
         ``旁白：`` contribute only what follows the label — stage directions
         such as ``[切] 创作者对镜说话，语速快`` or ``「播客≠硬广！」+ 快切…``
@@ -575,10 +585,10 @@ class AudioPipeline:
             if not sentence:
                 continue
             while len(sentence) > self._SRT_CUE_MAX_CHARS:
-                # Prefer breaking *after* a comma so a cue never splits a
-                # phrase — and never swallows the comma itself.
-                split_at = sentence.rfind("，", 0, self._SRT_CUE_MAX_CHARS + 1)
-                if split_at > 0:
+                # Prefer breaking *after* the punctuation nearest the limit so
+                # a cue never splits a phrase — and never swallows the mark.
+                split_at = self._last_cue_break(sentence)
+                if split_at is not None:
                     cues.append(sentence[: split_at + 1].strip())
                     sentence = sentence[split_at + 1 :].strip()
                 else:
@@ -600,6 +610,18 @@ class AudioPipeline:
                 continue
             merged.append(cue)
         return merged
+
+    def _last_cue_break(self, sentence: str) -> int | None:
+        """Index of the natural break nearest the cue limit, or ``None``.
+
+        Scans backwards from :data:`_SRT_CUE_MAX_CHARS` so the cue still fills
+        the screen, and stops at :data:`_SRT_CUE_MIN_CHARS`: a mark sitting at
+        the very start of the sentence must not produce a two-character cue.
+        """
+        for idx in range(self._SRT_CUE_MAX_CHARS - 1, self._SRT_CUE_MIN_CHARS - 1, -1):
+            if idx < len(sentence) and sentence[idx] in self._SRT_CUE_BREAK_CHARS:
+                return idx
+        return None
 
     @staticmethod
     def _distribute_cues(

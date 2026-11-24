@@ -42,6 +42,7 @@ from automedia.engines.errors import EngineExecutionError
 from automedia.engines.implementations.video_hyperframes import (
     HyperFramesVideoEngine,
     _scene_display_text,
+    _scene_title,
 )
 from automedia.engines.registry import EngineRegistry
 
@@ -2435,3 +2436,69 @@ class TestSceneDisplayText:
         display = _scene_display_text(_LONG_NARRATION, _FIRST_SENTENCE)
         assert display in scene_html
         assert _LONG_NARRATION not in scene_html
+
+
+class TestSceneTitle:
+    """``_scene_title`` breaks a long headline at a natural boundary.
+
+    #668: the 2026-11-24 batch rendered "…很相似：要写的博" because the title
+    was hard-cut at 24 characters, splitting "博客" in half.  A too-long
+    headline now ends after clause punctuation and carries an ellipsis, so a
+    truncation is always visible on the frame.
+    """
+
+    #: The exact first sentence that was cut mid-word in the #668 batch.
+    _REAL_TITLE = "很多小团队在内容生产上遇到的状况很相似：要写的博客、社媒、邮件全挤在一起"
+
+    def test_short_title_is_returned_verbatim(self) -> None:
+        assert _scene_title("短标题。") == "短标题。"
+
+    def test_title_exactly_at_the_limit_is_not_touched(self) -> None:
+        title = "一" * 24
+
+        assert _scene_title(title) == title
+
+    def test_long_title_breaks_after_clause_punctuation(self) -> None:
+        title = _scene_title(self._REAL_TITLE)
+
+        assert len(title) <= 24
+        assert title.endswith("…")
+        assert title[:-1].endswith("：")
+
+    def test_no_boundary_within_the_budget_degrades_to_a_marked_cut(self) -> None:
+        title = _scene_title("一" * 40)
+
+        assert title == "一" * 23 + "…"
+        assert len(title) == 24
+
+    def test_empty_title_stays_empty_for_the_caller_fallback(self) -> None:
+        assert _scene_title("") == ""
+
+    def test_provisioned_headline_is_ellipsis_marked_not_hard_cut(self, tmp_path: Any) -> None:
+        img = tmp_path / "img1.png"
+        img.write_text("fake-png")
+        project = tmp_path / "proj"
+        project.mkdir()
+        assets: dict[str, Any] = {
+            "images": [str(img)],
+            "audio": "",
+            "content": self._REAL_TITLE,
+            "scenes": [
+                {
+                    "id": "scene-1",
+                    "index": 1,
+                    "start": 0.0,
+                    "duration": 5.0,
+                    "text": self._REAL_TITLE,
+                }
+            ],
+        }
+
+        HyperFramesVideoEngine()._provision_default_hyperframes_project(str(project), assets)
+
+        scene_html = (project / "compositions" / "01-scene.html").read_text(encoding="utf-8")
+        title_line = next(
+            line for line in scene_html.splitlines() if 'class="scene-title"' in line
+        )
+        assert _scene_title(self._REAL_TITLE) in title_line
+        assert self._REAL_TITLE[:24] not in title_line
