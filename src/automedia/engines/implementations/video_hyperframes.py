@@ -138,6 +138,34 @@ def _scene_display_text(text: str, title: str, *, max_chars: int = 60) -> str:
     return "".join(picked).strip() or title_s
 
 
+#: Clause punctuation where a too-long scene title may be broken (#668).
+#: Sentence terminators are absent on purpose: ``title`` has already been
+#: split on them, so only inner clause breaks remain to cut at.
+_TITLE_BREAK_CHARS = "，、：；,;:"
+
+
+def _scene_title(title: str, *, max_chars: int = 24) -> str:
+    """Clamp one scene's headline at a natural boundary (#668).
+
+    ``title`` is already the narration's first sentence (the caller keeps
+    that split).  A title that fits is returned verbatim; a longer one is
+    broken after the last clause punctuation that still leaves room for the
+    ellipsis, so the frame never shows a word cut in half.  When the first
+    ``max_chars`` contain no such boundary the cut degrades to a hard cut —
+    still ellipsis-marked, so the truncation stays visible.
+    """
+    text = str(title or "")
+    if len(text) <= max_chars:
+        return text
+    # One character is reserved for the ellipsis, so search only what the
+    # boundary may sit inside of while the result still fits ``max_chars``.
+    head = text[: max_chars - 1]
+    cut = max((head.rfind(ch) for ch in _TITLE_BREAK_CHARS), default=-1)
+    if cut >= 0:
+        return head[: cut + 1] + "…"
+    return head + "…"
+
+
 class HyperFramesVideoEngine(BaseVideoEngine):
     """Render a video from images, audio, and subtitles.
 
@@ -1237,7 +1265,7 @@ class HyperFramesVideoEngine(BaseVideoEngine):
                         "index": int(s.get("index", len(scenes) + 1)),
                         "start": float(s.get("start", 0.0)),
                         "duration": float(s.get("duration", 0.0)) or 3.0,
-                        "name": title_s[:24] or f"Scene {s.get('index', '')}",
+                        "name": _scene_title(title_s) or f"Scene {s.get('index', '')}",
                         "content": text_s,
                         "display": _scene_display_text(text_s, title_s),
                         "media_src": "",

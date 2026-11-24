@@ -124,3 +124,87 @@ class TestBuildVisionEntries:
         assert entries[0]["source"] == "missing"
         assert entries[0]["checked"] is False
         assert stats["unjudged"] == 1
+
+
+class _SequenceVLM:
+    """按脚本逐次返回判定（或抛异常），并记录真实调用次数。"""
+
+    model_name = "sequence-vlm"
+
+    def __init__(self, seq: list[Any]) -> None:
+        self.seq = list(seq)
+        self.calls = 0
+
+    def judge_frame(self, image_path: str, narration: str) -> dict[str, Any]:
+        item = self.seq[min(self.calls, len(self.seq) - 1)]
+        self.calls += 1
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+_UNREADABLE = {"related": False, "determinable": False, "reason": "unreadable"}
+_READABLE = {"related": True, "determinable": True, "reason": "ok"}
+
+
+class TestVLMTransientRetry:
+    """一次读图抖动不该把该场打成 unjudged（#666）。"""
+
+    @pytest.fixture(autouse=True)
+    def _no_backoff(self, monkeypatch: Any) -> None:
+        # 退避只影响真实等待，测试里置空以免拖慢。
+        monkeypatch.setattr("automedia.pipelines.vision_entries.time.sleep", lambda *_: None)
+        monkeypatch.delenv("AUTOMEDIA_VLM_ATTEMPTS", raising=False)
+
+    def test_readable_first_time_uses_one_attempt(self, tmp_path: Any) -> None:
+        client = _SequenceVLM([_READABLE])
+        entries, stats = _build(tmp_path, vlm_client=client)
+        assert client.calls == 1
+        assert entries[0]["checked"] is True
+        assert stats["vlm_attempts"] == 1
+
+    def test_case_a_unreadable_then_readable_is_judged_pass(self, tmp_path: Any) -> None:
+        """A：第一次 unreadable、第二次读到 → checked/qa_passed，且打过 2 次。"""
+        client = _SequenceVLM([_UNREADABLE, _READABLE])
+        entries, stats = _build(tmp_path, vlm_client=client)
+        entry = entries[0]
+        assert entry["checked"] is True
+        assert entry["qa_passed"] is True
+        assert entry["verdict"].startswith("vlm: related")
+        assert client.calls == 2
+        assert stats["vlm_attempts"] >= 2
+
+    def test_case_b_unreadable_twice_stays_unjudged(self, tmp_path: Any) -> None:
+        """B：两次都读不了 → 仍 unjudged（不放松判据）。"""
+        client = _SequenceVLM([_UNREADABLE, _UNREADABLE])
+        entries, stats = _build(tmp_path, vlm_client=client)
+        entry = entries[0]
+        assert entry["checked"] is False
+        assert entry["verdict"].startswith("unjudged:")
+        assert client.calls == 2
+        assert stats["unjudged"] == 1
+
+    def test_case_c_exception_twice_stays_unjudged(self, tmp_path: Any) -> None:
+        """C：判官抛异常两次 → 不抛到上层，仍记 unjudged。"""
+        client = _SequenceVLM([RuntimeError("transport down"), RuntimeError("transport down")])
+        entries, stats = _build(tmp_path, vlm_client=client)
+        entry = entries[0]
+        assert entry["checked"] is False
+        assert entry["verdict"].startswith("unjudged:")
+        assert "VLM judging failed" in entry["verdict"]
+        assert client.calls == 2
+        assert stats["unjudged"] == 1
+
+    def test_env_attempts_override_takes_effect(self, tmp_path: Any, monkeypatch: Any) -> None:
+        monkeypatch.setenv("AUTOMEDIA_VLM_ATTEMPTS", "1")
+        client = _SequenceVLM([_UNREADABLE, _READABLE])
+        entries, _ = _build(tmp_path, vlm_client=client)
+        assert client.calls == 1
+        assert entries[0]["checked"] is False
+
+    def test_invalid_env_attempts_falls_back_to_default(self, monkeypatch: Any) -> None:
+        from automedia.pipelines import vision_entries as ve
+
+        for raw in ("", "abc", "0", "-3"):
+            monkeypatch.setenv("AUTOMEDIA_VLM_ATTEMPTS", raw)
+            assert ve._resolve_max_vlm_attempts() == ve._MAX_VLM_ATTEMPTS

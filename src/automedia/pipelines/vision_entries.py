@@ -24,6 +24,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -55,6 +56,27 @@ _UNRELATED_RE = re.compile(
     r"无关|不符|不一致|不匹配|unrelated|does\s+not\s+match|inconsistent",
     re.IGNORECASE,
 )
+
+#: 一次读图失败（unreadable/异常）不立刻落 unjudged——判官对同一帧会偶发
+#: 抖动（#666）。默认同帧最多判 2 次；``AUTOMEDIA_VLM_ATTEMPTS`` 可覆盖，
+#: 非法/≤0 回落到默认值。
+_MAX_VLM_ATTEMPTS: int = 2
+_VLM_ATTEMPTS_ENV = "AUTOMEDIA_VLM_ATTEMPTS"
+#: 重试之间只做一次 0.5s 短退避，不长时间挂起流水线。
+_VLM_RETRY_BACKOFF_S = 0.5
+
+
+def _resolve_max_vlm_attempts() -> int:
+    """同帧判定次数上限；环境变量非法/≤0 时用模块默认值（#666）。"""
+    raw = os.environ.get(_VLM_ATTEMPTS_ENV, "").strip()
+    if raw:
+        try:
+            value = int(raw)
+        except ValueError:
+            return _MAX_VLM_ATTEMPTS
+        if value > 0:
+            return value
+    return _MAX_VLM_ATTEMPTS
 
 
 def _probe_duration(ffprobe_path: str, video_path: str, run: Runner) -> float | None:
@@ -149,7 +171,7 @@ def build_vision_entries(
         ``(entries, stats)``。``entries`` 逐场含 ``mid_frame_path``、
         ``end_silence_frame_path``、``checked``、``qa_passed``、``verdict``；
         ``stats`` 记 ``frames_extracted`` / ``frames_failed`` / ``judged`` /
-        ``unjudged``。
+        ``unjudged`` / ``vlm_attempts``（累计判官调用次数，#666）。
 
     Raises:
         FileNotFoundError: ffmpeg 不可用（无帧可抽，调用方降级为不写 entries）。
@@ -176,7 +198,14 @@ def build_vision_entries(
         duration = _probe_duration(resolved_ffprobe, video_path, runner)
 
     entries: list[dict[str, Any]] = []
-    stats = {"frames_extracted": 0, "frames_failed": 0, "judged": 0, "unjudged": 0}
+    stats = {
+        "frames_extracted": 0,
+        "frames_failed": 0,
+        "judged": 0,
+        "unjudged": 0,
+        # 累计 VLM 调用次数（#666）：事后区分「一次就读到」与「重试后读到」。
+        "vlm_attempts": 0,
+    }
 
     # V1 视觉判定通道（#473）：注入优先，缺省按 llm.vision 配置构建；
     # 无通道 → None，生成图/复用图场次保持 unjudged。
@@ -237,9 +266,27 @@ def build_vision_entries(
             # unjudged，不外抛、不丢其余场的判定。
             vlm_error = ""
             unjudged_note: str | None = None
+            attempts_made = 0
             if vlm_client is not None and mid:
-                try:
-                    judged = vlm_client.judge_frame(mid, str(scene.get("text", "") or ""))
+                # 抖动重试（#666）：unreadable 或异常都只说明「这一次没读到」，
+                # 不放松判据——同帧再判一次，用尽仍失败才落 unjudged。
+                max_attempts = _resolve_max_vlm_attempts()
+                for attempt in range(1, max_attempts + 1):
+                    attempts_made = attempt
+                    stats["vlm_attempts"] += 1
+                    try:
+                        judged = vlm_client.judge_frame(
+                            mid, str(scene.get("text", "") or "")
+                        )
+                    except Exception as exc:
+                        vlm_error = str(exc)[:150]
+                        unjudged_note = None
+                        if attempt < max_attempts:
+                            # 只做一次短退避（#666），绝不长时间挂起流水线。
+                            if attempt == 1:
+                                time.sleep(_VLM_RETRY_BACKOFF_S * attempt)
+                            continue
+                        break
                     related = bool(judged.get("related"))
                     raw_reason = judged.get("reason")
                     if isinstance(raw_reason, list):
@@ -261,24 +308,35 @@ def build_vision_entries(
                     )
                     if unreadable:
                         unjudged_note = full_reason[:200] or "(no reason given)"
-                    else:
-                        reason = full_reason[:200]
-                        verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
-                        checked, qa_passed = True, related
-                except Exception as exc:
-                    verdict_vlm = None
-                    vlm_error = str(exc)[:150]
+                        vlm_error = ""
+                        if attempt < max_attempts:
+                            # 只做一次短退避（#666），绝不长时间挂起流水线。
+                            if attempt == 1:
+                                time.sleep(_VLM_RETRY_BACKOFF_S * attempt)
+                            continue
+                        break
+                    # 读到且 related/unrelated 明确：立即采用，不再重试。
+                    reason = full_reason[:200]
+                    verdict_vlm = f"vlm: {'related' if related else 'unrelated'} — {reason}"
+                    checked, qa_passed = True, related
+                    unjudged_note = None
+                    vlm_error = ""
+                    break
             if verdict_vlm is not None:
                 stats["judged"] += 1
             else:
                 checked, qa_passed = False, False
                 stats["unjudged"] += 1
+            # 重试过才在 verdict 里标注次数（#666），单次路径文案保持原样。
+            attempts_note = f" after {attempts_made} attempts" if attempts_made > 1 else ""
             if unjudged_note is not None:
-                verdict = f"unjudged: VLM could not read the frame — {unjudged_note}"
+                verdict = (
+                    f"unjudged: VLM could not read the frame{attempts_note} — {unjudged_note}"
+                )
             elif verdict_vlm is None:
                 if vlm_client is not None and mid:
                     verdict = (
-                        f"unjudged: VLM judging failed ({vlm_error}) — frame "
+                        f"unjudged: VLM judging failed ({vlm_error}){attempts_note} — frame "
                         "extracted for future VLM judging"
                     )
                 else:

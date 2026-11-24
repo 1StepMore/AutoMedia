@@ -564,6 +564,57 @@ class TestScriptDerivedSrt:
         assert AudioPipeline().generate_srt_from_script("文字", 0.0, str(tmp_path / "z.srt")) == ""
 
 
+# ---------------------------------------------------------------------------
+# Cue breaks follow punctuation (#667)
+# ---------------------------------------------------------------------------
+
+#: The sentence from the 2026-11-24 run: #123 ended on 「…和内容」 and #124 opened
+#: on 「发布自动化…」, cutting the phrase 「内容发布自动化」 in half.  V5 then saw
+#: one cue at 44 % ASR coverage, its anchors out of order, and 18 characters of
+#: speech with no caption.
+_REGRESSION_SENTENCE = "需要留意的是，内容创作自动化、AI 生成内容和内容发布自动化是三个不同的概念。"
+
+
+class TestCueBreaksOnPunctuation:
+    def test_phrase_is_not_cut_in_half(self) -> None:
+        cues = AudioPipeline().split_caption_cues(_REGRESSION_SENTENCE)
+        assert not any(cue.endswith("和内容") for cue in cues)
+        assert not any(cue.startswith("发布自动化") for cue in cues)
+        # Break lands right after the enumeration comma, not at the hard limit.
+        assert cues[0].endswith("内容创作自动化、")
+
+    def test_no_cue_exceeds_the_limit(self) -> None:
+        cues = AudioPipeline().split_caption_cues(_REGRESSION_SENTENCE)
+        assert all(len(cue) <= AudioPipeline._SRT_CUE_MAX_CHARS for cue in cues)
+
+    def test_words_and_order_survive_the_split(self) -> None:
+        cues = AudioPipeline().split_caption_cues(_REGRESSION_SENTENCE)
+        assert "".join(cues) == _REGRESSION_SENTENCE
+
+    @pytest.mark.parametrize("mark", ["、", "，", "；", "：", ",", ";", ":"])
+    def test_break_prefers_the_mark_nearest_the_limit(self, mark: str) -> None:
+        text = f"内容创作自动化{mark}AI生成内容和内容发布自动化是三个不同的概念。"
+        cues = AudioPipeline().split_caption_cues(text)
+        assert cues[0].endswith(mark)
+        assert len(cues[0]) <= AudioPipeline._SRT_CUE_MAX_CHARS
+        assert "".join(cues) == text
+
+    def test_early_mark_does_not_become_a_tiny_cue(self) -> None:
+        """A mark at the very start must not yield a cue shorter than the floor."""
+        cues = AudioPipeline().split_caption_cues(
+            "好，内容创作自动化与内容发布自动化是三个不同的概念。"
+        )
+        assert all(len(cue) >= AudioPipeline._SRT_CUE_MIN_CHARS for cue in cues[:-1])
+        assert "".join(cues) == "好，内容创作自动化与内容发布自动化是三个不同的概念。"
+
+    def test_unpunctuated_clause_falls_back_to_character_wrap(self) -> None:
+        text = "内容创作自动化人工智能生成内容和内容发布自动化是三个不同的概念。"
+        cues = AudioPipeline().split_caption_cues(text)
+        assert len(cues) > 1
+        assert all(len(cue) <= AudioPipeline._SRT_CUE_MAX_CHARS for cue in cues)
+        assert "".join(cues) == text
+
+
 def _parse_srt_spans(content: str) -> list[tuple[float, float]]:
     """Extract ``(start, end)`` seconds from every SRT cue."""
     spans: list[tuple[float, float]] = []
