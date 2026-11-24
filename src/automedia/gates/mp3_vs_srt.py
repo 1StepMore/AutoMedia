@@ -102,10 +102,13 @@ _STRUCTURE_RESIDUE_RES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("timecode", re.compile(r"\d{1,2}:\d{2}\s*[-–—~至]\s*\d{1,2}:\d{2}")),
     ("spoken_prefix", re.compile(r"口播\s*[:：]")),
     (
+        # Anchored to the start of a line/cue (#671): ``场景：`` in ordinary
+        # prose (``…经历过这样的场景：``) is not a metadata label, only a cue
+        # that *begins* with one is scaffolding.
         "metadata_label",
         re.compile(
-            r"(?:主题|品牌|时长|风格|平台|BGM|音效|转场|字幕|画面|运镜|机位|场景)\s*[:：]",
-            re.IGNORECASE,
+            r"^[ \t]*(?:主题|品牌|时长|风格|平台|BGM|音效|转场|字幕|画面|运镜|机位|场景)\s*[:：]",
+            re.IGNORECASE | re.MULTILINE,
         ),
     ),
     (
@@ -214,8 +217,25 @@ def _normalise(text: str) -> str:
     return _NOISE_RE.sub("", text or "").lower()
 
 
-def _anchor(cue_norm: str, asr_norm: str) -> tuple[int, float, list[tuple[int, int]]]:
+def _anchor(
+    cue_norm: str,
+    asr_norm: str,
+    *,
+    search_from: int = 0,
+    search_len: int | None = None,
+) -> tuple[int, float, list[tuple[int, int]]]:
     """Locate *cue_norm* in *asr_norm*.
+
+    When ``search_len`` is given, the longest common substring is first looked
+    for inside ``asr_norm[search_from:search_from + search_len]`` — the
+    neighbourhood just after the previous cue's anchor (#672).  A phrase that
+    repeats earlier in the transcript therefore no longer steals the anchor and
+    fakes an order inversion.  The local anchor is only adopted when it matches
+    a substring at least as long as the best whole-transcript match: a repeated
+    phrase matches equally well nearby, while a genuinely displaced block only
+    yields a short fragment locally — that case keeps the whole-transcript
+    result, so real swaps still fail the order check.  With no local match the
+    search also falls back to the whole transcript (the previous behaviour).
 
     Returns ``(anchor_start, coverage, matched_spans)`` where ``anchor_start``
     is the ASR offset of the cue's longest common substring with the
@@ -225,15 +245,24 @@ def _anchor(cue_norm: str, asr_norm: str) -> tuple[int, float, list[tuple[int, i
     """
     if not cue_norm or not asr_norm:
         return 0, 0.0, []
-    matcher = SequenceMatcher(None, cue_norm, asr_norm, autojunk=False)
-    best = matcher.find_longest_match(0, len(cue_norm), 0, len(asr_norm))
-    lo = max(0, best.b - _ANCHOR_MARGIN)
-    hi = min(len(asr_norm), best.b + len(cue_norm) + _ANCHOR_MARGIN)
+    best = SequenceMatcher(None, cue_norm, asr_norm, autojunk=False).find_longest_match(
+        0, len(cue_norm), 0, len(asr_norm)
+    )
+    anchor = best.b
+    if search_len is not None and best.size and search_from < len(asr_norm):
+        end = min(len(asr_norm), search_from + max(search_len, len(cue_norm)))
+        local = SequenceMatcher(
+            None, cue_norm, asr_norm[search_from:end], autojunk=False
+        ).find_longest_match(0, len(cue_norm), 0, end - search_from)
+        if local.size and local.size == best.size:
+            anchor = search_from + local.b
+    lo = max(0, anchor - _ANCHOR_MARGIN)
+    hi = min(len(asr_norm), anchor + len(cue_norm) + _ANCHOR_MARGIN)
     window = asr_norm[lo:hi]
     blocks = SequenceMatcher(None, cue_norm, window, autojunk=False).get_matching_blocks()
     matched = sum(block.size for block in blocks)
     spans = [(lo + block.b, lo + block.b + block.size) for block in blocks if block.size]
-    return best.b, matched / len(cue_norm), spans
+    return anchor, matched / len(cue_norm), spans
 
 
 @dataclass(frozen=True)
@@ -252,14 +281,27 @@ def _analyse_alignment(cues: list[_Cue], whisper_text: str) -> _Alignment:
     ratios: list[float] = []
     positions: list[int] = []
     spans: list[tuple[int, int]] = []
+    prev_anchor: int | None = None
+    prev_len = 0
     for cue in cues:
         cue_norm = _normalise(cue.text)
         if not cue_norm:
             continue
-        position, ratio, cue_spans = _anchor(cue_norm, asr_norm)
+        if prev_anchor is None:
+            search_from, search_len = 0, None
+        else:
+            # #672：先在前一条 cue 的锚点之后、按两条 cue 长度给出的有限
+            # 窗口里找；窗口内找不到才回退全篇搜索（_anchor 内部兜底）。
+            search_from = prev_anchor
+            search_len = prev_len + len(cue_norm) + 2 * _ANCHOR_MARGIN
+        position, ratio, cue_spans = _anchor(
+            cue_norm, asr_norm, search_from=search_from, search_len=search_len
+        )
         ratios.append(ratio)
         positions.append(position)
         spans.extend(cue_spans)
+        prev_anchor = position
+        prev_len = len(cue_norm)
 
     runs: list[tuple[int, int]] = []
     covered = sorted(spans)
@@ -376,14 +418,33 @@ def _check_uncovered_speech(alignment: _Alignment) -> CheckResult:
     }
 
 
-def _structure_residue_hits(text: str) -> list[str]:
-    """Count structure-label hits per pattern, e.g. ``["shot_label×2", ...]``."""
+def _structure_residue_hits(text: str, *, skip: frozenset[str] = frozenset()) -> list[str]:
+    """Count structure-label hits per pattern, e.g. ``["shot_label×2", ...]``.
+
+    ``skip`` omits patterns whose anchoring makes them meaningless on flattened
+    text — ``metadata_label`` is judged per SRT cue instead (#671).
+    """
     hits: list[str] = []
     for name, pattern in _STRUCTURE_RESIDUE_RES:
+        if name in skip:
+            continue
         count = len(pattern.findall(text))
         if count:
             hits.append(f"{name}×{count}")
     return hits
+
+
+def _metadata_label_cue_hits(cues: list[_Cue]) -> list[str]:
+    """Return ``["metadata_label×N"]`` for cues that *begin* with a label (#671).
+
+    A label word with a colon mid-sentence (``…经历过这样的场景：``) is ordinary
+    prose; only a cue whose stripped text starts with ``主题：``/``场景：``/… is
+    script scaffolding.  Flattening the SRT drops the line starts the anchored
+    pattern needs, so it is evaluated cue by cue here.
+    """
+    pattern = dict(_STRUCTURE_RESIDUE_RES)["metadata_label"]
+    count = sum(1 for cue in cues if pattern.match(cue.text.strip()))
+    return [f"metadata_label×{count}"] if count else []
 
 
 def _stage_marker_cue_hits(cues: list[_Cue]) -> list[str]:
@@ -414,7 +475,12 @@ def _check_structure_label_residue(
     named.  The existing skipped/review semantics are untouched.
     """
     name = "structure_label_residue"
-    srt_hits = _structure_residue_hits(_strip_srt_timestamps(srt_text))
+    # metadata_label 只在 cue 开头命中（#671）；扁平化后的 SRT 丢掉行首，
+    # 所以从全量扫描里跳过、改由逐条 cue 判定。
+    srt_hits = _structure_residue_hits(
+        _strip_srt_timestamps(srt_text), skip=frozenset({"metadata_label"})
+    )
+    srt_hits.extend(_metadata_label_cue_hits(cues))
     whisper_hits = _structure_residue_hits(whisper_text)
     stage_hits = _stage_marker_cue_hits(cues)
     if not srt_hits and not whisper_hits and not stage_hits:

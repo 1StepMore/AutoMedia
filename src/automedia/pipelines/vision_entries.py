@@ -274,10 +274,13 @@ def build_vision_entries(
                 for attempt in range(1, max_attempts + 1):
                     attempts_made = attempt
                     stats["vlm_attempts"] += 1
+                    # 判官比的是"帧上真正显示的文字"，不是整段旁白（#670）：
+                    # #660 之后帧上只渲染收窄后的 ``display``（+ 标题），拿整段
+                    # 几百字的旁白去比必然判"对不上/读不出"。有 display 用
+                    # display，没有才退回 text。
+                    on_screen_text = scene.get("display") or scene.get("text") or ""
                     try:
-                        judged = vlm_client.judge_frame(
-                            mid, str(scene.get("text", "") or "")
-                        )
+                        judged = vlm_client.judge_frame(mid, str(on_screen_text))
                     except Exception as exc:
                         vlm_error = str(exc)[:150]
                         unjudged_note = None

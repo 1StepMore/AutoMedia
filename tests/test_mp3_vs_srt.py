@@ -269,6 +269,50 @@ class TestV5StructuralFailures:
         assert residue["passed"] is True
 
 
+class TestV5MetadataLabelAnchoring:
+    """``场景：`` mid-sentence is prose; only a cue-leading label is residue (#671)."""
+
+    def test_midsentence_label_is_not_residue(self) -> None:
+        srt = (
+            "1\n00:00:00,000 --> 00:00:02,000\n做内容的人，大概都经历过这样的场景：\n\n"
+            "2\n00:00:02,000 --> 00:00:04,000\n适合场景：任务相对独立，\n"
+        )
+        whisper = "做内容的人大概都经历过这样的场景适合场景任务相对独立"
+        result = V5Mp3VsSrt().execute(_make_context(whisper_text=whisper, srt_text=srt))
+        residue = _check(result, "structure_label_residue")
+        assert residue["passed"] is True, residue["detail"]
+
+    def test_cue_leading_label_is_still_residue(self) -> None:
+        srt = "1\n00:00:00,000 --> 00:00:02,000\n场景：开场\n"
+        result = V5Mp3VsSrt().execute(_make_context(whisper_text="场景开场", srt_text=srt))
+        residue = _check(result, "structure_label_residue")
+        assert residue["passed"] is False
+        assert "metadata_label" in residue["detail"]
+
+
+class TestV5RepeatedPhraseAnchor:
+    """A phrase repeated earlier must not steal the anchor from a later cue (#672)."""
+
+    def test_repeated_phrase_uses_the_nearby_occurrence(self) -> None:
+        srt = (
+            "1\n00:00:00,000 --> 00:00:03,000\n很少来自不会写，\n\n"
+            "2\n00:00:03,000 --> 00:00:06,000\n更多来自被大量重复动作挤占的时间。\n\n"
+            "3\n00:00:06,000 --> 00:00:09,000\n自动化的价值，\n\n"
+            "4\n00:00:09,000 --> 00:00:12,000\n也不是用机器替代创作者，\n"
+        )
+        # "自动化的价值" first appears in the cold open, then again in the body.
+        whisper = (
+            "今天聊聊自动化的价值。"
+            "很少来自不会写，更多来自被大量重复动作挤占的时间。"
+            "自动化的价值，也不是用机器替代创作者。"
+        )
+        result = V5Mp3VsSrt().execute(_make_context(whisper_text=whisper, srt_text=srt))
+        order = _check(result, "cue_order_consistency")
+        coverage = _check(result, "cue_anchor_coverage")
+        assert coverage["passed"] is True, coverage["detail"]
+        assert order["passed"] is True, order["detail"]
+
+
 class TestV5ObservationField:
     """#469: the retired similarity is reported but never drives the verdict."""
 
