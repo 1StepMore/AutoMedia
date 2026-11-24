@@ -510,7 +510,7 @@ def test_main_all_pass_exits_zero(tmp_path: Path, monkeypatch) -> None:
         nightly_gap, "scan_projects", lambda root=None, extra_root=None: real_scan(root=tmp_path)
     )
     out = tmp_path / "gap.md"
-    rc = nightly_gap.main(["--skip-validate", "--md-out", str(out)])
+    rc = nightly_gap.main(["--skip-validate", "--as-of", "2026-01-05", "--md-out", str(out)])
     assert rc == 0
     assert "三轨全达标（机器可判部分完成）" in out.read_text(encoding="utf-8")
 
@@ -788,3 +788,84 @@ def test_real_execution_resets_the_streak(tmp_path: Path, monkeypatch) -> None:
 
     assert json.loads(state.read_text(encoding="utf-8"))["streak"] == 0
     assert "连续未执行 0 天" in out.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# B18: video track aggregates only the last 14 days; older projects are debt
+# ---------------------------------------------------------------------------
+
+
+def _run_gap(tmp_path: Path, monkeypatch, argv: list[str]) -> tuple[int, str]:
+    """Run main against ``tmp_path`` projects and return (rc, gap.md text)."""
+    from scripts import nightly_gap
+
+    real_scan = nightly_gap.scan_projects
+    monkeypatch.setattr(nightly_gap, "REPO", tmp_path)
+    monkeypatch.setattr(
+        nightly_gap, "scan_projects", lambda root=None, extra_root=None: real_scan(root=tmp_path)
+    )
+    out = tmp_path / "gap.md"
+    rc = nightly_gap.main(["--skip-validate", *argv, "--md-out", str(out)])
+    return rc, out.read_text(encoding="utf-8")
+
+
+def test_video_track_only_counts_in_window_projects(tmp_path: Path, monkeypatch) -> None:
+    """窗口外的坏项目只记历史债务，不拖累视频轨达标；窗口内好项目让整轨 pass。"""
+    _project(
+        tmp_path,
+        name="20260101_old-bad",
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report([g for g in MUST_RUN if g != "V3"], ["V3"]))],
+    )
+    _project(
+        tmp_path,
+        name="20260115_new-good",
+        video_bytes=10 * 1024,
+        image_bytes=2 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), []))],
+    )
+
+    rc, text = _run_gap(tmp_path, monkeypatch, ["--as-of", "2026-01-20"])
+
+    assert rc == 0
+    assert "✅ **视频轨**" in text
+    assert "历史债务" in text
+    assert "20260101_old-bad" in text
+
+
+def test_video_track_red_when_in_window_project_fails(tmp_path: Path, monkeypatch) -> None:
+    """窗口内项目判红 ⇒ 视频轨 ❌，且判红原因只指向窗口内项目，不列历史债务项目。"""
+    _project(
+        tmp_path,
+        name="20260101_old-bad",
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report(list(MUST_RUN), []))],
+    )
+    _project(
+        tmp_path,
+        name="20260115_new-good",
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report([g for g in MUST_RUN if g != "V3"], ["V3"]))],
+    )
+
+    _rc, text = _run_gap(tmp_path, monkeypatch, ["--as-of", "2026-01-20"])
+
+    video_line = next(line for line in text.splitlines() if line.startswith("- ❌ **视频轨**"))
+    assert "20260115_new-good" in video_line
+    assert "20260101_old-bad" not in video_line
+
+
+def test_all_projects_outside_window_reads_unverified(tmp_path: Path, monkeypatch) -> None:
+    """全部项目都在窗口外 ⇒ 视频轨未验证，历史债务行仍逐个项目列出。"""
+    _project(
+        tmp_path,
+        name="20260101_old-bad",
+        video_bytes=10 * 1024,
+        reports=[(CLEAN_REPORT_TS, _report([g for g in MUST_RUN if g != "V3"], ["V3"]))],
+    )
+
+    _rc, text = _run_gap(tmp_path, monkeypatch, ["--as-of", "2026-06-01"])
+
+    assert "⏳ **视频轨**：未验证" in text
+    assert "历史债务" in text
+    assert "20260101_old-bad" in text

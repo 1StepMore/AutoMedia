@@ -40,6 +40,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -47,6 +48,8 @@ PROJECT_RE = re.compile(r"^\d{8}_.+")
 MIN_DRAFT_BYTES = 500
 MIN_IMAGE_BYTES = 1024
 MIN_VIDEO_BYTES = 10 * 1024
+#: 视频轨达标只统计最近多少天内新落地的项目；窗口外项目单列历史债务，不参与 pass/fail。
+VIDEO_WINDOW_DAYS = 14
 # 视频轨 V 门口径（#414 起与 validation/gate_inputs.py 的静态可达性审计唯一对齐）：
 # 必跑集合 = 有诚实生产者的门（audit 的 reachable）；能力债 = 无生产者的门
 # （audit 的 unreachable）。V1 自 #387 起有真实生产者（_produce_vision_entries），
@@ -382,6 +385,35 @@ def _tri_state(has_evidence: bool, ok: bool) -> str:
     return "pass" if ok else "fail"
 
 
+def _project_date(name: str) -> date | None:
+    """目录名（``YYYYMMDD_<topic>``）前 8 位的日期；解析失败返回 ``None``。"""
+    try:
+        return datetime.strptime(name[:8], "%Y%m%d").date()
+    except ValueError:
+        return None
+
+
+def split_video_window(
+    projects: list[dict], as_of: date, window_days: int = VIDEO_WINDOW_DAYS
+) -> tuple[list[dict], list[dict]]:
+    """把项目切成 ``(in_window, historical)`` 两个子集（issue B18）。
+
+    视频轨只对窗口内项目聚合；窗口外（含日期不可解析）的项目单列历史债务，
+    不参与 pass/fail。未来日期（``as_of - pdate`` 为负）同样算在窗口内，不丢。
+    只返回两个子集列表，不就地删除 ``projects`` 里的任何键。
+    """
+    cutoff = as_of - timedelta(days=window_days)
+    in_window: list[dict] = []
+    historical: list[dict] = []
+    for p in projects:
+        pdate = _project_date(str(p.get("project", "")))
+        if pdate is not None and pdate >= cutoff:
+            in_window.append(p)
+        else:
+            historical.append(p)
+    return in_window, historical
+
+
 def _track_red_reason(p: dict, track: str) -> str:
     """单项目在该轨的判红原因：门链结论优先（#361 要求写明卡在哪道门）。"""
     chain_reason = p["gate_chain"]["reason"]
@@ -586,6 +618,19 @@ def _video_track_note(projects: list[dict], track: dict) -> str:
     return "  - 判红原因（前 5 个）：" + ("；".join(bad) if bad else "无项目")
 
 
+def _historical_debt_line(debt: list[dict]) -> str:
+    """窗口外历史债务单列一行（issue B18）：全部列出，>10 个截断并注明总数。"""
+    entries = [
+        f"{d['project']}: {' '.join(str(d['red_reason']).split()) or '视频门证据未通过'}"
+        for d in debt
+    ]
+    shown = entries[:10]
+    body = "；".join(shown)
+    if len(entries) > 10:
+        body += f"…等 {len(entries)} 个"
+    return f"- 历史债务（窗口外，不参与 pass/fail）：{len(entries)} 个 — {body}"
+
+
 def _git(*args: str) -> str:
     """跑一条 git 命令；任何失败（非零返回 / 异常 / 空输出）都退化为 `<unknown>`。"""
     try:
@@ -710,6 +755,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--json-out", default="")
     ap.add_argument("--md-out", default="")
+    ap.add_argument(
+        "--as-of",
+        default="",
+        help=(
+            "Window anchor date (YYYY-MM-DD); defaults to today. Exposed mainly "
+            "for deterministic tests of the 14-day video window."
+        ),
+    )
+    ap.add_argument(
+        "--video-window-days",
+        type=int,
+        default=VIDEO_WINDOW_DAYS,
+        help=f"Days of the video-track aggregation window (default {VIDEO_WINDOW_DAYS}).",
+    )
     return ap
 
 
@@ -720,16 +779,22 @@ def main(argv: list[str] | None = None) -> int:
     env_dir = os.environ.get(PROJECTS_DIR_ENV, "").strip()
     extra = explicit or (Path(env_dir) if env_dir else None)
     projects = scan_projects(extra_root=extra)
+    as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+    in_window, historical = split_video_window(projects, as_of, args.video_window_days)
 
-    def _track(key: str) -> dict:
+    def _track(key: str, pool: list[dict] | None = None) -> dict:
         """单轨三态聚合（issue #361）：有 pass 即 pass；否则有证据即 fail；
-        全体项目都无该轨证据 ⇒ unverified（不作能力宣称）。"""
+        全体项目都无该轨证据 ⇒ unverified（不作能力宣称）。
+
+        ``pool`` 指定聚合所用的项目子集（默认全部）；视频轨传窗口内项目。
+        """
+        pool = projects if pool is None else pool
         state = "unverified"
-        if any(p[key] == "fail" for p in projects):
+        if any(p[key] == "fail" for p in pool):
             state = "fail"
-        if any(p[key] == "pass" for p in projects):
+        if any(p[key] == "pass" for p in pool):
             state = "pass"
-        passing = [p["project"] for p in projects if p[key] == "pass"]
+        passing = [p["project"] for p in pool if p[key] == "pass"]
         return {
             "ok": state == "pass",
             "state": state,
@@ -740,7 +805,7 @@ def main(argv: list[str] | None = None) -> int:
     tracks = {
         "文本轨": _track("text_state"),
         "图文轨": _track("image_state"),
-        "视频轨": _track("video_state"),
+        "视频轨": _track("video_state", in_window),
     }
     fail_tracks = [k for k, v in tracks.items() if v["state"] == "fail"]
     unverified_tracks = [k for k, v in tracks.items() if v["state"] == "unverified"]
@@ -756,6 +821,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     n_pass, n_fail, n_unv = 3 - len(gap), len(fail_tracks), len(unverified_tracks)
+    historical_debt = [
+        {"project": p["project"], "red_reason": _video_red_reason(p)}
+        for p in historical
+        if p["video_state"] == "fail"
+    ]
     result = {
         "schema": "nightly-gap/2",
         "project": "AutoMedia",
@@ -765,6 +835,13 @@ def main(argv: list[str] | None = None) -> int:
         "gap": gap,
         "tracks": tracks,
         "projects": projects,
+        "video_window": {
+            "days": args.video_window_days,
+            "as_of": as_of.isoformat(),
+            "in_window": len(in_window),
+            "historical": len(historical),
+            "historical_debt": historical_debt,
+        },
         "validate": vs,
         "validation_chain": chain,
         "capability_debt": {
@@ -797,8 +874,9 @@ def main(argv: list[str] | None = None) -> int:
         seg = []
         if fail_tracks:
             names = "、".join(fail_tracks)
+            pool_for_track = in_window if fail_tracks[0] == "视频轨" else projects
             first_failer = next(
-                (p for p in projects if p[TRACK_STATE_KEYS[fail_tracks[0]]] == "fail"), None
+                (p for p in pool_for_track if p[TRACK_STATE_KEYS[fail_tracks[0]]] == "fail"), None
             )
             red = _track_red_reason(first_failer, fail_tracks[0]) if first_failer else ""
             seg.append(
@@ -820,6 +898,34 @@ def main(argv: list[str] | None = None) -> int:
     for name, v in tracks.items():
         state = v["state"]
         key = TRACK_STATE_KEYS[name]
+        if name == "视频轨":
+            window_desc = f"近 {args.video_window_days} 天窗口 {len(in_window)} 个项目"
+            if state == "pass":
+                ev = "、".join(v["evidence"]) if v["evidence"] else "无"
+                md.append(f"- ✅ **{name}**：{v['count']} 个达标（{window_desc}）；证据：{ev}")
+            elif state == "fail":
+                reds = [
+                    f"{p['project']}: {_track_red_reason(p, name)}"
+                    for p in in_window
+                    if p[key] == "fail"
+                ][:5]
+                reds_line = "；".join(reds) or "无项目"
+                md.append(
+                    f"- ❌ **{name}**：未达标（{window_desc}）；"
+                    f"判红原因（前 5 个）：{reds_line}"
+                )
+                md.append(_video_track_note(in_window, v))
+            elif not in_window:
+                md.append(
+                    f"- ⏳ **{name}**：未验证（无证据，不作能力宣称）"
+                    f"（近 {args.video_window_days} 天窗口无项目；"
+                    f"窗口外历史项目 {len(historical)} 个）"
+                )
+            else:
+                md.append(f"- ⏳ **{name}**：未验证（无证据，不作能力宣称）（{window_desc}）")
+            if historical_debt:
+                md.append(_historical_debt_line(historical_debt))
+            continue
         if state == "pass":
             ev = "、".join(v["evidence"]) if v["evidence"] else "无"
             md.append(f"- ✅ **{name}**：{v['count']} 个达标；证据：{ev}")
@@ -833,8 +939,6 @@ def main(argv: list[str] | None = None) -> int:
             md.append(f"- ❌ **{name}**：未达标；判红原因（前 5 个）：{reds_line}")
         else:
             md.append(f"- ⏳ **{name}**：未验证（无证据，不作能力宣称）")
-        if name == "视频轨" and state == "fail":
-            md.append(_video_track_note(projects, v))
     if vs and "error" not in vs:
         # 「未过」与「未执行」分开报（#415）：last_status=None 是「没人跑过」，
         # 不是「跑红了」；最近一次 suite 记录的时间戳一并给出，读者能区分
