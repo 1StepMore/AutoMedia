@@ -8,6 +8,7 @@ outputs cannot drift apart again.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -67,3 +68,37 @@ class TestOneCleanerForTtsAndSrt:
         raw = "## 标题\n\n[画面：叹气]**主题**：先跑通流程。\n- 第二句。"
         expected = strip_narration_markup(raw).replace("\n", "")
         assert "".join(AudioPipeline().split_caption_cues(raw)) == expected
+
+
+class TestNarrationTextDropsSourceCitations:
+    """#664 端到端：真实旁白构建步骤不得把 ``[Source: …]`` 喂给 TTS."""
+
+    DRAFT = (
+        "## 抖音短视频脚本\n\n"
+        "[画面：镜头怼脸]\n"
+        "在更紧的期限内完成 "
+        "[Source: /home/renanzai/.hermes/01-Projects/x.md]。"
+        "时间不够，先把链路跑通。\n"
+    )
+
+    def test_pipeline_narration_text_has_no_marker_and_no_path(self) -> None:
+        from automedia.pipelines.runner import _media_narration_text
+
+        ctx: dict[str, Any] = {"content": self.DRAFT, "mode": "short-video"}
+        narration = _media_narration_text(ctx)
+        assert narration
+        assert "Source" not in narration
+        assert "renanzai" not in narration
+        assert "在更紧的期限内完成。" in narration
+        assert "时间不够，先把链路跑通。" in narration
+
+    def test_srt_cues_have_no_marker_either(self, tmp_path: Path) -> None:
+        path = AudioPipeline().generate_srt_from_scenes(
+            [{"text": self.DRAFT, "start": 0.0, "duration": 4.0}],
+            str(tmp_path / "subtitle.srt"),
+        )
+        assert path
+        body = Path(path).read_text(encoding="utf-8")
+        assert "Source" not in body
+        assert "renanzai" not in body
+        assert "在更紧的期限内完成。" in body
