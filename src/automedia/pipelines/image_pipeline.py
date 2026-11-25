@@ -167,6 +167,7 @@ def _generate_image_prompt(
             brand=brand,
             image_index=image_index,
             platform=platform,
+            scene_text=scene_text,
         )
         if scene_text.strip():
             # Render what this sentence *shows*, not what the topic is about.

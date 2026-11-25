@@ -3,6 +3,8 @@ Generate a detailed Stable Diffusion / ComfyUI image prompt for a body/illustrat
 Topic: {{ topic }}
 {% if brand %}Brand context: {{ brand }}
 {% endif %}Image index: {{ image_index }}
+{% if scene_text %}Narration beat this image must illustrate (do NOT render its words in the image): {{ scene_text }}
+{% endif %}
 
 The prompt must be in English, comma-separated keywords/phrases format optimized for text-to-image generation.
 Include ALL of the following elements:
@@ -13,8 +15,12 @@ Include ALL of the following elements:
 - Composition: framing and perspective (close-up, wide shot, bird's eye view, rule of thirds, leading lines, depth of field, etc.)
 - Mood: emotional atmosphere (serene, energetic, mysterious, cinematic, cozy, majestic, dramatic, futuristic, etc.)
 
-Start with quality tags: masterpiece, best quality, highly detailed, 8k, ultra-detailed, sharp focus.
+Start with the subject: who is doing what, with which objects, in the first ~15 words.
+Name concrete, drawable things (a person, a tool, a stack of papers, a clock) — never
+abstract nouns like "cost", "efficiency", "value". Put quality and style tags at the END.
 
 Each image index represents a different visual angle or aspect of the topic. Vary the prompts across images — do NOT repeat the same template or phrasing between different indices.
+
+The image must contain no text, no letters, no captions, no interface labels.
 
 Return ONLY the comma-separated prompt text. No explanations, no markdown formatting.
