@@ -22,6 +22,7 @@ from scripts.nightly_gap import (
     bench_state,
     scan_projects,
     video_gate_evidence,
+    video_unjudgeable_no_source,
 )
 
 V_GATES = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7")
@@ -34,10 +35,14 @@ DEBT = ("V6",)
 
 
 def _report(
-    passed: list[str], failed: list[str], generated_at: str = "2026-01-01T00:00:00+00:00"
+    passed: list[str],
+    failed: list[str],
+    generated_at: str = "2026-01-01T00:00:00+00:00",
+    skip_reasons: dict[str, str] | None = None,
 ) -> dict:
     """A gate-report doc: named gates get their status, the rest become skipped."""
     gates = []
+    reasons = skip_reasons or {}
     for name in V_GATES:
         if name in passed:
             status = "passed"
@@ -51,6 +56,7 @@ def _report(
                 "status": status,
                 "verdict": "pass" if status == "passed" else status,
                 "error": None,
+                "skip_reason": reasons.get(name, "") if status == "skipped" else "",
             }
         )
     counts = {
@@ -927,3 +933,54 @@ def test_bench_line_marks_sync_of_origin_main() -> None:
         {"bench_branch": "main", "bench_head": "9dc5621", "bench_sync_commit": "9dc5621"}
     )
     assert sync == "- bench：main@9dc5621 (sync of origin/main)"
+
+
+def test_video_unjudgeable_no_source_predicate() -> None:
+    """不可判判定：只差 V3，且 V3 的 skip 原因是「本 pipeline 没产出源材料」。"""
+    ev = {
+        "reason": "must-run gate not passed: V3",
+        "skip_reasons": {
+            "V3": "source_keywords/content_keywords/source_texts not produced by "
+            "this pipeline — V3 has no video artifact to inspect"
+        },
+    }
+    assert video_unjudgeable_no_source(ev) is True
+    # 缺的不是 V3 ⇒ 不归这条规则管
+    assert video_unjudgeable_no_source({**ev, "reason": "must-run gate not passed: V5"}) is False
+    # V3 确实 skip，但原因与源材料无关（例：渲染器缺失）⇒ 仍算判红
+    assert video_unjudgeable_no_source({**ev, "skip_reasons": {"V3": "renderer missing"}}) is False
+    # 门真跑挂了 ⇒ 仍算判红
+    assert video_unjudgeable_no_source({"reason": "gate failed: V3", "skip_reasons": {}}) is False
+    # 没有 skip 原因记录 ⇒ 保守判红
+    assert video_unjudgeable_no_source({"reason": "must-run gate not passed: V3"}) is False
+
+
+def test_v3_no_source_project_becomes_history_debt(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    """owner 2026-11-25：没喂源材料的项目 V3 必然 skip ⇒ 归历史债务，不占视频轨 pass/fail。"""
+    name = time.strftime("%Y%m%d") + "_no-source"
+    _project(
+        tmp_path,
+        name=name,
+        video_bytes=10 * 1024,
+        reports=[
+            (
+                CLEAN_REPORT_TS,
+                _report(
+                    [g for g in MUST_RUN if g != "V3"],
+                    [],
+                    skip_reasons={
+                        "V3": "source_keywords/content_keywords/source_texts not produced "
+                        "by this pipeline — V3 has no video artifact to inspect"
+                    },
+                ),
+            )
+        ],
+    )
+
+    _rc, data, _out = _run_main_with_projects(tmp_path, monkeypatch, [])
+
+    # 该项目被移出视频轨候选集 ⇒ 该轨没有可判项目，仍是 unverified（绝不冒充 pass）
+    assert data["tracks"]["视频轨"]["state"] == "unverified"
+    assert any(
+        h["project"] == name and "没喂源材料" in h["reason"] for h in data["history_debt"]
+    )

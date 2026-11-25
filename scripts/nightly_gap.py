@@ -261,6 +261,7 @@ def video_gate_evidence(project_dir: Path) -> dict:
         "debt_skipped": [],
         "render_failed": "",
         "render_degraded": "",
+        "skip_reasons": {},
     }
 
     files = sorted(project_dir.glob(GATE_REPORT_GLOB))
@@ -286,6 +287,10 @@ def video_gate_evidence(project_dir: Path) -> dict:
             continue
         seen.add(name)
         buckets[status if status in buckets else "other"].append(name)
+        if status == "skipped":
+            out["skip_reasons"][name] = str(
+                item.get("skip_reason") or item.get("reason") or ""
+            )
     for key, val in buckets.items():
         buckets[key] = sorted(set(val))
     out.update(buckets)
@@ -329,6 +334,28 @@ def video_gate_evidence(project_dir: Path) -> dict:
         out["ok"] = False
         out["reason"] = f"video degraded to slideshow: {out['render_degraded']}"
     return out
+
+
+#: 项目没喂源材料时 V3 必然 skip —— #661 之后 V3 需要
+#: ``source_keywords/content_keywords/source_texts``，而旧的项目路径没有生产者。
+#: 这不是「能力退步」，是「该项目不可判」；owner 2026-11-25 裁定归历史债务。
+V3_NO_SOURCE_MARKER = "not produced by this pipeline"
+
+
+def video_unjudgeable_no_source(ev: dict) -> bool:
+    """视频轨「不可判」判定：只差 V3，且 V3 的 skip 原因是「本 pipeline 没产出源材料」。
+
+    与「判红」区分开：判红 = 门真跑没过 / 渲染失败；不可判 = 这条项目根本
+    没喂源材料，V3 无输入。把后者算红会让视频轨永久挂一个修不掉的项
+    （owner 2026-11-25 裁定：归历史债务单列）。
+    """
+    reason = str(ev.get("reason") or "")
+    prefix = "must-run gate not passed:"
+    if not reason.startswith(prefix):
+        return False
+    if reason.split(prefix, 1)[1].strip() != "V3":
+        return False
+    return V3_NO_SOURCE_MARKER in str((ev.get("skip_reasons") or {}).get("V3", ""))
 
 
 def _text_evidence_ok(cost_lines: int, draft_max: int) -> bool:
@@ -832,6 +859,26 @@ def main(argv: list[str] | None = None) -> int:
         ]
 
     # 三轨各自的候选集：文本/图文仍是全量项目，视频轨只认窗口内项目。
+    # owner 2026-11-25：窗口内「没喂源材料 ⇒ V3 无输入」的项目属「不可判」，
+    # 归历史债务单列，不占视频轨 pass/fail（否则该轨永久挂一条修不掉的红）。
+    unjudgeable = [
+        p
+        for p in video_projects
+        if isinstance(p.get("video_gates"), dict)
+        and video_unjudgeable_no_source(p["video_gates"])
+    ]
+    if unjudgeable:
+        unjudgeable_ids = {p["project"] for p in unjudgeable}
+        video_projects = [p for p in video_projects if p["project"] not in unjudgeable_ids]
+        history_debt.extend(
+            {
+                "project": p["project"],
+                "state": p["video_state"],
+                "reason": "V3 无输入：该项目没喂源材料（不可判，owner 2026-11-25 归历史债务）",
+            }
+            for p in unjudgeable
+        )
+
     track_items = {"文本轨": projects, "图文轨": projects, "视频轨": video_projects}
 
     def _track(key: str, items: list[dict], *, fail_overrides: bool = False) -> dict:
