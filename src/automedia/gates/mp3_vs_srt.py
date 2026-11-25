@@ -19,10 +19,13 @@ Checks (each one can fail the gate on its own):
     6. whisper_not_empty     — Whisper transcription is non-empty
     7. whisper_vs_srt_diff   — retired criterion, kept as an observation field
        only: always ``passed=True``, never drives the verdict
-    8. semantic_consistency  — optional semantic layer; reports
-       ``semantic: skipped(no key)`` when no judge is configured.  ``passed``
-       stays ``True`` on the skip: an absent judge is not evidence of a bad
-       film, and the three deterministic checks above still gate the verdict.
+    8. semantic_consistency  — optional semantic layer (B26/C5).  When an LLM
+       judge is available it decides whether the cues carry the same meaning
+       as the ASR transcript: condensing/line-breaking is fine, added or
+       changed facts/numbers are not.  When no verdict is available the check
+       is reported as ``semantic_consistency_skipped`` (``passed=True``) —
+       the *name* changes so a skip can never be read as a verified pass
+       (same honesty rule as the V3 fix, #661).
 
 Anchor coverage, order and uncovered speech are judged on character sequences
 after punctuation/whitespace normalisation.  The per-cue anchor is the longest
@@ -56,6 +59,7 @@ from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result, missing_input_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
+from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 log = get_logger(__name__)
 
@@ -73,6 +77,9 @@ _CHECK_NAMES: list[str] = [
     "whisper_vs_srt_diff",
     "semantic_consistency",
 ]
+
+#: Prompt template used for the semantic judge (B26/C5).
+_V5_JUDGE_PROMPT: str = "v5_semantic_consistency"
 
 #: Minimum share of a cue's characters that must be found in the ASR text
 #: around the cue's anchor.  Calibrated in the module docstring.
@@ -543,17 +550,119 @@ def _check_whisper_vs_srt_diff(whisper_text: str, srt_text: str) -> CheckResult:
     }
 
 
-def _check_semantic_consistency() -> CheckResult:
-    """Check 8: optional semantic layer — reports the honest skip without a judge.
+def _llm_semantic_consistency(whisper_text: str, srt_text: str) -> dict[str, Any] | None:
+    """Ask the LLM whether the subtitle cues carry the same meaning as the ASR.
 
-    The deterministic trio (coverage + order + residue) already gates the
-    verdict.  A semantic judge needs a model key; when none is configured the
-    check says so instead of pretending to have judged anything.
+    Parameters
+    ----------
+    whisper_text:
+        The ASR transcript — what was actually spoken.
+    srt_text:
+        The subtitle file content — what the viewer reads.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        ``{"passed": bool, "issues": [str, ...], "confidence": float,
+        "structured_issues": [{"cue_text": str, "problem": str}, ...]}`` on a
+        usable verdict.  ``None`` when no verdict exists — missing text, LLM
+        failure/timeout, or a response that does not match the expected
+        structure.  A ``None`` return is deliberately **not** a pass: the
+        caller records the check as skipped (B26/C5, same contract as the
+        V3 fix #661).
     """
+    if not whisper_text.strip() or not srt_text.strip():
+        return None
+
+    def _unavailable(_text: str) -> LLMCheckResult:
+        # Any LLM failure must surface as "not judged", never as a pass.
+        return {"passed": False, "issues": ["llm unavailable"]}
+
+    try:
+        judged = llm_check_with_fallback(
+            text=srt_text,
+            check_type="audiosub_semantic",
+            prompt_template_name=_V5_JUDGE_PROMPT,
+            deterministic_fn=_unavailable,
+            source_text=whisper_text,
+        )
+    except Exception:
+        log.warning("V5 semantic judge failed", exc_info=True)
+        return None
+
+    # ``method != "llm"`` means the deterministic fallback ran: no verdict.
+    if judged.get("method") != "llm":
+        return None
+
+    # G0CheckResult is the repo's only free-form structured slot; the prompt
+    # puts one ``{cue_text, problem}`` entry per problem cue there.
+    raw_issues = judged.get("structured_issues")
+    if not isinstance(raw_issues, list):
+        return None
+
+    problems: list[dict[str, str]] = []
+    for item in raw_issues:
+        if not isinstance(item, dict):
+            return None
+        problems.append(
+            {
+                "cue_text": str(item.get("cue_text") or ""),
+                "problem": str(item.get("problem") or ""),
+            }
+        )
+
+    return {
+        "passed": bool(judged.get("passed")),
+        "issues": [str(issue) for issue in judged.get("issues", [])],
+        "confidence": float(judged.get("confidence", 1.0)),
+        "structured_issues": problems,
+    }
+
+
+def _check_semantic_consistency(whisper_text: str, srt_text: str) -> CheckResult:
+    """Check 8: optional semantic layer — the honest skip without a judge.
+
+    With a verdict, the check reports ``semantic_consistency`` and the judge
+    decides; the detail names every problem cue (each quoted) so the failure
+    is an evidence trail.  Without a verdict the check is reported as
+    ``semantic_consistency_skipped`` — the *name* changes so no consumer can
+    mistake "no judge" for "the semantic layer verified this pair".
+    """
+    if not whisper_text.strip() or not srt_text.strip():
+        return {
+            "name": "semantic_consistency_skipped",
+            "passed": True,
+            "detail": "not applicable (empty text)",
+        }
+
+    judge = _llm_semantic_consistency(whisper_text, srt_text)
+    if judge is None:
+        return {
+            "name": "semantic_consistency_skipped",
+            "passed": True,
+            "detail": "not judged: no LLM judge available — semantic layer NOT verified",
+        }
+
+    problems: list[dict[str, str]] = judge.get("structured_issues") or []
+    if judge["passed"]:
+        confidence = float(judge.get("confidence", 1.0))
+        return {
+            "name": "semantic_consistency",
+            "passed": True,
+            "detail": (
+                f"semantic judge: subtitle meaning matches ASR transcript "
+                f"(confidence {confidence:.2f})"
+            ),
+        }
+
+    parts = [f'cue "{item["cue_text"]}" — {item["problem"]}' for item in problems[:3]]
+    if not parts:
+        parts = [str(issue) for issue in judge.get("issues", [])[:3]]
+    more = f"; +{len(problems) - 3} more" if len(problems) > 3 else ""
     return {
         "name": "semantic_consistency",
-        "passed": True,
-        "detail": "semantic: skipped(no key)",
+        "passed": False,
+        "detail": f"semantic judge: {len(problems)} problem cue(s): " + "; ".join(parts) + more,
     }
 
 
@@ -605,6 +714,18 @@ class V5Mp3VsSrt(BaseGate):
         cues = _parse_srt_cues(srt_text)
         alignment = _analyse_alignment(cues, whisper_text)
 
+        # Gate-level marker (B26/C5): ``judged`` only when the semantic check
+        # actually ran under its verified name.  A skip — or a ``_mock_results``
+        # override, which bypasses the check entirely — must never advertise a
+        # verified semantic layer, so the default stays ``"skipped"``.
+        semantic_layer = "skipped"
+
+        def _run_semantic_check() -> CheckResult:
+            nonlocal semantic_layer
+            result = _check_semantic_consistency(whisper_text, srt_text)
+            semantic_layer = "judged" if result["name"] == "semantic_consistency" else "skipped"
+            return result
+
         check_fns: list[tuple[str, Any]] = [
             ("cue_anchor_coverage", lambda: _check_cue_anchor_coverage(alignment)),
             ("cue_order_consistency", lambda: _check_cue_order_consistency(alignment)),
@@ -616,9 +737,11 @@ class V5Mp3VsSrt(BaseGate):
             ("srt_not_empty", lambda: _check_srt_not_empty(srt_text)),
             ("whisper_not_empty", lambda: _check_whisper_not_empty(whisper_text)),
             ("whisper_vs_srt_diff", lambda: _check_whisper_vs_srt_diff(whisper_text, srt_text)),
-            ("semantic_consistency", _check_semantic_consistency),
+            ("semantic_consistency", _run_semantic_check),
         ]
 
         checks = apply_mock_overrides(check_fns, mock_results)
 
-        return build_gate_result(checks, gate="V5", expected_suffix=".")
+        return build_gate_result(
+            checks, gate="V5", expected_suffix=".", semantic_layer=semantic_layer
+        )

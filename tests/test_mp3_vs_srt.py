@@ -89,6 +89,21 @@ def _fail_check(name: str, detail: str = "failed") -> dict[str, dict[str, Any]]:
     return results
 
 
+@pytest.fixture(autouse=True)
+def _no_semantic_judge(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub the V5 semantic judge by default — no test reaches the network.
+
+    Every test gets ``_llm_semantic_consistency`` patched to return ``None``
+    (no verdict available).  Tests that exercise the judge override this
+    within the test body; a later ``monkeypatch.setattr`` on the same target
+    wins.
+    """
+    monkeypatch.setattr(
+        "automedia.gates.mp3_vs_srt._llm_semantic_consistency",
+        lambda whisper_text, srt_text: None,
+    )
+
+
 class TestV5Metadata:
     def test_gate_name(self) -> None:
         assert V5Mp3VsSrt().gate_name == "V5"
@@ -351,11 +366,74 @@ class TestV5ObservationField:
 
 
 class TestV5SemanticLayer:
-    def test_semantic_layer_reports_honest_skip(self) -> None:
+    """B26/C5: a skip must never read as a verified pass.
+
+    With a verdict the check is named ``semantic_consistency`` and the judge
+    decides; without one the name changes to ``semantic_consistency_skipped``
+    and the detail says the semantic layer was NOT verified.
+    """
+
+    def _patch_judge(self, monkeypatch: pytest.MonkeyPatch, judge: Any) -> None:
+        monkeypatch.setattr(
+            "automedia.gates.mp3_vs_srt._llm_semantic_consistency",
+            lambda whisper_text, srt_text: judge,
+        )
+
+    def test_judge_pass_reports_verified_semantic_layer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._patch_judge(
+            monkeypatch,
+            {"passed": True, "issues": [], "confidence": 0.92, "structured_issues": []},
+        )
         result = V5Mp3VsSrt().execute(_make_context())
         semantic = _check(result, "semantic_consistency")
         assert semantic["passed"] is True
-        assert semantic["detail"] == "semantic: skipped(no key)"
+        assert result["semantic_layer"] == "judged"
+
+    def test_judge_reject_added_number_fails_gate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cue_text = "Hello world this is a test"
+        judge = {
+            "passed": False,
+            "issues": ["cue adds a number the audio never spoke"],
+            "confidence": 0.93,
+            "structured_issues": [
+                {"cue_text": cue_text, "problem": "adds 99元 — not present in the ASR transcript"}
+            ],
+        }
+        self._patch_judge(monkeypatch, judge)
+        result = V5Mp3VsSrt().execute(_make_context())
+        semantic = _check(result, "semantic_consistency")
+        assert semantic["passed"] is False
+        assert result["passed"] is False
+        assert f'"{cue_text}"' in semantic["detail"]
+        assert result["semantic_layer"] == "judged"
+
+    def test_judge_unavailable_reports_honest_skip(self) -> None:
+        """Default fixture: judge returns None — skip, never a fake green."""
+        result = V5Mp3VsSrt().execute(_make_context())
+        semantic = _check(result, "semantic_consistency_skipped")
+        assert semantic["passed"] is True
+        assert semantic["detail"] == (
+            "not judged: no LLM judge available — semantic layer NOT verified"
+        )
+        assert result["passed"] is True  # structural checks alone still pass
+        assert result["semantic_layer"] == "skipped"
+
+    def test_empty_texts_skip_without_calling_the_judge(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _must_not_run(whisper_text: str, srt_text: str) -> dict[str, Any]:
+            raise AssertionError("judge must not run on empty texts")
+
+        monkeypatch.setattr(
+            "automedia.gates.mp3_vs_srt._llm_semantic_consistency", _must_not_run
+        )
+        result = V5Mp3VsSrt().execute(_make_context(whisper_text=""))
+        semantic = _check(result, "semantic_consistency_skipped")
+        assert semantic["passed"] is True
+        assert semantic["detail"] == "not applicable (empty text)"
+        assert result["semantic_layer"] == "skipped"
 
 
 class TestV5ResultStructure:
