@@ -109,13 +109,20 @@ def _video_window_cutoff(today: date, days: int) -> date | None:
     return today - timedelta(days=days - 1)
 
 
-def bench_state(branch: str, is_ancestor: bool) -> str:
-    """纯函数：只有「在 main 上且 main 是 origin/main 祖先」才认 main 读数。
+def bench_state(branch: str, is_ancestor: bool, tree_equal: bool = False) -> str:
+    """纯函数：只有「在 main 上且 main 是 origin/main 祖先」或「树与 origin/main
+    字节一致」才认 main 读数。
 
-    任何其它分支、或无法证明 HEAD 已包含于 origin/main，一律标 ``unverified``
-    ——矩阵不得用非 main 的树冒充主线读数。
+    「树一致」是 main 等价（issue #684 / B24）：contents-API 的 sync 提交不是
+    origin/main 的祖先（``merge-base --is-ancestor`` 失败），但它的树与
+    origin/main 字节一致（``diff --quiet origin/main HEAD`` 通过）——量出来的
+    就是 main，标 ``unverified`` 会让报告分不清「真 feature 分支读数」和
+    「main 等价读数」。真正的 feature 分支（树不同）依旧 ``unverified``：
+    非 main 的树不得冒充主线读数。``tree_equal`` 有默认值，旧的两参调用点不受影响。
     """
-    return "main" if branch == "main" and is_ancestor else "unverified"
+    if tree_equal or (branch == "main" and is_ancestor):
+        return "main"
+    return "unverified"
 
 
 def _read_gate_report(path: Path) -> dict | None:
@@ -636,14 +643,20 @@ def _git(*args: str) -> str:
     return r.stdout.strip() or "<unknown>"
 
 
-def _bench_line() -> str:
+def _bench_line(bench: dict | None = None) -> str:
     """报告正文里的 `bench：<branch>@<sha>`——让「这份矩阵测的是哪棵树」可见。
 
     2026-10-18 那轮实际测的不是 main（见 e2e-test-suite#186），所以把 benchmark
-    的树写进报告头部，而不是只在 CI 日志里。
+    的树写进报告头部，而不是只在 CI 日志里。``bench`` 可传入 :func:`_bench_snapshot`
+    的结果以复用 git 读数（不传则现算，旧调用点不受影响）。sync 提交（树与
+    origin/main 一致但非祖先，issue #684 / B24）标注 ``(sync of origin/main)``，
+    让读者一眼看出这是 main 等价树，不是 feature 分支。
     """
-    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
-    sha = _git("rev-parse", "--short", "HEAD")
+    snap = bench if bench is not None else _bench_snapshot()
+    branch = snap["bench_branch"]
+    sha = snap["bench_head"]
+    if snap.get("bench_sync_commit"):
+        return f"- bench：{branch}@{sha} (sync of origin/main)"
     return f"- bench：{branch}@{sha}"
 
 
@@ -665,16 +678,22 @@ def _git_ok(*args: str) -> bool:
 def _bench_snapshot() -> dict:
     """机器可读的 bench 读数（bench_branch / bench_head / bench_state）。
 
-    ``bench_state`` 只有在 HEAD 位于 main 且 main 是 origin/main 祖先时才是
-    ``main``；否则是 ``unverified``——非 main 读数不得被当作主线结论。
+    ``bench_state`` 只有在 HEAD 位于 main 且 main 是 origin/main 祖先、
+    或树与 origin/main 字节一致时才是 ``main``；否则是 ``unverified``
+    ——非 main 读数不得被当作主线结论（issue #684 / B24）。
+    ``bench_sync_commit`` 只在「树一致但非祖先」（即 contents-API sync 提交）
+    时记录短 sha，供报告头部标注 ``(sync of origin/main)``。
     """
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
     head = _git("rev-parse", "--short", "HEAD")
     ancestor = _git_ok("merge-base", "--is-ancestor", "HEAD", "origin/main")
+    tree_equal = _git_ok("diff", "--quiet", "origin/main", "HEAD")
     return {
         "bench_branch": branch,
         "bench_head": head,
-        "bench_state": bench_state(branch, ancestor),
+        "bench_state": bench_state(branch, ancestor, tree_equal),
+        # sync 提交：树一致但不是祖先——正是 contents-API 重写留下的形状
+        "bench_sync_commit": head if tree_equal and not ancestor else "",
     }
 
 
@@ -874,6 +893,7 @@ def main(argv: list[str] | None = None) -> int:
         "bench_state": bench["bench_state"],
         "bench_branch": bench["bench_branch"],
         "bench_head": bench["bench_head"],
+        "bench_sync_commit": bench.get("bench_sync_commit", ""),
         "validate": vs,
         "validation_chain": chain,
         "capability_debt": {
@@ -934,7 +954,7 @@ def main(argv: list[str] | None = None) -> int:
         "",
         f"- 项目目录：{len(projects)} 个（真模型 cost_log 非空："
         f"{sum(1 for p in projects if p['cost_log_lines'] > 0)} 个）",
-        _bench_line(),
+        _bench_line(bench),
         f"- bench_state：{bench['bench_state']}",
     ]
     for name, v in tracks.items():
