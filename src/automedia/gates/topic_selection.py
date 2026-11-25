@@ -7,6 +7,21 @@ pipeline:
     - 投资 (investment)
     - 金融 (finance / financial products)
     - 娱乐 (entertainment / celebrity gossip)
+    - 体育 (sports)
+
+Since B26/C4 the verdict is an **LLM classification** (``topic_category``
+check): the six keyword groups above are a *fallback only*, because a regex
+over topic wording is wrong in both directions — it misses "帮 NGO 做内容营销"
+(no forbidden word, same subject matter) and misfires on "公益科普的正确做法"
+(the studio refused the *topic*, not the critique of how it is produced).
+
+Verdict rules:
+    - LLM judge available ⇒ ``topic_category`` decides, the regex groups are
+      reported as one advisory check (never decisive).
+    - LLM unavailable ⇒ the legacy regex checks decide, plus one advisory
+      check saying the judge was skipped. Degradation is visible in the
+      report instead of being silent.
+    - ``_mock_results`` keeps driving the legacy path unchanged (tests).
 """
 
 from __future__ import annotations
@@ -20,6 +35,7 @@ from automedia.gates._context import GateContext
 from automedia.gates._result import CheckResult, build_gate_result
 from automedia.gates.base import BaseGate
 from automedia.gates.helpers import apply_mock_overrides
+from automedia.gates.llm_helpers import LLMCheckResult, llm_check_with_fallback
 
 log = get_logger(__name__)
 
@@ -114,6 +130,20 @@ _CHECK_NAMES: list[str] = [entry["check"] for entry in _FORBIDDEN_PATTERNS] + [
     "topic_length_valid",
 ]
 
+#: Check name emitted by the LLM-judge path (B26/C4).
+_LLM_CHECK_NAME: str = "topic_category"
+
+#: Advisory check that keeps the regex verdict visible without letting it decide.
+_ADVISORY_CHECK_NAME: str = "topic_category_regex_advisory"
+
+#: Prompt template used for the classification.
+_JUDGE_PROMPT: str = "topic_category_judge"
+
+#: Reason recorded when the LLM judge cannot produce a usable verdict.
+_JUDGE_UNAVAILABLE_REASON: str = (
+    "skipped: no LLM judge available — deterministic regex fallback decided"
+)
+
 _EXPECTED_MAP: dict[str, str] = {
     "topic_not_charity": "Topic does not match charity/public-science category",
     "topic_not_gov_tool": "Topic does not match government tools category",
@@ -122,6 +152,9 @@ _EXPECTED_MAP: dict[str, str] = {
     "topic_not_entertainment": "Topic does not match entertainment category",
     "topic_length_valid": "Topic length is between 5 and 500 characters",
 }
+
+_EXPECTED_MAP[_LLM_CHECK_NAME] = "The topic's subject matter is not a refused category"
+_EXPECTED_MAP[_ADVISORY_CHECK_NAME] = "Advisory only — never decides the verdict"
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +220,108 @@ def _check_topic_length_valid(topic: str) -> CheckResult:
 
 
 # ---------------------------------------------------------------------------
+# LLM classification (B26/C4)
+# ---------------------------------------------------------------------------
+
+
+def _judge_with_retry(topic: str) -> LLMCheckResult:
+    """Run the topic judge, retrying once on a failed attempt.
+
+    Measured 2026-11-25: 5 live samples at ``timeout=30`` produced one
+    fallback (transient).  A second attempt costs nothing when the first
+    succeeds, and keeps the regex fallback for what is actually down.
+    """
+
+    def _unavailable(_text: str) -> LLMCheckResult:
+        return {"passed": False, "issues": ["llm unavailable"]}
+
+    judged: LLMCheckResult = {}
+    for _attempt in range(2):
+        judged = llm_check_with_fallback(
+            text=topic,
+            check_type="topic_category",
+            prompt_template_name=_JUDGE_PROMPT,
+            deterministic_fn=_unavailable,
+        )
+        if judged.get("method") == "llm":
+            return judged
+    return judged
+
+
+def _llm_topic_category(topic: str) -> dict[str, Any] | None:
+    """Ask the LLM which refused category (if any) the topic belongs to.
+
+    Returns ``{"forbidden": bool, "category": str, "reason": str}`` on a usable
+    verdict, ``None`` when no verdict exists (missing topic, LLM failure,
+    unexpected shape).  ``None`` is deliberately not a pass: the caller falls
+    back to the deterministic regex path and says so in the report.
+    """
+    if not topic.strip():
+        return None
+
+    try:
+        judged = _judge_with_retry(topic)
+    except Exception:
+        log.warning("pre-gate topic judge failed", exc_info=True)
+        return None
+
+    # ``method != "llm"`` means the deterministic fallback ran: no verdict.
+    if judged.get("method") != "llm":
+        return None
+
+    structured = judged.get("structured_issues") or []
+    category = "none"
+    reason = ""
+    if structured and isinstance(structured[0], dict):
+        category = str(structured[0].get("category") or "none").strip() or "none"
+        reason = str(structured[0].get("reason") or "").strip()
+
+    llm_passed = bool(judged.get("passed", True))
+    if category in ("", "none"):
+        if llm_passed:
+            return {"forbidden": False, "category": "none", "reason": reason}
+        # The judge refused the topic but named no category — still a refusal.
+        category = "other_refused"
+    return {
+        "forbidden": True,
+        "category": category,
+        "reason": reason or "; ".join(judged.get("issues") or []),
+    }
+
+
+def _check_topic_category_llm(verdict: dict[str, Any]) -> CheckResult:
+    """Check 1 (LLM path): the topic's subject matter is not a refused category."""
+    if verdict["forbidden"]:
+        detail = f"refused category '{verdict['category']}'"
+        if verdict["reason"]:
+            detail = f"{detail} — {verdict['reason']}"
+        return {"name": _LLM_CHECK_NAME, "passed": False, "detail": detail}
+    detail = "allowed by the judge"
+    if verdict["reason"]:
+        detail = f"{detail} — {verdict['reason']}"
+    return {"name": _LLM_CHECK_NAME, "passed": True, "detail": detail}
+
+
+def _check_regex_advisory(topic: str) -> CheckResult:
+    """Check 3 (LLM path): keep the regex verdict visible, never decisive.
+
+    ``passed`` is always ``True``: B26/C4 demoted the keyword groups because
+    they cannot tell "content about charity" from "comms work for a charity".
+    """
+    matched: list[str] = []
+    for entry in _FORBIDDEN_PATTERNS:
+        label = entry["check"].replace("topic_not_", "").replace("_", " ")
+        for pattern in entry["patterns"]:
+            if re.search(pattern, topic.lower()):
+                matched.append(f"{label} (/{pattern}/)")
+                break
+    detail = "advisory only — no keyword group matched"
+    if matched:
+        detail = "advisory only — keyword groups matched: " + "; ".join(matched)
+    return {"name": _ADVISORY_CHECK_NAME, "passed": True, "detail": detail}
+
+
+# ---------------------------------------------------------------------------
 # TopicSelectionGate
 # ---------------------------------------------------------------------------
 
@@ -229,8 +364,30 @@ class TopicSelectionGate(BaseGate):
         # Add length check
         check_fns.append(("topic_length_valid", lambda: _check_topic_length_valid(topic)))
 
-        checks = apply_mock_overrides(check_fns, mock_results)
+        # Legacy deterministic path — kept for `_mock_results` consumers and used
+        # as the fallback when no LLM judge exists.
+        if mock_results is not None:
+            return build_gate_result(
+                apply_mock_overrides(check_fns, mock_results),
+                gate="pre-gate",
+                expected_map=_EXPECTED_MAP,
+            )
 
-        result = build_gate_result(checks, gate="pre-gate", expected_map=_EXPECTED_MAP)
+        verdict = _llm_topic_category(topic)
+        if verdict is None:
+            checks = [fn() for _, fn in check_fns]
+            checks.append(
+                {
+                    "name": _LLM_CHECK_NAME,
+                    "passed": True,
+                    "detail": _JUDGE_UNAVAILABLE_REASON,
+                }
+            )
+            return build_gate_result(checks, gate="pre-gate", expected_map=_EXPECTED_MAP)
 
-        return result
+        checks = [
+            _check_topic_category_llm(verdict),
+            _check_topic_length_valid(topic),
+            _check_regex_advisory(topic),
+        ]
+        return build_gate_result(checks, gate="pre-gate", expected_map=_EXPECTED_MAP)

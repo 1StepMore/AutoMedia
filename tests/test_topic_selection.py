@@ -7,6 +7,19 @@ from typing import Any
 from automedia.gates.base import BaseGate, _registry
 from automedia.gates.topic_selection import _CHECK_NAMES, TopicSelectionGate
 
+import pytest
+
+import automedia.gates.topic_selection as ts
+
+
+@pytest.fixture(autouse=True)
+def _no_llm_judge(monkeypatch: pytest.MonkeyPatch) -> None:
+    """默认判定器不可用 ⇒ 老用例继续测确定性正则路径（B26/C4）。
+
+    要测 LLM 路径的用例自己 monkeypatch ``ts._llm_topic_category`` 覆盖。
+    """
+    monkeypatch.setattr(ts, "_llm_topic_category", lambda topic: None)
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -304,3 +317,107 @@ class TestTopicSelectionEdgeCases:
         result = TopicSelectionGate().execute(ctx)
         ent = next(c for c in result["checks"] if c["name"] == "topic_not_entertainment")
         assert ent["detail"] == "custom entertainment block"
+
+
+# =========================================================================
+# B26/C4 — LLM classification decides; regex groups are fallback + advisory
+# =========================================================================
+
+
+def test_llm_refused_topic_fails_with_category(monkeypatch) -> None:  # noqa: ANN001
+    """LLM 判「公益科普」属于拒做类别 ⇒ 门判红，并在 detail 里写明类别。"""
+    import automedia.gates.topic_selection as ts
+
+    monkeypatch.setattr(
+        ts,
+        "_llm_topic_category",
+        lambda topic: {
+            "forbidden": True,
+            "category": "charity_public_science",
+            "reason": "标题主体是科普内容而非工作流",
+        },
+    )
+    result = ts.TopicSelectionGate().execute({"topic": "冬季流感预防科普指南"})
+    assert result["passed"] is False
+    failed = [c for c in result["checks"] if not c["passed"]]
+    assert [c["name"] for c in failed] == ["topic_category"]
+    assert "charity_public_science" in failed[0]["detail"]
+
+
+def test_llm_allowed_topic_overrides_regex_match(monkeypatch) -> None:  # noqa: ANN001
+    """误伤修复：含「公益」二字但主体是工作流 ⇒ LLM 放行，regex 命中只作提示。"""
+    import automedia.gates.topic_selection as ts
+
+    monkeypatch.setattr(
+        ts,
+        "_llm_topic_category",
+        lambda topic: {
+            "forbidden": False,
+            "category": "none",
+            "reason": "讲的是传播团队的工作流，不是公益内容本身",
+        },
+    )
+    result = ts.TopicSelectionGate().execute({"topic": "公益组织的传播团队怎么复用一篇稿子"})
+    assert result["passed"] is True
+    advisory = [c for c in result["checks"] if c["name"] == "topic_category_regex_advisory"]
+    assert advisory and advisory[0]["passed"] is True
+    assert "matched" in advisory[0]["detail"]
+
+
+def test_llm_missing_falls_back_to_regex_and_says_so(monkeypatch) -> None:  # noqa: ANN001
+    """无 LLM ⇒ 仍用正则兜底判红，同时写明「判定器 skip」，降级不静默。"""
+    import automedia.gates.topic_selection as ts
+
+    monkeypatch.setattr(ts, "_llm_topic_category", lambda topic: None)
+    result = ts.TopicSelectionGate().execute({"topic": "公益科普：如何预防流感"})
+    assert result["passed"] is False
+    names = [c["name"] for c in result["checks"]]
+    assert "topic_not_charity" in names
+    judge = [c for c in result["checks"] if c["name"] == "topic_category"][0]
+    assert "no LLM judge" in judge["detail"]
+
+
+def test_length_check_still_decides_under_llm(monkeypatch) -> None:  # noqa: ANN001
+    """LLM 放行也不能绕过硬约束：长度不合法照样判红。"""
+    import automedia.gates.topic_selection as ts
+
+    monkeypatch.setattr(
+        ts,
+        "_llm_topic_category",
+        lambda topic: {"forbidden": False, "category": "none", "reason": ""},
+    )
+    result = ts.TopicSelectionGate().execute({"topic": "A" * 501})
+    assert result["passed"] is False
+    assert [c["name"] for c in result["checks"] if not c["passed"]] == ["topic_length_valid"]
+
+
+def test_llm_refusal_without_category_is_other_refused(monkeypatch) -> None:  # noqa: ANN001
+    """LLM 判拒但没给类别 ⇒ 归 other_refused，不能因为缺字段就当成放行。"""
+    import automedia.gates.topic_selection as ts
+
+    monkeypatch.setattr(
+        ts,
+        "_llm_topic_category",
+        lambda topic: {"forbidden": True, "category": "other_refused", "reason": "受监管题材"},
+    )
+    result = ts.TopicSelectionGate().execute({"topic": "某受监管题材的推广方案"})
+    assert result["passed"] is False
+    assert "other_refused" in result["checks"][0]["detail"]
+
+
+def test_mock_results_path_unchanged(monkeypatch) -> None:  # noqa: ANN001
+    """`_mock_results` 仍走老的确定性路径，LLM 一点不被调用。"""
+    import automedia.gates.topic_selection as ts
+
+    called: list[str] = []
+
+    def _boom(topic: str) -> None:
+        called.append(topic)
+        raise AssertionError("LLM must not be called when _mock_results is present")
+
+    monkeypatch.setattr(ts, "_llm_topic_category", _boom)
+    result = ts.TopicSelectionGate().execute(
+        {"topic": "公益科普：如何预防流感", "_mock_results": _all_pass_mock()}
+    )
+    assert result["passed"] is True
+    assert called == []

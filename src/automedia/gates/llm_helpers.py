@@ -142,6 +142,9 @@ _RESULT_MODELS: dict[str, type[_CheckModel]] = {
     "humanizer": G1CheckResult,
     "tone_check": G6ToneCheckResult,
     "deep_check": DeepCheckResult,
+    # pre-gate topic classification (B26/C4): reuses the free-form slot so the
+    # judge can return ``{category, reason}`` per topic.
+    "topic_category": G0CheckResult,
 }
 
 
