@@ -27,6 +27,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -2374,6 +2375,19 @@ _LONG_NARRATION = (
 
 _FIRST_SENTENCE = "很多小团队在讨论内容自动化时，第一反应是：让AI直接写，写完直接发"
 
+#: Real scene texts, captured verbatim from the 2026-11-24 project's
+#: ``04_audio/narration.srt`` (issue #660 residual-defect regression proof).
+#: The owner instructed pasting them as fixture constants: the table-dump
+#: scene (scene 3) cannot be reproduced with short synthetic strings.
+_REAL_SCENE_TEXTS: tuple[str, ...] = (
+    "很多小团队做内容时，选题、简报、初稿、排版、审批、分发……这些环节都要几个人来回盯着。时间一长，大家会发现一个现象：真正花在“思考”上的时间没多少，时间更多消耗在来回复制粘贴、反复确认状态、为不同渠道重写同一段内容上。内容创作自动化，正是在解决这个现状：把重复工作交给流程，把判断留给人。很多人对内容自动化的想象，是把一段提示词丢给 AI，等它生成一篇文章，然后直接发布。这种做法确实能快速增加产量，但也存在隐患——准确性、原创性、品牌语调，都可能在缺少审核的情况下悄悄偏离。真正有效的内容创作自动化，处理的是内容生命周期里的重复工作，包括收集输入、整理简报、起草、改版、流转审批等环节；而策略、原创思考和最终审核，依然由人负责。目标不是把人从内容工作中移除，而是去掉内容周边的繁琐事务，让团队把时间用在判断，而不是格式调整上。很多工具和教程会把这几个词混在一起，但它们的含义并不相同：概念含义------AI 生成内容使用 AI 生成一篇文本、一张图片或一段视频内容创作自动化把多个内容生产步骤连接成可重复运行的工作流内容发布自动化自动安排、发布和分发已有内容区别在这里很关键：生成一篇素材，只是整个工作流中的一个步骤；",  # noqa: E501
+    "把研究、起草、改编、审批、发布这些环节串成一条可重复运行的流水线，才更贴近内容团队真实的工作方式。在考虑工具之前，可以先看看团队的内容流程在量增加之后，为什么容易失控。问题往往不在写作速度，而在写作周边的环节。生产步骤分散在不同工具里：选题、简报、研究、写作、设计、审核、发布，每一步可能都在不同的平台完成。每一步的边界，都意味着手动复制粘贴、重新交代上下文，信息丢失的风险也随之增加。团队反复从零开始：即使做过相似主题的内容，团队往往还是会重新找资料、重新搭结构、重新调语气。过去的成果存放在各处，却很难被再次调用，实际效果相当于丢失。一份内容要适配多个渠道：一篇长文，可能还要变成社交动态、邮件、短视频脚本、多条短图文。每个版本都要重新改写，工作量不断相乘，而不是复用已有的成果。审核与审批形成瓶颈：内容在作者、编辑、设计师和审批人之间来回流转。状态如果不清晰，反馈散落在评论区，一篇“快完成”的内容，可能因为一个没人跟踪的签字而搁置数天。产量上升时，质量更容易滑坡：当团队只盯着数量优化，内容容易出现重复、观点空洞、偏离品牌的情况。发布得更多，真正传递的信息却更少。这是小团队最关心的问题。一个比较务实的原则是：自动化生产层，不要自动化判断层。",
+    "可以把内容阶段拆开来看：内容阶段可以交给流程的任务应由人主导的任务---------选题收集趋势、聚类问题、生成候选主题判断主题价值及是否符合品牌研究汇总来源、提取关键信息核实事实并寻找原创洞察规划生成简报、大纲和任务确定目标、受众和内容角度起草生成初稿、标题和内容版本加入经验、论证和观点编辑检查语法、格式和一致性判断逻辑、准确性和质量内容改编为不同平台调整版本根据平台和受众调整语调审批流转审核、通知负责人、记录状态作出最终审批决定发布排期、上传并跨渠道分发处理敏感或高风险发布分析汇总效果并生成报告解读结果并调整策略从这张表里能看出一个规律：品味、原创性和最终判断，始终需要人来掌握。",
+    "经验丰富的创作者通常也会建议：从小处开始，先把生产层自动化，不要试图把“需要立场”的部分也交给流程。很多在自动化上受挫的团队，往往都是把判断层也一起交出去了。小团队在落地内容自动化时，常见的路径有四种，每一种都有真实的优势和局限。方法一：单项 AI 内容工具分别用不同工具写文案、生成图片、编辑视频，一个任务对应一个工具。优势：容易起步，投入较低。局限：每一步仍要在工具之间手动复制信息，品牌上下文要反复提供，知识很难积累。方法二：模板与批量生产依靠内容模板、设计模板和批量工作流，快速生成大量相似素材。优势：非常适合格式固定、重复度高的内容。局限：灵活性不足。内容一旦变复杂，或者条件变化，模板就容易出现失效。方法三：应用间自动化通过 Make、Zapier 或 n8n 这类平台，连接电子表格、AI 工具、CMS 和社交平台。优势：擅长自动移动数据、跨应用触发操作。局限：复杂流程需要大量配置，内容判断和上下文管理仍要另外设计。",  # noqa: E501
+    "这类平台的核心，是把生成、图片、语音和发布工具连接成流水线。它很擅长“连接”，但前提是你已经明确：这些连接要服务于怎样的编辑流程。方法四：AI 内容工作流把来源材料、品牌规范、AI 生成步骤、人工审核和最终输出，放进一个可重复运行的工作流中。优势：上下文可以跨步骤保留，流程完整而不是碎片化，且可以重复运行。适合：持续生产博客、社交内容、邮件、报告或多渠道内容的团队。这也是多数内容团队更接近理想状态的模式。与其每次手动重新拼接流程，不如先把流程定义好，之后重复运行。当研究、起草和内容改编作为一个周期性工作流自动运行时，过去消耗大量时间的交接动作，就会被压缩到很低。小团队资源有限，不需要一开始就搭建一整套系统。比较稳妥的路径是：先选一种可重复的内容形式：比如定期更新的公众号文章、固定频率的社交动态，先把这一种内容端到端跑通，再扩展到其他渠道。",  # noqa: E501
+    "让来源材料和品牌上下文贯穿流程：确保流程中的每一个步骤，都能获取到充分的背景信息，而不是每次从零解释。在发布前设置人工审核：流程可以负责流转和记录状态，但最终放行这一步，保留在人的手里。用效果数据持续改进下一次运行：把每一次发布后的表现，反馈到下一次的流程调整中，让工作流越跑越贴近团队的表达习惯。内容创作自动化的价值，不在于替代创作者，而在于让小团队把精力从机械的重复劳动里抽出来，重新集中在策略、观点和质量上。流程负责跑通重复环节，人负责守住判断标准，两者配合，内容生产才能跑得更稳、更久。如果你也在尝试梳理团队的内容流程，欢迎在评论区聊聊你们目前最耗时的环节，或者把这篇内容转给正在被重复劳动困住的同事，一起讨论更务实的优化方式。",
+)
+
 
 class TestSceneDisplayText:
     """``_scene_display_text`` keeps one screen's worth of whole sentences.
@@ -2381,6 +2395,11 @@ class TestSceneDisplayText:
     #660: the scene body used to be the whole narration, so a 200+ character
     paragraph was poured onto one frame and the VLM (and a human) could not
     read it.  The screen text is clamped here; ``content`` is untouched.
+
+    #660 residual defect: a first "sentence" longer than the budget (a
+    table rendered as plain text has no ``。`` for hundreds of characters)
+    used to be kept whole.  It is now cut at a clause boundary — hard cut
+    as the last resort — and table markup never reaches the screen.
     """
 
     def test_long_narration_is_clamped_at_a_sentence_boundary(self) -> None:
@@ -2402,10 +2421,99 @@ class TestSceneDisplayText:
     def test_falls_back_to_title_when_narration_is_only_the_title(self) -> None:
         assert _scene_display_text(_FIRST_SENTENCE, _FIRST_SENTENCE) == _FIRST_SENTENCE
 
-    def test_first_sentence_longer_than_max_chars_is_not_cut_mid_sentence(self) -> None:
+    def test_first_sentence_longer_than_max_chars_is_capped_with_ellipsis(self) -> None:
+        """#660 residual defect: "never cut mid-sentence" let a 295-char run
+        with no ``。`` flood the frame.  An over-long first sentence is now
+        capped — hard-cut when it carries no clause punctuation."""
         long_sentence = "甲" * 80 + "。"
+        display = _scene_display_text(long_sentence, "", max_chars=10)
 
-        assert _scene_display_text(long_sentence, "", max_chars=10) == long_sentence
+        assert len(display) <= 10 + 1  # content ≤ max_chars, plus the ellipsis
+        assert display.endswith("…")
+        assert display != long_sentence
+
+    def test_overlong_first_sentence_cuts_at_clause_boundary(self) -> None:
+        """> A 200-char sentence with a ``，`` at char 40 is cut at that
+        comma, not mid-word."""
+        sentence = "甲" * 39 + "，" + "乙" * 160 + "。"
+        display = _scene_display_text(sentence, "")
+
+        assert display == "甲" * 39 + "，…"
+        assert len(display) <= 61
+
+    def test_capped_first_sentence_never_exceeds_max_chars_plus_one(self) -> None:
+        """> The ``max_chars + 1`` ceiling holds for every cut shape."""
+        for filler in ("长", "甲乙丙，"):
+            sentence = filler * 100 + "。"
+            display = _scene_display_text(sentence, "")
+
+            assert len(display) <= 61
+            assert display.endswith("…")
+
+    # ------------------------------------------------------------------
+    # Table dumps must not be shown (#660 residual defect)
+    # ------------------------------------------------------------------
+
+    def test_real_table_dump_scene_shows_leading_prose_only(self) -> None:
+        """> The real scene-3 text (295 chars; its first "sentence" is a
+        table dump with no ``。``) shows only the leading prose sentence."""
+        scene3 = _REAL_SCENE_TEXTS[2]
+        display = _scene_display_text(scene3, _scene_title(scene3))
+
+        assert len(display) <= 61
+        assert not re.search(r"[-—_]{3,}", display)
+        assert "---------" not in display
+        assert display != scene3
+        assert display.startswith("可以把内容阶段拆开来看：")
+
+    def test_real_table_dump_scene_with_engine_title(self) -> None:
+        """> The engine passes the *unclamped* first sentence as title; the
+        prefix drop must not swallow the whole body (scene-3's title is the
+        294-char text itself)."""
+        scene3 = _REAL_SCENE_TEXTS[2]
+        engine_title = re.split(r"[。！？!?；;\n]", scene3, maxsplit=1)[0].strip()
+        assert len(engine_title) > 60  # the trap: the title is (almost) the body
+
+        display = _scene_display_text(scene3, engine_title)
+
+        assert len(display) <= 61
+        assert display != scene3
+        assert not re.search(r"[-—_]{3,}", display)
+
+    def test_no_real_scene_shows_its_full_content(self) -> None:
+        """> For every scene of the real fixture, ``display`` is a strict
+        excerpt of ``content`` within the cap."""
+        for text in _REAL_SCENE_TEXTS:
+            display = _scene_display_text(text, _scene_title(text))
+
+            assert display != text
+            assert len(display) <= 61
+            assert not re.search(r"[-—_]{3,}", display)
+
+    def test_pipe_cell_dump_falls_back_to_title(self) -> None:
+        """> A scene that is only a pipe-separated table dump shows the
+        title instead of the cells."""
+        text = "阶段|任务|产出---------收集|趋势|聚类"
+
+        assert _scene_display_text(text, "表格场景") == "表格场景"
+
+    def test_separator_only_scene_falls_back_to_title(self) -> None:
+        """> A scene of only separator dashes has nothing readable."""
+        assert _scene_display_text("-----", "标题") == "标题"
+
+    def test_prose_after_table_dump_is_shown(self) -> None:
+        """> Real prose following a table dump is picked; the dump is not."""
+        text = "表头|表头|表头---------正文说明第一句。正文说明第二句。"
+        display = _scene_display_text(text, "")
+
+        assert display == "正文说明第一句。正文说明第二句。"
+        assert "|" not in display
+
+    def test_max_chars_default_is_unchanged(self) -> None:
+        """> The default cap stays 60 (callers depend on it)."""
+        import inspect
+
+        assert inspect.signature(_scene_display_text).parameters["max_chars"].default == 60
 
     def test_provisioned_scene_shows_the_display_text_not_the_full_narration(
         self, tmp_path: Any

@@ -102,31 +102,54 @@ def _run_tree_aware(
 _SENTENCE_TERMINATORS = "。！？!?；;"
 _SCENE_SENTENCE_RE = re.compile(rf"[^{_SENTENCE_TERMINATORS}\n]+[{_SENTENCE_TERMINATORS}]?")
 
+#: Clause punctuation where a too-long first sentence may be broken (#660).
+#: Mirrors ``_TITLE_BREAK_CHARS``: sentence terminators are absent because
+#: the text has already been split on them.
+_SCENE_CLAUSE_BREAK_CHARS = "，、：；,;:"
 
-def _scene_display_text(text: str, title: str, *, max_chars: int = 60) -> str:
-    """Return the readable on-screen excerpt for one scene (#660).
+#: Flattened markdown-table separator row: 3+ dashes/em-dashes/underscores.
+#: When a table is rendered as plain text the pipe characters vanish while
+#: the separator row survives, gluing every cell into one endless run with
+#: no sentence terminator — which used to flood the whole frame (#660).
+_TABLE_DASH_RUN_RE = re.compile(r"[-—_]{3,}")
 
-    The scene ``content`` stays the full narration (subtitles and the
-    timeline depend on it); the screen only shows the first few complete
-    sentences.  When the narration opens with the title line, that prefix is
-    dropped so the first sentence is not shown twice.  Text is never cut
-    mid-sentence: the first sentence is always kept even if it is longer
-    than ``max_chars``.
+#: A sentence containing a pipe is a flattened table row, never prose.
+_TABLE_PIPE = "|"
+
+
+def _pick_scene_sentences(body: str, *, max_chars: int) -> str:
+    """Select the on-screen text from *body*, capped at ``max_chars`` (#660).
+
+    Only complete sentences (ending in a sentence terminator) are picked.
+    Unreadable ones are dropped first: a sentence carrying a pipe is a
+    flattened table row and a sentence without any word character is
+    separator residue.  When the first sentence alone exceeds ``max_chars``
+    it is cut at the last clause boundary that fits — hard-cut as the last
+    resort — and closed with an ellipsis, so the result never exceeds
+    ``max_chars + 1`` characters.  Returns ``""`` when nothing readable
+    remains; the caller decides the fallback.
     """
-    body = str(text or "").strip()
-    title_s = str(title or "").strip()
-    if title_s and body.startswith(title_s):
-        body = body[len(title_s) :].lstrip(f" \t，,、：:{_SENTENCE_TERMINATORS}")
-    if not body:
-        return title_s
-
-    sentences = [
-        match.group(0)
-        for match in _SCENE_SENTENCE_RE.finditer(body)
-        if match.group(0) and match.group(0)[-1] in _SENTENCE_TERMINATORS
-    ]
+    sentences: list[str] = []
+    for match in _SCENE_SENTENCE_RE.finditer(body):
+        sentence = match.group(0)
+        if not sentence or sentence[-1] not in _SENTENCE_TERMINATORS:
+            continue
+        if _TABLE_PIPE in sentence or not re.search(r"\w", sentence):
+            continue
+        sentences.append(sentence)
     if not sentences:
-        return title_s or body
+        return ""
+
+    first = sentences[0]
+    if len(first) > max_chars:
+        # One endless "sentence" (a table dump or unpunctuated run) must not
+        # flood the frame: break it at the last clause boundary that still
+        # fits, keeping the boundary punctuation, then mark the cut.
+        head = first[:max_chars]
+        cut = max((head.rfind(ch) for ch in _SCENE_CLAUSE_BREAK_CHARS), default=-1)
+        if cut >= 0:
+            return head[: cut + 1] + "…"
+        return first[:max_chars] + "…"
 
     picked: list[str] = []
     used = 0
@@ -135,7 +158,48 @@ def _scene_display_text(text: str, title: str, *, max_chars: int = 60) -> str:
             break
         picked.append(sentence)
         used += len(sentence)
-    return "".join(picked).strip() or title_s
+    return "".join(picked).strip()
+
+
+def _scene_display_text(text: str, title: str, *, max_chars: int = 60) -> str:
+    """Return the readable on-screen excerpt for one scene (#660).
+
+    The scene ``content`` stays the full narration (subtitles and the
+    timeline depend on it); the screen shows only a few leading sentences:
+
+    - the leading complete sentences up to ``max_chars``; a first sentence
+      longer than ``max_chars`` is cut at the last clause boundary that
+      fits (hard cut as the last resort) and closed with an ellipsis, so
+      one endless sentence can no longer flood the frame;
+    - a table rendered as plain text is never shown: separator rows of 3+
+      dashes break the body into sentences and pipe-separated cell dumps
+      are dropped; when nothing readable remains the title is shown.
+
+    When the narration opens with the title line, that prefix is dropped so
+    the first sentence is not shown twice — unless nothing readable is left
+    after the drop (a glued table dump can masquerade as the whole scene
+    text), in which case the full body is picked from again.
+    """
+    body = str(text or "").strip()
+    title_s = str(title or "").strip()
+    if not body:
+        return title_s
+
+    # Break the body at flattened table separator rows so the cell dump on
+    # either side stops gluing into the surrounding prose sentences.
+    body = _TABLE_DASH_RUN_RE.sub(_SENTENCE_TERMINATORS[0], body)
+
+    if title_s and body.startswith(title_s):
+        display = _pick_scene_sentences(
+            body[len(title_s) :].lstrip(f" \t，,、：:{_SENTENCE_TERMINATORS}"),
+            max_chars=max_chars,
+        )
+        if display:
+            return display
+
+    return _pick_scene_sentences(body, max_chars=max_chars) or title_s or (
+        body if _TABLE_PIPE not in body else ""
+    )
 
 
 #: Clause punctuation where a too-long scene title may be broken (#668).
