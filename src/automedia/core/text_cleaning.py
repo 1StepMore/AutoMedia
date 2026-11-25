@@ -196,13 +196,14 @@ def strip_stage_directions(text: str) -> str:
 _CJK_RUN = r"\u3000-\u303f\u4e00-\u9fff\uff01-\uff60"
 
 #: 行内引用标记（#664）：写作提示词要求对每个数字带出处，成稿里因此有
-#: ``[Source: /home/…/x.md]`` / ``[来源：内部文档]``。那是给读者溯源的排版，
+#: ``[Source: /home/…/x.md]`` / ``[Sources: a, b]`` / ``[来源：内部文档]``。那是
+#: 给读者溯源的排版，
 #: 不是口播内容——TTS 会把绝对路径原样念出来（whisper 把「斜杠」转写成
 #: 「鞋杠」），而字幕走另一条派生链路、不含这段，于是音频多出整段无字幕的
 #: 话、V5 锚点整体错位。只认方括号内以 ``source`` / ``来源`` 开头、带冒号的
 #: 引用；``[画面：…]`` 等其它方括号标记的既有规则不动。
 _SOURCE_CITATION_RE = re.compile(
-    r"[ \t\u3000]*[\[［]\s*(?:source|来源)\s*[:：][^\[\]［］\n]*[\]］]",
+    r"[ \t\u3000]*[\[［]\s*(?:sources?|来源)\s*[:：][^\[\]［］\n]*[\]］]",
     re.IGNORECASE,
 )
 
@@ -211,7 +212,9 @@ _CJK_ADJACENT_SPACE_RE = re.compile(rf"(?<=[{_CJK_RUN}])[ \t\u3000]+(?=[{_CJK_RU
 
 
 def strip_source_citations(text: str) -> str:
-    """Drop inline ``[Source: …]`` / ``[来源：…]`` citations, keep the sentence (#664).
+    """Drop inline ``[Source: …]`` / ``[Sources: …]`` / ``[来源：…]`` citations (#664).
+
+    The sentence around the marker is kept.
 
     ``完成 [Source: x]。`` → ``完成。``: the marker goes together with the
     whitespace that only padded it, so the sentence's own punctuation stays

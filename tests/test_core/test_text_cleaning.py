@@ -178,11 +178,19 @@ class TestSourceCitationsAreNeverSpoken:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
-            ("在期限内完成 [Source: /home/u/x.md]。时间不够。", "在期限内完成。时间不够。"),
+            # 任务单上的真实行形（#664 证据）：标记去掉、句子保留、不留双空格。
+            (
+                "在期限内完成 [Source: /home/renanzai/.hermes/x.md]。时间不够。",
+                "在期限内完成。时间不够。",
+            ),
             ("完成[Source: x] 。", "完成。"),
             ("完成。[Source: x] 时间不够。", "完成。时间不够。"),
             ("完成 [Source: x] ，然后继续。", "完成，然后继续。"),
             ("[来源：内部文档] 先把链路跑通。", "先把链路跑通。"),
+            # 半角/全角冒号、单复数、大小写都是同一类标记。
+            ("结论如下 [Source：/x/y.md]，仅供参考。", "结论如下，仅供参考。"),
+            ("结论如下 [Sources: a, b] 仅供参考。", "结论如下仅供参考。"),
+            # 一行两个标记都要剥（非贪婪，不能只剥第一个）。
             ("[SOURCE: ref][source：ref2] 一句话。", "一句话。"),
             ("done [Source: ref] next", "done next"),
         ],
@@ -195,6 +203,18 @@ class TestSourceCitationsAreNeverSpoken:
 
     def test_prose_mentioning_sources_is_untouched(self) -> None:
         prose = "这一段引用的来源是公开报告。[画面：镜头怼脸] 开场。"
+        assert strip_source_citations(prose) == prose
+
+    @pytest.mark.parametrize(
+        "prose",
+        [
+            # 普通方括号注记不是引用标记，原样保留（既有行为）。
+            "先看结论[注]再动手。",
+            # 完全没有标记的句子必须逐字节不变。
+            "这是一个没有任何标记的普通句子，标点齐全。",
+        ],
+    )
+    def test_non_citation_prose_is_byte_identical(self, prose: str) -> None:
         assert strip_source_citations(prose) == prose
 
     def test_narration_markup_drops_citations_for_tts_and_srt(self) -> None:
