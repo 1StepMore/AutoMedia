@@ -884,3 +884,46 @@ def test_bench_state_pure_function() -> None:
     assert bench_state("main", True) == "main"
     assert bench_state("main", False) == "unverified"
     assert bench_state("fix/b18-b21-matrix-scope", True) == "unverified"
+
+
+# ── #684 / B24：树与 origin/main 一致即 main 等价（contents-API sync 提交）────
+
+
+def test_bench_state_tree_equal_is_main_equivalent() -> None:
+    """sync 提交（非祖先但树字节一致）量的是 main 的树，不得标 unverified。"""
+    assert bench_state("main", False, True) == "main"
+    assert bench_state("fix/x", False, True) == "main"
+    assert bench_state("fix/x", False, False) == "unverified"
+
+
+def test_bench_snapshot_treats_tree_equal_as_main(monkeypatch) -> None:
+    """merge-base 不认祖先、diff --quiet 认树一致 ⇒ bench_state=main + sync sha。"""
+    import scripts.nightly_gap as ng
+
+    def fake_git(*args: str) -> str:
+        if args[:2] == ("rev-parse", "--abbrev-ref"):
+            return "main"
+        if args[:2] == ("rev-parse", "--short"):
+            return "9dc5621"
+        return ""
+
+    def fake_git_ok(*args: str) -> bool:
+        if args[:3] == ("merge-base", "--is-ancestor"):
+            return False
+        return args[:2] == ("diff", "--quiet")
+
+    monkeypatch.setattr(ng, "_git", fake_git)
+    monkeypatch.setattr(ng, "_git_ok", fake_git_ok)
+    snap = ng._bench_snapshot()
+    assert snap["bench_state"] == "main"
+    assert snap["bench_sync_commit"] == "9dc5621"
+
+
+def test_bench_line_marks_sync_of_origin_main() -> None:
+    """bench_sync_commit 非空 ⇒ 报告头部标 (sync of origin/main)，一眼看出 main 等价。"""
+    plain = _bench_line({"bench_branch": "main", "bench_head": "abc1234", "bench_sync_commit": ""})
+    assert plain == "- bench：main@abc1234"
+    sync = _bench_line(
+        {"bench_branch": "main", "bench_head": "9dc5621", "bench_sync_commit": "9dc5621"}
+    )
+    assert sync == "- bench：main@9dc5621 (sync of origin/main)"
