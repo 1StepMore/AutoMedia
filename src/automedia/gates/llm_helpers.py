@@ -145,6 +145,9 @@ _RESULT_MODELS: dict[str, type[_CheckModel]] = {
     # pre-gate topic classification (B26/C4): reuses the free-form slot so the
     # judge can return ``{category, reason}`` per topic.
     "topic_category": G0CheckResult,
+    # V5 audio-vs-subtitle semantic judge (B26/C5): reuses the free-form slot
+    # so the judge can return ``{cue_text, problem}`` per problem cue.
+    "audiosub_semantic": G0CheckResult,
 }
 
 
