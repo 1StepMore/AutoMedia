@@ -21,25 +21,36 @@ import re
 
 #: Cue keywords that mark a bracket as a production note rather than prose.
 #: ``切`` covers both ``[切]`` and the colonised ``[切：画面瞬间变得干净…]``
-#: form the writer model emits (#455).
+#: form the writer model emits (#455).  ``文字`` / ``文案`` / ``标题`` are
+#: on-screen annotations (#693) — the video shows them, the narrator never
+#: reads them.
 _CUE_KEYWORDS = (
-    r"(?:画面|镜头|镜号|机位|构图|音效|配乐|音乐|bgm|字幕|花字|旁白|画外音|"
+    r"(?:画面|镜头|镜号|机位|构图|音效|配乐|音乐|bgm|字幕|花字|文字|文案|标题|旁白|画外音|"
     r"切|转场|特效|特写|全景|中景|近景|远景|视觉|提示|"
     r"visual|sfx|vfx|cut\s*to|transition|shot)"
 )
+
+#: A cue body may carry **one** nested bracket pair (``[画面：分屏对比，
+#: 右侧[文字：全是广告！]]`` — the writer model's real output, #693).  The
+#: inner pair is matched atomically and may not itself nest a third level;
+#: deeper nesting falls through to the dangling rule (conservatively kept
+#: there).  Inner and outer body chars are the same exclusion set.
+_CUE_BODY_ATOM = r"(?:[^\[\]【】（）()]|\[[^\[\]【】]*\])"
 
 #: ``[画面：…]`` / ``（镜头：…）`` / ``【音效：…】`` — anything bracketed that
 #: opens with a cue keyword.  The body may contain ``/``, ``、`` and colons;
 #: only the matching bracket pair terminates it.
 _BRACKETED_CUE_RE = re.compile(
-    r"[\[【（(]\s*" + _CUE_KEYWORDS + r"[^\[\]【】（）()]{0,300}?[\]】）)]",
+    r"[\[【（(]\s*" + _CUE_KEYWORDS + _CUE_BODY_ATOM + r"{0,300}?[\]】）)]",
     re.IGNORECASE,
 )
 
 #: A cue whose closing bracket never arrives (truncated draft, or the closer
-#: landed on the next line).  Runs to end of line only.
+#: landed on the next line).  Runs to end of line only; one nested bracket
+#: pair is tolerated for the same reason as :data:`_BRACKETED_CUE_RE` (#693).
+_DANGLING_CUE_BODY = r"(?:[^\[\]【】（）()\n]|\[[^\[\]【】\n]*\])*"
 _DANGLING_CUE_RE = re.compile(
-    r"[\[【（(]\s*" + _CUE_KEYWORDS + r"[^\[\]【】（）()\n]*$",
+    r"[\[【（(]\s*" + _CUE_KEYWORDS + _DANGLING_CUE_BODY + r"$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -127,6 +138,13 @@ _SECTION_HEADING_SEP_RE = re.compile(r"[\s/、·・\-－—_|｜]+")
 _SECTION_HEADING_PREFIX_RE = re.compile(
     r"^(?:" + "|".join(_SECTION_HEADING_WORDS) + r")\s*[:：]\s*"
 )
+
+#: 整行恰好是一个 ``【…】`` 短标签 → 章节标题，整行丢弃（#693：失败稿的
+#: ``【黄金开头（0:00-0:03）】`` 被 Whisper 证实整条念了出来）。保守限定：
+#: 标签内 ≤20 字、不含句末标点（。！？；）、不嵌套另一对 ``【】``；
+#: 行内出现的 ``【…】``（前后还有正文，``【重点】这件事很重要``）不命中，
+#: 原样保留。
+_LINE_LEVEL_TAG_RE = re.compile(r"^【([^【】。！？；]{1,20})】$")
 
 
 def _is_section_heading_line(line: str) -> bool:
@@ -284,6 +302,10 @@ def strip_structure_labels(text: str) -> str:
     """
     kept_lines: list[str] = []
     for line in (text or "").splitlines():
+        # #693：整行就是一个 ``【…】`` 短标签（``【黄金开头（0:00-0:03）】``）
+        # 是章节标题，整行丢弃；行内标签不命中这条规则。
+        if _LINE_LEVEL_TAG_RE.match(line.strip()):
+            continue
         line = _SHORT_CUE_TAG_RE.sub("", line)
         line = _SHOT_HEADER_RE.sub("", line)
         line = _TIMECODE_SPAN_RE.sub("", line)

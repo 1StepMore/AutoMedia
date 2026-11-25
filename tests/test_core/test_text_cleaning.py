@@ -10,6 +10,7 @@ track's narration functions are re-exported unchanged — their own suites
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 import pytest
 
@@ -137,6 +138,95 @@ class TestNarrationReexportUnchanged:
         assert "口播" not in cleaned
         assert "画面" not in cleaned
         assert "别以为人工智能能救命。" in cleaned
+
+
+class TestNestedCuesAreNeverSpoken:
+    """嵌套方括号的分镜指令必须剥干净（#693，失败稿真实字符串）.
+
+    写作模型实际产出 ``[画面：…[文字：…]]`` — 旧正则的 body 禁止内层方括号，
+    整条 cue 原样保留，被 TTS 念出来、写进 SRT（narration.json 证据）。
+    """
+
+    # 失败稿原句：20261125_播客音频如何提升品牌影响力
+    NESTED_CUES: ClassVar[list[str]] = [
+        "[画面：分屏，左侧是生硬念广告的枯燥画面，右侧大红叉[文字：全是广告=直接劝退！]]",
+        "[画面：绿幕讲解，博主出镜手势比划，弹出[文字：聊点真东西，才对味！]]",
+        "[画面：[文字：聊透的，才是真爱粉！]，搭配数据攀升的动态特效]",
+        "[画面：画面定格，[文字：播客，越听越靠谱！]加粗放大，光影扫过]",
+        "[画面：[文字：扣「播客」领思路]，左下角亮关注按钮]",
+    ]
+
+    @pytest.mark.parametrize("cue", NESTED_CUES)
+    def test_nested_cue_is_fully_removed(self, cue: str) -> None:
+        cleaned = strip_narration_markup(cue)
+        assert "[画面" not in cleaned
+        assert "文字：" not in cleaned
+        assert cleaned == ""
+
+    def test_nested_cue_inline_is_removed_and_prose_kept(self) -> None:
+        raw = (
+            "口播：那咋破这个局？[画面：绿幕讲解，弹出[文字：聊点真东西，才对味！]]你得聊点真东西。"
+        )
+        cleaned = strip_narration_markup(raw)
+        assert "[画面" not in cleaned
+        assert "文字：" not in cleaned
+        assert "那咋破这个局？" in cleaned
+        assert "你得聊点真东西。" in cleaned
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            # ``文字`` / ``文案`` / ``标题`` 是画面标注，不是口播（#693）。
+            ("[文字：扣「播客」领思路]评论区见。", "评论区见。"),
+            ("【标题：品牌播客起号思路】记住这点。", "记住这点。"),
+            # 未闭合但内层已闭合的嵌套 cue 交给 dangling 规则。
+            ("[画面：分屏，弹出[文字：直接劝退！]\n正文从这里开始。", "正文从这里开始。"),
+        ],
+    )
+    def test_new_keywords_and_dangling_nested_cue(self, raw: str, expected: str) -> None:
+        assert strip_narration_markup(raw) == expected
+
+
+class TestLineLevelBracketHeadingIsNeverSpoken:
+    """整行只有一个 ``【…】`` 标签的章节标题不该被念（#693）.
+
+    失败稿的 ``【黄金开头（0:00-0:03）】`` 被 Whisper 证实整条念了出来
+    （``黃金開頭,做撥可撥了小半年…``）。规则保守：标签内 ≤20 字、无句末
+    标点；行内标签（前后有正文）不处理。
+    """
+
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "【黄金开头（0:00-0:03）】",
+            "【正文（0:03-0:45）】",
+            "【高潮/反转（0:45-0:55）】",
+            "【引导互动（0:55-0:60）】",
+        ],
+    )
+    def test_line_level_tag_is_dropped(self, heading: str) -> None:
+        cleaned = strip_narration_markup(f"{heading}\n口播：正文一句。")
+        assert cleaned == "正文一句。"
+
+    def test_bolded_line_level_tag_is_dropped(self) -> None:
+        """失败稿里标题实际带 ``**`` 包裹，强调剥掉后应同样整行丢弃."""
+        cleaned = strip_narration_markup("**【黄金开头（0:00-0:03）】**\n做播客播了小半年。")
+        assert "黄金开头" not in cleaned
+        assert cleaned == "做播客播了小半年。"
+
+    def test_inline_tag_with_prose_is_kept(self) -> None:
+        """正文里出现的 ``【…】``（前后有正文）不是章节标题，保留."""
+        raw = "【重点】这件事很重要"
+        assert strip_narration_markup(raw) == raw
+        raw2 = "开头说完【重点】这件事很重要。"
+        assert strip_narration_markup(raw2) == raw2
+
+    def test_long_or_punctuated_tag_is_conservatively_kept(self) -> None:
+        """超过 20 字或含句末标点的整行标签不命中，原样保留（保守规则）."""
+        long_tag = "【这是一个超过了二十个字的标签所以不应该被整行丢弃的标题示范用例】"
+        assert strip_narration_markup(long_tag) == long_tag
+        punctuated = "【重点来了。】"
+        assert strip_narration_markup(punctuated) == punctuated
 
 
 class TestEmojiAreNeverSpoken:
