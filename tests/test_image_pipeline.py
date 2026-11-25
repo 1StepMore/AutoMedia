@@ -478,3 +478,78 @@ class TestScenePromptUsesSceneText:
             index=1,
         )
         assert any("第二场口播" in prompt for prompt in seen)
+
+
+# ---------------------------------------------------------------------------
+# Prompt word budget — SD 1.5's CLIP window is 77 tokens (#681)
+# ---------------------------------------------------------------------------
+
+
+class TestImagePromptWordBudget:
+    """The prompt must fit CLIP's window, with the subject in the first words."""
+
+    def _capture_call(self, monkeypatch: pytest.MonkeyPatch, answer: str) -> dict[str, Any]:
+        """Stub ``llm_complete`` and return the kwargs it was called with."""
+        seen: dict[str, Any] = {}
+
+        def _fake_llm(prompt: str, **kwargs: Any) -> str:
+            seen["prompt"] = prompt
+            seen.update(kwargs)
+            return answer
+
+        monkeypatch.setattr("automedia.prompts.load_prompt", lambda *a, **k: "TOPIC PROMPT")
+        monkeypatch.setattr("automedia.pipelines.image_pipeline.llm_complete", _fake_llm)
+        return seen
+
+    def test_system_prompt_states_budget_and_subject_first(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        seen = self._capture_call(monkeypatch, "creator filming, bright studio")
+        _generate_image_prompt("内容排期", "brand", 0, scene_text="创作者在拍摄。")
+
+        system_prompt = seen["system_prompt"]
+        assert "45" in system_prompt
+        assert "subject" in system_prompt.lower()
+        assert "first" in system_prompt.lower()
+        assert "Return ONLY the prompt text" in system_prompt
+
+    def test_long_llm_answer_is_trimmed_to_budget(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        words = ["creator", "filming", "product", "placement"] + [
+            f"detail{i}" for i in range(129)
+        ]
+        assert len(words) == 133
+        answer = "creator filming product placement, " + " ".join(f"detail{i}" for i in range(129))
+
+        self._capture_call(monkeypatch, answer)
+        result = _generate_image_prompt("内容排期", "brand", 0)
+
+        assert len(result.split()) <= 45
+        assert result.startswith("creator filming product placement")
+        # Never cut mid-word: every kept word comes verbatim from the answer.
+        result_words = result.split()
+        assert result_words == words[: len(result_words)]
+
+    def test_short_llm_answer_passes_through_unchanged(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        self._capture_call(monkeypatch, "cat sitting")
+        assert _generate_image_prompt("内容排期", "brand", 0) == "cat sitting"
+
+    def test_first_clause_over_budget_keeps_leading_words(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No comma inside the window: fall back to a word-boundary cut."""
+        from automedia.pipelines.image_pipeline import _generate_image_prompt
+
+        answer = " ".join(f"word{i}" for i in range(80))
+        self._capture_call(monkeypatch, answer)
+
+        result = _generate_image_prompt("内容排期", "brand", 0)
+        assert len(result.split()) == 45
+        assert result.split()[-1] == "word44"
