@@ -17,3 +17,13 @@ steps:
       stdout_has:
         - "MCP"
         - "configuration"
+  - name: mcp discover prints the client configuration
+    kind: cli
+    check: "automedia mcp discover --client claude exits 0 and prints an mcpServers block, proving the nested leaf is callable."
+    standard: founder-expectations.F02
+    command: automedia mcp discover --client claude
+    timeout_seconds: 60
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "mcpServers"

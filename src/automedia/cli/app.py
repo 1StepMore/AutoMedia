@@ -73,6 +73,12 @@ class LazyTyperGroup(TyperGroup):
         mod = importlib.import_module(entry[0])
         app = getattr(mod, entry[1])
         cmd = _typer_get_command(app)
+        # Rendered name must equal the invocation name: typer may resolve a
+        # group whose ``.name`` is empty, or collapse a single-command sub-app
+        # to a command named after its only verb (e.g. ``discover`` for ``mcp``).
+        # Filing it under ``cmd_name`` alone would leave blank/phantom rows in
+        # the rendered help (#696).
+        cmd.name = cmd_name
         self.add_command(cmd, name=cmd_name)
         return cmd  # type: ignore[return-value]  # typer's vendored click Command vs external click.Command
 
