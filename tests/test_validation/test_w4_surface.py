@@ -86,6 +86,9 @@ def _call_tool(server: FastMCP, name: str, arguments: dict[str, Any]) -> dict[st
         return raw[1]
     if isinstance(raw, dict):
         return raw
+    structured = getattr(raw, "structuredContent", None)
+    if isinstance(structured, dict):
+        return structured
     raise AssertionError(f"unexpected call_tool result shape for {name}: {raw!r}")
 
 

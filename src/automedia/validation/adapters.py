@@ -247,16 +247,22 @@ def _parse_text(text: str) -> dict[str, Any]:
 
 
 def _unwrap_result(raw: object) -> dict[str, Any]:
-    """Normalise both documented call_tool return shapes to one dict.
+    """Normalise every documented call_tool return shape to one dict.
 
     * a ``dict`` is used verbatim;
     * a ``(blocks, structured_dict)`` tuple (the actual shape mcp 1.27.2
       produces for dict-annotated tools) yields the structured dict;
+    * a ``CallToolResult`` (the dispatcher's failure shape — it carries
+      ``isError`` so MCP clients see the failure) yields its
+      ``structuredContent``, keeping the tool's error payload intact;
     * a ``Sequence[ContentBlock]`` is reduced to ``content[0]``'s text and
       JSON-parsed via :func:`_parse_text`.
     """
     if isinstance(raw, dict):
         return raw
+    structured = getattr(raw, "structuredContent", None)
+    if isinstance(structured, dict):
+        return structured
     if isinstance(raw, Sequence) and not isinstance(raw, (str, bytes, bytearray)):
         if len(raw) == 2 and isinstance(raw[1], dict):
             return raw[1]
