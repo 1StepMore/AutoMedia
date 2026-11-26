@@ -13,7 +13,9 @@ from automedia._version import __version__
 app = typer.Typer(
     name="mcp",
     help="MCP server management commands.",
-    no_args_is_help=True,
+    # Bare `automedia mcp` must keep printing the client configuration (see
+    # ``mcp_callback``), so typer must not hijack it with help + exit 2.
+    no_args_is_help=False,
 )
 
 # The base MCP server configuration template
@@ -52,6 +54,21 @@ def _output_format(data: Any, json_output: bool) -> None:  # noqa: ANN401  # Any
         typer.echo(json.dumps(data, indent=2))
     else:
         typer.echo(json.dumps(data, indent=2))
+
+
+@app.callback(invoke_without_command=True)
+def mcp_callback(ctx: typer.Context) -> None:
+    """MCP server management commands.
+
+    A registered callback keeps this sub-app a real multi-command group: without
+    it, typer collapses a single-command app into that command, so the
+    lazily-registered ``mcp`` entry surfaced as a phantom top-level ``discover``
+    command instead (#696). ``invoke_without_command`` preserves the historical
+    behaviour of a bare ``automedia mcp``: print the client configuration for
+    every supported client (the ``cli-surface-behavior`` scenario asserts this).
+    """
+    if ctx.invoked_subcommand is None:
+        mcp_discover(client="all", json_output=False)
 
 
 @app.command("discover")
