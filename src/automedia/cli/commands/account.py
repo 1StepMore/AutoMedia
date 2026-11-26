@@ -24,10 +24,26 @@ _registry: AccountRegistry | None = None
 
 
 def _get_registry() -> AccountRegistry:
-    """Lazily initialised AccountRegistry singleton."""
+    """Lazily initialised AccountRegistry singleton.
+
+    The account store cannot be constructed without an encryption master key.
+    That is an ordinary "not configured yet" state for a new install, not a
+    crash, so it is reported as one readable line instead of a stack trace
+    (``automedia account list`` on a clean machine used to dump a traceback).
+    """
     global _registry  # intentional module-level lazy init
     if _registry is None:
-        _registry = AccountRegistry()
+        try:
+            _registry = AccountRegistry()
+        except ValueError as exc:
+            console.print("[yellow]Accounts are not configured yet.[/yellow]")
+            console.print(f"  {exc}")
+            console.print(
+                "  Set [bold]AUTOMEDIA_MASTER_KEY[/bold] (environment or "
+                "~/.automedia/.env) to store and list account credentials — "
+                "see docs/user/account-management.md."
+            )
+            raise typer.Exit(1) from exc
     return _registry
 
 
