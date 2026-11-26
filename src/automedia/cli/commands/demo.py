@@ -52,12 +52,26 @@ def demo(
 ) -> None:
     """Produce a complete sample project — no credentials, no network.
 
-    Everything is synthetic (fake-LLM text + Pillow-rendered images). The run
-    uses an isolated config dir, so your real configuration is untouched.
+    Everything is synthetic (fake-LLM text + images rendered by the local
+    Pillow engine, pinned to ``engines.image.chain: [local]`` in the demo
+    sandbox config). The run uses an isolated config dir, so your real
+    configuration is untouched.
     """
     config_dir, projects_dir = _demo_dirs()
     config_dir.mkdir(parents=True, exist_ok=True)
     projects_dir.mkdir(parents=True, exist_ok=True)
+
+    # Pin the image chain to the local Pillow engine in the sandbox config
+    # (#698). The built-in default chain is ``[comfyui, local]``, so on any
+    # machine where ComfyUI answers on 127.0.0.1:8188 the demo would drive it
+    # and stall for minutes. ``load_config()`` merges every ``*.yaml`` in
+    # ``AUTOMEDIA_CONFIG_DIR``, so one file here is enough — local-only by
+    # construction, not by environment luck.
+    sandbox_config = config_dir / "demo_sandbox.yaml"
+    sandbox_config.write_text(
+        "engines:\n  image:\n    chain: [local]\n",
+        encoding="utf-8",
+    )
 
     # Hermetic env: fake LLM + local-only image chain + isolated dirs.
     os.environ["AUTOMEDIA_FAKE_LLM"] = "1"
