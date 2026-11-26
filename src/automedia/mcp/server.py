@@ -397,6 +397,53 @@ def _stamp_trace(result: object, correlation_id: str) -> object:
     return result
 
 
+def _signals_failure(structured: object) -> bool:
+    """True when a tool's structured payload reports a failure.
+
+    Conservative by design: only an explicit ``success: false`` alongside an
+    ``error`` object counts.  Tools that use other status vocabularies are
+    left untouched.
+    """
+    return (
+        isinstance(structured, dict)
+        and "error" in structured
+        and structured.get("success") is False
+    )
+
+
+def _as_error_result(result: object) -> object:
+    """Promote a structured failure to a protocol-level ``isError`` result.
+
+    The low-level MCP handler emits ``isError: false`` for every dict/tuple a
+    tool returns and only passes an existing ``CallToolResult`` through
+    verbatim (``mcp.server.lowlevel.server`` ``call_tool``).  Returning the
+    SDK's error result object is therefore the only way to signal failure on
+    the wire *and* keep the structured payload: raising ``ToolError`` would
+    set ``isError`` but discard ``structuredContent``.
+
+    Success results are returned unchanged.
+    """
+    from mcp.types import CallToolResult, TextContent
+
+    if isinstance(result, tuple) and len(result) == 2:
+        blocks, structured = result
+        if not _signals_failure(structured):
+            return result
+        return CallToolResult(
+            content=list(blocks),
+            structuredContent=cast("dict[str, Any]", structured),
+            isError=True,
+        )
+    if _signals_failure(result):
+        payload = cast("dict[str, Any]", result)
+        return CallToolResult(
+            content=[TextContent(type="text", text=json.dumps(payload, indent=2))],
+            structuredContent=payload,
+            isError=True,
+        )
+    return result
+
+
 def _instrument_tool_dispatch(mcp: FastMCP) -> None:
     """Bind a correlation id around every tool call at the dispatch choke point.
 
@@ -426,7 +473,7 @@ def _instrument_tool_dispatch(mcp: FastMCP) -> None:
             correlation_id = bind_correlation_id()
         try:
             result = await original(name, arguments, context=context, convert_result=convert_result)
-            return _stamp_trace(result, correlation_id)
+            return _as_error_result(_stamp_trace(result, correlation_id))
         finally:
             clear_contextvars()
             bind_contextvars(**saved)

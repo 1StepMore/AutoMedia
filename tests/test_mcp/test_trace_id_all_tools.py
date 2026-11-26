@@ -44,6 +44,9 @@ def _unwrap(raw: Any) -> dict[str, Any]:
         return raw[1]
     if isinstance(raw, dict):
         return raw
+    structured = getattr(raw, "structuredContent", None)
+    if isinstance(structured, dict):
+        return structured
     raise AssertionError(f"unexpected dispatcher result shape: {raw!r}")
 
 
