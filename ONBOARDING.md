@@ -222,6 +222,35 @@ network, none of your real configuration touched. Everything inside is
 
 ---
 
+## MCP path permissions
+
+Every file-system operation through the MCP server is checked against a path
+allowlist. The facts:
+
+- **Allowed by default:** AutoMedia's own data directories, without any
+  registration — the user config tree `~/.automedia/` (its `projects/`,
+  `demo/` and `output/` subtrees; `AUTOMEDIA_CONFIG_DIR` moves the base) and
+  the resolved projects directory (`AUTOMEDIA_PROJECTS_DIR`, falling back to
+  `<cwd>/.automedia/output/projects`). Pipeline artifacts and `automedia demo`
+  output live under these, so `list_projects` and related tools work with no
+  extra configuration.
+- **Added by `mcp_allowlist.yaml`:** entries under `allowed_directories`
+  (shipped defaults: `/tmp/automedia/`, `./data/`, `./output/`,
+  `./projects/`, `./scenarios/` — relative paths resolve against the MCP
+  server's working directory). Add a directory here to grant it; the
+  repository root `./` is deliberately not enabled.
+- **Custom allowlist file:** set `AUTOMEDIA_MCP_ALLOWLIST_PATH` to a YAML file
+  with the same `allowed_directories` schema; it replaces the shipped list
+  (the implicit app data directories stay allowed either way). A configured
+  path that does not exist fails closed.
+- **Denials are structured:** a path outside every allowed directory returns
+  error code `ALLOWLIST_DENIED`, and the message lists the directories that
+  are currently allowed.
+
+Details: [docs/user/mcp-setup.md](docs/user/mcp-setup.md).
+
+---
+
 ## Where to go next
 
 - Agent: [AGENTS.md](AGENTS.md) is your map; [docs/dev/agent-reference.md](docs/dev/agent-reference.md)

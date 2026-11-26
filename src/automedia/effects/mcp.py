@@ -65,15 +65,16 @@ def analyze_content(
         if base_dir:
             # Explicit caller-supplied path: fail-closed (T2-2).  The empty
             # default resolves to the caller's own cwd and needs no gate.
-            from automedia.mcp.allowlist import check_path_allowed
+            from automedia.mcp.allowlist import AllowlistDenied, _require_allowed
+            from automedia.mcp.mcp_error import MCPErrorCode
 
-            if not check_path_allowed(str(base)):
+            try:
+                _require_allowed(str(base), tool_name="analyze_content")
+            except AllowlistDenied as exc:
                 return {
                     "status": "error",
-                    "error": (
-                        f"base_dir {base_dir!r} is not within any allowed directory "
-                        "(mcp_allowlist.yaml)"
-                    ),
+                    "code": MCPErrorCode.ALLOWLIST_DENIED,
+                    "error": str(exc),
                 }
 
         # Find project by ID

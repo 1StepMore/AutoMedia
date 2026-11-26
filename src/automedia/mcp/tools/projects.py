@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from pydantic import Field
 from structlog import get_logger
 
+from automedia.mcp.allowlist import AllowlistDenied
 from automedia.mcp.tools._shared import (
     MCPErrorCode,
     NonEmptyStr,
@@ -15,6 +16,7 @@ from automedia.mcp.tools._shared import (
     _discover_projects,
     _project_assets,
     _require_allowed,
+    _resolve_projects_dir,
     error_response,
     success_response,
 )
@@ -34,11 +36,12 @@ def list_projects(
         Field(
             description=(
                 "Root directory to scan for 00_project_info.json files; must "
-                "be under a directory allowed by mcp_allowlist.yaml. Default "
-                "'.' scans the current working directory."
+                "be under a directory allowed by mcp_allowlist.yaml. Defaults "
+                "to the configured projects directory (AUTOMEDIA_PROJECTS_DIR "
+                "or <cwd>/.automedia/output/projects)."
             )
         ),
-    ] = ".",
+    ] = "",
     status: Annotated[
         ProjectStatusFilter,
         Field(
@@ -54,7 +57,9 @@ def list_projects(
     Parameters
     ----------
     base_dir:
-        Root directory to scan for ``00_project_info.json`` files.
+        Root directory to scan for ``00_project_info.json`` files.  Empty
+        (the default) resolves to the configured projects directory
+        (:func:`~automedia.mcp.tools._shared._resolve_projects_dir`).
     status:
         Optional status filter (e.g. ``"published"``).
 
@@ -64,12 +69,19 @@ def list_projects(
         ``{"projects": [...]}``.
     """
     try:
-        _require_allowed(base_dir, tool_name="list_projects")
-        projects = _discover_projects(base_dir)
+        projects_dir = base_dir or _resolve_projects_dir()
+        _require_allowed(projects_dir, tool_name="list_projects")
+        projects = _discover_projects(projects_dir)
         if status:
             projects = [p for p in projects if p.get("status", "") == status]
         return success_response({"projects": projects, "count": len(projects)})
 
+    except AllowlistDenied as exc:
+        return {
+            "projects": [],
+            "count": 0,
+            **error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc)),
+        }
     except PermissionError as exc:
         return {
             "projects": [],
@@ -115,6 +127,8 @@ def get_project_assets(
         assets = _project_assets(project_dir)
         return success_response({"assets": assets, "count": len(assets)})
 
+    except AllowlistDenied as exc:
+        return {"assets": [], **error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc))}
     except PermissionError as exc:
         return {"assets": [], **error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")}
     except OSError as exc:
@@ -242,6 +256,11 @@ def archive_project(
         project_dir.rename(archive_dir)
         return success_response({"archived": True, "archive_dir": str(archive_dir)})
 
+    except AllowlistDenied as exc:
+        return {
+            "archived": False,
+            **error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc)),
+        }
     except PermissionError as exc:
         return {
             "archived": False,

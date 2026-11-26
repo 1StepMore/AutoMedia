@@ -184,14 +184,20 @@ class TestPublishContentDefaultResolution:
         # Gate passed; discovery reports the unknown project.
         assert result.get("error", {}).get("code") == "NOT_FOUND"
 
-    def test_default_outside_allowlist_is_denied(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The factory posture is preserved: a resolved default outside the
-        allowlist is denied, not silently scanned."""
-        monkeypatch.setenv("AUTOMEDIA_PROJECTS_DIR", str(tmp_path / "elsewhere"))
+    def test_default_outside_allowlist_is_denied(self, tmp_path: Path) -> None:
+        """The factory posture is preserved: a caller-supplied directory
+        outside the allowlist is denied, not silently scanned.
 
-        result = publish_content(project_id="ghost05", platform="wechat")
+        #703 amendment: the resolved projects-dir DEFAULT is now implicitly
+        allowed (app-owned data directories need no registration), so the
+        posture is verified against an explicit ``base_dir`` that is neither
+        implicit nor YAML-listed — the denial contract itself is unchanged.
+        """
+        result = publish_content(
+            project_id="ghost05",
+            platform="wechat",
+            base_dir=str(tmp_path / "elsewhere"),
+        )
 
         assert result["success"] is False
         assert result["error"]["code"] == "ALLOWLIST_DENIED"
