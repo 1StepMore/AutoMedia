@@ -24,8 +24,9 @@ from __future__ import annotations
 import difflib
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.decision.review_audit import record_review_decision
@@ -115,11 +116,52 @@ def _resolve_diff_payload(
 
 
 def review_decision(
-    project_id: NonEmptyStr,
-    gate_name: NonEmptyStr,
-    action: Literal["approve", "reject"],
-    reason: str = "",
-    show_diff: bool = False,
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Pipeline id (uuid[:12]) returned by run_pipeline; only "
+                "pipelines started by THIS MCP server process and currently "
+                "paused at a HITL gate are reachable."
+            )
+        ),
+    ],
+    gate_name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Name of the gate the pipeline is paused at, typically "
+                "'H0' (the human review gate)."
+            )
+        ),
+    ],
+    action: Annotated[
+        Literal["approve", "reject"],
+        Field(
+            description=(
+                "'approve' resumes the pipeline; 'reject' halts it (the "
+                "gate result becomes a stop-failure)."
+            )
+        ),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            description=(
+                "Reviewer explanation recorded to the audit log; empty omits it from the response."
+            )
+        ),
+    ] = "",
+    show_diff: Annotated[
+        bool,
+        Field(
+            description=(
+                "True renders a unified diff from the project's latest "
+                ".automedia/gate_diffs/ record (diff_unavailable when none "
+                "exists); False skips the diff lookup."
+            )
+        ),
+    ] = False,
 ) -> dict[str, Any]:
     """Approve or reject a pipeline paused at a HITL review gate (live H0 path).
 

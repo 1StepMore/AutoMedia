@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 from structlog import get_logger
 
 from automedia.core.env_overlay import env_lookup
@@ -30,9 +30,34 @@ __all__ = [
 
 
 def select_topic(
-    category: str = "",
-    tenant_id: str = "default",
-    pool_db_path: str = "",
+    category: Annotated[
+        str,
+        Field(
+            description=(
+                "Category filter, e.g. 'tech', 'finance'; empty selects from all categories."
+            )
+        ),
+    ] = "",
+    tenant_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Tenant/namespace filter: a value other than 'default' keeps "
+                "only topics tagged with that tenant; 'default' (the default) "
+                "applies no tenant filter."
+            )
+        ),
+    ] = "default",
+    pool_db_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the topic-pool SQLite database; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default pool location."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Select the highest-scored pending topic from the pool.
 
@@ -180,10 +205,43 @@ def _persist_researched_topics(topics: list[dict[str, Any]], category: str) -> i
 
 
 def research_topics(
-    category: str,
-    count: int = 5,
-    trending_data: str = "",
-    pattern: ResearchPattern = "b",
+    category: Annotated[
+        str,
+        Field(
+            description=(
+                "Content category to research, e.g. 'AI Tools' or 'Finance'; "
+                "also used as the Tavily search query for trending data."
+            )
+        ),
+    ],
+    count: Annotated[
+        int,
+        Field(
+            description=(
+                "Number of topics to generate (default 5); passed to the topic_research prompt."
+            )
+        ),
+    ] = 5,
+    trending_data: Annotated[
+        str,
+        Field(
+            description=(
+                "Optional context (trending signals, audience data, keywords) "
+                "steering the LLM. When empty and AUTOMEDIA_TAVILY_API_KEY is "
+                "set, real-time Tavily results for the category are used "
+                "instead; a non-empty value is passed through as-is."
+            )
+        ),
+    ] = "",
+    pattern: Annotated[
+        ResearchPattern,
+        Field(
+            description=(
+                "'a' returns raw input data without calling the LLM (echo mode); "
+                "'b' (default) runs the real LLM research."
+            )
+        ),
+    ] = "b",
 ) -> dict[str, Any]:
     """Research trending or high-potential topics within a category using LLM.
 
@@ -286,9 +344,29 @@ def research_topics(
 
 
 def list_topic_pool(
-    status: str = "",
-    category: str = "",
-    pool_db_path: str = "",
+    status: Annotated[
+        str,
+        Field(
+            description=(
+                "Filter by topic status, e.g. 'pending' or 'selected'; empty "
+                "lists topics with any status."
+            )
+        ),
+    ] = "",
+    category: Annotated[
+        str,
+        Field(description=("Category filter, e.g. 'tech', 'finance'; empty lists all categories.")),
+    ] = "",
+    pool_db_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the topic-pool SQLite database; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default pool location."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """List topics in the pool, optionally filtered by status or category.
 
@@ -330,9 +408,32 @@ def list_topic_pool(
 
 
 def add_pool_topic(
-    title: str,
-    category: str = "",
-    pool_db_path: str = "",
+    title: Annotated[
+        str,
+        Field(
+            description=(
+                "Topic title to add; deduplicated later by TopicDeduplicator on research inserts."
+            )
+        ),
+    ],
+    category: Annotated[
+        str,
+        Field(
+            description=(
+                "Category label stored with the topic, e.g. 'tech'; empty leaves it uncategorised."
+            )
+        ),
+    ] = "",
+    pool_db_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the topic-pool SQLite database; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default pool location."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Add a topic to the topic pool.
 

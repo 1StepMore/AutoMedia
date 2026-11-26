@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from automedia.manifests.brand_profile_schema import (
     load_brand_profiles,
@@ -60,14 +62,73 @@ def list_brands() -> dict[str, Any]:
 
 
 def add_brand(
-    name: str,
-    industry: str = "",
-    target_audience: str = "",
-    aliases: list[str] | None = None,
-    blocked_words: list[str] | None = None,
-    brand_identity: str = "",
-    tone_guidelines: str = "",
-    cta_principles: list[str] | None = None,
+    name: Annotated[
+        str,
+        Field(
+            description=(
+                "Brand name; becomes the key in ~/.automedia/brand_profiles"
+                ".yaml and the value run_pipeline's brand parameter expects."
+            )
+        ),
+    ],
+    industry: Annotated[
+        str,
+        Field(
+            description=(
+                "Industry or vertical, e.g. 'SaaS' or 'e-commerce'; empty omits the field."
+            )
+        ),
+    ] = "",
+    target_audience: Annotated[
+        str,
+        Field(
+            description=("Audience description, e.g. 'Tech professionals'; empty omits the field.")
+        ),
+    ] = "",
+    aliases: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "Alternate names the brand may appear under; read by the G3 "
+                "brand-CTA gate. None omits the field."
+            )
+        ),
+    ] = None,
+    blocked_words: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "Forbidden words that must not appear in content; read by "
+                "the G3 brand-CTA gate. None omits the field."
+            )
+        ),
+    ] = None,
+    brand_identity: Annotated[
+        str,
+        Field(
+            description=(
+                "Brand positioning statement; read by the G3 brand-CTA gate. Empty omits the field."
+            )
+        ),
+    ] = "",
+    tone_guidelines: Annotated[
+        str,
+        Field(
+            description=(
+                "Tone-of-voice guidelines; read by the G6 tone gate. Empty omits the field."
+            )
+        ),
+    ] = "",
+    cta_principles: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "Principles guiding the call-to-action, e.g. ['Lead with "
+                "the benefit']; injected into the CW writer prompt. None "
+                "omits the field."
+            )
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """Create a new brand profile.
 

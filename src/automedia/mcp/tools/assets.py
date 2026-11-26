@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from automedia.asset_library import search_assets as _search_assets
 from automedia.mcp.tools._shared import (
@@ -17,13 +19,57 @@ __all__ = ["search_assets"]
 
 
 def search_assets(
-    query: str,
-    brand: NonEmptyStr,
-    limit: int = 10,
-    type: str | None = None,
-    tags: list[str] | None = None,
-    lang: str | None = None,
-    stage: str | None = None,
+    query: Annotated[
+        str,
+        Field(
+            description=(
+                "Keyword and semantic search text, e.g. 'autumn skincare "
+                "launch'; empty string returns all assets filtered by the "
+                "other criteria."
+            )
+        ),
+    ],
+    brand: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Brand name scoping the search to that brand's asset "
+                "library (key in brand_profiles.yaml)."
+            )
+        ),
+    ],
+    limit: Annotated[
+        int,
+        Field(description=("Maximum number of results to return after ranking (default 10).")),
+    ] = 10,
+    type: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Asset type filter: 'strategy', 'persona', 'product', "
+                "'content', 'kol_brief', or 'asset'; None disables the filter."
+            )
+        ),
+    ] = None,
+    tags: Annotated[
+        list[str] | None,
+        Field(
+            description=("Tag overlap filter, e.g. ['launch', 'promo']; None disables the filter.")
+        ),
+    ] = None,
+    lang: Annotated[
+        str | None,
+        Field(description=("Language code filter, e.g. 'zh' or 'en'; None disables the filter.")),
+    ] = None,
+    stage: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Source-phase filter (the pipeline phase an asset came "
+                "from); None disables the filter."
+            )
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """Search the asset library for brand assets.
 

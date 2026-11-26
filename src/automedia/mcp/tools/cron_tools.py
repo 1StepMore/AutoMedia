@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 import yaml
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.exceptions import ConfigError
@@ -33,13 +34,65 @@ __all__ = [
 
 
 def add_cron_schedule(
-    name: NonEmptyStr,
-    expression: CronExpression,
-    brand: str = "",
-    category: str = "",
-    count: int = 1,
-    platform: str = "",
-    mode: str = "",
+    name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Unique schedule name; duplicates are rejected and the name "
+                "is the key for remove_cron_schedule and 'automedia cron run'."
+            )
+        ),
+    ],
+    expression: Annotated[
+        CronExpression,
+        Field(
+            description=(
+                "5-field cron expression (minute hour day month weekday), "
+                "e.g. '0 9 * * *' for daily 09:00."
+            )
+        ),
+    ],
+    brand: Annotated[
+        str,
+        Field(
+            description=(
+                "Brand profile name used when the dispatched pipeline runs; "
+                "empty leaves the schedule brandless."
+            )
+        ),
+    ] = "",
+    category: Annotated[
+        str,
+        Field(
+            description=(
+                "Topic category the scheduled run selects from, e.g. 'tech'; "
+                "empty means no category filter."
+            )
+        ),
+    ] = "",
+    count: Annotated[
+        int,
+        Field(description=("Number of topics each dispatched run processes (default 1).")),
+    ] = 1,
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Target platform for the dispatched pipeline, e.g. 'wechat'; "
+                "validated against registered adapters — empty means no "
+                "platform filter."
+            )
+        ),
+    ] = "",
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "Pipeline mode for the dispatched run (auto, text_only, …); "
+                "validated against VALID_MODES — empty means no mode."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Add a cron schedule entry to ``cron/jobs.yaml``.
 
@@ -122,8 +175,24 @@ def add_cron_schedule(
 
 
 def list_cron_schedules(
-    platform: str = "",
-    mode: str = "",
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Only return schedules whose platform equals this value, "
+                "e.g. 'wechat'; empty lists all platforms."
+            )
+        ),
+    ] = "",
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "Only return schedules whose mode equals this value, e.g. "
+                "'text_only'; empty lists all modes."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """List cron schedule entries from ``cron/jobs.yaml``, with optional filters.
 
@@ -213,7 +282,17 @@ def list_workflows() -> dict[str, Any]:
         return {"workflows": [], **error_response(MCPErrorCode.UNKNOWN, str(exc))}
 
 
-def remove_cron_schedule(name: NonEmptyStr) -> dict[str, Any]:
+def remove_cron_schedule(
+    name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Exact name of the schedule entry to delete, as listed by "
+                "list_cron_schedules; unknown names return a NOT_FOUND error."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Remove a cron schedule entry by name.
 
     Parameters
@@ -400,8 +479,23 @@ def get_cron_health() -> dict[str, Any]:
 
 
 def test_cron_schedule(
-    expression: CronExpression,
-    count: int = 5,
+    expression: Annotated[
+        CronExpression,
+        Field(
+            description=(
+                "5-field cron expression (minute hour day month weekday) to "
+                "validate, e.g. '*/15 * * * *'."
+            )
+        ),
+    ],
+    count: Annotated[
+        int,
+        Field(
+            description=(
+                "How many next trigger times to compute with croniter; clamped to 1–20 (default 5)."
+            )
+        ),
+    ] = 5,
 ) -> dict[str, Any]:
     """Validate a cron expression and compute its next N trigger times.
 

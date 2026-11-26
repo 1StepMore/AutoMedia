@@ -12,8 +12,9 @@ the ``automedia hitl approve/reject`` CLI (cross-process parked runs).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.mcp.tools._shared import (
@@ -35,9 +36,35 @@ __all__ = [
 
 
 def approve_gate(
-    project_id: NonEmptyStr,
-    gate_name: NonEmptyStr,
-    modifications: dict[str, Any] | None = None,
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id of the active pipeline, as returned by "
+                "run_pipeline; RESERVED tool — no gate is ever awaiting "
+                "this approval today (use review_decision)."
+            )
+        ),
+    ],
+    gate_name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Name of the gate to approve, e.g. 'G0' or 'V3'; must be a "
+                "gate paused for approval or the call errors."
+            )
+        ),
+    ],
+    modifications: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description=(
+                "Optional patch applied to the gate result before "
+                "continuing, e.g. {'content': 'revised text'}; None passes "
+                "the result through unmodified."
+            )
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """Approve a gate output and resume pipeline execution.
 
@@ -80,9 +107,34 @@ def approve_gate(
 
 
 def reject_gate(
-    project_id: NonEmptyStr,
-    gate_name: NonEmptyStr,
-    reason: str = "",
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id of the active pipeline, as returned by "
+                "run_pipeline; RESERVED tool — no gate is ever awaiting "
+                "this rejection today (use review_decision)."
+            )
+        ),
+    ],
+    gate_name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Name of the gate to reject, e.g. 'G0' or 'V3'; must be a "
+                "gate paused for approval or the call errors."
+            )
+        ),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            description=(
+                "Human-readable explanation for the rejection, carried into "
+                "the gate modifications; empty omits it."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Reject a gate output and resume pipeline execution.
 
@@ -125,7 +177,17 @@ def reject_gate(
 
 
 def get_pending_approvals(
-    project_id: str = "",
+    project_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Optional project id filter — only gates of this pipeline "
+                "are listed; empty returns pending approvals across all "
+                "active engines. RESERVED tool: always empty today because "
+                "the pause_on_approval mechanism never fires."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """List gates currently awaiting approval in active pipelines.
 

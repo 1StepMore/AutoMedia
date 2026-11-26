@@ -8,14 +8,33 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from automedia.core.layout import DRAFTS
 
 
 def analyze_content(
-    project_id: str,
-    base_dir: str = "",
+    project_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Project id to analyse; matched against the 00_project_info"
+                ".json files under base_dir."
+            )
+        ),
+    ],
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned to resolve project_id; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty scans the "
+                "current working directory (no allowlist gate)."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Compute content analytics for a project.
 

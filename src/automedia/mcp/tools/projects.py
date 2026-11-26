@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.mcp.tools._shared import (
@@ -28,8 +29,25 @@ __all__ = [
 
 
 def list_projects(
-    base_dir: str = ".",
-    status: ProjectStatusFilter = "",
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Root directory to scan for 00_project_info.json files; must "
+                "be under a directory allowed by mcp_allowlist.yaml. Default "
+                "'.' scans the current working directory."
+            )
+        ),
+    ] = ".",
+    status: Annotated[
+        ProjectStatusFilter,
+        Field(
+            description=(
+                "Exact project status to filter on, e.g. 'published'; empty "
+                "lists projects with any status."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """List all projects found under *base_dir*.
 
@@ -69,7 +87,16 @@ def list_projects(
 
 
 def get_project_assets(
-    project_dir: str,
+    project_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Absolute path to the project root directory whose asset "
+                "files are listed; must be under a directory allowed by "
+                "mcp_allowlist.yaml."
+            )
+        ),
+    ],
 ) -> dict[str, Any]:
     """Return the list of asset files inside a project directory.
 
@@ -100,9 +127,36 @@ def get_project_assets(
 
 
 def archive_project(
-    project_id: NonEmptyStr,
-    base_dir: str = ".",
-    force: bool = False,
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "12-hex project id as reported by list_projects or "
+                "run_pipeline; the matching project directory is renamed to "
+                "<id>_archived."
+            )
+        ),
+    ],
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned to resolve project_id; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Default '.' scans "
+                "the current working directory."
+            )
+        ),
+    ] = ".",
+    force: Annotated[
+        bool,
+        Field(
+            description=(
+                "True bypasses the 'status must be published' Red Line 8 "
+                "check and the L2 archive validation — for humans only; "
+                "agents should leave False."
+            )
+        ),
+    ] = False,
 ) -> dict[str, Any]:
     """Archive a project (Red Line 8 enforcement).
 

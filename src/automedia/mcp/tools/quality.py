@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from automedia.core.llm_client import LLMError
 from automedia.mcp.tools._shared import (
@@ -17,11 +17,49 @@ from automedia.mcp.tools._shared import (
 
 
 def evaluate_content_quality(
-    content: str,
-    criteria: str = "general",
-    brand: str = "",
-    pattern: ResearchPattern = "b",
-    platform: str = "",
+    content: Annotated[
+        str,
+        Field(
+            description=("The content text to evaluate, injected into the content_quality prompt.")
+        ),
+    ],
+    criteria: Annotated[
+        str,
+        Field(
+            description=(
+                "Quality dimensions to score, e.g. 'clarity, accuracy, brand "
+                "voice, SEO readiness'; default 'general'."
+            )
+        ),
+    ] = "general",
+    brand: Annotated[
+        str,
+        Field(
+            description=(
+                "Brand profile name for brand-specific evaluation, e.g. "
+                "'Acme'; empty evaluates without a brand lens."
+            )
+        ),
+    ] = "",
+    pattern: Annotated[
+        ResearchPattern,
+        Field(
+            description=(
+                "'a' returns raw input data without calling the LLM (echo "
+                "mode); 'b' (default) runs the real LLM evaluation."
+            )
+        ),
+    ] = "b",
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Platform name selecting a platform-specific prompt variant "
+                "(e.g. 'wechat' uses platforms/wechat/content_quality.j2 when "
+                "present); empty uses the generic prompt."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Evaluate content quality using an LLM with structured output.
 

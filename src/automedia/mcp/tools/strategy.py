@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 from structlog import get_logger
 
 from automedia.core.llm_client import LLMError
@@ -31,12 +31,58 @@ __all__ = [
 
 
 def run_brand_strategy(
-    brand_name: str,
-    industry: str,
-    target_audience: str,
-    context: str = "",
-    pattern: ResearchPattern = "b",
-    platform: str = "",
+    brand_name: Annotated[
+        str,
+        Field(
+            description=(
+                "Name of the brand to analyse, e.g. 'Acme'; injected into "
+                "the brand_strategy prompt."
+            )
+        ),
+    ],
+    industry: Annotated[
+        str,
+        Field(
+            description=("Industry or vertical the brand operates in, e.g. 'SaaS' or 'e-commerce'.")
+        ),
+    ],
+    target_audience: Annotated[
+        str,
+        Field(
+            description=(
+                "Description of the brand's target audience, e.g. 'Tech professionals aged 25-40'."
+            )
+        ),
+    ],
+    context: Annotated[
+        str,
+        Field(
+            description=(
+                "Optional extra constraints or background for the strategy "
+                "(competitors, positioning notes); empty keeps the prompt "
+                "minimal."
+            )
+        ),
+    ] = "",
+    pattern: Annotated[
+        ResearchPattern,
+        Field(
+            description=(
+                "'a' returns raw input data without calling the LLM (echo "
+                "mode); 'b' (default) runs the real LLM analysis."
+            )
+        ),
+    ] = "b",
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Platform name selecting a platform-specific prompt variant "
+                "(e.g. 'wechat' uses platforms/wechat/brand_strategy.j2 when "
+                "present); empty uses the generic prompt."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Generate a brand strategy using LLM-driven analysis.
 
@@ -123,13 +169,74 @@ def run_brand_strategy(
 
 
 def run_pipeline_from_strategy(
-    topic: NonEmptyStr,
-    brand: NonEmptyStr,
-    mode: PipelineMode = "auto",
-    strategy_context: str = "",
-    pattern: ResearchPattern = "b",
-    platform: str = "",
-    workflow: str = "",
+    topic: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Content topic or subject the pipeline writes about "
+                "(required); also seeds the strategy prompt."
+            )
+        ),
+    ],
+    brand: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Brand profile name, i.e. the key in brand_profiles.yaml "
+                "(e.g. 'Acme'); the pipeline run reads this profile."
+            )
+        ),
+    ],
+    mode: Annotated[
+        PipelineMode,
+        Field(
+            description=(
+                "Pipeline mode: 'auto' (full run), 'text_only' (skips "
+                "image/video gates, no ComfyUI), 'text_with_cover', "
+                "'video_only', 'qa_only', 'image-carousel', 'social-thread', "
+                "or 'short-video'. Default 'auto'."
+            )
+        ),
+    ] = "auto",
+    strategy_context: Annotated[
+        str,
+        Field(
+            description=(
+                "Optional context for the strategy (target audience, tone, "
+                "platform hints); empty keeps the strategy prompt minimal."
+            )
+        ),
+    ] = "",
+    pattern: Annotated[
+        ResearchPattern,
+        Field(
+            description=(
+                "'a' returns raw input data without calling the LLM or "
+                "running the pipeline (echo mode); 'b' (default) runs the "
+                "real strategy + pipeline."
+            )
+        ),
+    ] = "b",
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Platform name selecting a platform-specific prompt variant "
+                "(e.g. 'wechat' uses platforms/wechat/pipeline_strategy.j2 "
+                "when present); empty uses the generic prompt."
+            )
+        ),
+    ] = "",
+    workflow: Annotated[
+        str,
+        Field(
+            description=(
+                "Named workflow from .automedia/workflows/ or "
+                "~/.automedia/workflows/ whose mode, platforms, gates, "
+                "prompts, and media spec override the brand profile."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Generate a content strategy via LLM then execute the production pipeline.
 

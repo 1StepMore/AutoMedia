@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.accounts.registry import AccountRegistry
@@ -24,10 +25,44 @@ def _get_registry() -> AccountRegistry:
 
 
 def connect_account(
-    platform: str,
-    auth_type: str = "api_key",
-    credentials: dict[str, Any] | None = None,
-    label: str = "",
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Platform the account belongs to, e.g. 'wechat', 'zhihu', "
+                "'xiaohongshu'; stored as given — publishing later resolves "
+                "it against the adapter registry."
+            )
+        ),
+    ],
+    auth_type: Annotated[
+        str,
+        Field(
+            description=(
+                "Authentication type the credentials use, e.g. 'api_key', "
+                "'cookie', 'oauth2_client_cred' (default 'api_key')."
+            )
+        ),
+    ] = "api_key",
+    credentials: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description=(
+                "Credential payload as key-value pairs, e.g. "
+                "{'api_key': '...'} matching auth_type; required — the call "
+                "is refused without it."
+            )
+        ),
+    ] = None,
+    label: Annotated[
+        str,
+        Field(
+            description=(
+                "Human-readable label for the account, e.g. 'Main wechat "
+                "ops'; empty leaves it unlabelled."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Register a new platform account.
 
@@ -56,8 +91,23 @@ def connect_account(
 
 
 def list_accounts(
-    platform: str | None = None,
-    status: str | None = None,
+    platform: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Only return accounts on this platform, e.g. 'wechat'; None lists all platforms."
+            )
+        ),
+    ] = None,
+    status: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Only return accounts with this status ('active', "
+                "'inactive', or 'stale'); None lists all statuses."
+            )
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """List registered accounts.
 
@@ -72,7 +122,17 @@ def list_accounts(
     return success_response({"accounts": accounts, "count": len(accounts)})
 
 
-def get_account_health(account_id: NonEmptyStr) -> dict[str, Any]:
+def get_account_health(
+    account_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Account id returned by connect_account or list_accounts; "
+                "unknown ids return a NOT_FOUND error."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Check an account's health status.
 
     Args:
@@ -100,7 +160,18 @@ def get_account_health(account_id: NonEmptyStr) -> dict[str, Any]:
     )
 
 
-def disconnect_account(account_id: NonEmptyStr) -> dict[str, Any]:
+def disconnect_account(
+    account_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Account id returned by connect_account or list_accounts; "
+                "the account's stored credentials are deleted — unknown ids "
+                "return a NOT_FOUND error."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Remove a platform account.
 
     Args:

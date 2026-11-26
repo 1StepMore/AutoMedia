@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.exceptions import AutoMediaError, ModuleLoadError
@@ -28,11 +29,54 @@ __all__ = [
 
 
 def publish_content(
-    project_id: NonEmptyStr,
-    platform: str,
-    account_id: str = "",
-    base_dir: str = "",
-    mode: str = "auto",
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "12-hex project id returned by run_pipeline or list_projects; "
+                "its artifact_dir is published via PublishEngine."
+            )
+        ),
+    ],
+    platform: Annotated[
+        str,
+        Field(
+            description=(
+                "Target platform name, e.g. 'xiaohongshu' or 'zhihu'; must "
+                "match a registered adapter (see list_platforms). 'wechat' "
+                "additionally runs the G4/G5 pre-publish checklist."
+            )
+        ),
+    ],
+    account_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Account id from connect_account to publish with; empty "
+                "publishes without a specific account."
+            )
+        ),
+    ] = "",
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned to resolve project_id; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default projects directory."
+            )
+        ),
+    ] = "",
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "'auto' (default) respects the brand profile's automation "
+                "level ('review' produces a draft); 'publish' forces full "
+                "publish even when the brand level is 'review'."
+            )
+        ),
+    ] = "auto",
 ) -> dict[str, Any]:
     """Publish a project to a platform.
 
@@ -246,8 +290,26 @@ def list_platforms() -> dict[str, Any]:
 
 
 def register_platform_adapter(
-    platform_name: str,
-    adapter_class: str = "",
+    platform_name: Annotated[
+        str,
+        Field(
+            description=(
+                "Platform identifier, e.g. 'wechat' or 'weibo'; non-empty and "
+                "limited to letters, digits, underscores, and hyphens."
+            )
+        ),
+    ],
+    adapter_class: Annotated[
+        str,
+        Field(
+            description=(
+                "Dotted path to the adapter class inside the "
+                "automedia.adapters.* namespace, e.g. "
+                "'automedia.adapters.wechat.WeChatAdapter'; empty keeps this a "
+                "stub acknowledgement (PRD-1 NG6) with no real registration."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Register a platform adapter (stub — PRD-1 NG6).
 
