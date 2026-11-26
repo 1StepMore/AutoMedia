@@ -31,9 +31,10 @@ from automedia.mcp.allowlist import _reset_allowlist_cache
 def denied_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
     """Point the allowlist at another directory and run from outside it.
 
-    ``list_projects`` defaults to ``base_dir="."``; with the cwd unlisted the
-    tool returns its structured ``Permission denied`` envelope — the failure
-    shape this issue is about.
+    Since #703 the no-arg ``list_projects`` call succeeds (the default
+    projects directory is allowed implicitly), so the failure trigger is an
+    EXPLICIT ``base_dir`` outside the allowlist — the denial shape is the
+    same structured ``Permission denied`` envelope this issue is about.
     """
     allowed = tmp_path / "allowed"
     allowed.mkdir()
@@ -71,7 +72,9 @@ def test_list_projects_failure_is_an_iserror_result(denied_cwd: Path) -> None:
     from automedia.mcp.server import create_server
 
     server = create_server()
-    raw = asyncio.run(server.call_tool("list_projects", {}))
+    # Explicit base_dir outside the allowlist: after #703 the no-arg call
+    # succeeds, so the denial trigger must be caller-supplied.
+    raw = asyncio.run(server.call_tool("list_projects", {"base_dir": str(denied_cwd)}))
 
     assert isinstance(raw, CallToolResult), f"failure was not a protocol error: {raw!r}"
     assert raw.isError is True
@@ -104,7 +107,9 @@ def _send(proc: subprocess.Popen[str], message: dict[str, Any]) -> None:
     proc.stdin.flush()
 
 
-def _read_response(proc: subprocess.Popen[str], request_id: int, timeout: float = 180.0) -> dict[str, Any]:
+def _read_response(
+    proc: subprocess.Popen[str], request_id: int, timeout: float = 180.0
+) -> dict[str, Any]:
     """Read stdout until the JSON-RPC response with *request_id* arrives."""
     assert proc.stdout is not None
     box: dict[str, Any] = {}
@@ -166,7 +171,13 @@ def test_stdio_round_trip_sets_iserror(denied_cwd: Path) -> None:
                 "jsonrpc": "2.0",
                 "id": 2,
                 "method": "tools/call",
-                "params": {"name": "list_projects", "arguments": {}},
+                # Explicit base_dir outside the allowlist: after #703 the
+                # no-arg call succeeds, so the denial trigger must be
+                # caller-supplied.
+                "params": {
+                    "name": "list_projects",
+                    "arguments": {"base_dir": str(denied_cwd)},
+                },
             },
         )
         failure = _read_response(proc, 2)["result"]

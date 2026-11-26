@@ -135,10 +135,10 @@ def distribute_content(
     # denial, not a silent fallback to a directory the caller did not ask for.
     if base_dir:
         try:
-            from automedia.mcp.allowlist import _require_allowed
+            from automedia.mcp.allowlist import AllowlistDenied, _require_allowed
 
             _require_allowed(base_dir, tool_name="distribute_content")
-        except PermissionError as exc:
+        except AllowlistDenied as exc:
             return {
                 "success": False,
                 **error_response(

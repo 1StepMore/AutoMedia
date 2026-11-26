@@ -58,6 +58,80 @@ _cached_allowlist: list[str] | None = None
 # ---------------------------------------------------------------------------
 
 
+class AllowlistDenied(PermissionError):  # noqa: N818
+    """A path was refused because it is not within any allowed directory.
+
+    Subclasses :class:`PermissionError` so every existing
+    ``except PermissionError`` handler keeps catching it; callers that need to
+    distinguish an allowlist refusal from a real OS permission error catch this
+    class explicitly and map it to ``MCPErrorCode.ALLOWLIST_DENIED``.
+    """
+
+
+def _implicit_directories() -> list[str]:
+    """Return the app-owned data directories that are always allowed.
+
+    These are directories the application itself writes into (user config
+    tree, resolved projects directory).  They are effective without being
+    registered in ``mcp_allowlist.yaml`` — an operator's YAML only ever adds
+    directories on top of these, never re-scopes them away.
+
+    The repository / current-working-directory root is deliberately **not**
+    implicit: granting the whole checkout stays an explicit operator decision
+    (see the ``mcp_allowlist.yaml`` header).
+
+    Function-level imports avoid the ``allowlist`` → ``tools._shared`` →
+    ``server`` → ``allowlist`` import cycle; on ImportError the affected
+    entries are simply absent rather than fatal.
+    """
+    dirs: list[str] = []
+    try:
+        from automedia.core.paths import get_user_config_dir
+
+        config_dir = get_user_config_dir()
+        dirs.extend(
+            [
+                str(config_dir / "projects"),
+                str(config_dir / "demo"),
+                str(config_dir / "output"),
+            ]
+        )
+    except ImportError:
+        pass
+    try:
+        from automedia.mcp.tools._shared import _resolve_projects_dir
+
+        dirs.append(_resolve_projects_dir())
+    except ImportError:
+        pass
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for d in dirs:
+        real = os.path.realpath(os.path.expanduser(d))
+        if real not in seen:
+            seen.add(real)
+            resolved.append(real)
+    return resolved
+
+
+def _merged_allowlist() -> list[str]:
+    """Implicit app-owned directories plus the configured YAML entries.
+
+    Deduplicated with order preserved (implicit entries first).  This — not
+    the YAML-only :func:`_load_allowlist` result — is what the path checks
+    judge paths against, so the app's own data directories are reachable even
+    when the operator's YAML (factory default included) does not list them.
+    """
+    merged: list[str] = []
+    seen: set[str] = set()
+    for d in [*_implicit_directories(), *(_get_effective_allowlist() or [])]:
+        real = os.path.realpath(d)
+        if real not in seen:
+            seen.add(real)
+            merged.append(real)
+    return merged
+
+
 def _resolve_allowlist_path(allowlist_path: Path | None = None) -> Path:
     """The YAML file to read: explicit argument, else env var, else shipped default.
 
@@ -87,6 +161,12 @@ def _load_allowlist(*, allowlist_path: Path | None = None) -> list[str]:
     -------
     list[str]
         Resolved absolute directory paths.
+
+    .. note::
+       This is the YAML entry list only.  The effective allowlist used by
+       :func:`check_path_allowed` is :func:`_merged_allowlist` — these entries
+       plus the implicit app-owned directories — so this list is not the
+       complete grant.
     """
     global _cached_allowlist
     path = _resolve_allowlist_path(allowlist_path)
@@ -145,18 +225,22 @@ def _get_effective_allowlist() -> list[str] | None:
 def check_path_allowed(path: str, *, allowlist: list[str] | None = None) -> bool:
     """Return *True* if *path* falls under an allowed directory.
 
-    When the allowlist is empty **all paths are blocked** (fail‑closed).
+    When the effective allowlist is empty **all paths are blocked**
+    (fail‑closed).  The effective allowlist is the implicit app-owned
+    directories (:func:`_implicit_directories`) plus the YAML entries —
+    an explicit *allowlist* argument overrides both entirely.
 
     Parameters
     ----------
     path:
         File or directory path to validate (need not exist).
     allowlist:
-        Override list of resolved directory paths.  When *None* the
-        cached allowlist from the YAML file is used.
+        Override list of resolved directory paths, judged exactly as given
+        (no implicit directories added).  When *None* the merged implicit +
+        YAML allowlist is used.
     """
     if allowlist is None:
-        allowlist = _get_effective_allowlist()
+        allowlist = _merged_allowlist()
     if not allowlist:
         return False  # fail‑closed: empty allowlist → deny all
     from pathlib import Path
@@ -172,10 +256,14 @@ def check_path_allowed(path: str, *, allowlist: list[str] | None = None) -> bool
 
 
 def _require_allowed(path: str, *, tool_name: str = "") -> None:
-    """Raise ``PermissionError`` if *path* is not in the allowlist."""
+    """Raise :class:`AllowlistDenied` if *path* is not in the allowlist."""
     if not check_path_allowed(path):
         prefix = f"[{tool_name}] " if tool_name else ""
-        raise PermissionError(
-            f"{prefix}Path {path!r} is not within any allowed directory. "
-            f"Configure allowed_directories in mcp_allowlist.yaml."
+        effective = _merged_allowlist()
+        listing = ", ".join(effective) if effective else "(none)"
+        raise AllowlistDenied(
+            f"Permission denied: {prefix}Path {path!r} is not within any "
+            f"allowed directory. Allowed: {listing}. Add another directory "
+            f"in mcp_allowlist.yaml (allowed_directories) or set "
+            f"AUTOMEDIA_MCP_ALLOWLIST_PATH."
         )

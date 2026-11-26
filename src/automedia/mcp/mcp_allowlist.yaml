@@ -11,6 +11,12 @@
 # only if you accept that; otherwise use one of the scoped directories below, or
 # point AUTOMEDIA_MCP_ALLOWLIST_PATH at a custom YAML file of your own.
 #
+# NOTE — AutoMedia's own data directories (``~/.automedia/`` subtrees used for
+# config, demo and output, plus the resolved projects directory
+# ``AUTOMEDIA_PROJECTS_DIR`` or ``<cwd>/.automedia/output/projects``) are
+# allowed implicitly and do NOT need to be registered here. Entries in this
+# file only add further directories on top of that set.
+#
 # --- Development / Local ---
 # Uncomment these when running from the AutoMedia repo root:
 #   - ./data/                          # Topic pool, config, runtime data

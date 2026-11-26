@@ -13,6 +13,7 @@ from typing import Annotated, Any
 from pydantic import Field
 from structlog import get_logger
 
+from automedia.mcp.allowlist import AllowlistDenied
 from automedia.mcp.tools._shared import (
     VALID_MODES,
     MCPErrorCode,
@@ -278,7 +279,7 @@ def run_pipeline(
     if source_path:
         try:
             _require_allowed(source_path, tool_name="run_pipeline")
-        except PermissionError as exc:
+        except AllowlistDenied as exc:
             return {
                 "status": "failed",
                 **error_response(
@@ -696,6 +697,8 @@ def get_pipeline_status(
             )
         return success_response({"project": proj, "subdirs": subdirs})
 
+    except AllowlistDenied as exc:
+        return error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc))
     except PermissionError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
     except OSError as exc:
@@ -772,6 +775,8 @@ def get_pipeline_state(
         rows = [asdict(row) for row in aggregate_pipeline_state(proj_dir, mode)]
         return success_response({"project_id": project_id, "mode": mode, "gates": rows})
 
+    except AllowlistDenied as exc:
+        return error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc))
     except PermissionError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
     except OSError as exc:
@@ -889,8 +894,10 @@ def get_gate_report(
             }
         )
 
+    except AllowlistDenied as exc:
+        return error_response(MCPErrorCode.ALLOWLIST_DENIED, str(exc))
     except PermissionError as exc:
-        return error_response(MCPErrorCode.ALLOWLIST_DENIED, f"Permission denied: {exc}")
+        return error_response(MCPErrorCode.UNKNOWN, f"Permission denied: {exc}")
     except OSError as exc:
         return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
 

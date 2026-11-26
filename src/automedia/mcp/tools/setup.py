@@ -11,6 +11,7 @@ from pydantic import Field
 from structlog import get_logger
 
 from automedia.manifests.model_config_schema import save_model_config
+from automedia.mcp.allowlist import AllowlistDenied
 from automedia.mcp.tools._shared import (
     MCPErrorCode,
     error_response,
@@ -66,7 +67,18 @@ def init_config(
             # default resolves to the caller's own cwd and needs no gate.
             from automedia.mcp.allowlist import _require_allowed
 
-            _require_allowed(str(target), tool_name="init_config")
+            try:
+                _require_allowed(str(target), tool_name="init_config")
+            except AllowlistDenied as exc:
+                return {
+                    "success": False,
+                    **error_response(
+                        MCPErrorCode.ALLOWLIST_DENIED,
+                        f"project_dir {project_dir!r} is not within any allowed directory: {exc}",
+                        "Pass a directory listed in mcp_allowlist.yaml, or omit "
+                        "project_dir to use the current working directory.",
+                    ),
+                }
         automedia_dir = target / ".automedia"
         automedia_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,10 +103,9 @@ def init_config(
         return {
             "success": False,
             **error_response(
-                MCPErrorCode.ALLOWLIST_DENIED,
-                f"project_dir {project_dir!r} is not within any allowed directory: {exc}",
-                "Pass a directory listed in mcp_allowlist.yaml, or omit "
-                "project_dir to use the current working directory.",
+                MCPErrorCode.UNKNOWN,
+                f"Permission denied: {exc}",
+                "Check filesystem permissions for the target directory.",
             ),
         }
     except OSError as exc:
