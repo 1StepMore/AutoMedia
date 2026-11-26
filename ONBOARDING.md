@@ -139,7 +139,7 @@ The runtime switch for video is the **mode** (`video_only`, `short-video`, or
 
 ```bash
 automedia doctor                     # audit (exit 1 = some row missing, see Step 2)
-automedia run --topic "your topic" --mode text_only
+automedia run --topic "your topic" --brand my-brand --mode text_only
 ```
 
 Agent judgment: the first run should be `text_only` even on a Video-tier
@@ -153,8 +153,10 @@ re-run in the target mode.
 | run ends `partial` with skipped V gates | video artifacts absent (tier/tooling) | read the gate report reasons; upgrade tier or accept text mode |
 | ComfyUI row ✗ but images render | Pillow fallback took over | fine — install ComfyUI for generated art |
 
-Project output lands under `AUTOMEDIA_PROJECTS_DIR` (default `projects/`):
-drafts, gate reports, media artifacts.
+Project output lands under `AUTOMEDIA_PROJECTS_DIR`. When it is unset the run writes to
+the **current working directory** (one `YYYYMMDD_<topic>/` folder per run; the repo
+`.gitignore` already ignores `20[0-9][0-9]*/`, but set the variable if you would rather
+keep artifacts outside the checkout): drafts, gate reports, media artifacts.
 
 ---
 
@@ -184,15 +186,20 @@ dependencies and nothing to install except Python**:
 
 ```bash
 pip install -e ".[openai,rich]"
+automedia init --template minimal                # required once: writes ~/.automedia/model_config.yaml
 export AUTOMEDIA_LLM_PROVIDER=deepseek
 export AUTOMEDIA_LLM_MODEL=deepseek-chat
 export AUTOMEDIA_LLM_API_KEY=sk-your-key-here     # ← the one human secret
+# optional: OpenAI-compatible gateway/proxy endpoint (defaults to the provider's own)
+# export AUTOMEDIA_LLM_BASE_URL=https://your-gateway/v1
 export AUTOMEDIA_DEFAULT_MODE=text_only
-automedia run --topic "为什么本地小模型适合私有部署" --mode text_only
+automedia run --topic "为什么本地小模型适合私有部署" --brand my-brand --mode text_only
 ```
 
-`automedia doctor` before the run is recommended but not required for this
-path — the pipeline itself reports anything it genuinely cannot do.
+`automedia init` is a **hard prerequisite**: environment variables configure the LLM, they
+do not replace `model_config.yaml` — without the file every run stops with "Model config
+not found … Run 'automedia init' first". `automedia doctor` is still optional for this path;
+the pipeline itself reports anything it genuinely cannot do.
 
 ---
 
