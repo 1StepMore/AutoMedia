@@ -104,7 +104,7 @@
 | docs/user/account-management.md | 3314 | file |
 | docs/user/api-reference.md | 21255 | file |
 | docs/user/asset-library.md | 11894 | file |
-| docs/user/cli-reference.md | 33718 | file |
+| docs/user/cli-reference.md | 34760 | file |
 | docs/user/deployment.md | 8996 | file |
 | docs/user/hardware-and-remote-engines.md | 8486 | file |
 | docs/user/hitl-framework.md | 10052 | file |

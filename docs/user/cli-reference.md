@@ -303,6 +303,9 @@ automedia projects list --status published
 
 # View specific project details
 automedia projects get <project-id>
+
+# List a project's asset files (paths in the project dir)
+automedia projects get-assets <project-id>
 ```
 
 ### Subcommands
@@ -325,6 +328,18 @@ automedia projects get <project-id>
 | Argument | Type | Description |
 |------|------|------|
 | `project_id` | `str` | Project ID (required) |
+
+### projects get-assets Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `project_id` | `str` | Project ID to list assets for (required) |
+
+### projects get-assets Flags
+
+| Flag | Short | Type | Default | Description |
+|------|------|------|--------|------|
+| `--base-dir` | `-d` | `str` | `.` | Base directory to scan for projects |
 
 ## `automedia archive`
 
@@ -913,6 +928,20 @@ automedia validate matrix
 | `coverage` | Run the coverage audit over the scenario library; exits 1 when `missing` is non-empty on any surface |
 | `matrix` | Render the validation matrix: coverage grid + run-record assertion cards + diff classification |
 | `sign` | Record the director's sign-off on a run (appends to `signed.txt`; missing run/empty or multi-line verdict exits 1) |
+
+### validate sign Arguments
+
+| Argument | Type | Description |
+|------|------|------|
+| `run` | `str` | Run directory name to sign; required (a missing or empty name exits 1) |
+
+### validate sign Flags
+
+| Flag | Type | Default | Description |
+|------|------|--------|------|
+| `--verdict` | `str` | `approved` | Free-form **single-line** verdict (e.g. `approved`, `rejected`); empty or multi-line exits 1 |
+| `--signer` | `str` | `director` | Signer name recorded on the sign-off line |
+| `--runs-root` | `str` | `validation-runs` | Directory of immutable run records (gitignored) |
 
 ### validate run Flags
 
