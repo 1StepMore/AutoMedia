@@ -8,8 +8,9 @@ import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.mcp.tools._shared import (
@@ -54,20 +55,121 @@ __all__ = [
 
 
 def run_pipeline(
-    topic: NonEmptyStr,
-    brand: NonEmptyStr,
-    mode: PipelineMode = "auto",
+    topic: Annotated[
+        NonEmptyStr,
+        Field(description="Content topic or subject the pipeline writes about (required)."),
+    ],
+    brand: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Brand profile name, i.e. the key in brand_profiles.yaml "
+                "(e.g. 'Acme'); brand-scoped gates read this profile."
+            )
+        ),
+    ],
+    mode: Annotated[
+        PipelineMode,
+        Field(
+            description=(
+                "Pipeline mode: 'auto' (full run), 'text_only' (skips image/video "
+                "gates, no ComfyUI), 'text_with_cover', 'video_only', 'qa_only', "
+                "'image-carousel', 'social-thread', or 'short-video'. Default 'auto'."
+            )
+        ),
+    ] = "auto",
     # DEPRECATED — kept for backward compatibility, scheduled for removal
-    decision_mode: str = "build",
-    tenant_id: str = "default",
-    resume_from: str = "",
-    auto_resume: bool = False,
-    source_path: str = "",
-    source_url: str = "",
-    workflow: str = "",
-    director: bool = False,
-    platforms: str = "",
-    project_id: str = "",
+    decision_mode: Annotated[
+        str,
+        Field(
+            description=(
+                "Deprecated and ignored: any value other than 'build' logs a "
+                "warning and has no effect; leave at the default."
+            )
+        ),
+    ] = "build",
+    tenant_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Tenant/namespace tag recorded on the project; 'default' when "
+                "you are not isolating tenants."
+            )
+        ),
+    ] = "default",
+    resume_from: Annotated[
+        str,
+        Field(
+            description=(
+                "Gate name to start from, skipping all earlier gates (e.g. 'G2'); "
+                "empty starts at the beginning."
+            )
+        ),
+    ] = "",
+    auto_resume: Annotated[
+        bool,
+        Field(
+            description=(
+                "When true and resume_from is empty, resume after the last passed "
+                "gate found in the project's pipeline history."
+            )
+        ),
+    ] = False,
+    source_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to a .md/.txt/.pdf source document injected into gate "
+                "context; must be under a directory allowed by mcp_allowlist.yaml."
+            )
+        ),
+    ] = "",
+    source_url: Annotated[
+        str,
+        Field(
+            description=(
+                "URL whose fetched content is injected into gate context; "
+                "empty disables URL sourcing."
+            )
+        ),
+    ] = "",
+    workflow: Annotated[
+        str,
+        Field(
+            description=(
+                "Named workflow from .automedia/workflows/ or "
+                "~/.automedia/workflows/ whose mode, platforms, gates, prompts, "
+                "and media spec override the brand profile."
+            )
+        ),
+    ] = "",
+    director: Annotated[
+        bool,
+        Field(
+            description=(
+                "When true, enables director mode (pause_on_approval + director "
+                "HITL preset) so approval gates pause for approve/reject calls."
+            )
+        ),
+    ] = False,
+    platforms: Annotated[
+        str,
+        Field(
+            description=(
+                "Comma-separated target platforms, e.g. 'wechat,xiaohongshu'; "
+                "empty applies all gates for the brand profile's platforms."
+            )
+        ),
+    ] = "",
+    project_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Existing project id to resume (e.g. one parked as "
+                "'awaiting_review'); empty starts a new project."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Execute the full AutoMedia production pipeline in a background thread.
 
@@ -284,9 +386,35 @@ def run_pipeline(
 
 
 def run_batch(
-    topics: list[str],
-    brand: NonEmptyStr,
-    mode: PipelineMode = "auto",
+    topics: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Content topics to run one after another; each becomes its own "
+                "project. A failing topic does not stop the remaining ones."
+            )
+        ),
+    ],
+    brand: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Brand profile name, i.e. the key in brand_profiles.yaml "
+                "(e.g. 'Acme'); applied to every topic in the batch."
+            )
+        ),
+    ],
+    mode: Annotated[
+        PipelineMode,
+        Field(
+            description=(
+                "Pipeline mode applied to every topic: 'auto' (full run), "
+                "'text_only' (no image/video gates), 'text_with_cover', "
+                "'video_only', 'qa_only', 'image-carousel', 'social-thread', "
+                "or 'short-video'. Default 'auto'."
+            )
+        ),
+    ] = "auto",
 ) -> dict[str, Any]:
     """Execute pipelines for multiple topics sequentially.
 
@@ -364,8 +492,25 @@ def run_batch(
 
 
 def get_pipeline_progress(
-    project_id: NonEmptyStr,
-    since_index: int = 0,
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id returned by run_pipeline or run_batch; must be a "
+                "pipeline started in this server process (in-memory tracker)."
+            )
+        ),
+    ],
+    since_index: Annotated[
+        int,
+        Field(
+            description=(
+                "Return only events at or after this 0-based index; use the "
+                "length of the previous response's events to poll incrementally. "
+                "Default 0 returns every event."
+            )
+        ),
+    ] = 0,
 ) -> dict[str, Any]:
     """Get current progress of a running pipeline by project_id.
 
@@ -495,8 +640,25 @@ def list_active_pipelines() -> dict[str, Any]:
 
 
 def get_pipeline_status(
-    project_id: NonEmptyStr,
-    base_dir: str = ".",
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "12-hex project id returned by run_pipeline or list_projects; "
+                "the project must exist under base_dir."
+            )
+        ),
+    ],
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned for project folders; must be within a "
+                "directory allowed by mcp_allowlist.yaml. Default '.' is the "
+                "server's working directory."
+            )
+        ),
+    ] = ".",
 ) -> dict[str, Any]:
     """Return the current status / progress of a pipeline run.
 
@@ -541,9 +703,36 @@ def get_pipeline_status(
 
 
 def get_pipeline_state(
-    project_id: NonEmptyStr,
-    base_dir: str = ".",
-    mode: str = "auto",
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "12-hex project id returned by run_pipeline or list_projects; "
+                "a project with no history yields all-pending gate rows."
+            )
+        ),
+    ],
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned for project folders; must be within a "
+                "directory allowed by mcp_allowlist.yaml. Default '.' is the "
+                "server's working directory."
+            )
+        ),
+    ] = ".",
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "Pipeline mode whose gate list is rendered: 'auto', "
+                "'text_only', 'text_with_cover', 'video_only', 'qa_only', "
+                "'image-carousel', 'social-thread', 'short-video', or "
+                "'repurpose'. Default 'auto'; an unknown mode yields no rows."
+            )
+        ),
+    ] = "auto",
 ) -> dict[str, Any]:
     """Return per-gate pipeline state for a project, with md5.
 
@@ -590,9 +779,35 @@ def get_pipeline_state(
 
 
 def get_gate_report(
-    project_id: NonEmptyStr,
-    base_dir: str = ".",
-    latest: bool = True,
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "12-hex project id returned by run_pipeline or list_projects; "
+                "the project must exist under base_dir."
+            )
+        ),
+    ],
+    base_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory scanned for project folders; must be within a "
+                "directory allowed by mcp_allowlist.yaml (fail-closed). "
+                "Default '.' is the server's working directory."
+            )
+        ),
+    ] = ".",
+    latest: Annotated[
+        bool,
+        Field(
+            description=(
+                "True returns the newest gate-report-*.json under "
+                "05_review/gate-report/. False is not implemented yet and "
+                "returns INVALID_PARAM; leave at the default."
+            )
+        ),
+    ] = True,
 ) -> dict[str, Any]:
     """Return the latest (or a named) gate-report JSON for a project.
 
@@ -680,7 +895,18 @@ def get_gate_report(
         return error_response(MCPErrorCode.UNKNOWN, f"File I/O error: {exc}")
 
 
-def cancel_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+def cancel_pipeline(
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id returned by run_pipeline or run_batch; must still "
+                "be tracked in this server process. Cancellation takes effect "
+                "at the next gate boundary."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Cancel a running pipeline by project_id.
 
     Sets the pipeline's cancellation flag so that the next gate
@@ -708,7 +934,18 @@ def cancel_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
     return success_response({"cancelled": True, "project_id": project_id})
 
 
-def pause_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+def pause_pipeline(
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id returned by run_pipeline or run_batch; must still "
+                "be tracked in this server process. The pause takes effect "
+                "after the current gate completes."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Pause a running pipeline by project_id.
 
     Signals the pipeline to pause after the current gate completes.
@@ -735,7 +972,17 @@ def pause_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
     return success_response({"paused": True, "project_id": project_id})
 
 
-def resume_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
+def resume_pipeline(
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id of a pipeline previously paused with pause_pipeline; "
+                "must still be tracked in this server process."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Resume a paused pipeline by project_id.
 
     Resumes execution of a previously paused pipeline.
@@ -762,7 +1009,27 @@ def resume_pipeline(project_id: NonEmptyStr) -> dict[str, Any]:
     return success_response({"resumed": True, "project_id": project_id})
 
 
-def retry_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any]:
+def retry_gate(
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id returned by run_pipeline or run_batch; must still "
+                "be tracked in this server process."
+            )
+        ),
+    ],
+    gate_name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Gate to re-execute on the next cycle, by id from the run's "
+                "gate plan (e.g. 'G0', 'V3'). The value is not validated here; "
+                "the runner matches it against the plan."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Mark a specific gate for retry in a running pipeline.
 
     Tells the pipeline to re-execute the named gate on its next
@@ -793,7 +1060,27 @@ def retry_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any
     return success_response({"retrying": True, "project_id": project_id, "gate_name": gate_name})
 
 
-def skip_gate(project_id: NonEmptyStr, gate_name: NonEmptyStr) -> dict[str, Any]:
+def skip_gate(
+    project_id: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Project id returned by run_pipeline or run_batch; must still "
+                "be tracked in this server process."
+            )
+        ),
+    ],
+    gate_name: Annotated[
+        NonEmptyStr,
+        Field(
+            description=(
+                "Gate to skip on the next cycle, by id from the run's gate "
+                "plan (e.g. 'G0', 'V3'). The value is not validated here; the "
+                "runner matches it against the plan."
+            )
+        ),
+    ],
+) -> dict[str, Any]:
     """Mark a specific gate for skipping in a running pipeline.
 
     Tells the pipeline to skip the named gate on its next iteration.

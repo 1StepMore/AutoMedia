@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import yaml
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.manifests.model_config_schema import save_model_config
@@ -26,7 +27,19 @@ __all__ = [
 ]
 
 
-def init_config(project_dir: str = "") -> dict[str, Any]:
+def init_config(
+    project_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory where the .automedia/ structure and default "
+                "config.yaml are created; must be under a directory allowed "
+                "by mcp_allowlist.yaml. Empty uses the current working "
+                "directory (no allowlist gate)."
+            )
+        ),
+    ] = "",
+) -> dict[str, Any]:
     """Initialize AutoMedia configuration with sensible defaults.
 
     Creates the ``.automedia/`` directory structure and a default
@@ -97,9 +110,35 @@ def init_config(project_dir: str = "") -> dict[str, Any]:
 
 
 def configure_llm(
-    provider: str = "",
-    model: str = "",
-    api_key: str = "",
+    provider: Annotated[
+        str,
+        Field(
+            description=(
+                "LLM provider name, e.g. 'openai', 'deepseek', 'anthropic'; "
+                "an empty provider is refused (it used to write a config "
+                "that resolves to nothing)."
+            )
+        ),
+    ] = "",
+    model: Annotated[
+        str,
+        Field(
+            description=(
+                "Model identifier, e.g. 'gpt-4o-mini' or 'deepseek-chat'; "
+                "empty writes only the provider."
+            )
+        ),
+    ] = "",
+    api_key: Annotated[
+        str,
+        Field(
+            description=(
+                "API key stored in plaintext in model_config.yaml — prefer "
+                "the AUTOMEDIA_LLM_API_KEY environment variable instead; "
+                "empty omits it."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Configure the LLM provider for AutoMedia.
 
@@ -189,10 +228,39 @@ def configure_llm(
 
 
 def onboard(
-    brand_name: str = "",
-    llm_provider: str = "",
-    llm_key: str = "",
-    base_url: str = "",
+    brand_name: Annotated[
+        str,
+        Field(description=("Brand profile to create, e.g. 'Acme'; empty skips brand creation.")),
+    ] = "",
+    llm_provider: Annotated[
+        str,
+        Field(
+            description=(
+                "LLM provider name, e.g. 'openai' or 'deepseek'; empty skips "
+                "LLM configuration entirely."
+            )
+        ),
+    ] = "",
+    llm_key: Annotated[
+        str,
+        Field(
+            description=(
+                "LLM API key written to model_config.yaml — prefer the "
+                "AUTOMEDIA_LLM_API_KEY environment variable instead; empty "
+                "omits it."
+            )
+        ),
+    ] = "",
+    base_url: Annotated[
+        str,
+        Field(
+            description=(
+                "Custom OpenAI-compatible API base URL, e.g. "
+                "'https://api.example.com/v1'; empty uses the provider "
+                "default endpoint."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """One-step onboarding: configure LLM and create a brand profile.
 

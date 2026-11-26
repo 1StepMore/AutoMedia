@@ -11,8 +11,9 @@ this module provides the MCP tool wrapper that delegates to it.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.mcp.mcp_error import MCPErrorCode, error_response, success_response
@@ -21,11 +22,52 @@ log = get_logger(__name__)
 
 
 def distribute_content(
-    project_id: str,
-    platforms: str | None = None,
-    all: bool = False,
-    dry_run: bool = False,
-    base_dir: str | None = None,
+    project_id: Annotated[
+        str,
+        Field(
+            description=(
+                "12-hex project id returned by run_pipeline or list_projects "
+                "whose content is published directly via PublishEngine."
+            )
+        ),
+    ],
+    platforms: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Comma-separated target platform names, e.g. "
+                "'wechat,zhihu,xiaohongshu'; ignored when all=True. Required "
+                "unless all=True."
+            )
+        ),
+    ] = None,
+    all: Annotated[
+        bool,
+        Field(
+            description=(
+                "True distributes to every registered platform and overrides the platforms list."
+            )
+        ),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        Field(
+            description=(
+                "True validates pre-conditions for each platform without "
+                "publishing; the response carries dry_run=true."
+            )
+        ),
+    ] = False,
+    base_dir: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Directory scanned to resolve project_id; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default projects directory."
+            )
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """Publish a project's content to one or more platforms — directly.
 

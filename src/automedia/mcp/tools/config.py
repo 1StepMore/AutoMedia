@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 import yaml
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.core.paths import get_user_config_dir
@@ -22,7 +23,17 @@ from automedia.mcp.tools._shared import (
 log = get_logger(__name__)
 
 
-def get_config(key: str = "") -> dict[str, Any]:
+def get_config(
+    key: Annotated[
+        str,
+        Field(
+            description=(
+                "Dot-notation config key to read (e.g. 'llm.temperature'); "
+                "omit or pass an empty string to get the whole merged non-secret config."
+            )
+        ),
+    ] = "",
+) -> dict[str, Any]:
     """Return merged configuration settings (excluding secrets).
 
     When *key* is empty, returns all non-secret config keys.  When *key*
@@ -78,9 +89,23 @@ def get_config(key: str = "") -> dict[str, Any]:
 
 
 def update_engine_config(
-    modality: EngineModality,
-    setting: str,
-    value: str,
+    modality: Annotated[
+        EngineModality,
+        Field(description="Engine to configure: 'tts', 'asr', 'image', or 'video'."),
+    ],
+    setting: Annotated[
+        str,
+        Field(
+            description=(
+                "Setting name under the modality, e.g. 'default', 'voice', "
+                "'host', 'port', or 'model'."
+            )
+        ),
+    ],
+    value: Annotated[
+        str,
+        Field(description="Value written verbatim for that setting in a YAML override file."),
+    ],
 ) -> dict[str, Any]:
     """Update an engine configuration setting.
 

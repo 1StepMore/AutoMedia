@@ -39,9 +39,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import Context
+from pydantic import Field
 
 from automedia.mcp.mcp_error import (
     MCPErrorCode,
@@ -140,9 +141,36 @@ def list_validation_scenarios() -> dict[str, Any]:
 
 
 async def run_validation_scenario(
-    scenario_name: str,
-    runs_root: str = DEFAULT_RUNS_ROOT,
-    save: bool = True,
+    scenario_name: Annotated[
+        str,
+        Field(
+            description=(
+                "Scenario name to run, as listed by list_validation_scenarios "
+                "(e.g. 'run-pipeline-text-only'). Required: an empty or "
+                "unknown name is rejected before any dispatch."
+            )
+        ),
+    ],
+    runs_root: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory to persist the run record under (scenarios.json "
+                "plus a latest.txt pointer), relative to the repo root unless "
+                "absolute; created on demand when save=True. Default "
+                "'validation-runs'."
+            )
+        ),
+    ] = DEFAULT_RUNS_ROOT,
+    save: Annotated[
+        bool,
+        Field(
+            description=(
+                "Persist the run record under runs_root when true (default); "
+                "false runs the scenario without writing anything."
+            )
+        ),
+    ] = True,
     context: Context | None = None,
 ) -> dict[str, Any]:
     """Run ONE named validation scenario in-process against this server.
@@ -209,9 +237,35 @@ async def run_validation_scenario(
 
 
 async def run_validation_suite(
-    scenarios_dir: str | None = None,
-    runs_root: str = DEFAULT_RUNS_ROOT,
-    save: bool = True,
+    scenarios_dir: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Existing directory holding the scenario library to run; omit "
+                "to use the committed scenarios/ library. A path that is not "
+                "an existing directory is rejected with INVALID_PARAM."
+            )
+        ),
+    ] = None,
+    runs_root: Annotated[
+        str,
+        Field(
+            description=(
+                "Directory to persist the suite record under (scenarios.json "
+                "plus a latest.txt pointer); default 'validation-runs'. Only "
+                "used when save=True."
+            )
+        ),
+    ] = DEFAULT_RUNS_ROOT,
+    save: Annotated[
+        bool,
+        Field(
+            description=(
+                "Persist one suite record under runs_root when true (default); "
+                "false runs the library without writing anything."
+            )
+        ),
+    ] = True,
     context: Context | None = None,
 ) -> dict[str, Any]:
     """Run the WHOLE scenario library in-process; persist one suite record.
@@ -267,8 +321,24 @@ async def run_validation_suite(
 
 
 def get_validation_report(
-    run_dir: str | None = None,
-    runs_root: str = DEFAULT_RUNS_ROOT,
+    run_dir: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Name of a run directory under runs_root to read; omit (or "
+                "pass empty) to read the latest run named by latest.txt."
+            )
+        ),
+    ] = None,
+    runs_root: Annotated[
+        str,
+        Field(
+            description=(
+                "Root directory holding run records; default 'validation-runs'. "
+                "Set it when the run was saved somewhere else."
+            )
+        ),
+    ] = DEFAULT_RUNS_ROOT,
 ) -> dict[str, Any]:
     """Read a persisted validation run record.
 

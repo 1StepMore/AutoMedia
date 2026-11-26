@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from structlog import get_logger
 
 from automedia.core.layout import DRAFTS
@@ -21,9 +22,28 @@ log = get_logger(__name__)
 
 
 def extract_brief(
-    file_path: str,
-    source_lang: str = "auto",
-    target_lang: str = "en",
+    file_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the source document (.md/.txt/.pdf) to extract a "
+                "brief from; must be under a directory allowed by "
+                "mcp_allowlist.yaml."
+            )
+        ),
+    ],
+    source_lang: Annotated[
+        str,
+        Field(
+            description=(
+                "Source language code, e.g. 'zh'; 'auto' lets the extractor detect the language."
+            )
+        ),
+    ] = "auto",
+    target_lang: Annotated[
+        str,
+        Field(description=("Target language code for extraction, e.g. 'en' (default).")),
+    ] = "en",
 ) -> dict[str, Any]:
     """Extract a content brief from a document file using OPP.
 
@@ -83,9 +103,23 @@ def extract_brief(
 
 
 def localize_content(
-    md_content: str,
-    source_lang: str,
-    target_lang: str,
+    md_content: Annotated[
+        str,
+        Field(
+            description=(
+                "Markdown text to translate, passed through the OL "
+                "shield → LLM-translate → repair → unshield pipeline."
+            )
+        ),
+    ],
+    source_lang: Annotated[
+        str,
+        Field(description=("Language code of the input, e.g. 'zh' or 'ja'.")),
+    ],
+    target_lang: Annotated[
+        str,
+        Field(description=("Language code to translate into, e.g. 'en'.")),
+    ],
 ) -> dict[str, Any]:
     """Translate markdown content from source to target language.
 
@@ -144,9 +178,35 @@ def localize_content(
 
 
 def localize_output(
-    project_dir: str,
-    target_langs: str,
-    source_lang: str = "",
+    project_dir: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the project root; its 01_content/drafts/*.md files "
+                "are translated and written to 06_publish/{lang}/. Must be "
+                "under a directory allowed by mcp_allowlist.yaml."
+            )
+        ),
+    ],
+    target_langs: Annotated[
+        str,
+        Field(
+            description=(
+                "Comma-separated target language codes, e.g. 'en,ja'; each "
+                "draft is translated into every listed language."
+            )
+        ),
+    ],
+    source_lang: Annotated[
+        str,
+        Field(
+            description=(
+                "Source language code; empty resolves from config "
+                "content.default_language (zh). The literal 'auto' is never "
+                "passed to the translator."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Translate all project drafts into multiple target languages.
 
@@ -320,9 +380,33 @@ def localize_output(
 
 
 def format_output(
-    content: str,
-    target_format: str,
-    **options: Any,  # noqa: ANN401 — pass-through to ORFAdapter.convert()
+    content: Annotated[
+        str,
+        Field(
+            description=(
+                "Markdown source text to convert; written to a temp file "
+                "before ORFAdapter.convert() runs."
+            )
+        ),
+    ],
+    target_format: Annotated[
+        str,
+        Field(
+            description=(
+                "Output format identifier, e.g. 'html' or 'pdf'; must be one "
+                "of the allowlisted formats and contain no path separators."
+            )
+        ),
+    ],
+    **options: Annotated[
+        dict[str, Any],
+        Field(
+            description=(
+                "Additional keyword arguments forwarded verbatim to "
+                "ORFAdapter.convert() as converter options."
+            )
+        ),
+    ],
 ) -> dict[str, Any]:
     """Convert content to the specified output format.
 

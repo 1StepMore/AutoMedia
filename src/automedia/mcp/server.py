@@ -29,8 +29,9 @@ Usage::
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
+from pydantic import Field
 from structlog import get_logger
 from structlog.contextvars import bind_contextvars, clear_contextvars, get_contextvars
 
@@ -320,9 +321,33 @@ def help_mcp() -> dict[str, Any]:
 
 
 def add_pool_topic(
-    title: str,
-    category: str = "",
-    pool_db_path: str = "",
+    title: Annotated[
+        str,
+        Field(
+            description=(
+                "Topic title to add to the pool (deduplicated later by "
+                "TopicDeduplicator on research inserts)."
+            )
+        ),
+    ],
+    category: Annotated[
+        str,
+        Field(
+            description=(
+                "Category label stored with the topic, e.g. 'tech'; empty leaves it uncategorised."
+            )
+        ),
+    ] = "",
+    pool_db_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Path to the topic-pool SQLite database; must be under a "
+                "directory allowed by mcp_allowlist.yaml. Empty uses the "
+                "default pool location."
+            )
+        ),
+    ] = "",
 ) -> dict[str, Any]:
     """Add a topic to the topic pool."""
     from automedia.mcp.tools import add_pool_topic as _impl
@@ -331,9 +356,35 @@ def add_pool_topic(
 
 
 def run_batch(
-    topics: list[str],
-    brand: str,
-    mode: str = "auto",
+    topics: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Content topics to run one after another; each becomes its own "
+                "project. A failing topic does not stop the remaining ones."
+            )
+        ),
+    ],
+    brand: Annotated[
+        str,
+        Field(
+            description=(
+                "Brand profile name, i.e. the key in brand_profiles.yaml "
+                "(e.g. 'Acme'); applied to every topic in the batch."
+            )
+        ),
+    ],
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "Pipeline mode applied to every topic: 'auto' (full run), "
+                "'text_only' (no image/video gates), 'text_with_cover', "
+                "'video_only', 'qa_only', 'image-carousel', 'social-thread', "
+                "or 'short-video'. Default 'auto'."
+            )
+        ),
+    ] = "auto",
 ) -> dict[str, Any]:
     """Execute pipelines for multiple topics sequentially."""
     from automedia.mcp.tools import run_batch as _impl
