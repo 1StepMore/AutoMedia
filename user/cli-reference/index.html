@@ -1194,6 +1194,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#projects-get-assets-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        projects get-assets Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projects-get-assets-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        projects get-assets Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1784,6 +1806,28 @@
     <span class="md-ellipsis">
       
         Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate-sign-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate sign Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate-sign-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate sign Flags
       
     </span>
   </a>
@@ -3698,6 +3742,9 @@ automedia<span class="w"> </span>projects<span class="w"> </span>list<span class
 
 <span class="c1"># View specific project details</span>
 automedia<span class="w"> </span>projects<span class="w"> </span>get<span class="w"> </span>&lt;project-id&gt;
+
+<span class="c1"># List a project's asset files (paths in the project dir)</span>
+automedia<span class="w"> </span>projects<span class="w"> </span>get-assets<span class="w"> </span>&lt;project-id&gt;
 </code></pre></div>
 <h3 id="subcommands_2">Subcommands<a class="headerlink" href="#subcommands_2" title="Permanent link">&para;</a></h3>
 <table>
@@ -3764,6 +3811,44 @@ automedia<span class="w"> </span>projects<span class="w"> </span>get<span class=
 <td><code>project_id</code></td>
 <td><code>str</code></td>
 <td>Project ID (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="projects-get-assets-arguments">projects get-assets Arguments<a class="headerlink" href="#projects-get-assets-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td><code>str</code></td>
+<td>Project ID to list assets for (required)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="projects-get-assets-flags">projects get-assets Flags<a class="headerlink" href="#projects-get-assets-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--base-dir</code></td>
+<td><code>-d</code></td>
+<td><code>str</code></td>
+<td><code>.</code></td>
+<td>Base directory to scan for projects</td>
 </tr>
 </tbody>
 </table>
@@ -4703,6 +4788,54 @@ automedia<span class="w"> </span>validate<span class="w"> </span>matrix
 <tr>
 <td><code>sign</code></td>
 <td>Record the director's sign-off on a run (appends to <code>signed.txt</code>; missing run/empty or multi-line verdict exits 1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validate-sign-arguments">validate sign Arguments<a class="headerlink" href="#validate-sign-arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td><code>str</code></td>
+<td>Run directory name to sign; required (a missing or empty name exits 1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validate-sign-flags">validate sign Flags<a class="headerlink" href="#validate-sign-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--verdict</code></td>
+<td><code>str</code></td>
+<td><code>approved</code></td>
+<td>Free-form <strong>single-line</strong> verdict (e.g. <code>approved</code>, <code>rejected</code>); empty or multi-line exits 1</td>
+</tr>
+<tr>
+<td><code>--signer</code></td>
+<td><code>str</code></td>
+<td><code>director</code></td>
+<td>Signer name recorded on the sign-off line</td>
+</tr>
+<tr>
+<td><code>--runs-root</code></td>
+<td><code>str</code></td>
+<td><code>validation-runs</code></td>
+<td>Directory of immutable run records (gitignored)</td>
 </tr>
 </tbody>
 </table>
