@@ -65,6 +65,7 @@ Agent, per tier:
 ```bash
 # 1) Python package (tier extra):
 pip install -e ".[openai,rich]"        # Text tier (anthropic extra if that is your provider)
+pip install -e ".[openai,rich,mcp]"    # Text tier + MCP server (needed for the 64 MCP tools)
 pip install -e ".[all]"                # Video tier (adds mcp, omni, …)
 
 # 2) External tools — print per-OS install commands for whatever is missing:
@@ -176,6 +177,10 @@ them proactively; humans: this is your whole job description.
 
 Automation levels per brand decide how much of this still asks: see
 [hitl-framework](docs/user/hitl-framework.md).
+
+Rows marked **(MCP)** need the `mcp` extra (`pip install -e ".[mcp]"`); on a
+Text-tier install without it the MCP server cannot start, and
+`automedia mcp discover` will say so instead of printing a configuration that dies.
 
 ---
 

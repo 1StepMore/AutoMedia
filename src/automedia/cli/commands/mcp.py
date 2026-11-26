@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 from typing import Any
@@ -9,6 +10,24 @@ from typing import Any
 import typer
 
 from automedia._version import __version__
+
+
+def _mcp_sdk_available() -> bool:
+    """Whether the optional ``mcp`` SDK is importable in THIS interpreter.
+
+    ``pyproject.toml`` keeps ``mcp`` in its own extra, so ``.[openai,rich]``
+    installs no MCP server at all. Emitting a configuration in that state hands
+    the agent a server that dies on import (#702), which is worse than saying so.
+    """
+    return importlib.util.find_spec("mcp") is not None
+
+
+_INSTALL_HINT = (
+    "MCP server dependencies are not installed in this interpreter, so the "
+    "configuration below would not start (ModuleNotFoundError: No module named 'mcp').\n"
+    "  Install them with: pip install -e '.[mcp]'   (or '.[all]' for every extra)\n"
+    "  Then re-run: automedia mcp discover"
+)
 
 app = typer.Typer(
     name="mcp",
@@ -90,7 +109,14 @@ def mcp_discover(
     Prints the MCP server configuration snippet for the specified client.
     Use this to quickly configure your agent tool to connect to AutoMedia's
     MCP server.
+
+    Refuses to print a configuration when the ``mcp`` SDK is missing: the server
+    would die on import inside the agent, where the cause is invisible.
     """
+    if not _mcp_sdk_available():
+        typer.echo(_INSTALL_HINT, err=True)
+        raise typer.Exit(code=1)
+
     if client == "all":
         result: dict[str, Any] = {"version": __version__, "configurations": {}}
         for c_name, c_config in _CLIENT_CONFIGS.items():
