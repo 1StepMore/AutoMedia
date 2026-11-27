@@ -45,6 +45,8 @@ Contract, blocker classes (E1–E6), harness-side checklist and the DoD matrix r
 - **Key Dependencies:** typer (CLI), mcp (Python SDK), Pydantic 2.x, PyYAML, tenacity, Pillow
 - **License:** MIT
 - **Install:** `pip install -e ".[all]"` (full capability, includes the omni extras) or `pip install -e ".[mcp]"` (MCP only). `.[dev]` is the development set — it omits `omni`. See README for prerequisites and all extras.
+- **Windows prerequisites:** the per-platform install table lives in README only — Python 3.11+ Windows row is `winget install Python.Python.3.11` (README.md:138); deliberately not duplicated here (single source, avoid drift).
+- **Install self-check:** run `automedia doctor` — healthy = all rows ✓ incl. `llm_api yes API reachable`, exit 0; that row ✗ = no usable key (fake mode reports `fake LLM mode active`) → follow the §11b ladder, escalate `blocked:no-llm-key` when asking a human for credentials.
 
 ## 2. Three Entry Points
 | Layer | Command | Description |
