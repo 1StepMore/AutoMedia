@@ -3954,7 +3954,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Human: score pending topics</strong></td>
-<td><code>automedia pool score</code> — runs scoring algorithm on all pending topics</td>
+<td><code>automedia pool score</code> — runs scoring algorithm on all pending topics.<strong>未实现</strong>：<code>pool</code> 只有 <code>list/add/prune/attach-brief</code>，MCP 也无打分工具（登记 AutoMedia#722）</td>
 </tr>
 <tr>
 <td><strong>Agent: add a topic</strong></td>
@@ -4920,7 +4920,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Human monitoring</strong></td>
-<td><code>automedia cron list</code> to see past runs. Agent uses <code>get_cron_health</code> (when implemented) to report proactively.</td>
+<td><code>automedia cron list</code> — <strong>未实现</strong>（<code>cron</code> 只有 <code>run/run-pipeline/check-health</code>）；查过去运行用 <code>automedia cron check-health</code>，agent 侧用 MCP <code>list_cron_schedules</code> / <code>get_cron_health</code>（AutoMedia#722）。</td>
 </tr>
 </tbody>
 </table>
@@ -5121,7 +5121,7 @@ Expectations are grouped by journey phase.</p>
 </tr>
 <tr>
 <td><strong>Manual verification</strong></td>
-<td><code>automedia projects verify &lt;project-id&gt;</code> or MCP equivalent — re-checksums all files against stored values.</td>
+<td><code>automedia projects verify &lt;project-id&gt;</code> — <strong>未实现</strong>（<code>projects</code> 只有 <code>list/get/get-assets</code>，无 MCP verify 工具）；当前只能人工比对 <code>pipeline_md5.json</code>（AutoMedia#722）。</td>
 </tr>
 <tr>
 <td><strong>Verification result</strong></td>
