@@ -70,7 +70,7 @@ the latest schema, directory layout, and file format in one shot.
 
 What this adds over v2:
 
-- A CLI command `automedia project migrate <project-dir>` upgrades the project
+- **计划中（未实现）**：A CLI command `automedia project migrate <project-dir>` upgrades the project
   in place.
 - Migration is idempotent: running it twice produces the same result as
   running it once.
