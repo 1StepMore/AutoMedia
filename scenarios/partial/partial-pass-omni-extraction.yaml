@@ -1,20 +1,16 @@
 # Partial-pass integration scenario (gap R-04) — graceful degradation.
 #
 # Multi-step integration: a produced fixture artifact is inspected, the OPP
-# extraction surface runs against it (both PASS), and the same surface is
-# probed with a path outside the committed MCP allowlist (RED — the call
-# returns a structured path-deny error).  min_passing 2 lets the scenario
-# report `partial-pass` while the run record still names every failed step.
-#
-# The RED step asserts `success: true` on purpose: the capability is expected
-# to succeed, and the denied-source probe records the honest degradation a
-# restricted host sees.  partial-pass NEVER hides it — the failed step
-# and its expect failure stay in the record, and the director must review a
-# partial-pass run before anything ships (guide §2.7).
+# extraction surface runs against it, and the same surface is probed with a
+# path outside the committed MCP allowlist.  The allowlist's fail-closed
+# refusal IS the degradation the product owes for an out-of-policy source,
+# so the probe asserts it directly (success: false, #719) instead of
+# contradicting it with expect.success — the same path-deny contract the
+# red-team scenarios pin.
 
 name: partial-pass-omni-extraction
-description: "A multi-step OPP extraction integration degrades gracefully: the fixture artifact and a real extraction pass, a denied-source extraction fails, and min_passing 2 yields partial-pass with the failed step listed."
-intent: "Exercise the partial-success policy (gap R-04) on a real integration: prove a partial-pass run lists every failed step and never hides the degradation behind a passing verdict."
+description: "A multi-step OPP extraction integration degrades gracefully: the fixture artifact and a real extraction pass, and a denied-source extraction is refused with success: false — every leg asserts the behaviour the product actually owes."
+intent: "Exercise graceful degradation on a real integration (gap R-04): an out-of-allowlist source is refused fail-closed and stays named in the record instead of being masked."
 category: partial
 user_level: L1
 requires_env: []
@@ -46,11 +42,12 @@ steps:
         - md_content
   - name: OPP extraction degrades on a denied source
     kind: tool
-    check: "extract_brief on a path outside the committed MCP allowlist returns success: false (the path-deny contract). This step asserts success: true so the degradation is RED in the record — partial-pass retains it, it never hides the failure."
+    check: "extract_brief on a path outside the committed MCP allowlist returns success: false instead of reading the file — the fail-closed allowlist refusal is the expected degradation, asserted directly like the red-team path-deny steps (#719)."
     standard: tool.contract
     tool: extract_brief
     arguments:
       file_path: /tmp/opencode/partial-pass-denied-source.md
     timeout_seconds: 60
     expect:
-      success: true
+      success: false
+      error_expected: true
