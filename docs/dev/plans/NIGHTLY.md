@@ -85,6 +85,17 @@ cd <repo>
 
 ## 【活区】当前差距矩阵（基线 2026-09-30）
 
+### 2026-11-27 夜间复跑（在最新 main `386c4ff5` 上）
+
+批跑（02:00，systemd，网关进程树外）判 **三轨全达标**，但当晚 base 同步 `FETCH_FAILED`，矩阵实际测在 `0926d4c`。本机随后 `git fetch --unshallow` 成功（本地副本是 shallow 仓，直接 `merge --ff-only` 会报 `refusing to merge unrelated histories`）并快进到 **`386c4ff5`**（含 #714 release 1.18.0、#715 MCP factory-state 修复），**在最新 main 上重跑** `scripts/nightly_gap.py` ⇒ **三轨全达标**（`total_units 3` / `passing_units 3` / `gap: []`），`bench：main@386c4ff5`、`bench_state：main`（11-23 那行还是非 main 的 `fix/638-v1-evidence@dbc9fc5`）。
+
+- 达标证据：文本轨 4 个（`20261103_沈阳中小企业内容营销越做越累`、`20261122_test-topic`、`20261124_内容创作自动化小团队把重复工作交给流程把判断留给人`、`20261121_automated-content-pipelines-for-solo-founders`）；图文轨 3 个（`20261122_test-topic`、`20261124_…`、`20261121_…`）；视频轨 1 个（`20261124_…`）。
+- 项目目录 **31** 个（真模型 `cost_log` 非空 **12** 个）；历史债务 5 个（不参与判定，逐条见 `nightly/gap.md`）。
+- 验证矩阵：165 条场景（passed 147 / unconfigured 13 / partial-pass 3 / None 1 / recovered 1）；hard 10 条全部执行且通过（已执行-失败 0、未执行 0）；门：missing 0 / unreachable 0（名单读取失败，见 validate coverage 段）。
+- 与 2026-11-23 对照：11-23 是 2/3 轨（视频轨 ❌，判红为 V3 未过 / 无 gate-report / gate 报告缺项 / 渲染降级）；本轮三轨 ✅，上述判红构成在本轮判定窗口内**未再出现**。口径提醒：达标证据来自窗口内的历史项目目录，**不等于**视频引擎在 11-27 当场重跑过。
+- 台账口径备注：`nightly/gap.md` 头部的 bench 行取 `99-Tools/nightly/artifacts/base.json` 的 `after`，当晚 `FETCH_FAILED` 时它是旧 sha；本行以重跑后 `bench_state=main` 的读数为准（属 B8 同源的账本新鲜度问题，本轮未改脚本）。
+- **最终裁决仍由 owner 保留**（见【冻结区】）。
+
 ### 2026-11-23 夜间复跑（bench `fix/638-v1-evidence@dbc9fc5` —— **非 main**）
 
 批跑（02:00，systemd，网关进程树外）：**2 / 3 轨达标，视频轨未达标**（`nightly/gap.json`：`total_units 3` / `passing_units 2` / `gap: ["视频轨"]`）—— 文本轨 3 个达标（`20261103_沈阳中小企业内容营销越做越累`、`20261122_test-topic`、`20261121_automated-content-pipelines-for-solo-founders`）、图文轨 2 个达标（`20261122_test-topic`、`20261121_automated-content-pipelines-for-solo-founders`）、视频轨 0 个。
