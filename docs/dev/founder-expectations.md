@@ -273,7 +273,7 @@ Expectations are grouped by journey phase.
 |-----------|---------------|
 | **Human: add a topic** | `automedia pool add --title "AI视频工具对比" --category tech` |
 | **Human: list pool** | `automedia pool list` — shows all topics with status (pending/scored/production/archived) |
-| **Human: score pending topics** | `automedia pool score` — runs scoring algorithm on all pending topics |
+| **Human: score pending topics** | `automedia pool score` — runs scoring algorithm on all pending topics.**未实现**：`pool` 只有 `list/add/prune/attach-brief`，MCP 也无打分工具（登记 AutoMedia#722） |
 | **Agent: add a topic** | `add_pool_topic(title="AI video tools", category="tech")` (previously `pool_add_topic`) |
 | **Agent: list pool** | `list_topic_pool(status="pending", category="tech")` — filtered query |
 | **Agent: select best topic** | `select_topic(category="tech")` — returns single highest-scored topic, auto-marks as "in_production" |
@@ -627,7 +627,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | **Agent: verify cron health** | `get_cron_health()` tool returns cron daemon status, last trigger time, next scheduled trigger, missed triggers count. Agent can proactively report: "Cron is healthy. Next trigger: tomorrow 9:00 AM for daily-tech." |
 | **Agent: test schedule** | `test_cron_schedule(expression="0 9 * * *")` tool returns the next N trigger times, validates cron expression syntax. Agent can confirm before setting up a schedule. |
 | **Implementation status** | ✅ All 5 cron MCP tools implemented: `add_cron_schedule`, `list_cron_schedules`, `remove_cron_schedule`, `get_cron_health`, `test_cron_schedule`. External crond triggers `automedia cron run`. |
-| **Human monitoring** | `automedia cron list` to see past runs. Agent uses `get_cron_health` (when implemented) to report proactively. |
+| **Human monitoring** | `automedia cron list` — **未实现**（`cron` 只有 `run/run-pipeline/check-health`）；查过去运行用 `automedia cron check-health`，agent 侧用 MCP `list_cron_schedules` / `get_cron_health`（AutoMedia#722）。 |
 
 #### F38 — Customizable Topic Pipeline ✅
 
@@ -706,7 +706,7 @@ Platform → content type mapping is automatic: text-first platforms → text co
 | UX Detail | Specification |
 |-----------|---------------|
 | **Automatic verification** | After each pipeline run, `pipeline_md5.json` is generated with checksums of all output files. Validation runs automatically on completion. |
-| **Manual verification** | `automedia projects verify <project-id>` or MCP equivalent — re-checksums all files against stored values. |
+| **Manual verification** | `automedia projects verify <project-id>` — **未实现**（`projects` 只有 `list/get/get-assets`，无 MCP verify 工具）；当前只能人工比对 `pipeline_md5.json`（AutoMedia#722）。 |
 | **Verification result** | `✅ 完整性验证通过 (12/12 文件匹配)` or `❌ 3 个文件被修改或丢失: [01_content/draft.md, 03_video/output.mp4]` |
 | **Agent action on failure** | If integrity check fails, agent reports: "项目 X 的完整性检查失败 — 3 个文件已被修改。建议重新运行或从备份恢复。" |
 | **Cross-project integrity** | Not applicable — each project has its own `pipeline_md5.json`. No cross-project verification. |
