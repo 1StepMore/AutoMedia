@@ -364,15 +364,19 @@ class CLIAdapter:
     cron schedule config (cli/commands/cron.py:321).
     """
 
-    def run(self, step: Step) -> StepResult:
+    def run(self, step: Step, *, cwd: Path | None = None) -> StepResult:
         """Run the command; capture exit code, stdout, and stderr.
 
         ``step.command`` is expanded with :func:`os.path.expandvars` (so a
         sandboxed scenario can reference ``${AUTOMEDIA_PROJECTS_DIR}``) and the
         child inherits the engine's environment, which carries the sandbox
-        directories (#333/#334).  A leading bare ``automedia`` token resolves
-        to ``sys.executable -m automedia`` so steps do not depend on the
-        console script being on the child's PATH (#564).
+        directories (#333/#334).  ``cwd`` (when given) is the engine's
+        scenario base — the repository root for every CLI/MCP run — so a
+        relative command such as ``python3 scripts/...`` resolves the same
+        way no matter where the caller launched the process (#718).  A leading
+        bare ``automedia`` token resolves to ``sys.executable -m automedia``
+        so steps do not depend on the console script being on the child's
+        PATH (#564).
         """
         command = step.command
         if command is None:
@@ -413,7 +417,7 @@ class CLIAdapter:
             # the token is left untouched.
             parts = [_resolve_posix_util(parts[0]), *parts[1:]]
         try:
-            proc = self._run_process(parts, timeout, shell)
+            proc = self._run_process(parts, timeout, shell, cwd)
         except subprocess.TimeoutExpired as exc:
             # Coerce via a local first: mypy 1.13 (pre-commit pin) does not
             # propagate the isinstance narrowing into a call argument written
@@ -454,7 +458,10 @@ class CLIAdapter:
 
     @staticmethod
     def _run_process(
-        parts: str | list[str], timeout: float, shell: bool
+        parts: str | list[str],
+        timeout: float,
+        shell: bool,
+        cwd: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """The single subprocess choke point (trusted scenario commands).
 
@@ -470,6 +477,7 @@ class CLIAdapter:
             timeout=timeout,
             shell=shell,  # nosec B602 — trusted committed scenario config
             check=False,
+            cwd=cwd,
             env=_scenario_env(),
         )
         return subprocess.CompletedProcess(
@@ -514,12 +522,19 @@ class FileAdapter:
     than :data:`_JSON_PARSE_LIMIT` are never read (facts only).
     """
 
-    def run(self, step: Step) -> StepResult:
-        """Inspect the artifact named by ``step.command``; never raises."""
+    def run(self, step: Step, *, cwd: Path | None = None) -> StepResult:
+        """Inspect the artifact named by ``step.command``; never raises.
+
+        A relative path resolves against ``cwd`` (the engine's scenario base —
+        the repository root for CLI/MCP runs) so artifact facts do not depend
+        on the caller's launch directory (#718).
+        """
         command = step.command
         if command is None:
             return StepResult(False, {"success": False, "error": "file step without a path"})
         path = Path(os.path.expandvars(command)).expanduser()
+        if not path.is_absolute():
+            path = (cwd if cwd is not None else Path.cwd()) / path
         pattern = step.expect.artifact_glob
         base_dir = path if path.is_dir() else path.parent
         if pattern is not None:
