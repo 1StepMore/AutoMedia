@@ -173,12 +173,14 @@ def _local_redact(value: object) -> object:
     }
 
 
-async def _dispatch(step: Step, adapters: Adapters) -> tuple[dict[str, object], bool]:
+async def _dispatch(step: Step, adapters: Adapters, *, cwd: Path) -> tuple[dict[str, object], bool]:
     """Phase 2: turn one step into one real call; never raises.
 
     Returns ``(output, ok)``.  Tool steps go through the async adapter path
     wrapped in ``asyncio.wait_for`` (timeout -> failed); cli/file steps run
-    synchronously — CLIAdapter enforces its own timeout.
+    synchronously — CLIAdapter enforces its own timeout.  ``cwd`` is the
+    scenario base (repository root) so CLI steps run there, not in whatever
+    directory the caller happened to launch from (#718).
     """
     adapter = adapters.get(step.kind)
     if adapter is None:
@@ -197,7 +199,11 @@ async def _dispatch(step: Step, adapters: Adapters) -> tuple[dict[str, object], 
         except TimeoutError:  # asyncio.TimeoutError == builtin TimeoutError (3.11+)
             return {"success": False, "error": f"timed out after {timeout:g}s"}, False
         return result.output, result.ok
-    result = adapter.run(step)
+    result = (
+        adapter.run(step, cwd=cwd)
+        if isinstance(adapter, (CLIAdapter, FileAdapter))
+        else adapter.run(step)
+    )
     return result.output, result.ok
 
 
@@ -216,7 +222,7 @@ async def _execute_step(
     expect block is empty (an aborted call is not evidence).
     """
     start = time.monotonic()
-    output, ok = await _dispatch(step, adapters)
+    output, ok = await _dispatch(step, adapters, cwd=cwd)
     duration = round(time.monotonic() - start, 3)
     expect_result = evaluate_expect(step.expect, output, step=step, cwd=cwd)
     passed = ok and expect_result.passed

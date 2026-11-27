@@ -56,6 +56,8 @@ from automedia.validation.engine import (
     run_validation_suite_async,
 )
 from automedia.validation.loader import LoadError, load_scenarios
+from automedia.validation.paths import DEFAULT_RUNS_ROOT
+from automedia.validation.paths import repo_root as _repo_root
 from automedia.validation.persist import (
     PersistError,
     latest_run,
@@ -65,19 +67,6 @@ from automedia.validation.persist import (
     write_latest_pointer,
 )
 from automedia.validation.schema import Scenario
-
-DEFAULT_RUNS_ROOT = "validation-runs"
-"""Default runs root shared by the run/report tools (CLI parity)."""
-
-
-def _repo_root() -> Path:
-    """Repo root from this module's location (engine cwd for all MCP runs).
-
-    Passing the repo root makes a run's relative artifact/expect paths resolve
-    identically to the CLI path (which runs from the repo root), so MCP records
-    and CLI records describe the same evidence (gap Tr-05).
-    """
-    return Path(__file__).resolve().parents[3]
 
 
 def _status_hint(scenario: Scenario) -> str:
