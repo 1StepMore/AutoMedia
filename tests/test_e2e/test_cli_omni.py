@@ -20,6 +20,15 @@ pytestmark = pytest.mark.e2e
 
 runner = CliRunner()
 
+# ``omni localize`` stamps translation frontmatter before writing (L4 requires
+# source_lang/target_lang), so on-disk files are frontmatter + blank line + body.
+_SOURCE_LANG = "zh"  # content.default_language default
+
+
+def _localised(expected_body: str, target_lang: str) -> str:
+    """Expected on-disk content of a localised file for *target_lang*."""
+    return f"---\nsource_lang: {_SOURCE_LANG}\ntarget_lang: {target_lang}\n---\n\n{expected_body}"
+
 
 # =========================================================================
 # 1. automedia omni localize — full pipeline and error handling
@@ -61,8 +70,8 @@ def test_localize_full_pipeline(tmp_path: Path) -> None:
     ja_file = tmp_path / "06_publish" / "ja" / "article.md"
     assert en_file.exists(), f"Expected {en_file} to exist"
     assert ja_file.exists(), f"Expected {ja_file} to exist"
-    assert en_file.read_text(encoding="utf-8") == "# Hello World in English"
-    assert ja_file.read_text(encoding="utf-8") == "# こんにちは世界"
+    assert en_file.read_text(encoding="utf-8") == _localised("# Hello World in English", "en")
+    assert ja_file.read_text(encoding="utf-8") == _localised("# こんにちは世界", "ja")
 
     # Files from 06_publish/en/ match the input file name
     assert en_file.name == "article.md"
@@ -128,7 +137,7 @@ def test_localize_translation_failure(tmp_path: Path) -> None:
         )
         assert result.exit_code == 1
         assert "Translation failed" in result.output
-        assert "No files were produced" in result.output
+        assert "Localisation failed for 1 file(s) (kept 0)" in result.output
 
 
 def test_localize_single_language(tmp_path: Path) -> None:
@@ -156,7 +165,7 @@ def test_localize_single_language(tmp_path: Path) -> None:
 
         fr_file = tmp_path / "06_publish" / "fr" / "article.md"
         assert fr_file.exists()
-        assert fr_file.read_text(encoding="utf-8") == "# Bonjour"
+        assert fr_file.read_text(encoding="utf-8") == _localised("# Bonjour", "fr")
 
         # No other language directories should have been created
         assert not (tmp_path / "06_publish" / "en").exists()
