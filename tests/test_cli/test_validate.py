@@ -20,6 +20,8 @@ import pytest
 from typer.testing import CliRunner
 
 from automedia.cli.app import app
+from automedia.cli.commands import validate as validate_commands
+from automedia.validation import paths as validation_paths
 from automedia.validation.persist import list_runs, persist_run, write_latest_pointer
 
 runner = CliRunner()
@@ -1045,3 +1047,95 @@ class TestValidateSign:
         data = json.loads(result.output)
         assert data["run"] == name
         assert data["verdict"] == "approved"
+
+
+# =========================================================================
+# validate cwd independence (#718)
+# =========================================================================
+
+_CWD_ANCHORED_SCENARIO = """\
+name: synth-cwd-anchored
+description: A scenario whose step only passes from the repository root.
+intent: Regression for #718 — step cwd must not follow the process cwd.
+user_level: L0
+category: cwd-anchor
+requires_env: []
+steps:
+  - name: repo-relative files exist
+    kind: cli
+    check: pyproject.toml and the package resolve from the repository root
+    standard: founder-expectations.F02
+    command: test -f src/automedia/validation/paths.py
+    timeout_seconds: 30
+    expect:
+      exit_code: 0
+"""
+
+
+class TestValidateCwdIndependence:
+    """#718: scenario steps run from the repository root, not the caller's cwd."""
+
+    def _add_scenario(self, scenarios_dir: Path) -> None:
+        (scenarios_dir / "synth-cwd-anchored.yaml").write_text(
+            _CWD_ANCHORED_SCENARIO, encoding="utf-8"
+        )
+
+    def test_single_scenario_step_runs_from_repo_root(
+        self, scenarios_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._add_scenario(scenarios_dir)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--scenario",
+                "synth-cwd-anchored",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Status: passed" in result.output
+
+    def test_suite_step_runs_from_repo_root(
+        self, scenarios_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._add_scenario(scenarios_dir)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "run",
+                "--all",
+                "--category",
+                "cwd-anchor",
+                "--runs-root",
+                str(tmp_path / "runs"),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "synth-cwd-anchored: passed" in result.output
+
+    def test_default_runs_root_is_anchored_at_repo_root(
+        self, scenarios_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An omitted --runs-root writes to <repo root>/validation-runs, not cwd."""
+        assert validation_paths.default_runs_root() == (
+            validation_paths.repo_root() / "validation-runs"
+        )
+        anchored = tmp_path / "anchored-runs"
+        monkeypatch.setattr(validate_commands, "default_runs_root", lambda: anchored)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+        result = runner.invoke(app, ["validate", "run", "--scenario", "synth-passing"])
+        assert result.exit_code == 0, result.output
+        assert list_runs(anchored)
+        assert not (elsewhere / "validation-runs").exists()

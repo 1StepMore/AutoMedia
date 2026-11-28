@@ -10,12 +10,14 @@ graceful degradation was never exercised.  This module pins:
   "hidden-failure-free" definition: the record's failed steps each carry
   their expect failures and the summary count matches the failed step
   count — partial-pass never hides a failure);
-* the three new deterministic integration scenarios each yield
-  ``partial-pass`` with the failed capability probe listed.
+* the three deterministic integration scenarios each PASS — since #719
+  their degradation legs assert the structured refusal the product actually
+  owes (NOT_FOUND / allowlist deny) instead of a red ``expect.success`` that
+  contradicted correct behaviour.
 
-Synthetic/dispatch fixtures only (Red Line 4); the failing steps are real
-shipped-surface calls with a deterministic error (missing source file /
-unknown project id), never a fabricated pass.
+Synthetic/dispatch fixtures only (Red Line 4); the degradation steps are real
+shipped-surface calls with a deterministic error (unknown project id /
+allowlist-refused source), never a fabricated pass.
 """
 
 from __future__ import annotations
@@ -49,18 +51,6 @@ def _committed(name: str) -> Scenario:
     raise AssertionError(f"committed scenario {name!r} not found in the library")
 
 
-def _assert_no_hidden_failure(record: dict[str, Any], name: str) -> None:
-    """The plan's hidden-failure-free definition, enforced."""
-    assert record["status"] == "partial-pass", (name, record["status"])
-    failed = [step for step in record["steps"] if not step["passed"]]
-    assert failed, f"{name}: partial-pass with no failed step recorded"
-    assert record["summary"]["failed"] == len(failed), (
-        f"{name}: summary.failed {record['summary']['failed']} != failed steps {len(failed)}"
-    )
-    for step in failed:
-        assert step["failures"], f"{name}: failed step {step['name']!r} listed no expect failure"
-
-
 class TestPolicyIsAdopted:
     def test_at_least_five_scenarios_declare_partial_pass_policy(self) -> None:
         policy = [
@@ -79,8 +69,13 @@ class TestPolicyIsAdopted:
 
 class TestNoHiddenFailure:
     @pytest.mark.parametrize("name", _NEW_PARTIAL_PASS)
-    def test_committed_partial_pass_lists_every_failed_step(self, name: str) -> None:
-        _assert_no_hidden_failure(_run(_committed(name)), name)
+    def test_committed_scenarios_pass_with_asserted_refusals(self, name: str) -> None:
+        """Since #719 the degradation legs assert the honest refusal, so every
+        step passes — correct behaviour is green, never partial-pass."""
+        record = _run(_committed(name))
+        assert record["status"] == "passed", (name, record["status"], record["summary"])
+        failed = [step for step in record["steps"] if not step["passed"]]
+        assert not failed, f"{name}: failed steps {[step['name'] for step in failed]}"
 
     def test_multi_failure_scenario_lists_both_failed_steps(self) -> None:
         """A scenario with two failing steps must name both."""

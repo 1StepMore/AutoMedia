@@ -57,6 +57,7 @@ from automedia.validation.engine import (
     run_validation_suite,
 )
 from automedia.validation.loader import LoadError, load_scenarios
+from automedia.validation.paths import default_runs_root, repo_root
 from automedia.validation.persist import (
     PersistError,
     latest_run,
@@ -160,10 +161,14 @@ def validate_run(
             "that subset."
         ),
     ),
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
-        help="Directory for immutable run records (gitignored).",
+        help=(
+            "Directory for immutable run records (gitignored). Defaults to "
+            "<repo root>/validation-runs; an explicit path resolves against "
+            "the current directory as before."
+        ),
     ),
 ) -> None:
     """Run ONE named scenario, or the whole library with ``--all``.
@@ -174,8 +179,9 @@ def validate_run(
     Exit codes for a single run: 1 when the scenario status is ``failed`` OR
     the scenario is a hard-safety violation (``hard: true`` and not
     ``passed``); 0 otherwise.  ``--all`` exits 1 when any scenario ``failed``
-    or the suite is hard-safety blocked.  Run from the repo root so relative
-    artifact paths resolve.
+    or the suite is hard-safety blocked.  Scenario steps and relative artifact
+    paths always resolve against the repository root, so results do not depend
+    on the caller's cwd.
     """
     if env_gate not in _ENV_GATE_CHOICES:
         raise typer.BadParameter(f"must be one of {', '.join(_ENV_GATE_CHOICES)}") from None
@@ -184,7 +190,7 @@ def validate_run(
             raise typer.BadParameter("--category and --scenario are mutually exclusive")
         if not run_all:
             raise typer.BadParameter("--category requires --all")
-    root = Path(runs_root)
+    root = Path(runs_root) if runs_root is not None else default_runs_root()
     if run_all:
         if scenario is not None:
             raise typer.BadParameter("--all and --scenario are mutually exclusive")
@@ -212,9 +218,12 @@ def validate_run(
     from automedia.mcp.server import create_server
 
     adapters = make_adapters(create_server())
-    root = Path(runs_root)
     record = run_validation_scenario(
-        target, adapters, run_root=root, env_gate_skipped=skipped_env or None
+        target,
+        adapters,
+        run_root=root,
+        cwd=repo_root(),
+        env_gate_skipped=skipped_env or None,
     )
     run_record = build_single_run_record(record)
     try:
@@ -299,7 +308,9 @@ def _run_suite(root: Path, *, category: str | None = None) -> None:
     from automedia.mcp.server import create_server
 
     try:
-        record = run_validation_suite(create_server(), runs_root=root, category=category)
+        record = run_validation_suite(
+            create_server(), runs_root=root, cwd=repo_root(), category=category
+        )
     except LoadError as exc:
         output_error(f"Failed to load scenarios: {exc}")
         raise typer.Exit(code=1) from None
@@ -364,14 +375,18 @@ def validate_report(
         "--run",
         help="Run directory name, or 'latest' (the latest.txt pointer).",
     ),
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
-        help="Directory of immutable run records (gitignored).",
+        help=(
+            "Directory of immutable run records (gitignored). Defaults to "
+            "<repo root>/validation-runs; an explicit path resolves against "
+            "the current directory as before."
+        ),
     ),
 ) -> None:
     """Render the report for a run (W4-T3 renderer, minimal fallback)."""
-    root = Path(runs_root)
+    root = Path(runs_root) if runs_root is not None else default_runs_root()
     run_name = latest_run(root) if run == "latest" else run
     if run_name is None:
         output_error(f"No runs recorded under {root} (no latest.txt pointer).")
@@ -472,14 +487,18 @@ def validate_diff(
         "--baseline",
         help="Baseline run record path (JSON) to diff against.",
     ),
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
-        help="Directory of immutable run records (gitignored).",
+        help=(
+            "Directory of immutable run records (gitignored). Defaults to "
+            "<repo root>/validation-runs; an explicit path resolves against "
+            "the current directory as before."
+        ),
     ),
 ) -> None:
     """Diff the latest two runs (W4-T4 module when present, minimal fallback)."""
-    root = Path(runs_root)
+    root = Path(runs_root) if runs_root is not None else default_runs_root()
     if baseline is None:
         baseline = _default_baseline_path(root)
     runs = list_runs(root)
@@ -579,11 +598,12 @@ def _render_diff_text(diff_result: dict[str, Any]) -> str:
 
 @app.command("coverage")
 def validate_coverage(
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
         help=(
-            "Directory of immutable run records. Coverage is evidence-backed: "
+            "Directory of immutable run records. Defaults to "
+            "<repo root>/validation-runs. Coverage is evidence-backed: "
             "surfaces are covered only by a passed step in the newest run here."
         ),
     ),
@@ -608,7 +628,9 @@ def validate_coverage(
     from automedia.validation.coverage import coverage_audit
 
     try:
-        audit = coverage_audit(runs_root=runs_root)
+        audit = coverage_audit(
+            runs_root=Path(runs_root) if runs_root is not None else default_runs_root()
+        )
     except (LoadError, OSError) as exc:
         output_error(f"Coverage audit failed: {exc}")
         return
@@ -741,10 +763,14 @@ def _render_by_level(by_level: dict[str, Any]) -> None:
 
 @app.command("matrix")
 def validate_matrix(
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
-        help="Directory of immutable run records (gitignored).",
+        help=(
+            "Directory of immutable run records (gitignored). Defaults to "
+            "<repo root>/validation-runs; an explicit path resolves against "
+            "the current directory as before."
+        ),
     ),
 ) -> None:
     """Render the validation matrix: coverage grid + run-record assertion
@@ -752,7 +778,9 @@ def validate_matrix(
     no scenario argument."""
     from automedia.validation.matrix import build_matrix
 
-    matrix = build_matrix(runs_root=runs_root)
+    matrix = build_matrix(
+        runs_root=Path(runs_root) if runs_root is not None else default_runs_root()
+    )
     if get_output_mode() == OutputMode.JSON:
         output_json(matrix)
         return
@@ -863,10 +891,14 @@ def validate_sign(
         "--signer",
         help="Signer name recorded on the sign-off line.",
     ),
-    runs_root: str = typer.Option(
-        "validation-runs",
+    runs_root: str | None = typer.Option(
+        None,
         "--runs-root",
-        help="Directory of immutable run records (gitignored).",
+        help=(
+            "Directory of immutable run records (gitignored). Defaults to "
+            "<repo root>/validation-runs; an explicit path resolves against "
+            "the current directory as before."
+        ),
     ),
 ) -> None:
     """Record the director's sign-off on a run (appends to ``signed.txt``).
@@ -879,7 +911,7 @@ def validate_sign(
     if not name:
         output_error("A run name is required: automedia validate sign <run-name>")
         raise typer.Exit(code=1)
-    root = Path(runs_root)
+    root = Path(runs_root) if runs_root is not None else default_runs_root()
     try:
         signed_path = sign_run(root, name, verdict, signer=signer)
     except SignoffError as exc:

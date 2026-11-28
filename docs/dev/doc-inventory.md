@@ -37,8 +37,8 @@
 | docs/dev/developer-guide.md | 25450 | file |
 | docs/dev/doc-update-audit-20261029.md | 17929 | file |
 | docs/dev/evaluation-matrix-principles.md | 39285 | file |
-| docs/dev/forward-compat.md | 12882 | file |
-| docs/dev/founder-expectations.md | 112497 | file |
+| docs/dev/forward-compat.md | 12913 | file |
+| docs/dev/founder-expectations.md | 112810 | file |
 | docs/dev/gap-register.md | 18711 | file |
 | docs/dev/gate-failure-modes.md | 25636 | file |
 | docs/dev/goals.md | 1992 | file |
